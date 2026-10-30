@@ -35,7 +35,7 @@ extras declarados, el esquema de salida, la proyección, el diccionario literal
 del manejador, o un salto de delegación a una función con nombre— y lo que no
 cae en ninguno lo cuenta y lo deja fuera en vez de inventarse un veredicto.
 
-Medido: **523 rutas resueltas y 125 contratos de pantalla, con 26 puntos
+Medido: **577 rutas resueltas y 143 contratos de pantalla, con 25 puntos
 ciegos**. Las tres cifras se comprueban, porque un resolutor que
 dejara de ver el servidor pasaría en verde sin mirar nada. Se ha plantado: con
 `_ficheros()` devolviendo la lista vacía, dos de las tres pruebas se ponen
@@ -482,10 +482,21 @@ def claves_por_ruta() -> tuple[dict[str, set[str]], set[str]]:
                 datos["extras_declara"].value, (ast.Tuple, ast.List)
             ):
                 extras = {_texto(e) or "" for e in datos["extras_declara"].value.elts if _texto(e)}
+            claves_de_la_fila = columnas[modelo] | rollups.get(objeto or "", set()) | extras
             completa = _normalizar(f"{PREFIJO}{prefijos[router]}{ruta}")
-            resueltas.setdefault(completa, set()).update(
-                columnas[modelo] | rollups.get(objeto or "", set()) | extras
-            )
+            resueltas.setdefault(completa, set()).update(claves_de_la_fila)
+            # **`montar_listado` monta también la ficha**, salvo que se le diga
+            # `ficha=False`. Es la misma fila por su identificador, y no
+            # registrarla dejaba ciega la ficha de todo recurso que no tuviera
+            # además un `montar_ficha` escrito aparte — el presupuesto, por
+            # ejemplo.
+            monta_ficha = True
+            if "ficha" in datos and isinstance(datos["ficha"].value, ast.Constant):
+                monta_ficha = bool(datos["ficha"].value.value)
+            if monta_ficha:
+                resueltas.setdefault(
+                    _normalizar(f"{PREFIJO}{prefijos[router]}{ruta}/{{}}"), set()
+                ).update(claves_de_la_fila)
 
         # Fichas genéricas: la misma fila que el listado, por su id.
         for nodo in ast.walk(arbol):
@@ -616,13 +627,18 @@ TOPE_CONTRATOS_ROTOS = 0
 # sano—.
 #
 #   29-10-2026  26 de 120  medido al escribirlo, con 484 rutas resueltas.
+#   30-10-2026  25 de 143  `montar_listado` monta tambien su ficha salvo que
+#                          se le diga `ficha=False`, y el resolutor solo
+#                          miraba los `montar_ficha` escritos aparte: dejaba
+#                          ciega la ficha de todo recurso que no tuviera los
+#                          dos, como el presupuesto. 577 rutas resueltas.
 #   29-10-2026  26 de 125  la ficha de un segmento y la de la puntuacion de un
 #                          lead anadieron dos ciegas, y las dos se resolvieron
 #                          en el mismo commit: `montar_ficha` devuelve las
 #                          columnas del modelo igual que el listado, y un
 #                          `**otra_cosa()` dentro del literal se sigue como una
 #                          delegacion mas. 523 rutas resueltas.
-TOPE_SIN_RESOLVER = 26
+TOPE_SIN_RESOLVER = 25
 
 
 def test_la_resolucion_mira_de_verdad() -> None:

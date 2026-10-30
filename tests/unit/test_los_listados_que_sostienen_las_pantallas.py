@@ -537,3 +537,143 @@ def test_la_eficacia_separa_los_daninos_de_los_huerfanos(
     # podría decir cuál de los dos arreglos toca.
     assert isinstance(cuerpo["dañinos"], list)
     assert isinstance(cuerpo["huerfanos"], list)
+
+
+# ── El presupuesto (CRM-03.03.02.04, .05, .06) ───────────────────────────
+#
+# Lo que decide si se manda son tres objetos: la política de descuento con sus
+# motivos, la comparación con la versión anterior y el documento tal y como va
+# a salir. Ninguno se recorría por su ruta.
+
+
+@pytest.fixture
+def ventas_cpq(db: Any, contexto_tenant: UUID) -> Any:
+    yield from _cliente("services.sales.main")
+
+
+def _presupuesto(ventas_cpq: TestClient, cabeceras: dict[str, str], **extra: Any) -> dict[str, Any]:
+    creado = ventas_cpq.post(
+        "/api/v1/presupuestos",
+        headers=cabeceras,
+        json={
+            "titulo": "Renovación",
+            "lineas": [
+                {
+                    "descripcion": "Licencias",
+                    "cantidad": "10",
+                    "precio_unitario": "100.00",
+                    "coste_unitario": "60.00",
+                    **extra,
+                }
+            ],
+        },
+    )
+    assert creado.status_code in (200, 201), creado.text
+    return dict(creado.json())
+
+
+def test_la_politica_de_descuento_dice_por_que_y_contra_que(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """«Necesita aprobación» a secas se lee como burocracia."""
+    presupuesto = _presupuesto(ventas_cpq, cabeceras, descuento_pct="40")
+
+    r = ventas_cpq.get(
+        f"/api/v1/presupuestos/{presupuesto['id']}/politica-descuento", headers=cabeceras
+    )
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in (
+        "necesita_aprobacion",
+        "motivos",
+        "descuento_maximo",
+        "margen_pct",
+        "umbral_descuento",
+        "margen_minimo",
+    ):
+        assert campo in cuerpo, f"la política no manda «{campo}»"
+    # Y los motivos son texto que se puede leer, no un código.
+    assert isinstance(cuerpo["motivos"], list)
+
+
+def test_una_primera_version_dice_que_no_hay_con_que_comparar(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Sin `primera`, la pantalla enseñaría una comparación vacía, que se lee
+    como «no ha cambiado nada» — que es lo contrario."""
+    presupuesto = _presupuesto(ventas_cpq, cabeceras)
+
+    r = ventas_cpq.get(f"/api/v1/presupuestos/{presupuesto['id']}/cambios", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["primera"] is True
+    assert cuerpo["cambios"] == []
+
+
+def test_la_segunda_version_dice_linea_a_linea_que_cambio(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    presupuesto = _presupuesto(ventas_cpq, cabeceras)
+    nueva = ventas_cpq.post(
+        f"/api/v1/presupuestos/{presupuesto['id']}/versiones",
+        headers=cabeceras,
+        json={
+            "lineas": [{"descripcion": "Licencias", "cantidad": "7", "precio_unitario": "100.00"}]
+        },
+    )
+    assert nueva.status_code in (200, 201), nueva.text
+
+    r = ventas_cpq.get(f"/api/v1/presupuestos/{nueva.json()['id']}/cambios", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["primera"] is False
+    for campo in ("total_antes", "total_ahora", "cambios"):
+        assert campo in cuerpo, f"la comparación no manda «{campo}»"
+    assert cuerpo["cambios"], "no dice qué cambió"
+
+
+def test_el_documento_dice_con_que_marca_e_idioma_sale(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Descubrirlo en el correo del cliente no tiene arreglo."""
+    presupuesto = _presupuesto(ventas_cpq, cabeceras)
+
+    r = ventas_cpq.get(f"/api/v1/presupuestos/{presupuesto['id']}/documento", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in (
+        "plantilla",
+        "marca",
+        "idioma",
+        "numero",
+        "version",
+        "lineas",
+        "subtotal",
+        "descuento_total",
+        "total",
+        "condiciones",
+    ):
+        assert campo in cuerpo, f"el documento no manda «{campo}»"
+
+
+def test_la_ficha_de_un_presupuesto_trae_su_margen(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """El margen va pegado al descuento: sin él, un 30 % no se puede valorar."""
+    presupuesto = _presupuesto(ventas_cpq, cabeceras)
+
+    r = ventas_cpq.get(f"/api/v1/presupuestos/{presupuesto['id']}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in (
+        "id",
+        "numero",
+        "version",
+        "estado",
+        "moneda",
+        "subtotal",
+        "descuento_total",
+        "total",
+        "margen_pct",
+    ):
+        assert campo in cuerpo, f"la ficha no manda «{campo}»"
