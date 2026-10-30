@@ -591,7 +591,6 @@ const pantallas = {
     presionEs: "presión {{presion}}",
     peorServicio:
       "Lo que se aplaza lo decide «{{servicio}}», que es el que peor va. No la media: con uno ahogado y trece holgados, la media sale tranquila y lo no crítico se difiere igual.",
-    nadieApretado: "Ningún servicio va apretado ahora mismo.",
     presionSinRespuesta:
       "{{cuantos}} servicio(s) no han contestado, así que esto no cubre la instalación entera.",
     frenados: "A quién le ha bajado la cuota el freno automático",

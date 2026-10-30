@@ -108,16 +108,21 @@ interface Contratos {
 }
 
 /** `GET /estado/consultas-degradadas`: lo que va más lento de lo que debería. */
-interface Presion {
-  medible: boolean;
+interface PresionDeUno {
+  servicio: string;
+  /** `presion: null` es «no contestó», no «va holgado». */
   presion: number | null;
+  medible?: boolean;
+  que_significa?: string;
+}
+
+interface Presion {
   /** El que peor va: lo que se aplaza depende de él, no de la media. */
-  peor: string | null;
-  servicios: { servicio: string; presion?: number; legible?: boolean }[];
+  peor: PresionDeUno | null;
+  servicios: PresionDeUno[];
   sin_respuesta: string[];
   que_significa: string;
   aviso: string;
-  la_interfaz?: unknown;
 }
 
 interface Frenado {
@@ -428,20 +433,20 @@ function LaPresion({ presion }: { presion: Presion | null }) {
   return (
     <section className="card mt-4 p-4">
       <h2 className="text-sm font-medium text-ink">{t("estado.presion")}</h2>
-      {!presion.medible ? (
+      {/* **No hay una presión global**: la que manda es la del que peor va,
+          y el servidor la devuelve como ese servicio entero. Inventarse una
+          media aquí sería inventarse el número que decide lo que se aplaza. */}
+      {!presion.peor ? (
         <p className="mt-2 text-2xs text-warning">
-          {presion.aviso || t("estado.presionNoMedible")}
+          {presion.que_significa || t("estado.presionNoMedible")}
         </p>
       ) : (
         <>
           <p className="mt-2 font-mono text-lg text-ink">
-            {t("estado.presionEs", { presion: presion.presion })}
+            {t("estado.presionEs", { presion: presion.peor.presion })}
           </p>
-          {/* El que peor va, al lado: es quien decide lo que se aplaza. */}
           <p className="mt-1 text-2xs text-ink">
-            {presion.peor
-              ? t("estado.peorServicio", { servicio: presion.peor })
-              : t("estado.nadieApretado")}
+            {t("estado.peorServicio", { servicio: presion.peor.servicio })}
           </p>
           {presion.que_significa ? (
             <p className="mt-1 text-3xs text-ink-faint">{presion.que_significa}</p>
