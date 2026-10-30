@@ -35,7 +35,7 @@ extras declarados, el esquema de salida, la proyección, el diccionario literal
 del manejador, o un salto de delegación a una función con nombre— y lo que no
 cae en ninguno lo cuenta y lo deja fuera en vez de inventarse un veredicto.
 
-Medido: **590 rutas resueltas y 149 contratos de pantalla, con 18 puntos
+Medido: **598 rutas resueltas y 154 contratos de pantalla, con 17 puntos
 ciegos**. Las tres cifras se comprueban, porque un resolutor que
 dejara de ver el servidor pasaría en verde sin mirar nada. Se ha plantado: con
 `_ficheros()` devolviendo la lista vacía, dos de las tres pruebas se ponen
@@ -268,9 +268,34 @@ def _returns_propios(funcion: ast.FunctionDef | ast.AsyncFunctionDef) -> list[as
     return salida
 
 
+def _resolver(
+    nodo: Any,
+    contexto: dict[str, Any] | None,
+    por_modulo: dict[str, dict[str, Any]] | None,
+    alias: dict[str, str] | None,
+) -> Any:
+    """La función a la que apunta una llamada, si se puede saber cuál es.
+
+    Las mismas dos formas que sigue la delegación: un nombre del propio
+    módulo, o `alias.funcion` con `alias` importado. Nada más — por el
+    nombre suelto, `pagina.a_dict(…)` casaba con otra función de otro
+    servicio y el resolutor contestaba cualquier cosa.
+    """
+    if isinstance(nodo, ast.Name):
+        return (contexto or {}).get(nodo.id)
+    if isinstance(nodo, ast.Attribute) and isinstance(nodo.value, ast.Name):
+        modulo = (alias or {}).get(nodo.value.id)
+        if modulo is not None:
+            return (por_modulo or {}).get(modulo, {}).get(nodo.attr)
+    return None
+
+
 def _claves_del_literal(
     funcion: ast.FunctionDef | ast.AsyncFunctionDef,
     contexto: dict[str, Any] | None = None,
+    por_modulo: dict[str, dict[str, Any]] | None = None,
+    alias: dict[str, str] | None = None,
+    vistas: frozenset[int] = frozenset(),
 ) -> set[str] | None:
     """Las claves del diccionario que devuelve el manejador, si es literal.
 
@@ -282,6 +307,13 @@ def _claves_del_literal(
     visto = False
     for nodo in _returns_propios(funcion):
         if nodo.value is None:
+            continue
+        # `return None` explícito: una respuesta nula no tiene claves, así que
+        # no puede faltarle ninguna. Tratarlo como «no sé» dejaba ciega toda
+        # función que devuelve `dict | None`, que son muchas —el playbook que
+        # no encuentra ninguno, la evidencia que no existe todavía—.
+        if isinstance(nodo.value, ast.Constant) and nodo.value.value is None:
+            visto = True
             continue
         valor = nodo.value
         if isinstance(valor, (ast.ListComp, ast.GeneratorExp)):
@@ -296,15 +328,24 @@ def _claves_del_literal(
             return None
         for clave, hijo in zip(valor.keys, valor.values, strict=True):
             if clave is None:
-                # `**algo()`: se sigue si es una llamada a una función con
-                # nombre que devuelve un literal. `explicar()` mete así los
-                # umbrales, y pararse aquí dejaba ciega la ruta que más forma
-                # tiene de todo el scoring.
+                # `**algo()`: se sigue si es una llamada a una función que se
+                # sabe cuál es —del propio módulo o por un alias importado—.
+                # `explicar()` mete así los umbrales y la ruta del plan
+                # conjunto mete así su estado; pararse aquí dejaba ciegas las
+                # dos rutas que más forma tienen.
+                destino = (
+                    _resolver(hijo.func, contexto, por_modulo, alias)
+                    if isinstance(hijo, ast.Call)
+                    else None
+                )
+                # Y no se entra dos veces en la misma: una ruta que se llama
+                # como su servicio —`estado_del_plan` en los dos— se resolvía
+                # a sí misma y entraba en bucle.
                 suyas = (
-                    _claves_del_literal(contexto[_nombre(hijo.func) or ""])
-                    if contexto is not None
-                    and isinstance(hijo, ast.Call)
-                    and _nombre(hijo.func) in contexto
+                    _claves_del_literal(
+                        destino, contexto, por_modulo, alias, vistas | {id(destino)}
+                    )
+                    if destino is not None and id(destino) not in vistas
                     else None
                 )
                 if suyas is None:
@@ -377,7 +418,7 @@ def _claves_delegadas(
         if destino is None:
             return None
 
-        suyas = _claves_del_literal(destino, vecinas)
+        suyas = _claves_del_literal(destino, vecinas, por_modulo, alias)
         if suyas is None:
             return None
         claves |= suyas
@@ -612,7 +653,7 @@ def claves_por_ruta() -> tuple[dict[str, set[str]], set[str]]:
                                 if clave.arg == "modelo" and _nombre(clave.value) in columnas:
                                     de_la_fila = set(columnas[_nombre(clave.value) or ""])
                 if claves is None:
-                    claves = _claves_del_literal(nodo)
+                    claves = _claves_del_literal(nodo, locales, por_modulo, alias)
                 if claves is None:
                     claves = _claves_delegadas(nodo, locales, por_modulo, alias)
                 if claves is None and de_la_fila is None:
@@ -647,6 +688,15 @@ TOPE_CONTRATOS_ROTOS = 0
 # sano—.
 #
 #   29-10-2026  26 de 120  medido al escribirlo, con 484 rutas resueltas.
+#   30-10-2026  17 de 154  dos formas mas, las dos reales: un `return None`
+#                          explicito —una respuesta nula no tiene claves, asi
+#                          que no puede faltarle ninguna, y tratarlo como «no
+#                          se» dejaba ciega toda funcion `dict | None`—, y un
+#                          `**alias.funcion(…)` dentro del literal, que es
+#                          como la ruta del plan conjunto compone su estado.
+#                          Con guarda de recursion: una ruta que se llama
+#                          igual que su funcion de servicio se resolvia a si
+#                          misma y entraba en bucle. 598 rutas resueltas.
 #   30-10-2026  18 de 149  el resolutor no seguia las delegaciones a `crmcore`
 #                          por dos motivos a la vez: el paquete comun vive en
 #                          `packages/crmcore/crmcore/…` y se importa como
@@ -666,7 +716,7 @@ TOPE_CONTRATOS_ROTOS = 0
 #                          columnas del modelo igual que el listado, y un
 #                          `**otra_cosa()` dentro del literal se sigue como una
 #                          delegacion mas. 523 rutas resueltas.
-TOPE_SIN_RESOLVER = 18
+TOPE_SIN_RESOLVER = 17
 
 
 def test_la_resolucion_mira_de_verdad() -> None:
