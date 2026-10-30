@@ -36,10 +36,10 @@ import {
   humanizar,
   nombreDelRegistro,
 } from "@/lib/formato";
-import { Acciones } from "@/componentes/Acciones";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
-import { accionesDe, subColeccionesDe } from "@/lib/acciones";
+import { accionesDe, subColeccionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { ErrorApi, llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
@@ -190,6 +190,10 @@ function Datos({
   const [tapados, setTapados] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState(false);
+  // Qué acción del contrato está desplegada. Vive aquí y no dentro de
+  // `<Acciones>` porque quien las ofrece es el menú de la barra: con el estado
+  // dentro habría dos sitios desde los que abrir la misma cosa.
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
@@ -265,7 +269,9 @@ function Datos({
           <Acciones
             acciones={acciones}
             servicio={recurso?.servicio ?? ""}
-            alTerminar={cargar}
+            abierta={accionAbierta}
+        alCambiarAbierta={setAccionAbierta}
+        alTerminar={cargar}
           />
           {/* Apuntar una llamada o un correo sobre este registro sin salir de
               aquí: antes obligaba a irse a Actividades y teclear a mano el
@@ -295,6 +301,12 @@ function Datos({
             puedeBorrar={puedeBorrar}
             alEditar={() => setEditando(true)}
             alBorrar={() => setConfirmando(true)}
+            extra={acciones.map((a) => ({
+              clave: a.ruta,
+              nombre: a.nombre,
+              alElegir: () => setAccionAbierta(a),
+              destructiva: esIrreversible(a),
+            }))}
           />
         </div>
       ) : null}

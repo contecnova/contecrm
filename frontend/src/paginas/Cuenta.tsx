@@ -52,10 +52,10 @@ import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar, listarPagina } from "@/lib/listados";
-import { Acciones } from "@/componentes/Acciones";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
-import { accionesDe, subColeccionesDe } from "@/lib/acciones";
+import { accionesDe, subColeccionesDe, type Accion } from "@/lib/acciones";
 import { escalar, humanizar, importe } from "@/lib/formato";
 import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
 import { useSuperficie } from "@/lib/permisos";
@@ -244,6 +244,10 @@ export function Cuenta() {
   const { superficie, tiene } = useSuperficie();
   const navegar = useNavigate();
   const [editando, setEditando] = useState(false);
+  // Qué acción del contrato está desplegada. Vive aquí y no dentro de
+  // `<Acciones>` porque quien las ofrece es el menú de la barra: con el estado
+  // dentro habría dos sitios desde los que abrir la misma cosa.
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [borrando, setBorrando] = useState(false);
   /**
@@ -431,6 +435,12 @@ export function Cuenta() {
             puedeBorrar={puedeBorrar}
             alEditar={() => setEditando(true)}
             alBorrar={() => setConfirmando(true)}
+            extra={acciones.map((a) => ({
+              clave: a.ruta,
+              nombre: a.nombre,
+              alElegir: () => setAccionAbierta(a),
+              destructiva: esIrreversible(a),
+            }))}
           />
         </div>
       ) : null}
@@ -459,6 +469,8 @@ export function Cuenta() {
       <Acciones
         acciones={acciones}
         servicio="party"
+        abierta={accionAbierta}
+        alCambiarAbierta={setAccionAbierta}
         alTerminar={() => cargar()}
       />
 

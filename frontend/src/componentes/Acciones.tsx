@@ -103,19 +103,43 @@ function moduloDelRecurso(recurso: Recurso): string | null {
   return null;
 }
 
+/**
+ * Cuáles de estas acciones no se deshacen. Lo usa quien pinta la barra para
+ * mandarlas al fondo del menú, separadas.
+ */
+export function esIrreversible(accion: Accion): boolean {
+  return IRREVERSIBLES.test(accion.clave);
+}
+
 export function Acciones({
   acciones,
   servicio,
   alTerminar,
+  abierta: abiertaFuera,
+  alCambiarAbierta,
 }: {
   acciones: Accion[];
   /** Servicio dueño, para leer su contrato. */
   servicio: string;
   /** Se llama tras ejecutar, para que la ficha recargue. */
   alTerminar: () => void;
+  /**
+   * Qué acción está desplegada, cuando la elige **otro** —el menú de la barra
+   * de registro—. Sin esto, esta sección pintaba sus propios botones: siete en
+   * la ficha de una cuenta, del mismo peso que «Editar» y «Eliminar», en dos
+   * filas que envolvían. Pasándole quién está abierta se queda sólo con el
+   * formulario y el resultado, y los botones los ofrece un único menú.
+   */
+  abierta?: Accion | null;
+  alCambiarAbierta?: (accion: Accion | null) => void;
 }) {
   const { t } = useTranslation();
-  const [abierta, setAbierta] = useState<Accion | null>(null);
+  const controlada = alCambiarAbierta !== undefined;
+  const [abiertaDentro, setAbiertaDentro] = useState<Accion | null>(null);
+  const abierta = controlada ? (abiertaFuera ?? null) : abiertaDentro;
+  const setAbierta = controlada
+    ? (a: Accion | null) => alCambiarAbierta(a)
+    : setAbiertaDentro;
   const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -157,7 +181,10 @@ export function Acciones({
 
   return (
     <section className="mb-3" aria-label={t("acciones.titulo")}>
-      <div className="flex flex-wrap gap-2">
+      {/* Sólo cuando nadie los ofrece desde fuera: si la barra de registro ya
+          los lleva en su menú, pintarlos aquí otra vez sería la pared de
+          botones que esto viene a quitar. */}
+      <div className={controlada ? "hidden" : "flex flex-wrap gap-2"}>
         {acciones.map((a) => (
           <button
             key={a.ruta}

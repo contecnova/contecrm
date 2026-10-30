@@ -400,6 +400,26 @@ su nombre, un artículo por el suyo. Antes sólo se descartaba el campo `nombre`
 y como ocho de los nueve campos con los que algo se titula no son `nombre`, casi
 todas las tarjetas gastaban una de sus cinco líneas en repetirse.
 
+## Lo que se puede hacer con un registro
+
+En la ficha de cualquier cosa hay **dos botones**: `Editar` y `Más`. Dentro de
+`Más` está todo lo demás que el servidor admite sobre ese registro —fusionar
+dos cuentas, colgar una de otra, sumar a alguien al equipo— y, al final y
+separado por una raya, **lo que no se deshace**, en rojo: fusionar, anular,
+eliminar.
+
+Se cierra con Escape, y el foco vuelve al botón.
+
+> **Por qué.** Medido en el navegador sobre ocho fichas: en las ocho
+> «Eliminar» era el **segundo botón**, en rojo, delante de cualquier acción
+> útil. Y la ficha de una cuenta apilaba siete botones del mismo peso en dos
+> filas, cinco de más de dieciocho caracteres y el más largo de cuarenta y uno.
+> Siete cosas igual de destacadas no destacan ninguna, y la que estaba en el
+> sitio más fácil de pulsar era la única que no se puede retirar.
+>
+> Borrar no se ha quitado ni se ha escondido: sigue a un clic. Lo que cambia es
+> que hay que ir a buscarlo.
+
 ## Filtrar una lista
 
 Encima de cualquier listado hay un botón **Filtrar**. Se elige un campo, una

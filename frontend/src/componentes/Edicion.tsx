@@ -24,6 +24,7 @@ import { camposDe, contratoDe, fichaDe, type CampoEsquema } from "@/lib/contrato
 import { llamar } from "@/lib/api";
 import type { Recurso } from "@/lib/modulos";
 import { usePuedeOperar } from "@/lib/permisos";
+import { MenuDeAcciones, type OpcionDeMenu } from "@/componentes/MenuDeAcciones";
 
 /**
  * Qué se puede hacer con este registro, según el contrato y el permiso.
@@ -42,32 +43,56 @@ export function useEdicion(recurso: Recurso | undefined, id: string) {
   };
 }
 
+/**
+ * Los botones de un registro: editar delante, borrar dentro del menú.
+ *
+ * **Borrar no puede ser el segundo botón.** Medido en el navegador sobre ocho
+ * fichas —cuentas, oportunidades, casos, conocimiento, campo, proveedores,
+ * segmentos y campañas—: en las ocho «Eliminar» salía en la posición 2, en
+ * rojo, delante de cualquier acción útil. Es la única de la barra que no se
+ * deshace y estaba en el sitio más fácil de pulsar sin querer.
+ *
+ * Ahora baja al menú, al final y separada por una raya. Sigue estando a un
+ * clic de donde estaba: lo que cambia es que hay que ir a buscarla.
+ *
+ * `extra` son las acciones del contrato, que las decide quien pinta la barra.
+ */
 export function BotonesDeRegistro({
   puedeEditar,
   puedeBorrar,
   alEditar,
   alBorrar,
+  extra = [],
 }: {
   puedeEditar: boolean;
   puedeBorrar: boolean;
   alEditar: () => void;
   alBorrar: () => void;
+  extra?: OpcionDeMenu[];
 }) {
   const { t } = useTranslation();
-  if (!puedeEditar && !puedeBorrar) return null;
+  const opciones: OpcionDeMenu[] = [
+    ...extra,
+    ...(puedeBorrar
+      ? [
+          {
+            clave: "__borrar",
+            nombre: t("ficha.eliminar"),
+            alElegir: alBorrar,
+            destructiva: true,
+          },
+        ]
+      : []),
+  ];
+  if (!puedeEditar && opciones.length === 0) return null;
   return (
-    <div className="flex gap-2">
+    <MenuDeAcciones opciones={opciones} etiqueta={t("acciones.titulo")}>
       {puedeEditar ? (
         <button type="button" onClick={alEditar} className="btn-secondary">
           {t("ficha.editar")}
         </button>
       ) : null}
-      {puedeBorrar ? (
-        <button type="button" onClick={alBorrar} className="btn-danger">
-          {t("ficha.eliminar")}
-        </button>
-      ) : null}
-    </div>
+    </MenuDeAcciones>
   );
 }
 

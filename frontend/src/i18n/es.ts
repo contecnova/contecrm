@@ -188,6 +188,9 @@ export default {
     masColumnas_other: "Hay {{count}} columnas más, sin ningún dato en estas filas.",
   },
   acciones: {
+    // El menú de lo que no se usa a diario. «Más» a secas y no «Más
+    // acciones»: va al lado de botones que ya son acciones.
+    mas: "Más",
     abrir: "Abrir",
     titulo: "Qué se puede hacer con esto",
     hecho: "Hecho",
