@@ -31,6 +31,7 @@ import { useParams } from "react-router-dom";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { fecha } from "@/lib/formato";
 
 interface Factor {
   eje: string;
@@ -223,7 +224,7 @@ export function PuntuacionDeLead() {
           <p className="mt-1 text-3xs text-ink-faint">
             {e.ultima_actividad_at
               ? t("puntuacion.ultimaActividad", {
-                  fecha: new Date(e.ultima_actividad_at).toLocaleDateString(),
+                  fecha: fecha(e.ultima_actividad_at),
                 })
               : t("puntuacion.sinActividad")}
           </p>

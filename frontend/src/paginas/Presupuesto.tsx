@@ -43,6 +43,7 @@ import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+import { escalar, fecha, importe } from "@/lib/formato";
 
 interface Presupuesto {
   id: string;
@@ -241,21 +242,21 @@ export function Presupuesto() {
         <section className="card p-4">
           <h2 className="text-sm font-medium text-ink">{t("presupuesto.numeros")}</h2>
           <p className="mt-2 font-mono text-lg text-ink">
-            {t("presupuesto.total", {
-              total: presupuesto.total,
-              moneda: presupuesto.moneda,
-            })}
+            {importe(presupuesto.total, presupuesto.moneda)}
           </p>
           {/* El descuento y el margen juntos: un 30 % sobre 60 de margen y
               sobre 12 son dos conversaciones distintas, y en la lista los dos
               son «30 %». */}
           <p className="mt-1 font-mono text-2xs text-ink">
             {t("presupuesto.descuentoYMargen", {
-              descuento: presupuesto.descuento_total,
+              // Los dos por el formateador: la API manda los decimales como
+              // cadena —`Numeric` en JSON es texto para no perder precisión—
+              // y pintados tal cual salen «0.00» y «49.67».
+              descuento: importe(presupuesto.descuento_total, presupuesto.moneda),
               margen:
                 presupuesto.margen_pct === null
                   ? t("presupuesto.sinMargen")
-                  : `${presupuesto.margen_pct} %`,
+                  : `${escalar(presupuesto.margen_pct)} %`,
             })}
           </p>
           {presupuesto.margen_pct === null ? (
@@ -264,7 +265,7 @@ export function Presupuesto() {
           {presupuesto.valido_hasta ? (
             <p className="mt-2 text-2xs text-ink-muted">
               {t("presupuesto.valido", {
-                fecha: new Date(presupuesto.valido_hasta).toLocaleDateString(),
+                fecha: fecha(presupuesto.valido_hasta),
               })}
             </p>
           ) : null}

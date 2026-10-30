@@ -20,6 +20,7 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { fecha } from "@/lib/formato";
 
 interface Segmento {
   id: string;
@@ -105,7 +106,7 @@ export function Marketing() {
                 <span className="text-3xs text-ink-faint">
                   {s.tamano_at
                     ? t("marketing.calculado", {
-                        fecha: new Date(s.tamano_at).toLocaleDateString(),
+                        fecha: fecha(s.tamano_at),
                       })
                     : t("marketing.nuncaCalculado")}
                 </span>

@@ -47,7 +47,7 @@ import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
-import { importe as comoImporte } from "@/lib/formato";
+import { fecha, importe as comoImporte } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 
@@ -746,7 +746,7 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
         {plan.compartido
           ? plan.visto_por_el_cliente
             ? t("oportunidad.planVisto", {
-                fecha: new Date(plan.visto_por_el_cliente).toLocaleDateString(),
+                fecha: fecha(plan.visto_por_el_cliente),
               })
             : t("oportunidad.planCompartidoSinVer")
           : t("oportunidad.planSinCompartir")}

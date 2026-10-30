@@ -42,6 +42,7 @@ import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+import { fechaHora } from "@/lib/formato";
 
 interface Segmento {
   id: string;
@@ -286,7 +287,7 @@ export function Segmento() {
               </p>
               <p className="mt-1 text-3xs text-ink-faint">
                 {t("segmento.calculado", {
-                  fecha: new Date(tamano.calculado_at).toLocaleString(),
+                  fecha: fechaHora(tamano.calculado_at),
                 })}
               </p>
               {tamano.es_foto_congelada ? (

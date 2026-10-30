@@ -38,6 +38,7 @@ import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+import { fecha } from "@/lib/formato";
 
 interface Nodo {
   id: string;
@@ -272,7 +273,7 @@ export function Activo() {
               <p className="mt-1 text-2xs text-ink-muted">
                 {ficha.contador_at
                   ? t("activo.leidoEl", {
-                      fecha: new Date(ficha.contador_at).toLocaleDateString(),
+                      fecha: fecha(ficha.contador_at),
                     })
                   : t("activo.sinFechaDeLectura")}
               </p>
@@ -307,7 +308,7 @@ export function Activo() {
                 <li key={i} className="flex items-baseline gap-2">
                   <span className="chip-dato">{e.tipo}</span>
                   <span className="flex-1 font-mono text-3xs text-ink-muted">
-                    {e.cuando ? new Date(e.cuando).toLocaleDateString() : "—"}
+                    {fecha(e.cuando)}
                   </span>
                 </li>
               ))}

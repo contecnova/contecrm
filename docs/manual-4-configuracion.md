@@ -385,6 +385,36 @@ maneras.
 > castellano, así que no hay con qué compararla. Queda dicho en vez de darse
 > por comprobada.
 
+> **Y el 30-10-2026 se encontró la otra mitad.** El guardián de entonces
+> buscaba la cadena `"es-ES"` escrita a mano, y lo que quedaba no la tenía:
+> eran diez pantallas llamando a `new Date(x).toLocaleDateString()` **sin
+> argumentos**, que no escribe ninguna localización — coge la del navegador. El
+> efecto se vio en la ficha de un presupuesto, con la interfaz en castellano:
+>
+> ```
+> Válido hasta el 11/26/2026
+> 1531.00 EUR
+> ```
+>
+> El 26 de noviembre escrito al revés, y el importe en crudo: decimal con
+> punto, sin separador de miles y con el código ISO detrás en vez del símbolo.
+> Lo peor de un fallo así es que **no falla para todos**: quien tenga el
+> navegador en castellano lo ve bien y no lo reporta nunca.
+>
+> Ahora hay `fecha()` y `fechaHora()` en `lib/formato.ts`, al lado de
+> `importe()` y `escalar()`, y un guardián que recorre el árbol y no deja pasar
+> una llamada a `toLocale*String()` sin argumentos.
+>
+> **El idioma del documento también viaja con ella.** `index.html` traía
+> `lang="es"` fijo; ahora se fija con lo que responde el servidor. Eso arregla
+> dos cosas —Firefox pinta el selector de fecha en el formato del tenant, y los
+> lectores de pantalla leen el idioma correcto— y **no arregla una tercera**:
+> Chrome usa la localización de su propia instalación para el control
+> `<input type="date">` y no mira el `lang` de la página, así que quien tenga
+> el navegador en inglés verá ahí `mm/dd/yyyy` por mucho que la pantalla esté
+> en castellano. No se puede arreglar desde el producto, y queda escrito en vez
+> de darse por resuelto.
+
 ### Filtrar un listado por rango (`CRM-00.02.01.10`)
 
 Los filtros de la URL eran **igualdad y nada más**, así que no había forma de

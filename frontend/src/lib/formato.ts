@@ -64,6 +64,17 @@ export function fijarLocalizacion(locale: string): void {
     DINERO = dinero;
     FECHA = fecha;
     FECHA_HORA = fechaHora;
+    // El `lang` del documento viaja con ella. `index.html` lo trae fijo en
+    // «es» y un tenant en Portugal o en México se quedaba con esa marca aunque
+    // sus números y sus fechas ya salieran bien.
+    //
+    // Lo que arregla y lo que no: con esto Firefox pinta el `<input
+    // type="date">` en el formato del tenant, y los lectores de pantalla leen
+    // el idioma correcto. **Chrome no**: para ese control usa la localización
+    // del propio navegador y no mira `lang`, así que quien lo tenga en inglés
+    // verá ahí `mm/dd/yyyy` por mucho que la pantalla esté en castellano. Eso
+    // no se puede arreglar desde aquí.
+    if (typeof document !== "undefined") document.documentElement.lang = limpio;
     // Las monedas ya construidas llevaban la localización vieja dentro.
     MONEDAS.clear();
   } catch {
@@ -123,6 +134,31 @@ export function escalar(valor: unknown, campo = ""): string {
     if (!Number.isNaN(d.getTime())) return FECHA.format(d);
   }
   return texto;
+}
+
+/**
+ * Una fecha escrita como aquí se escribe.
+ *
+ * Existe porque diez pantallas llamaban a `new Date(x).toLocaleDateString()`
+ * **sin localización**, y entonces manda la del navegador: una oferta válida
+ * hasta el 26 de noviembre salía como «Válido hasta el 11/26/2026» en una
+ * pantalla en castellano. La localización de este producto no es la del
+ * navegador: la resuelve el servidor por tenant, unidad y usuario
+ * (`GET /api/v1/localizacion`), y es la que llevan `FECHA` y `FECHA_HORA`.
+ *
+ * Un valor vacío o ilegible devuelve una raya, no «Invalid Date».
+ */
+export function fecha(valor: unknown): string {
+  if (!tieneDato(valor)) return "—";
+  const d = valor instanceof Date ? valor : new Date(String(valor));
+  return Number.isNaN(d.getTime()) ? "—" : FECHA.format(d);
+}
+
+/** Una fecha con su hora, igual que `fecha` pero cuando la hora importa. */
+export function fechaHora(valor: unknown): string {
+  if (!tieneDato(valor)) return "—";
+  const d = valor instanceof Date ? valor : new Date(String(valor));
+  return Number.isNaN(d.getTime()) ? "—" : FECHA_HORA.format(d);
 }
 
 export interface Trozo {

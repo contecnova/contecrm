@@ -27,6 +27,7 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDeObjeto } from "@/lib/modulos";
+import { fechaHora } from "@/lib/formato";
 
 interface Mencion {
   id: string;
@@ -110,7 +111,7 @@ export function Menciones() {
                   ) : null}
                   <span className="flex-1" />
                   <span className="font-mono text-3xs text-ink-faint">
-                    {m.cuando ? new Date(m.cuando).toLocaleString() : "—"}
+                    {fechaHora(m.cuando)}
                   </span>
                 </div>
                 <p className="mt-1 text-2xs text-ink">{m.cuerpo}</p>

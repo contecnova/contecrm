@@ -17,6 +17,19 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+/**
+ * Compara un texto sin que importe QUÉ espacio en blanco lleva dentro.
+ *
+ * `Intl` separa la cifra del símbolo con un espacio duro —«300\u00a0€»— y
+ * escribirlo en la prueba obliga a acertar el punto de código exacto, que
+ * además cambia entre versiones de ICU. Lo que se quiere afirmar es «trescientos
+ * con el símbolo del euro», no cuál de los seis espacios Unicode se usó.
+ */
+function comoTexto(esperado: string) {
+  const plano = (s: string) => s.replace(/\s+/g, " ").trim();
+  return (_: string, nodo: Element | null) => plano(nodo?.textContent ?? "") === plano(esperado);
+}
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (clave: string, datos?: Record<string, unknown>) =>
@@ -133,9 +146,11 @@ describe("la aprobación", () => {
 describe("los números", () => {
   it("el margen va pegado al descuento", async () => {
     montar();
-    await screen.findByText(
-      'presupuesto.descuentoYMargen:{"descuento":"300.00","margen":"12 %"}',
-    );
+    // El importe va por `importe()`, que es quien sabe la moneda y la
+    // localización del tenant: «300 €» y no «300.00». El espacio que `Intl`
+    // mete entre la cifra y el símbolo es duro, así que se compara sin
+    // depender de cuál sea: lo que se afirma es la cifra con su símbolo.
+    await screen.findByText(comoTexto('presupuesto.descuentoYMargen:{"descuento":"300 €","margen":"12 %"}'));
   });
 
   it("sin coste en las líneas lo dice, en vez de enseñar un margen de cero", async () => {
@@ -144,7 +159,9 @@ describe("los números", () => {
     await screen.findByText("presupuesto.porqueSinMargen");
     expect(
       screen.getByText(
-        'presupuesto.descuentoYMargen:{"descuento":"300.00","margen":"presupuesto.sinMargen"}',
+        comoTexto(
+          'presupuesto.descuentoYMargen:{"descuento":"300 €","margen":"presupuesto.sinMargen"}',
+        ),
       ),
     ).toBeInTheDocument();
   });

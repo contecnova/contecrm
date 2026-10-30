@@ -32,6 +32,7 @@ import { Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
+import { fecha, fechaHora } from "@/lib/formato";
 
 interface Operacion {
   id: string;
@@ -184,7 +185,7 @@ export function CicloDeVidaDelCliente() {
                     <span className="chip-dato">{o.tipo}</span>
                     <span className="flex-1 text-2xs text-ink">{o.uso}</span>
                     <span className="font-mono text-3xs text-ink-faint">
-                      {new Date(o.created_at).toLocaleDateString()}
+                      {fecha(o.created_at)}
                     </span>
                   </div>
                   <p className="mt-1 font-mono text-3xs text-ink-muted">
@@ -231,7 +232,7 @@ export function CicloDeVidaDelCliente() {
                   <p className="mt-1 font-mono text-3xs text-ink-muted">
                     {m.solo_lectura_desde
                       ? t("ciclovida.ventanaDesde", {
-                          desde: new Date(m.solo_lectura_desde).toLocaleString(),
+                          desde: fechaHora(m.solo_lectura_desde),
                           minutos: m.ventana_minutos,
                         })
                       : t("ciclovida.ventanaPrevista", { minutos: m.ventana_minutos })}

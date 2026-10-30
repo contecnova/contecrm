@@ -304,7 +304,6 @@ const pantallas = {
     umbrales:
       "umbral de descuento {{umbral}} % · margen mínimo {{minimo}} %",
     numeros: "Los números",
-    total: "{{total}} {{moneda}}",
     descuentoYMargen: "{{descuento}} de descuento · margen {{margen}}",
     sinMargen: "sin calcular",
     porqueSinMargen:
