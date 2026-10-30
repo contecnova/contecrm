@@ -159,6 +159,10 @@ const Entornos = pantalla(() => import("@/paginas/Entornos"), (m) => m.Entornos)
 const Canales = pantalla(() => import("@/paginas/Canales"), (m) => m.Canales);
 const Menciones = pantalla(() => import("@/paginas/Menciones"), (m) => m.Menciones);
 const Activo = pantalla(() => import("@/paginas/Activo"), (m) => m.Activo);
+const Prospeccion = pantalla(
+  () => import("@/paginas/Prospeccion"),
+  (m) => m.Prospeccion,
+);
 const OrdenDeTrabajo = pantalla(
   () => import("@/paginas/OrdenDeTrabajo"),
   (m) => m.OrdenDeTrabajo,
@@ -418,6 +422,11 @@ export function App() {
               sin esta pantalla la función no existe en la práctica, porque
               nadie abre cuarenta fichas por si acaso. */}
           <Route path="/menciones" element={<Menciones />} />
+          {/* Qué plantillas funcionan y a quién le toca la próxima reunión.
+              La tasa de respuesta sin su número de envíos es ruido, y pedir
+              el turno AVANZA el round-robin: las dos cosas necesitaban una
+              pantalla que lo dijera. */}
+          <Route path="/prospeccion" element={<Prospeccion />} />
           {/* Un activo instalado no es una ficha de inventario: es la máquina
               que hay en casa del cliente. Su árbol, su historial a través de
               las sustituciones y su cobertura devuelven OBJETOS, así que la

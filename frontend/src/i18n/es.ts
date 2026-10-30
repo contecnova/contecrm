@@ -103,6 +103,7 @@ export default {
     entornos: "Entornos y despliegues",
     canales: "Canales y consentimiento",
     menciones: "Mis menciones",
+    prospeccion: "Prospección",
     cumplimiento: "Panel de cumplimiento",
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",

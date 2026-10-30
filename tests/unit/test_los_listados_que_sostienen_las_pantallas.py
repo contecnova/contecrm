@@ -1124,3 +1124,42 @@ def test_los_candidatos_dicen_por_que_se_descarta_a_cada_uno(
         "hay_candidatos",
     ):
         assert campo_ in cuerpo, f"los candidatos no mandan «{campo_}»"
+
+
+# ── Prospección (CRM-03.03.01.06, CRM-03.03.01.07) ──────────────────────
+
+
+def test_el_rendimiento_dice_si_cada_plantilla_es_concluyente(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Con nueve envíos un 33 % es ruido, y ordenar por ese porcentaje hace
+    que la mejor plantilla sea siempre la que menos se ha usado."""
+    r = ventas_cpq.get("/api/v1/plantillas-correo/rendimiento", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert "medible" in cuerpo and "plantillas" in cuerpo
+    for fila in cuerpo["plantillas"]:
+        for campo in (
+            "clave",
+            "nombre",
+            "enviados",
+            "respondidos",
+            "reuniones",
+            "tasa_respuesta",
+            "concluyente",
+        ):
+            assert campo in fila, f"la plantilla no manda «{campo}»"
+
+
+def test_un_equipo_sin_nadie_disponible_no_reparte_en_silencio(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Repartir entre cero personas no falla: deja la reunión sin proponer y
+    sin que nadie se entere. Por eso contesta, y con el porqué dentro."""
+    r = ventas_cpq.post("/api/v1/agenda/turno", headers=cabeceras, json={"equipo": "inventado"})
+    assert r.status_code == 404, r.text
+    cuerpo = r.json()
+    assert cuerpo["error_code"] == "agenda.equipo_sin_disponibilidad"
+    # La frase del servidor es la que se enseña: tiene que decir qué pasa, no
+    # sólo que no se encontró.
+    assert "disponibilidad" in cuerpo["detail"]

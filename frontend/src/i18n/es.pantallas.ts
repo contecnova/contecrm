@@ -170,6 +170,35 @@ const pantallas = {
     aptos: "{{cuantos}} técnico(s) pueden hacerla.",
     verActivo: "Ver el activo sobre el que se trabaja",
   },
+  prospeccion: {
+    titulo: "Prospección",
+    entradilla:
+      "Qué plantillas funcionan de verdad, y a quién del equipo le toca la próxima reunión.",
+    aQuienLeToca: "A quién le toca la próxima reunión",
+    porqueBoton:
+      "Va con botón y no se pide al abrir: pedirlo AVANZA el turno del equipo, y una pantalla que lo pidiera sola repartiría reuniones cada vez que alguien la mira.",
+    equipo: "Equipo",
+    pedirTurno: "A quién le toca",
+    pidiendo: "Pidiendo…",
+    leToca: "Le toca a {{usuario}}",
+    turnoConsumido:
+      "El turno se ha consumido: al siguiente le tocará a otro. Pulsar otra vez para «ver» se salta a alguien del equipo.",
+    huecos: "{{cuantos}} huecos en los próximos días.",
+    sinHuecos: "No tiene ningún hueco en los próximos días.",
+    plantillas: "Qué plantillas funcionan",
+    porqueConcluyente:
+      "Una tasa sin su número de envíos es ruido: con nueve correos, un 33 % son tres respuestas. Las que se han usado pocas veces van aparte, no compitiendo con las demás.",
+    sinMedir: "Todavía no hay con qué medir ninguna plantilla",
+    sinMedirDetalle:
+      "Hacen falta envíos registrados. Sin ellos, cualquier porcentaje que saliera aquí sería inventado.",
+    ningunaConcluyente:
+      "Ninguna plantilla se ha usado lo suficiente para sacar conclusiones",
+    tasas: "{{respuesta}} % responden · {{reunion}} % acaban en reunión",
+    sobre: "{{enviados}} enviados · {{respondidos}} respuestas · {{reuniones}} reuniones",
+    pocasVeces:
+      "{{cuantas}} plantilla(s) se han usado demasiado poco para decir nada de ellas:",
+    envios: "{{enviados}} envíos",
+  },
   activo: {
     cobertura: "Si lo paga la garantía",
     sinCobertura: "No se ha podido consultar la cobertura",

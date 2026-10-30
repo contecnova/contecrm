@@ -3204,6 +3204,30 @@ y el aviso de cadena habría salido en todos los activos, también en los que
 nunca se sustituyeron. Lo cazó la prueba de servidor al comparar contra la
 forma de verdad, que es para lo que están.
 
+### 4.6.39 Qué plantillas funcionan, y a quién le toca la reunión
+
+**Una tasa de respuesta sin su número de envíos es ruido.** Con nueve correos,
+un 33 % son tres respuestas y mañana puede ser un 11 %: ordenar plantillas por
+ese porcentaje hace que la mejor sea siempre la que menos se ha usado. El
+servidor marca cada una como **concluyente** o no, y la pantalla saca aparte
+las que no lo son — no mezcladas, porque mezcladas el orden ya está mal.
+
+**La apertura va con su advertencia y no manda.** Contarla depende de un píxel
+que media industria bloquea, así que una apertura baja puede ser una plantilla
+mala o un cliente de correo prudente. La respuesta no tiene ese problema.
+
+**Pedir «a quién le toca» no es una consulta: avanza el round-robin.** Por eso
+va con botón y no al abrir —una pantalla que lo pidiera sola repartiría
+reuniones cada vez que alguien la mira— y se dice que el turno **se ha
+consumido**: sin eso, alguien pulsa tres veces para «ver» y se salta a dos del
+equipo.
+
+Y un equipo sin nadie con disponibilidad **no reparte en silencio**: el
+servidor contesta con su porqué, porque repartir entre cero personas deja la
+reunión sin proponer y sin que nadie se entere. La pantalla enseña la
+`explicacion` del error y no su título: la frase del servidor está escrita para
+leerse, y el título es sólo «No encontrado».
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

@@ -186,6 +186,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // deja de significar nada, y la excepción de las aprobaciones —la única que
   // hay— está justificada porque aprobar un descuento ES trabajo diario.
   { area: "ventas", a: "/territorios", clave: "nav.territorios", icono: "map", permiso: "forecast:read" , recursos: ["territorios"] },
+  // Sin `recursos`: no lista cadencias ni plantillas, contesta cuáles
+  // funcionan y a quién le toca la próxima reunión.
+  { area: "ventas", a: "/prospeccion", clave: "nav.prospeccion", icono: "forward_to_inbox", permiso: "lead:read" },
 
   // Las parejas que podrían ser la misma ficha, con los botones para
   // decidirlas. Va en Clientes y no en Configuración: quien resuelve un

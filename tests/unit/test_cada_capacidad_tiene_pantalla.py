@@ -919,7 +919,27 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #     firmarse; si ya no cuadra, alguien lo cambio despues, y eso convierte la
 #     firma del cliente en un papel sin valor. No se nota mirandolo: se ve
 #     igual de completo.
-TOPE_SIN_PANTALLA = 206
+#   30-10-2026  204 de 778  que plantillas funcionan y a quien le toca la
+#   ------------------------------------------------------------------------
+#   proxima reunion.
+#
+#   Una tasa de respuesta SIN su numero de envios es ruido: con nueve correos
+#   un 33 % son tres respuestas, y manana puede ser un 11 %. Ordenar
+#   plantillas por ese porcentaje hace que la mejor sea siempre la que menos
+#   se ha usado, asi que el servidor marca cada una como CONCLUYENTE o no y
+#   la pantalla saca aparte las que no lo son — no mezcladas con las demas.
+#
+#   La apertura va con su advertencia y no manda: depende de un pixel que
+#   media industria bloquea, asi que una apertura baja puede ser una
+#   plantilla mala o un cliente de correo prudente. La respuesta no tiene ese
+#   problema.
+#
+#   Y pedir «a quien le toca» NO es una consulta: avanza el round-robin. Por
+#   eso va con boton y no al abrir —una pantalla que lo pidiera sola
+#   repartiria reuniones cada vez que alguien la mira— y se dice que el turno
+#   se ha consumido, porque si no alguien pulsa tres veces para «ver» y se
+#   salta a dos del equipo.
+TOPE_SIN_PANTALLA = 204
 
 
 def _es_pantalla(p: Path) -> bool:

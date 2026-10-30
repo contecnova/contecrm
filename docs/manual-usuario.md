@@ -2356,6 +2356,28 @@ Dos cosas en la ficha de la orden:
   es «conforme»: un cliente puede firmar que estuvimos y no estar de acuerdo
   con el resultado.
 
+### Elegir una plantilla de correo que funcione
+
+En **Prospección** salen primero las plantillas de las que se puede decir algo,
+con su porcentaje **y el número de envíos al lado**. Mira siempre los dos: con
+nueve correos, un 33 % son tres respuestas y mañana puede ser un 11 %.
+
+Las que se han usado poco van aparte, en su propia lista. No es que sean malas:
+es que todavía no se sabe.
+
+Y la **apertura** no decide. Depende de un píxel que media industria bloquea,
+así que una apertura baja puede ser la plantilla o puede ser el cliente de
+correo de quien la recibe. La respuesta sí decide.
+
+### Repartir una reunión entre el equipo
+
+El botón «A quién le toca» **consume el turno**: al siguiente le tocará a otro.
+No lo pulses para mirar, porque te saltas a alguien.
+
+Si el equipo no tiene a nadie con disponibilidad declarada, te lo dice en vez
+de repartir igualmente: una reunión asignada a nadie se queda sin proponer y
+sin que nadie se entere.
+
 ---
 
 ## Qué hacer cuando algo no sale
