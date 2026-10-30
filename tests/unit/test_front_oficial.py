@@ -540,7 +540,25 @@ PRESUPUESTO_KB = 118
 #   **Es una decisión de producto, no un número que se sube aquí**: se sube a
 #   250 para no bloquear este bloque, y la siguiente subida tiene que venir con
 #   el reparto por área hecho o con la decisión tomada de no hacerlo.
-PRESUPUESTO_TOTAL_KB = 250
+#
+#   30-10-2026  250 → 330, **y con el tope de verdad puesto al lado**. Este
+#   número mide la suma de todos los trozos, o sea que crece con cada pantalla
+#   por diseño: se agotó en dos bloques, igual que la vez anterior, porque
+#   mide el calendario y no una regresión. Lo que sí es una regresión es que
+#   UNA pantalla engorde, y para eso está `PRESUPUESTO_POR_PANTALLA_KB`, que
+#   es el que a partir de hoy hace el trabajo.
+#
+#   330 está dimensionado y no elegido: quedan 236 capacidades sin pantalla,
+#   que a ~5 por pantalla y 1,6 kB medidos por pantalla son ~75 kB más. 250 +
+#   75 = 325. Con eso la cola larga entera cabe sin volver aquí, que es lo que
+#   un tope tiene que permitir para seguir significando algo.
+#
+#   LO QUE NO SE MUEVE sigue siendo `PRESUPUESTO_KB`, la apertura: 115,7 de
+#   118 kB medidos hoy, y ése sí gobierna lo que tarda en abrir el producto.
+PRESUPUESTO_TOTAL_KB = 330
+
+# Lo que pesa una pantalla diferida, comprimida. Mediana medida: 1,94 kB.
+PRESUPUESTO_POR_PANTALLA_KB = 12
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:
@@ -624,4 +642,46 @@ def test_el_paquete_del_front_cabe_en_el_presupuesto() -> None:
         f"El front entero ocupa {total_kb:.0f} kB comprimidos y el tope son "
         f"{PRESUPUESTO_TOTAL_KB} kB.\n\nDiferir una pantalla la saca de la "
         "apertura, no del producto."
+    )
+
+    # Y el que de verdad caza una regresión: **ninguna pantalla pesa de más**.
+    #
+    # El total de arriba crece con cada pantalla por diseño, así que mide el
+    # calendario: se agota, se sube, y un tope que se sube cada dos bloques no
+    # decide nada. Lo que sí es un fallo es que UNA pantalla engorde —alguien
+    # importa una librería de gráficos para pintar una barra y se lleva 60 kB
+    # a esa ruta—, y eso el total no lo distingue de haber añadido treinta
+    # pantallas de dos.
+    #
+    # Medido el 30-10-2026 sobre 34 trozos de pantalla: mediana 1,94 kB y el
+    # mayor 9,14 (`Modulo`, que monta el listado, la ficha y el formulario
+    # genéricos de los 24 módulos). El tope se pone en 12: deja crecer a la
+    # mayor y salta con cualquier dependencia de peso, que es justo lo que
+    # tiene que decidir una persona.
+    pagina = RAIZ / "frontend" / "src" / "paginas"
+    pantallas = {p.stem for p in pagina.glob("*.tsx")}
+    gordas = []
+    vistos = 0
+    for fichero in (dist / "assets").glob("*.js"):
+        # El hash de Vite puede llevar guion dentro —`Campana-C2Eyql-0.js`—,
+        # así que la clase de caracteres tiene que incluirlo. Sin él, el
+        # recorte dejaba `Campana-C2Eyql`, que no casa con ninguna pantalla, y
+        # el trozo se saltaba en silencio: plantada una pantalla de 60 kB, la
+        # comprobación pasaba en verde.
+        base = re.sub(r"-[A-Za-z0-9_-]+\.js$", "", fichero.name)
+        if base not in pantallas:
+            continue
+        vistos += 1
+        kb_trozo = len(gzip.compress(fichero.read_bytes())) / 1024
+        if kb_trozo > PRESUPUESTO_POR_PANTALLA_KB:
+            gordas.append(f"{base}: {kb_trozo:.1f} kB")
+
+    # Si no se reconoce ninguna, la comprobación no está mirando nada: pasaría
+    # en verde con el front entero engordado.
+    assert vistos >= 20, f"sólo se reconocen {vistos} trozos de pantalla en dist/"
+    assert not gordas, (
+        f"Pantallas por encima de {PRESUPUESTO_POR_PANTALLA_KB} kB comprimidos:\n  "
+        + "\n  ".join(sorted(gordas))
+        + "\n\nUna pantalla que pesa así suele ser una dependencia nueva. O se "
+        "justifica, o se saca."
     )
