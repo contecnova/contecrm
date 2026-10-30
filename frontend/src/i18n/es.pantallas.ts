@@ -138,6 +138,36 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  campana: {
+    gasto: "{{gasto}} gastado ({{propio}} propio · {{hijos}} en tácticas)",
+    sinPresupuesto: "sin presupuesto declarado",
+    consumido: "{{pct}} % del presupuesto",
+    sobrepasado:
+      "Se ha pasado del presupuesto. Restante: {{restante}}. Lo que sigue gastándose no lo cubre nadie.",
+    planVsReal: "Lo que prometió y lo que va",
+    porquePlan:
+      "Un número sin su objetivo al lado no dice nada: 400 clics es bueno si prometía 300 y malo si prometía 2.000.",
+    sinObjetivos: "Esta campaña no declaró objetivos",
+    deObjetivo: "{{real}} de {{objetivo}}",
+    noComparable: "objetivo {{objetivo}} · el embudo no mide esto",
+    coste: "Lo que ha costado",
+    sinRendimiento: "Todavía no se puede calcular el rendimiento",
+    porLead: "{{lead}} por lead · {{conversion}} por conversión",
+    roi: "ROI {{pct}} %",
+    roiNoMedible: "ROI: no se puede medir",
+    embudo: "Por dónde va cada uno",
+    sinEmbudo: "Esta campaña no tiene miembros todavía",
+    miembros: "{{miembros}} dentro · {{excluidos}} excluidos por supresión",
+    enEstado: "{{estado}}: {{cuantos}}",
+    quienes: "Los {{cuantos}} en «{{estado}}»",
+    evento: "Si apareció la gente",
+    asistencia:
+      "{{inscritos}} inscritos · {{asistieron}} asistieron · {{faltaron}} no aparecieron · aforo {{aforo}}",
+    sinMarcar:
+      "{{cuantos}} inscritos sin marcar. Una tasa de asistencia calculada ignorándolos es una tasa inventada.",
+    tasa: "{{pct}} % de asistencia",
+    tasaNoMedible: "Asistencia: no se puede medir",
+  },
   grc: {
     titulo: "Panel de cumplimiento",
     entradilla:

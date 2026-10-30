@@ -728,7 +728,26 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   decia `medible: true`. Lo mantuvo escondido que el nombre equivocado
 #   acertaba por casualidad en el unico caso con prueba —el panel vacio, donde
 #   la respuesta correcta ES vacia—.
-TOPE_SIN_PANTALLA = 240
+#   30-10-2026  236 de 778  la ficha de una campana: objetivos contra el real,
+#   ------------------------------------------------------------------------
+#   coste por lead y por conversion con su ROI, los miembros por estado, y el
+#   resultado de un evento.
+#
+#   El listado ensena estado, canal y cuanta gente tiene dentro. Las cuatro
+#   preguntas de delante de una campana devuelven OBJETOS, asi que la ficha
+#   generica no las pinta.
+#
+#   Tres cosas que la pantalla pone delante porque el servidor ya las dice y
+#   nadie las ensenaba: un objetivo declarado sobre algo que el embudo NO mide
+#   sale como «no comparable» en vez de contra cero; el ROI solo aparece
+#   cuando `roi_medible`, porque sin ingresos atribuidos un 0 % y un «no se
+#   sabe» se leen igual y son lo contrario; y los inscritos SIN MARCAR de un
+#   evento van delante de la tasa, porque una tasa calculada ignorandolos es
+#   una tasa inventada.
+#
+#   Y el embudo se pincha: dice CUANTOS hay en cada estado, y lo que hace
+#   falta para trabajar es QUIENES.
+TOPE_SIN_PANTALLA = 236
 
 
 def _es_pantalla(p: Path) -> bool:

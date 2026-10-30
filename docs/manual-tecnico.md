@@ -2909,6 +2909,33 @@ contrario»—. Así que el arreglo no es renombrar la clave: es dar la cifra
 **sólo cuando hay con qué medir**, que es lo que la prueba vieja pedía y lo que
 la nueva fija con datos dentro.
 
+### 4.6.30 Una campaña: qué prometió y qué costó cada cosa
+
+El listado enseña estado, canal y cuánta gente tiene dentro. Las cuatro
+preguntas de delante de una campaña devuelven **objetos**, así que la ficha
+genérica no las pinta: el consumo, el rendimiento con su plan contra el real,
+el embudo y el resultado del evento.
+
+Tres cosas que el servidor ya decía y ninguna pantalla enseñaba:
+
+- **un objetivo sobre algo que el embudo no mide sale como «no comparable»**,
+  no contra cero. `plan_vs_real` devuelve `real: null` justo para eso, y
+  pintarlo como un 0 convierte un objetivo mal declarado en un fracaso
+  aparente;
+- **el ROI sólo cuando `roi_medible`.** Sin ingresos atribuidos no hay ROI, y
+  un 0 % y un «no se sabe» se leen igual y significan lo contrario;
+- **los inscritos sin marcar van delante de la tasa de asistencia.** Una tasa
+  calculada ignorando a los que nadie marcó es una tasa inventada, y por eso el
+  servidor manda `medible` aparte del número.
+
+Y el gasto se parte en propio y de las tácticas: una campaña que no ha gastado
+nada y cuyas tácticas se han comido el presupuesto se lee como barata si se
+suman.
+
+El embudo **se pincha**. Dice cuántos hay en cada estado, y lo que hace falta
+para trabajar es quiénes: la diferencia entre «40 han hecho clic» y poder
+llamarlos es toda, y la ruta de miembros ya filtraba por estado para eso.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

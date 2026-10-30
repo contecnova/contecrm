@@ -153,6 +153,7 @@ const Territorios = pantalla(
 );
 const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento);
 const Gobierno = pantalla(() => import("@/paginas/Gobierno"), (m) => m.Gobierno);
+const Campana = pantalla(() => import("@/paginas/Campana"), (m) => m.Campana);
 const CicloDeVidaDelCliente = pantalla(
   () => import("@/paginas/CicloDeVidaDelCliente"),
   (m) => m.CicloDeVidaDelCliente,
@@ -406,6 +407,11 @@ export function App() {
               panel con su «medible», el informe de cobertura contra el
               catálogo y el mapeo a marcos — los tres devuelven OBJETOS. */}
           <Route path="/cumplimiento" element={<Gobierno />} />
+          {/* La campaña tiene ficha propia porque sus cuatro preguntas
+              devuelven OBJETOS: el consumo, el rendimiento con su plan vs
+              real, el embudo y el resultado del evento. La ficha genérica
+              sólo descubre paneles que devuelven listas. */}
+          <Route path="/m/campanas/campana/:id" element={<Campana />} />
           {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
               separado: pintarla como campos sueltos los sumaría visualmente,
               que es justo lo que el modelo evita. */}

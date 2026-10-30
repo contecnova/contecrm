@@ -2155,6 +2155,27 @@ una capacidad que no existe**, míralo antes que nada. Ese control suma en la
 cobertura y no vigila nada: es la única forma de estar descubierto sin que lo
 parezca.
 
+### Leer una campaña sin engañarte
+
+Abre la campaña y mira en este orden:
+
+1. **El gasto, partido.** Lo que ha gastado ella y lo que han gastado sus
+   tácticas van separados. Sumados, una campaña que no ha gastado nada y cuyas
+   tácticas se han comido el presupuesto parece barata.
+2. **Lo que prometió, al lado de lo que va.** 400 clics es bueno si prometía
+   300 y malo si prometía 2.000. Si un objetivo sale como «el embudo no mide
+   esto», no es que vaya a cero: es que se declaró un objetivo sobre algo que
+   nadie está contando, y eso se arregla en la campaña, no corriendo más.
+3. **El ROI, si lo hay.** Si pone «no se puede medir» es que no hay ingresos
+   atribuidos a esta campaña todavía. No es un cero: es que falta el dato.
+4. **Los estados del embudo se pinchan.** Pincha «clicado» y salen quiénes son,
+   con de dónde entró cada uno. Un contacto metido a mano y uno que entró por
+   el segmento no se tratan igual.
+
+Y si es una feria o un evento: mira primero **los inscritos sin marcar**. Si
+quedan muchos, la tasa de asistencia no sale, y hace bien: una tasa calculada
+ignorando a los que nadie marcó es una tasa inventada.
+
 ---
 
 ## Qué hacer cuando algo no sale
