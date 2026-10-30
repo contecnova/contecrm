@@ -36,6 +36,39 @@ const OP = {
   bloqueada: false,
 };
 
+let EVALUACION: Record<string, unknown> = {
+  puntuacion: 62,
+  criterios: 6,
+  cubiertos: 4,
+  lo_que_falta: ["No hay criterio de decisión declarado", "Falta el campeón"],
+  siguiente_paso: "Pregunta quién firma",
+  cualificada: false,
+};
+
+let PLAYBOOK: Record<string, unknown> | null = {
+  clave: "negociacion",
+  titulo: "Qué hacer en negociación",
+  pasos: ["Confirma el presupuesto", "Pide la fecha de firma"],
+  por_que: "Elegido por la etapa «negociacion» y el segmento por defecto.",
+};
+
+let PLANES: unknown[] = [
+  { id: "pc-1", oportunidad_id: "o-1", fecha_objetivo: "2026-12-01" },
+];
+
+let PLAN: Record<string, unknown> | null = {
+  pasos: 8,
+  hechos: 3,
+  retrasados_nuestros: [{ paso: "Mandar la propuesta técnica" }],
+  retrasados_del_cliente: [{ paso: "Validar con legal" }, { paso: "Confirmar aforo" }],
+  retrasados_conjuntos: [],
+  compartido: true,
+  visto_por_el_cliente: "2026-10-20T10:00:00Z",
+  la_fecha_es_creible: false,
+  que_significa: "",
+  aviso: "",
+};
+
 vi.mock("@/lib/api", async () => {
   const real = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
   return {
@@ -100,6 +133,13 @@ vi.mock("@/lib/api", async () => {
             at: "2026-10-01T10:00:00+00:00",
           },
         ];
+      else if (ruta.startsWith("/api/v1/metodologias?activa=true"))
+        datos = [{ id: "me-1", clave: "meddic", nombre: "MEDDIC", activa: true }];
+      else if (ruta === "/api/v1/metodologias/me-1/oportunidad/o-1") datos = EVALUACION;
+      else if (ruta.startsWith("/api/v1/metodologias/playbook")) datos = PLAYBOOK;
+      else if (ruta.startsWith("/api/v1/planes-conjuntos?oportunidad_id="))
+        datos = PLANES;
+      else if (ruta === "/api/v1/planes-conjuntos/pc-1/estado") datos = PLAN;
       return { datos, version: null, retenidos: [], enmascarados: [] };
     }),
   };
@@ -174,5 +214,90 @@ describe("la ficha de una venta", () => {
     // Un movimiento sin motivo es el que no se puede discutir; decirlo es lo
     // que hace que la próxima vez se escriba.
     expect(screen.getByText("oportunidad.sinMotivo")).toBeTruthy();
+  });
+});
+
+// ── Qué falta para cerrar, y el plan con el cliente ─────────────────────
+//
+// Tres cosas que el servidor ya daba y no enseñaba nadie, y las tres se
+// afirman por lo mismo: un número sin su porqué al lado no cambia lo que
+// alguien hace.
+
+// Los dobles se reponen entre pruebas: dos de abajo los cambian, y un doble
+// mutado se lo encuentra la siguiente prueba sin saberlo — que es como una
+// suite empieza a depender del orden.
+const EVALUACION_BASE = { ...EVALUACION };
+const PLAYBOOK_BASE = { ...(PLAYBOOK as Record<string, unknown>) };
+const PLANES_BASE = [...PLANES];
+const PLAN_BASE = { ...(PLAN as Record<string, unknown>) };
+
+beforeEach(() => {
+  EVALUACION = { ...EVALUACION_BASE };
+  PLAYBOOK = { ...PLAYBOOK_BASE };
+  PLANES = [...PLANES_BASE];
+  PLAN = { ...PLAN_BASE };
+});
+
+describe("qué falta para poder cerrar", () => {
+  it("la puntuación va con lo que falta, no sola", async () => {
+    await montar();
+    await screen.findByText(
+      'oportunidad.cubiertos:{"cubiertos":4,"criterios":6,"puntuacion":62}',
+    );
+    // Y lo que falta, enumerado: la nota sola no dice qué hacer.
+    expect(
+      screen.getByText("No hay criterio de decisión declarado"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Falta el campeón")).toBeInTheDocument();
+    expect(
+      screen.getByText('oportunidad.siguientePaso:{"paso":"Pregunta quién firma"}'),
+    ).toBeInTheDocument();
+  });
+
+  it("y dice si está cualificada o no", async () => {
+    await montar();
+    await screen.findByText("oportunidad.noCualificada");
+    expect(screen.queryByText("oportunidad.cualificada")).not.toBeInTheDocument();
+  });
+
+  it("el playbook viene con el porqué se eligió ése", async () => {
+    await montar();
+    await screen.findByText("Qué hacer en negociación");
+    expect(
+      screen.getByText(/Elegido por la etapa «negociacion»/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Confirma el presupuesto")).toBeInTheDocument();
+  });
+});
+
+describe("el plan con el cliente", () => {
+  it("separa lo retrasado nuestro de lo retrasado del cliente", async () => {
+    await montar();
+    // Son dos conversaciones distintas: una dentro de casa y otra con él.
+    expect(
+      await screen.findByText('oportunidad.retrasoNuestro:{"cuantos":1}'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('oportunidad.retrasoDelCliente:{"cuantos":2}'),
+    ).toBeInTheDocument();
+    // Y no se pinta la categoría vacía.
+    expect(screen.queryByText(/oportunidad\.retrasoConjunto/)).not.toBeInTheDocument();
+  });
+
+  it("dice si la fecha objetivo ya no se sostiene", async () => {
+    await montar();
+    expect(await screen.findByText("oportunidad.fechaNoCreible")).toBeInTheDocument();
+  });
+
+  it("un plan que el cliente no ha visto se señala", async () => {
+    PLAN = { ...(PLAN as Record<string, unknown>), compartido: false };
+    await montar();
+    expect(await screen.findByText("oportunidad.planSinCompartir")).toBeInTheDocument();
+  });
+
+  it("sin plan lo dice, y dice qué significa no tenerlo", async () => {
+    PLANES = [];
+    await montar();
+    expect(await screen.findByText("oportunidad.sinPlan")).toBeInTheDocument();
   });
 });

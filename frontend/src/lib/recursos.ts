@@ -873,6 +873,18 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "sales",
         permiso: "sales:read",
       },
+      // Los playbooks: qué hacer en cada etapa. La tabla y el selector
+      // estaban, y no había forma de meter una fila — así que el panel de la
+      // oportunidad salía siempre vacío y la capacidad constaba hecha.
+      {
+        nombre: "Playbooks",
+        objeto: "playbook",
+        listar: "/api/v1/playbooks",
+        crear: "/api/v1/playbooks",
+        servicio: "sales",
+        permiso: "opportunity:read",
+        columnas: ["clave", "titulo", "etapa", "segmento", "activo"],
+      },
       {
         nombre: "Pedidos",
         objeto: "pedido",

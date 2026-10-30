@@ -1,7 +1,8 @@
 /**
  * La ficha de una oportunidad, con lo que hace falta para cerrarla
  * (CRM-03.01.01.05, CRM-03.01.01.06, CRM-03.01.01.08, CRM-03.01.01.10,
- * CRM-03.01.01.11, CRM-03.01.01.13).
+ * CRM-03.01.01.11, CRM-03.01.01.13, CRM-03.01.02.02, CRM-03.01.02.03,
+ * CRM-03.01.02.05).
  *
  * Lo que había era la ficha genérica: un volcado de campos. Con eso delante no
  * se contesta «¿cómo vamos con esta venta?», que es para lo que se abre.
@@ -16,6 +17,13 @@
  * tabla, consultadas sólo por su propio escritor para reemplazar filas: se
  * podía declarar quién se lleva qué parte de una comisión y no había forma de
  * comprobarlo hasta que llegaba la liquidación.
+ *
+ * **Tres paneles más, del mismo registro y por eso aquí.** La metodología dice
+ * qué falta para poder cerrar y cuál es el siguiente paso —una puntuación sin
+ * el «lo que falta» al lado es una nota, no una guía—; el playbook dice qué
+ * hacer en ESTA etapa, que es lo que convierte la metodología en trabajo; y el
+ * plan conjunto con el cliente separa **lo retrasado nuestro de lo retrasado
+ * suyo**, que es la única distinción que cambia a quién se llama.
  *
  * **Y el ARR no se calcula aquí.** Las líneas se mandan al servicio que sabe
  * qué cuenta como recurrente y qué no, y lo que vuelve se pinta. Calcularlo en
@@ -100,6 +108,50 @@ interface GrupoDeCompra {
   que_mirar: string;
 }
 
+interface Metodologia {
+  id: string;
+  clave: string;
+  nombre: string;
+  activa: boolean;
+}
+
+interface Evaluacion {
+  puntuacion: number;
+  criterios: number;
+  cubiertos: number;
+  /** Una puntuación sin esto al lado es una nota, no una guía. */
+  lo_que_falta: string[];
+  siguiente_paso: string;
+  cualificada: boolean;
+}
+
+interface Playbook {
+  clave: string;
+  titulo: string;
+  pasos: string[];
+  por_que: string;
+}
+
+interface Plan {
+  id: string;
+  oportunidad_id: string;
+  fecha_objetivo: string | null;
+}
+
+interface EstadoDelPlan {
+  pasos: number;
+  hechos: number;
+  /** Las tres por separado: es lo único que cambia a quién se llama. */
+  retrasados_nuestros: unknown[];
+  retrasados_del_cliente: unknown[];
+  retrasados_conjuntos: unknown[];
+  compartido: boolean;
+  visto_por_el_cliente: string | null;
+  la_fecha_es_creible: boolean;
+  que_significa: string;
+  aviso: string;
+}
+
 interface CambioDePrevision {
   campo: string;
   anterior: string | null;
@@ -119,6 +171,9 @@ export function Oportunidad() {
   const [reparto, setReparto] = useState<Reparto | null>(null);
   const [grupo, setGrupo] = useState<GrupoDeCompra | null>(null);
   const [deslizamientos, setDeslizamientos] = useState<CambioDePrevision[]>([]);
+  const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(null);
+  const [playbook, setPlaybook] = useState<Playbook | null>(null);
+  const [plan, setPlan] = useState<EstadoDelPlan | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -176,10 +231,60 @@ export function Oportunidad() {
       .then((r) => setDeslizamientos(r.datos))
       .catch(() => undefined);
 
+    // La metodología ACTIVA, no una cualquiera: evaluar con una retirada daría
+    // una puntuación contra criterios que ya no se aplican.
+    void listar<Metodologia>("/api/v1/metodologias?activa=true", {
+      signal: control.signal,
+    })
+      .then((metodologias) => {
+        const activa = metodologias[0];
+        if (!activa) return;
+        void llamar<Evaluacion>(
+          `/api/v1/metodologias/${activa.id}/oportunidad/${id}`,
+          { signal: control.signal },
+        )
+          .then((r) => setEvaluacion(r.datos))
+          .catch(() => undefined);
+      })
+      .catch(() => undefined);
+
+    // El plan conjunto se busca por su oportunidad: puede no haberlo, y no
+    // tenerlo es una respuesta —no se ha acordado nada con el cliente—.
+    void listar<Plan>(`/api/v1/planes-conjuntos?oportunidad_id=${id}`, {
+      signal: control.signal,
+    })
+      .then((planes) => {
+        const suyo = planes[0];
+        if (!suyo) return;
+        void llamar<EstadoDelPlan>(`/api/v1/planes-conjuntos/${suyo.id}/estado`, {
+          signal: control.signal,
+        })
+          .then((r) => setPlan(r.datos))
+          .catch(() => undefined);
+      })
+      .catch(() => undefined);
+
     return () => control.abort();
   }, [id]);
 
   useEffect(cargar, [cargar]);
+
+  // El playbook de SU etapa, y en su propio efecto: uno genérico no es un
+  // playbook, es una lista. Va aparte porque depende de la etapa, que llega
+  // con la oportunidad — pedirlo dentro de `cargar` obligaría a pedir la
+  // oportunidad dos veces.
+  const etapa = op?.etapa ?? "";
+  useEffect(() => {
+    if (!etapa) return undefined;
+    const control = new AbortController();
+    void llamar<Playbook>(
+      `/api/v1/metodologias/playbook?etapa=${encodeURIComponent(etapa)}`,
+      { signal: control.signal },
+    )
+      .then((r) => setPlaybook(r.datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [etapa]);
 
   async function borrar() {
     setBorrando(true);
@@ -271,6 +376,8 @@ export function Oportunidad() {
         <QuienDecide grupo={grupo} />
         <QuienSeLoLleva reparto={reparto} />
         <LoQueSeHaMovido cambios={deslizamientos} />
+        <QueFaltaParaCerrar evaluacion={evaluacion} playbook={playbook} />
+        <ElPlanConElCliente plan={plan} />
       </div>
     </>
   );
@@ -502,6 +609,174 @@ function LoQueSeHaMovido({ cambios }: { cambios: CambioDePrevision[] }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/**
+ * Qué falta para poder cerrar, y qué hacer ahora
+ * (CRM-03.01.02.02, CRM-03.01.02.03).
+ *
+ * **La puntuación va con «lo que falta» al lado, nunca sola.** Un «62 sobre
+ * 100» es una nota: no dice qué hacer, así que no cambia nada. La lista de
+ * criterios sin cubrir sí, y es lo que convierte la metodología en trabajo.
+ *
+ * Y el playbook es el de ESTA etapa. Uno genérico no es un playbook, es una
+ * lista de buenas intenciones; por eso el servidor devuelve también **por qué**
+ * eligió ése, que es lo único que hace que alguien se fíe del siguiente.
+ */
+function QueFaltaParaCerrar({
+  evaluacion,
+  playbook,
+}: {
+  evaluacion: Evaluacion | null;
+  playbook: Playbook | null;
+}) {
+  const { t } = useTranslation();
+  if (!evaluacion && !playbook) {
+    return (
+      <section className="card p-4">
+        <h2 className="section-label mb-1">{t("oportunidad.queFalta")}</h2>
+        <Vacio titulo={t("oportunidad.sinMetodologia")} compacto />
+      </section>
+    );
+  }
+
+  const faltan = evaluacion?.lo_que_falta ?? [];
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("oportunidad.queFalta")}</h2>
+      {evaluacion ? (
+        <>
+          <p className="font-mono text-2xs text-ink">
+            {t("oportunidad.cubiertos", {
+              cubiertos: evaluacion.cubiertos,
+              criterios: evaluacion.criterios,
+              puntuacion: evaluacion.puntuacion,
+            })}
+          </p>
+          <p
+            className={
+              evaluacion.cualificada
+                ? "mt-1 text-2xs text-success"
+                : "mt-1 text-2xs text-warning"
+            }
+          >
+            {t(
+              evaluacion.cualificada
+                ? "oportunidad.cualificada"
+                : "oportunidad.noCualificada",
+            )}
+          </p>
+          {/* Lo que falta, enumerado. La nota sola no cambia nada. */}
+          {faltan.length > 0 ? (
+            <ul className="mt-2 flex flex-col gap-1">
+              {faltan.map((x, i) => (
+                <li key={i} className="text-2xs text-ink">
+                  {x}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {evaluacion.siguiente_paso ? (
+            <p className="mt-2 text-2xs text-ink">
+              {t("oportunidad.siguientePaso", { paso: evaluacion.siguiente_paso })}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
+      {playbook ? (
+        <div className="mt-3 border-t border-ink-dim/30 pt-2">
+          <p className="text-2xs font-medium text-ink">{playbook.titulo}</p>
+          {/* El porqué del playbook: uno que aparece sin explicación se
+              ignora, y entonces da igual que esté. */}
+          <p className="mt-1 text-3xs text-ink-faint">{playbook.por_que}</p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {(playbook.pasos ?? []).map((paso, i) => (
+              <li key={i} className="text-2xs text-ink-muted">
+                {paso}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * El plan conjunto con el cliente (CRM-03.01.02.05).
+ *
+ * **Lo retrasado nuestro y lo retrasado suyo van por separado**, y es la única
+ * distinción de este panel que cambia algo: si vamos tarde nosotros se empuja
+ * dentro de casa, y si va tarde el cliente la conversación es con él. Juntos
+ * son «el plan va mal», que no se acciona.
+ *
+ * **Y un plan que el cliente no ha visto no es un plan conjunto**: es una
+ * lista nuestra con su nombre encima. Por eso `compartido` y
+ * `visto_por_el_cliente` salen delante de los pasos.
+ */
+function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
+  const { t } = useTranslation();
+  if (!plan) {
+    return (
+      <section className="card p-4">
+        <h2 className="section-label mb-1">{t("oportunidad.planConjunto")}</h2>
+        {/* No tenerlo es una respuesta: no se ha acordado nada con el cliente. */}
+        <Vacio titulo={t("oportunidad.sinPlan")} compacto />
+      </section>
+    );
+  }
+
+  const nuestros = plan.retrasados_nuestros ?? [];
+  const suyos = plan.retrasados_del_cliente ?? [];
+  const conjuntos = plan.retrasados_conjuntos ?? [];
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("oportunidad.planConjunto")}</h2>
+      {/* Si el cliente no lo ha visto, lo demás importa menos. */}
+      <p
+        className={
+          plan.compartido ? "text-2xs text-ink-muted" : "text-2xs text-warning"
+        }
+      >
+        {plan.compartido
+          ? plan.visto_por_el_cliente
+            ? t("oportunidad.planVisto", {
+                fecha: new Date(plan.visto_por_el_cliente).toLocaleDateString(),
+              })
+            : t("oportunidad.planCompartidoSinVer")
+          : t("oportunidad.planSinCompartir")}
+      </p>
+      <p className="mt-2 font-mono text-2xs text-ink">
+        {t("oportunidad.pasosDelPlan", { hechos: plan.hechos, pasos: plan.pasos })}
+      </p>
+      {/* Los tres retrasos por separado. */}
+      {nuestros.length > 0 ? (
+        <p className="mt-1 text-2xs text-danger">
+          {t("oportunidad.retrasoNuestro", { cuantos: nuestros.length })}
+        </p>
+      ) : null}
+      {suyos.length > 0 ? (
+        <p className="mt-1 text-2xs text-warning">
+          {t("oportunidad.retrasoDelCliente", { cuantos: suyos.length })}
+        </p>
+      ) : null}
+      {conjuntos.length > 0 ? (
+        <p className="mt-1 text-2xs text-warning">
+          {t("oportunidad.retrasoConjunto", { cuantos: conjuntos.length })}
+        </p>
+      ) : null}
+      {/* Y si la fecha de cierre ya no se la cree ni el plan, se dice. */}
+      {!plan.la_fecha_es_creible ? (
+        <p className="mt-2 text-2xs text-danger">{t("oportunidad.fechaNoCreible")}</p>
+      ) : null}
+      {plan.aviso ? (
+        <p className="mt-1 text-3xs text-ink-faint">{plan.aviso}</p>
+      ) : null}
     </section>
   );
 }

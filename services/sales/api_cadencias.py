@@ -14,13 +14,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.sales import cadencias as cad
-from services.sales.cadencias import Metodologia, PlantillaCorreo
+from services.sales.cadencias import Metodologia, PlantillaCorreo, Playbook
 
 router = APIRouter(prefix="/cadencias", tags=["prospección"])
 router_cola = APIRouter(prefix="/mi-cola", tags=["prospección"])
 router_plantillas = APIRouter(prefix="/plantillas-correo", tags=["prospección"])
 router_agenda = APIRouter(prefix="/agenda", tags=["prospección"])
 router_metodologia = APIRouter(prefix="/metodologias", tags=["ventas"])
+# En su propio router y no colgando de `/metodologias`: un playbook no es de
+# una metodología, se elige por etapa y por segmento.
+router_playbooks = APIRouter(prefix="/playbooks", tags=["ventas"])
 
 
 class CrearCadencia(BaseModel):
@@ -339,6 +342,48 @@ def turno_de_equipo(datos: TurnoDeEquipo, db: DbDep, principal: AutenticadoDep) 
     }
 
 
+class CrearPlaybook(BaseModel):
+    clave: str = Field(..., min_length=1, max_length=80)
+    titulo: str = Field(..., min_length=1, max_length=200)
+    # Vacíos a propósito: un playbook sin etapa ni segmento es el genérico, y
+    # `playbook_para` ya le da menos prioridad que a uno que los nombra.
+    etapa: str = Field("", max_length=80)
+    segmento: str = Field("", max_length=80)
+    condiciones: list[dict[str, Any]] = Field(default_factory=list)
+    pasos: list[str] = Field(default_factory=list)
+
+
+@router_playbooks.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Declarar un playbook",
+    description=(
+        "**No había forma de crear uno.** La tabla existía, `playbook_para` la "
+        "leía y elegía el más específico, y en el producto no entraba ni una "
+        "fila: ni POST, ni listado, ni semilla. Sólo las pruebas escribían, "
+        "construyendo el ORM a mano, así que la capacidad constaba hecha y el "
+        "selector devolvía `None` siempre.\n\n"
+        "Sin etapa ni segmento es el **genérico**, y pierde contra uno que los "
+        "nombre: con el orden al revés, el genérico taparía siempre al que "
+        "alguien escribió para su caso."
+    ),
+)
+def crear_playbook(datos: CrearPlaybook, uow: UowDep) -> Any:
+    fila = cad.Playbook(
+        tenant_id=uow.tenant_id,
+        clave=datos.clave,
+        titulo=datos.titulo,
+        etapa=datos.etapa,
+        segmento=datos.segmento,
+        condiciones=datos.condiciones,
+        pasos=datos.pasos,
+    )
+    uow.db.add(fila)
+    uow.db.flush()
+    return {"id": str(fila.id), "clave": fila.clave, "titulo": fila.titulo}
+
+
 class CrearMetodologia(BaseModel):
     clave: str = Field(..., min_length=1, max_length=80)
     nombre: str = Field(..., min_length=1, max_length=200)
@@ -437,6 +482,18 @@ montar_listado(
     permiso="opportunity:read",
     nombre="Metodologías de venta",
 )
+# **Los playbooks no se podían crear.** La tabla existía, `playbook_para` la
+# leía y elegía el más específico, estaba probado… y en el producto no había
+# forma de meter una fila: ni POST, ni listado, ni semilla. Sólo las pruebas
+# escribían, construyendo el ORM a mano. O sea que la capacidad constaba hecha
+# y el selector devolvía `None` siempre, porque la tabla estaba siempre vacía.
+montar_listado(
+    router_playbooks,
+    modelo=Playbook,
+    objeto="playbook",
+    permiso="opportunity:read",
+    nombre="Playbooks de venta",
+)
 
 
 ROUTERS_CADENCIAS = [
@@ -445,6 +502,7 @@ ROUTERS_CADENCIAS = [
     router_plantillas,
     router_agenda,
     router_metodologia,
+    router_playbooks,
 ]
 
 

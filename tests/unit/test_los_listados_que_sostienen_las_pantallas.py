@@ -861,3 +861,109 @@ def test_las_estadisticas_de_entrega_dicen_si_se_pueden_medir(
         else:
             os.environ["OUTBOX_ENABLED"] = previo
         get_settings.cache_clear()
+
+
+# ── Metodología, playbook y plan conjunto (CRM-03.01.02.02, .03, .05) ───
+
+
+def test_la_evaluacion_de_metodologia_dice_que_falta(
+    ventas_cpq: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Una puntuación sin «lo que falta» al lado es una nota, no una guía."""
+    creada = ventas_cpq.post(
+        "/api/v1/metodologias",
+        headers=cabeceras,
+        json={
+            "clave": f"m{uuid4().hex[:8]}",
+            "nombre": "MEDDIC",
+            "familia": "meddic",
+            "criterios": [
+                {"clave": "metricas", "nombre": "Métricas", "campo": "campos.metricas"},
+                {"clave": "campeon", "nombre": "Campeón", "campo": "campos.campeon"},
+            ],
+        },
+    )
+    assert creada.status_code in (200, 201), creada.text
+    metodologia_id = creada.json()["id"]
+
+    _pipeline(ventas_cpq, cabeceras)
+    oportunidad = _oportunidad(ventas_cpq, cabeceras)
+
+    r = ventas_cpq.get(
+        f"/api/v1/metodologias/{metodologia_id}/oportunidad/{oportunidad['id']}",
+        headers=cabeceras,
+    )
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in (
+        "puntuacion",
+        "criterios",
+        "cubiertos",
+        "lo_que_falta",
+        "siguiente_paso",
+        "cualificada",
+    ):
+        assert campo in cuerpo, f"la evaluación no manda «{campo}»"
+    # Sin ningún campo relleno, lo que falta son todos: si viniera vacío, la
+    # pantalla enseñaría un cero sin decir qué hacer con él.
+    assert cuerpo["lo_que_falta"], "no dice qué falta"
+    assert cuerpo["cualificada"] is False
+
+
+def test_un_playbook_se_puede_crear_y_entonces_sale(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """La tabla existía, el selector la leía, y NO había forma de meter una fila.
+
+    Ni POST, ni listado, ni semilla: sólo las pruebas escribían construyendo el
+    ORM a mano. O sea que la capacidad constaba hecha y `playbook_para`
+    devolvía `None` siempre, porque la tabla estaba siempre vacía.
+    """
+    # Antes de crear ninguno no hay playbook, y eso es una respuesta.
+    vacio = ventas_cpq.get("/api/v1/metodologias/playbook?etapa=negociacion", headers=cabeceras)
+    assert vacio.status_code == 200, vacio.text
+    assert vacio.json() is None
+
+    creado = ventas_cpq.post(
+        "/api/v1/playbooks",
+        headers=cabeceras,
+        json={
+            "clave": f"pb{uuid4().hex[:8]}",
+            "titulo": "Qué hacer en negociación",
+            "etapa": "negociacion",
+            "pasos": ["Confirma el presupuesto", "Pide la fecha de firma"],
+        },
+    )
+    assert creado.status_code in (200, 201), creado.text
+
+    r = ventas_cpq.get("/api/v1/metodologias/playbook?etapa=negociacion", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo is not None, "se ha creado un playbook de esa etapa y no sale"
+    for campo in ("clave", "titulo", "pasos", "por_que"):
+        assert campo in cuerpo, f"el playbook no manda «{campo}»"
+    # El porqué: uno que aparece sin explicación se ignora, y entonces da
+    # igual que esté.
+    assert cuerpo["por_que"], "no dice por qué se eligió éste"
+
+
+def test_el_playbook_de_otra_etapa_no_se_cuela(
+    ventas_cpq: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Con el filtro mal, un playbook de «cierre» saldría en «descubrimiento» y
+    el comercial haría lo que toca tres etapas después."""
+    creado = ventas_cpq.post(
+        "/api/v1/playbooks",
+        headers=cabeceras,
+        json={
+            "clave": f"pb{uuid4().hex[:8]}",
+            "titulo": "Cierre",
+            "etapa": "cierre",
+            "pasos": ["Manda el contrato"],
+        },
+    )
+    assert creado.status_code in (200, 201), creado.text
+
+    r = ventas_cpq.get("/api/v1/metodologias/playbook?etapa=descubrimiento", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert r.json() is None

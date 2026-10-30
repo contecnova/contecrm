@@ -2281,6 +2281,27 @@ antes de contestar.
 Y si sale un aviso de que **algún servicio no ha contestado**, la lista puede
 estar incompleta: no lo leas como «no me han mencionado».
 
+### Saber si una venta se puede cerrar
+
+En la ficha de la oportunidad, el panel **«Qué falta para poder cerrar»** no te
+da una nota: te da la lista de lo que no está. Un 62 sobre 100 no dice qué
+hacer; «no hay criterio de decisión declarado» sí.
+
+Debajo sale el **playbook de esa etapa**, con el porqué se eligió ése. Si no
+sale ninguno, es que nadie ha escrito uno para esa etapa todavía: se crean en
+Ventas → Playbooks.
+
+Y el panel **«El plan con el cliente»** separa tres cosas a propósito:
+
+- **lo retrasado nuestro**: eso se empuja aquí dentro;
+- **lo retrasado del cliente**: esa conversación es con él, y mezclarla con la
+  anterior es como se acaba echando la culpa al sitio equivocado;
+- **lo retrasado de los dos**.
+
+Si pone que el plan **no se ha compartido**, no es un plan conjunto: es una
+lista nuestra con el nombre del cliente encima. Y si avisa de que la fecha
+objetivo ya no se sostiene, es que con lo que queda por hacer no da tiempo.
+
 ---
 
 ## Qué hacer cuando algo no sale

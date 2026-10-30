@@ -3089,6 +3089,41 @@ basura, y eso no se ve mirando los envíos. La tasa sólo sale cuando el servido
 dice que hay con qué calcularla — con veinte envíos, un 5 % y un 100 % son el
 mismo ruido.
 
+### 4.6.36 Qué falta para cerrar, y el plan con el cliente
+
+Tres paneles en la ficha de la oportunidad —y no una pantalla aparte, porque
+es el mismo registro y la misma pregunta—.
+
+**La puntuación de metodología va con «lo que falta» al lado, nunca sola.** Un
+«62 sobre 100» es una nota: no dice qué hacer, así que no cambia nada. La
+lista de criterios sin cubrir sí, y es lo que convierte la metodología en
+trabajo. Se evalúa con la metodología **activa**: hacerlo con una retirada
+daría una puntuación contra criterios que ya no se aplican.
+
+**El playbook es el de su etapa, y con el porqué se eligió.** Uno genérico no
+es un playbook, es una lista de buenas intenciones; y uno que aparece sin
+explicación se ignora, con lo que da igual que esté.
+
+**En el plan conjunto, lo retrasado nuestro va separado de lo retrasado del
+cliente.** Es la única distinción de ese panel que cambia algo: si vamos tarde
+nosotros se empuja aquí dentro, y si va tarde el cliente la conversación es con
+él. Juntos son «el plan va mal», que no se acciona. Y un plan que el cliente no
+ha visto no es un plan conjunto: es una lista nuestra con su nombre encima, así
+que `compartido` y `visto_por_el_cliente` van delante de los pasos.
+
+#### Los playbooks no se podían crear
+
+Encontrado al escribir el panel, y es el caso más puro de «escrito y sin
+enchufar»: la tabla `playbooks` existía, `playbook_para` la leía y elegía el
+más específico —uno que nombra etapa y segmento gana a uno que sólo nombra la
+etapa—, y estaba probado. Y en el producto **no entraba ni una fila**: ni POST,
+ni listado, ni semilla. Sólo las pruebas escribían, construyendo el ORM a mano.
+
+Así que la capacidad constaba hecha y el selector devolvía `None` siempre,
+porque la tabla estaba siempre vacía. Ahora tiene su listado, su ficha, su alta
+y su exportación —cuatro puertas—, y el prefijo está declarado en el enrutado
+del gateway, sin el cual las cuatro contestaban 404.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

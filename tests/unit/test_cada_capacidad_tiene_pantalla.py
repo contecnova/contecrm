@@ -850,7 +850,29 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   Van en Canales, que es donde se decide si un canal sirve: un dominio que
 #   manda mucho y no abre nadie esta en la carpeta de basura, y eso no se ve
 #   mirando los envios. La tasa solo sale cuando hay con que calcularla.
-TOPE_SIN_PANTALLA = 216
+#   30-10-2026  213 de 778  la metodologia, el playbook y el plan conjunto,
+#   ------------------------------------------------------------------------
+#   como paneles de la ficha de la oportunidad y no en pantalla aparte: es el
+#   mismo registro y la misma pregunta.
+#
+#   Tres cosas que el servidor ya daba y nadie ensenaba:
+#
+#   - la puntuacion de metodologia va con «lo que falta» AL LADO. Un «62 sobre
+#     100» es una nota: no dice que hacer, asi que no cambia nada. La lista de
+#     criterios sin cubrir si, y es lo que convierte la metodologia en
+#     trabajo;
+#   - el playbook es el de SU etapa, y con el porque se eligio: uno generico
+#     no es un playbook, es una lista de buenas intenciones, y uno que aparece
+#     sin explicacion se ignora;
+#   - y en el plan conjunto, lo retrasado NUESTRO va separado de lo retrasado
+#     DEL CLIENTE. Es la unica distincion que cambia algo: si vamos tarde
+#     nosotros se empuja aqui dentro, y si va tarde el cliente la conversacion
+#     es con el. Juntos son «el plan va mal», que no se acciona.
+#
+#   Y un plan que el cliente no ha visto no es un plan conjunto: es una lista
+#   nuestra con su nombre encima, asi que `compartido` y `visto_por_el_cliente`
+#   van delante de los pasos.
+TOPE_SIN_PANTALLA = 213
 
 
 def _es_pantalla(p: Path) -> bool:

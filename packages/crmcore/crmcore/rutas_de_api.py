@@ -199,6 +199,7 @@ PREFIJOS: dict[str, str] = {
     "plantillas-correo": "sales",
     "agenda": "sales",
     "metodologias": "sales",
+    "playbooks": "sales",
     "contratos": "sales",
     "suscripciones": "sales",
     "pedidos": "sales",

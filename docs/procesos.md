@@ -876,6 +876,9 @@ stateDiagram-v2
 | `PATCH /api/v1/plantillas-correo/{plantilla_correo_id}` | Editar plantillas de correo | plantilla_correo_id*, clave, nombre, asunto, cuerpo, enviados, abiertos, clicados, respondidos, reuniones, activa | 200, 422 | — |
 | `DELETE /api/v1/plantillas-correo/{plantilla_correo_id}` | Borrar plantillas de correo | plantilla_correo_id* | 204, 422 | — |
 | `POST /api/v1/plantillas-correo/{plantilla_correo_id}/archivar` | Archivar plantillas de correo | plantilla_correo_id* | 200, 422 | — |
+| `POST /api/v1/playbooks` | Declarar un playbook | clave*, titulo*, etapa, segmento, condiciones, pasos | 201, 422 | — |
+| `PATCH /api/v1/playbooks/{playbook_id}` | Editar playbooks de venta | playbook_id*, clave, titulo, etapa, segmento, condiciones, pasos, activo | 200, 422 | — |
+| `POST /api/v1/playbooks/{playbook_id}/archivar` | Archivar playbooks de venta | playbook_id* | 200, 422 | — |
 | `POST /api/v1/portal-partner/canjear` | Canjear el enlace y abrir sesión de partner | tenant*, token* | 200, 422 | — |
 | `POST /api/v1/portal-partner/entrar` | Pedir un enlace de entrada al portal | tenant*, email* | 200, 422 | — |
 | `POST /api/v1/presupuestos` | Crear un presupuesto | lineas*, cuenta_id, oportunidad_id, contacto_id, titulo, moneda, canal, idioma, marca, dias_validez, notas, condiciones | 201, 422 | `quote.created` |

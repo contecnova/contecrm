@@ -839,6 +839,27 @@ const pantallas = {
     pendientesAhora: "{{cuantas}} pendientes ahora",
   },
   oportunidad: {
+    queFalta: "Qué falta para poder cerrar",
+    sinMetodologia:
+      "No hay ninguna metodología de venta activa, así que no se puede decir qué falta.",
+    cubiertos: "{{cubiertos}} de {{criterios}} criterios · {{puntuacion}} puntos",
+    cualificada: "Cumple los criterios para cerrarse.",
+    noCualificada: "Todavía no está cualificada para cerrarse:",
+    siguientePaso: "Siguiente paso: {{paso}}",
+    planConjunto: "El plan con el cliente",
+    sinPlan:
+      "No hay plan conjunto. No es un hueco: significa que no se ha acordado nada con el cliente sobre cómo llegar al cierre.",
+    planSinCompartir:
+      "Sin compartir con el cliente. Un plan que el cliente no ha visto no es un plan conjunto: es una lista nuestra con su nombre encima.",
+    planCompartidoSinVer: "Compartido, y el cliente todavía no lo ha abierto.",
+    planVisto: "El cliente lo vio el {{fecha}}.",
+    pasosDelPlan: "{{hechos}} de {{pasos}} pasos hechos",
+    retrasoNuestro: "{{cuantos}} paso(s) retrasados NUESTROS. Eso se empuja aquí dentro.",
+    retrasoDelCliente:
+      "{{cuantos}} paso(s) retrasados DEL CLIENTE. Esa conversación es con él.",
+    retrasoConjunto: "{{cuantos}} paso(s) retrasados de los dos.",
+    fechaNoCreible:
+      "Con lo que queda por hacer, la fecha objetivo del plan ya no se sostiene.",
     sinEtapa: "sin etapa",
     bloqueada: "Bloqueada",
     ponderado: "{{valor}} ponderado al {{pct}} %",

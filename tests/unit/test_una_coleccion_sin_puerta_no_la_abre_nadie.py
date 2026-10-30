@@ -169,7 +169,15 @@ FRONT = RAIZ / "frontend/src"
 #   que es la segunda viñeta de arriba: la ficha genérica descubre paneles por
 #   prefijo común y no las veía. La salida no fue enseñarle prefijos, sino una
 #   ficha propia, como la del cliente.
-TOPE_SIN_PUERTA = 36
+#
+#   30-10-2026  36 → 32. Los PLAYBOOKS, que son el caso más puro de esta
+#   prueba: la tabla existía, `playbook_para` la leía y elegía el más
+#   específico, estaba probado… y en el producto no entraba ni una fila. Ni
+#   POST, ni listado, ni semilla: sólo las pruebas escribían, construyendo el
+#   ORM a mano. O sea que la capacidad constaba hecha y el selector devolvía
+#   `None` SIEMPRE, porque la tabla estaba siempre vacía. Con el listado, la
+#   ficha, el alta y la exportación son cuatro puertas de golpe.
+TOPE_SIN_PUERTA = 32
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #
