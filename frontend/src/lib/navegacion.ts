@@ -237,6 +237,7 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // enseña ninguna de sus dos colecciones: decir que sí lo contaría como
   // enseñado y mandaría aquí a quien busca un riesgo concreto.
   { area: "configuracion", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
+  { area: "configuracion", a: "/entornos", clave: "nav.entornos", icono: "layers", permiso: "metadata:read" },
   { area: "configuracion", a: "/ciclo-de-vida", clave: "nav.cicloDeVida", icono: "swap_horiz", permiso: "tenant:read" },
   { area: "configuracion", a: "/estado", clave: "nav.estado", icono: "monitor_heart" },
   { area: "configuracion", a: "/ayuda", clave: "nav.ayuda", icono: "help" },

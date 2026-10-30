@@ -155,6 +155,7 @@ const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento)
 const Gobierno = pantalla(() => import("@/paginas/Gobierno"), (m) => m.Gobierno);
 const Campana = pantalla(() => import("@/paginas/Campana"), (m) => m.Campana);
 const Articulo = pantalla(() => import("@/paginas/Articulo"), (m) => m.Articulo);
+const Entornos = pantalla(() => import("@/paginas/Entornos"), (m) => m.Entornos);
 const Presupuesto = pantalla(
   () => import("@/paginas/Presupuesto"),
   (m) => m.Presupuesto,
@@ -412,6 +413,11 @@ export function App() {
               panel con su «medible», el informe de cobertura contra el
               catálogo y el mapeo a marcos — los tres devuelven OBJETOS. */}
           <Route path="/cumplimiento" element={<Gobierno />} />
+          {/* Qué hay desplegado en cada entorno y qué se ha tocado a mano.
+              Todo existía por API y no se veía: la primera pregunta delante
+              de una incidencia —«¿qué hay puesto ahí ahora mismo?»— no la
+              contestaba ninguna pantalla. */}
+          <Route path="/entornos" element={<Entornos />} />
           {/* La campaña tiene ficha propia porque sus cuatro preguntas
               devuelven OBJETOS: el consumo, el rendimiento con su plan vs
               real, el embudo y el resultado del evento. La ficha genérica

@@ -2228,6 +2228,25 @@ Y si cambias el precio, saca una **versión nueva**: no se edita el presupuesto
 encima. Es lo que permite comparar y lo que deja constancia de lo que se ofreció
 en cada momento.
 
+### Cuando algo va mal en un entorno
+
+Antes de tocar nada, abre **Entornos y despliegues** y mira ese entorno:
+
+- **qué paquete hay puesto y desde dónde vino.** Si en producción hay un v7
+  que llegó desde preproducción, lo que se probó allí es lo que está aquí;
+- **la huella y el commit.** Dicen si lo que hay es exactamente lo que se
+  empaquetó, y de qué cambio salió;
+- **si alguien lo ha tocado a mano.** Es la causa más frecuente de «en
+  preproducción funcionaba»: un campo cambiado a mano encima del paquete. Y
+  ojo, porque el siguiente despliegue lo va a pisar sin avisar a quien lo
+  cambió;
+- **qué estaba declarado y ya no está.** Eso no lo pisa nadie: alguien lo
+  borró.
+
+Si pone que **no se ha podido medir** si lo han tocado a mano, no lo leas como
+«está bien»: es que no se sabe. Y si dice que **no se puede volver atrás**,
+tenlo en cuenta antes de desplegar encima: no habrá marcha atrás.
+
 ---
 
 ## Qué hacer cuando algo no sale

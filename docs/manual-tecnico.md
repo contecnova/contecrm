@@ -3006,6 +3006,29 @@ Lo que se edita desde la ficha es lo que acompaña al presupuesto —título,
 notas, condiciones, hasta cuándo vale—, no sus líneas: el precio se renegocia
 sacando una versión nueva, que es lo que deja comparar.
 
+### 4.6.33 Qué hay desplegado en cada entorno
+
+La configuración se promociona por paquetes —desarrollo, pruebas,
+preproducción, producción— y todo eso existía por API sin verse en ningún
+sitio. Así que la primera pregunta delante de una incidencia, **«¿qué hay
+puesto ahí ahora mismo?»**, no la contestaba ninguna pantalla.
+
+**El drift va con su `medible` delante.** Un entorno limpio y un entorno que no
+se ha podido comparar se ven igual de bien y significan lo contrario. Dentro,
+lo **tocado a mano** va separado de lo **desaparecido**: lo primero lo va a
+pisar el siguiente despliegue sin avisar a quien lo cambió, lo segundo está
+declarado en el paquete y ya no está en el entorno. Y lo **no comparado** se
+dice, porque un «limpio» calculado sobre la mitad de los elementos no es un
+limpio.
+
+**La huella y la referencia de Git van con el despliegue.** Sin ellas «está el
+paquete v7» no se contrasta con nada: la huella dice si lo que hay es
+exactamente lo que se empaquetó, y la referencia dice qué commit lo generó.
+
+**Y si se puede volver atrás se dice antes de pulsar.** Un rollback que a veces
+no funciona es peor que no tenerlo, porque se cuenta con él justo el día que
+hace falta.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

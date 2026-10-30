@@ -138,6 +138,31 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  entornos: {
+    titulo: "Entornos y despliegues",
+    entradilla:
+      "La configuración se promociona por paquetes. Esto dice qué hay puesto en cada " +
+      "entorno y qué se ha tocado a mano por encima.",
+    esProduccion: "producción",
+    cargando: "Preguntando…",
+    sinDesplegar: "No hay ningún paquete desplegado en este entorno",
+    puesto: "paquete «{{paquete}}» v{{version}} · promocionado desde {{desde}}",
+    sinOrigen: "ningún entorno (se desplegó directamente)",
+    huella: "huella {{huella}} · {{git}}",
+    sinGit: "sin referencia de Git",
+    sePuedeVolver: "Se puede volver atrás a lo anterior.",
+    noSePuedeVolver:
+      "NO se puede volver atrás: no hay un despliegue anterior al que volver. Contar con el rollback el día que haga falta sería contar con algo que no existe.",
+    sinMedirDrift:
+      "No se ha podido medir si alguien ha tocado este entorno a mano. No es lo mismo que estar limpio: es que no se sabe.",
+    limpio: "Sin cambios a mano: {{comparado}} elementos comparados y todos cuadran.",
+    tocadoAMano:
+      "{{cuantos}} elemento(s) cambiados a mano por encima del paquete. El siguiente despliegue los va a pisar sin avisar.",
+    desaparecido:
+      "{{cuantos}} elemento(s) que el paquete declara y ya no están en el entorno.",
+    noComparado:
+      "{{cuantos}} no se han podido comparar, así que este resultado no cubre el entorno entero.",
+  },
   presupuesto: {
     version: "versión {{version}}",
     necesitaAprobacion: "Esto no se puede mandar sin que alguien lo apruebe:",

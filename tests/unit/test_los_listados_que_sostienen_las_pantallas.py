@@ -677,3 +677,53 @@ def test_la_ficha_de_un_presupuesto_trae_su_margen(
         "margen_pct",
     ):
         assert campo in cuerpo, f"la ficha no manda «{campo}»"
+
+
+# ── Los entornos (CRM-07.02.01.01, .06, .07) ────────────────────────────
+
+
+@pytest.fixture
+def metadata_http(db: Any, contexto_tenant: UUID) -> Any:
+    yield from _cliente("services.metadata.main")
+
+
+def test_un_entorno_sin_desplegar_lo_dice_y_no_sale_vacio(
+    metadata_http: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Un hueco en blanco se lee como «no hay nada raro»; «nunca se desplegó»
+    se lee como lo que es."""
+    r = metadata_http.get("/api/v1/entornos/produccion/desplegado", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["hay"] is False
+    assert cuerpo["porque"], "no dice por qué no hay nada"
+
+
+def test_el_drift_sin_paquete_NO_sale_limpio(
+    metadata_http: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Un entorno limpio y uno que no se ha podido comparar se ven igual de
+    bien y significan lo contrario. Es la razón de que exista `medible`."""
+    r = metadata_http.get("/api/v1/entornos/produccion/drift", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["medible"] is False
+    assert cuerpo.get("limpio") is not True, (
+        "sin paquete con el que comparar, decir «limpio» es afirmar algo que " "no se ha mirado"
+    )
+    assert cuerpo["porque"], "no dice por qué no se puede medir"
+
+
+def test_un_entorno_que_no_existe_dice_cuales_hay(
+    metadata_http: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Y enumera los que sí: un «entorno desconocido» a secas deja a quien
+    integra probando nombres."""
+    r = metadata_http.get("/api/v1/entornos/inventado/desplegado", headers=cabeceras)
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"]["admitidos"] == [
+        "desarrollo",
+        "pruebas",
+        "preproduccion",
+        "produccion",
+    ]

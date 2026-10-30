@@ -790,7 +790,27 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   Y la comparacion con la version anterior, que el servidor ya daba linea a
 #   linea: mandar la tercera sin saber que lleva distinto de la segunda es
 #   como se acaba regalando un descuento que nadie aprobo.
-TOPE_SIN_PANTALLA = 229
+#   30-10-2026  224 de 778  que hay desplegado en cada entorno y que se ha
+#   ------------------------------------------------------------------------
+#   tocado a mano.
+#
+#   La configuracion se promociona por paquetes —desarrollo, pruebas,
+#   preproduccion, produccion— y todo eso existia por API sin verse en ningun
+#   sitio. O sea que la PRIMERA pregunta delante de una incidencia, «que hay
+#   puesto ahi ahora mismo», no la contestaba ninguna pantalla.
+#
+#   El drift es lo que decide, y por eso va con su `medible` delante: un
+#   entorno limpio y uno que no se ha podido comparar se ven igual de bien y
+#   significan lo contrario. Dentro, lo TOCADO A MANO va separado de lo
+#   DESAPARECIDO: lo primero lo pisa el siguiente despliegue sin avisar, lo
+#   segundo esta declarado y ya no esta. Y lo no comparado se dice, porque un
+#   «limpio» calculado sobre la mitad no es un limpio.
+#
+#   La huella y la referencia de Git van con el despliegue: sin ellas «esta
+#   el v7» no se contrasta con nada. Y si se puede volver atras se dice ANTES
+#   de pulsar, porque un rollback que a veces no funciona es peor que no
+#   tenerlo — se cuenta con el justo el dia que hace falta.
+TOPE_SIN_PANTALLA = 224
 
 
 def _es_pantalla(p: Path) -> bool:
