@@ -138,6 +138,33 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  presupuesto: {
+    version: "versión {{version}}",
+    necesitaAprobacion: "Esto no se puede mandar sin que alguien lo apruebe:",
+    umbrales:
+      "umbral de descuento {{umbral}} % · margen mínimo {{minimo}} %",
+    numeros: "Los números",
+    total: "{{total}} {{moneda}}",
+    descuentoYMargen: "{{descuento}} de descuento · margen {{margen}}",
+    sinMargen: "sin calcular",
+    porqueSinMargen:
+      "Sin coste en las líneas no hay margen que calcular, y un descuento sin margen al lado no se puede valorar.",
+    valido: "Válido hasta el {{fecha}}",
+    queCambio: "Qué cambió respecto de la anterior",
+    porqueCambios:
+      "Mandar la tercera versión sin saber qué lleva distinto de la segunda es como se acaba regalando un descuento que nadie aprobó.",
+    sinCambios: "No se ha podido comparar con la versión anterior",
+    esLaPrimera: "Es la primera versión: no hay con qué compararla.",
+    totalAntesDespues: "total {{antes}} → {{ahora}}",
+    deA: "{{antes}} → {{ahora}}",
+    documento: "Cómo va a salir",
+    porqueDocumento:
+      "La plantilla, la marca y el idioma salen de la configuración. Descubrir en el correo del cliente que salió con la marca equivocada no tiene arreglo.",
+    verDocumento: "Ver el documento antes de mandarlo",
+    conQueSale: "plantilla «{{plantilla}}» · marca {{marca}} · idioma {{idioma}}",
+    sinMarca: "la de por defecto",
+    lineasDelDocumento: "{{cuantas}} líneas en el documento",
+  },
   articulo: {
     version: "versión {{version}}",
     quienLoVe: "Quién lo puede ver",

@@ -155,6 +155,10 @@ const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento)
 const Gobierno = pantalla(() => import("@/paginas/Gobierno"), (m) => m.Gobierno);
 const Campana = pantalla(() => import("@/paginas/Campana"), (m) => m.Campana);
 const Articulo = pantalla(() => import("@/paginas/Articulo"), (m) => m.Articulo);
+const Presupuesto = pantalla(
+  () => import("@/paginas/Presupuesto"),
+  (m) => m.Presupuesto,
+);
 const CicloDeVidaDelCliente = pantalla(
   () => import("@/paginas/CicloDeVidaDelCliente"),
   (m) => m.CicloDeVidaDelCliente,
@@ -419,6 +423,11 @@ export function App() {
               es una columna suya —vive en la versión—, así que la ficha
               genérica lo pintaba sin nombre. */}
           <Route path="/m/conocimiento/articulo/:id" element={<Articulo />} />
+          {/* El presupuesto tiene ficha propia porque sus tres preguntas
+              devuelven OBJETOS: la política de descuento con sus motivos, la
+              comparación con la versión anterior y el documento tal y como
+              saldrá. La ficha genérica sólo descubre paneles de listas. */}
+          <Route path="/m/oportunidades/presupuesto/:id" element={<Presupuesto />} />
           {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
               separado: pintarla como campos sueltos los sumaría visualmente,
               que es justo lo que el modelo evita. */}

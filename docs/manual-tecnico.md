@@ -2976,6 +2976,36 @@ cliente, su configuración y a veces sus credenciales, y lo que hay que quitar
 se quita mientras se escribe. El artículo nace en borrador e interno aunque
 venga de un caso resuelto, y la pantalla lo dice al crearlo.
 
+### 4.6.32 Un presupuesto, antes de mandarlo
+
+El listado enseña número, estado y total. Lo que se decide delante de un
+presupuesto es **si se manda**, y eso son tres cosas que devuelven objetos.
+
+**«Necesita aprobación» va con sus motivos.** A secas se lee como burocracia;
+con el motivo, el umbral de descuento y el margen mínimo al lado se lee como un
+dato y se discute con él. El servidor ya devolvía los cuatro campos.
+
+**El margen va pegado al descuento**, no en otra pestaña. Es la pareja que
+decide: un 30 % de descuento sobre algo con 60 de margen y sobre algo con 12
+son dos conversaciones distintas, y en la lista los dos son «30 %». Cuando no
+hay coste en las líneas no hay margen, y se dice: un descuento sin margen al
+lado no se puede valorar.
+
+**El documento se ve antes de mandarlo.** La plantilla, la marca y el idioma
+salen de la configuración, y descubrir en el correo del cliente que salió con
+la marca equivocada no tiene arreglo. Se pide al pulsar y no al abrir: es la
+única llamada de esta ficha que compone un documento entero.
+
+Y la comparación con la versión anterior, que el servidor ya daba línea a línea
+con el total antes y después: mandar la tercera versión sin saber qué lleva
+distinto de la segunda es como se acaba regalando un descuento que nadie
+aprobó. Una primera versión **lo dice** en vez de enseñar una comparación vacía,
+que se leería como «no ha cambiado nada».
+
+Lo que se edita desde la ficha es lo que acompaña al presupuesto —título,
+notas, condiciones, hasta cuándo vale—, no sus líneas: el precio se renegocia
+sacando una versión nueva, que es lo que deja comparar.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

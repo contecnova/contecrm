@@ -769,7 +769,28 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   quien lo resolvio. El cuerpo viene relleno con la resolucion y el aviso
 #   —que lleva el nombre del cliente y a veces sus credenciales— va ANTES de
 #   escribir, no despues de guardar.
-TOPE_SIN_PANTALLA = 232
+#   30-10-2026  229 de 778  la ficha de un presupuesto: la politica de
+#   ------------------------------------------------------------------------
+#   descuento con sus motivos, el margen al lado del descuento, y el
+#   documento tal y como va a salir.
+#
+#   El listado ensena numero, estado y total. Lo que se decide delante de un
+#   presupuesto es si se manda, y eso son tres cosas que devuelven objetos:
+#
+#   - «necesita aprobacion» a secas se lee como burocracia; con los motivos,
+#     el umbral y el margen minimo al lado se lee como un dato y se discute
+#     con el;
+#   - el margen va PEGADO al descuento, porque es la pareja que decide: un
+#     30 % sobre algo con 60 de margen y sobre algo con 12 son dos
+#     conversaciones distintas, y en la lista los dos son «30 %»;
+#   - y el documento se ve ANTES de mandarlo. La plantilla, la marca y el
+#     idioma salen de la configuracion, y descubrir en el correo del cliente
+#     que salio con la marca equivocada no tiene arreglo.
+#
+#   Y la comparacion con la version anterior, que el servidor ya daba linea a
+#   linea: mandar la tercera sin saber que lleva distinto de la segunda es
+#   como se acaba regalando un descuento que nadie aprobo.
+TOPE_SIN_PANTALLA = 229
 
 
 def _es_pantalla(p: Path) -> bool:

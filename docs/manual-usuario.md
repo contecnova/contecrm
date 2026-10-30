@@ -2206,6 +2206,28 @@ Y la deflexión: el porcentaje dice **aproximada** porque lo es. No se sabe
 quién habría abierto un caso si no hubiera encontrado el artículo, así que
 sirve para ver una tendencia y no para justificar una plantilla.
 
+### Antes de mandar un presupuesto
+
+Cuatro cosas, en la ficha del presupuesto:
+
+1. **Si pide aprobación, lee el motivo.** No es un trámite: dice qué regla se
+   ha pasado y de cuánto, con el umbral y el margen mínimo al lado. Con eso se
+   discute; sin eso sólo se espera.
+2. **Mira el margen, no sólo el descuento.** Un 30 % de descuento sobre algo
+   que deja 60 de margen y sobre algo que deja 12 son dos cosas distintas, y en
+   la lista las dos ponen «30 %». Si el margen pone «sin calcular» es que las
+   líneas no llevan coste: entonces el descuento no se puede valorar.
+3. **Mira qué cambió respecto de la versión anterior.** Sale línea a línea, con
+   el total antes y después. Mandar la tercera versión sin saber qué lleva
+   distinto de la segunda es como se acaba regalando un descuento que nadie
+   aprobó.
+4. **Mira el documento.** Dice con qué plantilla, qué marca y qué idioma va a
+   salir. Descubrirlo en el correo del cliente no tiene arreglo.
+
+Y si cambias el precio, saca una **versión nueva**: no se edita el presupuesto
+encima. Es lo que permite comparar y lo que deja constancia de lo que se ofreció
+en cada momento.
+
 ---
 
 ## Qué hacer cuando algo no sale
