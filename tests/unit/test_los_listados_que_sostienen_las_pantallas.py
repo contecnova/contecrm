@@ -816,3 +816,48 @@ def test_la_de_un_tipo_sigue_funcionando(
     r = servicio_http.get("/api/v1/comentarios/caso/mis-menciones", headers=cabeceras)
     assert r.status_code == 200, r.text
     assert isinstance(r.json(), list)
+
+
+def test_las_estadisticas_de_entrega_dicen_si_se_pueden_medir(
+    servicio_http: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Con veinte envíos un 5 % y un 100 % son el mismo ruido.
+
+    La ruta vive en `identity` y la cuenta la hace `crmcore`; se recorre por
+    la ruta porque es por donde entra la pantalla.
+    """
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient as _Cliente
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        app = importlib.import_module("services.identity.main").app
+        with _Cliente(app) as cli:
+            r = cli.get("/api/v1/notificaciones/entregas/estadisticas", headers=cabeceras)
+            assert r.status_code == 200, r.text
+            cuerpo = r.json()
+            for campo in (
+                "dias",
+                "mandados",
+                "aperturas",
+                "rebotes_duros",
+                "quejas",
+                "medible",
+                "tasa_apertura_pct",
+                "porque",
+            ):
+                assert campo in cuerpo, f"las estadísticas no mandan «{campo}»"
+            # Sin envíos no se mide, y se dice en vez de devolver un 0 %.
+            assert cuerpo["medible"] is False
+            assert cuerpo["porque"]
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()

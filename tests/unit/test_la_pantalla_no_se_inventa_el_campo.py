@@ -35,7 +35,7 @@ extras declarados, el esquema de salida, la proyección, el diccionario literal
 del manejador, o un salto de delegación a una función con nombre— y lo que no
 cae en ninguno lo cuenta y lo deja fuera en vez de inventarse un veredicto.
 
-Medido: **577 rutas resueltas y 143 contratos de pantalla, con 25 puntos
+Medido: **590 rutas resueltas y 149 contratos de pantalla, con 18 puntos
 ciegos**. Las tres cifras se comprueban, porque un resolutor que
 dejara de ver el servidor pasaría en verde sin mirar nada. Se ha plantado: con
 `_ficheros()` devolviendo la lista vacía, dos de las tres pruebas se ponen
@@ -360,6 +360,13 @@ def _claves_delegadas(
         vecinas: dict[str, Any] = locales
         if isinstance(valor.func, ast.Name):
             destino = locales.get(valor.func.id)
+            if destino is None:
+                # Una función importada por su nombre: `from crmcore… import
+                # estadisticas_de_entrega` y luego `return estadisticas(…)`.
+                modulo = alias.get(f"__en__{valor.func.id}")
+                if modulo:
+                    destino = por_modulo.get(modulo, {}).get(valor.func.id)
+                    vecinas = por_modulo.get(modulo, {})
         elif isinstance(valor.func, ast.Attribute) and isinstance(valor.func.value, ast.Name):
             modulo = alias.get(valor.func.value.id)
             if modulo is not None:
@@ -391,7 +398,14 @@ def _funciones_por_modulo() -> dict[str, dict[str, Any]]:
             arbol = ast.parse(fichero.read_text(encoding="utf-8"))
         except SyntaxError:  # pragma: no cover
             continue
-        modulo = ".".join(fichero.relative_to(RAIZ).with_suffix("").parts)
+        # El nombre con el que se IMPORTA, no la ruta en disco: el paquete
+        # común vive en `packages/crmcore/crmcore/…` y se importa como
+        # `crmcore.…`, así que con la ruta de disco ninguna delegación a
+        # `crmcore` casaba — y ahí vive media lógica compartida.
+        partes = fichero.relative_to(RAIZ).with_suffix("").parts
+        if partes[:2] == ("packages", "crmcore"):
+            partes = partes[2:]
+        modulo = ".".join(partes)
         salida[modulo] = {
             nodo.name: nodo
             for nodo in arbol.body
@@ -404,12 +418,18 @@ def _alias_de_modulos(arbol: ast.Module) -> dict[str, str]:
     """`from services.marketing import segmentos as seg` → {"seg": "services.marketing.segmentos"}."""
     alias: dict[str, str] = {}
     for nodo in ast.walk(arbol):
-        if isinstance(nodo, ast.ImportFrom) and (nodo.module or "").startswith("services"):
+        if isinstance(nodo, ast.ImportFrom) and (nodo.module or "").startswith(
+            ("services", "crmcore")
+        ):
             for nombre in nodo.names:
                 alias[nombre.asname or nombre.name] = f"{nodo.module}.{nombre.name}"
+                # `from crmcore.x.entrega import estadisticas` importa la
+                # FUNCIÓN, no el módulo: se apunta también el módulo de donde
+                # sale, para que una llamada directa por su nombre resuelva.
+                alias.setdefault(f"__en__{nombre.asname or nombre.name}", nodo.module or "")
         elif isinstance(nodo, ast.Import):
             for nombre in nodo.names:
-                if nombre.name.startswith("services"):
+                if nombre.name.startswith(("services", "crmcore")):
                     alias[nombre.asname or nombre.name] = nombre.name
     return alias
 
@@ -627,6 +647,14 @@ TOPE_CONTRATOS_ROTOS = 0
 # sano—.
 #
 #   29-10-2026  26 de 120  medido al escribirlo, con 484 rutas resueltas.
+#   30-10-2026  18 de 149  el resolutor no seguia las delegaciones a `crmcore`
+#                          por dos motivos a la vez: el paquete comun vive en
+#                          `packages/crmcore/crmcore/…` y se importa como
+#                          `crmcore.…` —asi que la clave del modulo no casaba
+#                          nunca—, y una funcion importada POR SU NOMBRE
+#                          (`from crmcore… import estadisticas`) tampoco se
+#                          seguia. Ahi vive media logica compartida: al
+#                          arreglarlo, de 26 ciegas a 18. 590 rutas resueltas.
 #   30-10-2026  25 de 143  `montar_listado` monta tambien su ficha salvo que
 #                          se le diga `ficha=False`, y el resolutor solo
 #                          miraba los `montar_ficha` escritos aparte: dejaba
@@ -638,7 +666,7 @@ TOPE_CONTRATOS_ROTOS = 0
 #                          columnas del modelo igual que el listado, y un
 #                          `**otra_cosa()` dentro del literal se sigue como una
 #                          delegacion mas. 523 rutas resueltas.
-TOPE_SIN_RESOLVER = 25
+TOPE_SIN_RESOLVER = 18
 
 
 def test_la_resolucion_mira_de_verdad() -> None:
