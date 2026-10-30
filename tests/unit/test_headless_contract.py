@@ -191,6 +191,11 @@ _AGREGADAS_EN_EL_GATEWAY = {
     # un trozo, y mirar sólo la que se tiene a mano es mirar por una ventana.
     "/api/v1/estado/consultas-degradadas",
     "/api/v1/superficie",
+    # Los comentarios los guarda el servicio DUEÑO del registro, así que «dónde
+    # me han mencionado» de un servicio suelto son las menciones de un tercio
+    # del producto presentadas como todas. El gateway pregunta a los que montan
+    # el router de comentarios y junta, diciendo cuáles no contestaron.
+    "/api/v1/comentarios/mis-menciones",
 }
 
 

@@ -1,7 +1,7 @@
 /**
  * Por qué canales se le puede escribir a alguien, y con qué reglas
  * (CRM-02.03.02.01, CRM-02.03.02.02, CRM-02.03.02.03, CRM-02.03.02.04,
- * CRM-02.03.02.05, CRM-02.03.02.07).
+ * CRM-02.03.02.05, CRM-02.03.02.07, CRM-06.02.01.08).
  *
  * Los canales estaban declarados y el consentimiento se guardaba por canal y
  * por destino, y no había ninguna pantalla que contestara la pregunta de
@@ -21,6 +21,12 @@
  * **La baja se da con una palabra, y cada canal tiene la suya.** Enseñarla es
  * parte de poder usar el canal: quien escribe el mensaje tiene que poner esa
  * palabra dentro.
+ *
+ * **Y lo que llega, al lado de lo que se puede mandar.** Las aperturas y los
+ * rebotes se guardaban y no los leía ninguna pantalla, y es el dato que dice
+ * si el canal sirve: un dominio que manda y no abre nadie está en la carpeta
+ * de basura, y eso no se ve mirando los envíos. La tasa sólo sale cuando hay
+ * con qué calcularla — con veinte envíos no se mide nada.
  *
  * **Y el calentamiento de un dominio nuevo frena.** Una IP que manda cien mil
  * el primer día se quema, y quemarla cuesta semanas en las que no llega nada
@@ -47,6 +53,18 @@ interface Canal {
   como_se_da_de_baja: string;
 }
 
+interface Entrega {
+  dias: number;
+  mandados: number;
+  aperturas: number;
+  rebotes_duros: number;
+  quejas: number;
+  /** Con veinte envíos no se mide nada, y el servidor lo dice. */
+  medible: boolean;
+  tasa_apertura_pct: number | null;
+  porque: string;
+}
+
 interface Comprobacion {
   se_puede_mandar: boolean;
   /** El porqué, uno por regla que lo impide. */
@@ -66,6 +84,7 @@ export function Canales() {
   const [canal, setCanal] = useState("");
   const [destino, setDestino] = useState("");
   const [resultado, setResultado] = useState<Comprobacion | null>(null);
+  const [entrega, setEntrega] = useState<Entrega | null>(null);
   const [comprobando, setComprobando] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
 
@@ -75,6 +94,11 @@ export function Canales() {
     listar<Canal>("/api/v1/canales-marketing", { signal: control.signal })
       .then(setCanales)
       .catch(salvoCancelacion(setFallo));
+    llamar<Entrega>("/api/v1/notificaciones/entregas/estadisticas", {
+      signal: control.signal,
+    })
+      .then((r) => setEntrega(r.datos))
+      .catch(salvoCancelacion(() => setEntrega(null)));
     return () => control.abort();
   }, []);
 
@@ -184,6 +208,31 @@ export function Canales() {
           </div>
         ) : null}
       </section>
+
+      {entrega ? (
+        <section className="card mb-4 p-4">
+          <h2 className="text-sm font-medium text-ink">{t("canalesmk.queLlega")}</h2>
+          <p className="mt-1 text-3xs text-ink-faint">{t("canalesmk.porqueLlega")}</p>
+          <p className="mt-2 font-mono text-2xs text-ink">
+            {t("canalesmk.mandados", {
+              mandados: entrega.mandados,
+              dias: entrega.dias,
+              rebotes: entrega.rebotes_duros,
+              quejas: entrega.quejas,
+            })}
+          </p>
+          {/* La tasa sólo cuando se puede medir: con veinte envíos un 5 % y un
+              100 % son el mismo ruido, y el servidor ya lo dice. */}
+          <p className="mt-1 font-mono text-lg text-ink">
+            {entrega.medible
+              ? t("canalesmk.apertura", { pct: entrega.tasa_apertura_pct })
+              : t("canalesmk.aperturaNoMedible")}
+          </p>
+          {!entrega.medible && entrega.porque ? (
+            <p className="mt-1 text-2xs text-ink-muted">{entrega.porque}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section>
         <h2 className="text-sm font-medium text-ink">{t("canalesmk.declarados")}</h2>

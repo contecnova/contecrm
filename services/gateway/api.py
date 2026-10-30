@@ -655,6 +655,76 @@ async def solo_lectura_de_la_instalacion(datos: SoloLecturaIn, principal: Plataf
 
 
 @router.get(
+    "/comentarios/mis-menciones",
+    summary="Dónde me han mencionado, en todo el CRM",
+    description=(
+        "Una mención que nadie ve es una mención que no existe, y eso es lo "
+        "que pasaba: los comentarios los guarda **el servicio dueño del "
+        "registro**, así que para ver las suyas había que preguntar una vez "
+        "por cada tipo de objeto —y saberse el reparto—.\n\n"
+        "Se junta aquí y no en el front por lo mismo que la página de estado: "
+        "en serie, tres servicios con cinco segundos de plazo son quince "
+        "segundos de espera. Y un servicio que no contesta **no se calla**: "
+        "sale en `sin_respuesta`, porque «no tienes menciones» y «no se ha "
+        "podido preguntar» se leen igual y significan lo contrario."
+    ),
+)
+async def mis_menciones_de_todo(principal: AutenticadoDep) -> Any:
+    import asyncio
+
+    from crmcore.config import get_settings
+    from crmcore.rutas_de_api import OBJETOS_COMENTARIO
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+    # Los servicios que guardan comentarios salen de la misma tabla que usa el
+    # enrutado, no de una lista escrita a mano aquí: una lista propia se queda
+    # corta el día que un servicio nuevo monte el router.
+    servicios = sorted(set(OBJETOS_COMENTARIO.values()) & set(_destinos))
+
+    async def _preguntar(nombre: str) -> tuple[str, list[dict[str, Any]] | None]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/comentarios/mis-menciones",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                return nombre, None
+            return nombre, list(respuesta.json())
+        except Exception:  # noqa: BLE001 — un servicio mudo es información
+            return nombre, None
+
+    partes = await asyncio.gather(*(_preguntar(n) for n in servicios))
+    menciones: list[dict[str, Any]] = []
+    mudos: list[str] = []
+    for nombre, filas in partes:
+        if filas is None:
+            mudos.append(nombre)
+            continue
+        for fila in filas:
+            menciones.append({**fila, "servicio": nombre})
+
+    # Lo más reciente primero: una mención de hace tres semanas debajo de una
+    # de hoy es lo que hace que la lista se deje de mirar.
+    menciones.sort(key=lambda m: str(m.get("cuando") or ""), reverse=True)
+    return {
+        "menciones": menciones,
+        "cuantas": len(menciones),
+        "sin_respuesta": mudos,
+        "aviso": (
+            ""
+            if not mudos
+            else f"{len(mudos)} servicio(s) no contestan: puede haber menciones que no salen aquí."
+        ),
+    }
+
+
+@router.get(
     "/estado/consultas-degradadas",
     summary="Qué consultas se han vuelto lentas, en toda la instalación",
     description=(

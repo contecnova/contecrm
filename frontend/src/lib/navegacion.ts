@@ -155,6 +155,10 @@ export const ACCESOS: Entrada[] = [
   // ruta en el router y no salía en ningún menú, así que solo lo encontraba
   // quien supiera teclear la dirección.
   { a: "/chat", clave: "nav.chat", icono: "forum", recursos: ["chat"] },
+  // Aquí arriba y no en un área, por lo mismo que el chat: te mencionan en una
+  // cuenta, en una oportunidad y en un caso, y buscarlas por área sería tener
+  // que mirar tres sitios.
+  { a: "/menciones", clave: "nav.menciones", icono: "alternate_email" },
 ];
 
 /**

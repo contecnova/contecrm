@@ -138,6 +138,19 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  menciones: {
+    titulo: "Dónde me han mencionado",
+    entradilla:
+      "De todo el CRM: en una cuenta, en una oportunidad o en un caso. Mencionar a " +
+      "alguien ya funcionaba; lo que faltaba era el sitio donde se ven.",
+    ninguna: "Nadie te ha mencionado",
+    ningunaDeVerdad:
+      "Cuando alguien te nombre en un comentario de cualquier registro, aparecerá aquí.",
+    ningunaPeroMudos:
+      "Ojo: algún servicio no ha contestado, así que esto puede no ser todo.",
+    interno: "interno",
+    abrir: "Abrir el registro",
+  },
   canalesmk: {
     titulo: "Canales y consentimiento",
     entradilla:
@@ -158,6 +171,13 @@ const pantallas = {
     bajaCon: "Se da de baja contestando «{{palabra}}». Esa palabra tiene que ir en el mensaje.",
     calentando:
       "El dominio está calentando: hoy como mucho {{tope}} envíos. Pasarse quema la IP, y quemarla deja semanas sin que llegue nada por ese dominio — ni campañas ni facturas.",
+    queLlega: "Qué llega de lo que mandamos",
+    porqueLlega:
+      "Un dominio que manda mucho y no abre nadie está cayendo en la carpeta de basura, y eso no se ve mirando los envíos.",
+    mandados:
+      "{{mandados}} mandados en {{dias}} días · {{rebotes}} rebotes duros · {{quejas}} quejas",
+    apertura: "{{pct}} % de apertura",
+    aperturaNoMedible: "Apertura: no hay con qué medirla todavía",
     declarados: "Los canales declarados",
     sinCanales: "No hay ningún canal declarado",
     sinCanalesDetalle:

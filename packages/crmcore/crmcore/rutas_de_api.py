@@ -540,6 +540,11 @@ def servicio_de(ruta: str, servicios: frozenset[str] | None = None) -> str | Non
         if partes[2] == "embebido":
             return SERVICIO_DE_COMPONENTE.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "comentarios":
+            # `mis-menciones` no lleva tipo de objeto porque pregunta por
+            # TODOS: la contesta el propio gateway juntando los servicios que
+            # guardan comentarios, así que no se proxia a ninguno.
+            if len(partes) == 4 and partes[3] == "mis-menciones":
+                return None
             return OBJETOS_COMENTARIO.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "adjuntos":
             # Un tipo de objeto desconocido devuelve `None` y el gateway

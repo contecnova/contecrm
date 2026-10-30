@@ -2269,6 +2269,18 @@ Cuatro cosas que conviene saber:
 Si un canal aparece **sin forma de baja declarada**, por ahí no se puede mandar
 nada comercial hasta que alguien la configure.
 
+### Si alguien te menciona, lo verás en «Mis menciones»
+
+Arriba, al lado del chat. Salen las de todo el CRM: las de una cuenta, las de
+una oportunidad y las de un caso, juntas y lo más reciente primero. Desde cada
+una se abre el registro, que es lo que se quiere hacer con ella.
+
+Las **internas** van marcadas. Son las que el cliente no ve, y conviene saberlo
+antes de contestar.
+
+Y si sale un aviso de que **algún servicio no ha contestado**, la lista puede
+estar incompleta: no lo leas como «no me han mencionado».
+
 ---
 
 ## Qué hacer cuando algo no sale

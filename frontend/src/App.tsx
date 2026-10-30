@@ -157,6 +157,7 @@ const Campana = pantalla(() => import("@/paginas/Campana"), (m) => m.Campana);
 const Articulo = pantalla(() => import("@/paginas/Articulo"), (m) => m.Articulo);
 const Entornos = pantalla(() => import("@/paginas/Entornos"), (m) => m.Entornos);
 const Canales = pantalla(() => import("@/paginas/Canales"), (m) => m.Canales);
+const Menciones = pantalla(() => import("@/paginas/Menciones"), (m) => m.Menciones);
 const Presupuesto = pantalla(
   () => import("@/paginas/Presupuesto"),
   (m) => m.Presupuesto,
@@ -408,6 +409,10 @@ export function App() {
               pregunta contraria a la de arriba. El consentimiento es por
               canal y por destino, y no había pantalla que lo contestara. */}
           <Route path="/canales" element={<Canales />} />
+          {/* Mencionar a alguien funcionaba y no había dónde ver las tuyas:
+              sin esta pantalla la función no existe en la práctica, porque
+              nadie abre cuarenta fichas por si acaso. */}
+          <Route path="/menciones" element={<Menciones />} />
           {/* Clonar, fusionar y partir un tenant guardaban su plan y sus
               conflictos —«lo que alguien tiene que leer ANTES de aprobar»— y no
               había ruta que los listara: sólo volvía a ellos quien se hubiera

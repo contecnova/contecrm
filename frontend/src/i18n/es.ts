@@ -102,6 +102,7 @@ export default {
     cicloDeVida: "Ciclo de vida del cliente",
     entornos: "Entornos y despliegues",
     canales: "Canales y consentimiento",
+    menciones: "Mis menciones",
     cumplimiento: "Panel de cumplimiento",
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",

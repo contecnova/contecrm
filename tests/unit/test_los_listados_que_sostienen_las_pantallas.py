@@ -792,3 +792,27 @@ def test_comprobar_un_envio_dice_por_que_no(
     # Y `calentamiento` es None cuando ese dominio no calienta: un 0 se
     # leería como «hoy no puedes mandar nada», que es lo contrario.
     assert cuerpo["calentamiento"] is None
+
+
+# ── Las menciones, juntadas por el gateway (CRM-06.02.01.01) ────────────
+
+
+def test_un_servicio_publica_sus_menciones_sin_pedir_el_tipo(
+    servicio_http: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """La ruta que había calculaba TODAS las menciones y tiraba las de los
+    demás tipos, así que para verlas había que preguntar una vez por tipo y
+    saberse el reparto por servicios."""
+    r = servicio_http.get("/api/v1/comentarios/mis-menciones", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list)
+
+
+def test_la_de_un_tipo_sigue_funcionando(
+    servicio_http: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """La nueva no sustituye a la de siempre: la ficha de un registro sigue
+    pidiendo las suyas por tipo."""
+    r = servicio_http.get("/api/v1/comentarios/caso/mis-menciones", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list)

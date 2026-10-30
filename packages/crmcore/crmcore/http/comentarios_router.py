@@ -100,6 +100,27 @@ def crear_router_comentarios(objetos: set[str]) -> APIRouter:
             if m["objeto_tipo"] == objeto_tipo
         ]
 
+    @router.get(
+        "/mis-menciones",
+        response_model=list[dict],
+        summary="Dónde me han mencionado, en cualquier registro de este servicio",
+        description=(
+            "La de arriba filtra por un tipo de registro, y eso obliga a quien "
+            "quiera ver sus menciones a preguntar una vez por tipo y por "
+            "servicio. `donde_me_mencionan` ya las busca **todas** y la ruta "
+            "tiraba el resto: una mención que nadie ve es una mención que no "
+            "existe, y es justo lo que pasaba."
+        ),
+    )
+    def todas_mis_menciones(
+        db: DbDep,
+        principal: AutenticadoDep,
+        limite: int = Query(50, ge=1, le=200),
+    ) -> Any:
+        return donde_me_mencionan(
+            db, tenant_id=principal.tenant_id, usuario_id=principal.id, limite=limite
+        )
+
     @router.post(
         "/{objeto_tipo}/{objeto_id}",
         response_model=dict,

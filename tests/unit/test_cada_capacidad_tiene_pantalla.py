@@ -830,7 +830,27 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   - y el calentamiento de un dominio nuevo FRENA. Cuando hay tope sale el
 #     tope, y `null` significa que ese dominio no esta calentando, no que el
 #     tope sea cero.
-TOPE_SIN_PANTALLA = 218
+#   30-10-2026  216 de 778  donde me han mencionado, y que llega de lo que
+#   ------------------------------------------------------------------------
+#   mandamos.
+#
+#   Mencionar a alguien FUNCIONABA: se guardaba, se notificaba y se podia leer
+#   abriendo el registro. Lo que faltaba era el sitio donde se ven todas, y sin
+#   el la funcion no existe en la practica — nadie abre cuarenta fichas por si
+#   acaso.
+#
+#   Y no se podia hacer con lo que habia: los comentarios los guarda el
+#   servicio DUENO del registro, y la ruta que habia calculaba todas las
+#   menciones y tiraba las de los demas tipos. Ahora cada servicio publica las
+#   suyas y el gateway las junta, diciendo cual no contesto: «no tienes
+#   menciones» y «no se ha podido preguntar» se leen igual y significan lo
+#   contrario.
+#
+#   Las aperturas y los rebotes se guardaban y no los leia ninguna pantalla.
+#   Van en Canales, que es donde se decide si un canal sirve: un dominio que
+#   manda mucho y no abre nadie esta en la carpeta de basura, y eso no se ve
+#   mirando los envios. La tasa solo sale cuando hay con que calcularla.
+TOPE_SIN_PANTALLA = 216
 
 
 def _es_pantalla(p: Path) -> bool:

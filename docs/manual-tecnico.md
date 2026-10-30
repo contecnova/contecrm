@@ -3054,6 +3054,41 @@ de mandar nada. Que no es una pregunta: son cinco.
 Y el «no se puede» viene con sus motivos, uno por regla. A secas deja a quien
 escribe el mensaje sin saber qué arreglar.
 
+### 4.6.35 Dónde me han mencionado
+
+Mencionar a alguien **funcionaba**: se guardaba, se notificaba y se podía leer
+abriendo el registro. Lo que faltaba era el sitio donde se ven todas, y sin él
+la función no existe en la práctica — nadie abre cuarenta fichas por si acaso.
+
+Y no se podía montar con lo que había. Los comentarios los guarda **el servicio
+dueño del registro**, y la ruta existente calculaba todas las menciones de una
+persona y **tiraba las de los demás tipos** para devolver sólo las del tipo
+pedido. Así que ver las propias era preguntar una vez por tipo de objeto, y
+saberse de memoria qué servicio guarda cuál.
+
+Ahora cada servicio publica `GET /comentarios/mis-menciones` con las suyas, y
+el **gateway las junta** —el mismo patrón que la página de estado, y por lo
+mismo: en serie, tres servicios con cinco segundos de plazo son quince segundos
+de espera—. La lista de servicios sale de `OBJETOS_COMENTARIO`, la misma tabla
+que usa el enrutado, y no de una lista escrita a mano que se quedaría corta el
+día que un servicio nuevo monte el router.
+
+**Un servicio mudo no se calla**: sale en `sin_respuesta`. «No tienes
+menciones» y «no se ha podido preguntar» se leen igual y significan lo
+contrario, y con los comentarios repartidos esto pasa de verdad.
+
+La ruta va en `_AGREGADAS_EN_EL_GATEWAY` porque el gateway no la reenvía: la de
+un servicio suelto serían un tercio de las menciones presentadas como todas.
+
+#### Y lo que llega de lo que mandamos
+
+Las aperturas y los rebotes se guardaban y no los leía ninguna pantalla. Van en
+**Canales** y no en un panel aparte, porque es donde se decide si un canal
+sirve: un dominio que manda mucho y no abre nadie está cayendo en la carpeta de
+basura, y eso no se ve mirando los envíos. La tasa sólo sale cuando el servidor
+dice que hay con qué calcularla — con veinte envíos, un 5 % y un 100 % son el
+mismo ruido.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
