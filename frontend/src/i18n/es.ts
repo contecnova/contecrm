@@ -103,7 +103,10 @@ export default {
     entornos: "Entornos y despliegues",
     canales: "Canales y consentimiento",
     menciones: "Mis menciones",
-    prospeccion: "Prospección",
+    // «Prospección» ya era el módulo de leads: dos entradas con el mismo
+    // nombre en el mismo grupo obligan a entrar en las dos para saber cuál es
+    // cuál. Ésta dice lo que contesta.
+    prospeccion: "Plantillas y reuniones",
     cumplimiento: "Panel de cumplimiento",
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",

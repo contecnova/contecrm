@@ -229,14 +229,15 @@ def listar_cuentas(
     response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("account:read"))],
     summary="Cuentas sin contacto desde hace N días",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # La pregunta que el producto ponía de ejemplo y no sabía contestar.
+    # La pantalla de Nexus sugiere literalmente «qué cuentas llevan más de
+    # dos meses sin contacto», y no había forma: la última actividad es un
+    # campo CALCULADO —el máximo de las actividades de la cuenta— y los
+    # filtros del listado sólo admiten columnas, así que ni se podía
+    # filtrar ni ordenar por él. Se descubrió el 29-10-2026
+    # preguntándoselo al asistente, que contestó —con razón— que no podía.
     description=(
-        "**La pregunta que el producto ponía de ejemplo y no sabía contestar.** "
-        "La pantalla de Nexus sugiere literalmente «qué cuentas llevan más de "
-        "dos meses sin contacto», y no había forma: la última actividad es un "
-        "campo CALCULADO —el máximo de las actividades de la cuenta— y los "
-        "filtros del listado sólo admiten columnas, así que ni se podía filtrar "
-        "ni ordenar por él. Se descubrió el 29-10-2026 preguntándoselo al "
-        "asistente, que contestó —con razón— que no podía.\n\n"
         "**Las que no tienen ninguna actividad entran**, y son las que más "
         "importan: una cuenta con la que no se ha hablado nunca no es lo mismo "
         "que una con la que se habló hace tres meses, pero dejarla fuera por no "
@@ -524,10 +525,10 @@ def cola_duplicados(
     dependencies=[Depends(exige_permiso("account:write"))],
     summary="Buscar duplicados en todo el maestro",
     description=(
-        "Buscar duplicados solo se hacía **al crear**, así que protegía lo que "
-        "entra desde hoy y no decía nada de lo que ya está dentro — que es "
-        "donde está el problema, porque los duplicados llegan de golpe con una "
-        "importación o con la integración del ERP.\n\n"
+        # Antes sólo se buscaban al crear: eso protege lo que entra desde hoy
+        # y no dice nada de lo que ya está dentro, que es donde están.
+        "Repasa el maestro entero en busca de cuentas repetidas. Llegan de "
+        "golpe: con una importación o con la integración del ERP.\n\n"
         "Se puede repetir: la pareja ya propuesta se actualiza, y la que "
         "alguien marcó como «no es un duplicado» no vuelve a proponerse."
     ),
@@ -642,11 +643,12 @@ def fusionar_cuentas(
     response_model=dict,
     dependencies=[Depends(exige_permiso("account:merge"))],
     summary="Fusionar dos contactos",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # La misma operación que con cuentas, y faltaba: se podían fusionar
+    # empresas duplicadas y no personas, que es donde más duplicados hay —
+    # la misma persona entra por un formulario, por una importación y por
+    # una tarjeta escaneada.
     description=(
-        "La misma operación que con cuentas, y **faltaba**: se podían fusionar "
-        "empresas duplicadas y no personas, que es donde más duplicados hay — la "
-        "misma persona entra por un formulario, por una importación y por una "
-        "tarjeta escaneada.\n\n"
         "El absorbido **no se borra**: se marca y conserva su identificador, "
         "porque hay actividades y consentimientos que apuntan a él. La fusión se "
         "puede deshacer."
@@ -807,13 +809,12 @@ def obtener_contacto(contacto_id: UUID, db: DbDep, principal: AutenticadoDep) ->
     dependencies=[Depends(exige_permiso("contact:read"))],
     summary="Las cuentas de este contacto, con su papel en cada una",
     description=(
-        "La relación contacto–cuenta es N:M (CRM-01.01.02.02): se podía "
-        "**crear** y se podía **cerrar**, y no se podía leer. Una relación que "
-        "no se consulta no existe para nadie: ni la ficha del contacto podía "
-        "pintar su panel de cuentas —lo construye a partir de un `GET` que "
-        "devuelva lista, y no lo había— ni nadie podía contestar «¿de qué "
-        "empresas es esta persona?», que es la pregunta por la que la relación "
-        "se guarda.\n\n"
+        # La relación es N:M (CRM-01.01.02.02) y se podía crear y cerrar pero
+        # no leer: la ficha no podía pintar su panel de cuentas y «¿de qué
+        # empresas es esta persona?» no se contestaba desde el producto.
+        "De qué empresas es esta persona y con qué papel en cada una. La "
+        "relación es de muchos a muchos: un contacto puede estar en varias "
+        "cuentas a la vez.\n\n"
         "Salen **también las cerradas**, marcadas con su fecha: «ya no trabaja "
         "ahí» es justo lo que hay que saber antes de llamar, y esconderlo deja "
         "el histórico de la cuenta sin sentido."

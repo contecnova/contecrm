@@ -323,12 +323,11 @@ def catalogo(db: DbDep, principal: AutenticadoDep, solo_certificadas: bool = Que
     "/{clave}",
     dependencies=[Depends(exige_permiso("informe:read"))],
     summary="Una métrica",
-    description=(
-        "Existe para que la métrica tenga FICHA. El front deriva la ficha de que "
-        "haya un `GET` por identificador, y de la ficha cuelgan las acciones: sin "
-        "esta ruta, certificar o versionar estaban en la API y no se podían hacer "
-        "desde ninguna pantalla."
-    ),
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Existe para que la métrica tenga FICHA. El front deriva la ficha de
+    # que haya un `GET` por identificador, y de la ficha cuelgan las
+    # acciones: sin esta ruta, certificar o versionar estaban en la API y
+    # no se podían hacer desde ninguna pantalla.
 )
 def una_metrica(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
     return sem.una(db, principal.tenant_id, clave)
@@ -387,11 +386,12 @@ def plan_metrica(
     "/{clave}/ejecutar",
     dependencies=[Depends(exige_permiso("informe:read"))],
     summary="Cuánto vale ahora mismo",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Existía el PLAN de cálculo y no existía el cálculo. O sea que una
+    # métrica se podía definir, versionar y certificar, y no se podía ver
+    # cuánto vale: la pantalla enseñaba su definición y nada más. Una
+    # métrica que no se puede mirar no es una métrica, es una ficha.
     description=(
-        "Existía el PLAN de cálculo y no existía el cálculo. O sea que una "
-        "métrica se podía definir, versionar y certificar, y no se podía ver "
-        "cuánto vale: la pantalla enseñaba su definición y nada más. Una métrica "
-        "que no se puede mirar no es una métrica, es una ficha.\n\n"
         "El número **nunca va solo**: lleva su unidad, si está certificada y el "
         "aviso cuando no lo está. Un número sin eso se copia a una presentación "
         "y allí ya parece oficial.\n\n"

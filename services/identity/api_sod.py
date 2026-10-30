@@ -82,11 +82,12 @@ def guardar_regla(codigo: str, datos: ReglaEntrada, uow: UowDep, principal: Aute
     "/excepciones",
     dependencies=[Depends(exige_permiso("role:read"))],
     summary="Qué conflictos están aprobados, para quién y por qué",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Faltaba, y sin esto la excepción no es un control. Aprobar un
+    # conflicto exige motivo escrito y caducidad —el alta lo obliga— y no
+    # había forma de leer ninguno de los dos: la prueba de auditoría se
+    # generaba y se archivaba donde nadie podía recuperarla.
     description=(
-        "**Faltaba, y sin esto la excepción no es un control.** Aprobar un "
-        "conflicto exige motivo escrito y caducidad —el alta lo obliga— y no "
-        "había forma de leer ninguno de los dos: la prueba de auditoría se "
-        "generaba y se archivaba donde nadie podía recuperarla.\n\n"
         "Quien revisa un informe de segregación tiene que poder contestar «¿y "
         "éstos por qué están permitidos?».\n\n"
         "Por defecto sólo las vigentes: una lista con las de hace tres años "

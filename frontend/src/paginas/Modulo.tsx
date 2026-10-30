@@ -48,7 +48,7 @@ import {
 } from "@/lib/contrato";
 import { accionesDeColeccion } from "@/lib/acciones";
 import { moduloDe, objetoDe, recursoVisible, type Recurso } from "@/lib/modulos";
-import { recursosDe } from "@/lib/recursos";
+import { pestanaPrincipal, recursosDe } from "@/lib/recursos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
 import { useSuperficie, useVisibilidad } from "@/lib/permisos";
@@ -64,10 +64,11 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   // llevar directamente al alta que se ha pedido: sin esto caería en la primera
   // pestaña del módulo, que puede no ser la del recurso que se quiere crear.
   const pedido = parametros.get("r");
-  const inicial = Math.max(
-    0,
-    recursosDe(ruta ?? "").findIndex((r) => r.nombre === pedido) ?? 0,
-  );
+  // Sin `?r=`, la pestaña que el módulo DECLARA como suya, no la que esté
+  // escrita primero: ese orden lo puso el catálogo y abría «Campañas» en la
+  // papelera y «Casos» en un informe que pide fechas antes de enseñar nada.
+  const porNombre = recursosDe(ruta ?? "").findIndex((r) => r.nombre === pedido);
+  const inicial = porNombre >= 0 ? porNombre : pestanaPrincipal(ruta ?? "");
   const [activo, setActivo] = useState(inicial);
   const visibilidad = useVisibilidad();
   /**
@@ -87,7 +88,15 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
       recursosDe(ruta ?? "")
         .map((r, i) => ({ r, i }))
         .filter(({ r }) => recursoVisible(sesion, r, visibilidad))
-        .sort((a, b) => Number(Boolean(a.r.icono)) - Number(Boolean(b.r.icono))),
+        // La principal primero y la papelera al final; en medio, el orden del
+        // catálogo. Abrir por la pestaña buena y pintarla la cuarta deja a
+        // quien mira buscando en cuál está: en «Casos» salía tras tres
+        // informes.
+        .sort(
+          (a, b) =>
+            Number(Boolean(a.r.icono)) - Number(Boolean(b.r.icono)) ||
+            Number(Boolean(b.r.principal)) - Number(Boolean(a.r.principal)),
+        ),
     [ruta, sesion, visibilidad],
   );
 

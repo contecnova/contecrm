@@ -360,11 +360,12 @@ class EditarInforme(BaseModel):
     "/programaciones",
     dependencies=[Depends(exige_permiso("informe:read"))],
     summary="Qué informe sale solo, cuándo y a quién",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podía programar y no leer. Un informe programado se manda solo a
+    # unas personas, en un formato y a una hora, y hasta hoy no había
+    # forma de saber cuáles hay: ni quién los recibe, ni si uno que ya no
+    # mira nadie se sigue enviando todas las semanas.
     description=(
-        "**Se podía programar y no leer.** Un informe programado se manda solo "
-        "a unas personas, en un formato y a una hora, y hasta hoy no había "
-        "forma de saber cuáles hay: ni quién los recibe, ni si uno que ya no "
-        "mira nadie se sigue enviando todas las semanas.\n\n"
         "Los **destinatarios se cuentan y se nombran**, porque la pregunta que "
         "se hace de verdad es «¿a quién le está llegando esto?» — y un envío "
         "semanal a una lista que nadie revisó en dos años es la forma más "
@@ -429,12 +430,13 @@ def listar_programaciones(db: DbDep, principal: AutenticadoDep) -> Any:
     "/ejecuciones",
     dependencies=[Depends(exige_permiso("informe:read"))],
     summary="Cada vez que se corrió un informe, con lo que costó",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # La tabla es append-only y no la leía nadie. Se escribía en cada
+    # ejecución y ninguna ruta la devolvía, así que cuánto tardó, cuántas
+    # filas sacó, si se truncó y qué campos se retiraron se guardaban y no
+    # se podían mirar. Un registro de coste que no se consulta es espacio
+    # ocupado.
     description=(
-        "**La tabla es append-only y no la leía nadie.** Se escribía en cada "
-        "ejecución y ninguna ruta la devolvía, así que cuánto tardó, cuántas "
-        "filas sacó, si se truncó y qué campos se retiraron se guardaban y no "
-        "se podían mirar. Un registro de coste que no se consulta es espacio "
-        "ocupado.\n\n"
         "Devuelve **el peor caso al lado de la media**: la media esconde justo "
         "lo que duele, el informe que tarda dos minutos una vez al día. Y las "
         "**truncadas aparte**, porque un informe cortado leído como el total es "
@@ -462,9 +464,10 @@ def historial_de_ejecuciones(
     dependencies=[Depends(exige_permiso("informe:write"))],
     summary="Corregir un informe",
     description=(
-        "Sin esto, un informe con una errata —o con un campo que resultó no "
-        "existir— solo se podía arreglar creando otro al lado, y entonces los "
-        "cuadros de mando siguen apuntando al viejo. Se valida igual que al "
+        # Sin esto, un informe con una errata sólo se arreglaba creando otro
+        # al lado, y los cuadros de mando seguían apuntando al viejo.
+        "Cambia el informe en su sitio, sin crear uno nuevo: así los cuadros "
+        "que lo usan siguen apuntando donde deben. Se valida igual que al "
         "crearlo y se devuelven los avisos."
     ),
 )

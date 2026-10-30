@@ -273,11 +273,13 @@ def declarar_guardia(datos: DeclararGuardia, uow: UowDep) -> Any:
     "/guardias",
     dependencies=[Depends(exige_permiso("ia:administrar"))],
     summary="Qué se tapa antes de mandar un dato a un modelo",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podían escribir y no leer. Había cómo saber cuántas veces ha
+    # saltado un guardarraíl y no qué dice: ni qué sensibilidades deja
+    # pasar, ni qué patrones tapa, ni si corta la petición o sólo
+    # enmascara el dato — que no es lo mismo, y es lo primero que se
+    # pregunta.
     description=(
-        "**Se podían escribir y no leer.** Había cómo saber cuántas veces ha "
-        "saltado un guardarraíl y no qué dice: ni qué sensibilidades deja "
-        "pasar, ni qué patrones tapa, ni si corta la petición o sólo enmascara "
-        "el dato — que no es lo mismo, y es lo primero que se pregunta.\n\n"
         "La ruta que las crea dice que «que salgan tiene que ser una decisión "
         "escrita, no el comportamiento por omisión». Una decisión escrita que "
         "no se puede leer no se revisa nunca.\n\n"
@@ -311,11 +313,12 @@ def bloqueos(db: DbDep, principal: AutenticadoDep, dias: int = Query(7, ge=1, le
     "/plantillas",
     dependencies=[Depends(exige_permiso("ia:administrar"))],
     summary="Con qué texto se le pide a un modelo, y en qué versión",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podían escribir y no leer. La plantilla ES la instrucción: lo que
+    # el modelo hace sale de ella, y cuando una respuesta empieza a salir
+    # mal la primera pregunta es qué se le está pidiendo exactamente. Sin
+    # lectura había que mirarlo en la base de datos.
     description=(
-        "**Se podían escribir y no leer.** La plantilla ES la instrucción: lo "
-        "que el modelo hace sale de ella, y cuando una respuesta empieza a "
-        "salir mal la primera pregunta es qué se le está pidiendo exactamente. "
-        "Sin lectura había que mirarlo en la base de datos.\n\n"
         "Se devuelve **la versión vigente de cada clave**, no el histórico: lo "
         "que importa es con qué se está pidiendo hoy, y una lista con todas las "
         "versiones entierra esa línea entre las viejas."

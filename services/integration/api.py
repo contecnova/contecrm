@@ -572,13 +572,14 @@ class EnvioLegado(BaseModel):
     response_model=dict,
     dependencies=[Depends(exige_permiso("integracion:invocar"))],
     summary="Mandar algo por un transporte heredado (SOAP o AMQP)",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # La otra mitad de los transportes heredados. `publicar_amqp` y
+    # `envolver_soap` estaban escritas, probadas y sin que las llamara
+    # nadie: se podía declarar una conexión AMQP y no había forma de
+    # publicar en ella. Una integración que sólo sabe leer deja al cliente
+    # escribiendo en el ERP a mano, que es la mitad del trabajo que venía
+    # a quitar.
     description=(
-        "La otra mitad de los transportes heredados. `publicar_amqp` y "
-        "`envolver_soap` estaban escritas, probadas y **sin que las llamara "
-        "nadie**: se podía declarar una conexión AMQP y no había forma de "
-        "publicar en ella. Una integración que sólo sabe leer deja al cliente "
-        "escribiendo en el ERP a mano, que es la mitad del trabajo que venía a "
-        "quitar.\n\n"
         "Por un transporte de sólo lectura —sftp, fichero, edi— **se dice que no** "
         "en vez de aceptar la petición y no mandar nada."
     ),

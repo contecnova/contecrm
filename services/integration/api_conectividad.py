@@ -487,12 +487,13 @@ def listar_vistas(db: DbDep, principal: AutenticadoDep, objeto: str = Query(""))
     "/embebidos",
     dependencies=[Depends(exige_permiso("integracion:read"))],
     summary="Dónde puede vivir el CRM embebido, y quién puede pedirle qué",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podía declarar y no leer. La lista de orígenes es lo que impide
+    # que cualquier página incruste el CRM y le pida datos con la sesión
+    # de quien la abra — o sea, es un control de seguridad— y no había
+    # forma de saber cuáles están declarados. Un origen que se puso para
+    # una prueba hace año y medio sigue valiendo, y nadie lo sabe.
     description=(
-        "**Se podía declarar y no leer.** La lista de orígenes es lo que impide "
-        "que cualquier página incruste el CRM y le pida datos con la sesión de "
-        "quien la abra — o sea, es un control de seguridad— y no había forma "
-        "de saber cuáles están declarados. Un origen que se puso para una "
-        "prueba hace año y medio sigue valiendo, y nadie lo sabe.\n\n"
         "Los **orígenes se nombran**, no se cuentan: lo que se revisa aquí es "
         "si alguno sobra, y un «3 orígenes» no deja revisar nada. Y se dice "
         "**qué bloques** puede pedir cada anfitrión, porque la otra mitad del "

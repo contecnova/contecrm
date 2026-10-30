@@ -158,13 +158,14 @@ def bandeja(db: DbDep, principal: AutenticadoDep, limite: int = Query(50, ge=1, 
     "/delegaciones",
     dependencies=[Depends(exige_permiso("aprobacion:read"))],
     summary="Quién decide por quién, y hasta cuándo",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podía delegar y no leer. Una delegación dice que, mientras
+    # alguien no está, otro firma por él. Sin forma de consultarlas no se
+    # puede contestar «¿quién tiene hoy la firma de dirección?», que es la
+    # pregunta de cualquier revisión de poderes — y una delegación que se
+    # puso para unas vacaciones de agosto sigue viva en marzo sin que
+    # nadie lo note.
     description=(
-        "**Se podía delegar y no leer.** Una delegación dice que, mientras "
-        "alguien no está, otro firma por él. Sin forma de consultarlas no se "
-        "puede contestar «¿quién tiene hoy la firma de dirección?», que es la "
-        "pregunta de cualquier revisión de poderes — y una delegación que se "
-        "puso para unas vacaciones de agosto sigue viva en marzo sin que nadie "
-        "lo note.\n\n"
         "Salen **las vigentes primero y las caducadas detrás, marcadas**, no "
         "escondidas: una delegación que acaba de caducar explica por qué una "
         "aprobación que antes salía sola ahora se queda parada. Y con su "
@@ -225,10 +226,11 @@ def listar_delegaciones(
     "/enlaces",
     dependencies=[Depends(exige_permiso("aprobacion:read"))],
     summary="Qué enlaces de decisión siguen vivos",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podían emitir y no leer. Un enlace de éstos permite aprobar sin
+    # entrar al CRM: es una credencial con patas, y hasta hoy no había
+    # forma de saber cuántas hay sueltas ni a nombre de quién.
     description=(
-        "**Se podían emitir y no leer.** Un enlace de éstos permite aprobar "
-        "sin entrar al CRM: es una credencial con patas, y hasta hoy no había "
-        "forma de saber cuántas hay sueltas ni a nombre de quién.\n\n"
         "No se devuelve el token —en la base sólo está su hash, y ése es el "
         "punto—: se devuelve **a quién representa, cuándo caduca y si ya se "
         "usó**. Los usados salen igual, porque un enlace gastado explica quién "

@@ -175,11 +175,12 @@ def avanzar(campana_id: UUID, datos: Avanzar, uow: UowDep, principal: Autenticad
     "/{campana_id}/miembros",
     dependencies=[Depends(exige_permiso("campaign:read"))],
     summary="Quiénes están en la campaña, con su estado",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Faltaba: se podían añadir miembros y cambiarles el estado, y no
+    # había forma de listarlos. El embudo dice cuántos hay en cada estado
+    # y no quiénes, y para quien lleva la campaña la diferencia entre «40
+    # han hecho clic» y poder llamarlos es toda.
     description=(
-        "Faltaba: se podían añadir miembros y cambiarles el estado, y no había "
-        "forma de listarlos. El embudo dice **cuántos** hay en cada estado y no "
-        "**quiénes**, y para quien lleva la campaña la diferencia entre «40 han "
-        "hecho clic» y poder llamarlos es toda.\n\n"
         "Se puede filtrar por estado, que es lo que se hace con esto: la lista "
         "entera de una campaña de veinte mil no la mira nadie; los que abrieron "
         "y no respondieron, sí."

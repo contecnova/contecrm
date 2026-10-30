@@ -251,11 +251,12 @@ class Ajuste(BaseModel):
     "/periodos/{clave}/ajustes",
     dependencies=[Depends(exige_permiso("opportunity:write"))],
     summary="Ajustar el número calculado",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Los responsables ajustan siempre, porque saben cosas que no están en
+    # el CRM. El problema nunca fue que ajusten: es que el ajuste se hacía
+    # en una hoja aparte y después nadie sabía quién quitó doscientos mil
+    # euros ni por qué. El motivo es obligatorio.
     description=(
-        "Los responsables ajustan siempre, porque saben cosas que no están en el "
-        "CRM. El problema nunca fue que ajusten: es que el ajuste se hacía en una "
-        "hoja aparte y después nadie sabía quién quitó doscientos mil euros ni "
-        "por qué. **El motivo es obligatorio.**\n\n"
         "Se guarda el bruto junto al ajustado porque sin él no se puede medir si "
         "los ajustes acertaron, que es la única forma de saber si conviene hacer "
         "caso la próxima vez."

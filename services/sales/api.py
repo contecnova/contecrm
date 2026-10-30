@@ -216,11 +216,10 @@ def motivos_descarte(db: DbDep, _: AutenticadoDep) -> Any:
     response_model=dict,
     dependencies=[Depends(exige_permiso("lead:read"))],
     summary="Ficha de un lead",
-    description=(
-        "Faltaba, y el efecto era que se podía descartar o convertir un lead "
-        "que no se podía abrir: todas las acciones sobre `/leads/{lead_id}` "
-        "existían y el `GET` que lo enseña, no."
-    ),
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Faltaba, y el efecto era que se podía descartar o convertir un lead
+    # que no se podía abrir: todas las acciones sobre `/leads/{lead_id}`
+    # existían y el `GET` que lo enseña, no.
 )
 def obtener_lead(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     lead = db.get(Lead, lead_id)

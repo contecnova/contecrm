@@ -207,20 +207,39 @@ export function esIdentificadorTecnico(campo: string): boolean {
  * ficha de una oportunidad se titulaba con su UUID: el propio registro no decía
  * cuál era.
  */
-export function nombreDelRegistro(fila: Record<string, unknown>): string {
-  for (const clave of [
-    "nombre",
-    "nombre_completo",
-    "asunto",
-    "titulo",
-    "razon_social",
-    "clave",
-    "codigo",
-    "email",
-    "slug",
-  ]) {
+const CAMPOS_DE_NOMBRE = [
+  "nombre",
+  "nombre_completo",
+  "asunto",
+  "titulo",
+  "razon_social",
+  "clave",
+  "codigo",
+  "email",
+  "slug",
+] as const;
+
+/**
+ * De QUÉ campo salió el nombre, no sólo cuál es.
+ *
+ * Hace falta para no enseñarlo dos veces. La tarjeta de un caso se titulaba
+ * «Discrepancia en el albarán — Componentes Delta» y justo debajo repetía
+ * «Asunto: Discrepancia en el albarán — Componentes Del…», recortado: el mismo
+ * texto dos veces, la segunda peor, gastando una de las cinco líneas útiles.
+ * Pasaba porque quien montaba la tarjeta excluía el campo `"nombre"` escrito a
+ * mano, y un caso no tiene `nombre`: se titula por `asunto`. Igual con
+ * `titulo`, `razon_social`, `clave`, `codigo`, `email`, `slug` y
+ * `nombre_completo` — ocho de los nueve campos de la lista.
+ */
+export function campoDelNombre(fila: Record<string, unknown>): string {
+  for (const clave of CAMPOS_DE_NOMBRE) {
     const valor = fila[clave];
-    if (typeof valor === "string" && valor.trim()) return valor;
+    if (typeof valor === "string" && valor.trim()) return clave;
   }
   return "";
+}
+
+export function nombreDelRegistro(fila: Record<string, unknown>): string {
+  const clave = campoDelNombre(fila);
+  return clave ? String(fila[clave]) : "";
 }

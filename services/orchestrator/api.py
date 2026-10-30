@@ -1005,11 +1005,10 @@ def listar_sagas(
     "/{saga_id}",
     dependencies=[Depends(exige_permiso("proceso:read"))],
     summary="Ver una saga y en qué paso va",
-    description=(
-        "Qué pasos se hicieron, cuál falló, cuáles se compensaron y **cuáles no "
-        "se podían compensar**. Lo último es lo que hay que arreglar a mano, y "
-        "una saga que no lo dice deja ese trabajo sin reclamar."
-    ),
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Qué pasos se hicieron, cuál falló, cuáles se compensaron y cuáles no
+    # se podían compensar. Lo último es lo que hay que arreglar a mano, y
+    # una saga que no lo dice deja ese trabajo sin reclamar.
 )
 def ver_saga(saga_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     fila = db.get(sagas.Saga, saga_id)

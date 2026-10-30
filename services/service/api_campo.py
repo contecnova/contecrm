@@ -569,12 +569,13 @@ def reposicion(db: DbDep, principal: AutenticadoDep, tecnico_id: UUID | None = Q
     "/movimientos",
     dependencies=[Depends(exige_permiso("case:read"))],
     summary="Cada entrada y salida del almacén móvil, con su porqué",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se escribía y no lo leía nadie. El movimiento guarda quién, qué,
+    # cuánto, por qué y si dejó la existencia en negativo, y ninguna ruta
+    # lo devolvía. Un almacén sin histórico no se puede cuadrar: cuando
+    # falta una pieza la pregunta es quién se la llevó y cuándo, y sin
+    # esto la respuesta es «nadie lo sabe».
     description=(
-        "**Se escribía y no lo leía nadie.** El movimiento guarda quién, qué, "
-        "cuánto, por qué y si dejó la existencia en negativo, y ninguna ruta lo "
-        "devolvía. Un almacén sin histórico no se puede cuadrar: cuando falta "
-        "una pieza la pregunta es quién se la llevó y cuándo, y sin esto la "
-        "respuesta es «nadie lo sabe».\n\n"
         "Los que **dejaron negativo** van contados aparte: es la señal de que "
         "el inventario y la realidad ya no coinciden, y a partir de ahí todo lo "
         "que se planifique con esas existencias se planifica sobre un número "

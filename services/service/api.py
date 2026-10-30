@@ -250,11 +250,9 @@ def abrir(datos: AbrirCaso, uow: UowDep, principal: AutenticadoDep) -> Any:
     dependencies=[Depends(exige_permiso("case:read"))],
     summary="Buscar casos",
     description=(
-        "Por páginas con cursor. Devolvía una lista pelada con un tope de 50, y "
-        "sin declarar su modelo de respuesta: así la superficie no la reconocía "
-        "como colección y la explotación la registraba como una entidad que se "
-        "lee entera. La métrica «casos abiertos» contestaba **50 habiendo 153**, "
-        "con su cara de cifra buena."
+        # Que antes devolviera una lista pelada con tope de 50 —y que por eso
+        # «casos abiertos» dijera 50 habiendo 153— es historia del código.
+        "Los casos de soporte, por páginas. Se puede filtrar por estado, " "prioridad y cuenta."
     ),
 )
 def listar(

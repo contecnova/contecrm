@@ -31,6 +31,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Tenants",
+        principal: true,
         // Con `objeto` para que cada fila se abra: suspender, reactivar,
         // exportar y ver el consumo cuelgan del tenant, y a un registro que no
         // se abre no se llega. Y `plan_codigo` no existe: el campo es `plan`,
@@ -138,6 +139,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "procesos": [
       {
         nombre: "Definiciones",
+        principal: true,
         listar: "/api/v1/procesos/definiciones",
         servicio: "orchestrator",
       },
@@ -328,6 +330,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "modelo": [
       {
         nombre: "Objetos",
+        principal: true,
         // Con `objeto` para que la fila abra. Sin esto, el modelo de datos se
         // podía listar y nada más: los campos, las validaciones, los tipos de
         // registro, los límites y la trazabilidad del esquema no se alcanzaban
@@ -426,6 +429,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // de quién es esta cuota— se resuelvan a un buscador con nombres en vez
         // de dejar un identificador a la vista.
         nombre: "Usuarios",
+        principal: true,
         objeto: "usuario",
         listar: "/api/v1/usuarios",
       // Lo que se consume de licencias, encima de la lista: dar de alta a alguien
@@ -525,6 +529,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // algo va mal es lo que no salió, no lo que salió bien hace un mes.
       {
         nombre: "Cola de fallidos",
+        principal: true,
         listar: "/api/v1/eventos/fallidos",
         servicio: "eventing",
       },
@@ -669,6 +674,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // una lista de problemas.
       {
         nombre: "Cuentas",
+        principal: true,
         objeto: "cuenta",
         listar: "/api/v1/accounts",
         crear: "/api/v1/accounts",
@@ -798,6 +804,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "proveedores": [
       {
         nombre: "Proveedores",
+        principal: true,
         objeto: "proveedor",
         listar: "/api/v1/proveedores",
         servicio: "party",
@@ -842,6 +849,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Actividades",
+        principal: true,
         objeto: "actividad",
         listar: "/api/v1/activities",
         crear: "/api/v1/activities",
@@ -946,6 +954,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Oportunidades",
+        principal: true,
         objeto: "oportunidad",
         listar: "/api/v1/opportunities",
         crear: "/api/v1/opportunities",
@@ -985,6 +994,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Leads",
+        principal: true,
         objeto: "lead",
         listar: "/api/v1/leads",
         crear: "/api/v1/leads",
@@ -1066,6 +1076,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Ingreso previsto",
+        principal: true,
         listar: "/api/v1/ingresos/previsto",
         servicio: "sales",
         permiso: "forecast:read",
@@ -1103,6 +1114,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Partners",
+        principal: true,
         objeto: "partner",
         listar: "/api/v1/partners",
         crear: "/api/v1/partners",
@@ -1189,6 +1201,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "campo": [
       {
         nombre: "Órdenes de trabajo",
+        principal: true,
         listar: "/api/v1/ordenes-trabajo",
         crear: "/api/v1/ordenes-trabajo",
         servicio: "service",
@@ -1271,6 +1284,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "postventa": [
       {
         nombre: "Devoluciones",
+        principal: true,
         objeto: "devolucion",
         listar: "/api/v1/devoluciones",
         crear: "/api/v1/devoluciones",
@@ -1328,6 +1342,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // pregunta de cualquiera que firme una factura de IA.
       {
         nombre: "Proveedores de IA",
+        principal: true,
         listar: "/api/v1/ia/proveedores",
         servicio: "intelligence",
         permiso: "ia:administrar",
@@ -1561,6 +1576,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // quedarse.
       {
         nombre: "Informes programados",
+        principal: true,
         listar: "/api/v1/informes/programaciones",
         servicio: "analytics",
         permiso: "informe:read",
@@ -1605,6 +1621,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "gobierno": [
       {
         nombre: "Riesgos",
+        principal: true,
         listar: "/api/v1/grc/riesgos",
         // El panel de GRC encima de los riesgos: lo que no cuadra HOY, ordenado
         // por lo que urge, y qué del producto tiene control y qué no. Un
@@ -1666,6 +1683,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "segmentos": [
       {
         nombre: "Segmentos",
+        principal: true,
         objeto: "segmento",
         listar: "/api/v1/segmentos",
         crear: "/api/v1/segmentos",
@@ -1733,6 +1751,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Campañas",
+        principal: true,
         objeto: "campana",
         listar: "/api/v1/campanas",
         crear: "/api/v1/campanas",
@@ -1805,6 +1824,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Casos",
+        principal: true,
         objeto: "caso",
         listar: "/api/v1/casos",
         crear: "/api/v1/casos",
@@ -1872,6 +1892,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // omnicanalidad viene a quitar.
       {
         nombre: "Canales",
+        principal: true,
         listar: "/api/v1/canales-servicio",
         crear: "/api/v1/canales-servicio",
         servicio: "service",
@@ -1890,6 +1911,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "conocimiento": [
       {
         nombre: "Artículos",
+        principal: true,
         objeto: "articulo",
         listar: "/api/v1/conocimiento/articulos",
         // Qué artículos sirven, cuáles estorban y cuáles no usa nadie. Un gestor de
@@ -1914,6 +1936,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "canales": [
       {
         nombre: "Canales",
+        principal: true,
         listar: "/api/v1/canales-marketing",
         crear: "/api/v1/canales-marketing",
         servicio: "marketing",
@@ -1938,6 +1961,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "contenido": [
       {
         nombre: "Reglas de contenido",
+        principal: true,
         listar: "/api/v1/reglas-contenido",
         servicio: "marketing",
       },
@@ -1987,6 +2011,18 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
 /** Las pestañas de un módulo, o ninguna si no es suyo. */
 export function recursosDe(ruta: string): Recurso[] {
   return RECURSOS_POR_MODULO[ruta] ?? [];
+}
+
+/**
+ * Por qué pestaña abre un módulo.
+ *
+ * La que lo **declare** con `principal`. Sin declaración se cae a la primera,
+ * que es lo que hacía antes: así un módulo nuevo no se queda en blanco
+ * mientras no se decide, y el gate es quien obliga a decidirlo.
+ */
+export function pestanaPrincipal(ruta: string): number {
+  const i = recursosDe(ruta).findIndex((r) => r.principal);
+  return i >= 0 ? i : 0;
 }
 
 /**

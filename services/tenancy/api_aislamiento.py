@@ -278,11 +278,12 @@ class AnotarTransferencia(BaseModel):
     "/{tenant_id}",
     dependencies=[Depends(exige_permiso("tenant:read"))],
     summary="Qué se declaró para este tenant, y si alguien lo ha contrastado",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Existía la acción de comprobar y no existía forma de abrir el
+    # registro: la acción no tenía pantalla desde la que llamarse y el
+    # listado enlazaba a una ficha que respondía 404. Residencia ya lo
+    # publicaba; aislamiento no.
     description=(
-        "Existía la acción de comprobar y no existía forma de **abrir** el "
-        "registro: la acción no tenía pantalla desde la que llamarse y el "
-        "listado enlazaba a una ficha que respondía 404. Residencia ya lo "
-        "publicaba; aislamiento no.\n\n"
         "Un tenant sin declarar sale como hueco, no como «compartido por "
         "defecto»: el defecto silencioso es justo cómo un cliente que paga por "
         "base dedicada acaba en la compartida."

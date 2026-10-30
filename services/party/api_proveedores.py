@@ -326,11 +326,10 @@ def vencen(
     response_model=list[dict],
     dependencies=[Depends(exige_permiso("party:read"))],
     summary="Los contactos declarados de este proveedor",
-    description=(
-        "Se podían dar de alta y no se podían leer: la pantalla enseñaba «a "
-        "quién llamo» —que devuelve solo el de escalado— y no había forma de "
-        "ver quién más consta ni de comprobar qué falta."
-    ),
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podían dar de alta y no se podían leer: la pantalla enseñaba «a
+    # quién llamo» —que devuelve solo el de escalado— y no había forma de
+    # ver quién más consta ni de comprobar qué falta.
 )
 def listar_contactos(cuenta_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     from sqlalchemy import select
@@ -362,11 +361,10 @@ def listar_contactos(cuenta_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     response_model=list[dict],
     dependencies=[Depends(exige_permiso("party:read"))],
     summary="En qué categorías está homologado, y hasta cuándo",
-    description=(
-        "Se podía homologar por categoría y consultarla de una en una, sabiendo "
-        "ya el nombre de la categoría. Quien abre la ficha no lo sabe: lo que "
-        "necesita es la lista."
-    ),
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podía homologar por categoría y consultarla de una en una,
+    # sabiendo ya el nombre de la categoría. Quien abre la ficha no lo
+    # sabe: lo que necesita es la lista.
 )
 def listar_homologaciones(cuenta_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     from sqlalchemy import select

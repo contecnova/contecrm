@@ -349,6 +349,57 @@ decía «3 fuera de plazo» habiendo cincuenta.
 Se entra al caso pulsando su fila entera. Una bandeja de la que no se puede
 entrar a trabajar es un informe.
 
+## Qué ves al abrir un módulo
+
+Un módulo —Casos, Campañas, Previsión— tiene varias pestañas, y algunos tienen
+muchas: Procesos y orquestación tiene veintiséis. **La primera que ves es la de
+los registros**: los casos en Casos, las campañas en Campañas, los leads en
+Prospección. Siempre va la primera de la fila y es la que sale al entrar.
+
+Las demás quedan a su derecha en el orden en que las agrupa el catálogo
+funcional, y la **papelera** va al final, como icono.
+
+> **Por qué se dice esto.** Hasta el 30-10-2026 no era así: cada módulo abría
+> por la pestaña que estuviera escrita primero en su fichero, y ese orden lo
+> puso el catálogo, no nadie pensando en quién lo abre. Medido en el navegador
+> sobre los veinticinco módulos: **Campañas abría en la papelera**, Casos en
+> «Satisfacción del periodo» —que no enseña nada hasta que eliges un rango de
+> fechas, con los casos en la pestaña 5 de 13—, Prospección en «Cadencias»,
+> Actividades en «Plantillas» y Previsión en «Territorios». De los veinticuatro
+> módulos con más de una pestaña, **uno** abría por sus registros.
+>
+> Ahora cada módulo declara cuál es la suya y hay una comprobación que no deja
+> añadir uno sin decidirlo.
+
+Si llegas con un enlace que lleva `?r=` —por ejemplo el botón **Crear** de la
+barra de arriba— manda el enlace, no la pestaña principal: te deja donde
+querías ir.
+
+## Cómo se lee una lista
+
+Por defecto los registros salen como **tarjetas** y no como tabla: la tarjeta
+lleva delante el nombre, debajo la cifra grande si la hay, el estado en color y
+el responsable con su cara. Una tabla de catorce columnas del mismo tamaño
+obliga a leerlas todas para encontrar el dato por el que entraste.
+
+Hay dos excepciones, y las dos salen de los datos:
+
+- Si los registros **no tienen con qué titularse** —apuntes de auditoría,
+  eventos, consumos—, la tarjeta sería una caja con un identificador dentro, y
+  entonces se abre en **tabla**.
+- Si cada registro es **una sola palabra** —«Motivos de pérdida admitidos»—, se
+  pintan como **etiquetas**.
+
+Con los tres botones de arriba a la derecha se cambia a tabla o a columnas, y
+**se recuerda por pestaña**: si prefieres la tabla para los casos, la siguiente
+vez sale la tabla para los casos y las tarjetas para lo demás.
+
+La tarjeta **no repite su propio título**. Un caso se titula por su asunto, así
+que debajo ya no vuelve a salir «Asunto: …» recortado; una cuenta se titula por
+su nombre, un artículo por el suyo. Antes sólo se descartaba el campo `nombre`,
+y como ocho de los nueve campos con los que algo se titula no son `nombre`, casi
+todas las tarjetas gastaban una de sus cinco líneas en repetirse.
+
 ## Filtrar una lista
 
 Encima de cualquier listado hay un botón **Filtrar**. Se elige un campo, una

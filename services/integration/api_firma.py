@@ -116,12 +116,13 @@ def listar_proveedores(db: DbDep, principal: AutenticadoDep) -> Any:
     "/reglas",
     dependencies=[Depends(exige_permiso("firma:read"))],
     summary="Qué regla decide proveedor y nivel, y en qué orden",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podían escribir y no leer. Una regla aquí decide con qué
+    # proveedor y con qué nivel eIDAS sale a firmar un documento, y eso es
+    # lo primero que pregunta una auditoría: «¿por qué este contrato se
+    # firmó con un clic?». Sin lectura, la respuesta había que buscarla en
+    # la base de datos.
     description=(
-        "**Se podían escribir y no leer.** Una regla aquí decide con qué "
-        "proveedor y con qué nivel eIDAS sale a firmar un documento, y eso es "
-        "lo primero que pregunta una auditoría: «¿por qué este contrato se "
-        "firmó con un clic?». Sin lectura, la respuesta había que buscarla en "
-        "la base de datos.\n\n"
         "**Por prioridad y no por nombre**, que es el orden en que se aplican: "
         "leídas alfabéticamente, dos reglas que se solapan parecen "
         "intercambiables y no lo son. Y las inactivas salen, marcadas: una "
@@ -165,12 +166,11 @@ def listar_reglas(db: DbDep, principal: AutenticadoDep) -> Any:
     "/plantillas",
     dependencies=[Depends(exige_permiso("firma:read"))],
     summary="Las plantillas de firma declaradas",
-    description=(
-        "**Se podían escribir y no leer.** Una plantilla dice dónde va cada "
-        "firma, qué tiene que rellenar el firmante, con qué nivel sale y "
-        "cuántos días vale. Sin poder consultarlas, la única forma de saber "
-        "por qué un sobre caducó a los siete días era mandar otro."
-    ),
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podían escribir y no leer. Una plantilla dice dónde va cada
+    # firma, qué tiene que rellenar el firmante, con qué nivel sale y
+    # cuántos días vale. Sin poder consultarlas, la única forma de saber
+    # por qué un sobre caducó a los siete días era mandar otro.
 )
 def listar_plantillas(db: DbDep, principal: AutenticadoDep) -> Any:
     filas = (
@@ -533,11 +533,12 @@ def panel(db: DbDep, principal: AutenticadoDep, limite: int = Query(100, ge=1, l
     "/llamadas",
     dependencies=[Depends(exige_permiso("firma:read"))],
     summary="Qué se le pidió al proveedor, qué contestó y cuánto costó",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # El registro se escribía desde el primer día y no lo leía nadie. La
+    # capacidad dice «para conciliar la factura», y un registro que no se
+    # puede leer no concilia nada — ni sirve para desatascar un sobre a
+    # las dos de la mañana, que es la otra vez que se mira.
     description=(
-        "**El registro se escribía desde el primer día y no lo leía nadie.** La "
-        "capacidad dice «para conciliar la factura», y un registro que no se "
-        "puede leer no concilia nada — ni sirve para desatascar un sobre a las "
-        "dos de la mañana, que es la otra vez que se mira.\n\n"
         "Devuelve el **gasto sumado** además de las filas: conciliar una factura "
         "con doscientos importes en pantalla es volver a sumarlos a mano.\n\n"
         "Y **las que fallaron van aparte, con su gasto**. Un proveedor que cobra "

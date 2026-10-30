@@ -164,13 +164,14 @@ class PoliticaCampoIn(BaseModel):
     "/campos",
     dependencies=[Depends(exige_permiso("role:read"))],
     summary="Las excepciones de campo declaradas",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se podían escribir y no leer. La ruta que las crea justifica
+    # escribirlas con que «una excepción que vive en la cabeza de quien la
+    # pidió es la que nadie revisa al año siguiente» — y sin forma de
+    # leerlas la excepción vivía igual de escondida, sólo que en una
+    # tabla. Declarar que el margen lo tapa también dirección y que nadie
+    # pueda comprobarlo después es lo que convierte un control en papeleo.
     description=(
-        "**Se podían escribir y no leer.** La ruta que las crea justifica "
-        "escribirlas con que «una excepción que vive en la cabeza de quien la "
-        "pidió es la que nadie revisa al año siguiente» — y sin forma de "
-        "leerlas la excepción vivía igual de escondida, sólo que en una tabla. "
-        "Declarar que el margen lo tapa también dirección y que nadie pueda "
-        "comprobarlo después es lo que convierte un control en papeleo.\n\n"
         "Ordenadas por objeto y campo, no por fecha: se revisan por el dato que "
         "tapan. La pregunta es «qué pasa con el margen», no «qué se declaró en "
         "marzo»."

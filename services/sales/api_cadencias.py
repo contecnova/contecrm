@@ -358,12 +358,13 @@ class CrearPlaybook(BaseModel):
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(exige_permiso("opportunity:write"))],
     summary="Declarar un playbook",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # No había forma de crear uno. La tabla existía, `playbook_para` la
+    # leía y elegía el más específico, y en el producto no entraba ni una
+    # fila: ni POST, ni listado, ni semilla. Sólo las pruebas escribían,
+    # construyendo el ORM a mano, así que la capacidad constaba hecha y el
+    # selector devolvía `None` siempre.
     description=(
-        "**No había forma de crear uno.** La tabla existía, `playbook_para` la "
-        "leía y elegía el más específico, y en el producto no entraba ni una "
-        "fila: ni POST, ni listado, ni semilla. Sólo las pruebas escribían, "
-        "construyendo el ORM a mano, así que la capacidad constaba hecha y el "
-        "selector devolvía `None` siempre.\n\n"
         "Sin etapa ni segmento es el **genérico**, y pierde contra uno que los "
         "nombre: con el orden al revés, el genérico taparía siempre al que "
         "alguien escribió para su caso."

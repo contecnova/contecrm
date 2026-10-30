@@ -45,6 +45,22 @@ export interface Recurso {
   servicio: string;
   /** Columnas preferidas. Las demás siguen estando, detrás. */
   columnas?: string[];
+  /**
+   * Esta es la pestaña por la que abre el módulo.
+   *
+   * Antes abría **la que estuviera escrita primero**, y ese orden lo puso el
+   * catálogo, no nadie pensando en quién lo abre. Medido en el navegador sobre
+   * los 25 módulos: «Campañas» abría en la **papelera**, «Casos» en
+   * «Satisfacción del periodo» —que no enseña nada hasta elegir un rango de
+   * fechas, con los casos en la pestaña 5 de 13—, «Prospección» en
+   * «Cadencias», «Actividades» en «Plantillas» y «Previsión» en «Territorios».
+   * De los 24 módulos con más de una pestaña, uno abría por sus registros.
+   *
+   * No es un número en el código: cada módulo lo **declara**, y un gate exige
+   * que todos los de más de una pestaña declaren exactamente uno. Un valor por
+   * defecto implícito es el que nadie revisa.
+   */
+  principal?: true;
   /** Permiso que hace falta para verlo. Lo declara el servicio; aquí se lee. */
   permiso?: string;
   /**

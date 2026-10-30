@@ -272,10 +272,11 @@ class Excepcion(BaseModel):
     dependencies=[Depends(exige_permiso("forecast:read"))],
     summary="Qué cuentas están fuera de su territorio, y por qué",
     description=(
-        "**Se declaraban y no se podían listar** (CRM-03.02.02.02). El "
-        "resolutor las lee al asignar una cuenta —así que funcionan— y ninguna "
-        "ruta las devolvía, con lo que «¿por qué esta cuenta es de Ana y no de "
-        "la zona norte?» sólo se contestaba mirando la base de datos.\n\n"
+        # Antes no se podían listar (CRM-03.02.02.02): el resolutor las leía
+        # al asignar, así que funcionaban, pero «¿por qué esta cuenta es de Ana
+        # y no de la zona norte?» sólo se contestaba mirando la base de datos.
+        "Las excepciones de territorio: qué cuenta se lleva quién al margen "
+        "de la regla general, y desde cuándo hasta cuándo.\n\n"
         "Y caducan. Con `hasta` puesto dejan de aplicarse sin avisar a nadie, "
         "así que la cuenta vuelve a su territorio de origen un lunes y quien la "
         "llevaba se entera por el pipeline. Por eso las que vencen en treinta "

@@ -251,14 +251,14 @@ def grupo_compra(oportunidad_id: UUID, db: DbDep, principal: AutenticadoDep) -> 
     "/de/{oportunidad_id}",
     dependencies=[Depends(exige_permiso("sales:read"))],
     summary="El reparto y las relacionadas de una oportunidad",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se escribían y no las leía nadie (CRM-03.01.01.08, CRM-03.01.01.11).
+    # El reparto entre comerciales y el enlace con la renovación o el
+    # upsell se guardaban en su tabla, y esas tablas sólo las consultaba
+    # su propio escritor para reemplazar filas: ninguna ruta las devolvía.
+    # Se podía declarar quién se lleva qué parte de una comisión y no
+    # había forma de comprobarlo hasta que llegaba la liquidación.
     description=(
-        "**Se escribían y no las leía nadie** (CRM-03.01.01.08, "
-        "CRM-03.01.01.11). El reparto entre comerciales y el enlace con la "
-        "renovación o el upsell se guardaban en su tabla, y esas tablas sólo "
-        "las consultaba su propio escritor para reemplazar filas: ninguna ruta "
-        "las devolvía. Se podía declarar quién se lleva qué parte de una "
-        "comisión y **no había forma de comprobarlo** hasta que llegaba la "
-        "liquidación.\n\n"
         "Van juntas porque se miran juntas: delante de una oportunidad las dos "
         "preguntas son «¿quién se lleva esto?» y «¿de qué viene y qué sale de "
         "aquí?».\n\n"

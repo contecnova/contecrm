@@ -587,9 +587,10 @@ def invitar_externo(datos: InvitarExterno, uow: UowDep, principal: AutenticadoDe
     dependencies=[Depends(exige_permiso("user:read"))],
     summary="Usuarios del tenant",
     description=(
-        "Por páginas con cursor. Antes devolvía la lista entera sin tope: en un "
-        "tenant de diez mil personas eso es diez mil filas en una respuesta, y el "
-        "navegador que la pide se queda parado sin que nadie sepa por qué."
+        # Lo que lee quien abre la pantalla: qué es esto, no qué hacía mal
+        # antes. Que sin tope fueran diez mil filas en una respuesta es
+        # historia del código y vive en el comentario, no en el producto.
+        "Las personas de la organización, por páginas."
     ),
 )
 def listar_usuarios(

@@ -106,10 +106,11 @@ def estado_modelos(db: DbDep, principal: AutenticadoDep) -> Any:
     "/deriva",
     dependencies=[Depends(exige_permiso("ia:administrar"))],
     summary="Cómo ha ido acertando el modelo con el tiempo",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Las mediciones se anotaban y no las leía nadie: había ruta para
+    # escribir una y ninguna para verlas. Una deriva que no se mira no
+    # avisa de nada, que es lo contrario de para lo que se mide.
     description=(
-        "**Las mediciones se anotaban y no las leía nadie**: había ruta para "
-        "escribir una y ninguna para verlas. Una deriva que no se mira no "
-        "avisa de nada, que es lo contrario de para lo que se mide.\n\n"
         "Cada medición va con **su referencia y la caída** respecto a ella: un "
         "AUC de 0,71 no dice nada solo y dice mucho al lado del 0,86 con el que "
         "se entrenó. Y con **cuántos casos** se midió, porque una caída medida "
@@ -423,9 +424,10 @@ class Clasificar(BaseModel):
     "/{anomalia_id}",
     dependencies=[Depends(exige_permiso("ia:usar"))],
     summary="Una anomalía, con lo que la explica",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Existía «decir si el aviso valía» y no existía forma de abrir el
+    # aviso: la acción no tenía pantalla desde la que llamarse.
     description=(
-        "Existía «decir si el aviso valía» y no existía forma de **abrir** el "
-        "aviso: la acción no tenía pantalla desde la que llamarse.\n\n"
         "Lleva el valor, lo que se esperaba, cuánto se desvía y por qué, que es "
         "lo que hace falta para contestar si era real. Sin eso se contesta a ojo, "
         "y entonces la respuesta no mide el detector: mide quién la dio."
@@ -439,11 +441,12 @@ def ficha_de_anomalia(anomalia_id: UUID, db: DbDep, principal: AutenticadoDep) -
     "/resumenes",
     dependencies=[Depends(exige_permiso("ia:usar"))],
     summary="Los resúmenes propuestos, con lo que quedó pendiente",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Se escribían y no los leía nadie. El resumen existe para que el
+    # agente que recoge una conversación no empiece de cero, y ninguna
+    # ruta lo devolvía: se generaba, se pagaba al proveedor de IA y se
+    # quedaba en una tabla que nadie podía abrir.
     description=(
-        "**Se escribían y no los leía nadie.** El resumen existe para que el "
-        "agente que recoge una conversación no empiece de cero, y ninguna ruta "
-        "lo devolvía: se generaba, se pagaba al proveedor de IA y se quedaba "
-        "en una tabla que nadie podía abrir.\n\n"
         "Los **pendientes** van aparte del texto porque son lo que el siguiente "
         "agente lee primero y lo que más se inventa un modelo. Y van **de "
         "cuántos mensajes salió y cuántos se usaron**: un resumen hecho con "

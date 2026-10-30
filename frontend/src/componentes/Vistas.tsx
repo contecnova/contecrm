@@ -34,7 +34,14 @@ import {
   retrasoDe,
   tonoDe,
 } from "@/lib/semaforo";
-import { escalar, esIdentificadorTecnico, humanizar, nombreDelRegistro, tieneDato } from "@/lib/formato";
+import {
+  campoDelNombre,
+  escalar,
+  esIdentificadorTecnico,
+  humanizar,
+  nombreDelRegistro,
+  tieneDato,
+} from "@/lib/formato";
 import { ErrorApi } from "@/lib/api";
 import { cn } from "@/lib/utiles";
 
@@ -182,16 +189,28 @@ function tituloDe(fila: Record<string, unknown>): string {
   return nombreDelRegistro(fila);
 }
 
-/** Los campos que se enseñan en una tarjeta: los útiles, sin el título. */
+/**
+ * Los campos que se enseñan en una tarjeta: los útiles, **sin el título**.
+ *
+ * Cuál es el título no es un nombre escrito aquí: lo dice `campoDelNombre`,
+ * que es quien lo eligió. Antes esta función recibía la cadena `"nombre"` a
+ * mano desde sus dos llamadas, así que sólo se excluía ese campo: la tarjeta
+ * de un caso —que se titula por `asunto`— repetía su propio título debajo y
+ * recortado, y lo mismo con `titulo`, `razon_social`, `clave`, `codigo`,
+ * `email`, `slug` y `nombre_completo`.
+ *
+ * Se mira fila a fila porque un listado puede mezclar: en una lista de
+ * contactos unos traen `nombre_completo` y otros sólo `email`.
+ */
 function camposDeTarjeta(
   filas: Record<string, unknown>[],
   columnas: string[] | undefined,
-  titulo: string,
 ): string[] {
+  const titulares = new Set(filas.map((f) => campoDelNombre(f)).filter(Boolean));
   const claves =
     columnas ??
     [...new Set(filas.flatMap((f) => Object.keys(f)))].filter((c) => !esIdentificadorTecnico(c));
-  return claves.filter((c) => c !== titulo && filas.some((f) => tieneDato(f[c]))).slice(0, 5);
+  return claves.filter((c) => !titulares.has(c) && filas.some((f) => tieneDato(f[c]))).slice(0, 5);
 }
 
 /**
@@ -343,7 +362,7 @@ export function Tarjetas({
   columnas?: string[];
   enlace?: (fila: Record<string, unknown>) => string | null;
 }) {
-  const campos = useMemo(() => camposDeTarjeta(filas, columnas, "nombre"), [filas, columnas]);
+  const campos = useMemo(() => camposDeTarjeta(filas, columnas), [filas, columnas]);
   const personas = usePersonas();
   return (
     // Todas las tarjetas del mismo alto, y el de la mayor **de la rejilla
@@ -437,7 +456,7 @@ export function Agrupado({
   /** Guarda el nuevo valor del campo de agrupación. Ausente: no se arrastra. */
   mover?: (fila: Record<string, unknown>, valor: string) => Promise<void>;
 }) {
-  const campos = useMemo(() => camposDeTarjeta(filas, columnas, "nombre"), [filas, columnas]);
+  const campos = useMemo(() => camposDeTarjeta(filas, columnas), [filas, columnas]);
   const personas = usePersonas();
   const sumable = useMemo(
     () => campos.find((c) => SUMABLES.test(c) && filas.some((f) => Number(f[c]) > 0)) ?? "",

@@ -148,11 +148,13 @@ class CaducidadIn(BaseModel):
     "/linaje",
     dependencies=[Depends(exige_permiso("party:write"))],
     summary="Apuntar de dónde viene un valor",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # Es la mitad que faltaba. El linaje se podía consultar —«¿por qué
+    # pone esto aquí?»— y no se podía escribir: la tabla estaba vacía, así
+    # que la consulta devolvía nada y los valores obsoletos no salían
+    # nunca. Las dos respuestas eran las mismas que si todo estuviera al
+    # día.
     description=(
-        "Es **la mitad que faltaba**. El linaje se podía consultar —«¿por qué "
-        "pone esto aquí?»— y no se podía escribir: la tabla estaba vacía, así "
-        "que la consulta devolvía nada y los valores obsoletos no salían nunca. "
-        "Las dos respuestas eran las mismas que si todo estuviera al día.\n\n"
         "Lo escribe quien integra: el conector que trae el maestro, el "
         "formulario que recoge un dato, la persona que lo corrige.\n\n"
         "Y `cambiado_at` **solo se mueve cuando el valor cambia de verdad**. Es "

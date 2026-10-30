@@ -265,12 +265,14 @@ def traducir(
     "/traducir-salida",
     dependencies=[Depends(exige_permiso("integracion:read"))],
     summary="Traducir un registro del idioma común al del sistema externo",
+    # Por qué se añadió, que no es lo que lee quien abre la pantalla:
+    # La vuelta de `/traducir`. Faltaba entera: se podía traducir lo que
+    # llegaba de fuera y no había forma de obtener la traducción de
+    # salida, así que quien tenía que mandar algo a ese sistema se
+    # escribía el mapeo otra vez por su cuenta — y entonces hay dos mapeos
+    # del mismo adaptador y el que se queda atrás manda datos al campo
+    # equivocado.
     description=(
-        "La vuelta de `/traducir`. **Faltaba entera**: se podía traducir lo que "
-        "llegaba de fuera y no había forma de obtener la traducción de salida, "
-        "así que quien tenía que mandar algo a ese sistema se escribía el mapeo "
-        "otra vez por su cuenta — y entonces hay dos mapeos del mismo adaptador "
-        "y el que se queda atrás manda datos al campo equivocado.\n\n"
         "Lo que **no viaja** se devuelve aparte y no se tira: un campo que el "
         "sistema externo no acepta tiene que verse, no desaparecer. Y respeta la "
         "dirección declarada por campo: lo marcado como `hacia_dentro` no sale, "
