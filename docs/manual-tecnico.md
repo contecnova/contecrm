@@ -3124,6 +3124,39 @@ porque la tabla estaba siempre vacía. Ahora tiene su listado, su ficha, su alta
 y su exportación —cuatro puertas—, y el prefijo está declarado en el enrutado
 del gateway, sin el cual las cuatro contestaban 404.
 
+### 4.6.37 La presión y el freno automático
+
+Dos cosas que el sistema **hacía** y no enseñaba, las dos en la página de
+estado.
+
+**La presión.** Cuando un servicio va apretado se aplaza lo que no es crítico,
+y eso explica por qué algo tarda hoy y ayer no; sin verlo, la causa se busca en
+el sitio equivocado. Y lo que decide no es la media: es **el que peor va**. Con
+uno ahogado y trece holgados la media sale tranquila y lo no crítico se difiere
+igual, así que el peor sale al lado del número. Un servicio que no contesta no
+cuenta como holgado: sale aparte, porque «nadie va apretado» y «no he podido
+preguntar a tres» se leen igual.
+
+**El freno adaptativo.** A un tenant que se sale de su patrón se le baja la
+cuota —al 75 %, al 50 %, al 25 %—, y eso se anota, se evalúa y se aplica en el
+proxy de **cada petición**. No había ninguna ruta que dijera a quién: un
+cliente podía llevar horas a un cuarto de su cuota, con sus integraciones
+reintentando más fuerte porque les llega un 429, y la única forma de enterarse
+era leer los registros del gateway.
+
+Tres cosas que el panel dice y que no son adorno:
+
+- **el factor**, no sólo «frenado»: al 75 % y al 25 % no se hace lo mismo;
+- **el motivo**, porque un freno sin explicación hace que la integración
+  reintente más fuerte, que es lo contrario de lo que hace falta;
+- y **cuántas ventanas se llevan observadas** de cada uno. Por debajo del
+  mínimo no se evalúa a nadie, así que un tenant disparado puede no salir
+  frenado todavía — y eso, sin decirlo, parece un fallo del freno.
+
+Lo observado vive en la memoria del proceso, así que la lista es la de **ese**
+gateway. Se dice en la respuesta: con varias réplicas, una lista corta no
+significa que no haya nadie frenado.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

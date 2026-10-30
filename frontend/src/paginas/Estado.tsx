@@ -1,5 +1,6 @@
 /**
- * La página de estado del tenant (CRM-00.06.01.06).
+ * La página de estado del tenant (CRM-00.06.01.06, CRM-00.01.06.03,
+ * CRM-00.01.06.04, CRM-00.01.06.05).
  *
  * Enseña además CRM-00.06.01.04 (el objetivo de servicio comprometido por tier
  * y el presupuesto de error gastado), CRM-00.06.01.05 (el alertado con su
@@ -9,6 +10,15 @@
  * Enseña también los compromisos de servicio del tenant —RPO, RTO,
  * disponibilidad— junto a lo medido (CRM-07.04.03.30): un compromiso escrito en
  * un contrato que nadie compara con la realidad no lo comprueba nadie.
+ *
+ * **Dos cosas que el sistema hacía y no enseñaba.** La presión: cuando un
+ * servicio va apretado se aplaza lo que no es crítico, y eso explica por qué
+ * algo tarda hoy y ayer no — sin verlo, se busca la causa en el sitio
+ * equivocado. Y el freno automático: a un tenant que se sale de su patrón se
+ * le baja la cuota, se aplicaba en el proxy de cada petición y **no había
+ * ninguna ruta que dijera a quién**. Un cliente podía llevar horas a un cuarto
+ * de su cuota, con sus integraciones reintentando más fuerte, y para
+ * averiguarlo había que leer los registros.
  *
  * La compone el gateway juntando lo que publica cada servicio sobre sus propios
  * componentes. Aquí solo se pinta: si esta pantalla dedujera el estado general
@@ -98,6 +108,38 @@ interface Contratos {
 }
 
 /** `GET /estado/consultas-degradadas`: lo que va más lento de lo que debería. */
+interface Presion {
+  medible: boolean;
+  presion: number | null;
+  /** El que peor va: lo que se aplaza depende de él, no de la media. */
+  peor: string | null;
+  servicios: { servicio: string; presion?: number; legible?: boolean }[];
+  sin_respuesta: string[];
+  que_significa: string;
+  aviso: string;
+  la_interfaz?: unknown;
+}
+
+interface Frenado {
+  tenant_id: string;
+  frenado: boolean;
+  /** 0,75 · 0,5 · 0,25 de su cuota. */
+  factor_de_cuota: number;
+  hasta?: string | null;
+  quedan_segundos?: number | null;
+  motivo: string;
+  /** Por debajo del mínimo no se evalúa a nadie, y eso explica un «todavía no». */
+  ventanas_observadas: number;
+  escalon: number;
+}
+
+interface Frenados {
+  observados: Frenado[];
+  frenados: number;
+  minimo_ventanas: number;
+  porque_solo_estos: string;
+}
+
 interface Degradadas {
   aviso: string;
   sin_respuesta: string[];
@@ -112,6 +154,8 @@ export function Estado() {
   const [consumo, setConsumo] = useState<Consumo | null>(null);
   const [contratos, setContratos] = useState<Contratos | null>(null);
   const [degradadas, setDegradadas] = useState<Degradadas | null>(null);
+  const [presion, setPresion] = useState<Presion | null>(null);
+  const [frenados, setFrenados] = useState<Frenados | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   useEffect(() => {
@@ -141,6 +185,12 @@ export function Estado() {
       .catch(() => undefined);
     llamar<Contratos>("/api/v1/estado/contratos", { signal: control.signal })
       .then((r) => setContratos(r.datos))
+      .catch(() => undefined);
+    llamar<Presion>("/api/v1/estado/presion", { signal: control.signal })
+      .then((r) => setPresion(r.datos))
+      .catch(() => undefined);
+    llamar<Frenados>("/api/v1/estado/frenados", { signal: control.signal })
+      .then((r) => setFrenados(r.datos))
       .catch(() => undefined);
     llamar<Degradadas>("/api/v1/estado/consultas-degradadas", { signal: control.signal })
       .then((r) => setDegradadas(r.datos))
@@ -354,6 +404,107 @@ export function Estado() {
           ) : null}
         </>
       ) : null}
+
+      <LaPresion presion={presion} />
+      <LosFrenados frenados={frenados} />
     </>
+  );
+}
+
+/**
+ * Cuánto se está aplazando, y por culpa de quién (CRM-00.01.06.03, .04).
+ *
+ * Lo que se aplaza **no depende de la media, depende del que peor va**: con
+ * un servicio ahogado y trece holgados, la media sale tranquila y lo no
+ * crítico se está difiriendo igual. Por eso sale `peor` al lado del número.
+ *
+ * Y un servicio que no contesta no cuenta como holgado: sale aparte, porque
+ * «nadie va apretado» y «no he podido preguntar a tres» se leen igual.
+ */
+function LaPresion({ presion }: { presion: Presion | null }) {
+  const { t } = useTranslation();
+  if (!presion) return null;
+  const mudos = presion.sin_respuesta ?? [];
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="text-sm font-medium text-ink">{t("estado.presion")}</h2>
+      {!presion.medible ? (
+        <p className="mt-2 text-2xs text-warning">
+          {presion.aviso || t("estado.presionNoMedible")}
+        </p>
+      ) : (
+        <>
+          <p className="mt-2 font-mono text-lg text-ink">
+            {t("estado.presionEs", { presion: presion.presion })}
+          </p>
+          {/* El que peor va, al lado: es quien decide lo que se aplaza. */}
+          <p className="mt-1 text-2xs text-ink">
+            {presion.peor
+              ? t("estado.peorServicio", { servicio: presion.peor })
+              : t("estado.nadieApretado")}
+          </p>
+          {presion.que_significa ? (
+            <p className="mt-1 text-3xs text-ink-faint">{presion.que_significa}</p>
+          ) : null}
+        </>
+      )}
+      {mudos.length > 0 ? (
+        <p className="mt-2 text-2xs text-warning">
+          {t("estado.presionSinRespuesta", { cuantos: mudos.length })}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * A quién le ha bajado la cuota el freno automático (CRM-00.01.06.05).
+ *
+ * Esto se aplicaba y **no se veía**. Un cliente a un cuarto de su cuota, con
+ * sus integraciones reintentando más fuerte porque les llega un 429, y la
+ * única forma de enterarse era leer los registros del gateway.
+ *
+ * Se enseña también **cuántas ventanas se llevan observadas** de cada uno:
+ * por debajo del mínimo no se evalúa a nadie, así que uno que está disparado
+ * puede no salir frenado todavía — y eso, sin decirlo, parece un fallo del
+ * freno.
+ */
+function LosFrenados({ frenados }: { frenados: Frenados | null }) {
+  const { t } = useTranslation();
+  if (!frenados) return null;
+  const observados = frenados.observados ?? [];
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="text-sm font-medium text-ink">{t("estado.frenados")}</h2>
+      {/* Lo que ve ESTE proceso: con varias réplicas cada una tiene su parte,
+          y una lista corta no significa que no haya nadie frenado. */}
+      <p className="mt-1 text-3xs text-ink-faint">{frenados.porque_solo_estos}</p>
+      {observados.length === 0 ? (
+        <p className="mt-2 text-2xs text-ink-muted">{t("estado.nadieObservado")}</p>
+      ) : (
+        <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+          {observados.map((f) => (
+            <li key={f.tenant_id} className="flex flex-wrap items-baseline gap-2">
+              <span className="font-mono text-3xs text-ink">{f.tenant_id}</span>
+              {f.frenado ? (
+                <span className="badge badge-aviso">
+                  {t("estado.aCuota", { pct: Math.round(f.factor_de_cuota * 100) })}
+                </span>
+              ) : (
+                <span className="chip-dato">
+                  {t("estado.observado", {
+                    ventanas: f.ventanas_observadas,
+                    minimo: frenados.minimo_ventanas,
+                  })}
+                </span>
+              )}
+              {f.frenado && f.motivo ? (
+                <span className="w-full text-3xs text-ink-muted">{f.motivo}</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

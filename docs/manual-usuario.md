@@ -2302,6 +2302,30 @@ Si pone que el plan **no se ha compartido**, no es un plan conjunto: es una
 lista nuestra con el nombre del cliente encima. Y si avisa de que la fecha
 objetivo ya no se sostiene, es que con lo que queda por hacer no da tiempo.
 
+### Si hoy va lento y ayer no
+
+Mira **Estado** y baja hasta «Cuánto se está aplazando». Cuando un servicio va
+apretado, el sistema aplaza lo que no es urgente para que lo importante siga
+pasando. Si ahí sale un servicio como «el que peor va», ésa es la causa — y no
+lo que estuvieras mirando.
+
+Ojo con una cosa: lo que se aplaza lo decide el que peor está, no la media. Con
+un servicio ahogado y trece bien, la media parece tranquila y aun así se está
+difiriendo trabajo.
+
+Y si pone que **no se ha podido medir la presión**, no es que esté todo
+holgado: es que no se sabe.
+
+### Si un cliente dice que su integración recibe errores 429
+
+Mira en **Estado** el panel «A quién le ha bajado la cuota el freno
+automático». Si ese cliente sale ahí, el sistema le ha reducido la cuota
+porque se salió de su patrón de uso, y dice **cuánto** —al 75 %, al 50 % o al
+25 %— y **por qué**. El freno se suelta solo; no hay que quitarlo a mano.
+
+Si sale pero **sin frenar**, con «N de M ventanas observadas», es que todavía
+no hay suficiente historia para evaluarlo: no es que el freno no funcione.
+
 ---
 
 ## Qué hacer cuando algo no sale

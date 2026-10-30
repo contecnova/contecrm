@@ -205,6 +205,51 @@ def estado(tenant_id: UUID | str, *, ahora: datetime | None = None) -> dict[str,
     }
 
 
+def frenados(*, ahora: datetime | None = None) -> dict[str, Any]:
+    """Quiénes están frenados ahora mismo, y qué se está observando.
+
+    El freno se aplicaba y **no se podía ver**: `anotar`, `evaluar` y `frenar`
+    corren en el proxy de cada petición, y no había ninguna ruta que dijera a
+    quién le han bajado la cuota. O sea que un cliente podía llevar horas a un
+    cuarto de su cuota, con sus integraciones reintentando, y para averiguarlo
+    había que leer los registros.
+
+    **Es lo que ve ESTE proceso.** Lo observado vive en memoria, así que con
+    varias réplicas del gateway cada una tiene su parte; se dice aquí para que
+    nadie lea una lista corta como «no hay nadie frenado».
+    """
+    momento = ahora or _ahora()
+    filas = []
+    for clave, obs in _observado.items():
+        suyo = estado(clave, ahora=momento)
+        filas.append(
+            {
+                "tenant_id": clave,
+                "frenado": suyo["frenado"],
+                "factor_de_cuota": suyo["factor_de_cuota"],
+                "hasta": suyo.get("hasta"),
+                "quedan_segundos": suyo.get("quedan_segundos"),
+                "motivo": suyo.get("motivo", ""),
+                # Cuántas ventanas se llevan observadas: con menos del mínimo
+                # no se evalúa a nadie, y eso explica por qué uno que está
+                # disparado todavía no sale frenado.
+                "ventanas_observadas": len(obs.ventanas),
+                "escalon": obs.escalon,
+            }
+        )
+    filas.sort(key=lambda f: (not f["frenado"], f["tenant_id"]))
+    return {
+        "observados": filas,
+        "frenados": sum(1 for f in filas if f["frenado"]),
+        "minimo_ventanas": MINIMO_VENTANAS,
+        "porque_solo_estos": (
+            "Lo observado vive en la memoria de este proceso del gateway. Con "
+            "varias réplicas, cada una ve su parte: una lista corta no "
+            "significa que no haya nadie frenado en las demás."
+        ),
+    }
+
+
 def reiniciar() -> None:
     """Vacía lo observado. Para las pruebas y para un reinicio en caliente."""
     _observado.clear()

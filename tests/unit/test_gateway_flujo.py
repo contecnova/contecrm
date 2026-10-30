@@ -208,3 +208,69 @@ def test_las_rutas_propias_del_gateway_si_declaran_lo_que_miran() -> None:
         if motivo_de_apertura(getattr(r, "endpoint", None))
     ]
     assert abiertas == ["/api/{ruta:path}"], abiertas
+
+
+# ── Quién está frenado ahora mismo (CRM-00.01.06.05) ────────────────────
+#
+# El freno adaptativo se aplicaba y NO se podía ver: `anotar`, `evaluar` y
+# `frenar` corren en el proxy de cada petición, y no había ninguna ruta que
+# dijera a quién le han bajado la cuota. Un cliente podía llevar horas a un
+# cuarto de la suya, con sus integraciones reintentando más fuerte porque les
+# llega un 429, y para averiguarlo había que leer los registros.
+
+
+def test_los_frenados_se_pueden_ver_y_dicen_por_que() -> None:
+    from services.gateway import anomalias
+
+    anomalias.reiniciar()
+    try:
+        # Un tenant tranquilo y otro que se dispara.
+        for _ in range(anomalias.MINIMO_VENTANAS):
+            anomalias.anotar("aaa-tranquilo", 10)
+            anomalias.anotar("zzz-disparado", 10)
+        anomalias.anotar("zzz-disparado", 10_000)
+        veredicto = anomalias.evaluar("zzz-disparado")
+        anomalias.frenar("zzz-disparado", motivo=veredicto["porque"])
+
+        salida = anomalias.frenados()
+        porId = {f["tenant_id"]: f for f in salida["observados"]}
+        assert porId["zzz-disparado"]["frenado"] is True
+        # El factor es lo que de verdad le han bajado: sin él, «frenado» no
+        # dice si está al 75 % o al 25 %.
+        assert porId["zzz-disparado"]["factor_de_cuota"] < 1.0
+        assert porId["zzz-disparado"]["motivo"], "un freno sin motivo hace reintentar más fuerte"
+        assert porId["aaa-tranquilo"]["frenado"] is False
+        assert salida["frenados"] == 1
+        # Y el frenado va PRIMERO, aunque alfabéticamente fuera el último:
+        # con los nombres al revés esta comprobación pasaba sin mirar nada.
+        assert salida["observados"][0]["tenant_id"] == "zzz-disparado"
+    finally:
+        anomalias.reiniciar()
+
+
+def test_dice_cuantas_ventanas_lleva_observadas_cada_uno() -> None:
+    """Por debajo del mínimo no se evalúa a nadie, así que uno disparado puede
+    no salir frenado todavía — y eso, sin decirlo, parece un fallo del freno."""
+    from services.gateway import anomalias
+
+    anomalias.reiniciar()
+    try:
+        anomalias.anotar("nuevo", 10_000)
+        salida = anomalias.frenados()
+        fila = salida["observados"][0]
+        assert fila["frenado"] is False
+        assert fila["ventanas_observadas"] == 1
+        assert salida["minimo_ventanas"] == anomalias.MINIMO_VENTANAS
+    finally:
+        anomalias.reiniciar()
+
+
+def test_dice_que_es_lo_que_ve_este_proceso() -> None:
+    """Lo observado vive en memoria: con varias réplicas cada una ve su parte,
+    y una lista corta se leería como «no hay nadie frenado»."""
+    from services.gateway import anomalias
+
+    anomalias.reiniciar()
+    salida = anomalias.frenados()
+    assert salida["observados"] == []
+    assert salida["porque_solo_estos"], "no avisa de que es la vista de un proceso"

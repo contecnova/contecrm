@@ -872,7 +872,27 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   Y un plan que el cliente no ha visto no es un plan conjunto: es una lista
 #   nuestra con su nombre encima, asi que `compartido` y `visto_por_el_cliente`
 #   van delante de los pasos.
-TOPE_SIN_PANTALLA = 213
+#   30-10-2026  210 de 778  la presion y el freno automatico, en la pagina de
+#   ------------------------------------------------------------------------
+#   estado.
+#
+#   Dos cosas que el sistema HACIA y no ensenaba. La presion: cuando un
+#   servicio va apretado se aplaza lo que no es critico, y eso explica por que
+#   algo tarda hoy y ayer no — sin verlo se busca la causa en el sitio
+#   equivocado. Y lo que decide no es la media sino EL QUE PEOR VA: con uno
+#   ahogado y trece holgados la media sale tranquila y lo no critico se
+#   difiere igual.
+#
+#   Y el freno adaptativo: a un tenant que se sale de su patron se le baja la
+#   cuota, se anota, se evalua y se frena en el proxy de CADA peticion, y no
+#   habia ninguna ruta que dijera A QUIEN. Un cliente podia llevar horas a un
+#   cuarto de su cuota —con sus integraciones reintentando mas fuerte porque
+#   les llega un 429— y la unica forma de enterarse era leer los registros.
+#
+#   Se ensena tambien cuantas ventanas se llevan observadas de cada uno: por
+#   debajo del minimo no se evalua a nadie, asi que uno disparado puede no
+#   salir frenado todavia, y eso sin decirlo parece un fallo del freno.
+TOPE_SIN_PANTALLA = 210
 
 
 def _es_pantalla(p: Path) -> bool:

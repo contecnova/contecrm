@@ -219,6 +219,10 @@ _DEL_GATEWAY = {
     # La búsqueda global: la compone el gateway preguntando a los índices de
     # cada servicio, así que no está en el contrato de ninguno.
     "/api/v1/buscar",
+    # Quién está frenado por el freno adaptativo: el estado vive en la memoria
+    # del gateway —lo anota su propio proxy en cada petición— y ningún
+    # servicio lo tiene. No es una ruta agregada: es suya.
+    "/api/v1/estado/frenados",
 }
 
 # Y las que el gateway sirve con un tramo variable dentro.

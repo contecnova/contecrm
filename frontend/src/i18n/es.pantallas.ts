@@ -585,6 +585,19 @@ const pantallas = {
       "{{cuantos}} promesas entre servicios no se están cumpliendo.",
     sinRespuesta: "{{cuantos}} no han contestado",
     degradadas: "{{cuantas}} consultas van más lentas de lo que deberían.",
+    presion: "Cuánto se está aplazando",
+    presionNoMedible:
+      "No se ha podido medir la presión. No es lo mismo que estar holgado: es que no se sabe.",
+    presionEs: "presión {{presion}}",
+    peorServicio:
+      "Lo que se aplaza lo decide «{{servicio}}», que es el que peor va. No la media: con uno ahogado y trece holgados, la media sale tranquila y lo no crítico se difiere igual.",
+    nadieApretado: "Ningún servicio va apretado ahora mismo.",
+    presionSinRespuesta:
+      "{{cuantos}} servicio(s) no han contestado, así que esto no cubre la instalación entera.",
+    frenados: "A quién le ha bajado la cuota el freno automático",
+    nadieObservado: "Todavía no se ha observado a ningún tenant en este proceso.",
+    aCuota: "al {{pct}} % de su cuota",
+    observado: "{{ventanas}} de {{minimo}} ventanas observadas",
   },
   ficha: {
     comoEstaba: "Cómo estaba esto en un momento dado",

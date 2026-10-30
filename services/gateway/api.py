@@ -655,6 +655,28 @@ async def solo_lectura_de_la_instalacion(datos: SoloLecturaIn, principal: Plataf
 
 
 @router.get(
+    "/estado/frenados",
+    summary="A quién le ha bajado la cuota el freno automático, y por qué",
+    description=(
+        "El freno adaptativo (CRM-00.01.06.05) **se aplicaba y no se veía**: "
+        "se anota, se evalúa y se frena en el proxy de cada petición, y no "
+        "había ninguna ruta que dijera a quién le han bajado la cuota. Un "
+        "cliente podía llevar horas a un cuarto de la suya, con sus "
+        "integraciones reintentando más fuerte, y para averiguarlo había que "
+        "leer los registros.\n\n"
+        "Se devuelve también **qué se lleva observado** de cada uno: por "
+        "debajo del mínimo de ventanas no se evalúa a nadie, y eso explica "
+        "por qué uno que está disparado todavía no sale frenado.\n\n"
+        "Y se dice que es lo que ve **este proceso**: lo observado vive en "
+        "memoria, así que con varias réplicas cada una tiene su parte."
+    ),
+)
+def frenados_ahora(principal: AutenticadoDep) -> Any:
+    del principal
+    return anomalias.frenados()
+
+
+@router.get(
     "/comentarios/mis-menciones",
     summary="Dónde me han mencionado, en todo el CRM",
     description=(
