@@ -497,7 +497,13 @@ def claves_por_ruta() -> tuple[dict[str, set[str]], set[str]]:
             if router not in prefijos or modelo not in columnas:
                 continue
             objeto = _texto(datos["objeto"].value) if "objeto" in datos else ""
-            completa = _normalizar(f"{PREFIJO}{prefijos[router]}/{{}}")
+            # **Con su `ruta`.** `montar_ficha(..., ruta="/articulos")` publica
+            # en `/conocimiento/articulos/{id}`, no en `/conocimiento/{id}`.
+            # Ignorarla hacía que las columnas del modelo se le colgaran a la
+            # ruta de al lado, que devuelve otra cosa: el resolutor denunció
+            # como rota la ficha de un artículo, que estaba bien.
+            sub = (_texto(datos["ruta"].value) if "ruta" in datos else "") or ""
+            completa = _normalizar(f"{PREFIJO}{prefijos[router]}{sub}/{{}}")
             resueltas.setdefault(completa, set()).update(
                 columnas[modelo] | rollups.get(objeto or "", set())
             )

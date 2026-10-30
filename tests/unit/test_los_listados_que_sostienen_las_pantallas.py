@@ -451,3 +451,89 @@ def test_los_perfiles_de_industria_se_listan(
     for fila in filas:
         for campo in ("clave", "nombre", "descripcion"):
             assert campo in fila, f"el perfil no manda «{campo}»"
+
+
+# ── El artículo de conocimiento (CRM-04.03.01.03, CRM-04.03.01.06) ───────
+
+
+@pytest.fixture
+def servicio_kb(db: Any, contexto_tenant: UUID) -> Any:
+    yield from _cliente("services.service.main")
+
+
+def _articulo_publicado(db: Any, tenant_id: UUID) -> Any:
+    from datetime import timedelta
+
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.fechas import hoy
+
+    from services.service import conocimiento as kb
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    articulo, _ = kb.crear_articulo(
+        uow,
+        clave=f"art-{uuid4().hex[:8]}",
+        titulo="Cómo reiniciar",
+        cuerpo="Pulsa el botón",
+        revisar_el=hoy() + timedelta(days=90),
+    )
+    kb.publicar(uow, articulo.id, aprobada_por=uuid4(), audiencia="cliente")
+    db.flush()
+    return articulo
+
+
+def test_el_estado_de_las_traducciones_dice_cuantas_versiones_por_detras(
+    servicio_kb: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """«Desincronizada» a secas no distingue una errata de otro artículo."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import conocimiento as kb
+
+    articulo = _articulo_publicado(db, tenant_id)
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    kb.traducir(uow, articulo.id, idioma="fr", titulo="Redémarrer", cuerpo="Appuyez")
+    db.flush()
+    # Y el original avanza: la traducción se queda atrás sin que nadie la toque.
+    kb.nueva_version(uow, articulo.id, titulo="Cómo reiniciar (v2)", cuerpo="…")
+    kb.publicar(uow, articulo.id, aprobada_por=uuid4(), audiencia="cliente")
+    db.flush()
+
+    r = servicio_kb.get(f"/api/v1/conocimiento/{articulo.id}/traducciones", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in ("idioma_original", "version_publicada", "traducciones", "desincronizadas"):
+        assert campo in cuerpo, f"no manda «{campo}»"
+    fr = next(x for x in cuerpo["traducciones"] if x["idioma"] == "fr")
+    for campo in ("idioma", "estado", "sincronizada", "versiones_por_detras"):
+        assert campo in fr, f"la traducción no manda «{campo}»"
+    assert fr["sincronizada"] is False
+    assert fr["versiones_por_detras"] >= 1, "no dice cuánto se ha quedado atrás"
+    assert "fr" in cuerpo["desincronizadas"]
+
+
+def test_la_eficacia_separa_los_daninos_de_los_huerfanos(
+    servicio_kb: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Los dos se ven igual en una lista por vistas y se arreglan al revés."""
+    _articulo_publicado(db, tenant_id)
+
+    r = servicio_kb.get("/api/v1/conocimiento/eficacia", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in (
+        "articulos",
+        "publicados",
+        "dañinos",
+        "huerfanos",
+        "caducados",
+        "vistas",
+        "usos_en_caso",
+        "deflexion_aproximada_pct",
+        "aviso_deflexion",
+    ):
+        assert campo in cuerpo, f"la eficacia no manda «{campo}»"
+    # Las dos listas son listas distintas: si fueran la misma, la pantalla no
+    # podría decir cuál de los dos arreglos toca.
+    assert isinstance(cuerpo["dañinos"], list)
+    assert isinstance(cuerpo["huerfanos"], list)
