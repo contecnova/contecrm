@@ -747,7 +747,29 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 #   Y el embudo se pincha: dice CUANTOS hay en cada estado, y lo que hace
 #   falta para trabajar es QUIENES.
-TOPE_SIN_PANTALLA = 236
+#   30-10-2026  232 de 778  la ficha de un articulo de conocimiento, y el
+#   ------------------------------------------------------------------------
+#   KCS en el caso.
+#
+#   Del articulo, tres cosas que el servidor ya calculaba y nadie ensenaba:
+#   a quien llega segun su audiencia; que traducciones se han quedado atras y
+#   CUANTAS VERSIONES por detras van —una es una errata y seis son otro
+#   articulo, y «desincronizada» a secas no distingue las dos—; y si sirve,
+#   separando los DANINOS —muchas vistas y votos negativos, peores que no
+#   tener articulo porque alguien los esta siguiendo— de los HUERFANOS, que
+#   no los usa nadie. Las dos cosas se ven igual en una lista ordenada por
+#   vistas y se arreglan al reves.
+#
+#   La deflexion va con su aviso de que es aproximada, y lo dice el propio
+#   servidor: presentada como una medida es el numero con el que se justifica
+#   no contratar a nadie mas en soporte.
+#
+#   Y el KCS va en la ficha del CASO y no aqui, porque el momento ES la
+#   capacidad: se escribe cuando se resuelve, con el problema fresco y por
+#   quien lo resolvio. El cuerpo viene relleno con la resolucion y el aviso
+#   —que lleva el nombre del cliente y a veces sus credenciales— va ANTES de
+#   escribir, no despues de guardar.
+TOPE_SIN_PANTALLA = 232
 
 
 def _es_pantalla(p: Path) -> bool:

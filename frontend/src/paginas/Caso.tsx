@@ -1,7 +1,7 @@
 /**
  * Un caso: con qué tiene que ver, cómo va su reloj y cómo acabó
  * (CRM-04.01.01.03, CRM-04.01.01.04, CRM-04.01.01.06, CRM-04.01.01.09,
- * CRM-04.01.01.10, CRM-04.01.02.06).
+ * CRM-04.01.01.10, CRM-04.01.02.06, CRM-04.03.01.05).
  *
  * La bandeja dice qué atender primero; abrir un caso es otra cosa. Lo que se
  * necesita delante es **de qué cliente es, sobre qué producto o activo, de
@@ -250,7 +250,7 @@ export function Caso() {
         <ConQueTieneQueVer relaciones={caso.relacionado_con} />
         <ElReloj sla={caso.sla} />
         <DeQuienCuelga arbol={caso.relaciones} />
-        <ComoAcabo cierre={caso.cierre} />
+        <ComoAcabo cierre={caso.cierre} casoId={id} />
         <PorQueEstaAqui asignaciones={porQueAqui} />
         <QueDerechoLoCubre saldo={saldo} />
       </div>
@@ -409,7 +409,7 @@ function DeQuienCuelga({ arbol }: { arbol: Arbol }) {
  * diga lo que no es. Y las reaperturas van con el cierre: un caso cerrado tres
  * veces no es un caso resuelto.
  */
-function ComoAcabo({ cierre }: { cierre: Cierre }) {
+function ComoAcabo({ cierre, casoId }: { cierre: Cierre; casoId: string }) {
   const { t } = useTranslation();
   if (!cierre?.motivo && !cierre?.cerrado_at && !cierre?.reaperturas) {
     return (
@@ -440,7 +440,114 @@ function ComoAcabo({ cierre }: { cierre: Cierre }) {
           {t("caso.reaperturas", { cuantas: cierre.reaperturas })}
         </p>
       ) : null}
+      <EscribirloEnConocimiento casoId={casoId} resolucion={cierre.resolucion} />
     </section>
+  );
+}
+
+/**
+ * Escribir el artículo aquí y ahora (CRM-04.03.01.05).
+ *
+ * **El momento es la capacidad.** Se escribe cuando se resuelve, con el
+ * problema fresco y por quien lo resolvió; pedirlo después, en una sesión
+ * dedicada, es como no pedirlo — y es por lo que las bases de conocimiento se
+ * quedan vacías teniendo el procedimiento escrito en el servidor.
+ *
+ * El cuerpo viene relleno con la resolución del caso **y se puede cambiar
+ * antes de guardar**, que es justo lo que hay que hacer: la resolución lleva
+ * casi siempre el nombre del cliente, su configuración y a veces sus
+ * credenciales. Por eso el artículo nace en borrador e interno aunque venga
+ * de un caso resuelto, y aquí se dice.
+ */
+function EscribirloEnConocimiento({
+  casoId,
+  resolucion,
+}: {
+  casoId: string;
+  resolucion: string | null;
+}) {
+  const { t } = useTranslation();
+  const [abierto, setAbierto] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [cuerpo, setCuerpo] = useState(resolucion ?? "");
+  const [creado, setCreado] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
+  async function crear() {
+    setGuardando(true);
+    setError("");
+    try {
+      const r = await llamar<{ id: string; clave: string }>(
+        `/api/v1/conocimiento/desde-caso/${casoId}`,
+        {
+          metodo: "POST",
+          cuerpo: {
+            clave: `caso-${casoId.slice(0, 8)}`,
+            titulo,
+            cuerpo,
+          },
+        },
+      );
+      setCreado(r.datos.clave);
+      setAbierto(false);
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : String(fallo));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  if (creado) {
+    return (
+      <p className="mt-3 text-2xs text-ink" role="status">
+        {t("caso.articuloCreado", { clave: creado })}
+      </p>
+    );
+  }
+
+  if (!abierto) {
+    return (
+      <button type="button" className="btn-link mt-3" onClick={() => setAbierto(true)}>
+        {t("caso.escribirArticulo")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      {/* El aviso ANTES del formulario, no después de guardar: lo que hay que
+          quitar del texto se quita mientras se escribe. */}
+      <p className="text-2xs text-warning">{t("caso.avisoResolucion")}</p>
+      <input
+        className="input-base"
+        value={titulo}
+        aria-label={t("caso.tituloArticulo")}
+        placeholder={t("caso.tituloArticulo")}
+        onChange={(e) => setTitulo(e.target.value)}
+      />
+      <textarea
+        className="input-base"
+        rows={4}
+        value={cuerpo}
+        aria-label={t("caso.cuerpoArticulo")}
+        onChange={(e) => setCuerpo(e.target.value)}
+      />
+      {error ? <p className="text-2xs text-danger">{error}</p> : null}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="btn-secundario"
+          disabled={!titulo.trim() || guardando}
+          onClick={() => void crear()}
+        >
+          {guardando ? t("caso.guardando") : t("caso.guardarArticulo")}
+        </button>
+        <button type="button" className="btn-link" onClick={() => setAbierto(false)}>
+          {t("caso.cancelar")}
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -138,6 +138,36 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  articulo: {
+    version: "versión {{version}}",
+    quienLoVe: "Quién lo puede ver",
+    audiencia: {
+      publicado:
+        "Publicado. Según su audiencia, esto puede estar en el portal del cliente: un procedimiento interno con nombres de clientes dentro publicado hacia fuera es el error que no se recoge.",
+      borrador:
+        "No publicado. Mientras esté así no llega a ningún portal ni a ningún cliente, pase lo que pase con su audiencia.",
+    },
+    votos: "{{utiles}} lo encontraron útil · {{inutiles}} no",
+    toca_revisar:
+      "Pasó su fecha de revisión. No se oculta a propósito: ocultarlo deja al cliente sin respuesta y enseñarlo sin avisar le da una que puede estar vieja.",
+    obsoleto: "Marcado como obsoleto.",
+    daniño:
+      "Este artículo está entre los DAÑINOS: lo ve mucha gente y la mayoría dice que no sirve. No es que no se use — es que alguien lo está siguiendo. Corregirlo va antes que escribir uno nuevo.",
+    huerfano: "Nadie lo usa ni lo cita en ningún caso. Puede que sobre, o que no se encuentre.",
+    idiomas: "En qué idiomas está",
+    porqueIdiomas:
+      "El fallo caro de una base multilingüe: se corrige el original, las traducciones se quedan como estaban, y el cliente de otro idioma lee el procedimiento viejo durante meses.",
+    sinTraducciones: "Sólo está en su idioma original",
+    alDia: "al día",
+    porDetras: "{{cuantas}} versiones por detrás",
+    desincronizadas:
+      "{{cuantas}} traducción(es) se han quedado atrás. Una versión por detrás suele ser una errata; seis ya es otro artículo.",
+    eficacia: "Si el conocimiento sirve",
+    conjunto:
+      "{{publicados}} publicados · {{daninos}} dañinos · {{huerfanos}} huérfanos · {{caducados}} caducados",
+    deflexion: "{{pct}} % de deflexión aproximada",
+    sinDeflexion: "Deflexión: no se puede estimar",
+  },
   campana: {
     gasto: "{{gasto}} gastado ({{propio}} propio · {{hijos}} en tácticas)",
     sinPresupuesto: "sin presupuesto declarado",
@@ -833,6 +863,16 @@ const pantallas = {
     sinResolver: "Sin resolver todavía.",
   },
   caso: {
+    escribirArticulo: "Escribir esto en la base de conocimiento",
+    avisoResolucion:
+      "La resolución viene copiada tal cual, y casi siempre lleva el nombre del cliente, su configuración y a veces sus credenciales. Quítalo ANTES de guardar: el artículo nace en borrador e interno, pero lo que escribas aquí es lo que alguien publicará.",
+    tituloArticulo: "Título del artículo",
+    cuerpoArticulo: "Cuerpo del artículo",
+    guardarArticulo: "Crear en borrador",
+    guardando: "Creando…",
+    cancelar: "Cancelar",
+    articuloCreado:
+      "Creado «{{clave}}» en borrador e interno. Se publica desde Conocimiento, cuando alguien lo revise.",
     relacionado: "Con qué tiene que ver",
     sinRelaciones: "No se ha dicho sobre qué es",
     abrir: "Abrir",

@@ -154,6 +154,7 @@ const Territorios = pantalla(
 const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento);
 const Gobierno = pantalla(() => import("@/paginas/Gobierno"), (m) => m.Gobierno);
 const Campana = pantalla(() => import("@/paginas/Campana"), (m) => m.Campana);
+const Articulo = pantalla(() => import("@/paginas/Articulo"), (m) => m.Articulo);
 const CicloDeVidaDelCliente = pantalla(
   () => import("@/paginas/CicloDeVidaDelCliente"),
   (m) => m.CicloDeVidaDelCliente,
@@ -412,6 +413,12 @@ export function App() {
               real, el embudo y el resultado del evento. La ficha genérica
               sólo descubre paneles que devuelven listas. */}
           <Route path="/m/campanas/campana/:id" element={<Campana />} />
+          {/* El artículo tiene ficha propia porque sus tres preguntas
+              devuelven OBJETOS: el artículo con su aviso, el estado de sus
+              traducciones y la eficacia del conjunto. Y porque el título no
+              es una columna suya —vive en la versión—, así que la ficha
+              genérica lo pintaba sin nombre. */}
+          <Route path="/m/conocimiento/articulo/:id" element={<Articulo />} />
           {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
               separado: pintarla como campos sueltos los sumaría visualmente,
               que es justo lo que el modelo evita. */}

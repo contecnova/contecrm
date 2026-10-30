@@ -2936,6 +2936,46 @@ El embudo **se pincha**. Dice cuántos hay en cada estado, y lo que hace falta
 para trabajar es quiénes: la diferencia entre «40 han hecho clic» y poder
 llamarlos es toda, y la ruta de miembros ya filtraba por estado para eso.
 
+### 4.6.31 Un artículo: a quién llega, en qué idiomas y si sirve
+
+La lista enseña título, estado y vistas. Las tres preguntas de delante de un
+artículo las contesta ya el servidor y no las enseñaba nadie.
+
+**Las traducciones dicen cuántas versiones van por detrás**, no sólo que están
+desincronizadas. Es el fallo caro de una base multilingüe: se corrige el
+original, las traducciones se quedan como estaban, y el cliente de otro idioma
+lee el procedimiento viejo durante meses. Y el número importa: una versión por
+detrás suele ser una errata, seis ya es otro artículo.
+
+**La eficacia separa los dañinos de los huérfanos.** Un artículo dañino —muchas
+vistas y votos negativos— es peor que no tener artículo, porque alguien lo está
+siguiendo; uno huérfano simplemente no lo usa nadie. En una lista ordenada por
+vistas los dos se ven igual, y se arreglan al revés: uno se corrige, el otro
+puede que sobre.
+
+**La deflexión va con su aviso de que es aproximada**, que lo manda el propio
+servidor. Presentada como una medida es el número con el que se justifica no
+contratar a nadie más en soporte.
+
+Lo que se edita desde la ficha es lo que **es** del artículo —su clave, su
+audiencia, sus canales, su fecha de revisión—, no su texto: el texto va por
+versiones, que es lo que permite corregir uno publicado sin que el cliente vea
+el cambio a medias.
+
+#### El KCS va en el caso, no aquí
+
+`POST /conocimiento/desde-caso/{caso_id}` existía y no se alcanzaba desde
+ninguna pantalla. Se ha puesto en el panel de cierre de un caso y no en la
+pantalla de conocimiento, porque **el momento es la capacidad**: se escribe
+cuando se resuelve, con el problema fresco y por quien lo resolvió. Pedirlo
+después, en una sesión dedicada, es como no pedirlo.
+
+El cuerpo viene relleno con la resolución del caso y el aviso va **antes** de
+escribir, no después de guardar: la resolución lleva casi siempre el nombre del
+cliente, su configuración y a veces sus credenciales, y lo que hay que quitar
+se quita mientras se escribe. El artículo nace en borrador e interno aunque
+venga de un caso resuelto, y la pantalla lo dice al crearlo.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

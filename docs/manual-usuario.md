@@ -2176,6 +2176,36 @@ Y si es una feria o un evento: mira primero **los inscritos sin marcar**. Si
 quedan muchos, la tasa de asistencia no sale, y hace bien: una tasa calculada
 ignorando a los que nadie marcó es una tasa inventada.
 
+### Cuando resuelvas un caso, escribe el artículo ahí mismo
+
+En el panel de cierre de un caso resuelto hay un enlace para escribir el
+artículo. Úsalo **en ese momento**, no te lo apuntes para después: con el
+problema fresco sale en cinco minutos, y en una sesión dedicada la semana que
+viene no sale nunca. Por eso las bases de conocimiento se quedan vacías aunque
+todo el mundo sepa cómo se arregla cada cosa.
+
+El texto viene copiado de tu resolución. **Repásalo antes de guardar**: la
+resolución casi siempre lleva el nombre del cliente, su configuración y a veces
+sus credenciales. El artículo nace en borrador e interno, así que no se publica
+solo; pero lo que escribas ahí es lo que alguien acabará publicando.
+
+### Mirar un artículo y saber qué hacer con él
+
+Tres cosas, y cada una pide algo distinto:
+
+- **«Este artículo está entre los dañinos».** No significa que no se use:
+  significa que lo ve mucha gente y la mayoría dice que no sirve. Alguien lo
+  está siguiendo. Corregirlo va antes que escribir uno nuevo.
+- **«Nadie lo usa ni lo cita».** Puede que sobre, o puede que no se encuentre.
+  No es lo mismo que el anterior y no se arregla igual.
+- **Las traducciones con «N versiones por detrás».** Una suele ser una errata;
+  seis ya es otro artículo, y durante ese tiempo el cliente de ese idioma ha
+  estado leyendo el procedimiento viejo.
+
+Y la deflexión: el porcentaje dice **aproximada** porque lo es. No se sabe
+quién habría abierto un caso si no hubiera encontrado el artículo, así que
+sirve para ver una tendencia y no para justificar una plantilla.
+
 ---
 
 ## Qué hacer cuando algo no sale

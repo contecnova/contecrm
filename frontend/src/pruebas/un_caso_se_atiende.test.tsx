@@ -88,18 +88,26 @@ const SALDO = {
   vigente_hasta: "2026-12-31",
 };
 
+const enviado: { ruta: string; cuerpo: unknown }[] = [];
+
 vi.mock("@/lib/api", async () => {
   const real = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
   return {
     ...real,
-    llamar: vi.fn(async (ruta: string) => {
-      let datos: unknown = CASO;
-      if (ruta.startsWith("/api/v1/colas/explicar/")) datos = ASIGNACIONES;
-      else if (ruta.startsWith("/api/v1/entitlements/aplicable"))
-        datos = { entitlement_id: "e-1" };
-      else if (ruta.startsWith("/api/v1/entitlements/e-1/saldo")) datos = SALDO;
-      return { datos, version: null, retenidos: [], enmascarados: [] };
-    }),
+    llamar: vi.fn(
+      async (ruta: string, opciones?: { metodo?: string; cuerpo?: unknown }) => {
+        if ((opciones?.metodo ?? "GET") !== "GET") {
+          enviado.push({ ruta, cuerpo: opciones?.cuerpo });
+          return { datos: { id: "art-1", clave: "caso-k-1" }, version: null };
+        }
+        let datos: unknown = CASO;
+        if (ruta.startsWith("/api/v1/colas/explicar/")) datos = ASIGNACIONES;
+        else if (ruta.startsWith("/api/v1/entitlements/aplicable"))
+          datos = { entitlement_id: "e-1" };
+        else if (ruta.startsWith("/api/v1/entitlements/e-1/saldo")) datos = SALDO;
+        return { datos, version: null, retenidos: [], enmascarados: [] };
+      },
+    ),
   };
 });
 
@@ -188,5 +196,76 @@ describe("un caso se atiende", () => {
     expect(screen.getByText(/caso.casosSinLimite.*12/)).toBeTruthy();
     // Y qué pasa al agotarse, que es lo que hay que poder decirle al cliente.
     expect(screen.getByText(/caso.alAgotar.*factura por horas/)).toBeTruthy();
+  });
+});
+
+// ── El artículo se escribe aquí y ahora (CRM-04.03.01.05) ────────────────
+//
+// El momento ES la capacidad: se escribe cuando se resuelve, con el problema
+// fresco y por quien lo resolvió. Pedirlo después, en una sesión dedicada, es
+// como no pedirlo — y es por lo que las bases de conocimiento se quedan
+// vacías teniendo el procedimiento escrito en el servidor.
+
+describe("escribir el artículo desde el caso resuelto", () => {
+  beforeEach(() => {
+    enviado.length = 0;
+  });
+
+  it("el aviso de datos del cliente va ANTES de escribir, no después", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await montar();
+    await screen.findByText("caso.cierre");
+
+    await userEvent.click(screen.getByText("caso.escribirArticulo"));
+
+    // Lo que hay que quitar del texto se quita mientras se escribe: después de
+    // guardar ya está escrito, y el artículo ya lleva el nombre del cliente.
+    expect(screen.getByText("caso.avisoResolucion")).toBeInTheDocument();
+  });
+
+  it("viene relleno con la resolución, y se puede cambiar antes de guardar", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await montar();
+    await screen.findByText("caso.cierre");
+    await userEvent.click(screen.getByText("caso.escribirArticulo"));
+
+    const cuerpo = screen.getByLabelText("caso.cuerpoArticulo");
+    expect(cuerpo).toHaveValue("Se cambió el relé");
+
+    await userEvent.clear(cuerpo);
+    await userEvent.type(cuerpo, "Se cambia el rele del motor");
+    await userEvent.type(screen.getByLabelText("caso.tituloArticulo"), "Rele del motor");
+    await userEvent.click(screen.getByText("caso.guardarArticulo"));
+
+    await waitFor(() => expect(enviado).toHaveLength(1));
+    const peticion = enviado[0]!;
+    expect(peticion.ruta).toBe("/api/v1/conocimiento/desde-caso/k-1");
+    expect(peticion.cuerpo).toMatchObject({
+      titulo: "Rele del motor",
+      cuerpo: "Se cambia el rele del motor",
+    });
+  });
+
+  it("sin título no deja guardar: un artículo sin nombre no lo encuentra nadie", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await montar();
+    await screen.findByText("caso.cierre");
+    await userEvent.click(screen.getByText("caso.escribirArticulo"));
+
+    expect(screen.getByText("caso.guardarArticulo")).toBeDisabled();
+    expect(enviado).toHaveLength(0);
+  });
+
+  it("al crearlo dice que nace en borrador e interno", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await montar();
+    await screen.findByText("caso.cierre");
+    await userEvent.click(screen.getByText("caso.escribirArticulo"));
+    await userEvent.type(screen.getByLabelText("caso.tituloArticulo"), "Rele");
+    await userEvent.click(screen.getByText("caso.guardarArticulo"));
+
+    expect(
+      await screen.findByText('caso.articuloCreado:{"clave":"caso-k-1"}'),
+    ).toBeInTheDocument();
   });
 });
