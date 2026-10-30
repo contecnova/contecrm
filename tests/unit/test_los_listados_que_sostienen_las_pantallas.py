@@ -1039,3 +1039,88 @@ def test_el_historial_sigue_la_cadena_de_sustituciones(
     # el aviso de cadena habría salido en todos los activos.
     assert isinstance(cuerpo["equipos_en_la_cadena"], list)
     assert len(cuerpo["equipos_en_la_cadena"]) >= 1
+
+
+def test_la_ficha_de_un_activo_trae_su_contador_con_fecha(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """`leer_contador` ANOTA una lectura pese al nombre, así que no hay GET
+    del contador: sale de la ficha. Y con su fecha, porque un número sin
+    fecha al lado se lee como el de hoy y sobre un contador se decide un
+    mantenimiento."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import activos as act
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    activo, _ = act.crear(uow, codigo=f"MAQ-{uuid4().hex[:6]}", nombre="Prensa")
+    db.flush()
+
+    r = servicio_http.get(f"/api/v1/activos/{activo.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in ("contador", "unidad_contador", "contador_at"):
+        assert campo in cuerpo, f"la ficha del activo no manda «{campo}»"
+
+
+def test_la_orden_reparte_la_cobertura_en_tres_cestas(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Fundir la tercera —lo que no se sabe— con cualquiera de las otras dos
+    es facturar de más o perder una reclamación."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import campo
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    orden, _ = campo.crear_orden(uow, titulo="Cambiar la bomba", tipo="correctivo")
+    db.flush()
+
+    r = servicio_http.get(f"/api/v1/ordenes-trabajo/{orden.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo_ in (
+        "id",
+        "codigo",
+        "titulo",
+        "estado",
+        "minutos_trabajados",
+        "lineas",
+        "a_facturar",
+        "a_garantia",
+        "sin_determinar",
+        "parte",
+    ):
+        assert campo_ in cuerpo, f"la orden no manda «{campo_}»"
+    # Las tres existen por separado desde el principio, también vacías: si la
+    # tercera sólo apareciera cuando hay algo, la pantalla no podría
+    # distinguir «no hay nada por decidir» de «no me lo han dicho».
+    assert cuerpo["a_facturar"] == 0
+    assert cuerpo["a_garantia"] == 0
+    assert cuerpo["sin_determinar"] == 0
+
+
+def test_los_candidatos_dicen_por_que_se_descarta_a_cada_uno(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """«Nadie disponible» no se puede accionar; «los tres con la competencia
+    están fuera de zona» sí."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import campo
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    orden, _ = campo.crear_orden(uow, titulo="Cambiar la bomba", tipo="correctivo")
+    db.flush()
+
+    r = servicio_http.get(f"/api/v1/ordenes-trabajo/{orden.id}/candidatos", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo_ in (
+        "orden_id",
+        "competencias_requeridas",
+        "aptos",
+        "descartados",
+        "hay_candidatos",
+    ):
+        assert campo_ in cuerpo, f"los candidatos no mandan «{campo_}»"

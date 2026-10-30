@@ -35,7 +35,7 @@ extras declarados, el esquema de salida, la proyección, el diccionario literal
 del manejador, o un salto de delegación a una función con nombre— y lo que no
 cae en ninguno lo cuenta y lo deja fuera en vez de inventarse un veredicto.
 
-Medido: **598 rutas resueltas y 154 contratos de pantalla, con 17 puntos
+Medido: **604 rutas resueltas y 162 contratos de pantalla, con 15 puntos
 ciegos**. Las tres cifras se comprueban, porque un resolutor que
 dejara de ver el servidor pasaría en verde sin mirar nada. Se ha plantado: con
 `_ficheros()` devolviendo la lista vacía, dos de las tres pruebas se ponen
@@ -325,7 +325,37 @@ def _claves_del_literal(
             if isinstance(interior, (ast.ListComp, ast.GeneratorExp)):
                 valor = interior.elt
         if not isinstance(valor, ast.Dict):
-            return None
+            # No es un literal: puede ser una llamada a una función que sí lo
+            # devuelve —incluida una ANIDADA, como el `_rama` recursivo del
+            # árbol de un activo—. Es el mismo salto que sigue la delegación,
+            # y tenerlo en los dos sitios era lo que dejaba ciega la segunda
+            # vuelta: la ruta delega en `arbol`, y `arbol` devuelve `_rama`.
+            anidadas = {
+                h.name: h
+                for h in ast.walk(funcion)
+                if isinstance(h, (ast.FunctionDef, ast.AsyncFunctionDef)) and h is not funcion
+            }
+            destino = (
+                _resolver(valor.func, {**(contexto or {}), **anidadas}, por_modulo, alias)
+                if isinstance(valor, ast.Call)
+                else None
+            )
+            suyas = (
+                _claves_del_literal(
+                    destino,
+                    {**(contexto or {}), **anidadas},
+                    por_modulo,
+                    alias,
+                    vistas | {id(destino)},
+                )
+                if destino is not None and id(destino) not in vistas
+                else None
+            )
+            if suyas is None:
+                return None
+            claves |= suyas
+            visto = True
+            continue
         for clave, hijo in zip(valor.keys, valor.values, strict=True):
             if clave is None:
                 # `**algo()`: se sigue si es una llamada a una función que se
@@ -397,10 +427,18 @@ def _claves_delegadas(
         if not isinstance(valor, ast.Call):
             return None
 
+        # Las funciones definidas DENTRO de ésta cuentan como suyas: un
+        # `return _rama(raiz, 0, …)` con `_rama` anidada —el árbol de un
+        # activo— quedaba sin resolver porque `_rama` no es de módulo.
+        anidadas = {
+            hijo.name: hijo
+            for hijo in ast.walk(funcion)
+            if isinstance(hijo, (ast.FunctionDef, ast.AsyncFunctionDef)) and hijo is not funcion
+        }
         destino = None
-        vecinas: dict[str, Any] = locales
+        vecinas: dict[str, Any] = {**locales, **anidadas}
         if isinstance(valor.func, ast.Name):
-            destino = locales.get(valor.func.id)
+            destino = anidadas.get(valor.func.id) or locales.get(valor.func.id)
             if destino is None:
                 # Una función importada por su nombre: `from crmcore… import
                 # estadisticas_de_entrega` y luego `return estadisticas(…)`.
@@ -688,6 +726,13 @@ TOPE_CONTRATOS_ROTOS = 0
 # sano—.
 #
 #   29-10-2026  26 de 120  medido al escribirlo, con 484 rutas resueltas.
+#   30-10-2026  15 de 162  una funcion ANIDADA que devuelve el literal —el
+#                          `_rama` recursivo del arbol de un activo— y, sobre
+#                          todo, unificar los dos caminos: el salto a otra
+#                          funcion se seguia en la delegacion y NO dentro del
+#                          literal, asi que la segunda vuelta se perdia. La
+#                          ruta delega en `arbol` y `arbol` devuelve `_rama`.
+#                          604 rutas resueltas.
 #   30-10-2026  17 de 154  dos formas mas, las dos reales: un `return None`
 #                          explicito —una respuesta nula no tiene claves, asi
 #                          que no puede faltarle ninguna, y tratarlo como «no
@@ -716,7 +761,7 @@ TOPE_CONTRATOS_ROTOS = 0
 #                          columnas del modelo igual que el listado, y un
 #                          `**otra_cosa()` dentro del literal se sigue como una
 #                          delegacion mas. 523 rutas resueltas.
-TOPE_SIN_RESOLVER = 17
+TOPE_SIN_RESOLVER = 15
 
 
 def test_la_resolucion_mira_de_verdad() -> None:
