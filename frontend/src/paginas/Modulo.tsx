@@ -902,9 +902,10 @@ function RecursoVista({
               encabezado={
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
                   {botonDeAlta}
-                  <p className="text-3xs text-ink-faint" role="status">
-                    {t("modulo.filasCargadas", { cuantas: filas.length })}
-                  </p>
+                  {/* El recuento ya no se pone aquí: lo pinta la tabla, junto
+                      al orden, porque el orden sólo lo sabe ella y los dos
+                      datos contestan la misma pregunta —qué estoy viendo y en
+                      qué orden—. Repetirlo aquí era decirlo dos veces. */}
                   {/* Los filtros, en la MISMA fila que el resto de controles.
                       Tenían una banda propia encima, así que entre la cabecera
                       y la primera fila había tres bandas para tres controles.

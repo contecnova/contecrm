@@ -498,6 +498,16 @@ codigo», «Owner id». Ahora se escriben bien, y lo mismo vale para los **valor
 que llegan como identificador: un caso en `esperando_cliente` se lee «Esperando
 cliente». Si ves alguno mal escrito, es un fallo y se arregla.
 
+**Buscar dentro de la lista.** Arriba a la derecha hay una caja que filtra lo
+que tienes delante según escribes, mirando todas las columnas. El recuento te
+dice sobre cuántos ha buscado —«4 de 50 cargados»— y eso importa: busca en lo
+que se ha traído, no en toda la base. Para buscar en todo, usa **Filtrar**, que
+pregunta al servidor.
+
+**Cuántos y en qué orden.** Debajo de los controles pone «50 elementos ·
+Ordenado por Nombre, de menor a mayor». Con cincuenta filas delante, «¿por qué
+sale esto primero?» es la pregunta inmediata.
+
 **Las columnas las eliges tú.** El botón **Columnas** dice cuántas se ven de
 cuántas hay. Las que no tienen dato en ninguna de las filas que estás mirando no
 se ofrecen: una columna vacía es ruido. Tu elección se recuerda por pestaña.

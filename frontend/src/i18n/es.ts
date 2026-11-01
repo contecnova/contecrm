@@ -213,6 +213,18 @@ export default {
     // El rótulo para quien no ve la flecha: dice qué hará el clic, y cuando ya
     // está ordenada, cómo está. «Ordenar por Importe» y «Importe, de menor a
     // mayor» contestan dos preguntas distintas.
+    // La línea que Lightning pone bajo el nombre de la vista. «Elementos» y
+    // no «filas»: una fila es de la tabla y un elemento es del listado, que es
+    // lo que la persona está contando.
+    buscarEnLaLista: "Buscar en esta lista",
+    nadaConEso: "Ninguno de los {{total}} cargados lleva «{{que}}».",
+    // Cuando hay búsqueda se dice de CUÁNTOS, porque busca en lo cargado:
+    // «12 elementos» a secas haría creer que no hay más.
+    cuantosDeCuantos: "{{cuantos}} de {{total}} cargados",
+    cuantosElementos_one: "1 elemento",
+    cuantosElementos_other: "{{count}} elementos",
+    ordenadoAsc: "Ordenado por {{columna}}, de menor a mayor",
+    ordenadoDesc: "Ordenado por {{columna}}, de mayor a menor",
     ordenarPor: "Ordenar por {{columna}}",
     ordenAsc: "{{columna}}, de menor a mayor. Pulsa para invertir.",
     ordenDesc: "{{columna}}, de mayor a menor. Pulsa para quitar el orden.",

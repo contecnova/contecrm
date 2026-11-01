@@ -311,7 +311,24 @@ export function Tabla({
   const cabeceras = visibles;
   const escondidas = disponibles.length - cabeceras.length;
 
-  const filasOrdenadas = useMemo(() => ordenar(filas, orden), [filas, orden]);
+  // Buscar DENTRO de la lista. Lightning lo tiene en todas y aquí no estaba:
+  // con cincuenta filas delante, encontrar «Metalúrgica» obligaba a recorrer
+  // la columna a ojo o a montar un filtro por campo.
+  //
+  // Busca en lo que está CARGADO, y el recuento lo dice —«12 de 50»—: decir
+  // «12 elementos» a secas haría creer que no hay más, y lo que no se ha
+  // traído no se ha mirado. Ésa es la diferencia entre un buscador y un
+  // filtro del servidor, y callarla es lo que convierte una ayuda en una
+  // trampa.
+  const [busqueda, setBusqueda] = useState("");
+  const filasBuscadas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return filas;
+    return filas.filter((f) =>
+      Object.values(f).some((v) => tieneDato(v) && String(v).toLowerCase().includes(q)),
+    );
+  }, [filas, busqueda]);
+  const filasOrdenadas = useMemo(() => ordenar(filasBuscadas, orden), [filasBuscadas, orden]);
 
   const hayQueElegir = disponibles.length > cabeceras.length || elegidas;
 
@@ -326,8 +343,52 @@ export function Tabla({
               : "mb-2",
           )}
         >
-          <div className="min-w-0">{encabezado}</div>
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            {encabezado}
+            {/* **La línea de Lightning**: cuántos elementos y por qué están
+                ordenados. Es información que la tabla ya tiene y que nadie
+                enseñaba: con cincuenta filas delante, «¿por qué sale esto
+                primero?» es la pregunta inmediata, y se contestaba sólo si uno
+                se fijaba en la flecha de la cabecera.
+
+                Va aquí y no en la pantalla porque el orden lo lleva la tabla:
+                pedírselo a quien la coloca obligaría a sacar ese estado fuera
+                para enseñar un texto. */}
+            {ocupaLaPantalla ? (
+              <p className="text-3xs text-ink-faint" role="status">
+                {busqueda.trim()
+                  ? t("tabla.cuantosDeCuantos", {
+                      cuantos: filasOrdenadas.length,
+                      total: filas.length,
+                    })
+                  : t("tabla.cuantosElementos", { count: filasOrdenadas.length })}
+                {orden ? (
+                  <>
+                    {" · "}
+                    {t(orden.sentido === "asc" ? "tabla.ordenadoAsc" : "tabla.ordenadoDesc", {
+                      columna: humanizar(orden.columna),
+                    })}
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
           <div className="flex shrink-0 items-center gap-2">
+            {ocupaLaPantalla ? (
+              <>
+                <label className="sr-only" htmlFor="buscar-en-la-lista">
+                  {t("tabla.buscarEnLaLista")}
+                </label>
+                <input
+                  id="buscar-en-la-lista"
+                  type="search"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder={t("tabla.buscarEnLaLista")}
+                  className="input-base w-48"
+                />
+              </>
+            ) : null}
             {hayQueElegir ? (
               <button
                 type="button"
@@ -375,6 +436,21 @@ export function Tabla({
           rendimiento, despliegue—: estaba copiado cinco veces y ya había
           empezado a separarse en el tamaño de letra y en el tono de las
           celdas. */}
+      {/* Buscar y no encontrar nada se dice. Una tabla con cabecera y sin
+          filas se lee como que algo se ha roto, no como que no hay ninguna que
+          case — y encima se pierde el único dato que ayuda, que es que SÍ hay
+          cincuenta cargadas y ninguna lleva eso. */}
+      {busqueda.trim() && filasOrdenadas.length === 0 ? (
+        <p
+          className={cn(
+            "text-2xs text-ink-faint",
+            pegada ? "rounded-b border-x border-b border-ink-dim/50 bg-paper px-3 py-6 text-center" : "py-4",
+          )}
+          role="status"
+        >
+          {t("tabla.nadaConEso", { que: busqueda.trim(), total: filas.length })}
+        </p>
+      ) : (
       <Rejilla
         acotada={!ocupaLaPantalla}
         pegada={pegada}
@@ -437,6 +513,7 @@ export function Tabla({
           ))}
         </>
       </Rejilla>
+      )}
       {escondidas > 0 ? (
         <p className="mt-1.5 text-3xs text-ink-faint">
           {t("tabla.masColumnas", { count: escondidas })}

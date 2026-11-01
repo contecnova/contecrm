@@ -177,7 +177,14 @@ export function CabeceraDeLista({
                 Sin esto la pantalla se queda sin encabezado de primer nivel y
                 quien navega por encabezados no sabe dónde ha entrado. */}
             {hayQueElegir ? (
-              <h1 className="sr-only">{`${modulo} — ${actual?.nombre ?? ""}`}</h1>
+              <h1 className="sr-only">
+                {/* Sin repetir: en los módulos que llevan el nombre de su
+                    objeto, «Cuentas — Cuentas» es lo que oye quien navega con
+                    lector, y suena a error. */}
+                {modulo.toLowerCase() === (actual?.nombre ?? "").toLowerCase()
+                  ? modulo
+                  : `${modulo} — ${actual?.nombre ?? ""}`}
+              </h1>
             ) : null}
             {hayQueElegir ? (
               <p className="mt-0.5 text-3xs text-ink-faint">
