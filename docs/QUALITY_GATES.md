@@ -312,3 +312,33 @@ Ahora se distinguen los dos ceros, y la diferencia importa:
 
 Comprobado en los dos sentidos: forzando la marca a falso, el mismo gate vuelve
 a salir en rojo.
+
+## El barrido de pantallas (no es un gate, y por eso hay que acordarse)
+
+    ./setup.sh arrancar
+    node frontend/scripts/barrido-pantallas.mjs
+
+Abre las 58 pantallas contra la pila local y, de cada listado, su primera
+ficha. Dice cuáles revientan al pintar.
+
+**Por qué hace falta algo que no es un gate.** El 01-11-2026 se encontraron dos
+pantallas muertas —la ficha de cualquier oportunidad con metodología activa y
+`/inteligencia`— y las dos llevaban rotas quién sabe cuánto. Las dos por lo
+mismo: el front da por hecha una forma que el servidor no manda, React tira el
+árbol entero y la frontera de error se come la pantalla.
+
+Nada de lo que había lo cazaba:
+
+- **TypeScript no.** El tipo se declara en el `llamar<T>` y ya: es una promesa
+  sobre datos de red, no una comprobación.
+- **Las pruebas tampoco**, porque sus dobles inventan la forma. El de
+  `lo_que_falta` ponía cadenas igual que el tipo, así que la suite confirmaba
+  el error en vez de encontrarlo.
+- **Ni el barrido de humo**, porque el servidor contesta 200.
+
+No puede ser un gate: necesita la pila levantada y datos sembrados. Se pasa
+cuando se toca el front a lo ancho, y el apartado está aquí para que no se
+olvide que existe.
+
+Validado plantando el caso malo: devolviendo el fallo de `/inteligencia`, el
+barrido lo nombra y sale con código 1.

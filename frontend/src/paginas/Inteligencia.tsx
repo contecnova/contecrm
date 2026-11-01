@@ -25,7 +25,7 @@ import { useTranslation } from "react-i18next";
 import { Error as Fallo } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { ErrorApi, llamar } from "@/lib/api";
+import { ErrorApi, llamar, filas } from "@/lib/api";
 
 interface Cuenta {
   id: string;
@@ -62,8 +62,18 @@ export function Inteligencia() {
   const [fallo, setFallo] = useState<unknown>(null);
 
   useEffect(() => {
-    llamar<Cuenta[]>("/api/v1/accounts?limite=200")
-      .then((r) => setCuentas(r.datos))
+    // Con `filas()`, que es el ayudante de la casa para esto. Aquí se pedía
+    // `Cuenta[]` y el extremo devuelve `{items: […]}`, así que `.map` sobre la
+    // respuesta tiraba la pantalla entera: «(cuentas ?? []).map is not a
+    // function». Y como el error de pantalla decía «no se ha podido contactar
+    // con el servidor», esto parecía una caída de la API. El servidor
+    // contestaba 200.
+    //
+    // Encontrada el 01-11-2026 recorriendo las 58 pantallas una a una, que es
+    // lo único que las encuentra: no la caza TypeScript —el tipo se declara y
+    // ya— ni ningún gate, porque la pantalla existe, monta y tiene su ruta.
+    llamar<unknown>("/api/v1/accounts?limite=200")
+      .then((r) => setCuentas(filas<Cuenta>(r.datos)))
       .catch((e: unknown) => setFallo(e));
   }, []);
 
