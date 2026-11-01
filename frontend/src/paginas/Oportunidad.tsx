@@ -47,7 +47,7 @@ import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
-import { fecha, importe as comoImporte } from "@/lib/formato";
+import { fecha, humanizar, importe as comoImporte } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 
@@ -115,12 +115,31 @@ interface Metodologia {
   activa: boolean;
 }
 
+/** Un criterio de la metodología que todavía no está cubierto. */
+interface CriterioQueFalta {
+  clave: string;
+  etiqueta: string;
+  peso: number;
+}
+
 interface Evaluacion {
   puntuacion: number;
   criterios: number;
   cubiertos: number;
-  /** Una puntuación sin esto al lado es una nota, no una guía. */
-  lo_que_falta: string[];
+  /**
+   * Una puntuación sin esto al lado es una nota, no una guía.
+   *
+   * **Estaba declarado `string[]` y el servidor manda objetos.** Pintarlos
+   * reventaba la ficha entera —«Objects are not valid as a React child»— y,
+   * como el error de pantalla decía «No se ha podido contactar con el
+   * servidor», la ficha de cualquier oportunidad con metodología activa era
+   * una caja roja que mandaba a mirar la red. El servidor contestaba 200.
+   *
+   * No lo cazó ningún gate porque esta operación **no declara esquema de
+   * respuesta** en el contrato: devuelve un diccionario suelto, así que el
+   * front se inventó el tipo y TypeScript lo creyó.
+   */
+  lo_que_falta: CriterioQueFalta[];
   siguiente_paso: string;
   cualificada: boolean;
 }
@@ -672,16 +691,20 @@ function QueFaltaParaCerrar({
           {/* Lo que falta, enumerado. La nota sola no cambia nada. */}
           {faltan.length > 0 ? (
             <ul className="mt-2 flex flex-col gap-1">
-              {faltan.map((x, i) => (
-                <li key={i} className="text-2xs text-ink">
-                  {x}
+              {faltan.map((x) => (
+                <li key={x.clave} className="text-2xs text-ink">
+                  {/* La `etiqueta` que manda el servidor es la clave cruda
+                      —«comprador_economico»—, así que se escribe como se lee.
+                      Y se prefiere a la clave por si algún día trae el nombre
+                      de verdad. */}
+                  {humanizar(x.etiqueta || x.clave)}
                 </li>
               ))}
             </ul>
           ) : null}
           {evaluacion.siguiente_paso ? (
             <p className="mt-2 text-2xs text-ink">
-              {t("oportunidad.siguientePaso", { paso: evaluacion.siguiente_paso })}
+              {t("oportunidad.siguientePaso", { paso: humanizar(evaluacion.siguiente_paso) })}
             </p>
           ) : null}
         </>

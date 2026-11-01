@@ -31,8 +31,23 @@
 let LOCALE = "es-ES";
 let NUMERO = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 });
 let DINERO = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
-let FECHA = new Intl.DateTimeFormat(LOCALE, { dateStyle: "short" });
-let FECHA_HORA = new Intl.DateTimeFormat(LOCALE, { dateStyle: "short", timeStyle: "short" });
+/**
+ * El año va ENTERO, no en dos cifras.
+ *
+ * `dateStyle: "short"` da «7/12/16» en castellano, y eso en un CRM es un
+ * problema de verdad: la fecha de vencimiento de una actividad salía así y no
+ * hay forma de saber si es 2016 o 2116 —ni, para quien venga de otro formato,
+ * si el 7 es el día o el mes—. Un contrato que vence «el 3/4/25» se ha
+ * discutido en más de una empresa.
+ *
+ * Se piden los campos a mano en vez de `dateStyle` porque `short` es lo único
+ * que trae hora sin traerse también el día de la semana, y el año de cuatro
+ * cifras no es negociable.
+ */
+const CAMPOS_FECHA = { day: "2-digit", month: "2-digit", year: "numeric" } as const;
+const CAMPOS_HORA = { hour: "2-digit", minute: "2-digit" } as const;
+let FECHA = new Intl.DateTimeFormat(LOCALE, CAMPOS_FECHA);
+let FECHA_HORA = new Intl.DateTimeFormat(LOCALE, { ...CAMPOS_FECHA, ...CAMPOS_HORA });
 const MONEDAS = new Map<string, Intl.NumberFormat>();
 
 /** La localización que se está usando ahora mismo. */
@@ -54,11 +69,8 @@ export function fijarLocalizacion(locale: string): void {
   try {
     const numero = new Intl.NumberFormat(limpio, { maximumFractionDigits: 2 });
     const dinero = new Intl.NumberFormat(limpio, { maximumFractionDigits: 0 });
-    const fecha = new Intl.DateTimeFormat(limpio, { dateStyle: "short" });
-    const fechaHora = new Intl.DateTimeFormat(limpio, {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
+    const fecha = new Intl.DateTimeFormat(limpio, CAMPOS_FECHA);
+    const fechaHora = new Intl.DateTimeFormat(limpio, { ...CAMPOS_FECHA, ...CAMPOS_HORA });
     LOCALE = limpio;
     NUMERO = numero;
     DINERO = dinero;
@@ -100,6 +112,42 @@ const PARECE_IMPORTE = /(importe|facturacion|precio|coste|margen|total|saldo|cuo
 const PREFIJOS_TECNICOS = /^(quota|cuota|flag|attr|meta|config|param)_/;
 
 /**
+ * Las columnas que tiene TODA tabla, escritas como se leen.
+ *
+ * `created_at`, `updated_by`, `deleted_origen`… son del armazón, no del
+ * negocio, y salían en inglés en la ficha de cualquier registro: «Created at»,
+ * «Updated by», «Created origen». Es un conjunto cerrado —tres momentos por
+ * tres aspectos— así que una tabla no se queda corta: no las inventa nadie,
+ * las pone el modelo base.
+ */
+const DE_SISTEMA: Record<string, string> = {
+  created_at: "Creado",
+  updated_at: "Modificado",
+  deleted_at: "Borrado",
+  created_by: "Creado por",
+  updated_by: "Modificado por",
+  deleted_by: "Borrado por",
+  created_origen: "Creado desde",
+  updated_origen: "Modificado desde",
+  deleted_origen: "Borrado desde",
+};
+
+/**
+ * El sufijo `_at` marca «cuándo pasó» y no se lee.
+ *
+ * «Vence at», «Inicio at», «Completada at», «Recordar at»: lo escribe el
+ * modelo para distinguir la marca de tiempo del campo, y quitarlo deja
+ * exactamente lo que se quiere decir —«Vence», «Inicio», «Completada»—. El
+ * dato que hay debajo ya es una fecha, así que no se pierde nada.
+ *
+ * **Lo que sí se pierde, y se dice:** en la única lista donde conviven
+ * `tamano` y `tamano_at` los dos rótulos pasan a ser «Tamaño». Es un caso en
+ * 106 columnas declaradas, y el remedio —dejar «Tamano at» en todas las
+ * demás— cuesta más de lo que arregla.
+ */
+const MARCA_DE_TIEMPO = /_at$/;
+
+/**
  * Palabras castellanas que un nombre de columna no puede llevar acentuadas.
  *
  * Una columna se llama `direccion`, `telefono`, `tamano`: el identificador no
@@ -131,6 +179,7 @@ const CON_TILDE: Record<string, string> = {
   titulo: "título",
   numero: "número",
   telefono: "teléfono",
+  campeon: "campeón",
   categoria: "categoría",
   metrica: "métrica",
   metricas: "métricas",
@@ -196,13 +245,20 @@ function enCastellano(palabra: string): string {
  * cliente». Son el mismo problema —un identificador enseñado a una persona— y
  * arreglarlo en un sitio los arregla en los veinte que la llaman.
  */
-export function humanizar(campo: string): string {
+export function humanizar(campo: string | null | undefined): string {
+  // Un rótulo no puede tumbar una pantalla. Pasó: la ficha de una
+  // oportunidad reventaba entera porque un campo venía `undefined` y aquí
+  // se llamaba a `.replace` sobre él. Lo que falta se queda en blanco.
+  if (!campo) return "";
   // Por guion bajo **y por espacio**: unas veces llega el nombre crudo
   // (`sector_codigo`) y otras el `title` del contrato, que Pydantic genera en
   // inglés-Title-Case («Tenant Id», «Desde Moneda»). Partiendo sólo por guion,
   // ese segundo caso entraba entero como una palabra y no se arreglaba nada.
+  const delSistema = DE_SISTEMA[campo];
+  if (delSistema) return delSistema;
   const palabras = campo
     .replace(PREFIJOS_TECNICOS, "")
+    .replace(MARCA_DE_TIEMPO, "")
     .split(/[_\s]+/)
     .filter(Boolean)
     .map((p) => enCastellano(p.toLowerCase()));

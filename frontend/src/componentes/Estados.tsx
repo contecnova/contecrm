@@ -112,7 +112,17 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
   const api = error instanceof ErrorApi ? error : null;
 
   let mensaje = t("errores.generico");
-  if (!api) mensaje = t("errores.sinRed");
+  // **«No hay red» sólo cuando de verdad no hay red.** Antes era el mensaje de
+  // todo lo que no fuera un `ErrorApi`, y eso incluye los fallos al pintar: la
+  // ficha de una oportunidad llevaba rota quién sabe cuánto enseñando «No se
+  // ha podido contactar con el servidor», y lo que pasaba es que el front
+  // pintaba un objeto donde esperaba un texto. El servidor contestaba 200.
+  //
+  // Ahora `llamar` marca los fallos de red con estado 0, así que aquí se
+  // pueden distinguir, y lo que no es ninguno de los dos se dice como lo que
+  // es —algo ha fallado en esta pantalla— con su mensaje debajo.
+  if (api?.estado === 0) mensaje = t("errores.sinRed");
+  else if (!api) mensaje = t("errores.pantalla");
   else if (api.esPoliticaDeAcceso) mensaje = t("errores.politica");
   else if (api.estado === 403) mensaje = t("errores.sinPermiso");
   else if (api.estado === 404) mensaje = t("errores.noEncontrado");
@@ -130,9 +140,23 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
         <Icono nombre="error" tamano="sm" />
         {mensaje}
       </p>
+      {/* Y el mensaje de verdad, siempre a mano. Un fallo al pintar sin su
+          texto obliga a abrir la consola del navegador para saber qué pasó, y
+          eso no lo hace quien está usando el producto: lo cuenta como «no
+          funciona» y nadie puede arreglarlo. */}
+      {!api && error instanceof globalThis.Error ? (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-2xs text-ink-faint">
+            {t("errores.detalleTecnico")}
+          </summary>
+          <pre className="mt-2 overflow-x-auto rounded bg-paper-light p-3 font-mono text-2xs text-ink-muted">
+            {error.message}
+          </pre>
+        </details>
+      ) : null}
       {api?.detalle ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-2xs text-ink-faint">Detalle técnico</summary>
+          <summary className="cursor-pointer text-2xs text-ink-faint">{t("errores.detalleTecnico")}</summary>
           <pre className="mt-2 overflow-x-auto rounded-lg bg-paper-light p-3 font-mono text-2xs text-ink-muted">
             {JSON.stringify(api.detalle, null, 2)}
           </pre>

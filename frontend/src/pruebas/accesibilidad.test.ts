@@ -55,11 +55,18 @@ describe("accesibilidad de las pantallas (WCAG 2.2 AA)", () => {
     // pintar un `<h1>`, todas las pantallas que la usan se quedarían sin
     // encabezado de primer nivel y el gate seguiría en verde. Se comprueba
     // aquí, una vez, en vez de confiar en que nadie la toque.
-    const cabecera = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "..", "componentes", "Pagina.tsx"),
-      "utf8",
-    );
-    expect(cabecera).toContain("<h1");
+    // Son DOS las que lo ponen: la cabecera de una pantalla normal y el panel
+    // de datos clave de una ficha, que desde el 01-11-2026 es quien da título
+    // a los registros. Si cualquiera de las dos dejara de pintar un `<h1>`,
+    // las pantallas que la usan se quedarían sin encabezado de primer nivel y
+    // el gate seguiría en verde.
+    for (const pieza of ["Pagina.tsx", "DatosClave.tsx"]) {
+      const cabecera = readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), "..", "componentes", pieza),
+        "utf8",
+      );
+      expect(cabecera, `${pieza} ya no pinta un <h1>`).toContain("<h1");
+    }
   });
 
   it("toda pantalla tiene un encabezado de primer nivel", () => {
@@ -71,7 +78,11 @@ describe("accesibilidad de las pantallas (WCAG 2.2 AA)", () => {
     // toda la aplicación.
     const sin = paginas().filter((f) => {
       const texto = fuente(f);
-      return !texto.includes("<h1") && !texto.includes("<CabeceraPagina");
+      return (
+        !texto.includes("<h1") &&
+        !texto.includes("<CabeceraPagina") &&
+        !texto.includes("<DatosClave")
+      );
     });
     expect(sin, `Pantallas sin encabezado de primer nivel: ${sin.join(", ")}`).toEqual([]);
   });
@@ -83,7 +94,8 @@ describe("accesibilidad de las pantallas (WCAG 2.2 AA)", () => {
     // encima— y a simple vista no se nota.
     const dobles = paginas().filter((f) => {
       const texto = fuente(f);
-      return texto.includes("<CabeceraPagina") && texto.includes("<h1");
+      const conCabecera = texto.includes("<CabeceraPagina") || texto.includes("<DatosClave");
+      return conCabecera && texto.includes("<h1");
     });
     expect(dobles, `Pantallas con dos encabezados: ${dobles.join(", ")}`).toEqual([]);
   });

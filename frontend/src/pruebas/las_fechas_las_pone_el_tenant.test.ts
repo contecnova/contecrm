@@ -64,12 +64,15 @@ describe("las fechas y los importes los pone el tenant", () => {
     const antes = localizacion();
     try {
       fijarLocalizacion("es-ES");
-      expect(fecha("2026-11-26")).toBe("26/11/26");
+      // Con el año ENTERO. `dateStyle: "short"` daba «26/11/26», y una fecha
+      // de vencimiento con el año en dos cifras es ambigua de verdad: un
+      // contrato que vence «el 3/4/25» se ha discutido en más de una empresa.
+      expect(fecha("2026-11-26")).toBe("26/11/2026");
       expect(importe("1531.00", "EUR")).toContain("1531");
       expect(importe("1531.00", "EUR")).toContain("€");
       // El mismo dato, otro tenant: cambia sin tocar ninguna pantalla.
       fijarLocalizacion("en-US");
-      expect(fecha("2026-11-26")).toBe("11/26/26");
+      expect(fecha("2026-11-26")).toBe("11/26/2026");
       expect(importe("1531.00", "USD")).toContain("$");
     } finally {
       fijarLocalizacion(antes);

@@ -40,7 +40,19 @@ let EVALUACION: Record<string, unknown> = {
   puntuacion: 62,
   criterios: 6,
   cubiertos: 4,
-  lo_que_falta: ["No hay criterio de decisión declarado", "Falta el campeón"],
+  // **La forma que manda el servidor de verdad**, comprobada contra él el
+  // 01-11-2026: `[{clave, etiqueta, peso}]`, no cadenas. Este doble las ponía
+  // como texto, igual que el tipo del front, así que la suite estaba en verde
+  // con la ficha reventada en la aplicación —«Objects are not valid as a React
+  // child»— y encima el error se anunciaba como «no se ha podido contactar con
+  // el servidor». Un doble que inventa la forma no prueba nada: la confirma.
+  //
+  // La operación no declara esquema de respuesta en el contrato, así que no
+  // había nada que comparase las dos. Por eso se escribe aquí de dónde salen.
+  lo_que_falta: [
+    { clave: "criterios_decision", etiqueta: "criterios_decision", peso: 0 },
+    { clave: "campeon", etiqueta: "campeon", peso: 0 },
+  ],
   siguiente_paso: "Pregunta quién firma",
   cualificada: false,
 };
@@ -245,10 +257,12 @@ describe("qué falta para poder cerrar", () => {
       'oportunidad.cubiertos:{"cubiertos":4,"criterios":6,"puntuacion":62}',
     );
     // Y lo que falta, enumerado: la nota sola no dice qué hacer.
-    expect(
-      screen.getByText("No hay criterio de decisión declarado"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Falta el campeón")).toBeInTheDocument();
+    //
+    // Escrito como se lee, no como viene: el servidor manda la clave cruda en
+    // `etiqueta` —«criterios_decision»— y lo que se enseña es «Criterios
+    // decisión». Si algún día manda el nombre de verdad, se pintará ése.
+    expect(screen.getByText("Criterios decisión")).toBeInTheDocument();
+    expect(screen.getByText("Campeón")).toBeInTheDocument();
     expect(
       screen.getByText('oportunidad.siguientePaso:{"paso":"Pregunta quién firma"}'),
     ).toBeInTheDocument();

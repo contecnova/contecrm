@@ -468,6 +468,10 @@ export default {
     pedir: "Pedir la aprobación",
   },
   ficha: {
+    // La ruta de etapas de una ficha. Para quien no la ve: una lista
+    // ordenada no dice de qué es, y «Prospección, Cualificación…» suelto
+    // podría ser cualquier cosa.
+    ruta: "Recorrido de {{campo}}",
     identificadores: "Identificadores técnicos",
     queHaCambiado: "Qué ha cambiado",
     sinCambios: "Sin cambios anotados",
@@ -561,6 +565,12 @@ export default {
     conflicto: "Alguien ha cambiado este registro mientras lo editabas",
     noEncontrado: "No existe",
     sinRed: "No se ha podido contactar con el servidor",
+    // Un fallo al PINTAR no es un fallo de red, y decirlo así manda a
+    // mirar al sitio equivocado. El mensaje dice lo que se sabe —esta
+    // pantalla— y lo que NO se ha perdido: el dato está, y lo demás del
+    // producto sigue funcionando.
+    pantalla: "Esta pantalla no se ha podido pintar. No es un problema de tus datos: siguen guardados, y el resto del producto funciona.",
+    detalleTecnico: "Detalle técnico",
   },
   noExiste: {
     titulo: "Esa dirección no existe",

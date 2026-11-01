@@ -44,7 +44,7 @@ import { useSuperficie } from "@/lib/permisos";
 import { ErrorApi, llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
 import { AprobacionDeDocumento } from "@/paginas/Aprobaciones";
 
 type Pestana = "datos" | "adjuntos" | "comentarios" | "documentos";
@@ -57,6 +57,9 @@ export function Ficha() {
   // El nombre lo pone la pestaña de datos en cuanto carga el registro: el
   // título era el UUID, así que la ficha de una oportunidad no decía cuál era.
   const [nombre, setNombre] = useState("");
+  // El registro, para el panel de datos clave. Lo carga la pestaña de datos y
+  // lo sube: pedirlo dos veces sería dos peticiones para lo mismo.
+  const [fila, setFila] = useState<Record<string, unknown> | null>(null);
   const { superficie } = useSuperficie();
 
   // Solo las pestañas que este objeto puede tener. Pedir adjuntos de algo que
@@ -83,19 +86,25 @@ export function Ficha() {
 
   return (
     <>
-      {/* Si el registro no tiene con qué llamarse, el título es **el nombre de
-          lo que es**, no su identificador: un UUID de treinta y seis caracteres
-          como encabezado no dice qué se está mirando y no hay forma de leerlo.
-          El identificador se queda debajo, corto, para poder citarlo. */}
-      <CabeceraPagina
-        titulo={nombre || recursoAbierto?.nombre || modulo.titulo}
-        icono="description"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <Link to={`/m/${ruta}`} className="text-accent hover:underline">
+      {/* El panel de datos clave, como el de Salesforce: qué es, cómo se
+          llama, por dónde va y los cinco campos que importan, todo arriba y
+          sin entrar en ninguna pestaña.
+
+          Antes aquí había un título y, debajo, el identificador recortado. Si
+          el registro no tiene con qué llamarse el título sigue siendo **el
+          nombre de lo que es** y no su UUID: treinta y seis caracteres de
+          encabezado no dicen qué se está mirando. */}
+      <DatosClave
+        recurso={recursoAbierto}
+        tipo={tipo}
+        nombre={nombre || recursoAbierto?.nombre || modulo.titulo}
+        fila={fila}
+        acciones={
+          <span className="flex items-center gap-2 text-2xs text-ink-faint">
+            <Link to={`/m/${ruta}`} className="text-accent-text hover:underline">
               {modulo.titulo}
             </Link>
-            <span className="font-mono text-3xs text-ink-faint" title={id}>
+            <span className="font-mono" title={id}>
               {id.slice(0, 8)}…
             </span>
           </span>
@@ -130,6 +139,7 @@ export function Ficha() {
             id={id}
             objeto={tipo}
             alSaberNombre={setNombre}
+            alCargar={setFila}
           />
         ) : null}
         {activa === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
@@ -147,6 +157,7 @@ function Datos({
   id,
   objeto,
   alSaberNombre,
+  alCargar,
 }: {
   modulo: string;
   id: string;
@@ -154,6 +165,8 @@ function Datos({
   objeto: string;
   /** Sube el nombre del registro para que lo use el título de la ficha. */
   alSaberNombre: (nombre: string) => void;
+  /** Sube el registro entero, para el panel de datos clave. */
+  alCargar: (fila: Record<string, unknown>) => void;
 }) {
   const { t } = useTranslation();
   const navegar = useNavigate();
@@ -231,10 +244,14 @@ function Datos({
           setRetenidos(r.retenidos);
           setTapados(r.enmascarados);
           alSaberNombre(nombreDelRegistro(r.datos));
+          // Y el registro entero, para el panel de datos clave de arriba:
+          // los campos que importan los decide el recurso, pero los VALORES
+          // sólo los tiene quien ha hecho la petición.
+          alCargar(r.datos);
         })
         .catch(salvoCancelacion(setFallo));
     },
-    [ruta, alSaberNombre],
+    [ruta, alSaberNombre, alCargar],
   );
 
   useEffect(() => {

@@ -383,6 +383,29 @@ Tres cosas que notarás:
 
 ---
 
+### La ficha de un registro
+
+Al abrir cualquier registro, lo primero es el **panel de datos clave**: qué es
+—CUENTA, OPORTUNIDAD, CASO—, cómo se llama, y debajo hasta cinco campos que
+importan de ese objeto, sin entrar en ninguna pestaña. Son los mismos campos
+que salen como columnas en su listado: si el producto decide que de una
+oportunidad importan el importe y la etapa, importan en los dos sitios.
+
+**Si el registro tiene etapas, salen como un recorrido**, no como una palabra
+suelta: lo ya pasado en azul claro, dónde estás en azul oscuro, y lo que queda
+en gris. Una etapa dice dónde estás; un recorrido dice además cuánto queda y
+qué viene después.
+
+**Las fechas llevan el año entero.** Antes salían como `07/12/16`, y una fecha
+de vencimiento con el año en dos cifras es ambigua de verdad.
+
+**Los campos del sistema se leen.** `created_at`, `updated_by` y compañía salían
+en inglés —«Created at», «Updated by»—; ahora son «Creado», «Modificado por».
+Y el sufijo `_at`, que el modelo usa para marcar una fecha, ya no se enseña:
+donde ponía «Vence at» pone «Vence».
+
+---
+
 ### Las listas: ordenar, elegir columnas y cambiar de vista
 
 Casi todo en contecrm es una lista: cuentas, oportunidades, casos, órdenes de

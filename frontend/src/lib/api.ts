@@ -118,12 +118,14 @@ export async function subir<T = unknown>(
   cuerpo.append("fichero", fichero);
   for (const [clave, valor] of Object.entries(campos)) cuerpo.append(clave, valor);
 
-  const respuesta = await fetch(`${config().apiBase}${ruta}`, {
-    method: "POST",
-    headers: { Accept: "application/json", "Idempotency-Key": crypto.randomUUID() },
-    body: cuerpo,
-    credentials: "include",
-  });
+  const respuesta = await conRed(() =>
+    fetch(`${config().apiBase}${ruta}`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Idempotency-Key": crypto.randomUUID() },
+      body: cuerpo,
+      credentials: "include",
+    }),
+  );
   const texto = await respuesta.text();
   const datos = texto ? seguroJson(texto) : null;
   if (!respuesta.ok) throw problema(respuesta.status, datos);
@@ -179,16 +181,18 @@ export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {})
     cabeceras["Idempotency-Key"] = opciones.idempotencia ?? crypto.randomUUID();
   }
 
-  const respuesta = await fetch(`${config().apiBase}${ruta}`, {
-    method: metodo,
-    headers: cabeceras,
-    body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
-    // La sesión va en cookie, nunca en un almacén que pueda leer un script
-    // (CRM-07.04.02.03): un XSS con el token en `localStorage` es una sesión
-    // robada; con cookie `HttpOnly`, no.
-    credentials: "include",
-    signal: opciones.signal,
-  });
+  const respuesta = await conRed(() =>
+    fetch(`${config().apiBase}${ruta}`, {
+      method: metodo,
+      headers: cabeceras,
+      body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
+      // La sesión va en cookie, nunca en un almacén que pueda leer un script
+      // (CRM-07.04.02.03): un XSS con el token en `localStorage` es una sesión
+      // robada; con cookie `HttpOnly`, no.
+      credentials: "include",
+      signal: opciones.signal,
+    }),
+  );
 
   if (respuesta.status === 204) {
     return { datos: undefined as T, version: null, retenidos: [], enmascarados: [] };
@@ -225,6 +229,34 @@ function seguroJson(texto: string): unknown {
     // por delante del gateway. Se devuelve como texto en vez de romper, para
     // que el mensaje que llegue diga algo.
     return { detail: texto.slice(0, 500) };
+  }
+}
+
+/**
+ * Un fallo de red **se marca como tal**, en vez de llegar como un `TypeError`
+ * pelado.
+ *
+ * Sin esto, `fetch` rechaza con un `TypeError` indistinguible de cualquier
+ * otro error de JavaScript, y la pantalla de error decidía así: «si no es un
+ * `ErrorApi`, es que no hay red». De modo que **un fallo al pintar se
+ * anunciaba como "No se ha podido contactar con el servidor"**.
+ *
+ * Eso no es un matiz: es un diagnóstico que manda a mirar al sitio
+ * equivocado. Medido el 01-11-2026 en la ficha de una oportunidad, que llevaba
+ * rota quién sabe cuánto: la pantalla entera era una caja roja diciendo que no
+ * había servidor, y lo que pasaba es que el front pintaba un objeto donde
+ * esperaba un texto. Diez minutos mirando la red.
+ *
+ * El estado 0 es el convenio de «la petición no llegó a salir».
+ */
+async function conRed(hacer: () => Promise<Response>): Promise<Response> {
+  try {
+    return await hacer();
+  } catch (error) {
+    // Una cancelación NO es un fallo de red: tiene su propio tratamiento en
+    // `salvoCancelacion`, y convertirla aquí lo rompería.
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ErrorApi(0, "sin_red", "", null, String((error as Error)?.message ?? error));
   }
 }
 

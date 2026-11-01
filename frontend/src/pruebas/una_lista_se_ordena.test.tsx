@@ -69,7 +69,7 @@ describe("una lista se ordena", () => {
       />,
     );
     ordenarPor("creado");
-    expect(textosDeColumna(0)).toEqual(["31/12/25", "15/1/26", "1/2/26"]);
+    expect(textosDeColumna(0)).toEqual(["31/12/2025", "15/01/2026", "01/02/2026"]);
   });
 
   it("el texto, como se ordena en castellano", () => {
