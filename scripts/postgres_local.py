@@ -27,10 +27,72 @@ RAIZ = Path(__file__).resolve().parents[1]
 PGDATA = RAIZ / "var" / "pgdata"
 
 
+def _restos_de_un_apagado_a_medias() -> str:
+    """Borra el `postmaster.pid` que dejó un apagado que no llegó a terminar.
+
+    PostgreSQL escribe su PID en `postmaster.pid` y lo borra al cerrar. Si al
+    proceso lo matan a mitad del cierre —`./setup.sh parar` interrumpido, la
+    terminal cerrada, un reinicio— el fichero se queda, y con la última línea
+    puesta en `stopping`. `pgserver` lo lee, ve que no dice `ready` y revienta
+    con un `AssertionError` pelado, sin decir qué pasa ni cómo salir.
+
+    Y lo que lo convierte en un callejón sin salida es que **`parar` también
+    pasa por aquí**: con el fichero huérfano no se podía ni arrancar ni parar,
+    sólo borrarlo a mano. Medido el 01-11-2026 en esta máquina, con un fichero
+    del 30-10 cuyo PID (718) ya lo había reciclado `distnoted`.
+
+    Lo peligroso sería borrarlo con un Postgres vivo detrás: dos servidores
+    sobre el mismo directorio corrompen los datos. Por eso **no basta con que
+    el PID no responda**: un PID se reutiliza, así que se comprueba además que
+    el proceso sea realmente un `postgres` de *este* directorio. Si lo es, no
+    se toca nada y que decida `pgserver`.
+
+    Devuelve qué se encontró, para que el que llama lo pueda contar.
+    """
+    import psutil
+
+    pidfile = PGDATA / "postmaster.pid"
+    if not pidfile.exists():
+        return ""
+
+    lineas = pidfile.read_text(encoding="utf-8").splitlines()
+    try:
+        pid = int(lineas[0].strip())
+    except (IndexError, ValueError):
+        # Un fichero ilegible no puede estar protegiendo a nadie.
+        pidfile.unlink(missing_ok=True)
+        return "postmaster.pid ilegible: borrado"
+
+    try:
+        proceso = psutil.Process(pid)
+        # `name()` es «postgres» tanto en el postmaster como en sus hijos.
+        # `cwd()` es el directorio de datos: es lo que distingue a *nuestro*
+        # servidor de cualquier otro Postgres de la máquina que haya cogido
+        # ese PID por casualidad.
+        suyo = proceso.name().startswith("postgres") and proceso.cwd() == str(PGDATA)
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+        suyo = False
+
+    if suyo:
+        return ""
+
+    estado = lineas[7].strip() if len(lineas) > 7 else "sin estado"
+    pidfile.unlink(missing_ok=True)
+    # El socket y su cerrojo llevan el mismo PID muerto dentro y bloquean el
+    # arranque igual que el pidfile. El directorio del socket es la línea 5.
+    socket_dir = Path(lineas[4].strip()) if len(lineas) > 4 and lineas[4].strip() else PGDATA
+    puerto = lineas[3].strip() if len(lineas) > 3 else "5432"
+    for resto in (f".s.PGSQL.{puerto}", f".s.PGSQL.{puerto}.lock"):
+        (socket_dir / resto).unlink(missing_ok=True)
+    return f"restos de un apagado a medias (PID {pid}, «{estado}»): limpiados"
+
+
 def _servidor(persistente: bool = True):  # noqa: ANN202 — tipo de pgserver
     import pgserver
 
     PGDATA.mkdir(parents=True, exist_ok=True)
+    if aviso := _restos_de_un_apagado_a_medias():
+        print(aviso, file=sys.stderr)
     # `cleanup_mode=None` es imprescindible: por defecto (`"stop"`), pgserver
     # PARA el servidor cuando termina el proceso que lo pidió — y este proceso
     # termina justo después de imprimir la URL. Con el valor por defecto, el

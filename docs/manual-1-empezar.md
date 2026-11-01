@@ -591,6 +591,20 @@ arrancar: el Postgres local se reinicializa solo.
 **Un puerto está ocupado.** Los puertos se resuelven en `setup.sh`
 (`puerto_de`); cámbialos ahí o para lo que los esté usando.
 
+**El arranque muere con un `AssertionError` dentro de `pgserver`.** Es un
+`postmaster.pid` huérfano: la vez anterior mataron el apagado a medias —la
+terminal cerrada, un `parar` interrumpido, un reinicio— y PostgreSQL no llegó a
+borrar su fichero de PID.
+
+Ya no hace falta hacer nada: `scripts/postgres_local.py` lo detecta y lo limpia,
+y avisa de que lo ha hecho. **Sólo lo borra si el PID de dentro no es un
+`postgres` de ese mismo directorio de datos** —un PID se reutiliza, y borrarlo
+con un servidor vivo detrás son dos servidores sobre los mismos datos.
+
+Hasta el 01-11-2026 esto dejaba la máquina sin salida, porque `./setup.sh parar`
+pasa por el mismo sitio: con el fichero huérfano **ni arrancaba ni paraba**, y
+había que borrar `var/pgdata/postmaster.pid` a mano.
+
 ## Siguientes pasos
 
 - **Qué puede hacer cada perfil** → [Manual II](manual-2-perfiles.md)
