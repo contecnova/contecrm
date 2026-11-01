@@ -383,6 +383,23 @@ Tres cosas que notarás:
 
 ---
 
+### Si la portada te sale vacía
+
+Inicio contesta **«qué tengo yo hoy»**: tus actividades, tus oportunidades que
+cierran esta semana, tu embudo. Si no tienes nada asignado todavía —es lo que
+pasa con la cuenta de operación de la plataforma, que no lleva ventas— las
+cuatro cajas salen vacías a la vez, y eso se lee como si el producto no
+tuviera datos.
+
+No es eso, y ahora lo dice: sale un aviso arriba explicando que no tienes nada
+asignado, con un enlace a las oportunidades del equipo. El trabajo está; lo que
+no hay es trabajo **tuyo**.
+
+Si eres administrador y quieres que alguien vea su portada con datos, asígnale
+cuentas y oportunidades: el campo es **Responsable**.
+
+---
+
 ### La ficha de un registro
 
 Al abrir cualquier registro, lo primero es el **panel de datos clave**: qué es

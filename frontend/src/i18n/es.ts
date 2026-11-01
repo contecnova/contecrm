@@ -243,6 +243,11 @@ export default {
     },
   },
   inicio: {
+    // Cuando las cuatro cajas de la portada salen vacías a la vez. Dice el
+    // porqué —no te han asignado nada— y no «no hay datos», que es lo que
+    // parecía y es falso: los hay, son de otros.
+    nadaMio: "No tienes nada asignado todavía. Esta pantalla contesta «qué tengo yo hoy», así que te sale vacía; el trabajo del equipo sí está.",
+    verDelEquipo: "Ver las oportunidades",
     empezar: "Dar de alta",
     saludo: "Hola, {{nombre}}",
     // Lo que había aquí —«{{pantallas}} pantallas a tu alcance»— describía el

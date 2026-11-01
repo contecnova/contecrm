@@ -168,6 +168,14 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
 
   const altas = ALTAS.filter((a) => puede(sesion, a.permiso));
   const cargando = vencidas === null || hoy === null;
+  // Nada mío en NINGUNA de las cuatro: es lo que distingue «no tengo nada
+  // asignado» de «hoy no me toca nada», que son dos respuestas distintas y
+  // sólo una de ellas necesita explicación.
+  const sinNadaMio =
+    (vencidas?.length ?? 0) === 0 &&
+    (hoy?.length ?? 0) === 0 &&
+    (cierran?.length ?? 0) === 0 &&
+    (embudo?.length ?? 0) === 0;
 
   return (
     <>
@@ -188,6 +196,33 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
           ) : null
         }
       />
+
+      {/* **Cuando no llevas nada tuyo, se dice una vez y se dice por qué.**
+          Esta portada contesta «qué tengo yo hoy»: actividades mías, mis
+          oportunidades que cierran, mi embudo. Para quien opera la plataforma
+          —o para cualquiera que todavía no tenga nada asignado— las cuatro
+          cajas salían vacías a la vez, cada una repitiendo que no hay nada.
+
+          Cuatro «no hay nada» seguidos no se leen como «no te han asignado
+          nada»: se leen como que el producto está vacío. Y es lo primero que
+          ve quien entra con la cuenta del `.env`, que es justo la de
+          plataforma. Medido el 01-11-2026: con esa cuenta, cero; entrando como
+          un comercial, cuatro oportunidades cerrando esta semana con sus
+          importes.
+
+          Una línea arriba lo explica y lleva a lo que SÍ hay. No se esconden
+          las cajas: la respuesta a «qué tengo hoy» sigue siendo «nada», y eso
+          es verdad. Lo que faltaba era el porqué. */}
+      {!cargando && sinNadaMio ? (
+        <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 border-accent/30 bg-accent/5 p-3">
+          <p className="text-xs text-ink">{t("inicio.nadaMio")}</p>
+          {veOportunidades ? (
+            <Link to="/m/oportunidades" className="btn-secondary shrink-0">
+              {t("inicio.verDelEquipo")}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       {cargando ? (
         <p className="text-2xs text-ink-faint" role="status">
