@@ -72,8 +72,27 @@ describe("el listado de módulo", () => {
       path.join(process.cwd(), "src/paginas/Modulo.tsx"),
       "utf8",
     );
-    const tablas = fuente.match(/<Tabla\b[\s\S]*?\/>/g) ?? [];
-    expect(tablas.length).toBeGreaterThan(0);
+    // El trozo de cada `<Tabla …/>`, cerrando por INDENTACIÓN y no por el
+    // primer `/>` que aparezca: sus propiedades llevan dentro otros elementos
+    // —el formulario de alta, los filtros— y cortar en el primer cierre dejaba
+    // fuera la mitad de la etiqueta. Entonces el guardián dejaba de ver la
+    // bandera y se ponía rojo sin que nadie la hubiera quitado.
+    const lineas = fuente.split("\n");
+    const tablas: string[] = [];
+    for (let i = 0; i < lineas.length; i++) {
+      const abre = /^(\s*)<Tabla\b/.exec(lineas[i]!);
+      if (!abre) continue;
+      const sangria = abre[1]!.length;
+      const trozo: string[] = [];
+      for (let j = i; j < lineas.length; j++) {
+        trozo.push(lineas[j]!);
+        const cierra = /^(\s*)\/>\s*$/.exec(lineas[j]!);
+        if (cierra && cierra[1]!.length <= sangria) break;
+      }
+      tablas.push(trozo.join("\n"));
+    }
+
+    expect(tablas.length, "no se ha encontrado ninguna `<Tabla>` en el listado").toBeGreaterThan(0);
     for (const tabla of tablas) {
       expect(tabla, "el listado del módulo tiene que pasar `ocupaLaPantalla`").toMatch(
         /\bocupaLaPantalla\b/,

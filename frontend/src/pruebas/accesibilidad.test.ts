@@ -60,7 +60,7 @@ describe("accesibilidad de las pantallas (WCAG 2.2 AA)", () => {
     // a los registros. Si cualquiera de las dos dejara de pintar un `<h1>`,
     // las pantallas que la usan se quedarían sin encabezado de primer nivel y
     // el gate seguiría en verde.
-    for (const pieza of ["Pagina.tsx", "DatosClave.tsx"]) {
+    for (const pieza of ["Pagina.tsx", "DatosClave.tsx", "CabeceraDeLista.tsx"]) {
       const cabecera = readFileSync(
         join(dirname(fileURLToPath(import.meta.url)), "..", "componentes", pieza),
         "utf8",
@@ -81,7 +81,8 @@ describe("accesibilidad de las pantallas (WCAG 2.2 AA)", () => {
       return (
         !texto.includes("<h1") &&
         !texto.includes("<CabeceraPagina") &&
-        !texto.includes("<DatosClave")
+        !texto.includes("<DatosClave") &&
+        !texto.includes("<CabeceraDeLista")
       );
     });
     expect(sin, `Pantallas sin encabezado de primer nivel: ${sin.join(", ")}`).toEqual([]);
@@ -94,7 +95,10 @@ describe("accesibilidad de las pantallas (WCAG 2.2 AA)", () => {
     // encima— y a simple vista no se nota.
     const dobles = paginas().filter((f) => {
       const texto = fuente(f);
-      const conCabecera = texto.includes("<CabeceraPagina") || texto.includes("<DatosClave");
+      const conCabecera =
+        texto.includes("<CabeceraPagina") ||
+        texto.includes("<DatosClave") ||
+        texto.includes("<CabeceraDeLista");
       return conCabecera && texto.includes("<h1");
     });
     expect(dobles, `Pantallas con dos encabezados: ${dobles.join(", ")}`).toEqual([]);

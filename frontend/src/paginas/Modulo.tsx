@@ -18,7 +18,6 @@ import { useParams, useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Exportar } from "@/componentes/Exportar";
-import { Icono } from "@/componentes/Icono";
 import {
   Agrupado,
   Etiquetas,
@@ -30,7 +29,6 @@ import {
   vistaRecordada,
   type Vista,
 } from "@/componentes/Vistas";
-import { cn } from "@/lib/utiles";
 import { Formulario } from "@/componentes/Formulario";
 import { Filtros } from "@/componentes/Filtros";
 import { Tabla } from "@/componentes/Tabla";
@@ -52,7 +50,7 @@ import { pestanaPrincipal, recursosDe } from "@/lib/recursos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
 import { useSuperficie, useVisibilidad } from "@/lib/permisos";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { CabeceraDeLista } from "@/componentes/CabeceraDeLista";
 import { iconoDeGrupo } from "@/lib/navegacion";
 
 export function Modulo({ sesion }: { sesion: Sesion | null }) {
@@ -133,26 +131,21 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
 
   return (
     <>
-      {/* La trazabilidad va EN la cabecera y plegada, no debajo y en dos
-          bloques. Cada pantalla sigue diciendo qué capacidad del catálogo
-          implementa (CRM-07.04.05.05) y qué capacidades de producto enseña
-          —desde aquí se llega al enunciado, al código y a la prueba—, pero
-          `CRM-07.04.03.07 · sección 1.1` había acabado de **subtítulo**: el
-          primer texto que lee quien abre Cuentas es un identificador interno
-          que no significa nada fuera de casa.
+      {/* La cabecera de un listado, con la forma de Lightning: el módulo
+          arriba en pequeño y la pestaña que se está mirando debajo en grande,
+          con un desplegable. Antes era un título y una tira de hasta trece
+          pestañas que en Explotación caía en dos filas.
 
-          Y eran dos bandas, una debajo de otra, para lo mismo. Medido a
-          1440×900: el subtítulo y el desplegable se llevaban 65 px de los 476
-          que había que bajar para ver el primer dato. Ahora es un desplegable
-          a la derecha del título, que es donde se pone lo que casi nadie abre.
-
-          No se quita nada: quien lo despliega ve el identificador, la sección
-          y las capacidades. Se declara igual de caro declarar algo que no se
-          enseña, que es para lo que está. */}
-      <CabeceraPagina
-        titulo={modulo.titulo}
+          La trazabilidad sigue entera —identificador del catálogo, sección y
+          capacidades— y sigue plegada a la derecha. Lo que no vuelve es
+          `CRM-07.04.03.07 · sección 1.1` de subtítulo. */}
+      <CabeceraDeLista
         icono={iconoDeGrupo(modulo.grupo)}
-        acciones={
+        modulo={modulo.titulo}
+        recursos={pestanas_}
+        activo={activo}
+        alElegir={setActivo}
+        trazabilidad={
           <details className="text-right">
             <summary className="cursor-pointer text-3xs text-ink-faint">
               {t("modulo.trazabilidad")}
@@ -173,31 +166,6 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           </details>
         }
       />
-      {recursosDe(ruta ?? "").length > 1 ? (
-        <nav aria-label={modulo.titulo} className="mt-3 flex flex-wrap items-center gap-1">
-          {/* Las pestañas rotuladas con icono —hoy, la papelera— van siempre al
-              final y separadas del resto: no son un sitio donde se trabaja, son
-              el sitio donde se mira cuando algo falta. Mezcladas entre las demás
-              obligan a leerlas todas para encontrar la que se usa. */}
-          {pestañas.map(({ r, i }, posicion) => (
-            <button
-              key={r.nombre}
-              type="button"
-              onClick={() => setActivo(i)}
-              aria-current={i === activo ? "page" : undefined}
-              title={r.icono ? r.nombre : undefined}
-              aria-label={r.icono ? r.nombre : undefined}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-xs",
-                i === activo ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light",
-                r.icono && !pestañas[posicion - 1]?.r.icono ? "ml-auto" : "",
-              )}
-            >
-              {r.icono ? <Icono nombre={r.icono} /> : r.nombre}
-            </button>
-          ))}
-        </nav>
-      ) : null}
       {recurso ? (
         /* La `key` NO es decorativa: sin ella React reutiliza esta misma
            instancia al cambiar de módulo o de pestaña, y con ella se quedan
@@ -850,7 +818,9 @@ function RecursoVista({
 
               No se enseñan en un vocabulario: son nueve palabras, y filtrar
               nueve palabras es más trabajo que leerlas. */}
-          {vocabulario ? null : (
+          {/* En la vista de tabla los filtros van en SU barra de herramientas
+              (ver abajo). Aquí sólo para las demás vistas, que no la tienen. */}
+          {vocabulario || vista === "tabla" ? null : (
             <Filtros
               campos={ordenar(filas, recurso.columnas)}
               filas={filas}
@@ -918,11 +888,25 @@ function RecursoVista({
               // cree que se ha roto algo.
               enlace={aLaFicha}
               encabezado={
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
                   {botonDeAlta}
                   <p className="text-3xs text-ink-faint" role="status">
                     {t("modulo.filasCargadas", { cuantas: filas.length })}
                   </p>
+                  {/* Los filtros, en la MISMA fila que el resto de controles.
+                      Tenían una banda propia encima, así que entre la cabecera
+                      y la primera fila había tres bandas para tres controles.
+                      Siguen siempre visibles, que era su razón de ser: uno
+                      escondido tras un botón hace que nadie sepa que hay un
+                      recorte puesto. */}
+                  {vocabulario ? null : (
+                    <Filtros
+                      campos={ordenar(filas, recurso.columnas)}
+                      filas={filas}
+                      puestos={filtros}
+                      alCambiar={fijarFiltros}
+                    />
+                  )}
                 </div>
               }
               antes={formularioDeAlta}

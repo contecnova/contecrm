@@ -263,7 +263,7 @@ abre quien configura la instalación.
 > alguien lo pulse y descubra que no hay nada.
 
 Antes las dos cosas colgaban del mismo menú, a la misma altura y con el mismo
-peso: «Cuentas» y «Modelo de datos» una debajo de la otra. Un comercial no
+peso: «Cuentas» y «Gestor de objetos» una debajo de la otra. Un comercial no
 configura objetos y un consultor no llama a clientes, así que los dos tenían
 que leer el menú entero cada vez para encontrar lo suyo.
 
@@ -354,7 +354,7 @@ entrar a trabajar es un informe.
 Un módulo —Casos, Campañas, Previsión— tiene varias pestañas, y algunos tienen
 muchas: Procesos y orquestación tiene veintiséis. **La primera que ves es la de
 los registros**: los casos en Casos, las campañas en Campañas, los leads en
-Prospección. Siempre va la primera de la fila y es la que sale al entrar.
+Candidatos. Siempre va la primera de la fila y es la que sale al entrar.
 
 Las demás quedan a su derecha en el orden en que las agrupa el catálogo
 funcional, y la **papelera** va al final, como icono.
@@ -364,7 +364,7 @@ funcional, y la **papelera** va al final, como icono.
 > puso el catálogo, no nadie pensando en quién lo abre. Medido en el navegador
 > sobre los veinticinco módulos: **Campañas abría en la papelera**, Casos en
 > «Satisfacción del periodo» —que no enseña nada hasta que eliges un rango de
-> fechas, con los casos en la pestaña 5 de 13—, Prospección en «Cadencias»,
+> fechas, con los casos en la pestaña 5 de 13—, Candidatos en «Cadencias»,
 > Actividades en «Plantillas» y Previsión en «Territorios». De los veinticuatro
 > módulos con más de una pestaña, **uno** abría por sus registros.
 >
@@ -475,7 +475,7 @@ haría creer que significan lo mismo.
 Se entra pulsando la fila entera. Una consola de la que no se puede entrar a
 trabajar es un informe.
 
-## Cuadros de mando
+## Paneles
 
 Cada componente de un cuadro ejecuta su informe y se pinta. Dos cosas que
 conviene saber al montarlos:
@@ -617,8 +617,8 @@ había que borrar `var/pgdata/postmaster.pid` a mano.
 ## Estando en Administrar, abrir un módulo te devolvía a la portada
 
 Lo contó quien lo usaba, no una prueba, y es de los fallos que se sufren: desde
-«Administrar», al abrir **Tenants y unidades**, **Modelo de datos** o
-**Identidad y acceso**, la pestaña saltaba sola a «Trabajar», y como el destino
+«Administrar», al abrir **Empresas y unidades**, **Gestor de objetos** o
+**Usuarios y permisos**, la pestaña saltaba sola a «Trabajar», y como el destino
 de esa pestaña es la portada, el siguiente clic te sacaba de donde estabas.
 
 La causa: el ámbito de una pantalla se deduce del camino —a propósito, para que

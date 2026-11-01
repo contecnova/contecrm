@@ -70,7 +70,7 @@ export function Rejilla({
      * La cabecera se queda pegada arriba: recorrer una tabla sin cabecera
      * obliga a subir para saber qué columna se está mirando. */
     <div
-      className={`${acotada ? "lista-acotada" : ""} overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper ${className}`}
+      className={`${acotada ? "lista-acotada" : ""} overflow-x-auto rounded border border-ink-dim/50 bg-paper shadow-elevation-1 ${className}`}
     >
       {/* El tamaño de letra sale del token de densidad, en `.celda-rejilla`, y
           no de una clase fija: con la densidad por persona, una tabla con
@@ -78,13 +78,22 @@ export function Rejilla({
           modo cómodo — y entonces el interruptor parece que no hace nada. */}
       <table className={`w-full text-left ${compacta ? "es-apoyo" : ""}`}>
         {titulo ? <caption className="sr-only">{titulo}</caption> : null}
-        <thead className="sticky top-0 z-10 border-b border-ink-dim/30 bg-paper-light">
+        {/* La cabecera, con el aspecto de Lightning: VERSALITAS pequeñas,
+            interletrado abierto y un fondo apenas más hundido que la fila.
+            Es una de las dos cosas que de verdad hacen que una tabla «parezca»
+            de un CRM moderno —la otra es la densidad de la fila—, y aquí era
+            texto normal en gris, indistinguible de un dato.
+
+            `uppercase` en el CSS y no en el texto: el rótulo sigue siendo
+            «Nombre» para un lector de pantalla, que es lo que tiene que leer.
+            Convertirlo a mayúsculas en el dato lo haría deletrear N-O-M-B-R-E. */}
+        <thead className="sticky top-0 z-10 border-b border-ink-dim/60 bg-paper-sunk">
           <tr>
             {cabeceras.map((c, i) => (
               <th
                 key={i}
                 scope="col"
-                className="celda-rejilla whitespace-nowrap font-medium text-ink-muted"
+                className="celda-rejilla whitespace-nowrap text-3xs font-semibold uppercase tracking-[0.055em] text-ink-muted"
               >
                 {c}
               </th>

@@ -280,7 +280,7 @@ token cacheado por tenant. Se añade paginación declarativa en cuatro estilos.
 
 ---
 
-## 4. Modelo de datos del tenant
+## 4. Gestor de objetos del tenant
 
 Cada tenant define sus propios **objetos** (CRM-00.04.01.01) y **campos**
 (CRM-00.04.01.02) —19 tipos, con restricciones por tipo y clasificación de
@@ -7770,7 +7770,7 @@ menor que «1.9» y una actualización se saltaría sin avisar.
 ### Y todo eso se mira desde una pantalla
 
 Hasta el 28-10-2026 la familia entera estaba publicada y sin puerta: el módulo
-«Modelo de datos» listaba los instalados con su versión y ahí se acababa. El
+«Gestor de objetos» listaba los instalados con su versión y ahí se acababa. El
 servidor sabía decir si el módulo sigue siendo el que se publicó, qué partes
 usa el cliente de verdad, qué ajustó a mano y qué pantallas aporta — y nada de
 eso se alcanzaba. El manifiesto, además, estaba **guardado entero** y la ficha
@@ -8750,7 +8750,7 @@ Y con menos de dos puntos **no se dice que hay tendencia**: una sola instantáne
 es una foto, y llamarla tendencia hace que alguien saque una conclusión de un
 punto.
 
-### Cuadros de mando (`CRM-05.01.02.01`)
+### Paneles (`CRM-05.01.02.01`)
 
 Un cuadro es una colección de componentes, y cada uno apunta a un informe y dice
 **cómo se pinta**. El «cómo» va en el cuadro y no en el informe porque el mismo
@@ -8887,7 +8887,7 @@ Aquí es también donde se **conecta el ejecutor** del motor de informes. Por es
 despliegue sin contecintelligence deja los informes definibles y no ejecutables,
 que es exactamente lo que se le dice a quien los abra.
 
-## Cuadros de mando completos (`CRM-05.01.02`)
+## Paneles completos (`CRM-05.01.02`)
 
 El cuadro y su permiso ya estaban; faltaba lo que hace que sirva: los tipos de
 componente, los filtros que valen para todo el cuadro, el camino hasta el
@@ -9119,7 +9119,7 @@ Un comercial con tres listas —tareas, cadencias, leads— trabaja la que tiene
 delante, no la que importa. `GET /mi-cola` las junta.
 
 Cada entrada dice **por qué está ahí**, con nombre y no con un número: «toca el
-paso 2 de "Prospección fría", con 4 días de retraso». Una prioridad sin
+paso 2 de "Candidatos fría", con 4 días de retraso». Una prioridad sin
 explicación se ignora, porque si no se dice por qué algo está arriba la gente baja
 hasta encontrar lo que reconoce.
 
@@ -9625,7 +9625,7 @@ mensual—, que es distinto del **aviso que insiste** sobre una misma tarea y de
 «Los recordatorios los dispara el reloj, no el usuario» (§33); confundirlas lleva
 a crear cincuenta y dos tareas para conseguir que suene un aviso tres veces.
 
-## Canal indirecto: PRM (`CRM-03.04.01`)
+## Socios: PRM (`CRM-03.04.01`)
 
 Vender por canal no es vender con más gente: es vender con gente **que no trabaja
 aquí y que a veces compite entre sí**. Todo lo que sigue sale de esa frase.
@@ -9851,7 +9851,7 @@ en junio.
 El mismo motor liquida a un partner del canal (`CRM-03.04.01.06`): un segundo motor
 para el rappel habría dado dos formas de calcular lo mismo.
 
-## Canal indirecto en la interfaz (`CRM-07.04.03.16`)
+## Socios en la interfaz (`CRM-07.04.03.16`)
 
 La pantalla del canal pone **los registros de oportunidad por delante de los
 niveles**: los niveles se tocan una vez al año y los registros son lo que hay que
@@ -15051,7 +15051,7 @@ Quedan en 18, y el resto están en su sitio:
 
 | Dónde | Qué se ve ahora |
 |---|---|
-| Tenants y unidades | Aislamiento, sus migraciones, residencia, subprocesadores y transferencias internacionales (`tenant:read`) |
+| Empresas y unidades | Aislamiento, sus migraciones, residencia, subprocesadores y transferencias internacionales (`tenant:read`) |
 | Procesos y orquestación | Las aprobaciones del motor, con «revisar plazos» (`aprobacion:read`) |
 | Operación | Encargos a proveedor con entregados sin prueba, cumplimiento y estados sin mapear, más «revisar silencios» y «conciliar»; plantillas de documento; firma presencial |
 | Casos | Créditos de servicio y cumplimiento de SLA (`case:read`) |
@@ -15069,7 +15069,7 @@ demuestra que lo pide, que es la mitad que faltaba.
 
 ## Identidad y seguridad: cuatro preguntas que no son una tabla (`CRM-00.05.01.15`, `.17`, `.25`, `CRM-00.05.02.11`, `CRM-07.03.02.06`)
 
-El módulo genérico «Identidad y acceso» ya lista lo que es una colección:
+El módulo genérico «Usuarios y permisos» ya lista lo que es una colección:
 usuarios, roles, políticas, claves de API, sesiones, dispositivos de confianza
 y proveedores de identidad. Lo que no puede listar es lo que **no es una
 tabla**, y resulta ser justo lo que un administrador necesita saber. Las cuatro

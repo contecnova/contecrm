@@ -40,7 +40,7 @@ describe("cuántos tramos y cuáles", () => {
     // Dos tramos caben de sobra, y desde el listado volver a la portada es un
     // salto que alguien hace.
     const migas = derivarMigas("/m/cuentas", t);
-    expect(migas.map((m) => m.rotulo)).toEqual(["nav.inicio", "Cuentas y contactos"]);
+    expect(migas.map((m) => m.rotulo)).toEqual(["nav.inicio", "Cuentas"]);
     expect(migas[1]?.a).toBe("/m/cuentas");
   });
 
@@ -48,7 +48,9 @@ describe("cuántos tramos y cuáles", () => {
     // Lo que se recortaba. Tres tramos no caben a 1440, y el que sobra es el
     // que está en todas las pantallas.
     expect(rotulos("/m/cuentas/cuenta/01a18224-4ae5-7c36-b7d5-2d9ab390e2c0")).toEqual([
-      "Cuentas y contactos",
+      // «Cuentas», como en Salesforce: el módulo se llamaba «Cuentas y
+      // contactos» y los contactos son su propia vista dentro.
+      "Cuentas",
       "Cuenta",
     ]);
   });

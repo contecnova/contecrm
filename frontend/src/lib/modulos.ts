@@ -9,6 +9,17 @@
  *
  * El front estándar es con lo que se enseña la solución, así que una capacidad
  * que solo existe por API es una capacidad que nadie ve.
+ *
+ * **Los nombres son los de Salesforce en castellano** (01-11-2026), y es
+ * deliberado: «deberíamos incluso tener los mismos nombres de las cosas». Quien
+ * viene de un CRM busca «Candidatos», no «Prospección»; «Informes», no
+ * «Explotación»; «Socios», no «Canal indirecto». Un nombre propio obliga a
+ * aprender el producto antes de poder usarlo, y lo que se gana con él —que sea
+ * «nuestro»— no lo nota nadie que esté evaluando una alternativa.
+ *
+ * Lo que NO se traduce al vocabulario ajeno es lo que no existe allí
+ * —«Postventa», «Gobierno de la IA», «Contrato de la API»—: inventarles un
+ * nombre de Salesforce sería peor que el nuestro, porque además sería falso.
  */
 
 import { puede, type Sesion } from "@/lib/sesion";
@@ -183,7 +194,7 @@ export interface Recurso {
 export const MODULOS: Modulo[] = [
 {
     ruta: "tenants",
-    titulo: "Tenants y unidades",
+    titulo: "Empresas y unidades",
     seccion: "0.1",
     capacidad: "CRM-07.04.03.01",
     grupo: "Plataforma",
@@ -204,14 +215,14 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "modelo",
-    titulo: "Modelo de datos",
+    titulo: "Gestor de objetos",
     seccion: "0.4",
     capacidad: "CRM-07.04.03.04",
     grupo: "Plataforma",
   },
 {
     ruta: "acceso",
-    titulo: "Identidad y acceso",
+    titulo: "Usuarios y permisos",
     seccion: "0.5",
     capacidad: "CRM-07.04.03.05",
     grupo: "Plataforma",
@@ -225,7 +236,7 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "cuentas",
-    titulo: "Cuentas y contactos",
+    titulo: "Cuentas",
     seccion: "1.1",
     capacidad: "CRM-07.04.03.07",
     grupo: "Clientes",
@@ -256,21 +267,21 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "leads",
-    titulo: "Prospección",
+    titulo: "Candidatos",
     seccion: "3.3",
     capacidad: "CRM-07.04.03.15",
     grupo: "Ventas",
   },
 {
     ruta: "prevision",
-    titulo: "Previsión",
+    titulo: "Previsiones",
     seccion: "3.2",
     capacidad: "CRM-07.04.03.14",
     grupo: "Ventas",
   },
 {
     ruta: "canal",
-    titulo: "Canal indirecto",
+    titulo: "Socios",
     seccion: "3.4",
     capacidad: "CRM-07.04.03.16",
     grupo: "Ventas",
@@ -309,7 +320,7 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "explotacion",
-    titulo: "Explotación",
+    titulo: "Informes",
     seccion: "5.1",
     capacidad: "CRM-07.04.03.22",
     grupo: "Analítica",
@@ -323,7 +334,7 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "segmentos",
-    titulo: "Segmentación",
+    titulo: "Segmentos",
     seccion: "2.1",
     capacidad: "CRM-07.04.03.09",
     grupo: "Marketing",
@@ -344,7 +355,7 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "omnicanal",
-    titulo: "Omnicanalidad",
+    titulo: "Omnicanal",
     seccion: "4.2",
     capacidad: "CRM-07.04.03.18",
     grupo: "Servicio",

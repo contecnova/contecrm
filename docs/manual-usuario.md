@@ -310,7 +310,7 @@ Lo importante para el día a día:
 
 ### Abrir un objeto del modelo
 
-En **Administrar › Modelo de datos › Objetos**, cada fila se abre. Dentro está
+En **Administrar › Gestor de objetos › Objetos**, cada fila se abre. Dentro está
 todo lo que gobierna ese objeto:
 
 - **Sus campos**, con el tipo, si son obligatorios, si son únicos y su
@@ -380,6 +380,31 @@ Tres cosas que notarás:
 - **Si la fórmula está mal, el campo sale en blanco y la ficha se abre igual.** No
   se queda nadie sin poder trabajar porque una fórmula tenga una errata; quien la
   escribió lo ve al guardarla, porque entonces sí se rechaza.
+
+---
+
+### Las cosas se llaman como en Salesforce
+
+Si vienes de Salesforce, el vocabulario es el suyo a propósito:
+
+| aquí | lo que es |
+|---|---|
+| **Cuentas** | las empresas con las que trabajas |
+| **Contactos** | las personas de esas empresas |
+| **Candidatos** | lo que en inglés son los *leads* |
+| **Oportunidades** | las ventas en curso |
+| **Casos** | lo que atiende soporte |
+| **Campañas**, **Segmentos** | marketing |
+| **Informes**, **Paneles** | análisis |
+| **Previsiones** | lo que se espera cerrar |
+| **Socios** | el canal indirecto |
+| **Configuración** | todo lo que se ajusta, detrás del engranaje |
+| **Iniciador de aplicaciones** | el botón del nombre de la aplicación |
+
+No es por copiar: es que un nombre propio obliga a aprender el producto antes
+de poder usarlo, y eso no lo gana nadie. Las pantallas que **no existen en
+Salesforce** —«Postventa», «Gobierno de la IA», «Contrato de la API»— conservan
+su nombre: inventarles uno ajeno sería peor, porque además sería falso.
 
 ---
 
@@ -988,7 +1013,7 @@ hace falta para defenderlo.
 
 ---
 
-## Prospección y trabajo diario (sección 3.3)
+## Candidatos y trabajo diario (sección 3.3)
 
 - **Cadencias**: secuencias de correo, llamada y tarea con un ritmo definido. Se
   paran solas cuando el cliente responde — seguir la secuencia después de una
@@ -1517,7 +1542,7 @@ corresponde.
 
 ### Duplicados: el sistema los busca, tú decides
 
-Están en **Clientes → Duplicados por resolver**. Es el único sitio, y a
+Están en **Clientes → Duplicados**. Es el único sitio, y a
 propósito: hasta el 28-10-2026 había además una pestaña dentro de «Cuentas y
 contactos» que enseñaba las mismas parejas y no dejaba hacer nada con ellas.
 Dos sitios para lo mismo, y en uno de ellos no se podía decidir.
@@ -2476,7 +2501,7 @@ Dos cosas en la ficha de la orden:
 
 ### Elegir una plantilla de correo que funcione
 
-En **Prospección** salen primero las plantillas de las que se puede decir algo,
+En **Candidatos** salen primero las plantillas de las que se puede decir algo,
 con su porcentaje **y el número de envíos al lado**. Mira siempre los dos: con
 nueve correos, un 33 % son tres respuestas y mañana puede ser un 11 %.
 
