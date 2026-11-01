@@ -1,5 +1,23 @@
 export default {
   app: {
+    // ── Las aplicaciones ──────────────────────────────────────────────
+    // Se trabaja dentro de una cada vez, y arriba sólo están sus pestañas.
+    // Antes el menú ofrecía de golpe 24 módulos, ~35 pantallas y 211
+    // pestañas dentro de ellas: para mirar tus oportunidades había que leer
+    // cincuenta y nueve rótulos.
+    ventas: "Ventas",
+    servicio: "Servicio",
+    marketing: "Marketing",
+    analitica: "Analítica",
+    lanzador: "Aplicaciones",
+    lanzadorAtajo: "Para ir a una pantalla por su nombre: ⌘K",
+    todoLoQueHay: "Todo lo que hay",
+    cuantasPestanas_one: "1 pantalla",
+    cuantasPestanas_other: "{{count}} pantallas",
+    masPestanas: "Más pestañas de esta aplicación",
+    configuracion: "Configuración",
+    irAConfiguracion: "Configuración",
+    salirDeConfiguracion: "Volver al trabajo",
     cargando: "Cargando…",
     reintentar: "Reintentar",
     cerrarSesion: "Cerrar sesión",

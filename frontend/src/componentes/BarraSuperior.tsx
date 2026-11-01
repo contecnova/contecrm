@@ -14,7 +14,7 @@
  * que cierra la sesión al instante es una trampa, y se pulsa sin querer.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
@@ -24,8 +24,9 @@ import { Notificaciones } from "@/componentes/Notificaciones";
 import { llamar, mirarTenant, tenantMirado } from "@/lib/api";
 import { ALTAS } from "@/lib/altas";
 import { humanizar } from "@/lib/formato";
-import { MODULOS } from "@/lib/modulos";
-import { todasLasEntradas } from "@/lib/navegacion";
+import { MODULOS, grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
+import { ambitoDelCamino, entradaVisible, menuDe, todasLasEntradas } from "@/lib/navegacion";
+import { useVisibilidad } from "@/lib/permisos";
 import { usePanel } from "@/lib/panel";
 import type { Sesion } from "@/lib/sesion";
 import { puede } from "@/lib/sesion";
@@ -50,7 +51,29 @@ export function BarraSuperior({
   const { t } = useTranslation();
   const panel = usePanel();
   const ubicacion = useLocation();
-  const migas = derivarMigas(ubicacion.pathname, t);
+  // **Sin miga de pan cuando la barra de aplicación ya dice dónde estás.**
+  // Con el armazón nuevo, en un listado salía tres veces lo mismo en la misma
+  // pantalla: la pestaña subrayada en la barra, la miga aquí arriba y el
+  // título de la página. Tres rótulos iguales no orientan más que uno; ocupan
+  // el sitio del buscador y hacen que la pantalla parezca improvisada.
+  //
+  // En configuración sí se queda: ahí no hay barra de aplicación, hay un árbol
+  // a la izquierda, y la miga es lo único que dice en qué rama estás.
+  const enConfiguracion = ambitoDelCamino(ubicacion.pathname, grupoDelModulo) === "administrar";
+  const migas = enConfiguracion ? derivarMigas(ubicacion.pathname, t) : [];
+
+  // A qué pantalla lleva el engranaje: la **primera que esta persona puede
+  // ver** en configuración, no una fija. Un enlace fijo mandaría a quien no
+  // tiene ese permiso a una pantalla vacía, que es la peor bienvenida posible.
+  const visibilidad = useVisibilidad();
+  const destinoDeConfiguracion = useMemo(() => {
+    const areas = menuDe(
+      porGrupoVisible(sesion, visibilidad),
+      (e) => entradaVisible(sesion, e),
+      "administrar",
+    );
+    return areas[0]?.entradas[0]?.a ?? null;
+  }, [sesion, visibilidad]);
 
   const [tema, setTema] = useState<Tema>(() => temaActual());
   const [densidad, setDensidad] = useState<Densidad>(
@@ -273,6 +296,30 @@ export function BarraSuperior({
         ) : null}
 
         <AvisoDeChat />
+
+        {/* **La puerta de la configuración.** Antes vivía en la barra lateral,
+            en el interruptor «Trabajar / Administrar». Al quitar la barra del
+            trabajo diario, ese interruptor se fue con ella y la configuración
+            se quedó **sin ninguna forma de llegar**: el rediseño la habría
+            escondido entera, que es el fallo que más fácil se cuela al ordenar
+            un menú.
+
+            Es un engranaje y está donde lo pone Salesforce, por lo mismo que
+            el resto: quien ya usa un CRM lo busca ahí.
+
+            Sólo sale a quien tiene algo que configurar. Ofrecer una puerta que
+            lleva a una pantalla vacía es peor que no ofrecerla. */}
+        {destinoDeConfiguracion ? (
+          <Link
+            to={enConfiguracion ? "/" : destinoDeConfiguracion}
+            className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink"
+            aria-label={t(enConfiguracion ? "app.salirDeConfiguracion" : "app.irAConfiguracion")}
+            title={t(enConfiguracion ? "app.salirDeConfiguracion" : "app.irAConfiguracion")}
+            aria-current={enConfiguracion ? "page" : undefined}
+          >
+            <Icono nombre={enConfiguracion ? "work" : "settings"} />
+          </Link>
+        ) : null}
 
         {/* Densidad. Al lado del tema porque son la misma clase de cosa para
             quien mira —cómo se ve esto—, aunque por dentro una viva en el

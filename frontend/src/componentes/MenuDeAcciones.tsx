@@ -41,10 +41,19 @@ export function MenuDeAcciones({
   opciones,
   etiqueta,
   children,
+  clase,
 }: {
   opciones: OpcionDeMenu[];
   /** Cómo se llama el menú para quien no lo ve. */
   etiqueta?: string;
+  /**
+   * Con qué aspecto se pinta el botón que lo abre.
+   *
+   * Por defecto es un botón secundario, que es lo que pide una ficha. En la
+   * barra de aplicación tiene que parecer **una pestaña más**: un botón con
+   * borde entre las pestañas se lee como otra cosa y rompe la fila.
+   */
+  clase?: string;
   /** Lo que va delante del menú, en la misma fila: las acciones del día. */
   children?: ReactNode;
 }) {
@@ -86,7 +95,7 @@ export function MenuDeAcciones({
           <button
             ref={disparador}
             type="button"
-            className="btn-secondary inline-flex items-center gap-1"
+            className={clase ?? "btn-secondary inline-flex items-center gap-1"}
             aria-haspopup="menu"
             aria-expanded={abierto}
             aria-label={etiqueta ?? t("acciones.mas")}

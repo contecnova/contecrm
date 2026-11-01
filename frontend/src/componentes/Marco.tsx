@@ -1,29 +1,54 @@
 /**
- * El marco de la aplicación: panel lateral, barra superior y contenido
- * (CRM-07.04.01.03).
+ * El marco de la aplicación (CRM-07.04.01.03).
  *
- * Con el sistema de diseño de la casa (CRM-07.04.01.02): los mismos tokens
- * `paper` / `ink` / `accent`, los mismos iconos de Material Symbols y el mismo
- * reparto de la pantalla que contecmind. Dos productos «parecidos» se separan a
- * la tercera pantalla que alguien añade, y quien usa los dos acaba notando que
- * cambia de herramienta.
+ * **Son dos marcos, no uno**, y es lo que cambió el 01-11-2026:
  *
- * **Por qué cambió el reparto.** Esto era una barra horizontal con veintidós
- * enlaces que envolvían en tres líneas, sin iconos, sin agrupar y sin decir
- * dónde estabas. Una lista horizontal no escala pasados unos pocos elementos, y
- * este producto tiene veinticinco módulos más veinte pantallas fijas. El panel
- * a la izquierda permite agrupar y plegar, la barra superior dice dónde estás y
- * la paleta lleva a cualquier sitio escribiendo su nombre.
+ * - **Trabajando** no hay barra lateral. Arriba va la barra de la aplicación
+ *   en la que estás —Ventas, Servicio, Marketing, Analítica— con sus
+ *   pestañas, y a las demás se va por el lanzador. Es la forma de Salesforce
+ *   y se copia a propósito: es la que ya conoce quien usa un CRM.
+ * - **Configurando** sí hay árbol a la izquierda, porque ahí lo que se hace
+ *   es recorrer una lista larga buscando un ajuste, que es justo para lo que
+ *   sirve un árbol — y es también lo que hace Salesforce en su Setup.
+ *
+ * Lo de antes era un panel lateral con 29 entradas en el que «Cuentas y
+ * contactos» y «Contrato de la API» estaban a la misma altura, y detrás 211
+ * pestañas repartidas en 25 módulos. El panel no estaba mal construido: estaba
+ * resolviendo el problema equivocado, que era enseñar cincuenta y nueve
+ * destinos a la vez en lugar de poner delante los ocho de ahora mismo.
+ *
+ * El ámbito sale del CAMINO y no de un estado, igual que antes: un enlace
+ * directo a una pantalla de configuración tiene que abrir el marco de
+ * configuración, no el de trabajo con el menú equivocado marcado.
  */
 
-import { Suspense, lazy, useCallback, useEffect, useState, type ReactNode } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useLocation } from "react-router-dom";
+
+import { BarraDeAplicacion } from "@/componentes/BarraDeAplicacion";
 import { BarraLateral } from "@/componentes/BarraLateral";
 import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { llamar } from "@/lib/api";
+import {
+  aplicacionDelCamino,
+  aplicacionRecordada,
+  pestanasDe,
+  pestanasDeTodas,
+  recordarAplicacion,
+  type Aplicacion,
+} from "@/lib/aplicaciones";
+import { grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
+import {
+  ACCESOS,
+  ambitoDelCamino,
+  entradaVisible,
+  menuDe,
+  type Entrada,
+} from "@/lib/navegacion";
 import { ProveedorPanel } from "@/lib/panel";
-import { ProveedorPermisos } from "@/lib/permisos";
+import { ProveedorPermisos, useVisibilidad } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
 
 /**
@@ -37,13 +62,19 @@ import type { Sesion } from "@/lib/sesion";
  */
 const Paleta = lazy(() => import("@/componentes/Paleta").then((m) => ({ default: m.Paleta })));
 
+/** Lo mismo que la paleta: no se ve hasta que alguien lo pide. */
+const Lanzador = lazy(() =>
+  import("@/componentes/LanzadorDeAplicaciones").then((m) => ({
+    default: m.LanzadorDeAplicaciones,
+  })),
+);
+
 export interface Props {
   sesion: Sesion | null;
   children: ReactNode;
 }
 
 export function Marco({ sesion, children }: Props) {
-  const { t } = useTranslation();
   const [paleta, setPaleta] = useState(false);
 
   const salir = useCallback(async () => {
@@ -69,38 +100,13 @@ export function Marco({ sesion, children }: Props) {
   return (
     <ProveedorPanel>
       <ProveedorPermisos sesion={sesion}>
-      <div className="flex h-screen overflow-hidden bg-paper-dark">
-        {/* Un salto al contenido es lo primero que necesita quien navega con
-            teclado: sin él, cada página empieza por recorrer el menú entero. */}
-        <a
-          href="#contenido"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-focus-ring focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-paper focus:shadow-elevation-3"
+        <Armazon
+          sesion={sesion}
+          alSalir={() => void salir()}
+          alAbrirPaleta={() => setPaleta(true)}
         >
-          {t("app.saltarAlContenido")}
-        </a>
-
-        <BarraLateral sesion={sesion} alSalir={() => void salir()} />
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* La suplantación se dice SIEMPRE y en todas las pantallas. Un
-              administrador que olvida que está viendo el CRM en nombre de otra
-              persona toma decisiones sobre datos que no son los que cree. */}
-          {sesion?.suplantado_por ? (
-            <p className="bg-warning px-4 py-1 text-center text-2xs text-ink" role="status">
-              {t("app.suplantado")}
-            </p>
-          ) : null}
-
-          <BarraSuperior
-            sesion={sesion}
-            alSalir={() => void salir()}
-            alAbrirPaleta={() => setPaleta(true)}
-          />
-
-          <main id="contenido" className="min-h-0 flex-1 overflow-y-auto">
-            <div className="contenido-pagina">{children}</div>
-          </main>
-        </div>
+          {children}
+        </Armazon>
 
         {/* Sin `fallback` visible: mientras llega no hay nada que enseñar, y un
             esqueleto parpadeando encima de la pantalla es peor que esperar los
@@ -110,8 +116,127 @@ export function Marco({ sesion, children }: Props) {
             <Paleta abierta alCerrar={() => setPaleta(false)} sesion={sesion} />
           </Suspense>
         ) : null}
-      </div>
       </ProveedorPermisos>
     </ProveedorPanel>
+  );
+}
+
+/**
+ * El reparto de la pantalla, que depende de en qué ámbito estás.
+ *
+ * Va aparte de `Marco` porque necesita `useVisibilidad()`, y ese hook sólo
+ * existe dentro del proveedor que monta `Marco`.
+ */
+function Armazon({
+  sesion,
+  alSalir,
+  alAbrirPaleta,
+  children,
+}: {
+  sesion: Sesion | null;
+  alSalir: () => void;
+  alAbrirPaleta: () => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const visibilidad = useVisibilidad();
+  const [lanzador, setLanzador] = useState(false);
+
+  const ambito = ambitoDelCamino(pathname, grupoDelModulo);
+  const menu = useMemo(
+    () => menuDe(porGrupoVisible(sesion, visibilidad), (e) => entradaVisible(sesion, e), "trabajar"),
+    [sesion, visibilidad],
+  );
+
+  // La aplicación la manda el CAMINO cuando el camino pertenece a una. Sólo
+  // cuando no —la portada, el chat, las menciones— manda la recordada: una
+  // portada que cambia de aplicación según desde dónde llegues no deja saber
+  // nunca en cuál estás.
+  const [elegida, setElegida] = useState<Aplicacion>(aplicacionRecordada);
+  const delCamino = aplicacionDelCamino(pathname, menu);
+  const aplicacion = delCamino ?? elegida;
+  useEffect(() => {
+    if (delCamino && delCamino.id !== elegida.id) {
+      setElegida(delCamino);
+      recordarAplicacion(delCamino);
+    }
+  }, [delCamino, elegida.id]);
+
+  // «Inicio» y «Puesto» son pestaña de TODAS las aplicaciones: no son de un
+  // dominio, son de donde se empieza el día. El chat y las menciones no, que
+  // ya tienen su icono en la barra de arriba — ponerlos otra vez aquí sería lo
+  // mismo en dos sitios.
+  const cabecera = ACCESOS.filter(
+    (e) => (e.a === "/" || e.a === "/puesto") && entradaVisible(sesion, e),
+  );
+  const pestanas: Entrada[] = [
+    ...cabecera,
+    ...pestanasDe(aplicacion, menu),
+    // Y lo que es trabajo de todos: hoy las aprobaciones. Al final porque no
+    // son el dominio de esta aplicación, pero presentes, porque se aprueba un
+    // descuento, un contrato y un gasto desde el mismo sitio.
+    ...pestanasDeTodas(menu),
+  ];
+
+  const configurando = ambito === "administrar";
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-paper-dark">
+      {/* Un salto al contenido es lo primero que necesita quien navega con
+          teclado: sin él, cada página empieza por recorrer el menú entero. */}
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-focus-ring focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-paper focus:shadow-elevation-3"
+      >
+        {t("app.saltarAlContenido")}
+      </a>
+
+      {/* El árbol sólo en configuración. Es donde se recorre una lista larga
+          buscando un ajuste, que es para lo que sirve un árbol; trabajando
+          estorba, porque lo que se necesita son las ocho pantallas de ahora
+          mismo y ésas caben arriba. */}
+      {configurando ? <BarraLateral sesion={sesion} alSalir={alSalir} /> : null}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* La suplantación se dice SIEMPRE y en todas las pantallas. Un
+            administrador que olvida que está viendo el CRM en nombre de otra
+            persona toma decisiones sobre datos que no son los que cree. */}
+        {sesion?.suplantado_por ? (
+          <p className="bg-warning px-4 py-1 text-center text-2xs text-ink" role="status">
+            {t("app.suplantado")}
+          </p>
+        ) : null}
+
+        <BarraSuperior sesion={sesion} alSalir={alSalir} alAbrirPaleta={alAbrirPaleta} />
+
+        {configurando ? null : (
+          <BarraDeAplicacion
+            aplicacion={aplicacion}
+            pestanas={pestanas}
+            alAbrirLanzador={() => setLanzador(true)}
+          />
+        )}
+
+        <main id="contenido" className="min-h-0 flex-1 overflow-y-auto">
+          <div className="contenido-pagina">{children}</div>
+        </main>
+      </div>
+
+      {lanzador ? (
+        <Suspense fallback={null}>
+          <Lanzador
+            menu={menu}
+            actual={aplicacion}
+            alElegirAplicacion={(app) => {
+              setElegida(app);
+              recordarAplicacion(app);
+              setLanzador(false);
+            }}
+            alCerrar={() => setLanzador(false)}
+          />
+        </Suspense>
+      ) : null}
+    </div>
   );
 }

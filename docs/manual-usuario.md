@@ -57,12 +57,35 @@ propietario, que esté compartido con tu equipo, que te llegue por la jerarquía
 aparece, **el CRM puede decirte por qué**. No es un error: es que no te toca, y
 saberlo ahorra la llamada a soporte.
 
-**Moverse.** A la izquierda está el menú, y lo que hay dentro está agrupado:
-arriba los accesos que se usan a diario —inicio, tu puesto, la consola de agente
-y los casos—, debajo los **módulos**, que son las pantallas de cada área del
-catálogo, y después análisis y plataforma. Cada grupo se pliega, y se queda
-plegado la próxima vez que entres: si no usas los módulos del catálogo, no
-tienes que verlos.
+**Moverse: trabajas dentro de una aplicación.** Arriba, debajo de la barra de
+búsqueda, está la **barra de la aplicación**: a la izquierda su nombre —Ventas,
+Servicio, Marketing o Analítica— y a su derecha **sus** pestañas. La que estás
+mirando va subrayada en azul. Las que no caben se recogen en **Más**, y la
+activa nunca se esconde ahí.
+
+Hasta el 01-11-2026 esto era un menú lateral con 29 entradas en el que «Cuentas
+y contactos» y «Contrato de la API» estaban a la misma altura, y detrás 211
+pestañas repartidas en 25 módulos. Para mirar tus oportunidades había que leer
+cincuenta y nueve rótulos. Ahora ves las de tu aplicación y ya está.
+
+**Cambiar de aplicación, o ver qué hay.** Pulsa el nombre de la aplicación
+—«Ventas ▾»— y se abre el **lanzador**: las cuatro aplicaciones, cuántas
+pantallas tiene cada una, y debajo la lista completa de todas. Desde ahí se va
+a cualquier sitio directamente, sin pasar por la aplicación. contecrm recuerda
+en cuál estabas.
+
+**Inicio y Puesto son pestaña de todas**, porque no son de un dominio: son por
+donde se empieza el día. Las aprobaciones también, por lo mismo — se aprueba un
+descuento, un contrato y un gasto desde el mismo sitio.
+
+**La configuración está detrás del engranaje**, arriba a la derecha. Es otra
+puerta a propósito: lo que se ajusta de tarde en tarde no tiene por qué estar
+compitiendo por sitio con lo que usas cada día. Ahí sí hay un árbol a la
+izquierda, porque ahí lo que se hace es recorrer una lista larga buscando un
+ajuste. El mismo botón te devuelve al trabajo.
+
+> El engranaje **sólo sale si tienes algo que configurar**. Si no lo ves, no es
+> que falte: es que tu perfil no abre ninguna de esas pantallas.
 
 Arriba, la línea de la barra dice dónde estás y permite volver: en una ficha, el
 paso anterior es el listado del que salió. **En una ficha no pone «Inicio»**: la
