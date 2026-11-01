@@ -44,7 +44,7 @@ import {
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { fecha, humanizar, importe as comoImporte } from "@/lib/formato";
@@ -323,13 +323,19 @@ export function Oportunidad() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={op.nombre}
-        icono="monetization_on"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
+      {/* El mismo panel que las demás fichas, y aquí con **la ruta de
+          etapas**, que es lo que de verdad se mira en una oportunidad: una
+          etapa suelta dice dónde estás; la ruta dice además cuánto queda y qué
+          viene después. La pinta `DatosClave` cuando el contrato declara los
+          valores de la etapa, así que esta pantalla no tiene que saber nada. */}
+      <DatosClave
+        recurso={recurso}
+        tipo="oportunidad"
+        nombre={op.nombre}
+        fila={op as unknown as Record<string, unknown>}
+        distintivos={
+          <>
             {op.codigo ? <span className="badge badge-muted">{op.codigo}</span> : null}
-            <span className="chip-dato">{op.etapa ?? t("oportunidad.sinEtapa")}</span>
             <span className="chip-dato">{op.estado}</span>
             {op.categoria_forecast ? (
               <span className="chip-dato">{op.categoria_forecast}</span>
@@ -337,22 +343,19 @@ export function Oportunidad() {
             {op.bloqueada ? (
               <span className="chip-dato chip-dato--no">{t("oportunidad.bloqueada")}</span>
             ) : null}
-          </span>
+          </>
+        }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {/* Editar y borrar primero: lo que más se busca en una ficha abierta es
-          cambiar un dato que está mal. */}
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado

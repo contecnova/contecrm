@@ -31,7 +31,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { AGRUPABLES } from "@/componentes/Vistas";
 import { camposDe, contratoDe, fichaDe, type CampoEsquema } from "@/lib/contrato";
 import { escalar, humanizar, tieneDato, campoDelNombre } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
@@ -39,6 +38,22 @@ import { cn } from "@/lib/utiles";
 
 /** Cuántos datos clave caben sin que la fila deje de leerse de un vistazo. */
 const CUANTOS = 5;
+
+/**
+ * Campos que son un RECORRIDO: se pasa por ellos en orden y hay un después.
+ *
+ * NO vale cualquier lista cerrada, y la diferencia importa. `AGRUPABLES` —la
+ * lista con la que el listado decide por qué campo agrupar— lleva dentro
+ * `estado`, `prioridad` y `tipo`, que para agrupar valen y para una ruta no:
+ * una cuenta «Activa / Inactiva / Bloqueada» no recorre nada, y pintarlo como
+ * un camino dice que de activa se pasa a inactiva y de ahí a bloqueada, que es
+ * falso. Se vio al mirarlo: la ficha de una cuenta salió con esas tres en fila
+ * y una marcada.
+ *
+ * Una etapa o una fase sí: están ordenadas por definición, y la pregunta que
+ * contesta la ruta —cuánto queda y qué viene después— sólo tiene sentido ahí.
+ */
+const RECORRIDOS = ["etapa", "fase"] as const;
 
 /**
  * El campo que lleva la etapa de este registro, si lo tiene.
@@ -51,7 +66,7 @@ export function campoDeEtapa(
   fila: Record<string, unknown>,
   campos: CampoEsquema[],
 ): CampoEsquema | null {
-  for (const candidato of AGRUPABLES) {
+  for (const candidato of RECORRIDOS) {
     if (!(candidato in fila)) continue;
     const campo = campos.find((c) => c.nombre === candidato);
     if (campo && campo.opciones.length >= 3) return campo;
@@ -100,6 +115,7 @@ export function DatosClave({
   nombre,
   fila,
   acciones,
+  distintivos,
 }: {
   recurso: Recurso | undefined;
   /** El tipo del registro, que es lo que se pone encima del nombre. */
@@ -108,6 +124,14 @@ export function DatosClave({
   fila: Record<string, unknown> | null;
   /** Editar, borrar y lo que el contrato permita. */
   acciones?: ReactNode;
+  /**
+   * Insignias bajo el nombre: el estado, los roles de una cuenta, su NIF.
+   *
+   * Van aquí y no como un dato clave más porque no son pares
+   * etiqueta/valor: son marcas de lo que el registro ES, y en Lightning viven
+   * pegadas al nombre por eso mismo.
+   */
+  distintivos?: ReactNode;
 }) {
   const { t } = useTranslation();
   const [campos, setCampos] = useState<CampoEsquema[]>([]);
@@ -154,6 +178,9 @@ export function DatosClave({
           <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
             {nombre || humanizar(tipo)}
           </h1>
+          {distintivos ? (
+            <div className="mt-1 flex flex-wrap items-center gap-2">{distintivos}</div>
+          ) : null}
         </div>
         {acciones ? <div className="flex shrink-0 items-center gap-2">{acciones}</div> : null}
       </div>

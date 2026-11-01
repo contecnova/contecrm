@@ -49,7 +49,7 @@ import {
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar, listarPagina } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
@@ -396,54 +396,53 @@ export function Cuenta() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={cuenta.nombre}
-        icono="domain"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
+      {/* El MISMO panel de datos clave que las demás fichas. Esta pantalla
+          tenía su cabecera propia, así que abrir una cuenta y abrir una
+          actividad se parecían en poco: dos pantallas que enseñan lo mismo
+          —qué es, cómo se llama, qué importa de él— tienen que colocarlo
+          igual, o quien usa las dos cree que son dos productos.
+
+          Y las acciones van DENTRO del panel, como en Lightning: editar,
+          borrar y lo que el contrato permita estaban en una fila aparte
+          debajo, que es una banda más entre el nombre y los datos. */}
+      <DatosClave
+        recurso={recurso}
+        tipo="cuenta"
+        nombre={cuenta.nombre}
+        fila={cuenta as unknown as Record<string, unknown>}
+        distintivos={
+          <>
             <span className="badge badge-muted">{cuenta.estado}</span>
             {cuenta.roles.map((r) => (
               <span key={r} className="chip-dato chip-dato--si">
                 {r}
               </span>
             ))}
-            {nif ? (
-              <span className="text-2xs text-ink-faint">{nif}</span>
-            ) : null}
-          </span>
-        }
-        acciones={
-          <>
-            <Link
-              to={`/m/oportunidades?r=Oportunidades&nuevo=1`}
-              className="btn-primary"
-            >
-              {t("cuenta.nuevaOportunidad")}
-            </Link>
+            {nif ? <span className="text-2xs text-ink-faint">{nif}</span> : null}
           </>
         }
+        acciones={
+          !editando ? (
+            <>
+              <BotonesDeRegistro
+                puedeEditar={puedeEditar}
+                puedeBorrar={puedeBorrar}
+                alEditar={() => setEditando(true)}
+                alBorrar={() => setConfirmando(true)}
+                extra={acciones.map((a) => ({
+                  clave: a.ruta,
+                  nombre: a.nombre,
+                  alElegir: () => setAccionAbierta(a),
+                  destructiva: esIrreversible(a),
+                }))}
+              />
+              <Link to={`/m/oportunidades?r=Oportunidades&nuevo=1`} className="btn-primary">
+                {t("cuenta.nuevaOportunidad")}
+              </Link>
+            </>
+          ) : null
+        }
       />
-
-      {/* Editar y borrar van ANTES que las acciones de negocio: lo primero
-          que se busca en una ficha abierta es cambiar un dato que está mal, y
-          esta pantalla no lo ofrecía en ningún punto aunque el servidor lo
-          admitiera. */}
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-            extra={acciones.map((a) => ({
-              clave: a.ruta,
-              nombre: a.nombre,
-              alElegir: () => setAccionAbierta(a),
-              destructiva: esIrreversible(a),
-            }))}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado

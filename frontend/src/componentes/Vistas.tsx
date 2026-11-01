@@ -50,7 +50,7 @@ export type Vista = "tabla" | "tarjetas" | "agrupado";
 const CLAVE = "contecrm.vista";
 
 /** Campos por los que agrupar tiene sentido, en orden de preferencia. */
-export const AGRUPABLES = [
+const AGRUPABLES = [
   "etapa",
   "estado",
   "prioridad",
