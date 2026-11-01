@@ -73,7 +73,7 @@ export function LanzadorDeAplicaciones({
         className="mx-auto mt-16 max-h-[78vh] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-ink-dim/60 bg-paper p-5 shadow-elevation-4"
       >
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="text-lg-em font-bold text-ink">{t("app.lanzador")}</h2>
+          <h2 className="text-lg font-bold text-ink">{t("app.lanzador")}</h2>
           <p className="text-2xs text-ink-faint">{t("app.lanzadorAtajo")}</p>
         </div>
 
