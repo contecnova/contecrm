@@ -194,7 +194,7 @@ def _entidades_publicables(tenant_id: UUID) -> list[dict[str, Any]]:
     """
     from services.analytics.cliente import _config as _config_ci
 
-    return _entidades_de(_config_ci().ci_url_del_crm, _clave_de_lectura(tenant_id))
+    return _entidades_de(_url_propia(_config_ci()), _clave_de_lectura(tenant_id))
 
 
 def _huella(modelo: dict[str, Any]) -> str:
@@ -265,10 +265,21 @@ def registrar_fuente(
         )
     except Exception as exc:  # noqa: BLE001 — el otro sistema es externo
         fila.estado = "error"
-        fila.error = str(exc)[:1000]
+        # Con el DETALLE, no sólo el titular. `ErrorDependencia` lleva dentro
+        # el código HTTP y el cuerpo que contestó el otro sistema, y `str(exc)`
+        # devuelve únicamente el mensaje: así quedaba guardado
+        # «contecintelligence ha rechazado el registro de la fuente» y en
+        # ningún sitio ponía que había contestado 403 ni por qué. Un fallo que
+        # no dice su motivo obliga a reproducirlo para saber qué pasó, y esto
+        # pasa en un worker, de noche y sin nadie mirando.
+        detalle = getattr(exc, "detalle", None)
+        fila.error = (f"{exc} · {detalle}" if detalle else str(exc))[:1000]
         uow.db.flush()
         logger.warning(
-            "analytics.registro_fuente_fallido", tenant=str(tenant_id), error=str(exc)[:200]
+            "analytics.registro_fuente_fallido",
+            tenant=str(tenant_id),
+            error=str(exc)[:200],
+            detalle=detalle,
         )
         return {"registrada": False, "sin_cambios": False, "error": fila.error}
 
@@ -373,7 +384,7 @@ def _publicar(
     )
 
     if entidades is None:
-        entidades = _entidades_de(s.ci_url_del_crm, clave_api)
+        entidades = _entidades_de(_url_propia(s), clave_api)
     if not entidades:
         raise ErrorValidacion(
             "Este tenant no tiene ningún objeto consultable que registrar",
@@ -457,6 +468,19 @@ def _clave_de_lectura(tenant_id: UUID) -> str:
     from crmcore.integracion.clave_lectura import clave_de_lectura
 
     return clave_de_lectura(tenant_id, nombre="contecintelligence")
+
+
+def _url_propia(s: Any) -> str:
+    """La dirección con la que este CRM se recorre **a sí mismo**.
+
+    No es `ci_url_del_crm`: esa es con la que lo ve contecintelligence desde
+    SU contenedor. Usar aquella para llamarse a uno mismo funciona sólo cuando
+    las dos coinciden —todo en la misma red de Docker— y falla siempre cuando
+    no, que es justo el caso para el que ese ajuste existe.
+
+    Vacía se cae a `ci_url_del_crm`, que es como se comportaba antes.
+    """
+    return getattr(s, "url_interna_del_crm", "") or s.ci_url_del_crm
 
 
 def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
@@ -818,7 +842,16 @@ def diagnostico(db: Session, tenant_id: UUID) -> dict[str, Any]:
             "Este tenant no tiene organización asignada, así que no se le puede "
             "pedir un token de usuario."
         )
-    if fuente is None or fuente.estado != "registrada":
+    # Se separa «todavía nadie lo ha intentado» de «se intentó y lo
+    # rechazaron»: las dos decían lo mismo —«no está registrado»— y la segunda
+    # dejaba a quien mira pulsando el botón una y otra vez sin enterarse de que
+    # ya había fallado tres veces por el mismo motivo.
+    if fuente is not None and fuente.estado == "error":
+        problemas.append(
+            "El alta del CRM como fuente se intentó y falló: "
+            f"{fuente.error or 'sin detalle guardado'}"
+        )
+    elif fuente is None or fuente.estado != "registrada":
         problemas.append(
             "El CRM no está registrado como fuente consultable, así que las "
             "preguntas no encontrarían de dónde sacar los datos."

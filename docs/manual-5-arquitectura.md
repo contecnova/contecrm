@@ -108,6 +108,53 @@ porque las dos seleccionan tablas por esa columna. Aquí la columna es
 obligatoria, las cuatro excepciones están justificadas por escrito y hay un gate
 que lo comprueba.
 
+### Las cuatro direcciones de contecintelligence
+
+La explotación del dato —preguntar, los informes, los cuadros de mando— la
+resuelve **contecintelligence**, que es otro producto de la casa. Que dos
+sistemas se hablen por red obliga a decir **quién mira a quién desde dónde**, y
+eso son cuatro direcciones distintas, no una:
+
+| Ajuste | Quién llama | A quién | En la pila local |
+|---|---|---|---|
+| `CI_BASE_URL` | un servicio del CRM | contecintelligence | `http://localhost:8100` |
+| `CI_URL_PUBLICA` | el navegador | contecintelligence | `http://localhost:8100` |
+| `CI_URL_DEL_CRM` | contecintelligence | el CRM | `http://host.docker.internal:18080/api/v1` |
+| `URL_INTERNA_DEL_CRM` | el CRM | **él mismo** | `http://localhost:18080/api/v1` |
+
+La cuarta se añadió el 30-10-2026 y faltaba. El trabajo que registra el CRM
+como fuente recorre los cuarenta y siete listados del propio CRM para medir la
+forma de cada respuesta, y para eso usaba `CI_URL_DEL_CRM` — que es, por
+definición, «la dirección con la que **contecintelligence** ve al CRM». Cuando
+las dos coinciden —todo en la misma red de Docker— no se nota; **cuando no
+coinciden, que es justo para lo que ese ajuste existe, el alta no se completa
+jamás**.
+
+> **Lo que costó encontrarlo, y por qué.** El 30-10-2026 el área de análisis
+> entera estaba muerta en la instalación local por defecto: los cuadros de
+> mando salían como dos cajas rojas con un error de socket de Python dentro.
+> Debajo había **cuatro fallos encadenados**, y cada uno tapaba al siguiente:
+>
+> 1. `./setup.sh arrancar` sin `--docker` dejaba `CI_BASE_URL` apuntando a
+>    `http://contecintelligence:8000`, un nombre que sólo existe dentro de la
+>    red de Docker. Error: «[Errno 8] nodename nor servname provided».
+> 2. Ese mismo modo no levantaba los vecinos ni daba de alta la explotación:
+>    las dos llamadas existían y **sólo estaban en el modo Docker**.
+> 3. La aplicación de contecrm estaba dada de alta en contecintelligence con
+>    `["chat:ask", "sources:read"]` —solo lectura—, así que el token salía sin
+>    `sources:write` y el alta de la fuente recibía un **403**. Esa lista
+>    estaba escrita **dos veces**, y las dos cortas.
+> 4. El 403 se guardaba **sin su motivo**: la excepción llevaba dentro el
+>    código y el cuerpo, y al registrarlo se quedaba sólo el titular. La
+>    pantalla decía «el CRM no está registrado como fuente», que es lo mismo
+>    que diría si nadie lo hubiera intentado nunca.
+>
+> El cuarto es el que importa. Mientras el fallo no dijo su motivo, los otros
+> tres no se podían ver: en cuanto el diagnóstico empezó a decir *por qué*
+> había fallado, el 403 nombró el alcance que faltaba en una línea. **Un
+> diagnóstico que no cuenta lo que no pudo hace invisible todo lo que hay
+> debajo.**
+
 ### 3. El contexto se fija en middleware ASGI puro
 
 Y esto no es una preferencia de estilo. `BaseHTTPMiddleware` de Starlette ejecuta

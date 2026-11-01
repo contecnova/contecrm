@@ -26,8 +26,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from crmcore.config_parts._intelligence import ALCANCES_DEL_CRM
+
 RAIZ = Path(__file__).resolve().parents[1]
-ALCANCES_POR_DEFECTO = ["chat:ask", "sources:read"]
+# De `crmcore`, no escritos aquí: esta lista y la de `ci_scopes` decían las dos
+# `["chat:ask", "sources:read"]`, y faltaba `sources:write`. El alta salía de
+# solo lectura y después el registro de la fuente se topaba con un 403 que
+# nadie veía, dejando el área de análisis entera sin funcionar.
+ALCANCES_POR_DEFECTO = list(ALCANCES_DEL_CRM)
 
 
 def _leer_env(ruta: Path) -> dict[str, str]:
@@ -206,8 +212,31 @@ def main() -> int:
                 )
                 return 1
             _ok(f"Orígenes del navegador permitidos: {', '.join(faltan)}")
-        else:
-            _ok("La credencial de contecrm vale y sus orígenes están permitidos")
+
+        # Y LOS ALCANCES, que no se miraban.
+        #
+        # Este ramal —«la aplicación ya existe»— reconciliaba los orígenes y
+        # daba los alcances por buenos. Una aplicación dada de alta cuando la
+        # lista era más corta se quedaba así **para siempre**: el token salía
+        # con `sources:read`, el registro de la fuente pedía `sources:write` y
+        # contecintelligence contestaba 403. Como la credencial sí valía para
+        # pedir token, el script decía «la credencial de contecrm vale» y se
+        # quedaba tan tranquilo, mientras el área de análisis entera estaba
+        # muerta.
+        sin_permiso = [a for a in alcances if a not in (app.get("scopes") or [])]
+        if sin_permiso:
+            estado, cuerpo = _http(
+                "PATCH",
+                f"{ci}/api/admin/apps/{app['id']}",
+                {"scopes": [*(app.get("scopes") or []), *sin_permiso]},
+                token=admin,
+            )
+            if estado != 200:
+                _malo(f"No se pudieron ampliar los alcances ({estado}): {_mensaje(cuerpo)}")
+                return 1
+            _ok(f"Alcances concedidos: {', '.join(sin_permiso)}")
+        elif not faltan:
+            _ok("La credencial de contecrm vale, con sus orígenes y sus alcances")
 
     if credencial_cambiada:
         if _recrear_analytics():

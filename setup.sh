@@ -296,6 +296,40 @@ arrancar_local() {
   export BUS_BACKEND="${BUS_BACKEND:-memoria}"
   export ENV=dev
 
+  # ── Las direcciones de contecintelligence, desde FUERA de Docker ───────────
+  #
+  # Aquí los servicios corren en la máquina, no en contenedores, y
+  # `CI_BASE_URL=http://contecintelligence:8000` —que es el nombre del servicio
+  # dentro de la red de Docker— no resuelve: da «[Errno 8] nodename nor
+  # servname provided, or not known». Con eso **el área de análisis entera se
+  # cae**: cuadros de mando salían como dos cajas rojas y la pantalla de
+  # explotación con ese mismo error de socket escrito en pantalla.
+  #
+  # Y era el camino por defecto: `./setup.sh arrancar` sin `--docker` viene
+  # aquí, así que la instalación que usa todo el mundo tenía análisis muerto.
+  #
+  # No hay dirección nueva escrita a mano: las dos salen del `.env`.
+  #   · `CI_URL_PUBLICA` ya es, por definición, «contecintelligence desde
+  #     fuera de su contenedor». En local eso es también lo que ve un servicio.
+  #   · Al revés, contecintelligence SÍ está en Docker, así que para llamar al
+  #     CRM necesita salir al anfitrión: `host.docker.internal`.
+  local ci_fuera puerto_gw
+  ci_fuera=$(valor_env CI_URL_PUBLICA)
+  puerto_gw=$(puerto_de gateway)
+  if [[ -n "$ci_fuera" ]]; then
+    # contecintelligence, visto desde aquí: lo que `CI_URL_PUBLICA` ya
+    # significa —«desde fuera de su contenedor»—, que en local es también
+    # desde donde llaman los servicios.
+    export CI_BASE_URL="${CI_BASE_URL_LOCAL:-$ci_fuera}"
+    # Este CRM visto desde SÍ MISMO: el gateway en la máquina.
+    export URL_INTERNA_DEL_CRM="${URL_INTERNA_DEL_CRM_LOCAL:-http://localhost:$puerto_gw/api/v1}"
+    # Y este CRM visto desde contecintelligence, que sí está en un contenedor:
+    # para él, `localhost` es él mismo, así que sale al anfitrión.
+    export CI_URL_DEL_CRM="${CI_URL_DEL_CRM_LOCAL:-http://host.docker.internal:$puerto_gw/api/v1}"
+  else
+    aviso "CI_URL_PUBLICA vacío en .env: la explotación no podrá preguntar"
+  fi
+
   info "Aplicando migraciones…"
   $PY scripts/migrar.py --todos upgrade head >/dev/null
   $PY scripts/aplicar_rls.py --todos >/dev/null
@@ -371,6 +405,22 @@ arrancar_local() {
   #
   # La llamada estaba escrita y sólo la hacía `arrancar_docker`.
   arrancar_front
+
+  # Y lo mismo con los vecinos y el alta de la fuente: las dos llamadas
+  # existían y las dos estaban sólo en `arrancar_docker`. Sin ellas, la
+  # pantalla de explotación abría diciendo las tres cosas a la vez —
+  # «contecintelligence no responde», «este tenant no tiene organización
+  # asignada» y «el CRM no está registrado como fuente consultable»— y las
+  # tres eran esto.
+  if [[ "${SIN_VECINOS:-}" == "1" ]]; then
+    aviso "Vecinos omitidos (SIN_VECINOS=1): sin explotación del dato ni corpus"
+  else
+    titulo "Servicios de la casa de los que depende"
+    $PY scripts/vecinos.py levantar || aviso "Algún vecino no ha subido; mira arriba qué falta"
+    titulo "Explotación (contecrm ↔ contecintelligence)"
+    $PY scripts/alta_explotacion.py \
+      || aviso "La explotación no quedó enlazada; repite: python3 scripts/alta_explotacion.py"
+  fi
 
   echo
   info "Interfaz:   http://localhost:${FRONT_PORT:-15173}   ← empieza por aquí"
@@ -507,10 +557,33 @@ parar() {
   # de un arranque anterior— sigue ocupando el puerto, y entonces el arranque
   # siguiente no puede coger ninguno. Es lo que dejó a un equipo con el código
   # de la víspera creyendo que había reiniciado.
+  #
+  # **Y LOS WORKERS, que no entraban en este barrido.** El patrón era sólo
+  # `uvicorn …main:app`, y el razonamiento de arriba es el puerto: un worker no
+  # escucha en ninguno, así que ni este barrido lo veía ni el arranque
+  # siguiente chocaba con él. Medido el 30-10-2026 en una máquina de trabajo:
+  # **42 workers vivos a la vez, de cuatro generaciones distintas**, la más
+  # vieja de cuatro días antes. Y no son inofensivos: compiten por la misma
+  # cola, así que un trabajo lo puede coger uno de hace cuatro días —con la
+  # configuración de entonces— y fallar por algo que ya está arreglado. Es
+  # exactamente el caso anterior, pero sin el puerto que lo delataba.
+  #
+  # Cada `pgrep` lleva su `|| true`: cuando NO encuentra nada devuelve 1, y con
+  # `set -euo pipefail` eso mata el script en la asignación. Estaba así desde
+  # siempre y no se notaba porque el primer patrón —los uvicorn— casi nunca
+  # venía vacío; con todo ya parado, `parar` se moría aquí en silencio, sin
+  # barrer nada y sin llegar siquiera a decir «no había nada corriendo».
   local sueltos
-  sueltos=$(pgrep -f "uvicorn services\..*\.main:app" 2>/dev/null | tr '\n' ' ')
+  sueltos=$( { pgrep -f "uvicorn services\..*\.main:app" || true; } 2>/dev/null | tr '\n' ' ')
+  # Sin nombrar el intérprete: en macOS el binario es `.../Python.app/…/Python`
+  # con mayúscula y `pgrep -f` distingue mayúsculas, así que un patrón que
+  # empiece por «python» no caza nada. Probado plantando dos huérfanos: con
+  # «python.*» delante sobrevivían los dos.
+  sueltos+=" $( { pgrep -f -- "-m services\.[a-z_]*\.[a-z_]*worker$" || true; } 2>/dev/null | tr '\n' ' ')"
+  # El propio `pgrep` no puede cazarse a sí mismo ni a este script.
+  sueltos=$(printf '%s\n' $sueltos | { grep -vx "$$" || true; } | sort -un | tr '\n' ' ')
   if [[ -n "${sueltos// /}" ]]; then
-    aviso "Quedaban procesos sin pidfile: $sueltos"
+    aviso "Quedaban procesos sin pidfile: $(printf '%s' "$sueltos" | wc -w | tr -d ' ')"
     for p in $sueltos; do matar_de_verdad "$p" >/dev/null || true; done
     ok "Sueltos parados"
   fi
