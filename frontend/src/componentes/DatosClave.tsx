@@ -82,7 +82,7 @@ function Ruta({ campo, valor }: { campo: CampoEsquema; valor: string }) {
               aqui
                 ? "bg-accent-soft font-semibold text-white"
                 : hecha
-                  ? "bg-accent/15 text-accent-text"
+                  ? "bg-accent/15 text-accent"
                   : "bg-paper-light text-ink-muted",
             )}
           >

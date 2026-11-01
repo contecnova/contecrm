@@ -101,7 +101,7 @@ export function Ficha() {
         fila={fila}
         acciones={
           <span className="flex items-center gap-2 text-2xs text-ink-faint">
-            <Link to={`/m/${ruta}`} className="text-accent-text hover:underline">
+            <Link to={`/m/${ruta}`} className="text-accent hover:underline">
               {modulo.titulo}
             </Link>
             <span className="font-mono" title={id}>
