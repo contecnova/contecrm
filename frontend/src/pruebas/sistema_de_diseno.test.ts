@@ -1,41 +1,38 @@
 /**
- * El sistema de diseño es el de contecmind, y se comprueba contra el suyo.
+ * El sistema de diseño es el de Salesforce Lightning, y no se separa de él en
+ * silencio.
  *
- * El catálogo dice (`CRM-07.04.01.02`) que el sistema de diseño es **idéntico**
- * al de contecmind. El 29-09-2026 se midió y no lo era: de los 30 tokens que
- * los dos productos comparten, 26 tenían valor distinto en claro y 25 en
- * oscuro; solo coincidían 6 nombres. El enunciado llevaba siendo falso desde
- * que alguien tocó un color, y nada lo detectaba.
+ * **Hasta el 01-11-2026 era el de contecmind**, y esta prueba lo comparaba
+ * contra su `index.css` de verdad. Funcionó: el 29-09 destapó que de los 30
+ * tokens comunes, 26 valían distinto. Lo que no podía detectar es que el
+ * sistema entero fuera el equivocado — los valores de contecmind son los de
+ * Google Workspace, y eso es lo que hacía que el producto se viera como una
+ * consola de administración y no como un CRM.
  *
- * Esto lo detecta. Lee el `index.css` de contecmind —el de verdad, en su
- * repositorio— y compara. Si allí cambia un color, esto se pone rojo y hay que
- * decidir: seguirlo o cambiar el enunciado. Lo que no puede volver a pasar es
- * que se separen en silencio.
+ * El encargo fue literal: «lo que te he pedido es que copies el diseño de
+ * Salesforce». Así que ahora los valores son los de Lightning, el enunciado
+ * del catálogo lo dice (`CRM-07.04.01.02`) y lo que se vigila aquí es **que
+ * sigan siendo los suyos**.
  *
- * Tres cosas que esta prueba hace a propósito:
+ * Contra una tabla y no contra el fichero del vecino, porque el vecino ya no
+ * es la fuente: Lightning se publica como sistema, no vive en este disco. La
+ * tabla lleva los valores que de verdad definen el aspecto —no los 58 tokens—
+ * y cada uno dice para qué es, de modo que cambiarlo obligue a decir qué deja
+ * de parecerse.
  *
- * **Solo los tokens COMUNES.** Los 33 propios de contecrm —gráficas, portal,
- * medidas de página— se quedan como están: son un superconjunto, no una
- * divergencia. contecmind no tiene gráficas y no tiene por qué opinar.
+ * **El contraste NO se mide aquí.** Lo hace `scripts/contraste.mjs`, que corre
+ * en el mismo `npm run verificar` y mide los 40 tokens de texto en los dos
+ * temas contra la superficie más desfavorable. Dos guardianes de la misma
+ * regla se separan, y el que se queda atrás es el que engaña. Al repintar
+ * encontró cuatro que no llegaban —`--accent-text`, `--accent-glow-text`,
+ * `--success-text` y `--ink-faint-text`— y se bajaron hasta pasar.
  *
- * **Dice cuántos ha comparado.** Una comprobación que no encuentra el fichero,
- * o que lo lee mal y saca cero tokens, pasaría en verde diciendo «ninguna
- * diferencia». Aquí se exige un suelo, medido: 58 pares comunes.
- *
- * **Y el contraste NO se mide aquí.** Ya lo hace `scripts/contraste.mjs`, que
- * corre en el mismo `npm run verificar`; al repintar se le añadieron `--ink` y
- * `--ink-muted`, que llevan la mayor parte del texto de la aplicación y no
- * estaban. Dos guardianes de la misma regla se separan, y el que se queda
- * atrás es el que engaña.
- *
- * Que hacía falta mirarlo lo demostró este cambio: la superficie
- * `--paper-lighter` de contecmind es más clara que la que había, y dejó
- * `--coral-text` en 4.13:1 y `--chart-pink-text` en 4.14:1. Los dos son tokens
- * propios de contecrm —gráficas, que contecmind no tiene— así que seguirle no
- * los arregla: hubo que aclararlos.
+ * **Lo que queda pendiente, dicho:** el tema OSCURO sigue siendo el de
+ * contecmind. Lightning no publica uno, así que hacerlo es diseñarlo, no
+ * copiarlo. Y la pantalla de entrada sigue siendo la de contecflow.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,13 +42,26 @@ import { describe, expect, it } from "vitest";
 // vitest la URL del módulo no es la del fichero en disco. Se resuelve como en
 // `accesibilidad.test.ts`, que ya funcionaba.
 const AQUI = join(dirname(fileURLToPath(import.meta.url)), "..", "index.css");
-// El repositorio vecino. Se lee, nunca se escribe: una sesión, un repositorio.
-const CONTECMIND = "/Users/oriolvallsanton/Code/contecmind/frontend/src/index.css";
 
-// Medido el 29-09-2026: 58 pares (bloque, token) comunes a los dos ficheros.
-// No es el número exacto para siempre —puede crecer— pero un suelo impide que
-// una lectura rota devuelva cero y parezca que no hay diferencias.
-const SUELO_DE_COMUNES = 50;
+/**
+ * Los valores que definen el aspecto, y para qué es cada uno.
+ *
+ * Son los de Salesforce Lightning Design System. Están aquí y no sólo en el
+ * CSS para que cambiarlos tenga que ser deliberado: el CSS se edita sin
+ * pensar, una tabla que dice «esto es de Salesforce» no.
+ */
+const LIGHTNING: Array<[string, string, string]> = [
+  [":root|--paper", "255 255 255", "paneles y tarjetas"],
+  [":root|--paper-dark", "243 243 243", "el lienzo, #f3f3f3"],
+  [":root|--ink", "24 24 24", "el cuerpo del texto, #181818"],
+  [":root|--ink-muted", "68 68 68", "etiquetas y apoyo, #444444"],
+  [":root|--ink-dim", "201 201 201", "bordes y separadores, #c9c9c9"],
+  [":root|--accent", "1 118 211", "el azul de la marca, #0176d3"],
+  [":root|--accent-soft", "1 68 134", "su hover, #014486"],
+  [":root|--success", "46 132 74", "#2e844a"],
+  [":root|--warning", "254 147 57", "#fe9339"],
+  [":root|--danger", "234 0 30", "#ea001e"],
+];
 
 type Tokens = Map<string, string>;
 
@@ -73,59 +83,34 @@ function leerTokens(ruta: string): Tokens {
   return salida;
 }
 
-/** Tripleta `R G B`, o `null` si el valor es otra cosa (`rgb(var(--x))`, `rem`). */
-function rgb(valor: string | undefined): [number, number, number] | null {
-  if (!valor) return null;
-  const partes = valor.split(" ");
-  if (partes.length !== 3) return null;
-  const [r, g, b] = partes.map((p) => Number(p));
-  if (r === undefined || g === undefined || b === undefined) return null;
-  if ([r, g, b].some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
-  return [r, g, b];
-}
-
-
-
-
-
 describe("sistema de diseño (CRM-07.04.01.02)", () => {
-  it("los tokens comunes valen lo mismo que en contecmind", () => {
-    if (!existsSync(CONTECMIND)) {
-      // Se dice en voz alta en vez de pasar en verde: sin el vecino delante,
-      // esta comprobación no ha comprobado nada.
-      throw new Error(
-        `No está el index.css de contecmind en ${CONTECMIND}. Sin él esta ` +
-          "prueba no compara nada, y pasar en verde sería mentir. Clona el " +
-          "repositorio vecino o ajusta la ruta.",
-      );
-    }
+  it("los tokens que definen el aspecto son los de Salesforce Lightning", () => {
     const aqui = leerTokens(AQUI);
-    const alli = leerTokens(CONTECMIND);
-
-    const comunes: string[] = [];
     const distintos: string[] = [];
-    for (const [clave, valor] of aqui) {
-      const suyo = alli.get(clave);
-      if (suyo === undefined) continue;
-      if (rgb(valor) === null || rgb(suyo) === null) continue;
-      comunes.push(clave);
-      if (valor !== suyo) distintos.push(`${clave}: aquí ${valor} · contecmind ${suyo}`);
+    for (const [clave, esperado, porque] of LIGHTNING) {
+      const valor = aqui.get(clave);
+      if (valor !== esperado) {
+        distintos.push(`${clave} (${porque}): aquí «${valor ?? "no está"}», Lightning «${esperado}»`);
+      }
     }
-
-    expect(
-      comunes.length,
-      `solo se han comparado ${comunes.length} tokens comunes, menos del suelo ` +
-        `de ${SUELO_DE_COMUNES}. La lectura se ha quedado corta y su resultado ` +
-        "no significa nada.",
-    ).toBeGreaterThanOrEqual(SUELO_DE_COMUNES);
-
     expect(
       distintos,
-      `${distintos.length} de ${comunes.length} tokens comunes se han separado ` +
-        "de contecmind. El catálogo dice que el sistema de diseño es idéntico " +
-        "al suyo: o se sigue el cambio, o se cambia el enunciado y el manual a " +
-        "la vez.\n  " + distintos.join("\n  "),
+      `${distintos.length} de ${LIGHTNING.length} tokens se han separado de Lightning. ` +
+        "El catálogo dice que el sistema de diseño es el suyo: o se vuelve al " +
+        "valor, o se cambia el enunciado y el manual a la vez.\n  " +
+        distintos.join("\n  "),
     ).toEqual([]);
   });
 
+  it("y el radio es el suyo: 4 px para todo, 8 px para lo que flota", () => {
+    // Lightning casi no tiene escala, y esa falta de escala ES el aspecto:
+    // cajas rectas, nada con forma de pastilla. Con la escala de Material
+    // —8/12/16/24— el mismo marcado se veía redondeado.
+    const config = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "tailwind.config.js"), "utf8");
+    const radios = /borderRadius:\s*\{([\s\S]*?)\n {6}\}/.exec(config)?.[1] ?? "";
+    expect(radios, "no se ha podido leer la escala de radios").not.toBe("");
+    expect(radios).toMatch(/DEFAULT:\s*"0\.25rem"/);
+    expect(radios).toMatch(/lg:\s*"0\.25rem"/);
+    expect(radios).toMatch(/xl:\s*"0\.5rem"/);
+  });
 });

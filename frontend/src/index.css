@@ -54,25 +54,35 @@
      `paper-lighter` lo que va encima de todo. En claro el lienzo es MÁS CLARO
      que los paneles, al revés que en oscuro, y por eso el nombre `-dark` es de
      rol: nombra el sitio, no el color. */
-  --paper: 255 255 255; /* #ffffff — surface-2: paneles, tarjetas */
-  --paper-dark: 248 249 250; /* #f8f9fa — surface-0: lienzo */
-  --paper-light: 241 243 244; /* #f1f3f4 — surface-1: hover, elevado */
-  --paper-lighter: 232 234 237; /* #e8eaed — surface-4: lo de más arriba */
+  /* ── Los valores son los de Salesforce Lightning ─────────────────────
+     Puestos el 01-11-2026, y el encargo fue literal: «lo que te he pedido
+     es que copies el diseño de Salesforce». Antes eran los de Google
+     Workspace (#202124, #5f6368, #dadce0, #f8f9fa), que es lo que hacía
+     que el producto se viera como una consola de administración y no como
+     un CRM.
+
+     Se cambian los TOKENS y no las pantallas: ésa es la ventaja de
+     tenerlos, y la razón de que repintar el producto entero sea este
+     bloque y no cincuenta y seis. */
+  --paper: 255 255 255; /* #ffffff — paneles y tarjetas */
+  --paper-dark: 243 243 243; /* #f3f3f3 — el lienzo de Lightning */
+  --paper-light: 243 243 243; /* #f3f3f3 — hover sobre blanco */
+  --paper-lighter: 236 235 234; /* #ecebea — lo de más arriba */
   /* Una superficie HUNDIDA respecto al panel: la cabecera de una tabla, el
      carril de una barra de progreso, la burbuja de lo que dice el otro. No es
      `paper-light` al revés: los papeles suben desde el panel y este baja.
 
      Sobre blanco, bajar es el gris de los paneles. */
-  --paper-sunk: 241 245 249; /* #f1f5f9 — surface-1 */
+  --paper-sunk: 250 250 249; /* #fafaf9 — cabecera de tabla, carriles */
 
-  --ink: 32 33 36; /* #202124 — text-1: el cuerpo */
-  --ink-muted: 95 99 104; /* #5f6368 — text-2: etiquetas y apoyo */
+  --ink: 24 24 24; /* #181818 — el cuerpo. 16,1:1 sobre blanco */
+  --ink-muted: 68 68 68; /* #444444 — etiquetas y apoyo. 9,7:1 */
   /* Su `text-3` es #94a3b8 y da 2.08:1 contra `paper-lighter`: en contecflow es
      explícitamente decorativo, pero aquí `ink-faint` es el token de los pies de
      foto y los marcadores de posición, que SON texto y siempre en 10-12px. Se
      sube al mismo tono hasta 4.61:1. Es la única desviación del tema claro. */
-  --ink-faint: 98 104 111; /* #62686f */
-  --ink-dim: 218 220 224; /* #dadce0 — surface-5: bordes y separadores */
+  --ink-faint: 116 116 116; /* #747474 — relleno; el texto usa su variante */
+  --ink-dim: 201 201 201; /* #c9c9c9 — bordes y separadores */
 
   /* ── Semánticos: RELLENO y TEXTO son tokens distintos ─────────────────────
      Auditoría 2026-09-02 (#26). Un color no puede servir para las dos cosas,
@@ -106,16 +116,16 @@
      nada, porque quien lo lee deja de mirar. */
 
   /* Rellenos, los suyos. Los `-soft` son el hover y sobre claro OSCURECEN. */
-  --accent: 23 113 232; /* #1771e8 */
-  --accent-soft: 19 95 195; /* #135fc3 — su `accent-dim` */
-  --accent-glow: 66 133 244; /* #4285f4 — solo resaltados */
+  --accent: 1 118 211; /* #0176d3 — el azul de Lightning. 4,63:1 */
+  --accent-soft: 1 68 134; /* #014486 — su hover */
+  --accent-glow: 27 150 255; /* #1b96ff — solo resaltados */
 
-  --success: 30 142 62; /* #1e8e3e */
-  --success-soft: 24 128 56; /* #188038 */
-  --warning: 249 171 0; /* #f9ab00 */
-  --warning-soft: 234 154 0; /* #ea9a00 */
-  --danger: 217 48 37; /* #d93025 */
-  --danger-soft: 182 40 31; /* #b6281f */
+  --success: 46 132 74; /* #2e844a */
+  --success-soft: 25 79 43; /* #194f2b */
+  --warning: 254 147 57; /* #fe9339 */
+  --warning-soft: 220 115 20; /* #dc7314 */
+  --danger: 234 0 30; /* #ea001e */
+  --danger-soft: 186 0 19; /* #ba0013 */
 
   /* ── Las familias que faltaban ────────────────────────────────────────────
      contecflow distingue cuatro cosas más que aquí se metían en los cuatro
@@ -149,17 +159,17 @@
   /* Los mismos colores, como TEXTO. `ink-faint` ya llegaba en claro; existe
      aquí porque `.dark` tiene que poder redefinirlo, y una variable declarada
      solo en `:root` conservaría el valor CLARO en tema oscuro. */
-  --ink-faint-text: 98 104 111; /* #62686f */
-  --accent-text: 21 101 206; /* #1565ce */
-  --accent-soft-text: 24 101 205; /* #1865cd */
-  --accent-glow-text: 13 95 229; /* #0d5fe5 */
-  --success-text: 25 120 52; /* #197834 */
-  --success-soft-text: 23 120 53; /* #177835 */
+  --ink-faint-text: 106 106 106; /* #6a6a6a — 4,54:1 sobre la superficie más oscura */
+  --accent-text: 11 92 171; /* #0b5cab — el azul oscuro de Lightning. 5,63:1 */
+  --accent-soft-text: 1 68 134; /* #014486 */
+  --accent-glow-text: 11 92 171; /* #0b5cab */
+  --success-text: 37 108 58; /* #256c3a — 5,37:1 */
+  --success-soft-text: 25 79 43; /* #194f2b */
   --warning-text: 139 95 0; /* #8b5f00
                                         sobre blanco es forzosamente un marrón */
   --warning-soft-text: 143 94 0; /* #8f5e00 */
-  --danger-text: 198 44 34; /* #c62c22 */
-  --danger-soft-text: 197 34 31; /* #c5221f */
+  --danger-text: 186 0 19; /* #ba0013 */
+  --danger-soft-text: 143 0 14; /* #8f000e */
   --info-text: 24 90 234; /* #185aea — 4.62:1 */
   --purple-text: 124 58 237; /* #7c3aed — 4.62:1, ya llegaba */
   --orange-text: 165 76 3; /* #a54c03 — 4.69:1 */
@@ -533,20 +543,23 @@
   /* ── Buttons ────────────────────────────────────────────────────────────
      Material 3 flat / filled buttons. Primary is solid Google blue with a
      subtle elevation-1 shadow; no more blue→violet gradient. */
+  /* Los botones de Lightning: rectángulos de 4 px de radio y 32 px de alto,
+     sin sombra. La sombra y la píldora venían de Material; en una barra de
+     herramientas con cuatro botones seguidos, cuatro pastillas con relieve
+     pesan más que la tabla que hay debajo. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
-      bg-accent text-white rounded-full font-medium text-sm
-      shadow-elevation-1
-      hover:bg-accent-soft hover:shadow-elevation-2
-      active:bg-accent-soft active:shadow-elevation-1
-      transition-all
-      disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-1.5
+      bg-accent text-white rounded font-medium text-sm
+      hover:bg-accent-soft
+      active:bg-accent-soft
+      transition-colors
+      disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2
-      bg-paper text-accent border border-ink-dim rounded-full
+    @apply inline-flex items-center justify-center gap-2 px-4 py-1.5
+      bg-paper text-accent border border-ink-dim rounded
       font-medium text-sm
-      hover:bg-accent/10 hover:border-accent/40
+      hover:bg-paper-light
       transition-colors
       disabled:opacity-40 disabled:cursor-not-allowed;
   }
@@ -560,8 +573,8 @@
     @apply !w-10 !h-10 !p-0 inline-flex items-center justify-center rounded-full;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2
-      bg-danger/10 text-danger border border-danger/30 rounded-full
+    @apply inline-flex items-center justify-center gap-2 px-4 py-1.5
+      bg-danger/10 text-danger border border-danger/30 rounded
       font-medium text-sm
       hover:bg-danger/20 hover:border-danger/50
       transition-colors;
@@ -668,8 +681,11 @@
 
   /* ── Cards & surfaces ───────────────────────────────────────────────────
      Material 3 surface tonal cards with elevation-1 default. */
+  /* La tarjeta de Lightning: blanca, 4 px de radio, un borde muy tenue y una
+     sombra de 2 px. El borde hace el trabajo y la sombra sólo la despega del
+     lienzo; con `rounded-xl` y sin sombra parecía una pastilla grande. */
   .card {
-    @apply bg-paper border border-ink-dim/60 rounded-xl;
+    @apply bg-paper border border-ink-dim/50 rounded shadow-elevation-1;
   }
   .card-hover {
     @apply hover:bg-paper-light hover:border-ink-dim transition-colors;

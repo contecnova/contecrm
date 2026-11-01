@@ -43,7 +43,7 @@
 
 | Origen | Capacidades |
 |---|--:|
-| contecmind | 145 |
+| contecmind | 144 |
 | contecflow-PSA | 99 |
 | contecweb | 43 |
 | contecpos | 20 |
@@ -54,3 +54,4 @@
 | metadata (campos y scoring configurables de la fase 0) | 1 |
 | orchestrator + marketing (recorridos multicanal) | 1 |
 | contecweb (compilador de métricas con SQL verificable) | 1 |
+| Salesforce Lightning Design System (valores de color, radios y densidad) | 1 |

@@ -206,18 +206,26 @@ export default {
         mono: ['"Roboto Mono"', '"JetBrains Mono"', "ui-monospace", "monospace"],
       },
       borderRadius: {
-        // Los de contecmind (29-09-2026), que son los de Material 3.
+        // **Los de Salesforce Lightning** (01-11-2026).
         //
-        // ANTES eran los de contecflow —6 / 10 / 14 / 18—, algo menos
-        // redondos, y la razón era que una tabla con muchas cajas pequeñas no
-        // pareciera un montón de pastillas. Eso sigue siendo verdad y es lo
-        // que se sacrifica; se cambia por lo mismo que la tipografía.
-        DEFAULT: "0.5rem",         // 8px
-        sm: "0.375rem",            // 6px
-        md: "0.5rem",              // 8px
-        lg: "0.75rem",             // 12px
-        xl: "1rem",                // 16px
-        "2xl": "1.5rem",           // 24px — Material extra-large
+        // Lightning casi no tiene escala: 4 px para todo —botones, campos,
+        // tarjetas, insignias— y 8 px para lo que flota encima. Esa falta de
+        // escala ES el aspecto: cajas rectas, nada con forma de pastilla.
+        //
+        // ANTES eran los de Material 3 (8 / 12 / 16 / 24), y antes los de
+        // contecflow (6 / 10 / 14 / 18). Se cambia por el mismo motivo que los
+        // colores: «copia el diseño de Salesforce».
+        //
+        // Se redefine la ESCALA y no las pantallas: un `rounded-xl` escrito en
+        // cualquiera de las 56 pasa a medir lo que toca sin tocarla. Por eso
+        // los valores se dejan en los mismos nombres en vez de buscar y
+        // reemplazar — un reemplazo se olvida de la pantalla que nadie tocó.
+        DEFAULT: "0.25rem",        // 4px — Lightning
+        sm: "0.125rem",            // 2px — insignias pequeñas
+        md: "0.25rem",             // 4px
+        lg: "0.25rem",             // 4px
+        xl: "0.5rem",              // 8px — lo que flota: menús, diálogos
+        "2xl": "0.5rem",           // 8px
         "3xl": "1.75rem",          // 28px
       },
       animation: {

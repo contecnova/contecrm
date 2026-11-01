@@ -1149,7 +1149,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-07.04.01.01` | Aplicación de referencia con el mismo stack que el resto de soluciones de la casa | C | 1 | front | ✅ | contecmind:frontend/ (React 18 + Vite + TypeScript + Tailwind, misma cadena de construcción) |
-| `CRM-07.04.01.02` | Sistema de diseño idéntico al de contecmind: tokens semánticos, tipografía, elevaciones y modo claro/oscuro | C | 1 | front | ✅ | contecmind:frontend/tailwind.config.js + src/index.css (tokens paper/ink/accent, elevaciones, radios) |
+| `CRM-07.04.01.02` | Sistema de diseno copiado de Salesforce Lightning: tokens semanticos, tipografia, elevaciones y modo claro/oscuro | C | 1 | front | ✅ | Salesforce Lightning Design System (valores de color, radios y densidad) |
 | `CRM-07.04.01.03` | Shell de la aplicación: navegación, buscador global, paleta de comandos y centro de notificaciones | C | 1 | front | ✅ | contecmind:frontend/src/components (shell, navegación, paleta de comandos) |
 | `CRM-07.04.01.04` | Marca blanca por tenant: logotipo, color de acento y nombre, servidos por configuración y no compilados | A | 1 | front | ✅ | — |
 | `CRM-07.04.01.05` | Internacionalización con paridad comprobada entre idiomas y formatos por localización del tenant | C | 1 | front | ✅ | contecmind:frontend/src/i18n + scripts/check_i18n_parity.mjs |
