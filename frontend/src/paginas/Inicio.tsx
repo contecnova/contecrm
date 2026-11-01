@@ -34,7 +34,6 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
-import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { ALTAS } from "@/lib/altas";
@@ -179,23 +178,31 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={t("inicio.saludo", { nombre: sesion?.nombre || sesion?.email || "" })}
-        entradilla={t("inicio.miDia")}
-        icono="today"
-        acciones={
-          altas.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {altas.slice(0, 3).map((alta) => (
-                <Link key={alta.a} to={alta.a} className="btn-secondary gap-1.5">
-                  <Icono nombre={alta.icono} tamano="sm" />
-                  <span>{t(alta.clave)}</span>
-                </Link>
-              ))}
-            </div>
-          ) : null
-        }
-      />
+      {/* **Sin saludo.** Había un «Hola, {nombre}» con icono grande y un
+          «Esto es lo que tienes hoy» debajo, y se comía la primera banda de la
+          primera pantalla del producto para no decir nada que el usuario no
+          supiera. Salesforce no saluda en su portada: va directo al contenido,
+          y por eso su Inicio se lee como una herramienta y no como una
+          bienvenida.
+
+          El encabezado de primer nivel se queda —hace falta para navegar por
+          encabezados— en el tamaño que le corresponde a una etiqueta de
+          pantalla, no de titular. */}
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xs font-semibold uppercase tracking-[0.055em] text-ink-faint">
+          {t("nav.inicio")}
+        </h1>
+        {altas.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {altas.slice(0, 3).map((alta) => (
+              <Link key={alta.a} to={alta.a} className="btn-secondary gap-1.5">
+                <Icono nombre={alta.icono} tamano="sm" />
+                <span>{t(alta.clave)}</span>
+              </Link>
+            ))}
+          </div>
+        ) : null}
+      </header>
 
       {/* **Cuando no llevas nada tuyo, se dice una vez y se dice por qué.**
           Esta portada contesta «qué tengo yo hoy»: actividades mías, mis
@@ -229,10 +236,19 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
           {t("app.cargando")}
         </p>
       ) : (
-        // `items-start`: sin él, cada tarjeta se estira hasta la altura de la
-        // más alta de su fila, y la de «cierran esta semana» quedaba medio
-        // vacía al lado del embudo. Un hueco así se lee como «falta algo».
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        /* **Dos columnas de distinto peso, como Lightning**: el embudo y lo
+           que cierra ocupan dos tercios porque son lo que se mira, y lo que
+           reclama atención —vencido, para hoy— va en la columna estrecha de la
+           derecha, que es donde Salesforce pone su asistente.
+
+           Antes eran cuatro cajas iguales en una rejilla de 2×2, y con eso una
+           lista de seis actividades pesaba en pantalla lo mismo que el embudo
+           entero.
+
+           `items-start`: sin él cada tarjeta se estira hasta la altura de la
+           más alta de su fila, y un hueco así se lee como «falta algo». */
+        <div className="grid items-start gap-4 lg:grid-cols-3">
+          <div className="flex flex-col gap-4">
           {/* Lo que ya se pasó. Primero y aparte: es lo único que no espera. */}
           <Bloque
             titulo={t("inicio.vencidas")}
@@ -259,6 +275,12 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
             ))}
           </Bloque>
 
+          </div>
+
+          {/* La columna ancha: el embudo y lo que cierra. Va DESPUÉS en el
+              marcado y antes en pantalla (`order`), para que en móvil —una
+              sola columna— lo primero siga siendo lo que urge. */}
+          <div className="flex flex-col gap-4 lg:col-span-2 lg:-order-1">
           {veOportunidades ? (
             <>
               <Bloque
@@ -304,6 +326,7 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
               ) : null}
             </>
           ) : null}
+          </div>
         </div>
       )}
     </>

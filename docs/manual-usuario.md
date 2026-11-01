@@ -383,6 +383,25 @@ Tres cosas que notarás:
 
 ---
 
+### Inicio
+
+Va directo al contenido: no hay saludo. A la izquierda, lo ancho, está tu
+trabajo —**lo que cierra esta semana** y **tu embudo**, con el importe por
+etapa—; a la derecha, lo estrecho, lo que reclama atención: **lo vencido** y
+**lo de hoy**.
+
+El porcentaje que acompaña a cada etapa del embudo es **su peso sobre el
+total**: «Negociación, 555 k · 38 %» quiere decir que el 38 % de lo que tienes
+abierto está en negociación. No es la caída desde la primera etapa, porque un
+embudo medido en dinero no siempre decrece.
+
+> **Si eres comercial y no veías tu embudo**, era un fallo de permisos: el rol
+> `comercial` no podía leer la definición del proceso de venta, así que el
+> gráfico no se pintaba nunca —y sí se pintaba, vacío, para quien opera la
+> plataforma y no vende nada. Arreglado el 01-11-2026.
+
+---
+
 ### Las cosas se llaman como en Salesforce
 
 Si vienes de Salesforce, el vocabulario es el suyo a propósito:

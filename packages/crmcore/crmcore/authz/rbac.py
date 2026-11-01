@@ -177,6 +177,22 @@ ROLES_BASE: dict[str, Rol] = {
                 "lead:write",
                 "opportunity:read",
                 "opportunity:write",
+                # **Leer el pipeline es parte de vender.** Un comercial ve el
+                # nombre de la etapa en cada una de sus oportunidades, así que
+                # el dato no es nuevo para él; lo que no podía era leer la
+                # DEFINICIÓN, y sin ella no se puede pintar un embudo, que es
+                # la pregunta que se hace todos los días: ¿dónde se me atasca?
+                #
+                # Medido el 01-11-2026: la portada de un comercial pedía
+                # `/api/v1/pipelines` y recibía un 403, así que su embudo no se
+                # pintaba nunca —y el de quien opera la plataforma, que no
+                # vende nada, sí salía, a cero. Exactamente al revés de lo que
+                # tiene sentido.
+                #
+                # Escribirlo NO: cambiar las etapas cambia la previsión de todo
+                # el equipo y recoloca oportunidades que no son suyas. Eso es
+                # de dirección comercial, y ahí se queda.
+                "pipeline:read",
                 "quote:read",
                 "quote:write",
                 # Ver el catálogo y calcular un precio es lo que hace cualquiera

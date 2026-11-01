@@ -110,8 +110,21 @@ describe("lo que se pinta", () => {
     );
     expect(rotulos).toContain("Contactado");
     expect(rotulos).toContain("Ganada");
-    // Y la caída desde la primera etapa, que es la pregunta real de un embudo.
-    expect(container.textContent).toContain("5%");
+    // Y el peso de cada etapa SOBRE EL TOTAL: 1.200 + 720 + 62 = 1.982, así
+    // que 61 %, 36 % y 3 %.
+    //
+    // Antes era la caída desde la primera etapa —1.200 → 62 es un 5 %—, y
+    // para un embudo que decrece es la pregunta buena. El problema es que **no
+    // todos decrecen**: la portada suma IMPORTES por etapa, y ahí la segunda
+    // puede valer más que la primera. Medido el 01-11-2026 en la portada de un
+    // comercial: «495,3 k · 1764 %» y «555,5 k · 1979 %». Un porcentaje de mil
+    // novecientos en la primera pantalla del producto no es un matiz: es un
+    // número que no significa nada y que hace dudar de los de al lado.
+    //
+    // Sobre el total es cierto en los dos casos, y en un embudo que decrece
+    // sigue contando la misma historia.
+    expect(container.textContent).toContain("61%");
+    expect(container.textContent).toContain("3%");
   });
 
   it("siempre se puede ver como tabla, con el valor exacto", async () => {

@@ -563,7 +563,20 @@ function Embudo({
   const izquierda = ROTULO + 8;
   const util = ancho - izquierda - 56;
   const altoEtapa = (ALTO - MARGEN.arriba - MARGEN.abajo) / Math.max(1, categorias.length);
-  const primera = serie.valores.find((v): v is number => v !== null) ?? 0;
+  // El porcentaje va contra el TOTAL, no contra la primera etapa.
+  //
+  // Contra la primera sólo tiene sentido si el embudo decrece, que es verdad
+  // cuando se cuentan registros —de cien contactados quedan veinte— y es falso
+  // cuando se suman IMPORTES, que es lo que enseña la portada: ahí la segunda
+  // etapa puede valer más que la primera. Medido el 01-11-2026 en la portada
+  // de un comercial: «495,3 k · 1764 %» y «555,5 k · 1979 %». Un porcentaje de
+  // mil setecientos sesenta y cuatro en la primera pantalla del producto no es
+  // un matiz: es un número que no significa nada y que hace dudar de los que
+  // están al lado.
+  //
+  // Contra el total sí significa algo en los dos casos: «Negociación es el
+  // 43 % de mi embudo» se entiende cuente lo que cuente.
+  const total = serie.valores.reduce((a: number, v) => a + (v ?? 0), 0);
 
   return (
     <>
@@ -598,8 +611,8 @@ function Embudo({
             />
             {/* El valor SIEMPRE al lado: la caída entre etapas es el dato, y
                 estimarla comparando la longitud de dos rectángulos es
-                exactamente lo que no se puede hacer a ojo. Y el porcentaje que
-                queda desde la primera etapa, que es la pregunta real. */}
+                exactamente lo que no se puede hacer a ojo. Y el peso de la
+                etapa sobre el total, que se entiende cuente lo que cuente. */}
             <text
               x={izquierda + anchoTramo + 6}
               y={medio}
@@ -607,8 +620,8 @@ function Embudo({
               style={{ fontSize: 9 }}
             >
               {corto(v)}
-              {primera > 0 && i > 0 ? (
-                <tspan className="fill-ink-faint"> · {Math.round((v / primera) * 100)}%</tspan>
+              {total > 0 ? (
+                <tspan className="fill-ink-faint"> · {Math.round((v / total) * 100)}%</tspan>
               ) : null}
             </text>
           </g>
