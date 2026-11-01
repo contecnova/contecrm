@@ -142,6 +142,12 @@ export default {
     suite: "Suite",
     ayuda: "Ayuda",
     accesos: "Accesos",
+    // El buscador del árbol de configuración. Dice que BUSCA UN AJUSTE y no
+    // «buscar» a secas: arriba hay otro buscador que lleva a cualquier
+    // pantalla, y dos cajas que dicen lo mismo y hacen cosas distintas se
+    // prueban a ver cuál era.
+    buscarAjuste: "Buscar un ajuste…",
+    sinAjustes: "Ningún ajuste se llama «{{que}}».",
     // «Trabajar» y «Administrar», en infinitivo: nombran lo que se va a hacer,
     // no un sitio. «Operación» y «Configuración» nombrarían el sitio, y hay
     // que traducirlos mentalmente a lo que uno viene a hacer.

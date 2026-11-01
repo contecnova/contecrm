@@ -34,15 +34,19 @@ import { cn } from "@/lib/utiles";
 
 export function CabeceraDeLista({
   icono,
+  color,
   modulo,
   recursos,
   activo,
   alElegir,
   acciones,
   trazabilidad,
+  pegada = false,
 }: {
   /** Símbolo de Material del grupo al que pertenece el módulo. */
   icono: string;
+  /** El color del objeto, el de Salesforce. Sin él, el azul del acento. */
+  color?: string | null;
   /** El módulo: va encima y en pequeño, como el objeto en Lightning. */
   modulo: string;
   /** Las pestañas del módulo, en su orden. */
@@ -54,6 +58,16 @@ export function CabeceraDeLista({
   acciones?: ReactNode;
   /** El desplegable de trazabilidad, que va donde nadie lo pise. */
   trazabilidad?: ReactNode;
+  /**
+   * Pegada a lo que va debajo: sin margen, sin esquinas abajo y sin borde
+   * inferior, para que la cabecera, la barra de herramientas y la tabla sean
+   * **una sola tarjeta** y no tres flotando.
+   *
+   * Es como se ve una lista en Lightning, y la diferencia no es estética: tres
+   * recuadros con dos huecos entre ellos se leen como tres cosas distintas, y
+   * son la misma.
+   */
+  pegada?: boolean;
 }) {
   const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
@@ -87,10 +101,16 @@ export function CabeceraDeLista({
   const hayQueElegir = normales.length > 1;
 
   return (
-    <header className="card mb-3 px-4 py-3">
+    <header className={cn("card px-4 py-3", pegada ? "mb-0 rounded-b-none border-b-0" : "mb-3")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded border border-accent/25 bg-accent/10 text-accent">
+          {/* El cuadrado con el color del objeto, relleno y con el símbolo en
+              blanco: es como se ven en Lightning, y es lo que hace que una
+              pestaña de Cuentas no se confunda con una de Casos. */}
+          <span
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded text-white"
+            style={{ backgroundColor: color ?? "rgb(var(--accent))" }}
+          >
             <Icono nombre={icono} />
           </span>
           <div className="min-w-0" ref={caja}>

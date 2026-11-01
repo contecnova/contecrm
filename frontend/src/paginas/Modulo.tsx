@@ -51,7 +51,7 @@ import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
 import { useSuperficie, useVisibilidad } from "@/lib/permisos";
 import { CabeceraDeLista } from "@/componentes/CabeceraDeLista";
-import { iconoDeGrupo } from "@/lib/navegacion";
+import { colorDeModulo, iconoDeGrupo } from "@/lib/navegacion";
 
 export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
@@ -141,10 +141,15 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           `CRM-07.04.03.07 · sección 1.1` de subtítulo. */}
       <CabeceraDeLista
         icono={iconoDeGrupo(modulo.grupo)}
+        color={colorDeModulo(modulo.ruta)}
         modulo={modulo.titulo}
         recursos={pestanas_}
         activo={activo}
         alElegir={setActivo}
+        // La lista es UNA tarjeta: cabecera, barra y tabla pegadas. Siempre,
+        // y lo de debajo se encarga de cerrarla — en tabla lo hace la propia
+        // tabla y en las demás vistas el recuadro que las envuelve.
+        pegada
         trazabilidad={
           <details className="text-right">
             <summary className="cursor-pointer text-3xs text-ink-faint">
@@ -679,8 +684,15 @@ function RecursoVista({
       </div>
     ) : null;
 
+  // La cabecera de la lista va pegada a lo de abajo, así que lo de abajo
+  // tiene que CERRAR la tarjeta. Con la tabla lo hace ella; en las demás
+  // vistas —tarjetas, columnas, un vocabulario, el estado vacío o un error—
+  // hace falta este recuadro, o la cabecera se queda abierta por abajo y
+  // parece recortada.
+  const enTabla = vista === "tabla" && !vocabulario && (filas?.length ?? 0) > 0;
+
   return (
-    <div className="mt-4">
+    <div className={enTabla ? "" : "rounded-b border-x border-b border-ink-dim/50 bg-paper p-3 shadow-elevation-1"}>
       {proposito?.resumen ? (
         <div className="mb-4 max-w-3xl">
           <p className="text-xs text-ink">{proposito.resumen}</p>
@@ -912,6 +924,7 @@ function RecursoVista({
               antes={formularioDeAlta}
               // El listado ES la pantalla: se recorre con la página.
               ocupaLaPantalla
+              pegada
               acciones={
                 <span className="flex items-center gap-2">
                   <Exportar

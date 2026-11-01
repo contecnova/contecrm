@@ -219,9 +219,18 @@
      `--panel-w` / `--panel-w-plegado`: el panel medía 288px, un 30 % más que el
      suyo, y no se plegaba. Por debajo de `--panel-plegar` se queda en raíl de
      iconos, porque en 1280px un panel de 288 se come el 22 % de la pantalla. */
-  --page-pad-x: 32px;
-  --page-pad-y: 32px;
-  --page-max-w: 1400px;
+  /* **Las medidas de Lightning.** Eran 32 px de margen y un ancho máximo de
+     1400, y eso deja la página flotando en el centro de un monitor ancho con
+     dos franjas de gris a los lados. Salesforce pega el contenido a los
+     bordes y no lo centra: la pantalla es el lienzo, y una lista de cuarenta
+     columnas necesita hasta el último píxel.
+
+     12 px arriba y abajo y 12 a los lados es lo que mide su `.slds-p-around_x-small`
+     de página. Con 32 px, entre la barra de aplicación y el primer dato había
+     el alto de dos filas de tabla por nada. */
+  --page-pad-x: 12px;
+  --page-pad-y: 12px;
+  --page-max-w: none;
   --panel-w: 222px;
   --panel-w-plegado: 46px;
   --panel-plegar: 1280px;
@@ -483,8 +492,8 @@
    con `.dark`, que ya usa la clase. Los dos ejes son independientes: hay quien
    quiere oscuro y compacto, y quien quiere claro y cómodo. */
 :root[data-densidad="comoda"] {
-  --page-pad-x: 40px;
-  --page-pad-y: 40px;
+  --page-pad-x: 20px;
+  --page-pad-y: 16px;
   --celda-pad-y: 0.75rem;
   --celda-pad-x: 1rem;
   --celda-texto: 0.8125rem;
@@ -530,8 +539,8 @@
 
   .contenido-pagina {
     padding: var(--page-pad-y) var(--page-pad-x);
+    /* Sin tope de ancho y sin centrar: ver el comentario del token. */
     max-width: var(--page-max-w);
-    margin-inline: auto;
     width: 100%;
   }
   @media (max-width: 600px) {

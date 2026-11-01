@@ -53,6 +53,7 @@ import {
   trozos,
   UUID,
 } from "@/lib/formato";
+import { cn } from "@/lib/utiles";
 
 export interface Props {
   /**
@@ -111,6 +112,12 @@ export interface Props {
    * sitio— y para un panel dentro de un cuadro de mando, donde sí lo hay.
    */
   ocupaLaPantalla?: boolean;
+  /**
+   * La tabla va pegada a una cabecera que está encima: su barra de
+   * herramientas pasa a ser la franja del medio de una sola tarjeta, en vez
+   * de un bloque suelto entre dos recuadros.
+   */
+  pegada?: boolean;
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -236,6 +243,7 @@ export function Tabla({
   acciones,
   antes,
   ocupaLaPantalla = false,
+  pegada = false,
 }: Props) {
   const { t } = useTranslation();
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
@@ -310,7 +318,14 @@ export function Tabla({
   return (
     <div>
       {hayQueElegir || encabezado || acciones ? (
-        <div className="mb-2 flex items-center justify-between gap-2">
+        <div
+          className={cn(
+            "flex items-center justify-between gap-2",
+            pegada
+              ? "border-x border-ink-dim/50 bg-paper px-3 py-2"
+              : "mb-2",
+          )}
+        >
           <div className="min-w-0">{encabezado}</div>
           <div className="flex shrink-0 items-center gap-2">
             {hayQueElegir ? (
@@ -362,6 +377,7 @@ export function Tabla({
           celdas. */}
       <Rejilla
         acotada={!ocupaLaPantalla}
+        pegada={pegada}
         titulo={titulo}
         cabeceras={cabeceras.map((c) => (
           <button

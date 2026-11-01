@@ -19,14 +19,12 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { config } from "@/lib/config";
 import { grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
 import {
-  ACCESOS,
-  AMBITOS,
   AREAS,
   ambitoDelCamino,
   entradaVisible,
@@ -77,6 +75,15 @@ function usePlegado(): [boolean, () => void] {
     return () => window.removeEventListener("resize", alRedimensionar);
   }, []);
   return [plegado, useCallback(() => setPlegado((p) => !p), [])];
+}
+
+/** Sin tildes y en minúsculas: quien busca «operacion» encuentra «Operación». */
+function plano(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 }
 
 export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSalir: () => void }) {
@@ -159,28 +166,25 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
     () => menuDe(porGrupoVisible(sesion, visibilidad), (e) => entradaVisible(sesion, e), ambito),
     [sesion, visibilidad, ambito],
   );
-  // Y el destino de cada pestaña: la primera pantalla que esa persona puede
-  // ver en ese ámbito. Un enlace fijo mandaría a quien no tiene el permiso a
-  // una pantalla vacía, que es la peor bienvenida posible.
-  const destinoDe = useMemo(() => {
-    const porAmbito = new Map<string, string>();
-    for (const a of AMBITOS) {
-      const suyas = menuDe(
-        porGrupoVisible(sesion, visibilidad),
-        (e) => entradaVisible(sesion, e),
-        a.id,
-      );
-      const primera = suyas[0]?.entradas[0]?.a;
-      if (primera) porAmbito.set(a.id, a.id === "trabajar" ? "/" : primera);
-    }
-    return porAmbito;
-  }, [sesion, visibilidad]);
-  // Los accesos rápidos —inicio, puesto, chat— son del trabajo diario. En
-  // «Administrar» no pintan nada: son justo lo que se viene a dejar de lado.
-  const accesos = useMemo(
-    () => (ambito === "trabajar" ? ACCESOS.filter((e) => entradaVisible(sesion, e)) : []),
-    [sesion, ambito],
+  // Lo que se ha escrito en el buscador del árbol.
+  const [filtro, setFiltro] = useState("");
+  const rotuloDeEntrada = useCallback(
+    (clave: string) => (clave.includes(".") ? t(clave) : clave),
+    [t],
   );
+  // El árbol filtrado. Un área cuyo NOMBRE casa se enseña entera: buscar
+  // «configuración» tiene que dar sus pantallas, no ninguna.
+  const areasFiltradas = useMemo(() => {
+    const q = plano(filtro);
+    if (!q) return areas;
+    return areas
+      .map((a) =>
+        plano(t(a.clave)).includes(q)
+          ? a
+          : { ...a, entradas: a.entradas.filter((e) => plano(rotuloDeEntrada(e.clave)).includes(q)) },
+      )
+      .filter((a) => a.entradas.length > 0);
+  }, [areas, filtro, t, rotuloDeEntrada]);
 
   return (
     <>
@@ -265,58 +269,50 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
           </button>
         </div>
 
-        {/* ── Las dos entradas ─────────────────────────────────────────── */}
-        {/* Trabajar y Administrar. No son dos aplicaciones: es la misma sesión
-            y los mismos permisos, y lo único que cambia es qué se pone
-            delante. Van arriba del todo porque es la primera decisión —a qué
-            vengo— y todo lo de abajo depende de ella.
+        {/* ── Buscar un ajuste ─────────────────────────────────────────── */}
+        {/* El árbol tiene dieciocho ramas y crece con cada capacidad que se
+            configura. Buscar es como se mueve uno por el Setup de Salesforce,
+            y por el mismo motivo: con dieciocho entradas leerlas todas cuesta
+            más que escribir tres letras, y quien viene a cambiar un ajuste ya
+            sabe cómo se llama.
 
-            Un ámbito sin ninguna pantalla visible NO se enseña: ofrecer
-            «Administrar» a quien no administra nada le hace pulsarlo para
-            descubrir que está vacío. */}
-        {destinoDe.size > 1 ? (
-          <div className={cn("shrink-0", plegado ? "px-1.5 pt-2 md:px-1" : "px-3 pt-2")}>
-            <nav aria-label={t("nav.ambitos")} className="flex gap-1">
-              {AMBITOS.filter((a) => destinoDe.has(a.id)).map((a) => (
-                <Link
-                  key={a.id}
-                  to={destinoDe.get(a.id) as string}
-                  aria-current={ambito === a.id ? "page" : undefined}
-                  title={t(a.clave)}
-                  className={cn(
-                    "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-2xs font-medium transition-colors",
-                    ambito === a.id
-                      ? "bg-accent/12 text-accent"
-                      : "text-ink-muted hover:bg-paper-light hover:text-ink",
-                  )}
-                >
-                  <Icono nombre={a.icono} tamano="sm" />
-                  {plegado ? null : <span className="truncate">{t(a.clave)}</span>}
-                </Link>
-              ))}
-            </nav>
+            No choca con la paleta de `⌘K`: aquélla lleva a cualquier pantalla
+            del producto; ésta **filtra el árbol que tienes delante**, que es
+            lo que deja ver dónde está lo que buscas y qué hay a su lado.
+
+            Aquí ya NO está el interruptor «Trabajar / Administrar»: ese salto
+            lo hace el engranaje de la barra de arriba desde el 01-11-2026, y
+            tenerlo en dos sitios garantiza que uno acabe diciendo algo
+            distinto. Tampoco los accesos rápidos —inicio, puesto, chat—: son
+            del trabajo diario y aquí salían como un rótulo «ACCESOS» con nada
+            debajo. */}
+        {plegado ? null : (
+          <div className="shrink-0 px-3 pt-3">
+            <label className="sr-only" htmlFor="buscar-ajuste">
+              {t("nav.buscarAjuste")}
+            </label>
+            <input
+              id="buscar-ajuste"
+              type="search"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder={t("nav.buscarAjuste")}
+              className="input-base"
+            />
           </div>
-        ) : null}
-
-        {/* ── Accesos rápidos ──────────────────────────────────────────── */}
-        {/* Plegado pierden el rótulo pero no el sitio: son las cuatro pantallas
-            a las que se vuelve todo el rato y tienen icono propio, así que en
-            raíl siguen sirviendo. El rótulo lo da el `title`. */}
-        <div className={cn("shrink-0", plegado ? "px-2 py-2 md:px-1.5" : "px-3 py-3")}>
-          {plegado ? null : <p className="section-label mb-2">{t("nav.accesos")}</p>}
-          <nav
-            aria-label={t("nav.accesos")}
-            className={cn("flex gap-1.5", plegado ? "flex-wrap md:flex-col md:items-center" : "flex-wrap")}
-          >
-            {accesos.map((entrada) => (
-              <Pastilla key={entrada.a} entrada={entrada} plegado={plegado} />
-            ))}
-          </nav>
-        </div>
+        )}
 
         {/* ── Áreas ─────────────────────────────────────────────────────── */}
         <div className={cn("min-h-0 flex-1 overflow-y-auto pb-2", plegado && "md:overflow-visible")}>
-          {areas.map((area) => (
+          {/* Sin resultados se dice, no se deja el árbol en blanco: un panel
+              vacío de golpe se lee como que algo se ha roto, no como que no
+              hay nada que case. */}
+          {filtro && areasFiltradas.length === 0 ? (
+            <p className="px-3 py-4 text-2xs text-ink-faint" role="status">
+              {t("nav.sinAjustes", { que: filtro })}
+            </p>
+          ) : null}
+          {areasFiltradas.map((area) => (
             <Fragment key={area.id}>
               {/* Plegado, el raíl enseña el icono del ÁREA y no el de cada
                   pantalla, que es donde esto se aparta de contecflow. Allí cada
@@ -445,33 +441,6 @@ function Seccion({
         </nav>
       )}
     </section>
-  );
-}
-
-function Pastilla({ entrada, plegado }: { entrada: Entrada; plegado: boolean }) {
-  const { t } = useTranslation();
-  const rotulo = t(entrada.clave);
-  return (
-    <NavLink
-      to={entrada.a}
-      end={entrada.a === "/"}
-      title={plegado ? rotulo : undefined}
-      // El `aria-label` NO es condicional: plegado el rótulo desaparece del
-      // documento y el enlace se quedaría anunciado solo por su icono, que para
-      // un lector de pantalla es nada.
-      aria-label={rotulo}
-      className={({ isActive }) =>
-        cn(
-          "pill inline-flex items-center gap-1.5",
-          plegado && "md:h-8 md:w-8 md:justify-center md:gap-0 md:rounded-md md:px-0",
-          isActive && "pill-active",
-        )
-      }
-      aria-current={undefined}
-    >
-      <Icono nombre={entrada.icono} tamano="sm" />
-      <span className={cn(plegado && "md:hidden")}>{rotulo}</span>
-    </NavLink>
   );
 }
 

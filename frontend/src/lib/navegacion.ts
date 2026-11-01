@@ -287,6 +287,48 @@ export function iconoDeGrupo(grupo: string): string {
 }
 
 /**
+ * El color del cuadrado del icono, por módulo.
+ *
+ * **Es lo más reconocible de Salesforce y es lo que aquí no había.** Allí cada
+ * objeto tiene el suyo —las cuentas malva, los candidatos naranja, las
+ * oportunidades amarillo, los casos ámbar— y sirve para algo concreto: en una
+ * pestaña, en una ficha o en un resultado de búsqueda, el color dice QUÉ es
+ * antes de leer una palabra. Aquí todos los iconos eran el mismo azul del
+ * acento, así que el cuadrado no distinguía nada y sólo era decoración.
+ *
+ * Los valores son los de su paleta de objetos. Van por MÓDULO y no por grupo:
+ * dentro de Clientes, las cuentas y los proveedores son dos cosas distintas y
+ * en Salesforce tienen color distinto.
+ *
+ * Lo que no está en esta tabla cae en el azul del acento, que es lo que había:
+ * un módulo nuevo sale neutro en vez de heredar el color del de al lado.
+ */
+const COLOR_POR_MODULO: Record<string, string> = {
+  cuentas: "#7F8DE1", // Cuentas y Contactos, malva
+  proveedores: "#A094ED",
+  leads: "#F88962", // Candidatos, naranja
+  oportunidades: "#FCB95B", // amarillo
+  prevision: "#5CA5A5",
+  canal: "#56AADF",
+  actividades: "#6BBF59",
+  casos: "#F2CF5B", // ámbar
+  postventa: "#E8A33D",
+  campo: "#8C9BA5",
+  omnicanal: "#54698D",
+  conocimiento: "#58A8D4",
+  campanas: "#F49756",
+  segmentos: "#C77FBE",
+  canales: "#9D8CE3",
+  contenido: "#71B8A0",
+  explotacion: "#4BC076",
+  ia: "#9A77CF",
+};
+
+export function colorDeModulo(ruta: string): string | null {
+  return COLOR_POR_MODULO[ruta] ?? null;
+}
+
+/**
  * El menú tal como se pinta: un área, y dentro sus módulos y sus pantallas.
  *
  * Aquí se funden las dos listas —lo que sale del catálogo y lo que no— en una

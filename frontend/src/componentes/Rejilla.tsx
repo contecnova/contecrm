@@ -22,6 +22,7 @@ export function Rejilla({
   className = "",
   compacta = false,
   acotada = true,
+  pegada = false,
 }: {
   /** Rótulos de las columnas, en orden. */
   cabeceras: ReactNode[];
@@ -55,6 +56,8 @@ export function Rejilla({
    * 1.504 px de contenido dentro, y 110 px de página en blanco debajo.
    */
   acotada?: boolean;
+  /** Pegada a lo que va encima: sin esquinas arriba, para formar una tarjeta. */
+  pegada?: boolean;
 }) {
   return (
     /* Acotada a lo alto, como el resto de las listas del producto.
@@ -70,7 +73,7 @@ export function Rejilla({
      * La cabecera se queda pegada arriba: recorrer una tabla sin cabecera
      * obliga a subir para saber qué columna se está mirando. */
     <div
-      className={`${acotada ? "lista-acotada" : ""} overflow-x-auto rounded border border-ink-dim/50 bg-paper shadow-elevation-1 ${className}`}
+      className={`${acotada ? "lista-acotada" : ""} ${pegada ? "rounded-t-none border-t-0 shadow-none" : "shadow-elevation-1"} overflow-x-auto rounded border border-ink-dim/50 bg-paper ${className}`}
     >
       {/* El tamaño de letra sale del token de densidad, en `.celda-rejilla`, y
           no de una clase fija: con la densidad por persona, una tabla con
