@@ -358,6 +358,52 @@ Tres cosas que notarás:
 
 ---
 
+### Las listas: ordenar, elegir columnas y cambiar de vista
+
+Casi todo en contecrm es una lista: cuentas, oportunidades, casos, órdenes de
+trabajo. Todas funcionan igual, a propósito — lo que aprendas en una te sirve en
+las demás.
+
+**Ordenar: pulsa la cabecera de la columna.** Una vez, de menor a mayor. Otra
+vez, de mayor a menor. A la tercera vuelve al orden con el que llegó, que
+normalmente es lo más reciente primero y no siempre querrás perderlo. La flecha
+de al lado dice cómo está ordenada.
+
+Ordena por lo que el dato **es**, no por cómo se escribe:
+
+- Los importes se ordenan como números: 900 va antes que 1.000, no después.
+- Las fechas se ordenan como fechas.
+- Los nombres se ordenan con el alfabeto de tu idioma: «Ávila» va donde le toca
+  y no detrás de «Zamora».
+- **Lo que está vacío se queda al final**, ordenes hacia arriba o hacia abajo.
+  Si ordenas por «fecha de cierre» de más reciente a más antigua, lo que quieres
+  arriba es la más reciente, no los cincuenta registros sin fecha.
+
+contecrm recuerda por qué columna ordenaste **en cada pestaña por separado**:
+el orden que te va bien en Casos no es el que te va bien en Cuentas.
+
+**Las columnas las eliges tú.** El botón **Columnas** dice cuántas se ven de
+cuántas hay. Las que no tienen dato en ninguna de las filas que estás mirando no
+se ofrecen: una columna vacía es ruido. Tu elección se recuerda por pestaña.
+
+**Dos formas de mirar: tabla y tarjetas.** La lista se abre en **tabla**, que es
+la que deja ver más registros de una vez y la única que se puede ordenar. Si
+prefieres tarjetas, el selector está arriba a la derecha y contecrm lo recuerda
+para esa pestaña: no tendrás que volver a elegirlo.
+
+**La lista se recorre con la página**, hasta abajo. Antes se cortaba dentro de
+una caja con su propia barra de desplazamiento, y quedaban hueco en blanco
+debajo y filas que no se veían.
+
+**Nuevo** está arriba de la lista, a la izquierda, junto al recuento de filas. El
+formulario de alta se abre justo debajo, sobre la propia lista.
+
+> **Si la lista está vacía** no verás el botón «Nuevo» arriba: lo ofrece el
+> propio recuadro que te dice que no hay nada, para que no haya dos botones
+> iguales a diez centímetros uno de otro.
+
+---
+
 ### Exportar un listado
 
 El botón **Exportar** está arriba de cada lista, al lado del selector de vista.

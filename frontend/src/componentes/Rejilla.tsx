@@ -21,6 +21,7 @@ export function Rejilla({
   children,
   className = "",
   compacta = false,
+  acotada = true,
 }: {
   /** Rótulos de las columnas, en orden. */
   cabeceras: ReactNode[];
@@ -39,6 +40,21 @@ export function Rejilla({
    * calcula desde el token en `.celda-rejilla--apoyo`.
    */
   compacta?: boolean;
+  /**
+   * Si la tabla se corta a 28rem con barra propia.
+   *
+   * Cierto por defecto porque lo normal es ser la tabla de APOYO: una que
+   * crece con los datos dentro de una pantalla que tiene más cosas empuja
+   * fuera de la vista todo lo que va debajo.
+   *
+   * **Falso cuando la tabla ES la pantalla**, que es el caso de los listados
+   * de módulo. Esa excepción estaba escrita aquí y en `index.css` desde el
+   * principio, y no estaba implementada en ninguno de los dos sitios: los 53
+   * listados del producto se cortaban a 448 px con una barra dentro de la
+   * página. Medido el 01-11-2026 en Cuentas a 1440×900: caja de 446 px con
+   * 1.504 px de contenido dentro, y 110 px de página en blanco debajo.
+   */
+  acotada?: boolean;
 }) {
   return (
     /* Acotada a lo alto, como el resto de las listas del producto.
@@ -54,7 +70,7 @@ export function Rejilla({
      * La cabecera se queda pegada arriba: recorrer una tabla sin cabecera
      * obliga a subir para saber qué columna se está mirando. */
     <div
-      className={`lista-acotada overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper ${className}`}
+      className={`${acotada ? "lista-acotada" : ""} overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper ${className}`}
     >
       {/* El tamaño de letra sale del token de densidad, en `.celda-rejilla`, y
           no de una clase fija: con la densidad por persona, una tabla con

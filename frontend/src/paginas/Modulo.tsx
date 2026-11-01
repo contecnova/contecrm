@@ -133,36 +133,46 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
 
   return (
     <>
-      {/* Cada pantalla dice qué capacidad del catálogo implementa
-          (CRM-07.04.05.05). Desde aquí se llega al enunciado, al código y a la
-          prueba: es la trazabilidad puesta delante de quien la mira, en vez de
-          enterrada en un fichero que solo abre quien ya sabe que existe. */}
+      {/* La trazabilidad va EN la cabecera y plegada, no debajo y en dos
+          bloques. Cada pantalla sigue diciendo qué capacidad del catálogo
+          implementa (CRM-07.04.05.05) y qué capacidades de producto enseña
+          —desde aquí se llega al enunciado, al código y a la prueba—, pero
+          `CRM-07.04.03.07 · sección 1.1` había acabado de **subtítulo**: el
+          primer texto que lee quien abre Cuentas es un identificador interno
+          que no significa nada fuera de casa.
+
+          Y eran dos bandas, una debajo de otra, para lo mismo. Medido a
+          1440×900: el subtítulo y el desplegable se llevaban 65 px de los 476
+          que había que bajar para ver el primer dato. Ahora es un desplegable
+          a la derecha del título, que es donde se pone lo que casi nadie abre.
+
+          No se quita nada: quien lo despliega ve el identificador, la sección
+          y las capacidades. Se declara igual de caro declarar algo que no se
+          enseña, que es para lo que está. */}
       <CabeceraPagina
         titulo={modulo.titulo}
         icono={iconoDeGrupo(modulo.grupo)}
-        entradilla={
-          <span className="font-mono text-3xs">
-            {modulo.capacidad} · {t("modulo.seccion")} {modulo.seccion}
-          </span>
+        acciones={
+          <details className="text-right">
+            <summary className="cursor-pointer text-3xs text-ink-faint">
+              {t("modulo.trazabilidad")}
+            </summary>
+            <p className="mt-1 font-mono text-3xs text-ink-faint">
+              {modulo.capacidad} · {t("modulo.seccion")} {modulo.seccion}
+            </p>
+            {capacidades.length > 0 ? (
+              <ul
+                aria-label={t("modulo.capacidades", { count: capacidades.length })}
+                className="mt-1 flex max-w-md flex-wrap justify-end gap-x-3 gap-y-1 font-mono text-3xs text-ink-faint"
+              >
+                {capacidades.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ul>
+            ) : null}
+          </details>
         }
       />
-      {/* Y qué capacidades de PRODUCTO se ven aquí, no solo cuál de front es
-          esta pantalla. Se pinta a propósito: la declaración se escribe en un
-          minuto, así que ponerla delante es lo único que hace caro declarar
-          algo que no se enseña. Va plegada porque es trazabilidad y no trabajo
-          diario, y se carga aparte porque no la necesita quien mira su menú. */}
-      {capacidades.length > 0 ? (
-        <details className="mt-2">
-          <summary className="cursor-pointer text-3xs text-ink-faint">
-            {t("modulo.capacidades", { cuantas: capacidades.length })}
-          </summary>
-          <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-3xs text-ink-faint">
-            {capacidades.map((c) => (
-              <li key={c}>{c}</li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
       {recursosDe(ruta ?? "").length > 1 ? (
         <nav aria-label={modulo.titulo} className="mt-3 flex flex-wrap items-center gap-1">
           {/* Las pestañas rotuladas con icono —hoy, la papelera— van siempre al
@@ -600,7 +610,10 @@ function RecursoVista({
     setProposito(null);
     void contratoDe(recurso.servicio).then((documento) => {
       if (!vivo) return;
-      setProposito(propositoDe(documento, recurso.listar, "get"));
+      // Con el nombre de la pestaña: el propósito sólo se pinta si dice
+      // algo que ese rótulo no diga ya. 62 de los 214 resúmenes de esta
+      // instalación eran «Listar <el nombre de la pestaña>».
+      setProposito(propositoDe(documento, recurso.listar, "get", recurso.nombre));
       // El alta: la declarada si la hay, y si no la de la propia ruta que
       // lista, que es donde la pone el servidor salvo excepción.
       const alta = recurso.crear ?? (admite(documento, recurso.listar, "post") ? recurso.listar : null);
@@ -631,7 +644,7 @@ function RecursoVista({
     return () => {
       vivo = false;
     };
-  }, [recurso.servicio, recurso.listar, recurso.crear, recurso.objeto]);
+  }, [recurso.servicio, recurso.listar, recurso.crear, recurso.objeto, recurso.nombre]);
 
   if (!puedeVer) {
     // Con el mismo lenguaje que el resto de estados. Una línea de texto suelta
@@ -663,33 +676,43 @@ function RecursoVista({
     }
   }
 
+  // El botón de alta y su formulario, definidos una vez y colocados por las
+  // dos barras de herramientas —la que pinta la tabla y la de las demás
+  // vistas—, porque son el mismo control y tienen que estar en el mismo sitio.
+  //
+  // Antes el botón tenía una fila para él solo encima de todo: 52 px en las 53
+  // pantallas que pintan listas, medidos a 1440×900, para un control que cabe
+  // de sobra en la barra que ya existe.
+  //
+  // Cuando la lista está vacía el botón NO sale: lo ofrece el propio estado
+  // vacío, y dos botones iguales a diez centímetros uno de otro hacen dudar de
+  // si son lo mismo.
+  const botonDeAlta =
+    rutaDeAlta && (creando || (filas !== null && filas.length > 0)) ? (
+      <button
+        type="button"
+        onClick={() => setCreando((v) => !v)}
+        className={creando ? "btn-secondary" : "btn-primary"}
+      >
+        {creando ? t("modulo.cancelar") : t("modulo.nuevo")}
+      </button>
+    ) : null;
+
+  const formularioDeAlta =
+    creando && campos ? (
+      <div className="mb-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
+        <Formulario
+          recurso={recurso}
+          campos={campos}
+          enviando={enviando}
+          textoEnviar={t("modulo.guardar")}
+          alEnviar={(v) => void crear(v)}
+        />
+      </div>
+    ) : null;
+
   return (
     <div className="mt-4">
-      {/* Cuando la lista está vacía el botón no va aquí: lo ofrece el propio
-          estado vacío, y dos botones iguales a diez centímetros uno de otro
-          hacen dudar de si son lo mismo. */}
-      {rutaDeAlta && (creando || (filas !== null && filas.length > 0)) ? (
-        <button
-          type="button"
-          onClick={() => setCreando((v) => !v)}
-          className={creando ? "btn-secondary mb-3" : "btn-primary mb-3"}
-        >
-          {creando ? t("modulo.cancelar") : t("modulo.nuevo")}
-        </button>
-      ) : null}
-
-      {creando && campos ? (
-        <div className="mb-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
-          <Formulario
-            recurso={recurso}
-            campos={campos}
-            enviando={enviando}
-            textoEnviar={t("modulo.guardar")}
-            alEnviar={(v) => void crear(v)}
-          />
-        </div>
-      ) : null}
-
       {proposito?.resumen ? (
         <div className="mb-4 max-w-3xl">
           <p className="text-xs text-ink">{proposito.resumen}</p>
@@ -792,16 +815,27 @@ function RecursoVista({
         // El vacío ofrece lo único que se puede hacer aquí: dar de alta el
         // primero. Un recuadro que solo dice «no hay nada» deja a quien mira en
         // el mismo sitio en el que estaba.
-        <Vacio
-          icono="inbox"
-          titulo={t("modulo.sinRegistros")}
-          detalle={rutaDeAlta ? t("modulo.sinRegistrosDetalle") : t("vacio.detalle")}
-          accion={
-            rutaDeAlta && campos
-              ? { texto: t("modulo.nuevo"), alPulsar: () => setCreando(true) }
-              : undefined
-          }
-        />
+        // Con la lista vacía no hay barra de herramientas donde poner el
+        // botón, así que el formulario se pinta aquí y con su «Cancelar»
+        // delante: sin él, abrir el alta desde el estado vacío dejaba sin
+        // salida — el único botón que lo cerraba vivía en la barra que esta
+        // rama no pinta.
+        <>
+          {creando ? <div className="mb-3">{botonDeAlta}</div> : null}
+          {formularioDeAlta}
+          {creando ? null : (
+            <Vacio
+              icono="inbox"
+              titulo={t("modulo.sinRegistros")}
+              detalle={rutaDeAlta ? t("modulo.sinRegistrosDetalle") : t("vacio.detalle")}
+              accion={
+                rutaDeAlta && campos
+                  ? { texto: t("modulo.nuevo"), alPulsar: () => setCreando(true) }
+                  : undefined
+              }
+            />
+          )}
+        </>
       ) : (
         <>
           {/* Los controles van a la derecha, que es donde los pone todo el
@@ -826,9 +860,12 @@ function RecursoVista({
           )}
           {vista === "tabla" && !vocabulario ? null : (
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-3xs text-ink-faint" role="status">
-                {t("modulo.filasCargadas", { cuantas: filas.length })}
-              </p>
+              <div className="flex min-w-0 items-center gap-3">
+                {botonDeAlta}
+                <p className="text-3xs text-ink-faint" role="status">
+                  {t("modulo.filasCargadas", { cuantas: filas.length })}
+                </p>
+              </div>
               {/* Sin selector para un vocabulario: no hay tres formas de mirar
                   nueve palabras. */}
               {vocabulario ? null : (
@@ -851,6 +888,9 @@ function RecursoVista({
               )}
             </div>
           )}
+          {/* En la vista de tabla lo coloca la propia tabla, por su ranura
+              `antes`: su barra de herramientas la pinta ella. */}
+          {vista === "tabla" && !vocabulario ? null : formularioDeAlta}
           {vocabulario ? (
             <Etiquetas filas={filas} />
           ) : vista === "agrupado" && campoAgrupacion ? (
@@ -878,10 +918,16 @@ function RecursoVista({
               // cree que se ha roto algo.
               enlace={aLaFicha}
               encabezado={
-                <p className="text-3xs text-ink-faint" role="status">
-                  {t("modulo.filasCargadas", { cuantas: filas.length })}
-                </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  {botonDeAlta}
+                  <p className="text-3xs text-ink-faint" role="status">
+                    {t("modulo.filasCargadas", { cuantas: filas.length })}
+                  </p>
+                </div>
               }
+              antes={formularioDeAlta}
+              // El listado ES la pantalla: se recorre con la página.
+              ocupaLaPantalla
               acciones={
                 <span className="flex items-center gap-2">
                   <Exportar

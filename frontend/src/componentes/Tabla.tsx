@@ -93,6 +93,24 @@ export interface Props {
    * de orden según la vista.
    */
   acciones?: ReactNode;
+  /**
+   * Lo que va **entre la barra de herramientas y la tabla**.
+   *
+   * Para el formulario de alta: su botón vive en la barra, y un formulario que
+   * se abre por encima de su propio botón empuja el botón hacia abajo mientras
+   * lo miras. Sin esta ranura el botón necesitaba una fila para él solo —52 px
+   * en todas las listas, medidos a 1440×900— para poder tener el formulario
+   * debajo.
+   */
+  antes?: ReactNode;
+  /**
+   * Esta tabla **es** la pantalla: se recorre con la página, sin barra propia.
+   *
+   * Lo decide quien la coloca, porque es lo único que lo sabe: la misma tabla
+   * sirve para el listado de un módulo —donde no hay nada a lo que dejar
+   * sitio— y para un panel dentro de un cuadro de mando, donde sí lo hay.
+   */
+  ocupaLaPantalla?: boolean;
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -216,6 +234,8 @@ export function Tabla({
   recuerdaComo,
   encabezado,
   acciones,
+  antes,
+  ocupaLaPantalla = false,
 }: Props) {
   const { t } = useTranslation();
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
@@ -334,11 +354,14 @@ export function Tabla({
         </fieldset>
       ) : null}
 
+      {antes}
+
       {/* El armazón es el mismo que el de las tablas de forma fija —estado,
           rendimiento, despliegue—: estaba copiado cinco veces y ya había
           empezado a separarse en el tamaño de letra y en el tono de las
           celdas. */}
       <Rejilla
+        acotada={!ocupaLaPantalla}
         titulo={titulo}
         cabeceras={cabeceras.map((c) => (
           <button

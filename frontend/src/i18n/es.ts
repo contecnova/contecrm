@@ -501,7 +501,15 @@ export default {
     filasCargadas: "{{cuantas}} filas cargadas",
     cargarMas: "Cargar más",
     seccion: "sección",
-    capacidades: "Enseña {{cuantas}} capacidades del catálogo",
+    // Era «Enseña {{cuantas}} capacidades del catálogo» y estaba debajo del
+    // título, a lo ancho. Ahora es el rótulo de un desplegable a la derecha,
+    // y tiene que caber en una esquina: una palabra que diga qué hay dentro
+    // sin prometer trabajo. El recuento se ha ido dentro, donde está la lista
+    // que cuenta — fuera decía «0 capacidades» en los módulos que aún no
+    // declaran ninguna, que es justo lo contrario de lo que pasa.
+    trazabilidad: "Trazabilidad",
+    capacidades_one: "1 capacidad del catálogo",
+    capacidades_other: "{{count}} capacidades del catálogo",
   },
   consola: {
     eligeArea: "Elige un área de la lista",

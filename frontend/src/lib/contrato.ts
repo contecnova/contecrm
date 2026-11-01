@@ -369,24 +369,130 @@ export interface Proposito {
 }
 
 /**
- * Para qué sirve una pantalla, dicho por el servicio dueño.
+ * Para qué sirve una pantalla, dicho por el servicio dueño — **cuando añade
+ * algo**.
  *
  * Una pestaña que se llama «Duplicados» y enseña una caja de búsqueda no dice
  * qué hace: hay que probarla para averiguarlo, y probar una pantalla de
  * duplicados o de papelera da miedo. El servicio ya lo explica en su contrato
- * —«Lo mismo que hace el alta, pero sin crear nada»— y aquí solo se enseña.
+ * y aquí solo se enseña.
  *
- * Se recorta el primer párrafo: las descripciones del contrato razonan la
- * decisión entera y eso es para quien integra, no para quien abre la pantalla.
+ * Lo que no se miró hasta el 01-11-2026 fue **cuántas veces no añade nada**.
+ * Medido sobre los 13 contratos de esta instalación:
+ *
+ * - **62 de 214** resúmenes repiten el nombre de la pestaña que hay tres
+ *   centímetros más arriba: «Cuentas» → «Listar cuentas», «Subprocesadores» →
+ *   «Listar subprocesadores».
+ * - **131 de 835** descripciones son plantilla generada: «Paginado por cursor.
+ *   Devuelve X del tenant en curso, de lo más reciente a lo más antiguo» o «El
+ *   mismo listado… en filas planas para una hoja de cálculo».
+ *
+ * En «Cuentas y contactos» las dos caían a la vez y ocupaban 50 px de los 476
+ * que había que bajar para ver el primer dato, diciendo «Listar cuentas» y
+ * explicándole la estrategia de paginación a un comercial.
+ *
+ * Nada de esto se arregla con una lista de frases prohibidas: la plantilla
+ * siguiente entra por donde la lista no mira. Las dos señales son estructurales
+ * y se miden solas — que el resumen ya esté en el rótulo, y que la descripción
+ * **se repita** dentro del mismo contrato.
  */
-export function propositoDe(documento: Documento, ruta: string, metodo = "get"): Proposito {
+export function propositoDe(
+  documento: Documento,
+  ruta: string,
+  metodo = "get",
+  /** El rótulo que el usuario ya está leyendo encima: la pestaña. */
+  rotulo = "",
+): Proposito {
   const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[metodo] as
     | { summary?: string; description?: string }
     | undefined;
+  const resumen = operacion?.summary ?? "";
   const detalle = (operacion?.description ?? "").split("\n\n")[0] ?? "";
   return {
-    resumen: operacion?.summary ?? "",
+    resumen: yaLoDiceElRotulo(resumen, rotulo) ? "" : resumen,
     // Sin el marcado de negrita del contrato: aquí no se pinta como markdown.
-    detalle: detalle.replace(/\*\*/g, "").trim(),
+    detalle: esPlantilla(documento, detalle) ? "" : detalle.replace(/\*\*/g, "").trim(),
   };
+}
+
+/** Las palabras con contenido de un texto, sin tildes ni puntuación. */
+function palabras(texto: string): string[] {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+// Verbos de listado y palabras de enlace: están en casi todos los resúmenes y
+// no distinguen nada. Si se cuentan, «Listar cuentas» frente a la pestaña
+// «Cuentas» parece que aporta un 50 % de información nueva, y no aporta
+// ninguna.
+const VACIAS = new Set(["listar", "ver", "consultar", "de", "del", "la", "el", "los", "las", "un", "una", "y", "en", "a"]);
+
+/**
+ * ¿El resumen dice algo que el rótulo de la pestaña no diga ya?
+ *
+ * Se compara por raíz de cuatro letras y no por igualdad: «Listar migraciones
+ * de aislamiento» bajo la pestaña «Migraciones de aislamiento» es la misma
+ * frase, y «Listar canales de chat» bajo «Canales de chat» también — pero
+ * «Cumplimiento por proveedor» bajo «Encargos: cumplimiento por proveedor» no
+ * coincide carácter a carácter y es igual de redundante.
+ */
+function yaLoDiceElRotulo(resumen: string, rotulo: string): boolean {
+  if (!resumen || !rotulo) return false;
+  const suyas = palabras(resumen).filter((p) => !VACIAS.has(p));
+  if (suyas.length === 0) return true;
+  const delRotulo = palabras(rotulo);
+  return suyas.every((p) => delRotulo.some((r) => r.startsWith(p.slice(0, 4)) || p.startsWith(r.slice(0, 4))));
+}
+
+/** Cuántas descripciones casi iguales hay en un contrato, por párrafo. */
+const gemelos = new WeakMap<Documento, Map<string, number>>();
+
+/**
+ * ¿Esta descripción es plantilla?
+ *
+ * Lo es si el **mismo contrato** la repite: un párrafo escrito a mano para una
+ * pantalla no aparece en otras cuatro. Se comparan los conjuntos de palabras al
+ * 80 % para que el nombre de la entidad —lo único que cambia entre
+ * «Devuelve migraciones…» y «Devuelve declaraciones…»— no las separe.
+ *
+ * El umbral es 2 gemelos y no 1: dos pantallas hermanas pueden compartir una
+ * explicación legítima, cinco no.
+ */
+function esPlantilla(documento: Documento, detalle: string): boolean {
+  const limpio = detalle.replace(/\*\*/g, "").trim();
+  if (limpio.length < 30) return false;
+
+  let contados = gemelos.get(documento);
+  if (!contados) {
+    const parrafos: string[][] = [];
+    for (const operaciones of Object.values(documento.paths ?? {})) {
+      for (const op of Object.values(operaciones)) {
+        const d = (op as { description?: string } | null)?.description;
+        if (d) parrafos.push(palabras(d.split("\n\n")[0] ?? ""));
+      }
+    }
+    contados = new Map();
+    for (const p of parrafos) {
+      const clave = p.join(" ");
+      if (contados.has(clave)) continue;
+      contados.set(clave, parrafos.filter((otro) => parecido(p, otro) >= 0.8).length - 1);
+    }
+    gemelos.set(documento, contados);
+  }
+  return (contados.get(palabras(limpio).join(" ")) ?? 0) >= 2;
+}
+
+/** Cuánto se solapan dos conjuntos de palabras, de 0 a 1. */
+function parecido(a: string[], b: string[]): number {
+  const A = new Set(a);
+  const B = new Set(b);
+  if (A.size === 0 || B.size === 0) return 0;
+  let comunes = 0;
+  for (const p of A) if (B.has(p)) comunes++;
+  return comunes / Math.max(A.size, B.size);
 }
