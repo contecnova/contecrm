@@ -392,6 +392,13 @@ function RecursoVista({
    */
   const [plantillaFicha, setPlantillaFicha] = useState<string | null>(null);
   const [camposEditables, setCamposEditables] = useState<Set<string>>(() => new Set());
+  // El esquema de los campos que el PATCH admite, por nombre. Hace falta para
+  // editar en línea: el control de una celda depende del tipo —una lista
+  // cerrada es un desplegable y una fecha un calendario—, y eso sólo lo dice
+  // el contrato.
+  const [esquemaEditable, setEsquemaEditable] = useState<Map<string, CampoEsquema>>(
+    () => new Map(),
+  );
   const recuerdaComo = `${ruta}.${recurso.nombre}`;
   const [vista, setVista] = useState<Vista>(() => vistaRecordada(recuerdaComo) ?? "tarjetas");
   /**
@@ -430,33 +437,54 @@ function RecursoVista({
    * ha funcionado; sin lo segundo, la pantalla enseña un estado que la base no
    * tiene, que es peor que el parpadeo.
    */
-  const mover = useMemo(() => {
-    if (!plantillaFicha || !campoAgrupacion || !camposEditables.has(campoAgrupacion)) {
-      return undefined;
-    }
+  /**
+   * Cambiar UN campo de UNA fila, sin abrir la ficha.
+   *
+   * Era `mover`, que sólo sabía cambiar el campo por el que agrupa el tablero.
+   * Es exactamente la misma operación —un PATCH de un campo con el cambio
+   * pintado antes de que conteste el servidor y deshecho si falla—, así que
+   * ahora recibe el campo y sirve para las dos cosas: arrastrar una tarjeta
+   * entre columnas y editar una celda en la lista.
+   *
+   * **El cambio se pinta antes de que conteste el servidor** y se deshace si
+   * falla. Lo contrario es que la tarjeta se quede en su sitio medio segundo
+   * después de soltarla, y eso se lee como que no ha cogido el gesto.
+   */
+  const editarCampo = useMemo(() => {
+    if (!plantillaFicha) return undefined;
     const parametro = plantillaFicha.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
     const campoClave = !parametro ? "id" : /(^|_)id$/.test(parametro) ? "id" : parametro;
-    return async (fila: Record<string, unknown>, valor: string) => {
+    return async (fila: Record<string, unknown>, campo: string, valor: unknown) => {
+      if (!camposEditables.has(campo)) return;
       const clave = fila[campoClave] ?? fila.id;
       if (typeof clave !== "string") return;
-      const antes = fila[campoAgrupacion];
+      const antes = fila[campo];
       const mismo = (f: Record<string, unknown>) => (f[campoClave] ?? f.id) === clave;
       setFilas((actuales) =>
-        (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campoAgrupacion]: valor } : f)),
+        (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campo]: valor } : f)),
       );
       try {
         await llamar(plantillaFicha.replace(/\{[a-z_]+\}$/, encodeURIComponent(clave)), {
           metodo: "PATCH",
-          cuerpo: { [campoAgrupacion]: valor },
+          cuerpo: { [campo]: valor },
         });
       } catch (error) {
         setFilas((actuales) =>
-          (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campoAgrupacion]: antes } : f)),
+          (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campo]: antes } : f)),
         );
         throw error;
       }
     };
-  }, [plantillaFicha, campoAgrupacion, camposEditables]);
+  }, [plantillaFicha, camposEditables]);
+
+  // El tablero sigue pidiendo lo suyo: mover por el campo de agrupación.
+  const mover = useMemo(() => {
+    if (!editarCampo || !campoAgrupacion || !camposEditables.has(campoAgrupacion)) {
+      return undefined;
+    }
+    return (fila: Record<string, unknown>, valor: string) =>
+      editarCampo(fila, campoAgrupacion, valor);
+  }, [editarCampo, campoAgrupacion, camposEditables]);
   /**
    * Número de la última petición lanzada.
    *
@@ -602,13 +630,9 @@ function RecursoVista({
       // Lo que el PATCH del registro admite. Si el campo por el que se agrupa
       // no está, el tablero no deja arrastrar: ofrecer un gesto que el
       // servidor va a rechazar es peor que no ofrecerlo.
-      setCamposEditables(
-        new Set(
-          plantillaFicha
-            ? camposDe(documento, plantillaFicha, "patch").map((c) => c.nombre)
-            : [],
-        ),
-      );
+      const editables = plantillaFicha ? camposDe(documento, plantillaFicha, "patch") : [];
+      setCamposEditables(new Set(editables.map((c) => c.nombre)));
+      setEsquemaEditable(new Map(editables.map((c) => [c.nombre, c])));
       const parametro = plantillaFicha?.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
       // `{cuenta_id}` es el identificador de siempre; `{clave}` es otro campo
       // de la fila, y hay que mandar ese.
@@ -931,6 +955,11 @@ function RecursoVista({
               // registro TIENE ficha: un menú sobre una fila a la que no se
               // llega no puede ofrecer ni abrir ni editar, y un menú con una
               // sola opción gris es peor que no tener menú.
+              //
+              // Editar en línea: qué campos y con qué control lo dice el
+              // contrato; guardar es el mismo PATCH que usa el tablero.
+              esquemaDeCampo={(c) => esquemaEditable.get(c)}
+              alEditarCelda={editarCampo}
               accionesDeFila={
                 aLaFicha
                   ? (f) => {

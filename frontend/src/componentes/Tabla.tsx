@@ -43,6 +43,8 @@ import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { MenuDeAcciones, type OpcionDeMenu } from "@/componentes/MenuDeAcciones";
+import type { CampoEsquema } from "@/lib/contrato";
+import { CeldaEditable } from "@/componentes/CeldaEditable";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
 import {
@@ -131,6 +133,16 @@ export interface Props {
    * depende del recurso y del permiso, y eso la tabla no lo sabe.
    */
   accionesDeFila?: (fila: Record<string, unknown>) => OpcionDeMenu[];
+  /**
+   * Editar una celda en la propia lista.
+   *
+   * `esquemaDeCampo` dice qué campos se pueden tocar y con qué control —lo
+   * sabe el contrato, no la tabla—, y `alEditarCelda` guarda. Sin los dos, la
+   * tabla no ofrece el lápiz: ofrecer editar algo que el servidor va a
+   * rechazar es peor que no ofrecerlo.
+   */
+  esquemaDeCampo?: (campo: string) => CampoEsquema | undefined;
+  alEditarCelda?: (fila: Record<string, unknown>, campo: string, valor: unknown) => Promise<void>;
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -258,6 +270,8 @@ export function Tabla({
   ocupaLaPantalla = false,
   pegada = false,
   accionesDeFila,
+  esquemaDeCampo,
+  alEditarCelda,
 }: Props) {
   const { t } = useTranslation();
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
@@ -517,6 +531,24 @@ export function Tabla({
             >
               {cabeceras.map((c, columna) => {
                 const destino = columna === 0 && enlace ? enlace(fila) : null;
+                const editable = esquemaDeCampo?.(c);
+                // La primera columna NO se edita en línea: lleva el enlace que
+                // abre el registro, y meter un lápiz al lado del nombre pone
+                // dos acciones distintas a tres píxeles una de otra.
+                if (editable && alEditarCelda && columna > 0) {
+                  return (
+                    <Casilla key={c} enUnaLinea>
+                      <CeldaEditable
+                        valor={fila[c]}
+                        campo={c}
+                        esquema={editable}
+                        alGuardar={(v) => alEditarCelda(fila, c, v)}
+                      >
+                        <Celda valor={fila[c]} campo={c} />
+                      </CeldaEditable>
+                    </Casilla>
+                  );
+                }
                 return (
                   <Casilla key={c} enUnaLinea>
                     {destino ? (

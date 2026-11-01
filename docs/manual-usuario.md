@@ -498,6 +498,20 @@ codigo», «Owner id». Ahora se escriben bien, y lo mismo vale para los **valor
 que llegan como identificador: un caso en `esperando_cliente` se lee «Esperando
 cliente». Si ves alguno mal escrito, es un fallo y se arregla.
 
+**Cambiar un dato sin salir de la lista.** Al pasar por encima de una celda
+aparece un lápiz: se pulsa, se cambia y se guarda con **Intro** o saliendo del
+campo. `Esc` cancela. Para corregir un estado o un importe ya no hace falta
+abrir la ficha, buscar «Editar», cambiar, guardar y volver.
+
+Sólo salen con lápiz los campos que el servidor deja cambiar, y el control es
+el que les toca: una lista cerrada sale como desplegable y una fecha como
+calendario. La primera columna no se edita ahí —lleva el enlace que abre el
+registro, y dos acciones distintas a tres píxeles una de otra se pulsan mal.
+
+Si el servidor rechaza el cambio, **el valor vuelve al anterior y la celda lo
+dice**. Un cambio que parece guardado y no lo está es peor que uno que falla a
+la vista.
+
 **Cada fila tiene su menú.** Al final de la línea hay un `⌄` con **Abrir** y
 **Editar**. «Editar» lleva la ficha ya abierta en modo edición, no a la ficha
 para que busques el botón: si lo que querías era cambiar un dato, ya estás

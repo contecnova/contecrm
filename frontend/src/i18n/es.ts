@@ -216,6 +216,10 @@ export default {
     // La línea que Lightning pone bajo el nombre de la vista. «Elementos» y
     // no «filas»: una fila es de la tabla y un elemento es del listado, que es
     // lo que la persona está contando.
+    // El menú del final de cada fila, y el lápiz de una celda.
+    accionesDeFila: "Qué hacer con esta fila",
+    editarCampo: "Cambiar {{campo}}",
+    noSeGuardo: "No se guardó",
     buscarEnLaLista: "Buscar en esta lista",
     nadaConEso: "Ninguno de los {{total}} cargados lleva «{{que}}».",
     // Cuando hay búsqueda se dice de CUÁNTOS, porque busca en lo cargado:
