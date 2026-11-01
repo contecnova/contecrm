@@ -423,7 +423,7 @@ function RecursoVista({
    */
   useEffect(() => {
     if (!filas?.length || vistaRecordada(recuerdaComo)) return;
-    setVista(vistaPorDefecto(filas));
+    setVista(vistaPorDefecto());
     // `recuerdaComo` entra en las dependencias porque al cambiar de recurso
     // hay que volver a decidir: el componente se reutiliza entre pantallas.
   }, [filas, recuerdaComo]);

@@ -186,6 +186,12 @@ export default {
     elegirColumnas: "Qué columnas se ven",
     masColumnas_one: "Hay 1 columna más, sin ningún dato en estas filas.",
     masColumnas_other: "Hay {{count}} columnas más, sin ningún dato en estas filas.",
+    // El rótulo para quien no ve la flecha: dice qué hará el clic, y cuando ya
+    // está ordenada, cómo está. «Ordenar por Importe» y «Importe, de menor a
+    // mayor» contestan dos preguntas distintas.
+    ordenarPor: "Ordenar por {{columna}}",
+    ordenAsc: "{{columna}}, de menor a mayor. Pulsa para invertir.",
+    ordenDesc: "{{columna}}, de mayor a menor. Pulsa para quitar el orden.",
   },
   acciones: {
     // El menú de lo que no se usa a diario. «Más» a secas y no «Más

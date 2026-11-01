@@ -48,6 +48,7 @@ import {
   escalar,
   esIdentificadorTecnico,
   humanizar,
+  localizacion,
   tieneDato,
   trozos,
   UUID,
@@ -107,6 +108,105 @@ function leerElegidas(recuerdaComo?: string): string[] | null {
   }
 }
 
+/** Por qué columna se ordena y en qué sentido. `null` es «como vino». */
+export type Orden = { columna: string; sentido: "asc" | "desc" } | null;
+
+const CLAVE_ORDEN = "contecrm.orden";
+
+function leerOrden(recuerdaComo?: string): Orden {
+  if (!recuerdaComo) return null;
+  try {
+    const crudo = localStorage.getItem(`${CLAVE_ORDEN}.${recuerdaComo}`);
+    if (!crudo) return null;
+    const v = JSON.parse(crudo) as Orden;
+    return v && typeof v.columna === "string" && (v.sentido === "asc" || v.sentido === "desc")
+      ? v
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardarOrden(recuerdaComo: string | undefined, orden: Orden): void {
+  if (!recuerdaComo) return;
+  try {
+    const clave = `${CLAVE_ORDEN}.${recuerdaComo}`;
+    if (orden) localStorage.setItem(clave, JSON.stringify(orden));
+    else localStorage.removeItem(clave);
+  } catch {
+    /* sin almacenamiento: el orden vale para esta pantalla */
+  }
+}
+
+/**
+ * Comparar dos celdas **según lo que son**, no como texto.
+ *
+ * Ordenar alfabéticamente una columna de importes pone «1.000» antes que
+ * «900», y una de fechas en ISO funciona por casualidad mientras nadie cambie
+ * el formato. Las dos son el mismo error: tratar el dato por cómo se escribe.
+ *
+ * Los decimales llegan como cadena desde la API —`Numeric` en JSON es texto
+ * para no perder precisión—, así que un número puede venir de las dos formas y
+ * hay que reconocerlo aquí.
+ *
+ * El texto se compara con `localeCompare` y no con `<`: con `<`, «Ávila» cae
+ * detrás de «Zamora» porque compara puntos de código, y en castellano eso está
+ * mal en todas las listas de nombres.
+ */
+function comparar(a: unknown, b: unknown): number {
+  // Lo que falta va SIEMPRE al final, suba o baje el orden: una columna
+  // ordenada que empieza por diez guiones no enseña nada de lo que se pidió.
+  const faltaA = !tieneDato(a);
+  const faltaB = !tieneDato(b);
+  if (faltaA || faltaB) return faltaA && faltaB ? 0 : faltaA ? 1 : -1;
+
+  if (typeof a === "boolean" || typeof b === "boolean") {
+    return Number(Boolean(b)) - Number(Boolean(a));
+  }
+
+  const numA = typeof a === "number" ? a : Number(String(a));
+  const numB = typeof b === "number" ? b : Number(String(b));
+  const esNumero =
+    !Number.isNaN(numA) && !Number.isNaN(numB) && String(a).trim() !== "" && String(b).trim() !== "";
+  if (esNumero) return numA - numB;
+
+  const fechaA = Date.parse(String(a));
+  const fechaB = Date.parse(String(b));
+  if (!Number.isNaN(fechaA) && !Number.isNaN(fechaB) && ISO.test(String(a)) && ISO.test(String(b))) {
+    return fechaA - fechaB;
+  }
+
+  return String(a).localeCompare(String(b), localizacion(), { numeric: true });
+}
+
+const ISO = /^\d{4}-\d{2}-\d{2}/;
+
+/** Las filas en el orden pedido. Sin orden, tal y como vinieron. */
+function ordenar(
+  filas: Record<string, unknown>[],
+  orden: Orden,
+): Record<string, unknown>[] {
+  if (!orden) return filas;
+  // Copia: ordenar en el sitio mutaría lo que trajo quien llama, y esta tabla
+  // recibe las filas de un `useState` de la pantalla de arriba.
+  const copia = [...filas];
+  const signo = orden.sentido === "desc" ? -1 : 1;
+  copia.sort((x, y) => {
+    const a = x[orden.columna];
+    const b = y[orden.columna];
+    // Lo que falta se queda al final **en los dos sentidos**, así que se
+    // decide antes de aplicar el signo. Invirtiendo el array entero —que es
+    // como estaba— los huecos se iban al principio en cuanto se pulsaba por
+    // segunda vez, y una columna ordenada que empieza por tres guiones no
+    // enseña nada de lo que se pidió.
+    const faltaA = !tieneDato(a);
+    const faltaB = !tieneDato(b);
+    if (faltaA || faltaB) return faltaA && faltaB ? 0 : faltaA ? 1 : -1;
+    return signo * comparar(a, b);
+  });
+  return copia;
+}
+
 export function Tabla({
   filas: filasCrudas,
   columnas,
@@ -129,6 +229,25 @@ export function Tabla({
     leerElegidas(recuerdaComo),
   );
   const [eligiendo, setEligiendo] = useState(false);
+  // Por qué columna se ordena, y en qué sentido. `null` es «como vino»: el
+  // orden del servidor, que suele ser el relevante —lo más reciente, lo que
+  // más urge— y que no hay que perder sólo por ofrecer ordenar.
+  const [orden, setOrden] = useState<Orden>(() => leerOrden(recuerdaComo));
+
+  function alternarOrden(columna: string) {
+    setOrden((previo) => {
+      const siguiente: Orden =
+        previo?.columna !== columna
+          ? { columna, sentido: "asc" }
+          : previo.sentido === "asc"
+            ? { columna, sentido: "desc" }
+            // Tercer clic: se vuelve al orden del servidor. Sin esta vuelta,
+            // una vez ordenas no hay forma de recuperar el orden que traía.
+            : null;
+      guardarOrden(recuerdaComo, siguiente);
+      return siguiente;
+    });
+  }
 
   // De entrada, las que el recurso declara como preferidas —o las primeras—,
   // no todas: `columnas` llega con las preferidas delante.
@@ -163,6 +282,8 @@ export function Tabla({
 
   const cabeceras = visibles;
   const escondidas = disponibles.length - cabeceras.length;
+
+  const filasOrdenadas = useMemo(() => ordenar(filas, orden), [filas, orden]);
 
   const hayQueElegir = disponibles.length > cabeceras.length || elegidas;
 
@@ -220,13 +341,35 @@ export function Tabla({
       <Rejilla
         titulo={titulo}
         cabeceras={cabeceras.map((c) => (
-          <span key={c} title={c}>
+          <button
+            key={c}
+            type="button"
+            title={c}
+            onClick={() => alternarOrden(c)}
+            // `aria-sort` va en la celda, pero la celda la pone `Rejilla`; el
+            // botón declara su estado para que un lector de pantalla lo diga
+            // al llegar, que es cuando hace falta.
+            aria-label={
+              orden?.columna === c
+                ? t(orden.sentido === "asc" ? "tabla.ordenAsc" : "tabla.ordenDesc", {
+                    columna: humanizar(c),
+                  })
+                : t("tabla.ordenarPor", { columna: humanizar(c) })
+            }
+            className="inline-flex items-center gap-0.5 hover:text-ink"
+          >
             {humanizar(c)}
-          </span>
+            {orden?.columna === c ? (
+              <Icono
+                nombre={orden.sentido === "asc" ? "arrow_upward" : "arrow_downward"}
+                tamano="sm"
+              />
+            ) : null}
+          </button>
         ))}
       >
         <>
-          {filas.map((fila, i) => (
+          {filasOrdenadas.map((fila, i) => (
             <tr
               key={clave(fila, i)}
               className="border-b border-ink-dim/30 last:border-0 hover:bg-paper-light"

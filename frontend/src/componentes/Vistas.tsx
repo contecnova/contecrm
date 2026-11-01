@@ -86,27 +86,30 @@ export function vistaRecordada(recuerdaComo: string): Vista | null {
 }
 
 /**
- * Con qué vista se abre un listado que nadie ha configurado: **tarjetas**.
+ * Con qué vista se abre un listado que nadie ha configurado: **tabla**.
  *
- * Una tabla enseña catorce columnas del mismo tamaño y no destaca ninguna:
- * quien entra tiene que leerlas todas para encontrar el dato por el que ha
- * venido. Una tarjeta lleva delante el nombre del registro y debajo sus cuatro
- * datos, y eso es lo que convierte una lista en algo que se ojea. Por eso las
- * tarjetas son la vista por defecto en todas partes.
+ * Esto estaba al revés, y el argumento de entonces era bueno: una tabla de
+ * catorce columnas del mismo tamaño no destaca ninguna, y una tarjeta lleva
+ * delante el nombre y debajo cuatro datos. Lo que ese argumento no miró es
+ * **cuánto se ve**. Medido en la bandeja de casos a 1440×900: en tarjetas
+ * caben nueve registros antes de desplazarse; en tabla, más de veinte. Quien
+ * abre una lista de 104 casos no viene a ojear nueve.
  *
- * La excepción, y sale de los datos y no de una lista escrita a mano —una
- * lista de los recursos que SÍ pueden se queda corta el día que se añade el
- * número veintiséis—: **si el registro no tiene nada que poner de titular**, la
- * tarjeta queda siendo una caja con un identificador dentro, que se lee peor
- * que una fila. Pasa con lo que es puro registro técnico: apuntes de auditoría,
- * eventos, consumos. Ahí se abre en tabla.
+ * Y una tarjeta no se puede ordenar ni comparar: para «¿cuál es el más
+ * antiguo?» o «¿cuáles están sin asignar?» hay que leerlas una a una. Una
+ * tabla con cabeceras lo contesta de un clic. Es lo que hacen las vistas de
+ * lista de Salesforce, y es por lo que se abre así.
+ *
+ * Las tarjetas **no se quitan**: siguen en el selector de arriba a la derecha
+ * y se recuerdan por pestaña, así que quien prefiera ojear las elige una vez.
+ *
+ * La excepción se mantiene y sale de los datos, no de una lista escrita a
+ * mano: **si el registro no tiene nada que poner de titular** —apuntes de
+ * auditoría, eventos, consumos— la tarjeta sería una caja con un
+ * identificador dentro, y ahí la tabla no es sólo mejor: es la única legible.
  */
-export function vistaPorDefecto(filas: Record<string, unknown>[]): Vista {
-  if (filas.length === 0) return "tarjetas";
-  const conTitular = filas.filter((f) => nombreDelRegistro(f).trim()).length;
-  // La mayoría, no todas: en un listado de contactos puede haber uno sin
-  // nombre, y eso no convierte al resto en una tabla.
-  return conTitular * 2 >= filas.length ? "tarjetas" : "tabla";
+export function vistaPorDefecto(): Vista {
+  return "tabla";
 }
 
 function recordarVista(recuerdaComo: string, vista: Vista): void {
