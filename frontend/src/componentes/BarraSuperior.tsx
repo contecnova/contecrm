@@ -141,9 +141,19 @@ export function BarraSuperior({
         <Icono nombre="menu" />
       </button>
 
+      {/* `flex-1` y no sólo `shrink`: la miga tiene que poder **crecer** hasta
+          lo que haya libre. Con el buscador puesto a `mx-auto`, todo el hueco
+          sobrante de la barra se convertía en margen suyo y la miga se quedaba
+          con lo mínimo — medido a 1440×900 en la ficha de una cuenta,
+          «In… > Cuentas y… > C…»: el nombre del registro, que es lo único que
+          dice dónde estás, reducido a **una letra** con 200 px libres al lado.
+
+          Con tope, porque la miga tampoco puede comerse el buscador: a partir
+          de 32rem vuelve a recortarse, que es lo que tiene que pasar cuando de
+          verdad no cabe. */}
       <nav
         aria-label={t("nav.migas")}
-        className="flex min-w-0 shrink items-center gap-2 text-sm"
+        className="flex min-w-0 max-w-[32rem] shrink items-center gap-2 text-sm"
       >
         {migas.map((miga, i) => (
           <span key={`${miga.rotulo}-${i}`} className="flex min-w-0 items-center gap-2">
@@ -174,7 +184,7 @@ export function BarraSuperior({
       <button
         type="button"
         onClick={alAbrirPaleta}
-        className="mx-auto hidden h-10 max-w-md flex-1 items-center gap-2 rounded-full bg-paper-light px-4 text-sm text-ink-faint transition-colors hover:bg-paper-lighter md:flex"
+        className="ml-auto hidden h-10 min-w-0 max-w-md flex-1 basis-64 items-center gap-2 rounded-full bg-paper-light px-4 text-sm text-ink-faint transition-colors hover:bg-paper-lighter md:flex"
         aria-label={t("nav.abrirPaleta")}
       >
         <Icono nombre="search" tamano="sm" className="text-ink-muted" />
@@ -381,12 +391,21 @@ export function derivarMigas(camino: string, t: (clave: string) => string): Miga
   if (partes[0] === "m" && partes[1]) {
     const modulo = MODULOS.find((m) => m.ruta === partes[1]);
     const rotulo = modulo?.titulo ?? partes[1];
-    const migas: Miga[] = [raiz, { rotulo, a: `/m/${partes[1]}` }];
     // Ficha: `/m/:ruta/:tipo/:id`. Se enseña el tipo y no el identificador —un
     // UUID en la miga de pan no le dice nada a nadie— y escrito como se lee,
     // no en minúscula como viene en la ruta.
-    if (partes[2]) migas.push({ rotulo: humanizar(partes[2]) });
-    return migas;
+    if (!partes[2]) return [raiz, { rotulo, a: `/m/${partes[1]}` }];
+    // **Sin «Inicio» en la ficha.** La barra está llena de verdad: medido a
+    // 1440×900, los únicos 92 px «libres» son los huecos entre controles, así
+    // que los tres tramos no caben y se recortaban los TRES —
+    // «In… > Cuentas y… > C…»—, dejando el último, que es el que dice dónde
+    // estás, en una letra. «Inicio» está en todas las migas, no distingue
+    // ninguna pantalla de otra y al logo de la esquina se llega igual: es lo
+    // primero que sobra cuando hay que elegir qué se recorta.
+    return [
+      { rotulo, a: `/m/${partes[1]}` },
+      { rotulo: humanizar(partes[2]) },
+    ];
   }
 
   const entrada = todasLasEntradas().find((e) => e.a === camino);

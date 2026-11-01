@@ -64,8 +64,10 @@ catálogo, y después análisis y plataforma. Cada grupo se pliega, y se queda
 plegado la próxima vez que entres: si no usas los módulos del catálogo, no
 tienes que verlos.
 
-Arriba, la línea que empieza en «Inicio» dice dónde estás y permite volver: en
-una ficha, el paso anterior es el listado del que salió.
+Arriba, la línea de la barra dice dónde estás y permite volver: en una ficha, el
+paso anterior es el listado del que salió. **En una ficha no pone «Inicio»**: la
+barra tiene el sitio que tiene, y «Inicio» sale en todas las pantallas, así que
+no distingue ninguna; a la portada se vuelve con el logo de la esquina.
 
 **Ir a una pantalla escribiendo su nombre.** `⌘K` en Mac, `Ctrl+K` en el resto,
 o el buscador de la barra de arriba. Escribes «cuentas», «previsión» o «ventas»
@@ -381,6 +383,13 @@ Ordena por lo que el dato **es**, no por cómo se escribe:
 
 contecrm recuerda por qué columna ordenaste **en cada pestaña por separado**:
 el orden que te va bien en Casos no es el que te va bien en Cuentas.
+
+**Los rótulos están escritos en castellano.** Un nombre de columna de base de
+datos no admite tildes ni eñes —se llama `direccion`, `telefono`, `tamano`— y
+hasta el 01-11-2026 salía así a la pantalla: «Direccion», «Tamano», «Sector
+codigo», «Owner id». Ahora se escriben bien, y lo mismo vale para los **valores**
+que llegan como identificador: un caso en `esperando_cliente` se lee «Esperando
+cliente». Si ves alguno mal escrito, es un fallo y se arregla.
 
 **Las columnas las eliges tú.** El botón **Columnas** dice cuántas se ven de
 cuántas hay. Las que no tienen dato en ninguna de las filas que estás mirando no

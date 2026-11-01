@@ -12,6 +12,10 @@
  */
 
 import { llamar } from "@/lib/api";
+// Una sola `humanizar` en todo el front. Había dos, idénticas, en
+// `formato.ts` y aquí: la de allí aprendió a escribir en castellano y la
+// de aquí se quedó poniendo «Sector codigo» en los rótulos de formulario.
+import { humanizar } from "@/lib/formato";
 
 export interface CampoEsquema {
   nombre: string;
@@ -347,19 +351,6 @@ function tipoDe(esquema: Esquema, elemento?: Esquema, nombre = ""): CampoEsquema
   }
 }
 
-/**
- * El nombre del campo, escrito como se lee.
- *
- * El contrato trae `sector_codigo` y `facturacion_anual`, que son nombres de
- * campo, no rótulos. Se transforma con una regla y no con una tabla de
- * traducciones: una tabla se queda corta al primer campo nuevo, y entonces
- * conviven rótulos bonitos con rótulos en crudo, que es peor que tenerlos todos
- * en crudo.
- */
-export function humanizar(nombre: string): string {
-  const limpio = nombre.replace(/_/g, " ").trim();
-  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
-}
 
 export interface Proposito {
   /** Una línea: para qué sirve esto. */

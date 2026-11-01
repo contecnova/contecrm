@@ -50,10 +50,21 @@ function tarjeta(texto: string): HTMLElement {
   return nodo;
 }
 
+/** Sin tildes ni mayúsculas: para comparar un valor crudo con su rótulo. */
+function plano(texto: string): string {
+  return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 function columna(titulo: string): HTMLElement {
-  // El rótulo se humaniza («cualificacion» → «Cualificacion»), así que se
-  // busca por el texto del valor, sin distinguir mayúsculas.
-  const encabezado = screen.getByRole("heading", { name: new RegExp(titulo, "i") });
+  // El rótulo se humaniza y se escribe en castellano: `cualificacion` sale
+  // como «Cualificación». Se busca comparando en plano porque lo que se pasa
+  // aquí es el VALOR del campo —tal y como lo manda la API, sin tildes— y lo
+  // que se pinta es su rótulo. Comparar los dos en crudo hacía que arreglar la
+  // ortografía tumbara siete pruebas que no iban de ortografía.
+  const encabezado = screen
+    .getAllByRole("heading")
+    .find((h) => plano(h.textContent ?? "").includes(plano(titulo)));
+  if (!encabezado) throw new Error(`no hay columna «${titulo}»`);
   const seccion = encabezado.closest("section");
   if (!seccion) throw new Error(`no hay columna «${titulo}»`);
   return seccion;

@@ -99,10 +99,118 @@ const PARECE_IMPORTE = /(importe|facturacion|precio|coste|margen|total|saldo|cuo
  */
 const PREFIJOS_TECNICOS = /^(quota|cuota|flag|attr|meta|config|param)_/;
 
-/** El nombre del campo, escrito como se lee: `sector_codigo` → «Sector codigo». */
+/**
+ * Palabras castellanas que un nombre de columna no puede llevar acentuadas.
+ *
+ * Una columna se llama `direccion`, `telefono`, `tamano`: el identificador no
+ * admite tildes ni eñes. Hasta el 01-11-2026 eso salía tal cual a la pantalla
+ * —«Direccion», «Tamano», «Dias medios de pago», «Sector codigo»— en los
+ * rótulos de las listas, en el selector de columnas, en los avisos de calidad
+ * del dato y en las métricas de la ficha. Un producto que escribe mal el
+ * castellano en la primera pantalla no parece terminado, y no lo está.
+ *
+ * Esto NO es una tabla de campos: es de **palabras**, así que sirve igual para
+ * `direccion`, `direccion_fiscal` y `email_direccion` sin tocar nada. Y lo
+ * regular —`-cion` y `-sion`, que son 56 de las palabras de este producto— no
+ * está aquí, está en una regla: una tabla que repite lo que una regla ya
+ * resuelve se queda corta a la primera palabra nueva.
+ *
+ * Las de aquí son las irregulares, sacadas del vocabulario **real**: los
+ * nombres de campo de los 13 contratos y las 106 columnas declaradas, no de
+ * una lista imaginada.
+ */
+const CON_TILDE: Record<string, string> = {
+  dia: "día",
+  dias: "días",
+  ano: "año",
+  anos: "años",
+  mas: "más",
+  pais: "país",
+  tamano: "tamaño",
+  codigo: "código",
+  titulo: "título",
+  numero: "número",
+  telefono: "teléfono",
+  categoria: "categoría",
+  metrica: "métrica",
+  metricas: "métricas",
+  region: "región",
+  metodo: "método",
+  ambito: "ámbito",
+  limite: "límite",
+  minimo: "mínimo",
+  maximo: "máximo",
+  ultimo: "último",
+  ultima: "última",
+  proximo: "próximo",
+  proxima: "próxima",
+  analisis: "análisis",
+  sintesis: "síntesis",
+  practica: "práctica",
+  politica: "política",
+  articulo: "artículo",
+  credito: "crédito",
+  deposito: "depósito",
+  trafico: "tráfico",
+  vehiculo: "vehículo",
+  publico: "público",
+  unico: "único",
+  basico: "básico",
+  tecnico: "técnico",
+  fisico: "físico",
+  logico: "lógico",
+  historico: "histórico",
+  economico: "económico",
+  numerico: "numérico",
+  geografico: "geográfico",
+  electronico: "electrónico",
+  automatico: "automático",
+  telefonico: "telefónico",
+  // Inglés que se ha colado en un nombre de columna. Sólo lo que de verdad
+  // está: `owner_id` salía «Owner id» en los avisos de calidad de cada ficha.
+  owner: "responsable",
+};
+
+/** Siglas: se escriben enteras en mayúsculas, no «Nps» ni «Iva». */
+const SIGLAS = new Set(["id", "iva", "nps", "roi", "kpi", "sla", "slo", "api", "url", "uri", "crm", "erp", "bi", "ia", "sql", "csv", "pdf", "http", "https", "dns", "ip", "sso", "mfa", "rgpd", "cif", "nif", "iban", "sepa", "utc"]);
+
+/**
+ * Una palabra suelta de un nombre de campo, escrita en castellano.
+ *
+ * El orden importa: primero la regla regular, que no envejece, y sólo después
+ * la tabla.
+ */
+function enCastellano(palabra: string): string {
+  if (SIGLAS.has(palabra)) return palabra.toUpperCase();
+  // `-cion` → `-ción`, `-sion` → `-sión`. Una regla, no 56 entradas:
+  // «facturacion», «puntuacion», «direccion», «conversion»… y las que vengan.
+  if (/[cs]ion$/.test(palabra)) return palabra.slice(0, -3) + "ión";
+  if (/[cs]iones$/.test(palabra)) return palabra.slice(0, -5) + "iones";
+  return CON_TILDE[palabra] ?? palabra;
+}
+
+/**
+ * El nombre del campo, escrito como se lee: `sector_codigo` → «Sector código».
+ *
+ * Sirve también para los **valores**: `esperando_cliente` → «Esperando
+ * cliente». Son el mismo problema —un identificador enseñado a una persona— y
+ * arreglarlo en un sitio los arregla en los veinte que la llaman.
+ */
 export function humanizar(campo: string): string {
-  const limpio = campo.replace(PREFIJOS_TECNICOS, "").replace(/_/g, " ").trim();
-  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+  // Por guion bajo **y por espacio**: unas veces llega el nombre crudo
+  // (`sector_codigo`) y otras el `title` del contrato, que Pydantic genera en
+  // inglés-Title-Case («Tenant Id», «Desde Moneda»). Partiendo sólo por guion,
+  // ese segundo caso entraba entero como una palabra y no se arreglaba nada.
+  const palabras = campo
+    .replace(PREFIJOS_TECNICOS, "")
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((p) => enCastellano(p.toLowerCase()));
+  if (palabras.length === 0) return "";
+  const primera = palabras[0]!;
+  // Una sigla no se «capitaliza»: ya está entera en mayúsculas.
+  const inicio = primera === primera.toUpperCase() ? primera : primera.charAt(0).toUpperCase() + primera.slice(1);
+  return [inicio, ...palabras.slice(1)].join(" ");
 }
 
 /** ¿Hay algo que enseñar? Una lista vacía y un objeto vacío no lo son. */

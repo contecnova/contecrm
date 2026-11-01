@@ -86,6 +86,10 @@ describe("una tarjeta no se repite", () => {
     expect(screen.queryByText("Nombre completo")).toBeNull();
     expect(screen.queryByText("Email")).toBeNull();
     // Y lo que no es titular sí se enseña.
-    expect(screen.getAllByText("Telefono").length).toBeGreaterThan(0);
+    // «Teléfono», con tilde: el campo se llama `telefono` porque un nombre
+    // de columna no las admite, y el rótulo sí. Esta prueba esperaba
+    // «Telefono» y fue la que avisó al arreglarlo — que es exactamente lo
+    // que tenía que hacer.
+    expect(screen.getAllByText("Teléfono").length).toBeGreaterThan(0);
   });
 });
