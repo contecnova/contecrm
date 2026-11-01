@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Exportar } from "@/componentes/Exportar";
@@ -335,6 +335,7 @@ function RecursoVista({
   const [siguiente, setSiguiente] = useState<string | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
+  const navegar = useNavigate();
   const [creando, setCreando] = useState(abrirAlta);
   const [enviando, setEnviando] = useState(false);
   const [parametros, setParametros] = useSearchParams();
@@ -926,6 +927,33 @@ function RecursoVista({
               // El listado ES la pantalla: se recorre con la página.
               ocupaLaPantalla
               pegada
+              // Lo que se puede hacer con una fila sin abrirla. Sólo cuando el
+              // registro TIENE ficha: un menú sobre una fila a la que no se
+              // llega no puede ofrecer ni abrir ni editar, y un menú con una
+              // sola opción gris es peor que no tener menú.
+              accionesDeFila={
+                aLaFicha
+                  ? (f) => {
+                      const destino = aLaFicha(f);
+                      if (!destino) return [];
+                      return [
+                        {
+                          clave: "abrir",
+                          nombre: t("modulo.abrir"),
+                          alElegir: () => navegar(destino),
+                        },
+                        {
+                          clave: "editar",
+                          nombre: t("modulo.editar"),
+                          // Llega YA en edición: «Editar» que sólo abre la
+                          // ficha deja a quien lo pulsó a un clic más de lo
+                          // que pidió.
+                          alElegir: () => navegar(`${destino}?editar=1`),
+                        },
+                      ];
+                    }
+                  : undefined
+              }
               acciones={
                 <span className="flex items-center gap-2">
                   <Exportar

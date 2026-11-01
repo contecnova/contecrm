@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   Cargando,
@@ -202,7 +202,12 @@ function Datos({
   const [retenidos, setRetenidos] = useState<string[]>([]);
   const [tapados, setTapados] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
-  const [editando, setEditando] = useState(false);
+  // Se puede llegar YA en edición, con `?editar=1`. Lo usa el menú de la fila
+  // en el listado: en Lightning cada fila lleva un `⌄` con «Editar», y sin
+  // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
+  // clic más de lo que pidió.
+  const [parametrosDeFicha] = useSearchParams();
+  const [editando, setEditando] = useState(parametrosDeFicha.get("editar") === "1");
   // Qué acción del contrato está desplegada. Vive aquí y no dentro de
   // `<Acciones>` porque quien las ofrece es el menú de la barra: con el estado
   // dentro habría dos sitios desde los que abrir la misma cosa.
@@ -216,10 +221,15 @@ function Datos({
   // edición —con los datos de la anterior todavía en el formulario— y un
   // «¿seguro que quieres borrar?» a medias se quedaba apuntando al registro
   // nuevo. Borrar el que no era está a un clic de ahí.
+  // Al cambiar de registro se sale de edición. **Salvo si la dirección pide
+  // lo contrario**: se puede llegar con `?editar=1` desde el menú de una fila
+  // del listado, y este efecto corre también en el primer montaje — así que
+  // sin mirar el parámetro deshacía lo que acababa de pedirse. Medido: el
+  // «Editar» de la fila abría la ficha en modo lectura.
   useEffect(() => {
-    setEditando(false);
+    setEditando(parametrosDeFicha.get("editar") === "1");
     setConfirmando(false);
-  }, [modulo, objeto, id]);
+  }, [modulo, objeto, id, parametrosDeFicha]);
 
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
   // Todo lo que el servidor admite hacer con este registro, leído del contrato.

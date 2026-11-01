@@ -39,7 +39,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   BotonesDeRegistro,
@@ -243,7 +243,12 @@ export function Cuenta() {
   const [salud, setSalud] = useState<Salud | null>(null);
   const { superficie, tiene } = useSuperficie();
   const navegar = useNavigate();
-  const [editando, setEditando] = useState(false);
+  // Se puede llegar YA en edición, con `?editar=1`. Lo usa el menú de la fila
+  // en el listado: en Lightning cada fila lleva un `⌄` con «Editar», y sin
+  // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
+  // clic más de lo que pidió.
+  const [parametrosDeFicha] = useSearchParams();
+  const [editando, setEditando] = useState(parametrosDeFicha.get("editar") === "1");
   // Qué acción del contrato está desplegada. Vive aquí y no dentro de
   // `<Acciones>` porque quien las ofrece es el menú de la barra: con el estado
   // dentro habría dos sitios desde los que abrir la misma cosa.
@@ -318,10 +323,15 @@ export function Cuenta() {
   // Al cambiar de cliente se sale de edición y se cancela la confirmación: esta
   // pantalla no se desmonta al ir de una ficha a otra, y sin esto el «¿seguro
   // que quieres eliminar?» a medias quedaría apuntando al cliente nuevo.
+  // Al cambiar de registro se sale de edición. **Salvo si la dirección pide
+  // lo contrario**: se puede llegar con `?editar=1` desde el menú de una fila
+  // del listado, y este efecto corre también en el primer montaje — así que
+  // sin mirar el parámetro deshacía lo que acababa de pedirse. Medido: el
+  // «Editar» de la fila abría la ficha en modo lectura.
   useEffect(() => {
-    setEditando(false);
+    setEditando(parametrosDeFicha.get("editar") === "1");
     setConfirmando(false);
-  }, [id]);
+  }, [id, parametrosDeFicha]);
 
   async function borrar() {
     setBorrando(true);

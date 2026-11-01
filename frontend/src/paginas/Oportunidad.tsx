@@ -34,7 +34,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   BotonesDeRegistro,
@@ -194,7 +194,12 @@ export function Oportunidad() {
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
   const [plan, setPlan] = useState<EstadoDelPlan | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
-  const [editando, setEditando] = useState(false);
+  // Se puede llegar YA en edición, con `?editar=1`. Lo usa el menú de la fila
+  // en el listado: en Lightning cada fila lleva un `⌄` con «Editar», y sin
+  // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
+  // clic más de lo que pidió.
+  const [parametrosDeFicha] = useSearchParams();
+  const [editando, setEditando] = useState(parametrosDeFicha.get("editar") === "1");
   const [confirmando, setConfirmando] = useState(false);
   const [borrando, setBorrando] = useState(false);
   const navegar = useNavigate();

@@ -498,6 +498,11 @@ codigo», «Owner id». Ahora se escriben bien, y lo mismo vale para los **valor
 que llegan como identificador: un caso en `esperando_cliente` se lee «Esperando
 cliente». Si ves alguno mal escrito, es un fallo y se arregla.
 
+**Cada fila tiene su menú.** Al final de la línea hay un `⌄` con **Abrir** y
+**Editar**. «Editar» lleva la ficha ya abierta en modo edición, no a la ficha
+para que busques el botón: si lo que querías era cambiar un dato, ya estás
+dentro.
+
 **Buscar dentro de la lista.** Arriba a la derecha hay una caja que filtra lo
 que tienes delante según escribes, mirando todas las columnas. El recuento te
 dice sobre cuántos ha buscado —«4 de 50 cargados»— y eso importa: busca en lo

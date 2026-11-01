@@ -44,8 +44,21 @@ describe("el modo alta y el modo edición no viajan entre pantallas", () => {
     // Ir de una ficha a otra tampoco desmonta: sin esto, la siguiente se abre
     // ya en modo edición con los datos de la anterior en el formulario, y un
     // «¿seguro que quieres borrar?» a medias apunta al registro nuevo.
-    expect(FICHA).toMatch(/setEditando\(false\);\s*\n\s*setConfirmando\(false\);/);
-    expect(FICHA).toMatch(/\}, \[modulo, objeto, id\]\);/);
+    //
+    // Desde el 01-11-2026 el efecto no pone `false` a secas: pone **lo que
+    // diga la dirección**, porque se puede llegar con `?editar=1` desde el
+    // menú de una fila del listado y este mismo efecto corre también en el
+    // primer montaje. Con `false` fijo deshacía lo que acababa de pedirse, y
+    // el «Editar» de la fila abría la ficha en modo lectura.
+    //
+    // La regla que se vigila es la de siempre y no el texto: que al cambiar de
+    // registro se recalcule el modo de edición, que se cancele la
+    // confirmación, y que el efecto **dependa del identificador** — sin eso no
+    // se entera del cambio.
+    expect(FICHA).toMatch(/setEditando\([\s\S]*?\);\s*\n\s*setConfirmando\(false\);/);
+    expect(FICHA).toMatch(/\}, \[modulo, objeto, id[^\]]*\]\);/);
+    // Y que ese recálculo mire la dirección, que es la excepción.
+    expect(FICHA).toMatch(/setEditando\(parametrosDeFicha\.get\("editar"\) === "1"\)/);
   });
 });
 

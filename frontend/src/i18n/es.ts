@@ -532,6 +532,9 @@ export default {
       "No hay ningún documento que puedas ver con eso. La búsqueda va con tu identidad, así que enseña lo que verías entrando al gestor.",
   },
   modulo: {
+    // El menú del final de cada fila de un listado.
+    abrir: "Abrir",
+    editar: "Editar",
     servicio: "Servicio",
     sinRegistros: "Aquí no hay nada todavía",
     sinRegistrosDetalle: "Da de alta el primero y aparecerá en esta lista.",

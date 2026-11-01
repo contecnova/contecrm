@@ -42,6 +42,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
+import { MenuDeAcciones, type OpcionDeMenu } from "@/componentes/MenuDeAcciones";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
 import {
@@ -118,6 +119,18 @@ export interface Props {
    * de un bloque suelto entre dos recuadros.
    */
   pegada?: boolean;
+  /**
+   * El menú del final de cada fila: lo que se puede hacer con ESE registro
+   * sin abrirlo.
+   *
+   * En Lightning cada fila lleva un `⌄` ahí, y es donde la gente va a buscar
+   * «editar» — no al nombre, que abre. Aquí no había nada: para cambiar un
+   * dato había que abrir la ficha, encontrar el botón y volver.
+   *
+   * Lo da quien coloca la tabla, porque qué se puede hacer con una fila
+   * depende del recurso y del permiso, y eso la tabla no lo sabe.
+   */
+  accionesDeFila?: (fila: Record<string, unknown>) => OpcionDeMenu[];
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -244,6 +257,7 @@ export function Tabla({
   antes,
   ocupaLaPantalla = false,
   pegada = false,
+  accionesDeFila,
 }: Props) {
   const { t } = useTranslation();
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
@@ -455,7 +469,8 @@ export function Tabla({
         acotada={!ocupaLaPantalla}
         pegada={pegada}
         titulo={titulo}
-        cabeceras={cabeceras.map((c) => (
+        cabeceras={[
+          ...cabeceras.map((c) => (
           <button
             key={c}
             type="button"
@@ -481,7 +496,18 @@ export function Tabla({
               />
             ) : null}
           </button>
-        ))}
+          )),
+          // La columna del menú no lleva rótulo visible —en Lightning tampoco—
+          // pero sí nombre accesible: sin él se anuncia como «columna 5» y no
+          // dice qué hay dentro.
+          ...(accionesDeFila
+            ? [
+                <span key="__acciones" className="sr-only">
+                  {t("tabla.accionesDeFila")}
+                </span>,
+              ]
+            : []),
+        ]}
       >
         <>
           {filasOrdenadas.map((fila, i) => (
@@ -509,6 +535,17 @@ export function Tabla({
                   </Casilla>
                 );
               })}
+              {accionesDeFila ? (
+                <Casilla enUnaLinea>
+                  <div className="flex justify-end">
+                    <MenuDeAcciones
+                      opciones={accionesDeFila(fila)}
+                      etiqueta={t("tabla.accionesDeFila")}
+                      clase="btn-icon !h-7 !w-7 text-ink-muted hover:bg-paper-light hover:text-ink"
+                    />
+                  </div>
+                </Casilla>
+              ) : null}
             </tr>
           ))}
         </>
