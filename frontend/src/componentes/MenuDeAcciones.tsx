@@ -28,6 +28,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
+import { cn } from "@/lib/utiles";
 
 export interface OpcionDeMenu {
   clave: string;
@@ -42,6 +43,8 @@ export function MenuDeAcciones({
   etiqueta,
   children,
   clase,
+  soloIcono = false,
+  haciaLaIzquierda = false,
 }: {
   opciones: OpcionDeMenu[];
   /** Cómo se llama el menú para quien no lo ve. */
@@ -54,6 +57,22 @@ export function MenuDeAcciones({
    * borde entre las pestañas se lee como otra cosa y rompe la fila.
    */
   clase?: string;
+  /**
+   * Sólo el chevrón, sin la palabra «Más».
+   *
+   * Para el menú del final de una fila: ahí Lightning no pone texto, y
+   * ponerlo ensancha la columna en todas las filas para repetir cincuenta
+   * veces la misma palabra. El nombre accesible lo da `etiqueta`.
+   */
+  soloIcono?: boolean;
+  /**
+   * El panel se abre hacia la IZQUIERDA.
+   *
+   * Hace falta cuando el botón vive pegado al borde derecho —el menú de una
+   * fila—: con la apertura por defecto, el panel sale fuera de la pantalla y
+   * las opciones aparecen cortadas a «Abri…» y «Edit…». Medido abriéndolo.
+   */
+  haciaLaIzquierda?: boolean;
   /** Lo que va delante del menú, en la misma fila: las acciones del día. */
   children?: ReactNode;
 }) {
@@ -101,14 +120,17 @@ export function MenuDeAcciones({
             aria-label={etiqueta ?? t("acciones.mas")}
             onClick={() => setAbierto((v) => !v)}
           >
-            {t("acciones.mas")}
+            {soloIcono ? null : t("acciones.mas")}
             <Icono nombre={abierto ? "expand_less" : "expand_more"} tamano="sm" />
           </button>
           {abierto ? (
             <div
               role="menu"
               aria-label={etiqueta ?? t("acciones.mas")}
-              className="absolute left-0 z-20 mt-1 min-w-56 rounded-lg border border-ink-dim/40 bg-paper p-1 shadow-lg"
+              className={cn(
+                "absolute z-popover mt-1 min-w-56 rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3",
+                haciaLaIzquierda ? "right-0" : "left-0",
+              )}
             >
               {normales.map((o) => (
                 <button

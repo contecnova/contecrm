@@ -541,6 +541,8 @@ export function Tabla({
                     <MenuDeAcciones
                       opciones={accionesDeFila(fila)}
                       etiqueta={t("tabla.accionesDeFila")}
+                      soloIcono
+                      haciaLaIzquierda
                       clase="btn-icon !h-7 !w-7 text-ink-muted hover:bg-paper-light hover:text-ink"
                     />
                   </div>
