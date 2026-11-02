@@ -424,6 +424,10 @@ ROLES = [
             "opportunity:reopen",
             "pipeline:read",
             "pipeline:write",
+            # Publicar una vista de lista para todo el equipo: «Mi embudo del
+            # trimestre» la crea cualquiera para si, y la que ve todo el mundo
+            # la decide quien lleva el equipo.
+            "vista:compartir",
             "forecast:read",
             "forecast:write",
             "quote:read",

@@ -303,6 +303,14 @@ COLUMNAS_DE_FONTANERIA = {
 }
 
 NO_SALEN: dict[tuple[str, str], str] = {
+    # Quién guardó una vista de lista no le importa a quien la usa, y el
+    # identificador de una persona no tiene por qué viajar en el desplegable de
+    # un listado. Lo que sí hace falta —si la ve todo el tenant o sólo yo— sale
+    # como `compartida`, que es la pregunta que la pantalla se hace.
+    (
+        "VistaDeListaOut",
+        "propietario_id",
+    ): "sale como `compartida`: la pantalla necesita saber de quién es, no quién es",
     # Secretos. No es un olvido: si salieran, cualquiera con permiso de lectura
     # se llevaría la credencial, y una credencial que se ha leído sólo deja de
     # ser peligrosa revocándola.

@@ -161,6 +161,13 @@ ROLES_BASE: dict[str, Rol] = {
                 # al rol básico porque el que sube el documento es quien sabe
                 # dónde va, y si no puede archivarlo acaba todo en la raíz.
                 "adjunto:organizar",
+                # Guardar un recorte propio de un listado —«mis oportunidades
+                # abiertas»— es el equivalente a ordenar una columna, y es de
+                # lo que más se usa en un CRM. Si dependiera de un permiso de
+                # administración, el noventa por ciento de la gente no podría
+                # usarlo. **Compartirla** con todo el tenant es otra cosa y
+                # tiene su propio permiso: esa sale por defecto a quien entra.
+                "vista:read",
             }
         ),
         descripcion="Acceso de lectura al CRM y gestión de su propia actividad",

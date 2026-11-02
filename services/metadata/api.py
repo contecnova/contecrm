@@ -7,6 +7,7 @@ from uuid import UUID
 
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import ahora
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha
 from crmcore.rpc.esquema import CAMPOS_QUE_NO_SALEN
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.metadata import relaciones as rel
+from services.metadata import vistas_de_lista
 from services.metadata.esquemas import (
     CampoOut,
     CrearCampo,
@@ -725,6 +727,163 @@ def plan_de_borrado(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 # ── Tipos de registro y gobierno del esquema ──────────────────────────────
+
+
+# ── Vistas de lista ───────────────────────────────────────────────────────
+#
+# El filtro con nombre de un listado. Ver `services/metadata/vistas_de_lista.py`
+# para quién puede qué y por qué.
+
+
+class VistaDeListaOut(BaseModel):
+    id: UUID
+    recurso: str
+    nombre: str
+    filtros: dict[str, Any] = Field(default_factory=dict)
+    columnas: list[str] = Field(default_factory=list)
+    orden: dict[str, Any] | None = None
+    # Vacío = la ve todo el tenant. Se devuelve como bandera y no como el
+    # identificador del dueño: quién la creó no le importa a quien la usa, y
+    # el identificador de una persona no tiene por qué viajar por aquí.
+    compartida: bool
+    es_defecto: bool
+
+
+class CrearVistaDeLista(BaseModel):
+    recurso: str = Field(min_length=1, max_length=200)
+    nombre: str = Field(min_length=1, max_length=120)
+    filtros: dict[str, Any] = Field(default_factory=dict)
+    columnas: list[str] = Field(default_factory=list)
+    orden: dict[str, Any] | None = None
+    compartida: bool = False
+    es_defecto: bool = False
+
+
+class CambiarVistaDeLista(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1, max_length=120)
+    filtros: dict[str, Any] | None = None
+    columnas: list[str] | None = None
+    orden: dict[str, Any] | None = None
+    es_defecto: bool | None = None
+
+
+def _salida(v: Any) -> VistaDeListaOut:
+    return VistaDeListaOut(
+        id=v.id,
+        recurso=v.recurso,
+        nombre=v.nombre,
+        filtros=v.filtros or {},
+        columnas=list(v.columnas or []),
+        orden=v.orden,
+        compartida=v.propietario_id is None,
+        es_defecto=v.es_defecto,
+    )
+
+
+@router.get(
+    "/vistas-de-lista",
+    response_model=list[VistaDeListaOut],
+    dependencies=[Depends(exige_permiso("vista:read"))],
+    summary="Las vistas guardadas de un listado",
+    description=(
+        "Las del tenant y las propias, nunca las de otra persona: el nombre de "
+        "una vista ajena ya cuenta lo que esa persona está mirando."
+    ),
+)
+def listar_vistas_de_lista(
+    db: DbDep,
+    principal: AutenticadoDep,
+    recurso: str = Query(..., description="La ruta que lista, p. ej. `/api/v1/accounts`"),
+) -> Any:
+    return [
+        _salida(v) for v in vistas_de_lista.listar(db, principal.tenant_id, principal.id, recurso)
+    ]
+
+
+@router.post(
+    "/vistas-de-lista",
+    response_model=VistaDeListaOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("vista:read"))],
+    summary="Guardar una vista de lista",
+    description=(
+        "Guardar un recorte PROPIO lo puede hacer cualquiera: es el "
+        "equivalente a ordenar una columna. Compartirla con todo el tenant "
+        "exige `vista:compartir`, porque una vista que ve todo el mundo es "
+        "configuración del tenant y es la que sale por defecto a quien entra."
+    ),
+)
+def crear_vista_de_lista(datos: CrearVistaDeLista, db: DbDep, principal: AutenticadoDep) -> Any:
+    if datos.compartida:
+        principal.exigir("vista:compartir")
+    vista = vistas_de_lista.crear(
+        db,
+        tenant_id=principal.tenant_id,
+        usuario_id=principal.id,
+        recurso=datos.recurso,
+        nombre=datos.nombre,
+        filtros=datos.filtros,
+        columnas=datos.columnas,
+        orden=datos.orden,
+        compartida=datos.compartida,
+        es_defecto=datos.es_defecto,
+    )
+    registrar(
+        db,
+        accion="metadata.vista_de_lista_creada",
+        objeto="vista_de_lista",
+        objeto_id=vista.id,
+        datos={"recurso": datos.recurso, "nombre": datos.nombre, "compartida": datos.compartida},
+    )
+    return _salida(vista)
+
+
+@router.patch(
+    "/vistas-de-lista/{vista_de_lista_id}",
+    response_model=VistaDeListaOut,
+    dependencies=[Depends(exige_permiso("vista:read"))],
+    summary="Cambiar una vista de lista",
+)
+def cambiar_vista_de_lista(
+    vista_de_lista_id: UUID, datos: CambiarVistaDeLista, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    vista = vistas_de_lista._suya_o_404(db, principal.tenant_id, principal.id, vista_de_lista_id)
+    # Tocar una compartida es configurar el tenant, igual que crearla.
+    if vista.propietario_id is None:
+        principal.exigir("vista:compartir")
+    vistas_de_lista.actualizar(db, vista, datos.model_dump(exclude_unset=True))
+    registrar(
+        db,
+        accion="metadata.vista_de_lista_cambiada",
+        objeto="vista_de_lista",
+        objeto_id=vista.id,
+        datos={"campos": sorted(datos.model_dump(exclude_unset=True))},
+    )
+    return _salida(vista)
+
+
+@router.delete(
+    "/vistas-de-lista/{vista_de_lista_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("vista:read"))],
+    summary="Borrar una vista de lista",
+)
+def borrar_vista_de_lista(vista_de_lista_id: UUID, db: DbDep, principal: AutenticadoDep) -> None:
+    vista = vistas_de_lista._suya_o_404(db, principal.tenant_id, principal.id, vista_de_lista_id)
+    if vista.propietario_id is None:
+        principal.exigir("vista:compartir")
+    # Borrado lógico, como el resto: una vista compartida que desaparece deja
+    # a todo el mundo sin su listado de cada día, y conviene poder volver.
+    vista.deleted_at = ahora(db)
+    vista.deleted_by = principal.id
+    registrar(
+        db,
+        accion="metadata.vista_de_lista_borrada",
+        objeto="vista_de_lista",
+        objeto_id=vista.id,
+        datos={"nombre": vista.nombre},
+    )
+
 
 router_gobierno = APIRouter(prefix="/metadata", tags=["metadatos"])
 

@@ -519,6 +519,11 @@ AISLAMIENTO_DE_DOMINIO = {
     "test_scim.py",
     "test_tablas_decision.py",
     "test_trabajos_y_masivo.py",
+    # Su asunto es la privacidad ENTRE PERSONAS del mismo tenant —que la vista
+    # guardada de uno no la vea otro— y el cruce de tenants es una de sus siete
+    # comprobaciones, no su tema. El caso genérico lo barre el fuzzing en cada
+    # push.
+    "test_una_vista_de_lista_no_es_de_todos.py",
     "test_visibilidad_listados.py",
 }
 

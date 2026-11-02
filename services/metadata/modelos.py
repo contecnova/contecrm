@@ -254,6 +254,59 @@ from services.metadata.modulos import (  # noqa: E402
 from services.metadata.publicacion import PublicacionEsquema  # noqa: E402
 from services.metadata.relaciones import RelacionDefinida  # noqa: E402
 
+
+class VistaDeLista(Base, TimestampMixin, SoftDeleteMixin):
+    """Una vista de lista con nombre: el filtro guardado de un listado.
+
+    Es lo que en Salesforce es «Todas las cuentas», «Mis oportunidades
+    abiertas» o «Casos que vencen hoy»: un recorte con nombre que alguien crea
+    una vez y abre cada día. Hasta el 01-11-2026 contecrm tenía filtros, orden
+    y elección de columnas, pero **no se podían guardar**: cada mañana había
+    que volver a montarlos.
+
+    **Se identifica por el RECURSO, no por el objeto del modelo.** El listado
+    vive en una ruta —`/api/v1/accounts`— y no todos los listados tienen un
+    objeto definido en metadatos: los hay que salen directamente de un
+    servicio. Atarlo a `objetos.id` habría dejado fuera a la mayoría.
+
+    **Y vive en `metadata` por lo mismo que los layouts**: es configuración de
+    cómo se presenta un listado, no un dato de negocio, y así la web, el móvil
+    y el portal enseñan las mismas vistas sin coordinarse.
+
+    `propietario_id` vacío significa **de todo el tenant**. Crear una propia no
+    puede depender de un permiso de administración —es el equivalente a
+    ordenar una columna— pero compartirla con los demás sí: una vista que todo
+    el mundo ve es configuración del tenant, y la comparte quien puede
+    configurarlo.
+    """
+
+    __tablename__ = "vistas_de_lista"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    # La ruta que lista, tal cual la usa el front: `/api/v1/accounts`.
+    recurso: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    nombre: Mapped[str] = mapped_column(String(120), nullable=False)
+    # El recorte, con la misma forma que manda el front al listar.
+    filtros: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # Qué columnas y en qué orden. Vacío = las que el recurso prefiere.
+    columnas: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    # `{"columna": "nombre", "sentido": "asc"}`, o vacío para el del servidor.
+    orden: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Vacío = la ve todo el tenant.
+    propietario_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # La que se abre si nadie ha elegido otra. Una por recurso y propietario.
+    es_defecto: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    __table_args__ = (
+        # El nombre distingue DENTRO de su dueño: dos personas pueden llamar
+        # «Las mías» a dos recortes distintos, y eso es correcto.
+        UniqueConstraint(
+            "tenant_id", "recurso", "propietario_id", "nombre", name="uq_vista_de_lista_nombre"
+        ),
+    )
+
+
 __all__ = [
     "ElementoModulo",
     "ModuloInstalado",
@@ -273,6 +326,7 @@ __all__ = [
     "RelacionDefinida",
     "ReglaValidacion",
     "ValorLista",
+    "VistaDeLista",
 ]
 
 # Empaquetado, promoción entre entornos y drift (CRM-07.02.01.03, .04, .06, .07).
