@@ -48,7 +48,8 @@ const PANTALLAS: Array<{ ruta: string; nombre: string }> = readFileSync(
     const casa = /<Route\s+path="([^"]+)"\s+element=\{<(\w+)/.exec(linea);
     if (!casa) return [];
     const [, ruta, componente] = casa as unknown as [string, string, string];
-    if (ruta.includes(":") || ruta === "*" || componente === "Navigate") return [];
+    if (ruta.includes(":") || ruta === "*" || componente === "Navigate")
+      return [];
     return [{ ruta, nombre: componente }];
   });
 /**
@@ -86,6 +87,34 @@ for (const { ruta, nombre } of PANTALLAS) {
       `la pantalla se sale ${sobra} px del ancho de la ventana: aparece una ` +
         "barra horizontal y lo de la derecha no se alcanza",
     ).toBeLessThanOrEqual(0);
+
+    /**
+     * Ningún landmark de navegación vacío.
+     *
+     * Un `<nav aria-label="…">` sin nada dentro no se ve, pero un lector de
+     * pantalla lo anuncia: dice que hay una región de navegación y no hay
+     * dónde ir. **Medido el 02-11-2026**: la miga de pan se pintaba siempre,
+     * y fuera de Configuración su lista está vacía, así que las veintidós
+     * pantallas del ámbito de trabajo llevaban uno.
+     *
+     * Se mira aquí y no en una prueba de la barra porque el envoltorio es el
+     * mismo para las 37 y el fallo entra por ahí: tumbó este mismo barrido,
+     * que esperaba a que el primer `nav` se viera.
+     */
+    const navesVacias = await page.evaluate(() =>
+      [...document.querySelectorAll("nav, [role='navigation']")]
+        .filter(
+          (n) =>
+            !(n as HTMLElement).innerText.trim() &&
+            !n.querySelector("img, svg"),
+        )
+        .map((n) => n.getAttribute("aria-label") ?? "(sin rótulo)"),
+    );
+    expect(
+      navesVacias,
+      `landmark(s) de navegación sin nada dentro: ${navesVacias.join(", ")}. ` +
+        "Un lector de pantalla los anuncia y no llevan a ninguna parte.",
+    ).toEqual([]);
   });
 }
 

@@ -95,7 +95,13 @@ export async function abrir(page: Page, ruta: string): Promise<void> {
   // velocidad de arranque sino si la pantalla monta. Un plazo corto convierte
   // una máquina ocupada en un fallo de pantalla, que manda a buscar al sitio
   // equivocado.
-  await page.waitForSelector("nav, [role='navigation'], main", { timeout: 30_000 });
+  // Por `main` y SÓLO por `main`: es donde está la pantalla, que es lo que
+  // este barrido mide. «Cualquier nav» era un atajo que se rompió en cuanto
+  // el marco cambió: el primero del documento pasó a ser la miga de pan, que
+  // fuera de Configuración está vacía, y Playwright se queda esperando a que
+  // se vea algo que no ocupa nada. Veintidós pantallas en rojo por el
+  // envoltorio, no por la pantalla.
+  await page.waitForSelector("main", { timeout: 30_000 });
   await page.waitForFunction(
     () => !/arrancando|cargando/i.test(document.body.innerText.slice(0, 200)),
     { timeout: 30_000 },
@@ -122,6 +128,8 @@ export async function elementosVisibles(page: Page): Promise<number> {
 /** Cuánto se sale del ancho de la ventana, en píxeles. Cero es lo correcto. */
 export async function desbordamiento(page: Page): Promise<number> {
   return page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
   );
 }

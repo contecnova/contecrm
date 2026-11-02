@@ -25,7 +25,12 @@ import { llamar, mirarTenant, tenantMirado } from "@/lib/api";
 import { ALTAS } from "@/lib/altas";
 import { humanizar } from "@/lib/formato";
 import { MODULOS, grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
-import { ambitoDelCamino, entradaVisible, menuDe, todasLasEntradas } from "@/lib/navegacion";
+import {
+  ambitoDelCamino,
+  entradaVisible,
+  menuDe,
+  todasLasEntradas,
+} from "@/lib/navegacion";
 import { useVisibilidad } from "@/lib/permisos";
 import { usePanel } from "@/lib/panel";
 import type { Sesion } from "@/lib/sesion";
@@ -59,7 +64,8 @@ export function BarraSuperior({
   //
   // En configuración sí se queda: ahí no hay barra de aplicación, hay un árbol
   // a la izquierda, y la miga es lo único que dice en qué rama estás.
-  const enConfiguracion = ambitoDelCamino(ubicacion.pathname, grupoDelModulo) === "administrar";
+  const enConfiguracion =
+    ambitoDelCamino(ubicacion.pathname, grupoDelModulo) === "administrar";
   const migas = enConfiguracion ? derivarMigas(ubicacion.pathname, t) : [];
 
   // A qué pantalla lleva el engranaje: la **primera que esta persona puede
@@ -109,7 +115,9 @@ export function BarraSuperior({
     };
   }, [menuAbierto]);
 
-  const inicial = (sesion?.nombre || sesion?.email || "?").charAt(0).toUpperCase();
+  const inicial = (sesion?.nombre || sesion?.email || "?")
+    .charAt(0)
+    .toUpperCase();
   // Solo las altas que esta persona puede hacer. Un menú de creación con
   // opciones que responden «no tienes permiso» es peor que no tenerlo.
   const altas = ALTAS.filter((a) => puede(sesion, a.permiso));
@@ -117,7 +125,10 @@ export function BarraSuperior({
   useEffect(() => {
     if (!crearAbierto) return;
     function fuera(evento: MouseEvent) {
-      if (crearRef.current && !crearRef.current.contains(evento.target as Node)) {
+      if (
+        crearRef.current &&
+        !crearRef.current.contains(evento.target as Node)
+      ) {
         setCrearAbierto(false);
       }
     }
@@ -174,35 +185,54 @@ export function BarraSuperior({
           Con tope, porque la miga tampoco puede comerse el buscador: a partir
           de 32rem vuelve a recortarse, que es lo que tiene que pasar cuando de
           verdad no cabe. */}
-      <nav
-        aria-label={t("nav.migas")}
-        className="flex min-w-0 max-w-[32rem] shrink items-center gap-2 text-sm"
-      >
-        {migas.map((miga, i) => (
-          <span key={`${miga.rotulo}-${i}`} className="flex min-w-0 items-center gap-2">
-            {i > 0 ? <Icono nombre="chevron_right" tamano="sm" className="text-ink-faint" /> : null}
-            {miga.a && i < migas.length - 1 ? (
-              <Link
-                to={miga.a}
-                title={miga.rotulo}
-                className="truncate font-medium text-ink-muted transition-colors hover:text-ink"
-              >
-                {miga.rotulo}
-              </Link>
-            ) : (
-              <span
-                title={miga.rotulo}
-                className={cn(
-                  "truncate",
-                  i === migas.length - 1 ? "font-semibold text-ink" : "font-medium text-ink-muted",
-                )}
-              >
-                {miga.rotulo}
-              </span>
-            )}
-          </span>
-        ))}
-      </nav>
+      {/* Y si no hay migas, **no hay `<nav>`**. Fuera de Configuración la
+          lista está vacía, así que quedaba un landmark de navegación sin nada
+          dentro: un lector de pantalla anuncia una región de navegación y no
+          hay dónde ir. Medido el 02-11-2026 — además tumbaba el barrido de
+          pantallas, que esperaba a que el primer `nav` se viera y el primero
+          era éste. */}
+      {migas.length > 0 ? (
+        <nav
+          aria-label={t("nav.migas")}
+          className="flex min-w-0 max-w-[32rem] shrink items-center gap-2 text-sm"
+        >
+          {migas.map((miga, i) => (
+            <span
+              key={`${miga.rotulo}-${i}`}
+              className="flex min-w-0 items-center gap-2"
+            >
+              {i > 0 ? (
+                <Icono
+                  nombre="chevron_right"
+                  tamano="sm"
+                  className="text-ink-faint"
+                />
+              ) : null}
+              {miga.a && i < migas.length - 1 ? (
+                <Link
+                  to={miga.a}
+                  title={miga.rotulo}
+                  className="truncate font-medium text-ink-muted transition-colors hover:text-ink"
+                >
+                  {miga.rotulo}
+                </Link>
+              ) : (
+                <span
+                  title={miga.rotulo}
+                  className={cn(
+                    "truncate",
+                    i === migas.length - 1
+                      ? "font-semibold text-ink"
+                      : "font-medium text-ink-muted",
+                  )}
+                >
+                  {miga.rotulo}
+                </span>
+              )}
+            </span>
+          ))}
+        </nav>
+      ) : null}
 
       <button
         type="button"
@@ -211,7 +241,9 @@ export function BarraSuperior({
         aria-label={t("nav.abrirPaleta")}
       >
         <Icono nombre="search" tamano="sm" className="text-ink-muted" />
-        <span className="flex-1 truncate text-left">{t("nav.buscarPlaceholder")}</span>
+        <span className="flex-1 truncate text-left">
+          {t("nav.buscarPlaceholder")}
+        </span>
         <kbd className="shrink-0 rounded border border-ink-dim/60 bg-paper px-1.5 py-0.5 font-mono text-3xs text-ink-muted">
           {teclaAtajo()}
         </kbd>
@@ -271,7 +303,11 @@ export function BarraSuperior({
                     onClick={() => setCrearAbierto(false)}
                     className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink hover:bg-paper-light"
                   >
-                    <Icono nombre={alta.icono} tamano="sm" className="text-ink-muted" />
+                    <Icono
+                      nombre={alta.icono}
+                      tamano="sm"
+                      className="text-ink-muted"
+                    />
                     {t(alta.clave)}
                   </Link>
                 ))}
@@ -313,8 +349,16 @@ export function BarraSuperior({
           <Link
             to={enConfiguracion ? "/" : destinoDeConfiguracion}
             className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink"
-            aria-label={t(enConfiguracion ? "app.salirDeConfiguracion" : "app.irAConfiguracion")}
-            title={t(enConfiguracion ? "app.salirDeConfiguracion" : "app.irAConfiguracion")}
+            aria-label={t(
+              enConfiguracion
+                ? "app.salirDeConfiguracion"
+                : "app.irAConfiguracion",
+            )}
+            title={t(
+              enConfiguracion
+                ? "app.salirDeConfiguracion"
+                : "app.irAConfiguracion",
+            )}
             aria-current={enConfiguracion ? "page" : undefined}
           >
             <Icono nombre={enConfiguracion ? "work" : "settings"} />
@@ -330,10 +374,16 @@ export function BarraSuperior({
           onClick={cambiarDensidad}
           className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink"
           aria-label={t("app.densidad")}
-          title={t(densidad === "comoda" ? "app.densidadCompacta" : "app.densidadComoda")}
+          title={t(
+            densidad === "comoda"
+              ? "app.densidadCompacta"
+              : "app.densidadComoda",
+          )}
           aria-pressed={densidad === "compacta"}
         >
-          <Icono nombre={densidad === "comoda" ? "density_large" : "density_small"} />
+          <Icono
+            nombre={densidad === "comoda" ? "density_large" : "density_small"}
+          />
         </button>
 
         {/* Los avisos, antes del tema y la densidad: lo que se mira quince
@@ -373,7 +423,10 @@ export function BarraSuperior({
               {sesion ? (
                 <div className="mb-1 border-b border-ink-dim/30 px-3 py-2">
                   <p className="text-2xs text-ink-muted">{t("nav.sesionDe")}</p>
-                  <p className="truncate text-xs font-medium text-ink" title={sesion.email}>
+                  <p
+                    className="truncate text-xs font-medium text-ink"
+                    title={sesion.email}
+                  >
                     {sesion.email}
                   </p>
                   {/* Los roles viven aquí y no en la portada. Son identidad
@@ -390,7 +443,9 @@ export function BarraSuperior({
                       ))}
                     </p>
                   ) : (
-                    <p className="mt-1 text-3xs text-warning">{t("inicio.sinRoles")}</p>
+                    <p className="mt-1 text-3xs text-warning">
+                      {t("inicio.sinRoles")}
+                    </p>
                   )}
                 </div>
               ) : null}
@@ -430,7 +485,10 @@ export function BarraSuperior({
  * menú. Traducirlo mirando la declaración de módulos evita la incoherencia de
  * que la miga diga una cosa y el menú otra para la misma pantalla.
  */
-export function derivarMigas(camino: string, t: (clave: string) => string): Miga[] {
+export function derivarMigas(
+  camino: string,
+  t: (clave: string) => string,
+): Miga[] {
   const raiz: Miga = { rotulo: t("nav.inicio"), a: "/" };
   if (camino === "/") return [{ rotulo: t("nav.inicio") }];
 
@@ -449,10 +507,7 @@ export function derivarMigas(camino: string, t: (clave: string) => string): Miga
     // estás, en una letra. «Inicio» está en todas las migas, no distingue
     // ninguna pantalla de otra y al logo de la esquina se llega igual: es lo
     // primero que sobra cuando hay que elegir qué se recorta.
-    return [
-      { rotulo, a: `/m/${partes[1]}` },
-      { rotulo: humanizar(partes[2]) },
-    ];
+    return [{ rotulo, a: `/m/${partes[1]}` }, { rotulo: humanizar(partes[2]) }];
   }
 
   const entrada = todasLasEntradas().find((e) => e.a === camino);
@@ -461,7 +516,6 @@ export function derivarMigas(camino: string, t: (clave: string) => string): Miga
   const ultimo = partes[partes.length - 1] ?? camino;
   return [raiz, { rotulo: entrada ? t(entrada.clave) : ultimo }];
 }
-
 
 /**
  * El selector de cliente, para quien opera la plataforma.
@@ -477,7 +531,9 @@ export function derivarMigas(camino: string, t: (clave: string) => string): Miga
  */
 function QueCliente({ sesion }: { sesion: Sesion }) {
   const { t } = useTranslation();
-  const [tenants, setTenants] = useState<{ id: string; nombre: string }[] | null>(null);
+  const [tenants, setTenants] = useState<
+    { id: string; nombre: string }[] | null
+  >(null);
   const [elegido, setElegido] = useState(() => tenantMirado());
 
   useEffect(() => {
@@ -489,7 +545,11 @@ function QueCliente({ sesion }: { sesion: Sesion }) {
       "/api/v1/tenants?limite=200",
       { signal: control.signal },
     )
-      .then((r) => setTenants((r.datos.items ?? []).map((x) => ({ id: x.id, nombre: x.nombre }))))
+      .then((r) =>
+        setTenants(
+          (r.datos.items ?? []).map((x) => ({ id: x.id, nombre: x.nombre })),
+        ),
+      )
       .catch(() => setTenants([]));
     return () => control.abort();
   }, []);

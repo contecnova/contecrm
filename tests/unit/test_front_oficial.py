@@ -189,6 +189,12 @@ def test_el_front_no_guarda_datos_de_negocio_en_el_navegador() -> None:
         # sí solo —el servidor sólo la atiende si quien la manda opera la
         # plataforma— y no guarda ni un dato de negocio: sólo cuál se mira.
         "lib/api.ts",
+        # Qué aplicación —Ventas, Servicio, Marketing, Analítica— estaba
+        # abierta. Entra por el mismo criterio que el tema o el menú plegado:
+        # es una preferencia de quien mira, perderla sólo cuesta volver a
+        # elegirla y no dice nada del negocio ni de la sesión. Sin ella, cada
+        # recarga devuelve a Ventas aunque llevaras la mañana en Servicio.
+        "lib/aplicaciones.ts",
     }
     usos: list[str] = []
     for fichero in _fuentes():
@@ -401,7 +407,28 @@ def test_el_front_es_accesible_por_teclado_y_para_lectores(  # noqa: D103
 #   Medido sobre el paquete construido: la apertura pasa de 93,3 a 88,3 kB
 #   comprimidos. El tope de apertura se queda en 118 —treinta de margen, que es
 #   mucho— porque bajarlo ahora congelaría el reparto actual de trozos.
-PRESUPUESTO_KB = 118
+#
+# 02-11-2026 — 118 → 124, por el marco de Salesforce.
+#
+#   Medida la cadena entera, construyendo cada punto y pesando lo que pide el
+#   navegador al abrir:
+#
+#     · 30-10 09:23, el último pase completo en verde ..... 117,3 kB
+#     · 01-11, antes del rediseño ......................... 118,6 kB
+#     · 02-11, con el marco puesto ........................ 122,3 kB
+#
+#   O sea: el tope se pasó ANTES del rediseño, con la tanda de usabilidad del
+#   01-11, y nadie se enteró porque el nivel completo llevaba veinticinco
+#   commits sin correr. El rediseño pone 3,7 de los 5.
+#
+#   Esos 3,7 no se pueden diferir: son la barra de aplicación, el iniciador,
+#   el selector de vista y las pestañas de la ficha. Es lo que se ve al abrir,
+#   por definición. Lo que sí está diferido ya lo está —el iniciador se carga
+#   al pulsarlo, las pantallas van por ruta y el diccionario está partido.
+#
+#   124 y no 130: quedan 1,7 kB de margen, que es lo que tiene que quedar para
+#   que la siguiente subida vuelva a ser una decisión y no un descuido.
+PRESUPUESTO_KB = 124
 
 # Y un tope para el conjunto, contando lo que se carga al abrir cada pantalla.
 # Sin él, partir el paquete sería la forma de esconder cualquier crecimiento:

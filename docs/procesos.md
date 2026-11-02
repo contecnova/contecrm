@@ -288,6 +288,9 @@ stateDiagram-v2
 | `POST /api/v1/metadata/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/metadata/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/metadata/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
+| `POST /api/v1/metadata/vistas-de-lista` | Guardar una vista de lista | recurso*, nombre*, filtros, columnas, orden, compartida, es_defecto | 201, 422 | — |
+| `PATCH /api/v1/metadata/vistas-de-lista/{vista_de_lista_id}` | Cambiar una vista de lista | vista_de_lista_id*, nombre, filtros, columnas, orden, es_defecto | 200, 422 | — |
+| `DELETE /api/v1/metadata/vistas-de-lista/{vista_de_lista_id}` | Borrar una vista de lista | vista_de_lista_id* | 204, 422 | — |
 | `POST /api/v1/metadata/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/metadata/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/metadata/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
