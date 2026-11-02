@@ -319,7 +319,19 @@ a salir en rojo.
     node frontend/scripts/barrido-pantallas.mjs
 
 Abre las 58 pantallas contra la pila local y, de cada listado, su primera
-ficha. Dice cuáles revientan al pintar.
+ficha **con todas sus pestañas**. Dice dos cosas: cuáles revientan al pintar y
+cuáles enseñan el dato en crudo.
+
+**El dato en crudo** es `null`, `undefined` o `[object Object]` a la vista.
+Sale cuando un valor vacío o compuesto llega a la pantalla sin pasar por el
+formateador de la casa, y no revienta nada: la pantalla funciona y miente.
+Medido el 02-11-2026 en la pestaña «Detalles» de un caso —«Motivo: null»,
+«Padre: null», «Contacto ID: null»—, porque `String(null)` da «null». El
+barrido lo busca con los límites de palabra puestos, que «anular» lleva «null»
+dentro y es castellano.
+
+Las pestañas se recorren porque el fallo estaba en «Detalles», que no se pinta
+hasta que alguien la pulsa: abrir la ficha y mirar no lo veía.
 
 **Por qué hace falta algo que no es un gate.** El 01-11-2026 se encontraron dos
 pantallas muertas —la ficha de cualquier oportunidad con metodología activa y
@@ -340,5 +352,6 @@ No puede ser un gate: necesita la pila levantada y datos sembrados. Se pasa
 cuando se toca el front a lo ancho, y el apartado está aquí para que no se
 olvide que existe.
 
-Validado plantando el caso malo: devolviendo el fallo de `/inteligencia`, el
-barrido lo nombra y sale con código 1.
+Validado plantando el caso malo, las dos veces: devolviendo el fallo de
+`/inteligencia`, el barrido lo nombra y sale con código 1; y quitando la raya
+de `escalar`, nombra `/m/casos → ficha` con el texto que enseñaba.

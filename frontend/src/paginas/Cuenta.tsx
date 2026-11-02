@@ -55,6 +55,8 @@ import {
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar, listarPagina } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
@@ -280,6 +282,13 @@ export function Cuenta() {
     ? recursoDe(moduloCuentas, "cuenta")
     : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas. «Relacionado» es el 360 que
+  // esta pantalla ya enseñaba y «Detalles» son los campos de la cuenta, que
+  // hasta hoy sólo se leían entrando a editar: aquí sale su sector y sus
+  // identificadores, y el teléfono, la web o la dirección no salían.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(
     (signal?: AbortSignal) => {
@@ -512,7 +521,30 @@ export function Cuenta() {
         alTerminar={() => cargar()}
       />
 
-      {/* Las tres columnas acaban a la MISMA altura, y dentro de cada una las
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
+      ) : null}
+
+      {!editando && pestana === "detalles" ? (
+        <div className="mt-4">
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="cuenta"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Las tres columnas acaban a la MISMA altura, y dentro de cada una las
           cajas se reparten el alto disponible. Cada caja recorre lo suyo.
 
           Dos intentos antes, los dos mal, y los dos están aquí para que no se
@@ -539,235 +571,245 @@ export function Cuenta() {
           **Sólo de `lg` para arriba.** En un móvil hay una sola columna y una
           barra dentro de otra es peor que el problema: el dedo no sabe cuál de
           las dos está moviendo. Ahí se desplaza la página. */}
-      <div
-        className={cn(
-          "grid gap-4 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,19rem)]",
-          hayCola && "lg:h-[calc(100vh-15rem)]",
-        )}
-      >
-        {/* ── Datos ──────────────────────────────────────────────────── */}
-        <aside className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-          <section className="card p-4">
-            <h2 className="section-label mb-3">{t("cuenta.datos")}</h2>
-            <dl className="space-y-2">
-              <Dato clave="sector" valor={cuenta.sector.codigo} />
-              {identificadores.map((i) => (
-                <Dato key={i.valor} clave={i.tipo} valor={i.valor} />
-              ))}
-            </dl>
-          </section>
+          <div
+            className={cn(
+              "grid gap-4 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,19rem)]",
+              hayCola && "lg:h-[calc(100vh-15rem)]",
+            )}
+          >
+            {/* ── Datos ──────────────────────────────────────────────────── */}
+            <aside className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+              <section className="card p-4">
+                <h2 className="section-label mb-3">{t("cuenta.datos")}</h2>
+                <dl className="space-y-2">
+                  <Dato clave="sector" valor={cuenta.sector.codigo} />
+                  {identificadores.map((i) => (
+                    <Dato key={i.valor} clave={i.tipo} valor={i.valor} />
+                  ))}
+                </dl>
+              </section>
 
-          <section className="card p-4">
-            <h2 className="section-label mb-2">{t("cuenta.calidad")}</h2>
-            <p className="text-sm font-medium text-ink">
-              {cuenta.calidad.puntuacion} / 100
-            </p>
-            {cuenta.calidad.faltan.length > 0 ? (
-              <>
-                {/* Qué falta, por su nombre. Una puntuación sin el detalle no
-                    dice qué hay que hacer para subirla. */}
-                <p className="mt-2 text-3xs text-ink-faint">
-                  {t("cuenta.faltan")}
+              <section className="card p-4">
+                <h2 className="section-label mb-2">{t("cuenta.calidad")}</h2>
+                <p className="text-sm font-medium text-ink">
+                  {cuenta.calidad.puntuacion} / 100
                 </p>
-                <ul className="mt-1 flex flex-wrap gap-1">
-                  {cuenta.calidad.faltan.map((f) => (
-                    <li key={f} className="chip-dato">
-                      {humanizar(f)}
+                {cuenta.calidad.faltan.length > 0 ? (
+                  <>
+                    {/* Qué falta, por su nombre. Una puntuación sin el detalle no
+                    dice qué hay que hacer para subirla. */}
+                    <p className="mt-2 text-3xs text-ink-faint">
+                      {t("cuenta.faltan")}
+                    </p>
+                    <ul className="mt-1 flex flex-wrap gap-1">
+                      {cuenta.calidad.faltan.map((f) => (
+                        <li key={f} className="chip-dato">
+                          {humanizar(f)}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </section>
+
+              <section className="card p-4">
+                <h2 className="section-label mb-2">{t("cuenta.metricas")}</h2>
+                <Metricas datos={metricas} />
+              </section>
+            </aside>
+
+            {/* ── Lo que ha pasado ───────────────────────────────────────── */}
+            <section
+              className="card flex flex-col overflow-hidden p-4 lg:min-h-0"
+              aria-labelledby="cuenta-timeline"
+            >
+              <h2 id="cuenta-timeline" className="section-label mb-3">
+                {t("cuenta.timeline")}
+              </h2>
+
+              {/* Apuntar va ARRIBA de la línea de tiempo, no en otra pantalla: se
+              apunta justo después de hablar con el cliente, mirándolo. */}
+              <RegistrarActividad
+                objeto="cuenta"
+                objetoId={id}
+                alRegistrar={() => cargar()}
+              />
+              {timeline.length === 0 ? (
+                <Vacio
+                  compacto
+                  icono="history"
+                  titulo={t("cuenta.sinTimeline")}
+                />
+              ) : (
+                <ol className="relative space-y-4 overflow-y-auto border-l border-ink-dim/60 pl-4 lg:min-h-0 lg:flex-1">
+                  {alaVista.map((h, i) => (
+                    <li key={i} className="relative">
+                      <span
+                        aria-hidden
+                        className="absolute -left-[1.4rem] top-1.5 h-2 w-2 rounded-full bg-accent"
+                      />
+                      <p className="text-xs text-ink">
+                        {String(h.asunto ?? h.titulo ?? h.tipo ?? "")}
+                      </p>
+                      <p className="mt-0.5 text-3xs text-ink-faint">
+                        {humanizar(String(h.tipo ?? ""))}
+                        {h.momento || h.fecha || h.created_at
+                          ? ` · ${escalar(h.momento ?? h.fecha ?? h.created_at)}`
+                          : ""}
+                      </p>
                     </li>
                   ))}
-                </ul>
-              </>
-            ) : null}
-          </section>
-
-          <section className="card p-4">
-            <h2 className="section-label mb-2">{t("cuenta.metricas")}</h2>
-            <Metricas datos={metricas} />
-          </section>
-        </aside>
-
-        {/* ── Lo que ha pasado ───────────────────────────────────────── */}
-        <section
-          className="card flex flex-col overflow-hidden p-4 lg:min-h-0"
-          aria-labelledby="cuenta-timeline"
-        >
-          <h2 id="cuenta-timeline" className="section-label mb-3">
-            {t("cuenta.timeline")}
-          </h2>
-
-          {/* Apuntar va ARRIBA de la línea de tiempo, no en otra pantalla: se
-              apunta justo después de hablar con el cliente, mirándolo. */}
-          <RegistrarActividad
-            objeto="cuenta"
-            objetoId={id}
-            alRegistrar={() => cargar()}
-          />
-          {timeline.length === 0 ? (
-            <Vacio compacto icono="history" titulo={t("cuenta.sinTimeline")} />
-          ) : (
-            <ol className="relative space-y-4 overflow-y-auto border-l border-ink-dim/60 pl-4 lg:min-h-0 lg:flex-1">
-              {alaVista.map((h, i) => (
-                <li key={i} className="relative">
-                  <span
-                    aria-hidden
-                    className="absolute -left-[1.4rem] top-1.5 h-2 w-2 rounded-full bg-accent"
-                  />
-                  <p className="text-xs text-ink">
-                    {String(h.asunto ?? h.titulo ?? h.tipo ?? "")}
-                  </p>
-                  <p className="mt-0.5 text-3xs text-ink-faint">
-                    {humanizar(String(h.tipo ?? ""))}
-                    {h.momento || h.fecha || h.created_at
-                      ? ` · ${escalar(h.momento ?? h.fecha ?? h.created_at)}`
-                      : ""}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          )}
-          {/* El tope del servidor, dicho y con salida. Veinte hitos en una
+                </ol>
+              )}
+              {/* El tope del servidor, dicho y con salida. Veinte hitos en una
               cuenta activa son los de esta semana: sin esto, la línea de
               tiempo se lee como «esto es todo lo que ha pasado». */}
-          {/* Región que se anuncia: al pulsar «ver todo lo que ha pasado»
+              {/* Región que se anuncia: al pulsar «ver todo lo que ha pasado»
               aparecen hitos más arriba de donde está el foco, y quien no ve la
               pantalla no se enteraría de que ha pasado algo. Dice cuántos hay
               delante, que es el dato que cambia. */}
-          <div role="status" aria-live="polite">
-            {masTimeline ? (
-              <p className="mt-3 border-t border-ink-dim/30 pt-2 text-3xs text-ink-faint">
-                {t("cuenta.timelineEntera", { cuantos: timeline.length })}
-              </p>
-            ) : null}
-            {puedeHaberMas ? (
-              <p className="mt-3 border-t border-ink-dim/30 pt-2 text-3xs text-ink-faint">
-                {t("cuenta.timelineRecortada", { cuantos: TOPE_DEL_360 })}{" "}
-                <button
-                  type="button"
-                  className="btn-link"
-                  disabled={pidiendoMas}
-                  onClick={() => {
-                    setPidiendoMas(true);
-                    void listar<Record<string, unknown>>(
-                      `/api/v1/accounts/${id}/timeline?limite=200`,
-                    )
-                      .then(setMasTimeline)
-                      .catch(() => undefined)
-                      .finally(() => setPidiendoMas(false));
-                  }}
-                >
-                  {pidiendoMas
-                    ? t("cuenta.cargandoMas")
-                    : t("cuenta.verTodoLoQuePaso")}
-                </button>
-              </p>
-            ) : null}
-          </div>
-        </section>
-
-        {/* ── Lo relacionado ─────────────────────────────────────────── */}
-        <aside className="flex flex-col gap-4 lg:min-h-0">
-          <Relacionados
-            titulo={t("cuenta.contactos")}
-            icono="person"
-            vacio={t("cuenta.sinContactos")}
-            cuantos={contactos.length}
-            verTodas={verTodasDe("contacto")}
-          >
-            {contactos.map((c) => (
-              <li key={c.id} className="py-1.5">
-                <p className="truncate text-xs text-ink">{c.nombre}</p>
-                <p className="truncate text-3xs text-ink-faint">
-                  {[c.cargo, c.email].filter(Boolean).join(" · ") || "—"}
-                </p>
-                {c.no_contactar ? (
-                  <span className="badge badge-warning mt-1">
-                    {t("cuenta.noContactar")}
-                  </span>
+              <div role="status" aria-live="polite">
+                {masTimeline ? (
+                  <p className="mt-3 border-t border-ink-dim/30 pt-2 text-3xs text-ink-faint">
+                    {t("cuenta.timelineEntera", { cuantos: timeline.length })}
+                  </p>
                 ) : null}
-              </li>
-            ))}
-          </Relacionados>
+                {puedeHaberMas ? (
+                  <p className="mt-3 border-t border-ink-dim/30 pt-2 text-3xs text-ink-faint">
+                    {t("cuenta.timelineRecortada", { cuantos: TOPE_DEL_360 })}{" "}
+                    <button
+                      type="button"
+                      className="btn-link"
+                      disabled={pidiendoMas}
+                      onClick={() => {
+                        setPidiendoMas(true);
+                        void listar<Record<string, unknown>>(
+                          `/api/v1/accounts/${id}/timeline?limite=200`,
+                        )
+                          .then(setMasTimeline)
+                          .catch(() => undefined)
+                          .finally(() => setPidiendoMas(false));
+                      }}
+                    >
+                      {pidiendoMas
+                        ? t("cuenta.cargandoMas")
+                        : t("cuenta.verTodoLoQuePaso")}
+                    </button>
+                  </p>
+                ) : null}
+              </div>
+            </section>
 
-          <Relacionados
-            titulo={t("cuenta.oportunidades")}
-            icono="trending_up"
-            vacio={t("cuenta.sinOportunidades")}
-            cuantos={oportunidades.length}
-            hayMas={hayMasOportunidades}
-            verTodas={verTodasDe("oportunidad")}
-          >
-            {oportunidades.map((o) => (
-              <li key={o.id} className="py-1.5">
-                <Link
-                  to={`/m/oportunidades/oportunidad/${o.id}`}
-                  className="block truncate text-xs text-accent hover:underline"
-                >
-                  {o.nombre}
-                </Link>
-                <p className="flex items-center gap-1.5 text-3xs text-ink-faint">
-                  {importe(o.importe, o.moneda)}
-                  <span
-                    className={
-                      o.estado === "ganada"
-                        ? "badge badge-success"
-                        : o.estado === "perdida"
-                          ? "badge badge-danger"
-                          : "badge badge-muted"
-                    }
-                  >
-                    {o.estado}
-                  </span>
-                </p>
-              </li>
-            ))}
-          </Relacionados>
+            {/* ── Lo relacionado ─────────────────────────────────────────── */}
+            <aside className="flex flex-col gap-4 lg:min-h-0">
+              <Relacionados
+                titulo={t("cuenta.contactos")}
+                icono="person"
+                vacio={t("cuenta.sinContactos")}
+                cuantos={contactos.length}
+                verTodas={verTodasDe("contacto")}
+              >
+                {contactos.map((c) => (
+                  <li key={c.id} className="py-1.5">
+                    <p className="truncate text-xs text-ink">{c.nombre}</p>
+                    <p className="truncate text-3xs text-ink-faint">
+                      {[c.cargo, c.email].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                    {c.no_contactar ? (
+                      <span className="badge badge-warning mt-1">
+                        {t("cuenta.noContactar")}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </Relacionados>
 
-          <Relacionados
-            titulo={t("cuenta.casos")}
-            icono="confirmation_number"
-            vacio={t("cuenta.sinCasos")}
-            cuantos={casos.length}
-            hayMas={hayMasCasos}
-            verTodas={verTodasDe("caso")}
-          >
-            {casos.map((c) => (
-              <li key={c.id} className="py-1.5">
-                <p className="truncate text-xs text-ink">{c.asunto}</p>
-                <p className="text-3xs text-ink-faint">
-                  {[c.codigo, c.estado, c.prioridad]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </li>
-            ))}
-          </Relacionados>
-        </aside>
-      </div>
+              <Relacionados
+                titulo={t("cuenta.oportunidades")}
+                icono="trending_up"
+                vacio={t("cuenta.sinOportunidades")}
+                cuantos={oportunidades.length}
+                hayMas={hayMasOportunidades}
+                verTodas={verTodasDe("oportunidad")}
+              >
+                {oportunidades.map((o) => (
+                  <li key={o.id} className="py-1.5">
+                    <Link
+                      to={`/m/oportunidades/oportunidad/${o.id}`}
+                      className="block truncate text-xs text-accent hover:underline"
+                    >
+                      {o.nombre}
+                    </Link>
+                    <p className="flex items-center gap-1.5 text-3xs text-ink-faint">
+                      {importe(o.importe, o.moneda)}
+                      <span
+                        className={
+                          o.estado === "ganada"
+                            ? "badge badge-success"
+                            : o.estado === "perdida"
+                              ? "badge badge-danger"
+                              : "badge badge-muted"
+                        }
+                      >
+                        {o.estado}
+                      </span>
+                    </p>
+                  </li>
+                ))}
+              </Relacionados>
 
-      {/* ── De qué grupo es, de dónde salen sus datos y cómo está ──────
+              <Relacionados
+                titulo={t("cuenta.casos")}
+                icono="confirmation_number"
+                vacio={t("cuenta.sinCasos")}
+                cuantos={casos.length}
+                hayMas={hayMasCasos}
+                verTodas={verTodasDe("caso")}
+              >
+                {casos.map((c) => (
+                  <li key={c.id} className="py-1.5">
+                    <p className="truncate text-xs text-ink">{c.asunto}</p>
+                    <p className="text-3xs text-ink-faint">
+                      {[c.codigo, c.estado, c.prioridad]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </li>
+                ))}
+              </Relacionados>
+            </aside>
+          </div>
+
+          {/* ── De qué grupo es, de dónde salen sus datos y cómo está ──────
           Cuatro preguntas POR REGISTRO que la API contestaba y no alcanzaba
           nadie. El módulo de calidad del dato enseña la cola y los agregados
           —qué hay que tocar hoy, si la cola crece—, que es otra pregunta:
           delante de un cliente concreto lo que se quiere saber es por qué su
           teléfono dice eso y no lo que dice el ERP. */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <LaJerarquia arbol={arbol} />
-        <LaSalud salud={salud} />
-        <DeDondeSaleCadaDato linaje={linaje} />
-        <LoQueLlevaSinConfirmarse obsoletos={obsoletos} />
-      </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <LaJerarquia arbol={arbol} />
+            <LaSalud salud={salud} />
+            <DeDondeSaleCadaDato linaje={linaje} />
+            <LoQueLlevaSinConfirmarse obsoletos={obsoletos} />
+          </div>
 
-      {/* Direcciones, identificadores fiscales, equipo de cuenta, relaciones
+          {/* Direcciones, identificadores fiscales, equipo de cuenta, relaciones
           entre empresas: todo lo que cuelga del cliente, con sus altas y sus
           acciones. */}
-      <SubColecciones paneles={paneles} servicio="party" id={id} />
+          <SubColecciones paneles={paneles} servicio="party" id={id} />
 
-      {/* Y si además es proveedora, lo suyo — en esta misma ficha y no en otra
+          {/* Y si además es proveedora, lo suyo — en esta misma ficha y no en otra
           parecida: es la misma empresa, y tenerla en dos sitios obliga a saber
           en cuál mirar. */}
-      {cuenta.roles.includes("proveedor") ? (
-        <SubColecciones paneles={panelesProveedor} servicio="party" id={id} />
-      ) : null}
+          {cuenta.roles.includes("proveedor") ? (
+            <SubColecciones
+              paneles={panelesProveedor}
+              servicio="party"
+              id={id}
+            />
+          ) : null}
+        </>
+      )}
     </>
   );
 }

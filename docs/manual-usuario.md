@@ -507,6 +507,15 @@ pregunta distinta:
 busca casi siempre al abrir un registro; si de ese objeto no cuelga nada, se
 abre por «Detalles». En cuanto pulsas una pestaña, manda la que pulsaste.
 
+**Las fichas de cuenta, oportunidad y caso también las tienen**, con dos:
+«Relacionado» es lo que esas pantallas ya enseñaban —el 360 del cliente, las
+líneas de la oportunidad, el reloj del caso— y «Detalles» son sus campos. Hasta
+el 02-11-2026 ahí no había forma de leerlos: para ver el teléfono o la web de
+una cuenta había que pulsar «Editar».
+
+**Un hueco se escribe con una raya.** Donde no hay valor pone «—», nunca la
+palabra `null`. Si lo ves en algún sitio, es un fallo.
+
 ---
 
 ### Las listas: ordenar, elegir columnas y cambiar de vista

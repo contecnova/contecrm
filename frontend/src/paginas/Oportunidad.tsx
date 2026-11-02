@@ -45,6 +45,8 @@ import {
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { fecha, humanizar, importe as comoImporte } from "@/lib/formato";
@@ -229,6 +231,12 @@ export function Oportunidad() {
   const modulo = moduloDe("oportunidades");
   const recurso = modulo ? recursoDe(modulo, "oportunidad") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas. «Relacionado» es lo que
+  // esta pantalla ya enseñaba —las líneas, quién decide, el plan— y
+  // «Detalles» son sus campos, que hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -460,13 +468,36 @@ export function Oportunidad() {
             contesta el panel; aquí sobraba. */}
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <LasLineas lineas={lineas} metricas={metricas} moneda={op.moneda} />
-        <QuienDecide grupo={grupo} />
-        <QuienSeLoLleva reparto={reparto} />
-        <LoQueSeHaMovido cambios={deslizamientos} />
-        <QueFaltaParaCerrar evaluacion={evaluacion} playbook={playbook} />
-        <ElPlanConElCliente plan={plan} />
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
+      ) : null}
+
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <LasLineas lineas={lineas} metricas={metricas} moneda={op.moneda} />
+            <QuienDecide grupo={grupo} />
+            <QuienSeLoLleva reparto={reparto} />
+            <LoQueSeHaMovido cambios={deslizamientos} />
+            <QueFaltaParaCerrar evaluacion={evaluacion} playbook={playbook} />
+            <ElPlanConElCliente plan={plan} />
+          </div>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="oportunidad"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
       </div>
     </>
   );

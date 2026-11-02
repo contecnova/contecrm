@@ -57,7 +57,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 async function montar() {
-  const { ComoEstabaEsto } = await import("@/paginas/Ficha");
+  const { ComoEstabaEsto } = await import("@/componentes/Trazabilidad");
   return render(
     <ComoEstabaEsto servicio="sales" objeto="oportunidad" objetoId="op-1" />,
   );

@@ -17,29 +17,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import {
-  Cargando,
-  Error as Fallo,
-  Retenidos,
-  Vacio,
-} from "@/componentes/Estados";
-import { Celda, Tabla } from "@/componentes/Tabla";
+import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Tabla } from "@/componentes/Tabla";
 import {
   BotonesDeRegistro,
   ConfirmarBorrado,
   FormularioDeEdicion,
   useEdicion,
 } from "@/componentes/Edicion";
-import {
-  escalar,
-  esIdentificadorTecnico,
-  humanizar,
-  nombreDelRegistro,
-} from "@/lib/formato";
+import { nombreDelRegistro } from "@/lib/formato";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { SubColecciones } from "@/componentes/SubColecciones";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { accionesDe, subColeccionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { ErrorApi, llamar, salvoCancelacion, subir } from "@/lib/api";
@@ -328,31 +320,12 @@ export function Ficha() {
         </div>
       ) : null}
 
-      {/* Las pestañas con la forma de Lightning: subrayado azul en la activa
-          sobre una línea que recorre el ancho. Eran píldoras con el fondo
-          claro del tema, y sobre una tarjeta blanca la activa quedaba del
-          mismo color que las otras: se marcaba con `aria-current` y no se
-          veía. Visto en la pantalla: tres pestañas idénticas. */}
-      <nav
-        aria-label={t("ficha.secciones")}
-        className="mt-3 flex flex-wrap border-b border-ink-dim"
-      >
-        {pestanas.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => setPestana(p)}
-            aria-current={p === activa ? "page" : undefined}
-            className={`-mb-px border-b-[3px] px-4 py-2 text-xs ${
-              p === activa
-                ? "border-accent font-semibold text-accent"
-                : "border-transparent text-ink-muted hover:border-ink-dim hover:text-ink"
-            }`}
-          >
-            {t(`ficha.${p}`)}
-          </button>
-        ))}
-      </nav>
+      <PestanasDeFicha
+        etiqueta={t("ficha.secciones")}
+        pestanas={pestanas.map((p) => ({ clave: p, nombre: t(`ficha.${p}`) }))}
+        activa={activa}
+        alElegir={(clave) => setPestana(clave as Pestana)}
+      />
 
       <div className="mt-4">
         {fallo && !fila ? (
@@ -377,7 +350,7 @@ export function Ficha() {
         ) : (
           <>
             {activa === "detalles" ? (
-              <Detalles
+              <DetallesDelRegistro
                 fila={fila}
                 retenidos={retenidos}
                 enmascarados={tapados}
@@ -438,119 +411,6 @@ export function Ficha() {
  * y las colecciones relacionadas, una debajo de otra—, que es justo el reparto
  * que Lightning separa en dos pestañas.
  */
-function Detalles({
-  fila,
-  retenidos,
-  enmascarados,
-  objeto,
-  servicio,
-  id,
-}: {
-  fila: Record<string, unknown>;
-  retenidos: string[];
-  enmascarados: string[];
-  /** Tipo del registro (`cuenta`, `oportunidad`…), para su trazabilidad. */
-  objeto: string;
-  servicio: string;
-  id: string;
-}) {
-  const { t } = useTranslation();
-  return (
-    <>
-      {/* Los datos como ficha, no como una tabla de una sola fila: una tabla
-          horizontal de veinte columnas para UN registro obliga a desplazarse
-          para leer sus propios campos. */}
-      <dl className="card grid gap-x-8 gap-y-3 p-4 sm:grid-cols-2">
-        {Object.entries(fila)
-          .filter(
-            ([clave]) => clave !== "campos" && !esIdentificadorTecnico(clave),
-          )
-          .map(([clave, valor]) => (
-            <Campo key={clave} clave={clave} valor={valor} />
-          ))}
-      </dl>
-
-      {/* Los identificadores, detrás de un desplegable. Ocupaban la mitad de
-          la ficha y no dicen nada a quien la mira, pero quien abre una
-          incidencia de soporte los necesita enteros. */}
-      <details className="mt-2">
-        <summary className="cursor-pointer text-3xs text-ink-faint">
-          {t("ficha.identificadores")}
-        </summary>
-        <dl className="card mt-2 grid gap-x-8 gap-y-2 p-4 sm:grid-cols-2">
-          {Object.entries(fila)
-            .filter(([clave]) => esIdentificadorTecnico(clave))
-            .map(([clave, valor]) => (
-              <Campo key={clave} clave={clave} valor={valor} monoespaciado />
-            ))}
-        </dl>
-      </details>
-
-      <Retenidos campos={retenidos} enmascarados={enmascarados} />
-
-      {/* Qué ha cambiado en ESTE registro, campo a campo. Plegado y cargado
-          sólo al abrirlo: es trazabilidad, no contenido, y pedirlo en cada
-          ficha abierta sería una llamada más por registro que casi nadie mira.
-          Pero cuando hace falta es lo primero que se pregunta —«esto antes no
-          decía esto»—, y hasta el 29-10-2026 se escribía y no lo devolvía
-          ninguna ruta. */}
-      {objeto && servicio ? (
-        <HistorialDeCampos servicio={servicio} objeto={objeto} objetoId={id} />
-      ) : null}
-
-      {/* Y cómo estaba el registro ENTERO en un momento dado, para los objetos
-          que tienen el rastro completo encendido. El historial de campos dice
-          qué cambió; no dice cómo era el conjunto, y reconstruirlo a mano
-          encadenando cambios sale mal en cuanto hay una fusión por medio. */}
-      {objeto && servicio ? (
-        <ComoEstabaEsto servicio={servicio} objeto={objeto} objetoId={id} />
-      ) : null}
-    </>
-  );
-}
-
-function Campo({
-  clave,
-  valor,
-  monoespaciado = false,
-}: {
-  clave: string;
-  valor: unknown;
-  monoespaciado?: boolean;
-}) {
-  // El rótulo encima y el valor debajo, como el panel de datos clave de
-  // arriba y como la pestaña «Detalles» de Lightning. Estaban enfrentados a
-  // los dos extremos de la fila: en una pantalla ancha quedaban 900 px entre
-  // «Nombre» y «Ana», y emparejar rótulo y valor a esa distancia no se hace
-  // de un vistazo. Dos sitios del producto que enseñan lo mismo —aquí y
-  // arriba— ahora lo colocan igual.
-  return (
-    <div className="min-w-0">
-      <dt className="truncate text-3xs text-ink-faint" title={humanizar(clave)}>
-        {humanizar(clave)}
-      </dt>
-      <dd
-        className={`truncate text-2xs text-ink ${monoespaciado ? "font-mono text-3xs text-ink-muted" : ""}`}
-        title={String(valor ?? "")}
-      >
-        {/* Un valor compuesto se pinta con el MISMO renderizador que la tabla.
-            Aquí iba `JSON.stringify(valor)`, así que la ficha de un registro
-            enseñaba `{"esquema":"CNAE","codigo":"2932"}` donde la tabla del
-            listado enseña dos etiquetas legibles. La misma información, en dos
-            pantallas del mismo producto, con dos formatos — y el de la ficha
-            nadie lo lee de un vistazo. */}
-        {valor === null || valor === undefined || valor === "" ? (
-          <span className="text-ink-faint">—</span>
-        ) : typeof valor === "object" ? (
-          <Celda valor={valor} campo={clave} />
-        ) : (
-          escalar(valor, clave)
-        )}
-      </dd>
-    </div>
-  );
-}
-
 function Adjuntos({ tipo, id }: { tipo: string; id: string }) {
   const { t } = useTranslation();
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
@@ -1044,242 +904,5 @@ export function PreguntarSobreEsto({
         ) : null}
       </div>
     </section>
-  );
-}
-
-interface CambioDeCampo {
-  campo: string;
-  valor_anterior: string | null;
-  valor_nuevo: string | null;
-  actor?: string | null;
-  origen?: string | null;
-  cuando?: string | null;
-}
-
-interface HistorialCampos {
-  cambios: CambioDeCampo[];
-  cuantos: number;
-  que_significa: string;
-}
-
-/**
- * Qué ha cambiado en este registro, campo a campo.
- *
- * **Se escribía y no lo leía nadie.** Cada edición anota el campo, el valor
- * anterior, el nuevo, quién lo hizo y **desde dónde** —la pantalla, la API o
- * una automatización—, y ninguna ruta lo devolvía. Es la primera pregunta de
- * cualquier discusión sobre un registro: «esto antes no decía esto».
- *
- * El **origen** es la mitad que casi nunca se guarda y la que la zanja: no es
- * lo mismo que lo cambiara una persona a que lo pisara una sincronización
- * todas las noches, y sin saberlo se culpa a quien pasaba por ahí.
- *
- * Plegado y cargado **sólo al abrirlo**: es trazabilidad, no contenido, y
- * pedirlo en cada ficha abierta sería una llamada por registro que casi nadie
- * mira. Y cuando está vacío, el servidor dice cuál de las dos cosas es —este
- * registro no se ha tocado, o este servicio no lleva ese histórico—, que con
- * la lista vacía se ven igual.
- */
-export function HistorialDeCampos({
-  servicio,
-  objeto,
-  objetoId,
-}: {
-  servicio: string;
-  objeto: string;
-  objetoId: string;
-}) {
-  const { t } = useTranslation();
-  const [abierto, setAbierto] = useState(false);
-  const [datos, setDatos] = useState<HistorialCampos | null>(null);
-  const [fallo, setFallo] = useState<unknown>(null);
-
-  const cargar = useCallback(() => {
-    const control = new AbortController();
-    setFallo(null);
-    llamar<HistorialCampos>(
-      `/api/v1/${servicio}/rastro/campos/${objeto}/${objetoId}`,
-      { signal: control.signal },
-    )
-      .then((r) => setDatos(r.datos))
-      .catch(salvoCancelacion(setFallo));
-    return () => control.abort();
-  }, [servicio, objeto, objetoId]);
-
-  useEffect(() => {
-    if (!abierto || datos) return undefined;
-    return cargar();
-  }, [abierto, datos, cargar]);
-
-  return (
-    <details
-      className="mt-3"
-      onToggle={(e) => setAbierto(e.currentTarget.open)}
-    >
-      <summary className="cursor-pointer text-3xs text-ink-faint">
-        {t("ficha.queHaCambiado")}
-      </summary>
-      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
-      {abierto && !datos && !fallo ? <Cargando /> : null}
-      {datos ? (
-        datos.cambios.length === 0 ? (
-          <Vacio
-            titulo={t("ficha.sinCambios")}
-            detalle={datos.que_significa}
-            compacto
-          />
-        ) : (
-          <ul className="card mt-2 flex flex-col gap-2 p-4">
-            {datos.cambios.map((c, i) => (
-              <li key={`${c.campo}-${i}`} className="text-2xs">
-                <span className="text-ink">{c.campo}</span>:{" "}
-                <span className="text-ink-faint line-through">
-                  {c.valor_anterior ?? "—"}
-                </span>{" "}
-                → <span className="text-ink">{c.valor_nuevo ?? "—"}</span>
-                {/* El origen al lado del cambio, no en otra columna: es lo que
-                    distingue «lo cambió alguien» de «lo pisó una
-                    sincronización», y es la diferencia que zanja la
-                    discusión. */}
-                {c.origen ? (
-                  <span className="ml-2 chip-dato">{c.origen}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )
-      ) : null}
-    </details>
-  );
-}
-
-interface Reconstruido {
-  objeto: string;
-  hasta: string | null;
-  hechos: number;
-  estado: Record<string, unknown>;
-  hechos_compensados: number;
-  porque: string;
-}
-
-interface Cuadra {
-  cuadra: boolean;
-  diferencias: { campo: string; reconstruido: unknown; vivo: unknown }[];
-  que_significa: string;
-}
-
-/**
- * Cómo estaba este registro en un momento dado (CRM-00.05.04.06).
- *
- * La pregunta que resuelve llega siempre tarde: **«¿cómo estaba esto el 3 de
- * marzo?»**. El historial de campos dice qué cambió; no dice cómo era el
- * conjunto, y reconstruirlo a mano encadenando cambios sale mal en cuanto hay
- * una fusión o un borrado por medio.
- *
- * **Y lo que de verdad importa es la comprobación de que cuadra.** Una
- * reconstrucción que no coincide con la tabla viva significa que alguien
- * escribió en la tabla sin pasar por el rastro —un script de corrección, una
- * migración, un arreglo a mano un viernes— y a partir de ahí el rastro deja de
- * ser una prueba sin que nadie se entere, porque sigue contestando con la
- * misma seguridad.
- *
- * Plegado y cargado sólo al abrirlo: el rastro completo está encendido en muy
- * pocos objetos a propósito —guardar todos los hechos de todo multiplica la
- * escritura por algo que casi nadie consulta— y pedirlo en cada ficha sería
- * una llamada por registro abierto que casi siempre contestaría «aquí no hay».
- */
-export function ComoEstabaEsto({
-  servicio,
-  objeto,
-  objetoId,
-}: {
-  servicio: string;
-  objeto: string;
-  objetoId: string;
-}) {
-  const { t } = useTranslation();
-  const [abierto, setAbierto] = useState(false);
-  const [estado, setEstado] = useState<Reconstruido | null>(null);
-  const [cuadra, setCuadra] = useState<Cuadra | null>(null);
-  const [fallo, setFallo] = useState<unknown>(null);
-
-  useEffect(() => {
-    if (!abierto) return;
-    const control = new AbortController();
-    setFallo(null);
-    llamar<Reconstruido>(`/api/v1/${servicio}/rastro/${objeto}/${objetoId}`, {
-      signal: control.signal,
-    })
-      .then((r) => setEstado(r.datos))
-      // Un objeto sin rastro completo contesta 404 a propósito, y eso no es un
-      // error: es que nadie lo encendió para este objeto.
-      .catch(salvoCancelacion(setFallo));
-    void llamar<Cuadra>(
-      `/api/v1/${servicio}/rastro/${objeto}/${objetoId}/cuadra`,
-      { signal: control.signal },
-    )
-      .then((r) => setCuadra(r.datos))
-      .catch(() => undefined);
-    return () => control.abort();
-  }, [abierto, servicio, objeto, objetoId]);
-
-  return (
-    <details
-      className="card mt-4 p-4"
-      onToggle={(e) => setAbierto((e.target as HTMLDetailsElement).open)}
-    >
-      <summary className="cursor-pointer text-2xs font-medium text-ink">
-        {t("ficha.comoEstaba")}
-      </summary>
-      {fallo ? (
-        <p className="mt-2 text-2xs text-ink-muted">
-          {t("ficha.sinRastroCompleto")}
-        </p>
-      ) : null}
-      {estado ? (
-        <>
-          <p className="mt-2 text-2xs text-ink-muted">
-            {t("ficha.hechos", {
-              cuantos: estado.hechos,
-              compensados: estado.hechos_compensados,
-            })}
-          </p>
-          {/* Los compensados se aplican y se anulan, no se saltan: saltarlos
-              daría el estado que habría habido si nadie se hubiera equivocado,
-              que no es lo que pasó. */}
-          <p className="mt-1 text-3xs text-ink-faint">{estado.porque}</p>
-        </>
-      ) : null}
-      {cuadra ? (
-        <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <p
-            className={
-              cuadra.cuadra ? "text-2xs text-success" : "text-2xs text-danger"
-            }
-          >
-            {cuadra.cuadra ? t("ficha.cuadra") : t("ficha.noCuadra")}
-          </p>
-          <p className="mt-1 text-3xs text-ink-muted">{cuadra.que_significa}</p>
-          {(cuadra.diferencias ?? []).length > 0 ? (
-            <ul className="mt-1 divide-y divide-ink-dim/30">
-              {(cuadra.diferencias ?? []).map((d) => (
-                <li
-                  key={d.campo}
-                  className="flex flex-wrap items-baseline gap-x-2 py-1 text-3xs"
-                >
-                  <span className="font-medium text-ink">{d.campo}</span>
-                  <span className="text-ink-faint">
-                    {String(d.reconstruido ?? "—")}
-                  </span>
-                  <span className="text-ink-muted">
-                    ≠ {String(d.vivo ?? "—")}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
-    </details>
   );
 }

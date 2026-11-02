@@ -35,6 +35,8 @@ import {
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { fecha, fechaHora } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
@@ -134,6 +136,7 @@ const ADONDE: Record<string, string | null> = {
 };
 
 export function Caso() {
+  const { t } = useTranslation();
   const { id = "" } = useParams();
   const [caso, setCaso] = useState<Caso | null>(null);
   const [porQueAqui, setPorQueAqui] = useState<Asignacion[] | null>(null);
@@ -148,6 +151,13 @@ export function Caso() {
   const modulo = moduloDe("casos");
   const recurso = modulo ? recursoDe(modulo, "caso") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas. «Relacionado» es todo lo
+  // que esta pantalla ya enseñaba —con qué tiene que ver, el reloj, de qué
+  // cuelga, cómo acabó— y «Detalles» son sus campos, que hasta hoy sólo se
+  // podían leer entrando en «Editar».
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -264,22 +274,47 @@ export function Caso() {
         />
       ) : null}
 
-      {caso.descripcion ? (
-        <p className="card mb-4 p-3 text-2xs text-ink-muted">
-          {caso.descripcion}
-        </p>
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ConQueTieneQueVer relaciones={caso.relacionado_con} />
-        <ElReloj sla={caso.sla} />
-        <DeQuienCuelga arbol={caso.relaciones} />
-        <ComoAcabo cierre={caso.cierre} casoId={id} />
-        <PorQueEstaAqui asignaciones={porQueAqui} />
-        <QueDerechoLoCubre saldo={saldo} />
-      </div>
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {caso.descripcion ? (
+              <p className="card mb-4 p-3 text-2xs text-ink-muted">
+                {caso.descripcion}
+              </p>
+            ) : null}
 
-      <ElHistorial eventos={caso.historial} />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ConQueTieneQueVer relaciones={caso.relacionado_con} />
+              <ElReloj sla={caso.sla} />
+              <DeQuienCuelga arbol={caso.relaciones} />
+              <ComoAcabo cierre={caso.cierre} casoId={id} />
+              <PorQueEstaAqui asignaciones={porQueAqui} />
+              <QueDerechoLoCubre saldo={saldo} />
+            </div>
+
+            <ElHistorial eventos={caso.historial} />
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="caso"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
+      </div>
     </>
   );
 }

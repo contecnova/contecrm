@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { escalar } from "@/lib/formato";
+import { escalar, trozos } from "@/lib/formato";
 
 describe("un importe", () => {
   it("lleva la moneda del registro cuando la hay", () => {
@@ -33,6 +33,21 @@ describe("un importe", () => {
     const escrito = escalar("117693", "importe");
     expect(escrito).not.toContain("€");
     expect(escrito.replace(/\D/g, "")).toBe("117693");
+  });
+
+  it("sin dato sale una raya, nunca la palabra «null»", () => {
+    // `String(null)` da «null», y eso llegaba a la pantalla por los valores
+    // compuestos: la pestaña «Detalles» de un caso enseñaba «Motivo: null»,
+    // «Padre: null», «Contacto ID: null». Quien lo lee no sabe si es un hueco
+    // o un valor que alguien escribió a mano.
+    expect(escalar(null, "motivo")).toBe("—");
+    expect(escalar(undefined, "motivo")).toBe("—");
+  });
+
+  it("un valor compuesto tampoco escribe «null» dentro", () => {
+    // El caso real: el cierre de un caso llega como objeto con sus huecos.
+    const piezas = trozos({ motivo: null, reaperturas: 2 }, "cierre");
+    expect(piezas.map((p) => p.texto).join(" · ")).not.toContain("null");
   });
 
   it("un número que no es dinero no se vuelve dinero por llevar moneda", () => {

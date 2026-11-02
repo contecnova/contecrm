@@ -65,7 +65,23 @@ if (/entrar/.test(new URL(p.url()).pathname)) {
   process.exit(1);
 }
 
+/**
+ * Texto que es el dato en crudo y no una palabra de nadie.
+ *
+ * `null`, `undefined` y `[object Object]` son lo que sale cuando un valor
+ * vacío o compuesto llega a la pantalla sin pasar por el formateador de la
+ * casa. **Medido el 02-11-2026**: la pestaña «Detalles» de un caso enseñaba
+ * «Motivo: null», «Padre: null», «Contacto ID: null», porque `String(null)`
+ * da «null» y los valores compuestos no filtraban los huecos.
+ *
+ * Se mira con los límites de palabra puestos: «anular» lleva «null» dentro y
+ * es castellano. Y se mira en TODAS las pantallas, no sólo en la que se vio,
+ * porque el formateador es el mismo para las 58.
+ */
+const EN_CRUDO = /\bnull\b|\bundefined\b|\[object Object\]/;
+
 const rotas = [];
+const crudas = [];
 const lista = [...caminos].sort();
 for (const camino of lista) {
   errores.length = 0;
@@ -75,6 +91,11 @@ for (const camino of lista) {
   const rota = /no se ha podido pintar|No se ha podido contactar/i.test(txt);
   if (rota || errores.length) {
     rotas.push(`${camino}\n     ${errores[0] ?? txt.slice(0, 120)}`);
+  }
+  const crudo = EN_CRUDO.exec(txt);
+  if (crudo) {
+    const desde = Math.max(0, crudo.index - 50);
+    crudas.push(`${camino}\n     …${txt.slice(desde, crudo.index + 60)}…`);
   }
   // Y la primera ficha del listado, que es donde estaba el fallo de verdad.
   const enlace = await p.$("main tbody tr a");
@@ -86,10 +107,25 @@ for (const camino of lista) {
     if (/no se ha podido pintar|No se ha podido contactar/i.test(t2) || errores.length) {
       rotas.push(`${camino} → ficha ${new URL(p.url()).pathname}\n     ${errores[0] ?? t2.slice(0, 120)}`);
     }
+    // Y en la ficha se recorren además SUS pestañas: el dato en crudo estaba
+    // en «Detalles», que no sale hasta que alguien la pulsa.
+    const pestanas = await p.$$("main nav button");
+    for (const boton of pestanas) {
+      await boton.click().catch(() => {});
+      await p.waitForTimeout(900);
+      const t3 = (await p.locator("main").innerText().catch(() => "")).replace(/\s+/g, " ");
+      const c3 = EN_CRUDO.exec(t3);
+      if (c3) {
+        const desde = Math.max(0, c3.index - 50);
+        crudas.push(`${camino} → ficha\n     …${t3.slice(desde, c3.index + 60)}…`);
+        break;
+      }
+    }
   }
 }
 console.log(`recorridas: ${lista.length} pantallas`);
 console.log(`ROTAS: ${rotas.length}`);
-if (rotas.length) process.exitCode = 1;
-console.log(rotas.map((r) => "  " + r).join("\n"));
+console.log(`CON EL DATO EN CRUDO: ${crudas.length}`);
+if (rotas.length || crudas.length) process.exitCode = 1;
+console.log([...rotas, ...crudas].map((r) => "  " + r).join("\n"));
 await navegador.close();

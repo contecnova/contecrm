@@ -324,6 +324,12 @@ export function tieneDato(valor: unknown): boolean {
 
 /** Un número, una fecha o un texto, escritos en castellano. */
 export function escalar(valor: unknown, campo = "", moneda = ""): string {
+  // **Sin dato es una raya, nunca la palabra «null».** `String(null)` da
+  // «null», y eso llegaba a la pantalla a través de `trozos`: la pestaña
+  // «Detalles» de un caso enseñaba «Motivo: null», «Padre: null»,
+  // «Contacto ID: null». Quien lo lee no sabe si es un hueco o un valor que
+  // alguien escribió. Medido el 02-11-2026.
+  if (valor === null || valor === undefined) return "—";
   if (typeof valor === "boolean") return valor ? "sí" : "no";
   // Un importe con la moneda del registro sale CON su símbolo. Sin ella no se
   // inventa ninguna: una cifra con el símbolo equivocado es peor que una

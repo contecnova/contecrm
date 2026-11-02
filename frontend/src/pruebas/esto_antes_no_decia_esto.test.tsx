@@ -38,7 +38,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 async function montar() {
-  const { HistorialDeCampos } = await import("@/paginas/Ficha");
+  const { HistorialDeCampos } = await import("@/componentes/Trazabilidad");
   return render(
     <HistorialDeCampos servicio="sales" objeto="oportunidad" objetoId="op-1" />,
   );
