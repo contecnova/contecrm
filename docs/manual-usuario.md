@@ -102,6 +102,10 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
+**La pantalla de entrada se ve como el resto.** Hasta el 02-11-2026 era la
+única con otra cara —otra paleta, otras formas— y salía oscura aunque tuvieras
+el tema claro. Ahora respeta tu tema.
+
 **El tamaño de la letra.** Desde el 02-11-2026 el producto escribe con siete
 tamaños y **ninguno por debajo de 12 px**. Antes usaba once —con 10 y 11 px en
 tres de cada cuatro textos— y había pantallas con nueve tamaños distintos a la

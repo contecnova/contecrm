@@ -381,23 +381,40 @@ donde un barrido llevaba 83 rutas en verde sin haber mirado una sola pantalla:
 - **Se cuentan elementos con caja**, no `innerText`: el texto de un elemento con
   `display:none` cuenta, y una pantalla vacía con un menú oculto sale llena.
 
-#### La pantalla de entrada es la de contecflow, exacta
+#### La pantalla de entrada (02-11-2026)
 
-Es la **única** pantalla del CRM que se sale del sistema de diseño, y se sale a
-propósito: se ve antes de entrar, no tiene marco alrededor y es la que comparten
-las dos soluciones de la casa. Por eso sus valores van escritos —`#080c14` de
-fondo, la tarjeta de 400 px con radio 20, los campos de 44 de alto— y no
-traducidos a los tokens de este producto, que son otros y darían otra pantalla.
+Hasta hoy era la **única** pantalla del CRM fuera del sistema de diseño, y lo
+era a propósito: copiaba la de contecflow carácter por carácter. **Medido**:
+12 colores propios, 18 bloques de estilo en línea, 13 tamaños de letra y tres
+radios —10, 12 y 20 contra los 4 del sistema—.
 
-Su tipografía **ya no es la de contecflow**: al adoptar el sistema de diseño de
-contecmind dejó de cargarse DM Sans, y una fuente que se nombra y no está no es
-«exacta», es la del sistema. Queda pendiente decidir si esta pantalla entera
-pasa también a contecmind: hoy el CRM se ve como contecmind y su puerta como
-contecflow, que es justo la incoherencia que el cambio venía a quitar.
+El propio fichero dejaba la decisión pendiente: «hoy el CRM se ve como
+contecmind y su puerta como contecflow, que es justo la incoherencia que el
+cambio venía a quitar». Con el CRM ya en Salesforce Lightning, la puerta se
+parecía todavía menos, y era la primera pantalla que ve cualquiera.
+
+Ahora usa los tokens y las clases de la casa, y con eso gana tres cosas que no
+tenía:
+
+- **Respeta el tema.** Era oscura siempre; ahora sale clara u oscura según lo
+  que cada quien tenga guardado. Comprobado en los dos.
+- **Entra en el gate de contraste**, que mira los tokens de texto en claro y
+  en oscuro. Un `#7689a8` escrito a mano no lo miraba nadie.
+- **Entra en la escala tipográfica**: escribía rótulos a 11 px.
+
+Medido después: 0 estilos en línea, 4 tamaños y todos de la escala, un solo
+radio —4 px— y una sola familia de letra.
 
 Un detalle donde se separa a propósito: el nombre del producto es un `h1` y no
 un `span`. Se ve igual, y quien navega con lector de pantalla necesita que la
 página tenga un encabezado; hay un gate que lo comprueba.
+
+Y la regla se pone ahora que el recuento está en cero:
+`una_pantalla_no_se_pinta_a_mano` prohíbe un color literal —hexadecimal, `rgb`
+o `hsl`— en `paginas/` y `componentes/`. Fuera del recorrido quedan, con su
+motivo, el color por objeto de `lib/navegacion.ts` —en Lightning una cuenta es
+malva y un candidato naranja: eso es producto— y `embebido/`, el widget que se
+inyecta en la página de otro, donde los tokens de esta aplicación no existen.
 
 #### Nadie teclea un identificador a mano
 

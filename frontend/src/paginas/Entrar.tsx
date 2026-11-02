@@ -27,214 +27,82 @@
  * conteste. Adivinar aquí si un correo existe sería filtrar quién tiene cuenta.
  */
 
-import { useEffect, useState, type CSSProperties, type FocusEvent, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { llamar } from "@/lib/api";
 import { config } from "@/lib/config";
+import { cn } from "@/lib/utiles";
 import { admitePasskeys, firmarConPasskey } from "@/lib/webauthn";
 
-// ── Los valores de contecflow, tal cual ──────────────────────────────────
+// ── La puerta, con el sistema de diseño de la casa ───────────────────────
 //
-// Copiados de su `index.css` y de su `LoginPage.tsx`. Escritos y no derivados
-// de variables porque son de la OTRA solución: si se leyeran de las de aquí,
-// la pantalla dejaría de ser la misma en cuanto una de las dos cambiara un
-// color, y lo que se ha pedido es que sean idénticas.
-const C = {
-  fondo: "#080c14", // --surface-0
-  tarjeta: "#0d1220", // --surface-1
-  campo: "#111827", // --surface-2
-  borde: "#1e2d45", // --surface-4
-  texto1: "#f0f4ff",
-  texto2: "#a8b8d4",
-  texto3: "#7689a8",
-  texto4: "#4a5a78",
-  acento: "#4f8ef7",
-  peligro: "#f87171",
-  peligroFondo: "rgba(248, 113, 113, 0.08)",
-  peligroBorde: "rgba(248, 113, 113, 0.2)",
-  exito: "#34d399",
-  exitoFondo: "rgba(52, 211, 153, 0.08)",
-  exitoBorde: "rgba(52, 211, 153, 0.2)",
-  // DM Sans YA NO SE CARGA: al adoptar el sistema de diseño de contecmind
-  // (29-09-2026) se quitó de `main.tsx`, así que nombrarla aquí solo hacía que
-  // el navegador la buscara, no la encontrara y cayera a la siguiente. Se deja
-  // la que de verdad se renderiza. Si algún día se vuelve a cargar DM Sans,
-  // esta línea vuelve — pero nombrar una fuente que no está es decir que la
-  // pantalla es idéntica cuando no lo es.
-  fuente: "'Geist', system-ui, sans-serif",
-} as const;
-
-const st: Record<string, CSSProperties> = {
-  pagina: {
-    minHeight: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    background: C.fondo,
-    padding: "24px 16px",
-    position: "relative",
-    fontFamily: C.fuente,
-  },
-  tarjeta: {
-    width: "100%",
-    maxWidth: 400,
-    background: C.tarjeta,
-    border: `1px solid ${C.borde}`,
-    borderRadius: 20,
-    padding: "36px 32px",
-    boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
-  },
-  logo: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginBottom: 32,
-  },
-  logoIcono: {
-    width: 40,
-    height: 40,
-    background: C.acento,
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  // Es un `h1` y no un `span` como en contecflow: se ve igual —mismo tamaño,
-  // mismo peso, mismo interletrado, margen a cero— y quien navega con lector de
+// Hasta el 02-11-2026 esta pantalla se pintaba con **12 colores propios, 18
+// bloques de estilo en línea, 13 tamaños de letra y tres radios** —10, 12 y
+// 20—, copiados a mano de contecflow. Su propio comentario lo decía: «hoy el
+// CRM se ve como contecmind y su puerta como contecflow», y dejaba la decisión
+// pendiente. Ahora el CRM se ve como Salesforce Lightning, así que la puerta
+// se parecía todavía menos: radio 20 contra 4, otro azul, otra escala.
+//
+// Y era la primera pantalla que ve cualquiera.
+//
+// Ahora usa los tokens y las clases de la casa. Con eso gana tres cosas que
+// no tenía: **respeta el tema** —claro u oscuro, el que cada quien tenga
+// guardado, en vez de ser oscura siempre—, **entra en el gate de contraste**,
+// que comprueba los tokens de texto en los dos temas, y **entra en la escala
+// tipográfica**, que es lo que la tenía escribiendo rótulos a 11 px.
+//
+// Las claves son las mismas de antes para que el JSX no cambie: lo que
+// cambia es que son clases y no una tabla de estilos.
+const cl = {
+  pagina:
+    "relative flex min-h-screen flex-col items-center justify-center bg-paper-dark px-4 py-6",
+  tarjeta: "card w-full max-w-[400px] px-8 py-9",
+  logo: "mb-8 flex items-center justify-center gap-2.5",
+  logoIcono:
+    "grid h-10 w-10 shrink-0 place-items-center rounded bg-accent text-white",
+  // Es un `h1` y no un `span` como en contecflow: quien navega con lector de
   // pantalla necesita que la página tenga un encabezado. Hay un gate que lo
   // comprueba y tenía razón al saltar.
-  logoTexto: {
-    fontSize: 22,
-    fontWeight: 800,
-    color: C.texto1,
-    letterSpacing: "-0.03em",
-    margin: 0,
-    lineHeight: 1.2,
-  },
-  etiqueta: {
-    display: "block",
-    // 12 y no 11: es el mínimo del sistema desde el 02-11-2026, y el rótulo
-    // de un campo de la pantalla de entrada es justo donde menos conviene
-    // apretar. Esta pantalla entera está pendiente de pasar al sistema de
-    // diseño —escribe sus 68 estilos a mano, copiados de contecflow—, pero
-    // eso no es motivo para dejar texto ilegible mientras tanto.
-    fontSize: 12,
-    fontWeight: 600,
-    color: C.texto3,
-    marginBottom: 6,
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-  },
-  campo: {
-    width: "100%",
-    height: 44,
-    padding: "0 14px",
-    background: C.campo,
-    border: `1px solid ${C.borde}`,
-    borderRadius: 12,
-    color: C.texto1,
-    fontSize: 14,
-    fontFamily: "inherit",
-    outline: "none",
-    boxSizing: "border-box",
-    transition: "border-color 0.15s",
-  },
-  botonPrimario: {
-    width: "100%",
-    height: 44,
-    background: C.acento,
-    color: "#fff",
-    border: "none",
-    borderRadius: 12,
-    fontWeight: 700,
-    fontSize: 14,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    transition: "opacity 0.15s",
-    fontFamily: "inherit",
-  },
-  botonSecundario: {
-    width: "100%",
-    height: 44,
-    background: "transparent",
-    color: C.texto2,
-    border: `1px solid ${C.borde}`,
-    borderRadius: 12,
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    transition: "background 0.15s, border-color 0.15s",
-    fontFamily: "inherit",
-  },
-  avisoError: {
-    background: C.peligroFondo,
-    border: `1px solid ${C.peligroBorde}`,
-    borderRadius: 10,
-    padding: "10px 14px",
-    color: C.peligro,
-    fontSize: 13,
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  avisoBien: {
-    background: C.exitoFondo,
-    border: `1px solid ${C.exitoBorde}`,
-    borderRadius: 10,
-    padding: "10px 14px",
-    color: C.exito,
-    fontSize: 13,
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  separador: { display: "flex", alignItems: "center", gap: 12, margin: "4px 0" },
-  separadorLinea: { flex: 1, height: 1, background: C.borde },
-  separadorTexto: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: C.texto4,
-    textTransform: "uppercase",
-    letterSpacing: "0.1em",
-  },
-  pie: {
-    marginTop: 24,
-    paddingTop: 20,
-    borderTop: `1px solid ${C.borde}`,
-    textAlign: "center",
-    fontSize: 12,
-    color: C.texto4,
-  },
-  enlace: {
-    background: "none",
-    border: "none",
-    color: C.acento,
-    fontSize: 13,
-    cursor: "pointer",
-    padding: 0,
-    fontFamily: "inherit",
-    fontWeight: 500,
-  },
-  formulario: { display: "flex", flexDirection: "column", gap: 16 },
-  ayuda: { fontSize: 13, color: C.texto2, margin: 0 },
-};
+  logoTexto: "m-0 text-pagina font-extrabold tracking-[-0.03em] text-ink",
+  etiqueta:
+    "mb-1.5 block text-rotulo font-semibold uppercase tracking-[0.06em] text-ink-muted",
+  campo:
+    "h-11 w-full rounded border border-ink-dim bg-paper-sunk px-3.5 text-titulin text-ink outline-none transition-colors focus:border-accent",
+  botonPrimario: "btn-primary h-11 w-full justify-center gap-2 text-titulin",
+  botonSecundario:
+    "btn-secondary h-11 w-full justify-center gap-2 text-titulin",
+  avisoError:
+    "flex items-start gap-2 rounded border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-dato text-danger-text",
+  avisoBien:
+    "flex items-start gap-2 rounded border border-success/30 bg-success/10 px-3.5 py-2.5 text-dato text-success-text",
+  separador: "my-1 flex items-center gap-3",
+  separadorLinea: "h-px flex-1 bg-ink-dim",
+  separadorTexto:
+    "text-rotulo font-semibold uppercase tracking-[0.1em] text-ink-faint",
+  pie: "mt-6 border-t border-ink-dim pt-5 text-center text-rotulo text-ink-faint",
+  // NO `.btn-link`: esa clase es monoespaciada y en mayúsculas —sirve para una
+  // acción secundaria de una barra—, y aquí dejaba «¿NO LA RECUERDAS?»
+  // escrito como un código. Visto en la pantalla el 02-11-2026.
+  enlace: "text-dato font-medium text-accent hover:underline",
+  formulario: "flex flex-col gap-4",
+  ayuda: "m-0 text-dato text-ink-muted",
+} as const;
 
 // ── Iconos, en línea y sin dependencia ────────────────────────────────────
 
 function IconoOjo() {
   return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -243,7 +111,16 @@ function IconoOjo() {
 
 function IconoOjoTachado() {
   return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
       <line x1="1" y1="1" x2="23" y2="23" />
     </svg>
@@ -252,7 +129,16 @@ function IconoOjoTachado() {
 
 function IconoPasskey() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="8" cy="8" r="4" />
       <path d="M12 8h4M18 6v4" />
       <path d="M4 20c0-2.5 1.8-4 4-4s4 1.5 4 4" />
@@ -262,7 +148,16 @@ function IconoPasskey() {
 
 function IconoEscudo() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   );
@@ -270,7 +165,19 @@ function IconoEscudo() {
 
 function IconoMarca() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      // El blanco lo hereda de la pastilla de acento que lo contiene. Escrito
+      // a mano se quedaba blanco aunque la marca cambiara de color, y además
+      // era el único color literal que quedaba en una pantalla.
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="3" />
       <circle cx="5" cy="6" r="2" />
       <circle cx="19" cy="6" r="2" />
@@ -303,17 +210,11 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
 
   // El token del enlace llega en la dirección. Se detecta al cargar para
   // enseñar directamente el paso de poner la contraseña nueva.
-  const tokenDeReset = new URLSearchParams(window.location.search).get("restablecer") ?? "";
+  const tokenDeReset =
+    new URLSearchParams(window.location.search).get("restablecer") ?? "";
   useEffect(() => {
     if (tokenDeReset) setVista("olvidada");
   }, [tokenDeReset]);
-
-  function entra(e: FocusEvent<HTMLInputElement>) {
-    e.target.style.borderColor = C.acento;
-  }
-  function sale(e: FocusEvent<HTMLInputElement>) {
-    e.target.style.borderColor = C.borde;
-  }
 
   function comoTexto(fallo: unknown, porDefecto: string): string {
     const detalle = (fallo as { detalle?: string; message?: string })?.detalle;
@@ -349,10 +250,13 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
     setError("");
     setConLlave(true);
     try {
-      const reto = await llamar<Record<string, unknown>>("/api/v1/auth/passkeys/entrar", {
-        metodo: "POST",
-        cuerpo: { tenant, email },
-      });
+      const reto = await llamar<Record<string, unknown>>(
+        "/api/v1/auth/passkeys/entrar",
+        {
+          metodo: "POST",
+          cuerpo: { tenant, email },
+        },
+      );
       const firmada = await firmarConPasskey(reto.datos as never);
       await llamar("/api/v1/sesion/entrar", {
         metodo: "POST",
@@ -361,7 +265,8 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
       alEntrar();
     } catch (fallo) {
       // Cancelar el diálogo del sistema no es un fallo: no se enseña nada.
-      if (fallo instanceof DOMException && fallo.name === "NotAllowedError") return;
+      if (fallo instanceof DOMException && fallo.name === "NotAllowedError")
+        return;
       setError(comoTexto(fallo, t("entrar.llaveNoVale")));
     } finally {
       setConLlave(false);
@@ -373,7 +278,10 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
     setError("");
     setEnviando(true);
     try {
-      await llamar("/api/v1/auth/restablecer", { metodo: "POST", cuerpo: { email, tenant } });
+      await llamar("/api/v1/auth/restablecer", {
+        metodo: "POST",
+        cuerpo: { email, tenant },
+      });
     } catch {
       // A propósito: se dice lo mismo salga como salga. Distinguirlo
       // convertiría esto en un comprobador de qué correos tienen cuenta.
@@ -403,27 +311,31 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
   }
 
   return (
-    <div style={st.pagina}>
+    <div className={cl.pagina}>
       <div style={{ width: "100%", maxWidth: 400 }}>
-        <div style={st.tarjeta}>
-          <div style={st.logo}>
+        <div className={cl.tarjeta}>
+          <div className={cl.logo}>
             {config().logotipo ? (
-              <img src={config().logotipo} alt={config().nombre} style={{ height: 40 }} />
+              <img
+                src={config().logotipo}
+                alt={config().nombre}
+                style={{ height: 40 }}
+              />
             ) : (
-              <span style={st.logoIcono}>
+              <span className={cl.logoIcono}>
                 <IconoMarca />
               </span>
             )}
-            <h1 style={st.logoTexto}>{config().nombre}</h1>
+            <h1 className={cl.logoTexto}>{config().nombre}</h1>
           </div>
 
           {vista === "olvidada" ? (
             tokenDeReset ? (
               /* ── Poner una contraseña nueva ───────────────────────── */
-              <form onSubmit={ponerNueva} style={st.formulario} noValidate>
-                <p style={st.ayuda}>{t("entrar.eligeNueva")}</p>
+              <form onSubmit={ponerNueva} className={cl.formulario} noValidate>
+                <p className={cl.ayuda}>{t("entrar.eligeNueva")}</p>
                 <div>
-                  <label style={st.etiqueta} htmlFor="entrar-nueva">
+                  <label className={cl.etiqueta} htmlFor="entrar-nueva">
                     {t("entrar.contrasenaNueva")}
                   </label>
                   <input
@@ -434,16 +346,14 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                     autoComplete="new-password"
                     value={nueva}
                     onChange={(e) => setNueva(e.target.value)}
-                    style={st.campo}
-                    onFocus={entra}
-                    onBlur={sale}
+                    className={cl.campo}
                   />
-                  <p style={{ ...st.ayuda, fontSize: 12, marginTop: 6, color: C.texto4 }}>
+                  <p className="m-0 mt-1.5 text-rotulo text-ink-faint">
                     {t("entrar.minimoDoce")}
                   </p>
                 </div>
                 {error ? (
-                  <div style={st.avisoError} role="alert">
+                  <div className={cl.avisoError} role="alert">
                     <span>⚠</span>
                     <span>{error}</span>
                   </div>
@@ -451,17 +361,17 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                 <button
                   type="submit"
                   disabled={enviando}
-                  style={{ ...st.botonPrimario, opacity: enviando ? 0.6 : 1 }}
+                  className={cn(cl.botonPrimario, enviando && "opacity-60")}
                 >
                   {enviando ? t("app.cargando") : t("entrar.guardarContrasena")}
                 </button>
               </form>
             ) : (
               /* ── Pedir el enlace ──────────────────────────────────── */
-              <form onSubmit={pedirEnlace} style={st.formulario} noValidate>
-                <p style={st.ayuda}>{t("entrar.recuperarAyuda")}</p>
+              <form onSubmit={pedirEnlace} className={cl.formulario} noValidate>
+                <p className={cl.ayuda}>{t("entrar.recuperarAyuda")}</p>
                 <div>
-                  <label style={st.etiqueta} htmlFor="olvido-tenant">
+                  <label className={cl.etiqueta} htmlFor="olvido-tenant">
                     {t("entrar.tenant")}
                   </label>
                   <input
@@ -471,13 +381,11 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                     autoComplete="organization"
                     value={tenant}
                     onChange={(e) => setTenant(e.target.value)}
-                    style={st.campo}
-                    onFocus={entra}
-                    onBlur={sale}
+                    className={cl.campo}
                   />
                 </div>
                 <div>
-                  <label style={st.etiqueta} htmlFor="olvido-email">
+                  <label className={cl.etiqueta} htmlFor="olvido-email">
                     {t("entrar.email")}
                   </label>
                   <input
@@ -487,13 +395,11 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                     autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={st.campo}
-                    onFocus={entra}
-                    onBlur={sale}
+                    className={cl.campo}
                   />
                 </div>
                 {aviso ? (
-                  <div style={st.avisoBien} role="status">
+                  <div className={cl.avisoBien} role="status">
                     <span>✓</span>
                     <span>{aviso}</span>
                   </div>
@@ -501,7 +407,7 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                 <button
                   type="submit"
                   disabled={enviando}
-                  style={{ ...st.botonPrimario, opacity: enviando ? 0.6 : 1 }}
+                  className={cn(cl.botonPrimario, enviando && "opacity-60")}
                 >
                   {enviando ? t("app.cargando") : t("entrar.mandarEnlace")}
                 </button>
@@ -512,7 +418,7 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                     setAviso("");
                     setError("");
                   }}
-                  style={{ ...st.enlace, textAlign: "center", width: "100%", fontSize: 12 }}
+                  className="w-full text-center text-rotulo font-medium text-accent hover:underline"
                 >
                   {t("entrar.volver")}
                 </button>
@@ -522,7 +428,7 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
             <>
               <a
                 href="/api/v1/sso/iniciar"
-                style={{ ...st.botonSecundario, textDecoration: "none", marginBottom: 4 }}
+                className={cn(cl.botonSecundario, "mb-1 no-underline")}
               >
                 <IconoEscudo />
                 <span>{t("entrar.sso")}</span>
@@ -531,15 +437,15 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
               {/* La separación dice que son caminos distintos y no pasos. Sin
                   ella, el botón de arriba parece el primer paso del formulario
                   de abajo. */}
-              <div style={st.separador}>
-                <div style={st.separadorLinea} />
-                <span style={st.separadorTexto}>{t("entrar.o")}</span>
-                <div style={st.separadorLinea} />
+              <div className={cl.separador}>
+                <div className={cl.separadorLinea} />
+                <span className={cl.separadorTexto}>{t("entrar.o")}</span>
+                <div className={cl.separadorLinea} />
               </div>
 
-              <form onSubmit={enviar} style={st.formulario} noValidate>
+              <form onSubmit={enviar} className={cl.formulario} noValidate>
                 <div>
-                  <label style={st.etiqueta} htmlFor="entrar-tenant">
+                  <label className={cl.etiqueta} htmlFor="entrar-tenant">
                     {t("entrar.tenant")}
                   </label>
                   <input
@@ -549,14 +455,12 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                     autoComplete="organization"
                     value={tenant}
                     onChange={(e) => setTenant(e.target.value)}
-                    style={st.campo}
-                    onFocus={entra}
-                    onBlur={sale}
+                    className={cl.campo}
                   />
                 </div>
 
                 <div>
-                  <label style={st.etiqueta} htmlFor="entrar-email">
+                  <label className={cl.etiqueta} htmlFor="entrar-email">
                     {t("entrar.email")}
                   </label>
                   <input
@@ -566,9 +470,7 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                     autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={st.campo}
-                    onFocus={entra}
-                    onBlur={sale}
+                    className={cl.campo}
                   />
                 </div>
 
@@ -581,7 +483,10 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                       marginBottom: 6,
                     }}
                   >
-                    <label style={{ ...st.etiqueta, marginBottom: 0 }} htmlFor="entrar-contrasena">
+                    <label
+                      className={cn(cl.etiqueta, "mb-0")}
+                      htmlFor="entrar-contrasena"
+                    >
                       {t("entrar.contrasena")}
                     </label>
                     {/* Aquí y no al final: quien no puede entrar lo busca justo
@@ -593,7 +498,7 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                         setError("");
                         setAviso("");
                       }}
-                      style={st.enlace}
+                      className={cl.enlace}
                     >
                       {t("entrar.olvidada")}
                     </button>
@@ -606,29 +511,17 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                       autoComplete="current-password"
                       value={contrasena}
                       onChange={(e) => setContrasena(e.target.value)}
-                      style={{ ...st.campo, paddingRight: 44 }}
-                      onFocus={entra}
-                      onBlur={sale}
+                      className={cn(cl.campo, "pr-11")}
                     />
                     {/* Enseñarla es lo que evita el tercer intento a ciegas con
                         una contraseña larga y un teclado que no se ve. */}
                     <button
                       type="button"
                       onClick={() => setVerContrasena((v) => !v)}
-                      aria-label={t(verContrasena ? "entrar.ocultar" : "entrar.ver")}
-                      style={{
-                        position: "absolute",
-                        right: 12,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        background: "none",
-                        border: "none",
-                        color: C.texto3,
-                        cursor: "pointer",
-                        padding: 4,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
+                      aria-label={t(
+                        verContrasena ? "entrar.ocultar" : "entrar.ver",
+                      )}
+                      className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center p-1 text-ink-muted hover:text-ink"
                     >
                       {verContrasena ? <IconoOjoTachado /> : <IconoOjo />}
                     </button>
@@ -636,13 +529,13 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                 </div>
 
                 {error ? (
-                  <div style={st.avisoError} role="alert">
+                  <div className={cl.avisoError} role="alert">
                     <span>⚠</span>
                     <span>{error}</span>
                   </div>
                 ) : null}
                 {aviso ? (
-                  <div style={st.avisoBien} role="status">
+                  <div className={cl.avisoBien} role="status">
                     <span>✓</span>
                     <span>{aviso}</span>
                   </div>
@@ -651,7 +544,7 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                 <button
                   type="submit"
                   disabled={enviando}
-                  style={{ ...st.botonPrimario, opacity: enviando ? 0.6 : 1 }}
+                  className={cn(cl.botonPrimario, enviando && "opacity-60")}
                 >
                   {enviando ? t("app.cargando") : t("entrar.enviar")}
                 </button>
@@ -661,17 +554,19 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                     type="button"
                     onClick={() => void entrarConLlave()}
                     disabled={conLlave}
-                    style={{ ...st.botonSecundario, opacity: conLlave ? 0.6 : 1 }}
+                    className={cn(cl.botonSecundario, conLlave && "opacity-60")}
                   >
                     <IconoPasskey />
-                    <span>{conLlave ? t("app.cargando") : t("entrar.conPasskey")}</span>
+                    <span>
+                      {conLlave ? t("app.cargando") : t("entrar.conPasskey")}
+                    </span>
                   </button>
                 ) : null}
               </form>
             </>
           )}
 
-          <div style={st.pie}>{t("entrar.pie")}</div>
+          <div className={cl.pie}>{t("entrar.pie")}</div>
         </div>
       </div>
     </div>
