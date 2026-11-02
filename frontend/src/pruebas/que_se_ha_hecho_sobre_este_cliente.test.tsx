@@ -90,7 +90,17 @@ describe("lo simulado y lo hecho", () => {
   it("sin ninguna ejecutada lo dice, en vez de enseñar las simuladas ahí", async () => {
     operaciones = [SIMULADA];
     render(<CicloDeVidaDelCliente />);
-    expect(await screen.findByText("ciclovida.sinHechas")).toBeInTheDocument();
+    // **Primero que hayan llegado los datos.** Mientras la lista está vacía
+    // las DOS secciones enseñan su vacío, así que esperar por «sin hechas»
+    // resolvía en el primer pintado —antes de la respuesta— y lo que se
+    // comprobaba era el estado de carga. Salía verde o rojo según lo cargada
+    // que estuviera la máquina: cazado el 02-11-2026 en preflight, con la
+    // pila local levantada, mientras la suite suelta pasaba tres veces
+    // seguidas.
+    expect(
+      await screen.findByText('ciclovida.sacaria:{"bloques":2,"filas":520}'),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ciclovida.sinHechas")).toBeInTheDocument();
     expect(screen.queryByText("ciclovida.sinSimuladas")).not.toBeInTheDocument();
   });
 

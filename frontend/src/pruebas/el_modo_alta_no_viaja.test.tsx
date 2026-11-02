@@ -56,7 +56,12 @@ describe("el modo alta y el modo edición no viajan entre pantallas", () => {
     // confirmación, y que el efecto **dependa del identificador** — sin eso no
     // se entera del cambio.
     expect(FICHA).toMatch(/setEditando\([\s\S]*?\);\s*\n\s*setConfirmando\(false\);/);
-    expect(FICHA).toMatch(/\}, \[modulo, objeto, id[^\]]*\]\);/);
+    // El identificador por su nombre y no por su posición: la ficha ha
+    // cambiado de forma dos veces y cada vez el `modulo`/`objeto` de al lado
+    // se llamaba de otra manera. Lo que se vigila es que el efecto dependa
+    // del registro abierto y de la dirección, que es de donde sale la
+    // excepción de abajo.
+    expect(FICHA).toMatch(/\}, \[[^\]]*\bid\b[^\]]*\bparametrosDeFicha\b[^\]]*\]\);/);
     // Y que ese recálculo mire la dirección, que es la excepción.
     expect(FICHA).toMatch(/setEditando\(parametrosDeFicha\.get\("editar"\) === "1"\)/);
   });

@@ -82,6 +82,19 @@ async function abrir(objeto: string) {
   );
 }
 
+/**
+ * Desde el 02-11-2026 lo que se ofrece es **la pestaña «Actividad»**, que es
+ * donde Lightning pone lo que se habla con un registro; dentro están los
+ * cuatro botones de siempre. Así que la pregunta «¿se ofrece?» se contesta
+ * mirando si la pestaña existe, y la pestaña se abre para ver los botones.
+ */
+async function pestanaDeActividad() {
+  await waitFor(() =>
+    expect(screen.getByText("ficha.detalles")).toBeInTheDocument(),
+  );
+  return screen.queryByText("ficha.actividad");
+}
+
 describe("apuntar una llamada", () => {
   beforeEach(() => {
     objetosDeActividad = ["cuenta"];
@@ -90,23 +103,28 @@ describe("apuntar una llamada", () => {
 
   it("se ofrece sobre lo que el servidor dice", async () => {
     await abrir("cuenta");
-    await waitFor(() => expect(screen.getByText("actividad.llamada")).toBeInTheDocument());
+    const pestana = await pestanaDeActividad();
+    expect(pestana).not.toBeNull();
+    pestana!.click();
+    await waitFor(() =>
+      expect(screen.getByText("actividad.llamada")).toBeInTheDocument(),
+    );
   });
 
   it("no se ofrece sobre un registro de configuración", async () => {
     // El caso que lo destapó: un plan de cuenta con botones de «Llamada» y
     // «Correo». No hay nadie al otro lado de un plan.
     await abrir("plan_cuenta");
-    await waitFor(() => expect(screen.getByText("ficha.identificadores")).toBeInTheDocument());
+    expect(await pestanaDeActividad()).toBeNull();
     expect(screen.queryByText("actividad.llamada")).toBeNull();
   });
 
   it("mientras la superficie no ha llegado, no se ofrece", async () => {
-    // Al revés que las pestañas de arriba: un botón que aparece por defecto y
+    // Al revés que las otras pestañas: un botón que aparece por defecto y
     // luego resulta que no tocaba es un botón que alguien ya ha pulsado.
     superficieLlegada = false;
     await abrir("cuenta");
-    await waitFor(() => expect(screen.getByText("ficha.identificadores")).toBeInTheDocument());
+    expect(await pestanaDeActividad()).toBeNull();
     expect(screen.queryByText("actividad.llamada")).toBeNull();
   });
 
@@ -115,7 +133,7 @@ describe("apuntar una llamada", () => {
     // ofrecerlo todo: es que no se sabe.
     objetosDeActividad = undefined;
     await abrir("cuenta");
-    await waitFor(() => expect(screen.getByText("ficha.identificadores")).toBeInTheDocument());
+    expect(await pestanaDeActividad()).toBeNull();
     expect(screen.queryByText("actividad.llamada")).toBeNull();
   });
 });

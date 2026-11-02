@@ -71,7 +71,8 @@ export default {
     sinCoincidencias: "Nada coincide",
     cambiar: "Cambiar",
     identificadorAMano: "Pega aquí el identificador",
-    sinContrato: "El contrato de esta operación no declara cuerpo, o no se ha podido leer.",
+    sinContrato:
+      "El contrato de esta operación no declara cuerpo, o no se ha podido leer.",
     masCampos: "Más campos ({{total}})",
     anadirValor: "Escribe y pulsa Intro",
     anadirA: "Añadir a {{campo}}",
@@ -187,7 +188,6 @@ export default {
     irAConfigurar: "Crear un pipeline",
   },
 
-
   exportar: {
     boton: "Exportar",
     bajando: "Preparando…",
@@ -233,7 +233,8 @@ export default {
     columnas: "Columnas ({{visibles}} de {{total}})",
     elegirColumnas: "Qué columnas se ven",
     masColumnas_one: "Hay 1 columna más, sin ningún dato en estas filas.",
-    masColumnas_other: "Hay {{count}} columnas más, sin ningún dato en estas filas.",
+    masColumnas_other:
+      "Hay {{count}} columnas más, sin ningún dato en estas filas.",
     // El rótulo para quien no ve la flecha: dice qué hará el clic, y cuando ya
     // está ordenada, cómo está. «Ordenar por Importe» y «Importe, de menor a
     // mayor» contestan dos preguntas distintas.
@@ -292,7 +293,8 @@ export default {
     // Cuando las cuatro cajas de la portada salen vacías a la vez. Dice el
     // porqué —no te han asignado nada— y no «no hay datos», que es lo que
     // parecía y es falso: los hay, son de otros.
-    nadaMio: "No tienes nada asignado todavía. Esta pantalla contesta «qué tengo yo hoy», así que te sale vacía; el trabajo del equipo sí está.",
+    nadaMio:
+      "No tienes nada asignado todavía. Esta pantalla contesta «qué tengo yo hoy», así que te sale vacía; el trabajo del equipo sí está.",
     verDelEquipo: "Ver las oportunidades",
     empezar: "Dar de alta",
     saludo: "Hola, {{nombre}}",
@@ -300,7 +302,8 @@ export default {
     // producto, no el día de quien entra. Contar pantallas es una métrica
     // nuestra; a quien abre esto a primera hora no le dice nada.
     miDia: "Esto es lo que tienes hoy.",
-    entradilla: "{{pantallas}} pantallas a tu alcance. Busca cualquiera con {{atajo}}.",
+    entradilla:
+      "{{pantallas}} pantallas a tu alcance. Busca cualquiera con {{atajo}}.",
     vencidas: "Ya se ha pasado",
     nadaVencido: "Nada vencido. Bien.",
     hoy: "Para hoy",
@@ -394,7 +397,8 @@ export default {
     abrirConstructor: "Abrir el constructor",
 
     // La caja de preguntar y el alta de la fuente.
-    placeholder: "Pregunta sobre tus datos: «¿cuántas oportunidades hay por etapa?»",
+    placeholder:
+      "Pregunta sobre tus datos: «¿cuántas oportunidades hay por etapa?»",
     preguntar: "Preguntar",
     ejemplos: "Prueba con una de estas:",
     recientes: "Lo último que se ha preguntado aquí:",
@@ -428,11 +432,13 @@ export default {
   entrar: {
     olvidada: "¿No la recuerdas?",
     recuperarTitulo: "Recuperar el acceso",
-    recuperarAyuda: "Te mandamos un enlace para poner una contraseña nueva. Vale una vez y caduca en media hora.",
+    recuperarAyuda:
+      "Te mandamos un enlace para poner una contraseña nueva. Vale una vez y caduca en media hora.",
     enlaceEnviado: "Si ese correo tiene cuenta, le hemos mandado el enlace.",
     mandarEnlace: "Mandarme el enlace",
     volver: "Volver a entrar",
-    eligeNueva: "Elige una contraseña nueva. Al guardarla se cerrarán las sesiones abiertas.",
+    eligeNueva:
+      "Elige una contraseña nueva. Al guardarla se cerrarán las sesiones abiertas.",
     contrasenaNueva: "Contraseña nueva",
     minimoDoce: "Al menos 12 caracteres.",
     guardarContrasena: "Guardar la contraseña",
@@ -467,7 +473,8 @@ export default {
     lienzo: "Diagrama",
     codigo: "Definición",
     recorrido: "Recorrido simulado",
-    jsonAMedias: "El JSON está a medias: el diagrama vuelve en cuanto sea válido.",
+    jsonAMedias:
+      "El JSON está a medias: el diagrama vuelve en cuanto sea válido.",
     mover: "Mover",
     variablesEjemplo: "Datos de ejemplo (JSON)",
     respuestasEjemplo: "Respuestas a las tareas humanas (JSON)",
@@ -506,7 +513,8 @@ export default {
     },
     indexado: "En el gestor: {{estado}}",
     conAvisos: "indexado con {{n}} aviso(s): faltan figuras, tablas o pies",
-    controlEstado: "Control documental: {{estado}} · versión en curso {{version}}",
+    controlEstado:
+      "Control documental: {{estado}} · versión en curso {{version}}",
     enCurso: "Aprobación en curso: {{estado}}",
     noLaNecesita: "Este documento no pasa por aprobación.",
     flujo: "Flujo de aprobación",
@@ -537,6 +545,14 @@ export default {
       "El contrato de este objeto no declara ningún campo que se pueda cambiar " +
       "después de crearlo.",
     secciones: "Secciones de la ficha",
+    // Los nombres de Salesforce, y en su orden. «Relacionado» es lo que
+    // cuelga del registro y «Detalles» son sus campos.
+    relacionado: "Relacionado",
+    detalles: "Detalles",
+    actividad: "Actividad",
+    // Para quien no ve la pantalla: la línea de encima del panel dice de qué
+    // listado viene el registro y cuál es.
+    deDonde: "De dónde viene este registro",
     datos: "Datos",
     adjuntos: "Adjuntos",
     comentarios: "Comentarios",
@@ -568,7 +584,8 @@ export default {
     sinRegistrosDetalle: "Da de alta el primero y aparecerá en esta lista.",
     desde: "Desde",
     hasta: "Hasta",
-    eligePeriodo: "Elige el periodo: un informe sin fechas no es el de hoy, es el de ningún sitio.",
+    eligePeriodo:
+      "Elige el periodo: un informe sin fechas no es el de hoy, es el de ningún sitio.",
     rangoAlReves: "La fecha de inicio es posterior a la de fin.",
     escribeParaBuscar: "Escribe al menos {{minimo}} caracteres para buscar.",
     nuevo: "Nuevo",
@@ -605,16 +622,20 @@ export default {
     permiso: "Permiso",
     quePuede: "Qué hace",
     sinPermiso: "Tu rol no concede este permiso",
-    sinListado: "Esta área no publica un listado; sus operaciones necesitan un identificador.",
-    incompleta_uno: "No ha contestado el servicio {{servicios}}, así que falta parte de la administración.",
-    incompleta_otros: "No han contestado los servicios {{servicios}}, así que falta parte de la administración.",
+    sinListado:
+      "Esta área no publica un listado; sus operaciones necesitan un identificador.",
+    incompleta_uno:
+      "No ha contestado el servicio {{servicios}}, así que falta parte de la administración.",
+    incompleta_otros:
+      "No han contestado los servicios {{servicios}}, así que falta parte de la administración.",
     total: "{{total}} operaciones, {{administracion}} de administración",
   },
   errores: {
     soloPlataformaDetalle:
       "Da de alta empresas y ve su consumo quien opera contecrm, no cada empresa " +
       "sobre las demás.",
-    sinPermisoDetalle: "Si necesitas verlo, pídeselo a quien administra tu organización.",
+    sinPermisoDetalle:
+      "Si necesitas verlo, pídeselo a quien administra tu organización.",
     soloPlataforma:
       "Esto es de quien administra la plataforma, no de una empresa concreta.",
     generico: "Algo ha ido mal",
@@ -627,7 +648,8 @@ export default {
     // mirar al sitio equivocado. El mensaje dice lo que se sabe —esta
     // pantalla— y lo que NO se ha perdido: el dato está, y lo demás del
     // producto sigue funcionando.
-    pantalla: "Esta pantalla no se ha podido pintar. No es un problema de tus datos: siguen guardados, y el resto del producto funciona.",
+    pantalla:
+      "Esta pantalla no se ha podido pintar. No es un problema de tus datos: siguen guardados, y el resto del producto funciona.",
     detalleTecnico: "Detalle técnico",
   },
   noExiste: {
@@ -644,7 +666,8 @@ export default {
   // Tapado no es lo mismo que retenido, y por eso es otra frase: lo retenido
   // no viene y se ve el hueco; lo tapado viene y PARECE el dato. Sin decirlo,
   // alguien copia «··············tora» creyendo que es el nombre.
-  enmascarados_uno: "Un campo se ve tapado y lo que muestra no es su valor: {{campos}}",
+  enmascarados_uno:
+    "Un campo se ve tapado y lo que muestra no es su valor: {{campos}}",
   enmascarados_otros:
     "Estos campos se ven tapados y lo que muestran no es su valor: {{campos}}",
 
@@ -717,10 +740,12 @@ export default {
   },
   puesto: {
     titulo: "Puesto de trabajo",
-    intro: "Correo y calendario conectados: si está entrando algo y desde cuándo no.",
+    intro:
+      "Correo y calendario conectados: si está entrando algo y desde cuándo no.",
     sinConexiones: "No hay ninguna conexión",
     paradas: "Conexiones paradas",
     horas: "{{horas}} h sin sincronizar",
-    sinMedir: "{{cuantas}} conexiones no se han medido: no cuentan como buenas.",
+    sinMedir:
+      "{{cuantas}} conexiones no se han medido: no cuentan como buenas.",
   },
 };

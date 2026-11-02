@@ -19,13 +19,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo } from "@/componentes/Estados";
+import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Formulario } from "@/componentes/Formulario";
 import { Icono } from "@/componentes/Icono";
+import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { SubColeccion } from "@/lib/acciones";
 import { camposDe, contratoDe, type CampoEsquema } from "@/lib/contrato";
-import { escalar, esIdentificadorTecnico, humanizar, nombreDelRegistro } from "@/lib/formato";
+import {
+  escalar,
+  esIdentificadorTecnico,
+  humanizar,
+  nombreDelRegistro,
+} from "@/lib/formato";
 
 export function SubColecciones({
   paneles,
@@ -41,7 +47,12 @@ export function SubColecciones({
   return (
     <div className="mt-4 space-y-3">
       {paneles.map((panel) => (
-        <Panel key={panel.clave} panel={panel} servicio={servicio} idPadre={id} />
+        <Panel
+          key={panel.clave}
+          panel={panel}
+          servicio={servicio}
+          idPadre={id}
+        />
       ))}
     </div>
   );
@@ -58,7 +69,9 @@ function Panel({
 }) {
   const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
-  const [elementos, setElementos] = useState<Record<string, unknown>[] | null>(null);
+  const [elementos, setElementos] = useState<Record<string, unknown>[] | null>(
+    null,
+  );
   const [fallo, setFallo] = useState<unknown>(null);
   const [anadiendo, setAnadiendo] = useState(false);
   const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
@@ -134,137 +147,137 @@ function Panel({
   const cuantos = elementos?.length;
 
   return (
-    <section className="card">
-      <button
-        type="button"
-        onClick={() => setAbierto((v) => !v)}
-        aria-expanded={abierto}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-      >
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink">
-          <Icono
-            nombre="keyboard_arrow_down"
-            tamano="sm"
-            className={abierto ? "" : "-rotate-90"}
-          />
-          {panel.nombre}
-        </span>
-        {cuantos !== undefined ? (
-          <span className="text-3xs text-ink-faint">{cuantos}</span>
+    <PanelRelacionado
+      nombre={panel.nombre}
+      cuantos={cuantos}
+      abierto={abierto}
+      alAlternar={() => setAbierto((v) => !v)}
+    >
+      <>
+        {fallo ? (
+          <div className="mb-3">
+            <Fallo error={fallo} reintentar={() => cargar()} />
+          </div>
         ) : null}
-      </button>
 
-      {abierto ? (
-        <div className="border-t border-ink-dim/30 px-4 py-3">
-          {fallo ? (
-            <div className="mb-3">
-              <Fallo error={fallo} reintentar={() => cargar()} />
-            </div>
-          ) : null}
-
-          {panel.alta ? (
-            <div className="mb-3">
-              {anadiendo ? (
-                <>
-                  {campos ? (
-                    <Formulario
-                      campos={campos}
-                      enviando={enviando}
-                      textoEnviar={panel.alta.nombre}
-                      alEnviar={(v) => void anadir(v)}
-                    />
-                  ) : (
-                    <Cargando />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setAnadiendo(false)}
-                    className="btn-link mt-2"
-                  >
-                    {t("modulo.cancelar")}
-                  </button>
-                </>
-              ) : (
+        {panel.alta ? (
+          <div className="mb-3">
+            {anadiendo ? (
+              <>
+                {campos ? (
+                  <Formulario
+                    campos={campos}
+                    enviando={enviando}
+                    textoEnviar={panel.alta.nombre}
+                    alEnviar={(v) => void anadir(v)}
+                  />
+                ) : (
+                  <Cargando />
+                )}
                 <button
                   type="button"
-                  onClick={() => setAnadiendo(true)}
-                  className="btn-secondary inline-flex items-center gap-1.5"
+                  onClick={() => setAnadiendo(false)}
+                  className="btn-link mt-2"
                 >
-                  <Icono nombre="add" tamano="sm" />
-                  {panel.alta.nombre}
+                  {t("modulo.cancelar")}
                 </button>
-              )}
-            </div>
-          ) : null}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAnadiendo(true)}
+                className="btn-secondary inline-flex items-center gap-1.5"
+              >
+                <Icono nombre="add" tamano="sm" />
+                {panel.alta.nombre}
+              </button>
+            )}
+          </div>
+        ) : null}
 
-          {elementos === null ? (
-            <Cargando />
-          ) : elementos.length === 0 ? (
-            <p className="py-2 text-3xs text-ink-faint">{t("subcoleccion.vacia")}</p>
-          ) : (
-            <ul className="divide-y divide-ink-dim/30">
-              {elementos.map((e, i) => {
-                const idHijo = String(e.id ?? "");
-                const titulo = nombreDelRegistro(e) || idHijo.slice(0, 8);
-                const detalle = Object.entries(e)
-                  .filter(([k, v]) => !esIdentificadorTecnico(k) && v !== null && v !== "")
-                  .slice(0, 3)
-                  .map(([k, v]) =>
+        {elementos === null ? (
+          <Cargando />
+        ) : elementos.length === 0 ? (
+          // El mismo vacío que las otras listas relacionadas de la ficha: era
+          // un párrafo suelto aquí y una caja de media pantalla al lado, para
+          // decir lo mismo en la misma pestaña.
+          <Vacio compacto titulo={t("subcoleccion.vacia")} />
+        ) : (
+          <ul className="divide-y divide-ink-dim/30">
+            {elementos.map((e, i) => {
+              const idHijo = String(e.id ?? "");
+              const titulo = nombreDelRegistro(e) || idHijo.slice(0, 8);
+              const detalle = Object.entries(e)
+                .filter(
+                  ([k, v]) =>
+                    !esIdentificadorTecnico(k) && v !== null && v !== "",
+                )
+                .slice(0, 3)
+                .map(
+                  ([k, v]) =>
                     `${humanizar(k)}: ${typeof v === "object" ? "…" : escalar(v, k)}`,
-                  )
-                  .join(" · ");
-                return (
-                  <li key={idHijo || i} className="flex items-start justify-between gap-3 py-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-2xs text-ink">{titulo}</p>
-                      {detalle ? (
-                        <p className="truncate text-3xs text-ink-faint">{detalle}</p>
+                )
+                .join(" · ");
+              return (
+                <li
+                  key={idHijo || i}
+                  className="flex items-start justify-between gap-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-2xs text-ink">{titulo}</p>
+                    {detalle ? (
+                      <p className="truncate text-3xs text-ink-faint">
+                        {detalle}
+                      </p>
+                    ) : null}
+                  </div>
+                  {idHijo ? (
+                    <div className="flex shrink-0 flex-wrap gap-1">
+                      {panel.acciones.map((a) => (
+                        <button
+                          key={a.clave}
+                          type="button"
+                          disabled={enviando}
+                          onClick={() =>
+                            void sobreHijo(a.plantilla, a.metodo, idHijo)
+                          }
+                          className="btn-secondary"
+                          title={a.nombre}
+                        >
+                          {a.nombre}
+                        </button>
+                      ))}
+                      {panel.borrable ? (
+                        <button
+                          type="button"
+                          disabled={enviando}
+                          onClick={() => {
+                            // Se pregunta: quitar a alguien del equipo de una
+                            // cuenta o una línea de un presupuesto no se
+                            // deshace desde aquí.
+                            if (
+                              window.confirm(t("subcoleccion.confirmarQuitar"))
+                            ) {
+                              void sobreHijo(
+                                `${panel.plantilla}/{hijo}`,
+                                "DELETE",
+                                idHijo,
+                              );
+                            }
+                          }}
+                          className="btn-danger"
+                        >
+                          {t("subcoleccion.quitar")}
+                        </button>
                       ) : null}
                     </div>
-                    {idHijo ? (
-                      <div className="flex shrink-0 flex-wrap gap-1">
-                        {panel.acciones.map((a) => (
-                          <button
-                            key={a.clave}
-                            type="button"
-                            disabled={enviando}
-                            onClick={() => void sobreHijo(a.plantilla, a.metodo, idHijo)}
-                            className="btn-secondary"
-                            title={a.nombre}
-                          >
-                            {a.nombre}
-                          </button>
-                        ))}
-                        {panel.borrable ? (
-                          <button
-                            type="button"
-                            disabled={enviando}
-                            onClick={() => {
-                              // Se pregunta: quitar a alguien del equipo de una
-                              // cuenta o una línea de un presupuesto no se
-                              // deshace desde aquí.
-                              if (window.confirm(t("subcoleccion.confirmarQuitar"))) {
-                                void sobreHijo(
-                                  `${panel.plantilla}/{hijo}`,
-                                  "DELETE",
-                                  idHijo,
-                                );
-                              }
-                            }}
-                            className="btn-danger"
-                          >
-                            {t("subcoleccion.quitar")}
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      ) : null}
-    </section>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </>
+    </PanelRelacionado>
   );
 }

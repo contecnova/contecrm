@@ -465,6 +465,34 @@ en inglés —«Created at», «Updated by»—; ahora son «Creado», «Modific
 Y el sufijo `_at`, que el modelo usa para marcar una fecha, ya no se enseña:
 donde ponía «Vence at» pone «Vence».
 
+**Editar, eliminar y lo demás están arriba a la derecha**, dentro del panel de
+datos clave: «Editar», y un «Más» con todo lo que el servidor permita hacer con
+ese registro. Están ahí mires la pestaña que mires. Antes colgaban debajo de
+las pestañas y sólo dentro de una de ellas, así que para editar desde otra
+había que volver.
+
+#### Las cuatro pestañas
+
+Debajo del panel están las pestañas del registro, y cada una contesta una
+pregunta distinta:
+
+- **Relacionado** — lo que cuelga de él: sus líneas, su equipo, sus
+  direcciones, sus adjuntos y los documentos enlazados. Cada lista lleva su
+  nombre y **cuántos hay entre paréntesis**, así que se sabe si hay algo sin
+  abrirla. Se pliegan y se despliegan.
+- **Detalles** — todos sus campos, en dos columnas, con el rótulo encima del
+  valor. Debajo, lo que el servidor no te ha devuelto, qué ha cambiado campo a
+  campo y cómo estaba el registro entero en una fecha.
+- **Actividad** — apuntarle una llamada, una reunión, una nota o un correo, y
+  preguntarle a la IA sobre ese registro. **Sólo sale donde tiene sentido**: lo
+  dice el servidor, no una lista escrita en la pantalla. No hay nadie al otro
+  lado de un calendario laboral.
+- **Comentarios** — la conversación sobre el registro.
+
+**Se abre por «Relacionado» cuando hay algo que enseñar**, que es lo que se
+busca casi siempre al abrir un registro; si de ese objeto no cuelga nada, se
+abre por «Detalles». En cuanto pulsas una pestaña, manda la que pulsaste.
+
 ---
 
 ### Las listas: ordenar, elegir columnas y cambiar de vista

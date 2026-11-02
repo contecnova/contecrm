@@ -15,7 +15,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
 import {
   Cargando,
@@ -38,6 +43,7 @@ import {
 } from "@/lib/formato";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
+import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import { accionesDe, subColeccionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
@@ -47,135 +53,123 @@ import { recursoDe } from "@/lib/recursos";
 import { DatosClave } from "@/componentes/DatosClave";
 import { AprobacionDeDocumento } from "@/paginas/Aprobaciones";
 
-type Pestana = "datos" | "adjuntos" | "comentarios" | "documentos";
+/**
+ * Las pestañas de una ficha, con los nombres y el reparto de Lightning.
+ *
+ * Allí son **Relacionado** y **Detalles**, y «Relacionado» va primero: al
+ * abrir un registro lo que se busca casi siempre es lo que cuelga de él —sus
+ * contactos, sus oportunidades, sus adjuntos—, no releer sus campos.
+ *
+ * Aquí estaba al revés y en otro orden: «Datos» primero con TODO dentro
+ * —campos, historial y las colecciones relacionadas, una debajo de otra— y
+ * después tres pestañas sueltas para adjuntos, comentarios y documentos. Esas
+ * tres son cosas que cuelgan del registro, así que su sitio es «Relacionado».
+ *
+ * «Actividad» es la de Lightning: lo que se habla CON el registro —una
+ * llamada, una reunión, una nota, un correo— y lo que se le pregunta a la IA
+ * sobre él. Estaba suelto encima de las pestañas, y ocupaba media pantalla
+ * antes de llegar a nada.
+ *
+ * «Comentarios» se queda aparte porque es conversación y no un dato adjunto;
+ * es el sitio que en Salesforce ocupa Chatter.
+ */
+type Pestana = "relacionado" | "detalles" | "actividad" | "comentarios";
 
 export function Ficha() {
   const { t } = useTranslation();
-  const { ruta = "", tipo = "", id = "" } = useParams();
-  const modulo = moduloDe(ruta);
-  const [pestana, setPestana] = useState<Pestana>("datos");
-  // El nombre lo pone la pestaña de datos en cuanto carga el registro: el
-  // título era el UUID, así que la ficha de una oportunidad no decía cuál era.
-  const [nombre, setNombre] = useState("");
-  // El registro, para el panel de datos clave. Lo carga la pestaña de datos y
-  // lo sube: pedirlo dos veces sería dos peticiones para lo mismo.
-  const [fila, setFila] = useState<Record<string, unknown> | null>(null);
-  const { superficie } = useSuperficie();
-
-  // Solo las pestañas que este objeto puede tener. Pedir adjuntos de algo que
-  // no los admite no sale como «aquí no hay»: sale como un 404 en la consola y
-  // una pestaña que nunca carga, y pasaba en 81 de 85 fichas.
-  const pestanas = useMemo<Pestana[]>(() => {
-    const puede = (cual: "adjuntos" | "comentarios" | "documentos") =>
-      // Mientras la superficie no ha llegado se ofrecen todas: esconderlas y
-      // hacerlas aparecer un segundo después mueve los botones bajo el cursor.
-      !superficie?.objetos || superficie.objetos[cual].includes(tipo);
-    return [
-      "datos",
-      ...(["adjuntos", "comentarios", "documentos"] as const).filter(puede),
-    ];
-  }, [superficie, tipo]);
-
-  // Si la pestaña abierta deja de estar —la superficie llega y dice que este
-  // objeto no admite adjuntos— se vuelve a datos, en vez de dejar el contenido
-  // en blanco debajo de una barra donde ese botón ya no aparece.
-  const activa: Pestana = pestanas.includes(pestana) ? pestana : "datos";
-  const recursoAbierto = modulo ? recursoDe(modulo, tipo) : undefined;
-
-  if (!modulo) return <Vacio />;
-
-  return (
-    <>
-      {/* El panel de datos clave, como el de Salesforce: qué es, cómo se
-          llama, por dónde va y los cinco campos que importan, todo arriba y
-          sin entrar en ninguna pestaña.
-
-          Antes aquí había un título y, debajo, el identificador recortado. Si
-          el registro no tiene con qué llamarse el título sigue siendo **el
-          nombre de lo que es** y no su UUID: treinta y seis caracteres de
-          encabezado no dicen qué se está mirando. */}
-      <DatosClave
-        recurso={recursoAbierto}
-        tipo={tipo}
-        nombre={nombre || recursoAbierto?.nombre || modulo.titulo}
-        fila={fila}
-        acciones={
-          <span className="flex items-center gap-2 text-2xs text-ink-faint">
-            <Link to={`/m/${ruta}`} className="text-accent hover:underline">
-              {modulo.titulo}
-            </Link>
-            <span className="font-mono" title={id}>
-              {id.slice(0, 8)}…
-            </span>
-          </span>
-        }
-      />
-
-      <nav
-        aria-label={t("ficha.secciones")}
-        className="mt-3 flex flex-wrap gap-1"
-      >
-        {pestanas.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => setPestana(p)}
-            aria-current={p === activa ? "page" : undefined}
-            className={`rounded-lg px-3 py-1.5 text-xs ${
-              p === activa
-                ? "bg-paper-light text-ink"
-                : "text-ink-muted hover:bg-paper-light"
-            }`}
-          >
-            {t(`ficha.${p}`)}
-          </button>
-        ))}
-      </nav>
-
-      <div className="mt-4">
-        {activa === "datos" ? (
-          <Datos
-            modulo={ruta}
-            id={id}
-            objeto={tipo}
-            alSaberNombre={setNombre}
-            alCargar={setFila}
-          />
-        ) : null}
-        {activa === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
-        {activa === "comentarios" ? <Comentarios tipo={tipo} id={id} /> : null}
-        {activa === "documentos" ? (
-          <Documentos tipo={tipo} id={id} nombre={nombre} />
-        ) : null}
-      </div>
-    </>
-  );
-}
-
-function Datos({
-  modulo,
-  id,
-  objeto,
-  alSaberNombre,
-  alCargar,
-}: {
-  modulo: string;
-  id: string;
-  /** Tipo del registro (`cuenta`, `oportunidad`…), para colgarle la actividad. */
-  objeto: string;
-  /** Sube el nombre del registro para que lo use el título de la ficha. */
-  alSaberNombre: (nombre: string) => void;
-  /** Sube el registro entero, para el panel de datos clave. */
-  alCargar: (fila: Record<string, unknown>) => void;
-}) {
-  const { t } = useTranslation();
   const navegar = useNavigate();
-  const { superficie, tiene } = useSuperficie();
-  const m = moduloDe(modulo);
+  const { ruta: rutaDelModulo = "", tipo = "", id = "" } = useParams();
+  const modulo = moduloDe(rutaDelModulo);
   // Por el objeto de la dirección y no `recursos[0]`: un módulo tiene varias
   // pestañas y con la primera se pedía el registro contra la ruta equivocada,
   // así que solo se podía abrir una fila de todo el módulo.
-  const recurso = m ? recursoDe(m, objeto) : undefined;
+  const recurso = modulo ? recursoDe(modulo, tipo) : undefined;
+  const { superficie, tiene } = useSuperficie();
+
+  const [pestana, setPestana] = useState<Pestana | null>(null);
+  /**
+   * El registro lo carga ESTA pantalla, no la pestaña.
+   *
+   * Lo pedía la pestaña de datos y lo subía a la ficha para el panel de
+   * cabecera. Con las pestañas de Lightning eso ya no vale: los botones del
+   * registro —«Editar», «Eliminar», lo que el contrato permita— viven en el
+   * panel de cabecera y están en todas las pestañas, así que quien manda
+   * sobre el registro es la página. Además, pedirlo en la pestaña hacía que
+   * cambiar de pestaña volviera a pedirlo entero.
+   */
+  const [fila, setFila] = useState<Record<string, unknown> | null>(null);
+  const [retenidos, setRetenidos] = useState<string[]>([]);
+  const [tapados, setTapados] = useState<string[]>([]);
+  const [fallo, setFallo] = useState<unknown>(null);
+  // Se puede llegar YA en edición, con `?editar=1`. Lo usa el menú de la fila
+  // en el listado: en Lightning cada fila lleva un `⌄` con «Editar», y sin
+  // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
+  // clic más de lo que pidió.
+  const [parametrosDeFicha] = useSearchParams();
+  const [editando, setEditando] = useState(
+    parametrosDeFicha.get("editar") === "1",
+  );
+  // Qué acción del contrato está desplegada. Vive aquí y no dentro de
+  // `<Acciones>` porque quien las ofrece es el menú de la barra: con el estado
+  // dentro habría dos sitios desde los que abrir la misma cosa.
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  // Al cambiar de registro se sale de edición y se cancela la confirmación
+  // pendiente. Esta pantalla atiende a `/m/:ruta/:tipo/:id`: ir de una ficha a
+  // otra **no la desmonta**, así que sin esto se abría la siguiente ya en modo
+  // edición —con los datos de la anterior todavía en el formulario— y un
+  // «¿seguro que quieres borrar?» a medias se quedaba apuntando al registro
+  // nuevo. Borrar el que no era está a un clic de ahí.
+  //
+  // **Salvo si la dirección pide lo contrario**: se puede llegar con
+  // `?editar=1` desde el menú de una fila del listado, y este efecto corre
+  // también en el primer montaje — así que sin mirar el parámetro deshacía lo
+  // que acababa de pedirse. Medido: el «Editar» de la fila abría la ficha en
+  // modo lectura.
+  useEffect(() => {
+    setEditando(parametrosDeFicha.get("editar") === "1");
+    setConfirmando(false);
+  }, [rutaDelModulo, tipo, id, parametrosDeFicha]);
+
+  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+
+  const cargar = useCallback(
+    (signal?: AbortSignal) => {
+      if (!ruta) return;
+      llamar<Record<string, unknown>>(ruta, { signal })
+        .then((r) => {
+          setFila(r.datos);
+          setRetenidos(r.retenidos);
+          setTapados(r.enmascarados);
+        })
+        .catch(salvoCancelacion(setFallo));
+    },
+    [ruta],
+  );
+
+  useEffect(() => {
+    const control = new AbortController();
+    cargar(control.signal);
+    return () => control.abort();
+  }, [cargar]);
+
+  // Todo lo que el servidor admite hacer con este registro, leído del contrato.
+  // Son 144 en el sistema y ninguna se escribe a mano aquí.
+  const acciones = useMemo(
+    () => (recurso ? accionesDe(superficie, recurso.listar, id, tiene) : []),
+    [superficie, recurso, id, tiene],
+  );
+  // Y lo que cuelga de él: líneas, equipo, direcciones, identificadores. Son
+  // 196 en el sistema y ninguna se alcanzaba. Se calcula aquí porque de ello
+  // depende en qué pestaña se aterriza.
+  const paneles = useMemo(
+    () =>
+      recurso ? subColeccionesDe(superficie, recurso.listar, id, tiene) : [],
+    [superficie, recurso, id, tiene],
+  );
+
   /**
    * Si de este registro se habla con alguien.
    *
@@ -191,84 +185,70 @@ function Datos({
    * hace dudar de lo que sí.
    *
    * Y mientras la superficie no ha llegado **no se ofrecen**, al revés que las
-   * pestañas de arriba. Es la regla de la casa para las acciones: un botón que
-   * aparece por defecto y luego resulta que no tocaba es un botón que alguien
-   * ya ha pulsado.
+   * pestañas. Es la regla de la casa para las acciones: un botón que aparece
+   * por defecto y luego resulta que no tocaba es un botón que alguien ya ha
+   * pulsado.
    */
   const seHablaConAlguien = Boolean(
-    objeto && superficie?.objetos?.actividades?.includes(objeto),
-  );
-  const [fila, setFila] = useState<Record<string, unknown> | null>(null);
-  const [retenidos, setRetenidos] = useState<string[]>([]);
-  const [tapados, setTapados] = useState<string[]>([]);
-  const [fallo, setFallo] = useState<unknown>(null);
-  // Se puede llegar YA en edición, con `?editar=1`. Lo usa el menú de la fila
-  // en el listado: en Lightning cada fila lleva un `⌄` con «Editar», y sin
-  // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
-  // clic más de lo que pidió.
-  const [parametrosDeFicha] = useSearchParams();
-  const [editando, setEditando] = useState(parametrosDeFicha.get("editar") === "1");
-  // Qué acción del contrato está desplegada. Vive aquí y no dentro de
-  // `<Acciones>` porque quien las ofrece es el menú de la barra: con el estado
-  // dentro habría dos sitios desde los que abrir la misma cosa.
-  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
-  const [enviando, setEnviando] = useState(false);
-  const [confirmando, setConfirmando] = useState(false);
-
-  // Al cambiar de registro se sale de edición y se cancela la confirmación
-  // pendiente. Esta pantalla atiende a `/m/:ruta/:tipo/:id`: ir de una ficha a
-  // otra **no la desmonta**, así que sin esto se abría la siguiente ya en modo
-  // edición —con los datos de la anterior todavía en el formulario— y un
-  // «¿seguro que quieres borrar?» a medias se quedaba apuntando al registro
-  // nuevo. Borrar el que no era está a un clic de ahí.
-  // Al cambiar de registro se sale de edición. **Salvo si la dirección pide
-  // lo contrario**: se puede llegar con `?editar=1` desde el menú de una fila
-  // del listado, y este efecto corre también en el primer montaje — así que
-  // sin mirar el parámetro deshacía lo que acababa de pedirse. Medido: el
-  // «Editar» de la fila abría la ficha en modo lectura.
-  useEffect(() => {
-    setEditando(parametrosDeFicha.get("editar") === "1");
-    setConfirmando(false);
-  }, [modulo, objeto, id, parametrosDeFicha]);
-
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
-  // Todo lo que el servidor admite hacer con este registro, leído del contrato.
-  // Son 144 en el sistema y ninguna se escribe a mano aquí.
-  const acciones = useMemo(
-    () => (recurso ? accionesDe(superficie, recurso.listar, id, tiene) : []),
-    [superficie, recurso, id, tiene],
-  );
-  // Y lo que cuelga de él: líneas, equipo, direcciones, identificadores. Son
-  // 196 en el sistema y ninguna se alcanzaba.
-  const paneles = useMemo(
-    () =>
-      recurso ? subColeccionesDe(superficie, recurso.listar, id, tiene) : [],
-    [superficie, recurso, id, tiene],
-  );
-  const cargar = useCallback(
-    (signal?: AbortSignal) => {
-      if (!ruta) return;
-      llamar<Record<string, unknown>>(ruta, { signal })
-        .then((r) => {
-          setFila(r.datos);
-          setRetenidos(r.retenidos);
-          setTapados(r.enmascarados);
-          alSaberNombre(nombreDelRegistro(r.datos));
-          // Y el registro entero, para el panel de datos clave de arriba:
-          // los campos que importan los decide el recurso, pero los VALORES
-          // sólo los tiene quien ha hecho la petición.
-          alCargar(r.datos);
-        })
-        .catch(salvoCancelacion(setFallo));
-    },
-    [ruta, alSaberNombre, alCargar],
+    tipo && superficie?.objetos?.actividades?.includes(tipo),
   );
 
-  useEffect(() => {
-    const control = new AbortController();
-    cargar(control.signal);
-    return () => control.abort();
-  }, [cargar]);
+  // Solo las pestañas que este objeto puede tener. Pedir adjuntos de algo que
+  // no los admite no sale como «aquí no hay»: sale como un 404 en la consola y
+  // una pestaña que nunca carga, y pasaba en 81 de 85 fichas.
+  const puedeTener = useCallback(
+    (cual: "adjuntos" | "comentarios" | "documentos") =>
+      // Mientras la superficie no ha llegado se da por bueno: esconder algo y
+      // hacerlo aparecer un segundo después mueve los botones bajo el cursor.
+      !superficie?.objetos || superficie.objetos[cual].includes(tipo),
+    [superficie, tipo],
+  );
+
+  // El orden es el de Lightning: Relacionado, Detalles, Actividad y al final
+  // la conversación.
+  const pestanas = useMemo<Pestana[]>(
+    () => [
+      "relacionado",
+      "detalles",
+      ...(seHablaConAlguien ? ["actividad" as const] : []),
+      ...(puedeTener("comentarios") ? ["comentarios" as const] : []),
+    ],
+    [puedeTener, seHablaConAlguien],
+  );
+
+  /**
+   * Cuál se abre.
+   *
+   * **«Relacionado» cuando hay algo que enseñar, y si no «Detalles».** En
+   * Lightning la de entrada es siempre «Relacionado» porque al abrir un
+   * registro lo que se busca es lo que cuelga de él. Aquí se mira además si
+   * hay algo: aterrizar en una pestaña vacía es peor que empezar por los
+   * campos, y en este producto hay objetos que no tienen nada colgando.
+   *
+   * Se calcula sólo mientras nadie ha elegido: en cuanto alguien pulsa una
+   * pestaña, manda lo que pulsó — que la pantalla se la cambie al llegar un
+   * dato es de las cosas que más desconciertan.
+   *
+   * Y aquí la regla es la CONTRARIA a la de `puedeTener`, a propósito. Para
+   * **enseñar** una pestaña, mientras no se sabe se da por bueno. Para
+   * **aterrizar** en ella hace falta saberlo de verdad: con la regla optimista,
+   * abrir el enlace directo a un registro cuya superficie todavía no ha
+   * llegado aterrizaba siempre en «Relacionado», y en los objetos que no
+   * tienen nada colgando eso es una pestaña vacía como primera impresión.
+   */
+  const hayRelacionado =
+    paneles.length > 0 ||
+    Boolean(
+      superficie?.objetos &&
+      (superficie.objetos.adjuntos.includes(tipo) ||
+        superficie.objetos.documentos.includes(tipo)),
+    );
+  const activa: Pestana =
+    pestana && pestanas.includes(pestana)
+      ? pestana
+      : hayRelacionado
+        ? "relacionado"
+        : "detalles";
 
   async function borrar() {
     setEnviando(true);
@@ -276,7 +256,7 @@ function Datos({
       await llamar(ruta, { metodo: "DELETE" });
       // Se vuelve al listado: quedarse en la ficha de algo que ya no existe
       // enseñaría un registro fantasma hasta que alguien recargara.
-      navegar(`/m/${modulo}`);
+      navegar(`/m/${rutaDelModulo}`);
     } catch (error) {
       setFallo(error);
       setConfirmando(false);
@@ -285,57 +265,75 @@ function Datos({
     }
   }
 
-  if (fallo && !fila)
-    return <Fallo error={fallo} reintentar={() => cargar()} />;
-  if (!fila) return <Cargando />;
+  if (!modulo) return <Vacio />;
+
+  const nombre = fila ? nombreDelRegistro(fila) : "";
 
   return (
     <>
-      {!editando ? (
-        <>
-          <Acciones
-            acciones={acciones}
-            servicio={recurso?.servicio ?? ""}
-            abierta={accionAbierta}
-        alCambiarAbierta={setAccionAbierta}
-        alTerminar={cargar}
-          />
-          {/* Apuntar una llamada o un correo sobre este registro sin salir de
-              aquí: antes obligaba a irse a Actividades y teclear a mano el
-              identificador para que quedara colgado, y eso no lo hace nadie dos
-              veces. */}
-          {seHablaConAlguien ? (
-            <RegistrarActividad
-              objeto={objeto}
-              objetoId={id}
-              alRegistrar={cargar}
-            />
-          ) : null}
-          {/* Y preguntar sobre ESTE registro (CRM-05.01.04.09). La pregunta se
-              hace aquí, delante del dato, que es donde se le ocurre a alguien;
-              obligar a irse a la pantalla de explotación y volver a escribir de
-              qué cuenta se habla es como se deja de preguntar. */}
-          {seHablaConAlguien ? (
-            <PreguntarSobreEsto objeto={objeto} objetoId={id} />
-          ) : null}
-        </>
-      ) : null}
+      {/* De dónde viene y cuál es, encima del panel. Estaba DENTRO del panel,
+          en el sitio que en Lightning ocupan los botones del registro; con los
+          botones ahí no caben los dos. */}
+      <nav
+        aria-label={t("ficha.deDonde")}
+        className="mb-2 flex items-center gap-2 text-2xs text-ink-faint"
+      >
+        <Link
+          to={`/m/${rutaDelModulo}`}
+          className="text-accent hover:underline"
+        >
+          {modulo.titulo}
+        </Link>
+        <span className="font-mono" title={id}>
+          {id.slice(0, 8)}…
+        </span>
+      </nav>
 
+      {/* El panel de datos clave, como el de Salesforce: qué es, cómo se
+          llama, por dónde va, los cinco campos que importan y **qué se puede
+          hacer con él**, todo arriba y sin entrar en ninguna pestaña.
+
+          Los botones estaban debajo de las pestañas, dentro de la pestaña de
+          datos: para editar desde «Relacionado» había que volver. Visto en la
+          pantalla el 02-11-2026.
+
+          Si el registro no tiene con qué llamarse el título sigue siendo **el
+          nombre de lo que es** y no su UUID: treinta y seis caracteres de
+          encabezado no dicen qué se está mirando. */}
+      <DatosClave
+        recurso={recurso}
+        tipo={tipo}
+        nombre={nombre || recurso?.nombre || modulo.titulo}
+        fila={fila}
+        acciones={
+          fila && !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+              extra={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+                destructiva: esIrreversible(a),
+              }))}
+            />
+          ) : null
+        }
+      />
+
+      {/* El formulario de la acción elegida en «Más». Va aquí, pegado al panel
+          que la ofrece, y no dentro de una pestaña: la acción es sobre el
+          registro, no sobre lo que se esté mirando de él. */}
       {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-            extra={acciones.map((a) => ({
-              clave: a.ruta,
-              nombre: a.nombre,
-              alElegir: () => setAccionAbierta(a),
-              destructiva: esIrreversible(a),
-            }))}
-          />
-        </div>
+        <Acciones
+          acciones={acciones}
+          servicio={recurso?.servicio ?? ""}
+          abierta={accionAbierta}
+          alCambiarAbierta={setAccionAbierta}
+          alTerminar={cargar}
+        />
       ) : null}
 
       {confirmando ? (
@@ -346,63 +344,171 @@ function Datos({
         />
       ) : null}
 
-      {fallo ? (
+      {fallo && fila ? (
         <div className="mb-3">
           <Fallo error={fallo} />
         </div>
       ) : null}
 
-      {editando && recurso ? (
-        <FormularioDeEdicion
-          recurso={recurso}
-          ruta={ruta}
-          valores={fila}
-          alGuardar={() => {
-            setEditando(false);
-            cargar();
-            setFallo(null);
-          }}
-          alCancelar={() => setEditando(false)}
-        />
-      ) : (
-        // Los datos como ficha, no como una tabla de una sola fila: una tabla
-        // horizontal de veinte columnas para UN registro obliga a desplazarse
-        // para leer sus propios campos.
-        <>
-          <dl className="card grid gap-x-8 gap-y-3 p-4 sm:grid-cols-2">
-            {Object.entries(fila)
-              .filter(
-                ([clave]) =>
-                  clave !== "campos" && !esIdentificadorTecnico(clave),
-              )
-              .map(([clave, valor]) => (
-                <Campo key={clave} clave={clave} valor={valor} />
-              ))}
-          </dl>
+      {/* Las pestañas con la forma de Lightning: subrayado azul en la activa
+          sobre una línea que recorre el ancho. Eran píldoras con el fondo
+          claro del tema, y sobre una tarjeta blanca la activa quedaba del
+          mismo color que las otras: se marcaba con `aria-current` y no se
+          veía. Visto en la pantalla: tres pestañas idénticas. */}
+      <nav
+        aria-label={t("ficha.secciones")}
+        className="mt-3 flex flex-wrap border-b border-ink-dim"
+      >
+        {pestanas.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setPestana(p)}
+            aria-current={p === activa ? "page" : undefined}
+            className={`-mb-px border-b-[3px] px-4 py-2 text-xs ${
+              p === activa
+                ? "border-accent font-semibold text-accent"
+                : "border-transparent text-ink-muted hover:border-ink-dim hover:text-ink"
+            }`}
+          >
+            {t(`ficha.${p}`)}
+          </button>
+        ))}
+      </nav>
 
-          {/* Los identificadores, detrás de un desplegable. Ocupaban la mitad
-              de la ficha y no dicen nada a quien la mira, pero quien abre una
-              incidencia de soporte los necesita enteros. */}
-          <details className="mt-2">
-            <summary className="cursor-pointer text-3xs text-ink-faint">
-              {t("ficha.identificadores")}
-            </summary>
-            <dl className="card mt-2 grid gap-x-8 gap-y-2 p-4 sm:grid-cols-2">
-              {Object.entries(fila)
-                .filter(([clave]) => esIdentificadorTecnico(clave))
-                .map(([clave, valor]) => (
-                  <Campo
-                    key={clave}
-                    clave={clave}
-                    valor={valor}
-                    monoespaciado
-                  />
-                ))}
-            </dl>
-          </details>
-        </>
-      )}
-      <Retenidos campos={retenidos} enmascarados={tapados} />
+      <div className="mt-4">
+        {fallo && !fila ? (
+          <Fallo error={fallo} reintentar={() => cargar()} />
+        ) : !fila ? (
+          <Cargando />
+        ) : editando && recurso ? (
+          // El formulario sale mirando cualquier pestaña: «Editar» se pulsa
+          // desde arriba, y abrirlo sólo en «Detalles» dejaba el botón sin
+          // efecto visible.
+          <FormularioDeEdicion
+            recurso={recurso}
+            ruta={ruta}
+            valores={fila}
+            alGuardar={() => {
+              setEditando(false);
+              cargar();
+              setFallo(null);
+            }}
+            alCancelar={() => setEditando(false)}
+          />
+        ) : (
+          <>
+            {activa === "detalles" ? (
+              <Detalles
+                fila={fila}
+                retenidos={retenidos}
+                enmascarados={tapados}
+                objeto={tipo}
+                servicio={recurso?.servicio ?? ""}
+                id={id}
+              />
+            ) : null}
+
+            {activa === "relacionado" ? (
+              <div className="space-y-3">
+                <SubColecciones
+                  paneles={paneles}
+                  servicio={recurso?.servicio ?? ""}
+                  id={id}
+                />
+                {puedeTener("adjuntos") ? (
+                  <Adjuntos tipo={tipo} id={id} />
+                ) : null}
+                {puedeTener("documentos") ? (
+                  <Documentos tipo={tipo} id={id} nombre={nombre} />
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Apuntar una llamada o un correo sobre este registro sin salir
+                de aquí: antes obligaba a irse a Actividades y teclear a mano
+                el identificador para que quedara colgado, y eso no lo hace
+                nadie dos veces. Y preguntar sobre ESTE registro
+                (CRM-05.01.04.09), delante del dato, que es donde se le ocurre
+                a alguien. */}
+            {activa === "actividad" ? (
+              <>
+                <RegistrarActividad
+                  objeto={tipo}
+                  objetoId={id}
+                  alRegistrar={cargar}
+                />
+                <PreguntarSobreEsto objeto={tipo} objetoId={id} />
+              </>
+            ) : null}
+
+            {activa === "comentarios" ? (
+              <Comentarios tipo={tipo} id={id} />
+            ) : null}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+/**
+ * La pestaña «Detalles»: los campos del registro y su trazabilidad.
+ *
+ * Sólo pinta; el registro lo carga la ficha. Antes esto era la pestaña
+ * «Datos» y llevaba dentro TODO —campos, historial, los botones del registro
+ * y las colecciones relacionadas, una debajo de otra—, que es justo el reparto
+ * que Lightning separa en dos pestañas.
+ */
+function Detalles({
+  fila,
+  retenidos,
+  enmascarados,
+  objeto,
+  servicio,
+  id,
+}: {
+  fila: Record<string, unknown>;
+  retenidos: string[];
+  enmascarados: string[];
+  /** Tipo del registro (`cuenta`, `oportunidad`…), para su trazabilidad. */
+  objeto: string;
+  servicio: string;
+  id: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <>
+      {/* Los datos como ficha, no como una tabla de una sola fila: una tabla
+          horizontal de veinte columnas para UN registro obliga a desplazarse
+          para leer sus propios campos. */}
+      <dl className="card grid gap-x-8 gap-y-3 p-4 sm:grid-cols-2">
+        {Object.entries(fila)
+          .filter(
+            ([clave]) => clave !== "campos" && !esIdentificadorTecnico(clave),
+          )
+          .map(([clave, valor]) => (
+            <Campo key={clave} clave={clave} valor={valor} />
+          ))}
+      </dl>
+
+      {/* Los identificadores, detrás de un desplegable. Ocupaban la mitad de
+          la ficha y no dicen nada a quien la mira, pero quien abre una
+          incidencia de soporte los necesita enteros. */}
+      <details className="mt-2">
+        <summary className="cursor-pointer text-3xs text-ink-faint">
+          {t("ficha.identificadores")}
+        </summary>
+        <dl className="card mt-2 grid gap-x-8 gap-y-2 p-4 sm:grid-cols-2">
+          {Object.entries(fila)
+            .filter(([clave]) => esIdentificadorTecnico(clave))
+            .map(([clave, valor]) => (
+              <Campo key={clave} clave={clave} valor={valor} monoespaciado />
+            ))}
+        </dl>
+      </details>
+
+      <Retenidos campos={retenidos} enmascarados={enmascarados} />
 
       {/* Qué ha cambiado en ESTE registro, campo a campo. Plegado y cargado
           sólo al abrirlo: es trazabilidad, no contenido, y pedirlo en cada
@@ -410,32 +516,16 @@ function Datos({
           Pero cuando hace falta es lo primero que se pregunta —«esto antes no
           decía esto»—, y hasta el 29-10-2026 se escribía y no lo devolvía
           ninguna ruta. */}
-      {objeto && recurso?.servicio ? (
-        <HistorialDeCampos
-          servicio={recurso.servicio}
-          objeto={objeto}
-          objetoId={id}
-        />
+      {objeto && servicio ? (
+        <HistorialDeCampos servicio={servicio} objeto={objeto} objetoId={id} />
       ) : null}
 
       {/* Y cómo estaba el registro ENTERO en un momento dado, para los objetos
           que tienen el rastro completo encendido. El historial de campos dice
           qué cambió; no dice cómo era el conjunto, y reconstruirlo a mano
           encadenando cambios sale mal en cuanto hay una fusión por medio. */}
-      {objeto && recurso?.servicio ? (
-        <ComoEstabaEsto
-          servicio={recurso.servicio}
-          objeto={objeto}
-          objetoId={id}
-        />
-      ) : null}
-
-      {!editando ? (
-        <SubColecciones
-          paneles={paneles}
-          servicio={recurso?.servicio ?? ""}
-          id={id}
-        />
+      {objeto && servicio ? (
+        <ComoEstabaEsto servicio={servicio} objeto={objeto} objetoId={id} />
       ) : null}
     </>
   );
@@ -450,9 +540,17 @@ function Campo({
   valor: unknown;
   monoespaciado?: boolean;
 }) {
+  // El rótulo encima y el valor debajo, como el panel de datos clave de
+  // arriba y como la pestaña «Detalles» de Lightning. Estaban enfrentados a
+  // los dos extremos de la fila: en una pantalla ancha quedaban 900 px entre
+  // «Nombre» y «Ana», y emparejar rótulo y valor a esa distancia no se hace
+  // de un vistazo. Dos sitios del producto que enseñan lo mismo —aquí y
+  // arriba— ahora lo colocan igual.
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="shrink-0 text-3xs text-ink-faint">{humanizar(clave)}</dt>
+    <div className="min-w-0">
+      <dt className="truncate text-3xs text-ink-faint" title={humanizar(clave)}>
+        {humanizar(clave)}
+      </dt>
       <dd
         className={`truncate text-2xs text-ink ${monoespaciado ? "font-mono text-3xs text-ink-muted" : ""}`}
         title={String(valor ?? "")}
@@ -480,6 +578,10 @@ function Adjuntos({ tipo, id }: { tipo: string; id: string }) {
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [subiendo, setSubiendo] = useState(false);
+  // Abierto de entrada, al revés que los paneles del contrato: aquí sólo hay
+  // dos tarjetas y son el motivo de la pestaña. Los otros son hasta ocho y se
+  // piden al abrirse.
+  const [abierto, setAbierto] = useState(true);
 
   const cargar = useCallback(async () => {
     try {
@@ -511,31 +613,38 @@ function Adjuntos({ tipo, id }: { tipo: string; id: string }) {
   }
 
   return (
-    <>
-      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-ink-dim/60 px-3 py-1.5 text-2xs text-ink-muted hover:bg-paper-light">
-        {subiendo ? t("ficha.subiendo") : t("ficha.subir")}
-        <input
-          type="file"
-          className="sr-only"
-          disabled={subiendo}
-          onChange={(e) => void elegir(e.target.files?.[0])}
-        />
-      </label>
-      {/* Subir un adjunto cambia la lista sin decir nada: quien no ve la
-          pantalla no se entera de que ha terminado (CRM-06.02.01.05). */}
-      <p className="sr-only" role="status">
-        {subiendo ? t("ficha.subiendo") : t("ficha.subido")}
-      </p>
-      {fallo ? (
-        <div className="mt-3">
-          <Fallo error={fallo} />
-        </div>
-      ) : null}
-      <div className="mt-3">
+    <PanelRelacionado
+      nombre={t("ficha.adjuntos")}
+      cuantos={filas?.length}
+      abierto={abierto}
+      alAlternar={() => setAbierto((v) => !v)}
+      acciones={
+        <label className="btn-secondary cursor-pointer">
+          {subiendo ? t("ficha.subiendo") : t("ficha.subir")}
+          <input
+            type="file"
+            className="sr-only"
+            disabled={subiendo}
+            onChange={(e) => void elegir(e.target.files?.[0])}
+          />
+        </label>
+      }
+    >
+      <>
+        {/* Subir un adjunto cambia la lista sin decir nada: quien no ve la
+            pantalla no se entera de que ha terminado (CRM-06.02.01.05). */}
+        <p className="sr-only" role="status">
+          {subiendo ? t("ficha.subiendo") : t("ficha.subido")}
+        </p>
+        {fallo ? (
+          <div className="mb-3">
+            <Fallo error={fallo} />
+          </div>
+        ) : null}
         {filas === null ? (
           <Cargando />
         ) : filas.length === 0 ? (
-          <Vacio />
+          <Vacio compacto />
         ) : (
           <Tabla
             filas={filas}
@@ -543,8 +652,8 @@ function Adjuntos({ tipo, id }: { tipo: string; id: string }) {
             titulo={t("ficha.adjuntos")}
           />
         )}
-      </div>
-    </>
+      </>
+    </PanelRelacionado>
   );
 }
 
@@ -613,7 +722,7 @@ function Comentarios({ tipo, id }: { tipo: string; id: string }) {
         {filas === null ? (
           <Cargando />
         ) : filas.length === 0 ? (
-          <Vacio />
+          <Vacio compacto />
         ) : (
           <Tabla filas={filas} titulo={t("ficha.comentarios")} />
         )}
@@ -635,6 +744,7 @@ function Documentos({
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [recargar, setRecargar] = useState(0);
+  const [abierto, setAbierto] = useState(true);
 
   useEffect(() => {
     const control = new AbortController();
@@ -646,29 +756,42 @@ function Documentos({
     return () => control.abort();
   }, [tipo, id, recargar]);
 
-  if (fallo) return <Fallo error={fallo} />;
-  if (filas === null) return <Cargando />;
   return (
-    <>
-      {/* Se dice de dónde sale el estado real: sin esta línea, alguien
-          construiría un informe sobre el título creyendo que está al día. El
-          documento vive en el gestor, aquí está el enlace y el contexto. */}
-      <p className="mb-2 text-2xs text-ink-faint">
-        {t("ficha.documentosIntro")}
-      </p>
-      {filas.length === 0 ? (
-        <Vacio />
-      ) : (
-        <Tabla filas={filas} titulo={t("ficha.documentos")} />
-      )}
-      {filas.length > 0 ? <Aprobacion filas={filas} /> : null}
-      <BuscarEnElCorpus
-        tipo={tipo}
-        id={id}
-        nombre={nombre}
-        alEnlazar={() => setRecargar((n) => n + 1)}
-      />
-    </>
+    <PanelRelacionado
+      nombre={t("ficha.documentos")}
+      cuantos={filas?.length}
+      abierto={abierto}
+      alAlternar={() => setAbierto((v) => !v)}
+    >
+      <>
+        {/* Se dice de dónde sale el estado real: sin esta línea, alguien
+            construiría un informe sobre el título creyendo que está al día. El
+            documento vive en el gestor, aquí está el enlace y el contexto. */}
+        <p className="mb-2 text-2xs text-ink-faint">
+          {t("ficha.documentosIntro")}
+        </p>
+        {fallo ? (
+          <Fallo error={fallo} />
+        ) : filas === null ? (
+          <Cargando />
+        ) : (
+          <>
+            {filas.length === 0 ? (
+              <Vacio compacto />
+            ) : (
+              <Tabla filas={filas} titulo={t("ficha.documentos")} />
+            )}
+            {filas.length > 0 ? <Aprobacion filas={filas} /> : null}
+            <BuscarEnElCorpus
+              tipo={tipo}
+              id={id}
+              nombre={nombre}
+              alEnlazar={() => setRecargar((n) => n + 1)}
+            />
+          </>
+        )}
+      </>
+    </PanelRelacionado>
   );
 }
 
@@ -857,7 +980,6 @@ function BuscarEnElCorpus({
   );
 }
 
-
 /**
  * Preguntar sobre el registro que se está mirando (CRM-05.01.04.09).
  *
@@ -870,10 +992,19 @@ function BuscarEnElCorpus({
  * de toda la empresa y es de una cuenta no cuadra con nada en la reunión
  * siguiente, y para cuando se descubre ya se ha dicho en voz alta.
  */
-export function PreguntarSobreEsto({ objeto, objetoId }: { objeto: string; objetoId: string }) {
+export function PreguntarSobreEsto({
+  objeto,
+  objetoId,
+}: {
+  objeto: string;
+  objetoId: string;
+}) {
   const { t } = useTranslation();
   const [pregunta, setPregunta] = useState("");
-  const [salida, setSalida] = useState<{ pregunta?: string; filtro?: string } | null>(null);
+  const [salida, setSalida] = useState<{
+    pregunta?: string;
+    filtro?: string;
+  } | null>(null);
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
 
@@ -921,7 +1052,10 @@ export function PreguntarSobreEsto({ objeto, objetoId }: { objeto: string; objet
       {fallo ? <Fallo error={fallo} /> : null}
       <div role="status" aria-live="polite">
         {salida ? (
-          <p className="mt-2 text-3xs text-ink-muted" data-testid="pregunta-en-contexto">
+          <p
+            className="mt-2 text-3xs text-ink-muted"
+            data-testid="pregunta-en-contexto"
+          >
             {salida.pregunta}
             {salida.filtro ? (
               <span className="ml-1 text-ink">
@@ -1000,7 +1134,10 @@ export function HistorialDeCampos({
   }, [abierto, datos, cargar]);
 
   return (
-    <details className="mt-3" onToggle={(e) => setAbierto(e.currentTarget.open)}>
+    <details
+      className="mt-3"
+      onToggle={(e) => setAbierto(e.currentTarget.open)}
+    >
       <summary className="cursor-pointer text-3xs text-ink-faint">
         {t("ficha.queHaCambiado")}
       </summary>
@@ -1092,10 +1229,9 @@ export function ComoEstabaEsto({
     if (!abierto) return;
     const control = new AbortController();
     setFallo(null);
-    llamar<Reconstruido>(
-      `/api/v1/${servicio}/rastro/${objeto}/${objetoId}`,
-      { signal: control.signal },
-    )
+    llamar<Reconstruido>(`/api/v1/${servicio}/rastro/${objeto}/${objetoId}`, {
+      signal: control.signal,
+    })
       .then((r) => setEstado(r.datos))
       // Un objeto sin rastro completo contesta 404 a propósito, y eso no es un
       // error: es que nadie lo encendió para este objeto.
@@ -1118,7 +1254,9 @@ export function ComoEstabaEsto({
         {t("ficha.comoEstaba")}
       </summary>
       {fallo ? (
-        <p className="mt-2 text-2xs text-ink-muted">{t("ficha.sinRastroCompleto")}</p>
+        <p className="mt-2 text-2xs text-ink-muted">
+          {t("ficha.sinRastroCompleto")}
+        </p>
       ) : null}
       {estado ? (
         <>
@@ -1136,17 +1274,28 @@ export function ComoEstabaEsto({
       ) : null}
       {cuadra ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <p className={cuadra.cuadra ? "text-2xs text-success" : "text-2xs text-danger"}>
+          <p
+            className={
+              cuadra.cuadra ? "text-2xs text-success" : "text-2xs text-danger"
+            }
+          >
             {cuadra.cuadra ? t("ficha.cuadra") : t("ficha.noCuadra")}
           </p>
           <p className="mt-1 text-3xs text-ink-muted">{cuadra.que_significa}</p>
           {(cuadra.diferencias ?? []).length > 0 ? (
             <ul className="mt-1 divide-y divide-ink-dim/30">
               {(cuadra.diferencias ?? []).map((d) => (
-                <li key={d.campo} className="flex flex-wrap items-baseline gap-x-2 py-1 text-3xs">
+                <li
+                  key={d.campo}
+                  className="flex flex-wrap items-baseline gap-x-2 py-1 text-3xs"
+                >
                   <span className="font-medium text-ink">{d.campo}</span>
-                  <span className="text-ink-faint">{String(d.reconstruido ?? "—")}</span>
-                  <span className="text-ink-muted">≠ {String(d.vivo ?? "—")}</span>
+                  <span className="text-ink-faint">
+                    {String(d.reconstruido ?? "—")}
+                  </span>
+                  <span className="text-ink-muted">
+                    ≠ {String(d.vivo ?? "—")}
+                  </span>
                 </li>
               ))}
             </ul>
