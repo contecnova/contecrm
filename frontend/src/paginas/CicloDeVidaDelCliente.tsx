@@ -122,15 +122,15 @@ export function CicloDeVidaDelCliente() {
       />
 
       {abiertas.length > 0 ? (
-        <p className="card mb-4 border-warning/40 p-3 text-2xs text-warning" role="status">
+        <p className="card mb-4 border-warning/40 p-3 text-dato text-warning" role="status">
           {t("ciclovida.ventanaAbierta", { cuantas: abiertas.length })}
         </p>
       ) : null}
 
       <div className="flex flex-col gap-6">
         <section>
-          <h2 className="text-sm font-medium text-ink">{t("ciclovida.hechas")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("ciclovida.porqueHechas")}</p>
+          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.hechas")}</h2>
+          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porqueHechas")}</p>
           {hechas.length === 0 ? (
             <Vacio titulo={t("ciclovida.sinHechas")} detalle="" />
           ) : (
@@ -139,7 +139,7 @@ export function CicloDeVidaDelCliente() {
                 <li key={o.id} className="card p-3">
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="chip-dato">{o.tipo}</span>
-                    <span className="flex-1 text-2xs text-ink">{o.uso}</span>
+                    <span className="flex-1 text-dato text-ink">{o.uso}</span>
                     <span
                       className={
                         o.estado === "fallida" ? "badge badge-aviso" : "badge badge-muted"
@@ -148,7 +148,7 @@ export function CicloDeVidaDelCliente() {
                       {o.estado}
                     </span>
                   </div>
-                  <p className="mt-1 font-mono text-3xs text-ink-muted">
+                  <p className="mt-1 font-mono text-rotulo text-ink-muted">
                     {t("ciclovida.movio", {
                       bloques: (o.bloques ?? []).length,
                       filas: filasDe(o.plan),
@@ -157,10 +157,10 @@ export function CicloDeVidaDelCliente() {
                   {/* El motivo del final va entero: «fallida» sin el porqué
                       obliga a abrir el registro por la API para saber qué pasó. */}
                   {o.motivo_fin ? (
-                    <p className="mt-1 text-2xs text-ink">{o.motivo_fin}</p>
+                    <p className="mt-1 text-dato text-ink">{o.motivo_fin}</p>
                   ) : null}
                   {(o.conflictos ?? []).length > 0 ? (
-                    <p className="mt-1 text-2xs text-warning">
+                    <p className="mt-1 text-dato text-warning">
                       {t("ciclovida.conflictos", { cuantos: o.conflictos.length })}
                     </p>
                   ) : null}
@@ -171,10 +171,10 @@ export function CicloDeVidaDelCliente() {
         </section>
 
         <section>
-          <h2 className="text-sm font-medium text-ink">{t("ciclovida.simuladas")}</h2>
+          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.simuladas")}</h2>
           {/* Aparte de las hechas a propósito: una simulada NO ha movido nada,
               y en una lista corrida las dos ocupan una línea igual. */}
-          <p className="mt-1 text-3xs text-ink-faint">{t("ciclovida.porqueSimuladas")}</p>
+          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porqueSimuladas")}</p>
           {simuladas.length === 0 ? (
             <Vacio titulo={t("ciclovida.sinSimuladas")} detalle="" />
           ) : (
@@ -183,19 +183,19 @@ export function CicloDeVidaDelCliente() {
                 <li key={o.id} className="card p-3">
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="chip-dato">{o.tipo}</span>
-                    <span className="flex-1 text-2xs text-ink">{o.uso}</span>
-                    <span className="font-mono text-3xs text-ink-faint">
+                    <span className="flex-1 text-dato text-ink">{o.uso}</span>
+                    <span className="font-mono text-rotulo text-ink-faint">
                       {fecha(o.created_at)}
                     </span>
                   </div>
-                  <p className="mt-1 font-mono text-3xs text-ink-muted">
+                  <p className="mt-1 font-mono text-rotulo text-ink-muted">
                     {t("ciclovida.sacaria", {
                       bloques: (o.bloques ?? []).length,
                       filas: filasDe(o.plan),
                     })}
                   </p>
                   {(o.plan?.avisos ?? []).map((aviso, i) => (
-                    <p key={i} className="mt-1 text-2xs text-warning">
+                    <p key={i} className="mt-1 text-dato text-warning">
                       {aviso}
                     </p>
                   ))}
@@ -206,8 +206,8 @@ export function CicloDeVidaDelCliente() {
         </section>
 
         <section>
-          <h2 className="text-sm font-medium text-ink">{t("ciclovida.migraciones")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("ciclovida.porqueMigraciones")}</p>
+          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.migraciones")}</h2>
+          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porqueMigraciones")}</p>
           {migraciones.length === 0 ? (
             <Vacio titulo={t("ciclovida.sinMigraciones")} detalle="" />
           ) : (
@@ -215,7 +215,7 @@ export function CicloDeVidaDelCliente() {
               {migraciones.map((m) => (
                 <li key={m.id} className="card p-3">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="font-mono text-2xs text-ink">
+                    <span className="font-mono text-dato text-ink">
                       {t("ciclovida.deA", { desde: m.desde, hacia: m.hacia })}
                     </span>
                     <span className="flex-1" />
@@ -229,7 +229,7 @@ export function CicloDeVidaDelCliente() {
                   </div>
                   {/* La ventana con sus horas: «10 minutos» no dice si cae en
                       hora punta del cliente, y eso es lo que se negocia. */}
-                  <p className="mt-1 font-mono text-3xs text-ink-muted">
+                  <p className="mt-1 font-mono text-rotulo text-ink-muted">
                     {m.solo_lectura_desde
                       ? t("ciclovida.ventanaDesde", {
                           desde: fechaHora(m.solo_lectura_desde),
@@ -240,12 +240,12 @@ export function CicloDeVidaDelCliente() {
                   {/* Las diferencias de la verificación: una migración
                       «verificada» con diferencias no está bien, está medida. */}
                   {(m.diferencias ?? []).length > 0 ? (
-                    <p className="mt-1 text-2xs text-warning">
+                    <p className="mt-1 text-dato text-warning">
                       {t("ciclovida.diferencias", { cuantas: m.diferencias.length })}
                     </p>
                   ) : null}
                   {m.motivo_fin ? (
-                    <p className="mt-1 text-2xs text-ink">{m.motivo_fin}</p>
+                    <p className="mt-1 text-dato text-ink">{m.motivo_fin}</p>
                   ) : null}
                 </li>
               ))}
@@ -254,8 +254,8 @@ export function CicloDeVidaDelCliente() {
         </section>
 
         <section>
-          <h2 className="text-sm font-medium text-ink">{t("ciclovida.perfiles")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("ciclovida.porquePerfiles")}</p>
+          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.perfiles")}</h2>
+          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porquePerfiles")}</p>
           {!cargado || perfiles.length === 0 ? (
             <Vacio titulo={t("ciclovida.sinPerfiles")} detalle="" />
           ) : (
@@ -263,11 +263,11 @@ export function CicloDeVidaDelCliente() {
               {perfiles.map((p) => (
                 <li key={p.clave} className="card p-3">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="flex-1 text-2xs text-ink">{p.nombre}</span>
+                    <span className="flex-1 text-dato text-ink">{p.nombre}</span>
                     <span className="chip-dato font-mono">{p.clave}</span>
                   </div>
                   {p.descripcion ? (
-                    <p className="mt-1 text-3xs text-ink-muted">{p.descripcion}</p>
+                    <p className="mt-1 text-rotulo text-ink-muted">{p.descripcion}</p>
                   ) : null}
                 </li>
               ))}

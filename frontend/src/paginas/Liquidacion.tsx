@@ -107,7 +107,7 @@ export function Liquidacion() {
           aplicado parece simplemente más baja, y quien la cobra no sabe que le
           han quitado algo. */}
       {recortado ? (
-        <p className="card mb-4 border-warning/40 p-3 text-2xs text-warning">
+        <p className="card mb-4 border-warning/40 p-3 text-dato text-warning">
           {t("liquidacion.recortado", {
             cuanto: comoImporte(detalle.recortado_por_tope, detalle.moneda),
           })}
@@ -128,7 +128,7 @@ function LasLineas({ lineas, moneda }: { lineas: Linea[]; moneda: string }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("liquidacion.lineas")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("liquidacion.lineasAyuda")}
       </p>
       {lineas.length === 0 ? (
@@ -137,12 +137,12 @@ function LasLineas({ lineas, moneda }: { lineas: Linea[]; moneda: string }) {
         <ul className="divide-y divide-ink-dim/30">
           {lineas.map((l) => (
             <li key={l.id} className="py-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+              <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                 <span className="font-medium text-ink">{l.concepto}</span>
                 <span className="text-ink-muted">
                   {comoImporte(l.importe, moneda)}
                 </span>
-                <span className="text-3xs text-ink-faint">
+                <span className="text-rotulo text-ink-faint">
                   {t("liquidacion.baseYPct", {
                     base: comoImporte(l.base, moneda),
                     pct: l.porcentaje,
@@ -157,7 +157,7 @@ function LasLineas({ lineas, moneda }: { lineas: Linea[]; moneda: string }) {
                   </span>
                 ) : null}
               </div>
-              <p className="text-3xs text-ink-muted">{l.explicacion}</p>
+              <p className="text-rotulo text-ink-muted">{l.explicacion}</p>
             </li>
           ))}
         </ul>
@@ -190,7 +190,7 @@ function LasDisputas({
         <ul className="divide-y divide-ink-dim/30">
           {disputas.map((d) => (
             <li key={d.id} className="py-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+              <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                 <span className="chip-dato">{d.estado}</span>
                 {d.importe_reclamado ? (
                   <span className="text-ink-muted">
@@ -198,11 +198,11 @@ function LasDisputas({
                   </span>
                 ) : null}
               </div>
-              <p className="text-3xs text-ink">{d.motivo}</p>
+              <p className="text-rotulo text-ink">{d.motivo}</p>
               {d.resolucion ? (
-                <p className="text-3xs text-ink-muted">{d.resolucion}</p>
+                <p className="text-rotulo text-ink-muted">{d.resolucion}</p>
               ) : (
-                <p className="text-3xs text-warning">
+                <p className="text-rotulo text-warning">
                   {t("liquidacion.sinResolver")}
                 </p>
               )}

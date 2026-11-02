@@ -73,7 +73,7 @@ export function Vacio({
   if (compacto) {
     return (
       <div className="py-4">
-        <p className="flex items-center gap-2 text-2xs text-ink-faint">
+        <p className="flex items-center gap-2 text-dato text-ink-faint">
           <Icono nombre={icono} tamano="sm" />
           {titulo ?? t("vacio.titulo")}
         </p>
@@ -84,7 +84,7 @@ export function Vacio({
             29-10-2026. Un vacío sin porqué se lee como «no hay nada», que es
             justo lo que estas pantallas estaban intentando no decir. */}
         {detalle ? (
-          <p className="mt-1 text-3xs text-ink-faint">{detalle}</p>
+          <p className="mt-1 text-rotulo text-ink-faint">{detalle}</p>
         ) : null}
       </div>
     );
@@ -93,8 +93,8 @@ export function Vacio({
   return (
     <div className="card flex flex-col items-center px-6 py-12 text-center">
       <Icono nombre={icono} tamano="xl" className="text-ink-dim" />
-      <p className="mt-3 text-sm font-medium text-ink">{titulo ?? t("vacio.titulo")}</p>
-      <p className="mt-1 max-w-md text-2xs text-ink-faint">{detalle ?? t("vacio.detalle")}</p>
+      <p className="mt-3 text-titulo font-medium text-ink">{titulo ?? t("vacio.titulo")}</p>
+      <p className="mt-1 max-w-md text-dato text-ink-faint">{detalle ?? t("vacio.detalle")}</p>
       {boton}
     </div>
   );
@@ -146,18 +146,18 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
           funciona» y nadie puede arreglarlo. */}
       {!api && error instanceof globalThis.Error ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-2xs text-ink-faint">
+          <summary className="cursor-pointer text-dato text-ink-faint">
             {t("errores.detalleTecnico")}
           </summary>
-          <pre className="mt-2 overflow-x-auto rounded bg-paper-light p-3 font-mono text-2xs text-ink-muted">
+          <pre className="mt-2 overflow-x-auto rounded bg-paper-light p-3 font-mono text-dato text-ink-muted">
             {error.message}
           </pre>
         </details>
       ) : null}
       {api?.detalle ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-2xs text-ink-faint">{t("errores.detalleTecnico")}</summary>
-          <pre className="mt-2 overflow-x-auto rounded-lg bg-paper-light p-3 font-mono text-2xs text-ink-muted">
+          <summary className="cursor-pointer text-dato text-ink-faint">{t("errores.detalleTecnico")}</summary>
+          <pre className="mt-2 overflow-x-auto rounded-lg bg-paper-light p-3 font-mono text-dato text-ink-muted">
             {JSON.stringify(api.detalle, null, 2)}
           </pre>
         </details>
@@ -199,12 +199,12 @@ export function Retenidos({
   return (
     <>
       {campos.length > 0 ? (
-        <p className="mt-2 text-2xs text-warning" role="note">
+        <p className="mt-2 text-dato text-warning" role="note">
           {t("retenidos", { count: campos.length, campos: campos.join(", ") })}
         </p>
       ) : null}
       {enmascarados.length > 0 ? (
-        <p className="mt-2 text-2xs text-warning" role="note">
+        <p className="mt-2 text-dato text-warning" role="note">
           {t("enmascarados", {
             count: enmascarados.length,
             campos: enmascarados.join(", "),

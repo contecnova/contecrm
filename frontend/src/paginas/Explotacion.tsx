@@ -131,10 +131,10 @@ export function Explotacion() {
           role="status"
           aria-live="polite"
         >
-          <h2 className="text-sm font-medium text-warning">
+          <h2 className="text-titulo font-medium text-warning">
             {t("explotacion.noDisponible")}
           </h2>
-          <ul className="mt-2 list-disc pl-5 text-2xs text-ink-muted">
+          <ul className="mt-2 list-disc pl-5 text-dato text-ink-muted">
             {diagnostico.problemas.map((p) => (
               <li key={p}>{p}</li>
             ))}
@@ -142,10 +142,10 @@ export function Explotacion() {
           {/* Lo que sigue funcionando va en la MISMA tarjeta y no en otra: quien
               lee un aviso en rojo cierra la pantalla, y si la tranquilidad está
               más abajo no la lee nadie. */}
-          <h3 className="mt-3 text-2xs font-medium text-ink">
+          <h3 className="mt-3 text-dato font-medium text-ink">
             {t("explotacion.sigueFuncionando")}
           </h3>
-          <ul className="mt-1 list-disc pl-5 text-2xs text-ink-muted">
+          <ul className="mt-1 list-disc pl-5 text-dato text-ink-muted">
             {diagnostico.sigue_funcionando.map((s) => (
               <li key={s}>{s}</li>
             ))}
@@ -169,10 +169,10 @@ export function Explotacion() {
           que tiene alguien al saltar a otra herramienta. */}
       {diagnostico.url_publica ? (
         <section className="card p-4" data-testid="explotacion-donde-se-construyen">
-          <h2 className="text-sm font-medium text-ink">
+          <h2 className="text-titulo font-medium text-ink">
             {t("explotacion.dondeSeConstruyen")}
           </h2>
-          <p className="mt-1 text-2xs text-ink-muted">
+          <p className="mt-1 text-dato text-ink-muted">
             {t("explotacion.dondeSeConstruyenPorque")}
           </p>
           <a
@@ -187,7 +187,7 @@ export function Explotacion() {
       ) : null}
 
       <section>
-        <h2 className="text-sm font-medium text-ink">{t("explotacion.publicadas")}</h2>
+        <h2 className="text-titulo font-medium text-ink">{t("explotacion.publicadas")}</h2>
         {publicadas.length === 0 ? (
           <Vacio titulo={t("explotacion.sinPublicadas")} detalle={t("explotacion.sinPublicadasDetalle")} />
         ) : (
@@ -200,7 +200,7 @@ export function Explotacion() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-ink">{t("explotacion.mias")}</h2>
+        <h2 className="text-titulo font-medium text-ink">{t("explotacion.mias")}</h2>
         {mias.length === 0 ? (
           <Vacio titulo={t("explotacion.sinMias")} detalle={t("explotacion.sinMiasDetalle")} />
         ) : (
@@ -275,9 +275,9 @@ function BotonRegistrar({ alTerminar }: { alTerminar: () => void }) {
       <button type="button" className="btn-primary" onClick={() => void registrar()} disabled={enCurso}>
         {enCurso ? t("explotacion.registrando") : t("explotacion.registrar")}
       </button>
-      <p className="mt-1.5 text-3xs text-ink-faint">{t("explotacion.registrarDetalle")}</p>
+      <p className="mt-1.5 text-rotulo text-ink-faint">{t("explotacion.registrarDetalle")}</p>
       {fallo ? (
-        <p role="alert" className="mt-2 text-2xs text-danger">
+        <p role="alert" className="mt-2 text-dato text-danger">
           {fallo}
         </p>
       ) : null}
@@ -375,7 +375,7 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
         </button>
       </form>
 
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {recientes.length ? t("explotacion.recientes") : t("explotacion.ejemplos")}
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -395,7 +395,7 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
       </div>
 
       {fallo ? (
-        <p role="alert" className="flex items-start gap-1.5 text-2xs text-danger">
+        <p role="alert" className="flex items-start gap-1.5 text-dato text-danger">
           <Icono nombre="error" tamano="sm" />
           <span>{fallo}</span>
         </p>
@@ -410,15 +410,15 @@ function Tarjeta({ pregunta }: { pregunta: Pregunta }) {
   return (
     <li className="rounded-lg border border-ink-dim/40 bg-paper-light p-3">
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-sm text-ink">{pregunta.titulo}</span>
+        <span className="text-titulo text-ink">{pregunta.titulo}</span>
         {pregunta.informe_id ? (
-          <span className="rounded bg-success/10 px-1.5 py-0.5 text-3xs uppercase text-success">
+          <span className="rounded bg-success/10 px-1.5 py-0.5 text-rotulo uppercase text-success">
             {t("explotacion.esInforme")}
           </span>
         ) : null}
       </div>
-      <p className="mt-1 text-2xs text-ink-muted">{pregunta.pregunta}</p>
-      <p className="mt-1 text-3xs text-ink-faint">
+      <p className="mt-1 text-dato text-ink-muted">{pregunta.pregunta}</p>
+      <p className="mt-1 text-rotulo text-ink-faint">
         {t("explotacion.vecesUsada", { veces: pregunta.veces_usada })}
       </p>
     </li>

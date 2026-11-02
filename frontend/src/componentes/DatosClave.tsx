@@ -105,7 +105,7 @@ function Ruta({
             key={opcion}
             aria-current={aqui ? "step" : undefined}
             className={cn(
-              "flex items-center whitespace-nowrap px-3 py-1 text-2xs",
+              "flex items-center whitespace-nowrap px-3 py-1 text-dato",
               // Lo recorrido en azul, lo de ahora en azul oscuro y lo que
               // queda en gris. Tres tonos y no dos: sin el del medio no se
               // distingue dónde estás de lo que ya has pasado.
@@ -236,7 +236,7 @@ export function DatosClave({
       {volverA ? (
         <nav
           aria-label={t("ficha.deDonde")}
-          className="mb-2 flex items-center gap-2 text-2xs text-ink-faint"
+          className="mb-2 flex items-center gap-2 text-dato text-ink-faint"
         >
           <Link to={volverA.a} className="text-accent hover:underline">
             {volverA.titulo}
@@ -254,10 +254,10 @@ export function DatosClave({
             {/* El TIPO encima y en pequeño, el nombre debajo y grande: es el
               orden de Salesforce y resuelve una ambigüedad real —«Acme» puede
               ser una cuenta, un lead o un caso, y el título solo no lo dice. */}
-            <p className="text-3xs font-semibold uppercase tracking-wide text-ink-faint">
+            <p className="text-rotulo font-semibold uppercase tracking-wide text-ink-faint">
               {humanizar(tipo)}
             </p>
-            <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
+            <h1 className="min-w-0 truncate text-pagina font-bold tracking-[-0.01em] text-ink">
               {nombre || humanizar(tipo)}
             </h1>
             {distintivos ? (
@@ -282,13 +282,13 @@ export function DatosClave({
             {clave.map((c) => (
               <div key={c} className="min-w-0">
                 <dt
-                  className="truncate text-3xs text-ink-faint"
+                  className="truncate text-rotulo text-ink-faint"
                   title={humanizar(c)}
                 >
                   {humanizar(c)}
                 </dt>
                 <dd
-                  className="truncate text-sm text-ink"
+                  className="truncate text-titulo text-ink"
                   title={escalar(fila?.[c], c, laMoneda)}
                 >
                   {escalar(fila?.[c], c, laMoneda)}

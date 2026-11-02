@@ -94,8 +94,8 @@ function Desplegable({
         className={cn(
           "flex min-w-0 items-center gap-1",
           grande
-            ? "text-xl-em font-bold tracking-[-0.01em] text-ink hover:text-accent"
-            : "text-3xs font-semibold uppercase tracking-[0.055em] text-ink-faint hover:text-ink",
+            ? "text-pagina font-bold tracking-[-0.01em] text-ink hover:text-accent"
+            : "text-rotulo font-semibold uppercase tracking-[0.055em] text-ink-faint hover:text-ink",
         )}
       >
         <span className="truncate">{rotulo}</span>
@@ -133,7 +133,7 @@ function Opcion({
         aria-selected={Boolean(activa)}
         onClick={onClick}
         className={cn(
-          "block w-full truncate rounded px-3 py-1.5 text-left text-xs",
+          "block w-full truncate rounded px-3 py-1.5 text-left text-titulin",
           activa
             ? "bg-accent/10 font-semibold text-accent"
             : tono === "accion"
@@ -243,7 +243,7 @@ export function CabeceraDeLista({
                 )}
               </Desplegable>
             ) : (
-              <p className="truncate text-3xs font-semibold uppercase tracking-[0.055em] text-ink-faint">
+              <p className="truncate text-rotulo font-semibold uppercase tracking-[0.055em] text-ink-faint">
                 {rotuloDelObjeto}
               </p>
             )}
@@ -278,7 +278,7 @@ export function CabeceraDeLista({
                             creyéndola propia deja a todo el equipo sin su
                             listado de cada día. */}
                         {v.compartida ? (
-                          <span className="ml-2 text-3xs text-ink-faint">
+                          <span className="ml-2 text-rotulo text-ink-faint">
                             {t("vistas.deTodos")}
                           </span>
                         ) : null}
@@ -311,7 +311,7 @@ export function CabeceraDeLista({
                 )}
               </Desplegable>
             ) : (
-              <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
+              <h1 className="min-w-0 truncate text-pagina font-bold tracking-[-0.01em] text-ink">
                 {actual?.nombre ?? modulo}
               </h1>
             )}
@@ -324,7 +324,7 @@ export function CabeceraDeLista({
               <h1 className="sr-only">{`${rotuloDelObjeto} — ${nombreDeLaVista}`}</h1>
             ) : null}
             {hayQueElegirObjeto ? (
-              <p className="mt-0.5 text-3xs text-ink-faint">
+              <p className="mt-0.5 text-rotulo text-ink-faint">
                 {t("modulo.cuantasPestanas", { count: normales.length })}
               </p>
             ) : null}

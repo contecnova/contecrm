@@ -6,6 +6,37 @@ export default {
   // light, NotebookLM-style.
   darkMode: "class",
   theme: {
+    /**
+     * La escala tipográfica: SIETE escalones y ninguno por debajo de 12px.
+     *
+     * **Medido el 02-11-2026 en las 58 pantallas**: se usaban once tamaños
+     * —32, 22, 20, 18, 16, 14, 12, 11, 10, 9,6 y 9 px—, con saltos de un
+     * píxel entre 10, 11 y 12. Eso no es una escala, es ruido: nadie puede
+     * decidir entre 10 y 11, así que se elige al azar y cada pantalla sale
+     * de un tamaño distinto. Una pantalla llegaba a usar nueve a la vez.
+     *
+     * Y lo peor no era el número: **el 77% del texto del producto estaba en
+     * 10 u 11 px** —508 usos de `text-3xs` y 458 de `text-2xs` de 1.257 en
+     * total—, que es por debajo de lo que se lee cómodo en un escritorio.
+     * Salesforce Lightning no baja de 12 y su cuerpo es 13. Una auditoría
+     * anterior ya había subido un 8,8 a 10 llamándolo «el mínimo legible
+     * del sistema»; 10 tampoco lo es.
+     *
+     * Los nombres dicen el PAPEL y no el tamaño, que es lo que permite
+     * cambiar la escala sin volver a tocar mil sitios. Y la escala es la
+     * del tema entera —no `extend`—, así que `text-sm`, `text-lg` y las
+     * demás de Tailwind dejan de existir: no se puede escribir un tamaño
+     * que no esté aquí sin que la clase se quede sin regla.
+     */
+    fontSize: {
+      rotulo:  ["0.75rem",   { lineHeight: "1rem" }],      // 12 — rótulos, metadatos, lo secundario
+      dato:    ["0.8125rem", { lineHeight: "1.125rem" }],  // 13 — el cuerpo
+      titulin: ["0.875rem",  { lineHeight: "1.25rem" }],   // 14 — encabezado pequeño
+      titulo:  ["1rem",      { lineHeight: "1.375rem" }],  // 16 — encabezado de sección
+      grande:  ["1.25rem",   { lineHeight: "1.5rem" }],    // 20 — encabezado de bloque
+      pagina:  ["1.5rem",    { lineHeight: "1.2" }],       // 24 — el título de la pantalla
+      hero:    ["2rem",      { lineHeight: "1.1" }],       // 32 — la cifra que se mira de lejos
+    },
     extend: {
       colors: {
         // ── Semantic palette wired to CSS variables ─────────────────────────
@@ -323,28 +354,6 @@ export default {
         // it's now a flat Material button — no more blue→violet gradient.
         "gradient-cta":       "linear-gradient(180deg, rgb(var(--accent)) 0%, rgb(var(--accent-soft)) 100%)",
         "gradient-cta-hover": "linear-gradient(180deg, rgb(var(--accent-soft)) 0%, rgb(var(--accent-soft)) 100%)",
-      },
-      // Auditoría M30 (2026-05-26): antes había 234+ instancias de
-      // `text-[0.65rem]`, `text-[11px]`, `text-[0.7rem]`, `text-[10px]`
-      // dispersos. La escala canónica son 3 tokens semánticos
-      // pequeños que cubren todos los micro-textos del UI:
-      //   `text-3xs` (0.625rem / 10px) — meta absoluta (badges, time,
-      //              keyboard hints). Solo cuando text-2xs es demasiado
-      //              grande.
-      //   `text-2xs` (0.6875rem / 11px) — captions, secondary labels.
-      //   `text-xs`  (0.75rem / 12px) — el default de Tailwind.
-      // Cualquier `text-[Npx]` queda como deuda — incremental.
-      fontSize: {
-        "3xs": ["0.625rem", { lineHeight: "0.875rem" }],
-        "2xs": ["0.6875rem", { lineHeight: "1rem" }],
-        // Los dos escalones de contecflow que la escala de Tailwind no tiene.
-        // El resto de su escala ya coincide uno a uno con la de Tailwind
-        // —10/11/12/14/16/18/20/24/36/48—, así que no hay nada que redefinir:
-        // solo faltaban estos dos huecos, y sin ellos un título quedaba en 20
-        // o en 24 y ninguno es el suyo.
-        "sm-h": ["0.78125rem", { lineHeight: "1.125rem" }],   // 12.5px — enlaces del menú
-        "md-em": ["0.9375rem", { lineHeight: "1.375rem" }],  // 15px
-        "xl-em": ["1.375rem", { lineHeight: "1.2" }],        // 22px — títulos de pantalla
       },
       // Auditoría M31 (2026-05-26): antes había `z-[50]`, `z-[70]`,
       // `z-[72]`, `z-[75]`, `z-[80]`, `z-[90]`, `z-[110]`, `z-[200]`

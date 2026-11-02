@@ -187,7 +187,7 @@ function Armazon({
           teclado: sin él, cada página empieza por recorrer el menú entero. */}
       <a
         href="#contenido"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-focus-ring focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-paper focus:shadow-elevation-3"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-focus-ring focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-titulo focus:font-medium focus:text-paper focus:shadow-elevation-3"
       >
         {t("app.saltarAlContenido")}
       </a>
@@ -203,7 +203,7 @@ function Armazon({
             administrador que olvida que está viendo el CRM en nombre de otra
             persona toma decisiones sobre datos que no son los que cree. */}
         {sesion?.suplantado_por ? (
-          <p className="bg-warning px-4 py-1 text-center text-2xs text-ink" role="status">
+          <p className="bg-warning px-4 py-1 text-center text-dato text-ink" role="status">
             {t("app.suplantado")}
           </p>
         ) : null}

@@ -257,18 +257,18 @@ export function Paleta({
             onChange={(e) => setConsulta(e.target.value)}
             onKeyDown={alTeclear}
             placeholder={t("nav.buscarPlaceholder")}
-            className="h-12 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"
+            className="h-12 flex-1 bg-transparent text-titulo text-ink outline-none placeholder:text-ink-faint"
             autoComplete="off"
             aria-controls="paleta-resultados"
             aria-activedescendant={resultados[indice] ? `paleta-op-${indice}` : undefined}
           />
-          <kbd className="rounded border border-ink-dim/60 bg-paper-light px-1.5 py-0.5 font-mono text-3xs text-ink-muted">
+          <kbd className="rounded border border-ink-dim/60 bg-paper-light px-1.5 py-0.5 font-mono text-rotulo text-ink-muted">
             Esc
           </kbd>
         </div>
 
         {resultados.length === 0 ? (
-          <p className="px-4 py-8 text-center text-xs text-ink-faint" role="status">
+          <p className="px-4 py-8 text-center text-titulin text-ink-faint" role="status">
             {t("nav.sinResultados", { consulta })}
           </p>
         ) : (
@@ -288,13 +288,13 @@ export function Paleta({
                   }}
                   onMouseEnter={() => setIndice(i)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-titulo transition-colors",
                     i === indice ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light",
                   )}
                 >
                   <Icono nombre={destino.icono} tamano="sm" className="text-ink-faint" />
                   <span className="flex-1 truncate">{destino.rotulo}</span>
-                  <span className="shrink-0 text-3xs text-ink-faint">{destino.grupo}</span>
+                  <span className="shrink-0 text-rotulo text-ink-faint">{destino.grupo}</span>
                 </button>
               </li>
             ))}

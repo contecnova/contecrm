@@ -272,7 +272,7 @@ export function Campana() {
           <>
             {consumo.sobrepasado ? (
               <p
-                className="card mb-4 border-warning/40 p-3 text-2xs text-warning"
+                className="card mb-4 border-warning/40 p-3 text-dato text-warning"
                 role="status"
               >
                 {t("campana.sobrepasado", {
@@ -283,10 +283,10 @@ export function Campana() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("campana.planVsReal")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("campana.porquePlan")}
                 </p>
                 {plan.length === 0 ? (
@@ -295,12 +295,12 @@ export function Campana() {
                   <ul className="mt-2 flex flex-col gap-1">
                     {plan.map(([clave, datos]) => (
                       <li key={clave} className="flex items-baseline gap-2">
-                        <span className="flex-1 text-2xs text-ink">
+                        <span className="flex-1 text-dato text-ink">
                           {clave}
                         </span>
                         {/* Un objetivo sobre algo que el embudo no mide NO se compara
                         contra cero: se dice que no se puede comparar. */}
-                        <span className="font-mono text-2xs text-ink-muted">
+                        <span className="font-mono text-dato text-ink-muted">
                           {datos.real === null
                             ? t("campana.noComparable", {
                                 objetivo: datos.objetivo,
@@ -317,14 +317,14 @@ export function Campana() {
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("campana.coste")}
                 </h2>
                 {!rendimiento ? (
                   <Vacio titulo={t("campana.sinRendimiento")} detalle="" />
                 ) : (
                   <>
-                    <p className="mt-2 font-mono text-2xs text-ink">
+                    <p className="mt-2 font-mono text-dato text-ink">
                       {t("campana.porLead", {
                         lead: rendimiento.coste_por_lead ?? "—",
                         conversion: rendimiento.coste_por_conversion ?? "—",
@@ -332,13 +332,13 @@ export function Campana() {
                     </p>
                     {/* El ROI sólo cuando se puede medir. Sin ingresos atribuidos un
                     0 % y un «no se sabe» se leen igual y son lo contrario. */}
-                    <p className="mt-1 font-mono text-lg text-ink">
+                    <p className="mt-1 font-mono text-grande text-ink">
                       {rendimiento.roi_medible
                         ? t("campana.roi", { pct: rendimiento.roi_pct })
                         : t("campana.roiNoMedible")}
                     </p>
                     {rendimiento.aviso ? (
-                      <p className="mt-1 text-2xs text-warning">
+                      <p className="mt-1 text-dato text-warning">
                         {rendimiento.aviso}
                       </p>
                     ) : null}
@@ -347,14 +347,14 @@ export function Campana() {
               </section>
 
               <section className="card p-4 lg:col-span-2">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("campana.embudo")}
                 </h2>
                 {!embudo ? (
                   <Vacio titulo={t("campana.sinEmbudo")} detalle="" />
                 ) : (
                   <>
-                    <p className="mt-1 font-mono text-3xs text-ink-muted">
+                    <p className="mt-1 font-mono text-rotulo text-ink-muted">
                       {t("campana.miembros", {
                         miembros: embudo.miembros,
                         excluidos: embudo.excluidos,
@@ -381,7 +381,7 @@ export function Campana() {
                     </ul>
                     {estado ? (
                       <div className="mt-3" role="status" aria-live="polite">
-                        <p className="text-3xs text-ink-faint">
+                        <p className="text-rotulo text-ink-faint">
                           {t("campana.quienes", {
                             estado,
                             cuantos: miembros.length,
@@ -393,7 +393,7 @@ export function Campana() {
                               key={m.objeto_id}
                               className="flex items-baseline gap-2"
                             >
-                              <span className="flex-1 font-mono text-3xs text-ink">
+                              <span className="flex-1 font-mono text-rotulo text-ink">
                                 {m.objeto_id}
                               </span>
                               {/* De dónde salió: un miembro metido a mano y uno que
@@ -410,10 +410,10 @@ export function Campana() {
 
               {evento ? (
                 <section className="card p-4 lg:col-span-2">
-                  <h2 className="text-sm font-medium text-ink">
+                  <h2 className="text-titulo font-medium text-ink">
                     {t("campana.evento")}
                   </h2>
-                  <p className="mt-2 font-mono text-2xs text-ink">
+                  <p className="mt-2 font-mono text-dato text-ink">
                     {t("campana.asistencia", {
                       inscritos: evento.inscritos,
                       asistieron: evento.asistieron,
@@ -424,11 +424,11 @@ export function Campana() {
                   {/* Los sin marcar van delante de la tasa: una tasa calculada
                   ignorándolos es una tasa inventada. */}
                   {evento.sin_marcar > 0 ? (
-                    <p className="mt-1 text-2xs text-warning">
+                    <p className="mt-1 text-dato text-warning">
                       {t("campana.sinMarcar", { cuantos: evento.sin_marcar })}
                     </p>
                   ) : null}
-                  <p className="mt-1 font-mono text-lg text-ink">
+                  <p className="mt-1 font-mono text-grande text-ink">
                     {evento.medible
                       ? t("campana.tasa", { pct: evento.tasa_asistencia_pct })
                       : t("campana.tasaNoMedible")}

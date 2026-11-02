@@ -62,7 +62,7 @@ export function Ayuda() {
 
       {capitulo ? (
         <a
-          className="mt-4 inline-block rounded-lg bg-accent px-3 py-1.5 text-2xs text-paper"
+          className="mt-4 inline-block rounded-lg bg-accent px-3 py-1.5 text-dato text-paper"
           href={`${BASE}/#${capitulo.ancla}`}
         >
           {t("ayuda.abrirCapitulo", { capitulo: capitulo.titulo })}
@@ -70,19 +70,19 @@ export function Ayuda() {
       ) : (
         /* Sin capítulo asociado se dice, en vez de mandar al índice: mandar a
            buscar a quien está atascado es como se pierde al usuario. */
-        <p className="mt-4 text-2xs text-ink-muted">{t("ayuda.sinCapitulo")}</p>
+        <p className="mt-4 text-dato text-ink-muted">{t("ayuda.sinCapitulo")}</p>
       )}
 
       <nav aria-label={t("ayuda.otros")} className="mt-6">
-        <h2 className="text-xs font-medium text-ink">{t("ayuda.otros")}</h2>
+        <h2 className="text-titulin font-medium text-ink">{t("ayuda.otros")}</h2>
         <ul className="mt-2 space-y-1">
           <li>
-            <a className="text-2xs text-accent underline" href={`${BASE}/`}>
+            <a className="text-dato text-accent underline" href={`${BASE}/`}>
               {t("ayuda.manualUsuario")}
             </a>
           </li>
           <li>
-            <a className="text-2xs text-accent underline" href="/docs/manual-tecnico/">
+            <a className="text-dato text-accent underline" href="/docs/manual-tecnico/">
               {t("ayuda.manualTecnico")}
             </a>
           </li>

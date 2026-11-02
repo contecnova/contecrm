@@ -29,14 +29,14 @@ export function Recorrido() {
         entradilla={t("recorrido.intro")}
         icono="route"
       />
-      <p className="mt-3 text-3xs text-ink-faint">
+      <p className="mt-3 text-rotulo text-ink-faint">
         {t("recorrido.cuantos", { modulos: MODULOS.length, grupos: grupos.length })}
       </p>
 
       <ol className="mt-6 flex flex-col gap-6">
         {grupos.map(([grupo, modulos], i) => (
           <li key={grupo}>
-            <h2 className="text-2xs font-medium uppercase tracking-wide text-ink-faint">
+            <h2 className="text-dato font-medium uppercase tracking-wide text-ink-faint">
               {i + 1}. {grupo}
             </h2>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -46,9 +46,9 @@ export function Recorrido() {
                   to={`/m/${m.ruta}`}
                   className="rounded-xl border border-ink-dim/60 bg-paper p-3 hover:bg-paper-light"
                 >
-                  <p className="text-xs text-ink">{m.titulo}</p>
-                  <p className="mt-1 font-mono text-3xs text-ink-faint">{m.capacidad}</p>
-                  <p className="mt-1 text-3xs text-ink-faint">
+                  <p className="text-titulin text-ink">{m.titulo}</p>
+                  <p className="mt-1 font-mono text-rotulo text-ink-faint">{m.capacidad}</p>
+                  <p className="mt-1 text-rotulo text-ink-faint">
                     {recursosDe(m.ruta).map((r) => r.nombre).join(" · ")}
                   </p>
                 </Link>
@@ -58,7 +58,7 @@ export function Recorrido() {
         ))}
       </ol>
 
-      <p className="mt-8 text-2xs text-ink-faint">{t("recorrido.cierre")}</p>
+      <p className="mt-8 text-dato text-ink-faint">{t("recorrido.cierre")}</p>
     </>
   );
 }

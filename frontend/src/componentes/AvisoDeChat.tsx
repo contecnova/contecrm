@@ -68,7 +68,7 @@ export function AvisoDeChat() {
           // sin esto, un lector de pantalla leería el número dos veces y la
           // segunda sin decir de qué.
           aria-hidden
-          className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-3xs font-bold text-white dark:text-paper-sunk"
+          className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-rotulo font-bold text-white dark:text-paper-sunk"
         >
           {rotulo}
         </span>

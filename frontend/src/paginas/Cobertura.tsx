@@ -58,22 +58,22 @@ export function Cobertura() {
           alerta={informe.operacionesSinPantalla > 0}
         />
       </div>
-      <p className="mt-2 text-3xs text-ink-faint">
+      <p className="mt-2 text-rotulo text-ink-faint">
         {t("cobertura.enRecursos", { cuantos: informe.sinPantalla.length })}
       </p>
 
-      <h2 className="mt-8 text-2xs font-medium uppercase tracking-wide text-ink-faint">
+      <h2 className="mt-8 text-dato font-medium uppercase tracking-wide text-ink-faint">
         {t("cobertura.escondido")}
       </h2>
-      <p className="mt-1 text-2xs text-ink-faint">{t("cobertura.escondidoIntro")}</p>
+      <p className="mt-1 text-dato text-ink-faint">{t("cobertura.escondidoIntro")}</p>
       {informe.sinPantalla.length === 0 ? (
-        <p className="mt-3 text-2xs text-success">{t("cobertura.todoEnsenado")}</p>
+        <p className="mt-3 text-dato text-success">{t("cobertura.todoEnsenado")}</p>
       ) : (
         <ul className="mt-3 flex flex-col gap-1">
           {informe.sinPantalla.map((r) => (
             <li
               key={r.recurso}
-              className="rounded-lg border border-ink-dim/30 bg-paper px-3 py-2 text-2xs"
+              className="rounded-lg border border-ink-dim/30 bg-paper px-3 py-2 text-dato"
             >
               <span className="font-mono text-ink">{r.recurso}</span>
               <span className="ml-2 text-ink-faint">
@@ -90,8 +90,8 @@ export function Cobertura() {
 function Dato({ titulo, valor, alerta }: { titulo: string; valor: number; alerta?: boolean }) {
   return (
     <div className="rounded-xl border border-ink-dim/60 bg-paper p-4">
-      <p className="text-2xs text-ink-faint">{titulo}</p>
-      <p className={`mt-1 text-lg ${alerta ? "text-warning" : "text-ink"}`}>{valor}</p>
+      <p className="text-dato text-ink-faint">{titulo}</p>
+      <p className={`mt-1 text-grande ${alerta ? "text-warning" : "text-ink"}`}>{valor}</p>
     </div>
   );
 }

@@ -85,10 +85,10 @@ export function Rendimiento() {
       />
 
       <section className="mt-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
-        <h2 className="text-xs font-medium text-ink">
+        <h2 className="text-titulin font-medium text-ink">
           {t("rendimiento.queSeAplaza")}
         </h2>
-        <p className="mt-2 text-2xs text-ink-muted" role="status">
+        <p className="mt-2 text-dato text-ink-muted" role="status">
           {presion.que_significa}
         </p>
         {/* **Cuál está peor y qué significa.** El servidor lo manda desde el
@@ -96,7 +96,7 @@ export function Rendimiento() {
             decía «el sistema está bajo presión» y no decía de quién — que es
             lo único accionable. Medido el 26-10-2026. */}
         {presion.peor?.servicio ? (
-          <p className="mt-2 text-2xs text-ink">
+          <p className="mt-2 text-dato text-ink">
             <span className="font-medium">{presion.peor.servicio}</span>
             {presion.peor.que_significa ? ` · ${presion.peor.que_significa}` : null}
           </p>
@@ -105,23 +105,23 @@ export function Rendimiento() {
             que está peor. Y hay que decir CUÁLES: el comentario prometía esto
             y el render sólo enseñaba el aviso genérico. */}
         {presion.sin_respuesta.length > 0 ? (
-          <p className="mt-2 text-2xs text-warning">
+          <p className="mt-2 text-dato text-warning">
             {t("rendimiento.sinRespuesta", {
               servicios: presion.sin_respuesta.join(", "),
             })}
           </p>
         ) : null}
         {presion.aviso ? (
-          <p className="mt-2 text-2xs text-warning">{presion.aviso}</p>
+          <p className="mt-2 text-dato text-warning">{presion.aviso}</p>
         ) : null}
       </section>
 
       {cuotas ? (
         <section className="mt-4">
-          <h2 className="text-xs font-medium text-ink">
+          <h2 className="text-titulin font-medium text-ink">
             {t("rendimiento.limites")}
             {tenant ? (
-              <span className="ml-2 text-3xs text-ink-faint">{tenant}</span>
+              <span className="ml-2 text-rotulo text-ink-faint">{tenant}</span>
             ) : null}
           </h2>
           <Rejilla

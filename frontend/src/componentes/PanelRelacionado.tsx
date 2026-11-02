@@ -46,7 +46,7 @@ export function PanelRelacionado({
           type="button"
           onClick={alAlternar}
           aria-expanded={abierto}
-          className="flex min-w-0 flex-1 items-center gap-1.5 px-4 py-3 text-left text-xs font-medium text-ink"
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-4 py-3 text-left text-titulin font-medium text-ink"
         >
           <Icono
             nombre="keyboard_arrow_down"

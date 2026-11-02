@@ -298,7 +298,7 @@ export function ObjetoDelModelo() {
         volverA={{ a: "/m/modelo", titulo: moduloModelo?.titulo ?? "", id }}
         distintivos={
           objeto.descripcion ? (
-            <span className="text-2xs text-ink-faint">
+            <span className="text-dato text-ink-faint">
               {objeto.descripcion}
             </span>
           ) : null
@@ -366,8 +366,8 @@ export function ObjetoDelModelo() {
                 <p
                   className={
                     limites.en_aviso
-                      ? "text-sm font-medium text-danger"
-                      : "text-sm font-medium text-ink"
+                      ? "text-titulo font-medium text-danger"
+                      : "text-titulo font-medium text-ink"
                   }
                 >
                   {t("modeloDatos.camposDeTope", {
@@ -377,7 +377,7 @@ export function ObjetoDelModelo() {
                 </p>
                 {/* Qué pasa al llegar, dicho antes de llegar: un tope que sólo se
                 explica cuando se alcanza se explica tarde. */}
-                <p className="mt-1 text-3xs text-ink-muted">
+                <p className="mt-1 text-rotulo text-ink-muted">
                   {limites.al_llegar}
                 </p>
               </section>
@@ -392,7 +392,7 @@ export function ObjetoDelModelo() {
             {/* ── Los campos, con sus escrituras al lado ──────────────────────── */}
             <section className="card mb-4 p-4">
               <h2 className="section-label mb-1">{t("modeloDatos.campos")}</h2>
-              <p className="mb-3 text-3xs text-ink-faint">
+              <p className="mb-3 text-rotulo text-ink-faint">
                 {t("modeloDatos.camposAyuda")}
               </p>
               {!describe ? <Cargando /> : null}
@@ -408,10 +408,10 @@ export function ObjetoDelModelo() {
                         key={campo.id}
                         className="flex flex-wrap items-baseline gap-x-3 py-1.5"
                       >
-                        <span className="text-2xs font-medium text-ink">
+                        <span className="text-dato font-medium text-ink">
                           {campo.etiqueta || campo.nombre}
                         </span>
-                        <span className="text-3xs text-ink-faint">
+                        <span className="text-rotulo text-ink-faint">
                           {campo.nombre}
                         </span>
                         <span className="chip-dato">{campo.tipo}</span>
@@ -457,8 +457,8 @@ export function ObjetoDelModelo() {
                           <span
                             className={
                               uso.escrituras === 0
-                                ? "text-3xs text-danger"
-                                : "text-3xs text-ink-muted"
+                                ? "text-rotulo text-danger"
+                                : "text-rotulo text-ink-muted"
                             }
                           >
                             {uso.escrituras === 0
@@ -479,7 +479,7 @@ export function ObjetoDelModelo() {
                 </ul>
               ) : null}
               {rastro && rastro.sin_usar.length > 0 ? (
-                <p className="mt-3 text-3xs text-ink-muted">
+                <p className="mt-3 text-rotulo text-ink-muted">
                   <Icono nombre="info" />{" "}
                   {t("modeloDatos.sinUsar", {
                     cuantos: rastro.sin_usar.length,
@@ -489,7 +489,7 @@ export function ObjetoDelModelo() {
               {/* Que un campo añadido aquí entre solo en la API no es una promesa
               del folleto: las escrituras de arriba las cuenta la API al
               recibirlas, así que un número mayor que cero ES la prueba. */}
-              <p className="mt-3 text-3xs text-ink-faint">
+              <p className="mt-3 text-rotulo text-ink-faint">
                 <span className="font-medium text-ink-muted">
                   {t("modeloDatos.yaEstaEnLaApi")}
                 </span>{" "}
@@ -503,7 +503,7 @@ export function ObjetoDelModelo() {
                 <h2 className="section-label mb-1">
                   {t("modeloDatos.reglas")}
                 </h2>
-                <p className="mb-2 text-3xs text-ink-faint">
+                <p className="mb-2 text-rotulo text-ink-faint">
                   {t("modeloDatos.reglasAyuda")}
                 </p>
                 {describe && describe.reglas.length === 0 ? (
@@ -513,7 +513,7 @@ export function ObjetoDelModelo() {
                   {(describe?.reglas ?? []).map((regla) => (
                     <li key={regla.id} className="py-1.5">
                       <div className="flex flex-wrap items-baseline gap-x-3">
-                        <span className="text-2xs font-medium text-ink">
+                        <span className="text-dato font-medium text-ink">
                           {regla.nombre}
                         </span>
                         <span className="chip-dato">{regla.momento}</span>
@@ -525,7 +525,7 @@ export function ObjetoDelModelo() {
                       </div>
                       {/* El mensaje que verá quien la incumpla: es la mitad de la
                       regla, y sin él no se puede juzgar si está bien escrita. */}
-                      <p className="text-3xs text-ink-muted">{regla.mensaje}</p>
+                      <p className="text-rotulo text-ink-muted">{regla.mensaje}</p>
                     </li>
                   ))}
                 </ul>
@@ -533,7 +533,7 @@ export function ObjetoDelModelo() {
 
               <section className="card p-4">
                 <h2 className="section-label mb-1">{t("modeloDatos.tipos")}</h2>
-                <p className="mb-2 text-3xs text-ink-faint">
+                <p className="mb-2 text-rotulo text-ink-faint">
                   {t("modeloDatos.tiposAyuda")}
                 </p>
                 {tipos && tipos.length === 0 ? (
@@ -545,10 +545,10 @@ export function ObjetoDelModelo() {
                       key={tipo.clave}
                       className="flex flex-wrap items-baseline gap-x-3 py-1.5"
                     >
-                      <span className="text-2xs font-medium text-ink">
+                      <span className="text-dato font-medium text-ink">
                         {tipo.nombre}
                       </span>
-                      <span className="text-3xs text-ink-faint">
+                      <span className="text-rotulo text-ink-faint">
                         {tipo.clave}
                       </span>
                       {tipo.por_defecto ? (
@@ -557,7 +557,7 @@ export function ObjetoDelModelo() {
                         </span>
                       ) : null}
                       {tipo.campos_ocultos.length > 0 ? (
-                        <span className="text-3xs text-ink-muted">
+                        <span className="text-rotulo text-ink-muted">
                           {t("modeloDatos.ocultos", {
                             cuantos: tipo.campos_ocultos.length,
                           })}
@@ -587,7 +587,7 @@ export function ObjetoDelModelo() {
                 <h2 className="section-label mb-1">
                   {t("modeloDatos.publicaciones")}
                 </h2>
-                <p className="mb-2 text-3xs text-ink-faint">
+                <p className="mb-2 text-rotulo text-ink-faint">
                   {t("modeloDatos.publicacionesAyuda")}
                 </p>
                 <ul className="divide-y divide-ink-dim/30">
@@ -596,19 +596,19 @@ export function ObjetoDelModelo() {
                       key={pub.version}
                       className="flex flex-wrap items-baseline gap-x-3 py-1.5"
                     >
-                      <span className="text-2xs font-medium text-ink">
+                      <span className="text-dato font-medium text-ink">
                         v{pub.version}
                       </span>
-                      <span className="text-3xs text-ink-faint">
+                      <span className="text-rotulo text-ink-faint">
                         {escalar(pub.at, "at")}
                       </span>
-                      <span className="text-3xs text-ink-muted">
+                      <span className="text-rotulo text-ink-muted">
                         {t("modeloDatos.camposEnPublicacion", {
                           cuantos: pub.campos,
                         })}
                       </span>
                       {pub.nota ? (
-                        <span className="text-3xs text-ink-muted">
+                        <span className="text-rotulo text-ink-muted">
                           {pub.nota}
                         </span>
                       ) : null}
@@ -669,23 +669,23 @@ function QuePasaSiPublico({ objeto }: { objeto: string }) {
     <section className="card mb-4 p-4">
       <h2 className="section-label mb-1">{t("modeloDatos.alPublicar")}</h2>
       {!previo.hay_cambios ? (
-        <p className="text-2xs text-ink-muted">
+        <p className="text-dato text-ink-muted">
           {t("modeloDatos.sinCambiosQuePublicar")}
         </p>
       ) : (
         <>
-          <p className="text-2xs text-ink-muted">
+          <p className="text-dato text-ink-muted">
             {t("modeloDatos.deLaVersionALa", {
               de: previo.version_actual,
               a: previo.version_al_publicar,
             })}
           </p>
-          <ul className="mt-2 flex flex-wrap gap-2 text-3xs">
+          <ul className="mt-2 flex flex-wrap gap-2 text-rotulo">
             <Cuantos clave="modeloDatos.anadidos" lista={previo.anadidos} />
             <Cuantos clave="modeloDatos.retirados" lista={previo.retirados} />
             <Cuantos clave="modeloDatos.cambiados" lista={previo.cambiados} />
           </ul>
-          <p className="mt-2 text-2xs text-ink">
+          <p className="mt-2 text-dato text-ink">
             {/* El recuento, y la diferencia entre no haber podido contar y que
                 no afecte a nadie. */}
             {previo.registros === null
@@ -698,13 +698,13 @@ function QuePasaSiPublico({ objeto }: { objeto: string }) {
           {previo.avisos?.length ? (
             <ul className="mt-2 flex flex-col gap-1">
               {previo.avisos.map((a, i) => (
-                <li key={i} className="text-2xs text-warning">
+                <li key={i} className="text-dato text-warning">
                   {a}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-2xs text-success">
+            <p className="mt-2 text-dato text-success">
               {t("modeloDatos.publicarEsSeguro")}
             </p>
           )}
@@ -747,12 +747,12 @@ function ElDisenoQueTeToca({ objeto }: { objeto: string }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("modeloDatos.diseno")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("modeloDatos.disenoAyuda")}
       </p>
       {diseno.hay_diseno ? (
         <div className="flex flex-wrap items-baseline gap-x-3">
-          <span className="text-2xs font-medium text-ink">{diseno.nombre}</span>
+          <span className="text-dato font-medium text-ink">{diseno.nombre}</span>
           <span className="chip-dato">
             {t("modeloDatos.secciones", {
               cuantas: diseno.secciones?.length ?? 0,
@@ -763,7 +763,7 @@ function ElDisenoQueTeToca({ objeto }: { objeto: string }) {
         <Vacio titulo={t("modeloDatos.sinDiseno")} compacto />
       )}
       {/* El motivo lo da la ruta: cuál se aplica y por qué ése. */}
-      <p className="mt-2 text-2xs text-ink-muted">{diseno.porque}</p>
+      <p className="mt-2 text-dato text-ink-muted">{diseno.porque}</p>
     </section>
   );
 }
@@ -812,7 +812,7 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("modeloDatos.ia")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("modeloDatos.iaAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">{t("modeloDatos.iaAyuda")}</p>
       {!cob.medible ? (
         <Vacio titulo={t("modeloDatos.iaNoMedible")} compacto />
       ) : (
@@ -820,8 +820,8 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
           <p
             className={
               (cob.pct ?? 0) < 70
-                ? "text-sm font-medium text-warning"
-                : "text-sm font-medium text-ink"
+                ? "text-titulo font-medium text-warning"
+                : "text-titulo font-medium text-ink"
             }
           >
             {t("modeloDatos.iaCobertura", {
@@ -830,13 +830,13 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
               campos: cob.campos,
             })}
           </p>
-          <p className="mt-1 text-3xs text-ink-muted">{cob.que_significa}</p>
+          <p className="mt-1 text-rotulo text-ink-muted">{cob.que_significa}</p>
         </>
       )}
       {/* Lo que se queda fuera, y por qué. Recortarlo en silencio hace que
           quien pregunte por un campo concluya que el dato no existe. */}
       {sem.fuera_por_sensibles.length + sem.fuera_por_internos.length > 0 ? (
-        <p className="mt-2 text-3xs text-ink-muted">
+        <p className="mt-2 text-rotulo text-ink-muted">
           {t("modeloDatos.iaFuera", {
             sensibles: sem.fuera_por_sensibles.length,
             internos: sem.fuera_por_internos.length,
@@ -844,7 +844,7 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
         </p>
       ) : null}
       {sem.sin_describir.length > 0 ? (
-        <p className="mt-1 text-3xs text-warning">
+        <p className="mt-1 text-rotulo text-warning">
           {t("modeloDatos.iaSinDescribir", {
             campos: sem.sin_describir.join(", "),
           })}
@@ -853,13 +853,13 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
 
       {deInformes ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <h3 className="text-2xs font-medium text-ink">
+          <h3 className="text-dato font-medium text-ink">
             {t("modeloDatos.enInformes")}
           </h3>
-          <p className="text-3xs text-ink-faint">
+          <p className="text-rotulo text-ink-faint">
             {t("modeloDatos.enInformesAyuda")}
           </p>
-          <p className="mt-1 text-2xs text-ink-muted">
+          <p className="mt-1 text-dato text-ink-muted">
             {t("modeloDatos.enInformesCuantos", {
               cuantos: deInformes.campos.length,
             })}
@@ -907,11 +907,11 @@ function CamposQueYaPidenColumna({ objeto }: { objeto: string }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("modeloDatos.columna")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("modeloDatos.columnaAyuda")}
       </p>
       {datos.candidatos.length === 0 ? (
-        <p className="text-2xs text-ink-muted">
+        <p className="text-dato text-ink-muted">
           {t("modeloDatos.columnaNinguno", { umbral: datos.umbral })}
         </p>
       ) : (
@@ -921,15 +921,15 @@ function CamposQueYaPidenColumna({ objeto }: { objeto: string }) {
               key={c.campo}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-2xs font-medium text-ink">{c.campo}</span>
-              <span className="text-3xs text-ink-muted">
+              <span className="text-dato font-medium text-ink">{c.campo}</span>
+              <span className="text-rotulo text-ink-muted">
                 {t("modeloDatos.columnaEscrituras", { cuantas: c.escrituras })}
               </span>
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-2 text-3xs text-ink-faint">{datos.por_que_no_siempre}</p>
+      <p className="mt-2 text-rotulo text-ink-faint">{datos.por_que_no_siempre}</p>
     </section>
   );
 }
@@ -949,7 +949,7 @@ function LaMaquinaDeEstados({ estados }: { estados: Record<string, unknown> }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("modeloDatos.estados")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("modeloDatos.estadosAyuda")}
       </p>
       {claves.length === 0 ? (
@@ -964,7 +964,7 @@ function LaMaquinaDeEstados({ estados }: { estados: Record<string, unknown> }) {
                 key={estado}
                 className="flex flex-wrap items-baseline gap-x-2 py-1.5"
               >
-                <span className="text-2xs font-medium text-ink">{estado}</span>
+                <span className="text-dato font-medium text-ink">{estado}</span>
                 {/* Un estado sin salidas es final, y decirlo importa: en una
                     lista de transiciones se lee como un hueco. */}
                 {lista.length === 0 ? (
@@ -973,7 +973,7 @@ function LaMaquinaDeEstados({ estados }: { estados: Record<string, unknown> }) {
                   </span>
                 ) : (
                   <>
-                    <span className="text-3xs text-ink-faint">
+                    <span className="text-rotulo text-ink-faint">
                       {t("modeloDatos.estadoVaA")}
                     </span>
                     {lista.map((d) => (
@@ -1059,24 +1059,24 @@ function RenombrarYLlevarse({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("modeloDatos.renombrar")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("modeloDatos.renombrarAyuda")}
       </p>
       {retirables.length > 0 ? (
-        <p className="text-2xs text-ink">
+        <p className="text-dato text-ink">
           {t("modeloDatos.sePuedeRetirar", { cuantos: retirables.length })}
         </p>
       ) : (
-        <p className="text-2xs text-ink-muted">
+        <p className="text-dato text-ink-muted">
           {t("modeloDatos.noSePuedeRetirarTodavia")}
         </p>
       )}
 
       <div className="mt-3 border-t border-ink-dim/30 pt-2">
-        <h3 className="text-2xs font-medium text-ink">
+        <h3 className="text-dato font-medium text-ink">
           {t("modeloDatos.paquete")}
         </h3>
-        <p className="text-3xs text-ink-faint">
+        <p className="text-rotulo text-ink-faint">
           {t("modeloDatos.paqueteAyuda")}
         </p>
         <button
@@ -1092,7 +1092,7 @@ function RenombrarYLlevarse({
         <p
           role="status"
           aria-live="polite"
-          className="mt-2 text-2xs text-ink-muted"
+          className="mt-2 text-dato text-ink-muted"
         >
           {bajado}
         </p>

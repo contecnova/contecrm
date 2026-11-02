@@ -81,7 +81,7 @@ export function Marketing() {
       />
 
       <section>
-        <h2 className="text-sm font-medium text-ink">
+        <h2 className="text-titulo font-medium text-ink">
           {t("marketing.segmentos")}
         </h2>
         {segmentos.length === 0 ? (
@@ -93,17 +93,17 @@ export function Marketing() {
                 key={s.id}
                 className="flex flex-wrap items-baseline gap-2 rounded-lg border border-ink-dim/40 bg-paper-light p-3"
               >
-                <span className="flex-1 text-sm text-ink">{s.nombre}</span>
-                <span className="text-2xs text-ink-muted">
+                <span className="flex-1 text-titulo text-ink">{s.nombre}</span>
+                <span className="text-dato text-ink-muted">
                   {t(s.dinamico ? "marketing.dinamico" : "marketing.congelado")}
                 </span>
-                <span className="font-mono text-2xs text-ink">
+                <span className="font-mono text-dato text-ink">
                   {s.tamano === null ? t("marketing.sinCalcular") : s.tamano}
                 </span>
                 {/* La fecha del recuento va SIEMPRE: un número sin fecha se lee
                     como el de ahora, y quien va a mandar un correo a 14.000
                     personas merece saber si ese 14.000 es de hoy. */}
-                <span className="text-3xs text-ink-faint">
+                <span className="text-rotulo text-ink-faint">
                   {s.tamano_at
                     ? t("marketing.calculado", {
                         fecha: fecha(s.tamano_at),
@@ -117,7 +117,7 @@ export function Marketing() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-ink">
+        <h2 className="text-titulo font-medium text-ink">
           {t("marketing.campanas")}
         </h2>
         {campanas.length === 0 ? (
@@ -132,11 +132,11 @@ export function Marketing() {
                 <div className="flex flex-wrap items-baseline gap-2">
                   {/* El estado va primero: las cifras de una campaña en borrador
                       son cero y se leen como un fracaso. */}
-                  <span className="rounded bg-paper px-1.5 py-0.5 text-3xs uppercase text-ink-muted">
+                  <span className="rounded bg-paper px-1.5 py-0.5 text-rotulo uppercase text-ink-muted">
                     {c.estado}
                   </span>
-                  <span className="flex-1 text-sm text-ink">{c.nombre}</span>
-                  <span className="text-2xs text-ink-muted">{c.canal}</span>
+                  <span className="flex-1 text-titulo text-ink">{c.nombre}</span>
+                  <span className="text-dato text-ink-muted">{c.canal}</span>
                 </div>
                 {/* Sólo los miembros, que es lo que el listado sabe de
                     verdad. Enviados y respuestas se cuentan sobre los envíos y
@@ -144,7 +144,7 @@ export function Marketing() {
                     consulta por campaña, y pintarlos sin tenerlos es lo que
                     hacía esta pantalla —los tres salían vacíos—. */}
                 {c.estado !== "borrador" ? (
-                  <p className="mt-1 font-mono text-2xs text-ink-faint">
+                  <p className="mt-1 font-mono text-dato text-ink-faint">
                     {c.miembros === null
                       ? t("marketing.sinMiembros")
                       : t("marketing.miembros", { miembros: c.miembros })}

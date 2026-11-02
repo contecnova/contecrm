@@ -194,7 +194,7 @@ export function BarraSuperior({
       {migas.length > 0 ? (
         <nav
           aria-label={t("nav.migas")}
-          className="flex min-w-0 max-w-[32rem] shrink items-center gap-2 text-sm"
+          className="flex min-w-0 max-w-[32rem] shrink items-center gap-2 text-titulo"
         >
           {migas.map((miga, i) => (
             <span
@@ -237,14 +237,14 @@ export function BarraSuperior({
       <button
         type="button"
         onClick={alAbrirPaleta}
-        className="ml-auto hidden h-10 min-w-0 max-w-md flex-1 basis-64 items-center gap-2 rounded-full bg-paper-light px-4 text-sm text-ink-faint transition-colors hover:bg-paper-lighter md:flex"
+        className="ml-auto hidden h-10 min-w-0 max-w-md flex-1 basis-64 items-center gap-2 rounded-full bg-paper-light px-4 text-titulo text-ink-faint transition-colors hover:bg-paper-lighter md:flex"
         aria-label={t("nav.abrirPaleta")}
       >
         <Icono nombre="search" tamano="sm" className="text-ink-muted" />
         <span className="flex-1 truncate text-left">
           {t("nav.buscarPlaceholder")}
         </span>
-        <kbd className="shrink-0 rounded border border-ink-dim/60 bg-paper px-1.5 py-0.5 font-mono text-3xs text-ink-muted">
+        <kbd className="shrink-0 rounded border border-ink-dim/60 bg-paper px-1.5 py-0.5 font-mono text-rotulo text-ink-muted">
           {teclaAtajo()}
         </kbd>
       </button>
@@ -292,7 +292,7 @@ export function BarraSuperior({
                 aria-label={t("nav.crearQue")}
                 className="absolute right-0 z-popover mt-2 w-60 animate-fade-in rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3"
               >
-                <p className="px-3 py-2 text-3xs uppercase tracking-wide text-ink-faint">
+                <p className="px-3 py-2 text-rotulo uppercase tracking-wide text-ink-faint">
                   {t("nav.crearQue")}
                 </p>
                 {altas.map((alta) => (
@@ -301,7 +301,7 @@ export function BarraSuperior({
                     role="menuitem"
                     to={alta.a}
                     onClick={() => setCrearAbierto(false)}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink hover:bg-paper-light"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-titulo text-ink hover:bg-paper-light"
                   >
                     <Icono
                       nombre={alta.icono}
@@ -406,7 +406,7 @@ export function BarraSuperior({
             ref={avatarRef}
             type="button"
             onClick={() => setMenuAbierto((v) => !v)}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-paper shadow-elevation-1 transition-shadow hover:shadow-elevation-2"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-titulo font-bold text-paper shadow-elevation-1 transition-shadow hover:shadow-elevation-2"
             aria-haspopup="menu"
             aria-expanded={menuAbierto}
             aria-label={t("nav.menuUsuario")}
@@ -422,9 +422,9 @@ export function BarraSuperior({
             >
               {sesion ? (
                 <div className="mb-1 border-b border-ink-dim/30 px-3 py-2">
-                  <p className="text-2xs text-ink-muted">{t("nav.sesionDe")}</p>
+                  <p className="text-dato text-ink-muted">{t("nav.sesionDe")}</p>
                   <p
-                    className="truncate text-xs font-medium text-ink"
+                    className="truncate text-titulin font-medium text-ink"
                     title={sesion.email}
                   >
                     {sesion.email}
@@ -443,7 +443,7 @@ export function BarraSuperior({
                       ))}
                     </p>
                   ) : (
-                    <p className="mt-1 text-3xs text-warning">
+                    <p className="mt-1 text-rotulo text-warning">
                       {t("inicio.sinRoles")}
                     </p>
                   )}
@@ -453,7 +453,7 @@ export function BarraSuperior({
                 role="menuitem"
                 to="/puesto"
                 onClick={() => setMenuAbierto(false)}
-                className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-paper-light"
+                className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-titulo text-ink hover:bg-paper-light"
               >
                 <Icono nombre="person" tamano="sm" />
                 {t("nav.puesto")}
@@ -465,7 +465,7 @@ export function BarraSuperior({
                   setMenuAbierto(false);
                   alSalir();
                 }}
-                className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"
+                className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-titulo text-danger hover:bg-danger/10"
               >
                 <Icono nombre="logout" tamano="sm" />
                 {t("app.cerrarSesion")}
@@ -568,7 +568,7 @@ function QueCliente({ sesion }: { sesion: Sesion }) {
 
   return (
     <label
-      className={`ml-auto hidden shrink-0 items-center gap-2 rounded-full px-3 py-1 text-2xs md:flex ${
+      className={`ml-auto hidden shrink-0 items-center gap-2 rounded-full px-3 py-1 text-dato md:flex ${
         mirandoAOtro ? "bg-warning/15 text-warning" : "text-ink-muted"
       }`}
     >
@@ -577,7 +577,7 @@ function QueCliente({ sesion }: { sesion: Sesion }) {
       <select
         value={elegido || sesion.tenant_id || ""}
         onChange={(e) => cambiar(e.target.value)}
-        className="bg-transparent text-2xs outline-none"
+        className="bg-transparent text-dato outline-none"
         aria-label={t("nav.queCliente")}
       >
         {tenants.map((x) => (

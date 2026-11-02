@@ -168,7 +168,7 @@ export function SelectorVista({
             recordarVista(recuerdaComo, o.clave);
           }}
           className={cn(
-            "rounded-lg px-2 py-1 text-xs",
+            "rounded-lg px-2 py-1 text-titulin",
             vista === o.clave ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light",
           )}
         >
@@ -235,7 +235,7 @@ export function Etiquetas({ filas }: { filas: Record<string, unknown>[] }) {
       {filas.map((fila, i) => (
         <li
           key={i}
-          className="rounded-lg border border-ink-dim/60 bg-paper-sunk px-2.5 py-1 text-xs text-ink"
+          className="rounded-lg border border-ink-dim/60 bg-paper-sunk px-2.5 py-1 text-titulin text-ink"
         >
           {tituloDe(fila)}
         </li>
@@ -292,17 +292,17 @@ function Tarjeta({
   return (
     <>
       {retraso ? (
-        <p className="mb-1 flex items-center gap-1 text-3xs font-medium text-danger">
+        <p className="mb-1 flex items-center gap-1 text-rotulo font-medium text-danger">
           <Icono nombre="schedule" /> {humanizar(retraso)}
         </p>
       ) : null}
 
-      <p className={cn("font-medium text-ink", compacta ? "text-xs" : "text-sm")}>
+      <p className={cn("font-medium text-ink", compacta ? "text-titulin" : "text-titulo")}>
         {tituloDe(fila)}
       </p>
 
       {cifra ? (
-        <p className="mt-1 text-lg font-semibold leading-none text-ink">
+        <p className="mt-1 text-grande font-semibold leading-none text-ink">
           {escalar(fila[cifra], cifra)}
         </p>
       ) : null}
@@ -314,7 +314,7 @@ function Tarjeta({
               key={c}
               title={humanizar(c)}
               className={cn(
-                "rounded-lg border px-1.5 py-0.5 text-3xs",
+                "rounded-lg border px-1.5 py-0.5 text-rotulo",
                 clasesDeTono(tonoDe(fila[c])),
               )}
             >
@@ -328,8 +328,8 @@ function Tarjeta({
         <dl className="mt-2 space-y-0.5">
           {resto.slice(0, compacta ? 2 : 4).map((c) => (
             <div key={c} className="flex items-baseline justify-between gap-3">
-              <dt className="text-3xs text-ink-faint">{humanizar(c)}</dt>
-              <dd className="min-w-0 text-right text-3xs text-ink-muted">
+              <dt className="text-rotulo text-ink-faint">{humanizar(c)}</dt>
+              <dd className="min-w-0 text-right text-rotulo text-ink-muted">
                 <Celda valor={fila[c]} campo={c} />
               </dd>
             </div>
@@ -342,10 +342,10 @@ function Tarjeta({
           alineados entre sí en vez de a distinta altura cada uno. En la
           variante compacta, que no es flex, `mt-auto` no hace nada. */}
       {responsable ? (
-        <p className="mt-auto flex items-center gap-1.5 pt-2 text-3xs text-ink-muted">
+        <p className="mt-auto flex items-center gap-1.5 pt-2 text-rotulo text-ink-muted">
           <span
             aria-hidden
-            className="grid h-5 w-5 place-items-center rounded-full bg-paper-sunk text-[0.6rem] font-medium text-ink-muted"
+            className="grid h-5 w-5 place-items-center rounded-full bg-paper-sunk text-rotulo font-medium text-ink-muted"
           >
             {inicialesDe(nombreDe(personas, fila[responsable]))}
           </span>
@@ -550,8 +550,8 @@ export function Agrupado({
           >
             <header className="mb-2">
               <div className="flex items-baseline justify-between gap-2">
-                <h3 className="truncate text-xs font-medium text-ink">{humanizar(clave)}</h3>
-                <span className="text-3xs text-ink-faint">{suyas.length}</span>
+                <h3 className="truncate text-titulin font-medium text-ink">{humanizar(clave)}</h3>
+                <span className="text-rotulo text-ink-faint">{suyas.length}</span>
               </div>
               {/* La barra dice de un vistazo dónde se acumula el trabajo, que es
                   lo que un número solo no enseña hasta que se comparan todos. */}
@@ -562,7 +562,7 @@ export function Agrupado({
                 />
               </div>
               {sumable ? (
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {humanizar(sumable)}: {escalar(suma, sumable)}
                 </p>
               ) : null}
@@ -609,7 +609,7 @@ export function Agrupado({
                       id={`mover-${id}`}
                       value={clave}
                       onChange={(e) => void llevar(fila, e.target.value)}
-                      className="input-sm mt-2 text-3xs sr-only focus:not-sr-only focus:relative"
+                      className="input-sm mt-2 text-rotulo sr-only focus:not-sr-only focus:relative"
                     >
                       {claves.map((c) => (
                         <option key={c} value={c}>

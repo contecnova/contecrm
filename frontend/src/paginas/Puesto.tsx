@@ -72,7 +72,7 @@ export function Puesto() {
       ) : (
         <>
           <p
-            className={`mt-4 text-xs ${datos.todo_bien ? "text-success" : "text-warning"}`}
+            className={`mt-4 text-titulin ${datos.todo_bien ? "text-success" : "text-warning"}`}
             role="status"
           >
             {datos.que_significa}
@@ -80,10 +80,10 @@ export function Puesto() {
 
           {datos.paradas.length > 0 ? (
             <section className="mt-4">
-              <h2 className="text-xs font-medium text-danger">{t("puesto.paradas")}</h2>
+              <h2 className="text-titulin font-medium text-danger">{t("puesto.paradas")}</h2>
               <ul className="mt-2 space-y-1">
                 {datos.paradas.map((p) => (
-                  <li key={p.conexion} className="text-2xs text-ink">
+                  <li key={p.conexion} className="text-dato text-ink">
                     {p.conexion} · {t("puesto.horas", { horas: p.horas_sin_sincronizar })} ·{" "}
                     <span className="text-ink-muted">{p.porque}</span>
                   </li>
@@ -102,12 +102,12 @@ export function Puesto() {
               falta para arreglarlo. */}
           {datos.sin_medir.length > 0 ? (
             <>
-              <p className="mt-4 text-2xs text-warning">
+              <p className="mt-4 text-dato text-warning">
                 {t("puesto.sinMedir", { cuantas: datos.sin_medir.length })}
               </p>
               <ul className="mt-1 space-y-0.5">
                 {datos.sin_medir.map((c) => (
-                  <li key={c} className="text-2xs text-ink-muted">
+                  <li key={c} className="text-dato text-ink-muted">
                     {c}
                   </li>
                 ))}
@@ -116,7 +116,7 @@ export function Puesto() {
           ) : null}
 
           {datos.los_en_sondeo ? (
-            <p className="mt-2 text-2xs text-ink-muted">{datos.los_en_sondeo}</p>
+            <p className="mt-2 text-dato text-ink-muted">{datos.los_en_sondeo}</p>
           ) : null}
         </>
       )}

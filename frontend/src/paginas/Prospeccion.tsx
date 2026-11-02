@@ -128,11 +128,11 @@ export function Prospeccion() {
       />
 
       <section className="card mb-4 p-4">
-        <h2 className="text-sm font-medium text-ink">{t("prospeccion.aQuienLeToca")}</h2>
+        <h2 className="text-titulo font-medium text-ink">{t("prospeccion.aQuienLeToca")}</h2>
         {/* Con botón y no al abrir: pedirlo AVANZA el round-robin, así que
             una pantalla que lo pidiera sola repartiría reuniones cada vez que
             alguien la mira. */}
-        <p className="mt-1 text-3xs text-ink-faint">{t("prospeccion.porqueBoton")}</p>
+        <p className="mt-1 text-rotulo text-ink-faint">{t("prospeccion.porqueBoton")}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
             className="input-base"
@@ -151,20 +151,20 @@ export function Prospeccion() {
           </button>
         </div>
         <div role="status" aria-live="polite">
-          {sinNadie ? <p className="mt-2 text-2xs text-warning">{sinNadie}</p> : null}
+          {sinNadie ? <p className="mt-2 text-dato text-warning">{sinNadie}</p> : null}
           {turno ? (
             <div className="mt-2">
-              <p className="font-mono text-2xs text-ink">
+              <p className="font-mono text-dato text-ink">
                 {t("prospeccion.leToca", { usuario: turno.usuario_id })}
               </p>
               {/* Que el turno se ha consumido se dice: si no, alguien pulsa
                   tres veces para «ver» y se salta a dos del equipo. */}
               {turno.turno_consumido ? (
-                <p className="mt-1 text-3xs text-warning">
+                <p className="mt-1 text-rotulo text-warning">
                   {t("prospeccion.turnoConsumido")}
                 </p>
               ) : null}
-              <p className="mt-1 text-2xs text-ink-muted">
+              <p className="mt-1 text-dato text-ink-muted">
                 {turno.huecos.length === 0
                   ? t("prospeccion.sinHuecos")
                   : t("prospeccion.huecos", { cuantos: turno.huecos.length })}
@@ -175,8 +175,8 @@ export function Prospeccion() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-ink">{t("prospeccion.plantillas")}</h2>
-        <p className="mt-1 text-3xs text-ink-faint">{t("prospeccion.porqueConcluyente")}</p>
+        <h2 className="text-titulo font-medium text-ink">{t("prospeccion.plantillas")}</h2>
+        <p className="mt-1 text-rotulo text-ink-faint">{t("prospeccion.porqueConcluyente")}</p>
         {!rendimiento?.medible ? (
           <Vacio
             titulo={t("prospeccion.sinMedir")}
@@ -191,8 +191,8 @@ export function Prospeccion() {
                 {concluyentes.map((p) => (
                   <li key={p.clave} className="card p-3">
                     <div className="flex flex-wrap items-baseline gap-2">
-                      <span className="flex-1 text-sm text-ink">{p.nombre}</span>
-                      <span className="font-mono text-2xs text-ink">
+                      <span className="flex-1 text-titulo text-ink">{p.nombre}</span>
+                      <span className="font-mono text-dato text-ink">
                         {t("prospeccion.tasas", {
                           respuesta: p.tasa_respuesta ?? "—",
                           reunion: p.tasa_reunion ?? "—",
@@ -200,7 +200,7 @@ export function Prospeccion() {
                       </span>
                     </div>
                     {/* El denominador al lado del porcentaje, siempre. */}
-                    <p className="mt-1 font-mono text-3xs text-ink-muted">
+                    <p className="mt-1 font-mono text-rotulo text-ink-muted">
                       {t("prospeccion.sobre", {
                         enviados: p.enviados,
                         respondidos: p.respondidos,
@@ -208,7 +208,7 @@ export function Prospeccion() {
                       })}
                     </p>
                     {p.aviso_apertura ? (
-                      <p className="mt-1 text-3xs text-ink-faint">{p.aviso_apertura}</p>
+                      <p className="mt-1 text-rotulo text-ink-faint">{p.aviso_apertura}</p>
                     ) : null}
                   </li>
                 ))}
@@ -220,14 +220,14 @@ export function Prospeccion() {
                 usado. */}
             {pocas.length > 0 ? (
               <div className="mt-3">
-                <p className="text-2xs text-warning">
+                <p className="text-dato text-warning">
                   {t("prospeccion.pocasVeces", { cuantas: pocas.length })}
                 </p>
                 <ul className="lista-acotada mt-1 flex flex-col gap-1 pr-1">
                   {pocas.map((p) => (
                     <li key={p.clave} className="flex items-baseline gap-2">
-                      <span className="flex-1 text-2xs text-ink-muted">{p.nombre}</span>
-                      <span className="font-mono text-3xs text-ink-faint">
+                      <span className="flex-1 text-dato text-ink-muted">{p.nombre}</span>
+                      <span className="font-mono text-rotulo text-ink-faint">
                         {t("prospeccion.envios", { enviados: p.enviados })}
                       </span>
                     </li>

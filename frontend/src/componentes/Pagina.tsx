@@ -45,12 +45,12 @@ export function CabeceraPagina({
               <Icono nombre={icono} />
             </span>
           ) : null}
-          <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
+          <h1 className="min-w-0 truncate text-pagina font-bold tracking-[-0.01em] text-ink">
             {titulo}
           </h1>
         </div>
         {entradilla ? (
-          <p className={`mt-2 max-w-3xl text-xs text-ink-muted${icono ? " pl-[2.875rem]" : ""}`}>
+          <p className={`mt-2 max-w-3xl text-titulin text-ink-muted${icono ? " pl-[2.875rem]" : ""}`}>
             {entradilla}
           </p>
         ) : null}

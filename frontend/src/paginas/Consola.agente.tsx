@@ -118,10 +118,10 @@ export function ConsolaAgente() {
                     por canal, el correo se mira dos veces al día y el chat todo
                     el rato, y quien escribe por correo espera el doble. */}
                 <span className="badge badge-accent">{c.canal}</span>
-                <span className="min-w-0 flex-1 truncate text-2xs text-ink">
+                <span className="min-w-0 flex-1 truncate text-dato text-ink">
                   {c.asunto || t("consolaAgente.sinAsunto")}
                 </span>
-                <span className="text-3xs text-ink-muted">{c.estado}</span>
+                <span className="text-rotulo text-ink-muted">{c.estado}</span>
                 <Espera fila={c} />
               </Link>
             </li>
@@ -146,7 +146,7 @@ function Espera({ fila }: { fila: EnCola }) {
   const { t } = useTranslation();
   if (fila.minutos_restantes !== null) {
     return (
-      <span className={`font-mono text-3xs ${fila.vencido ? "text-danger" : "text-ink-muted"}`}>
+      <span className={`font-mono text-rotulo ${fila.vencido ? "text-danger" : "text-ink-muted"}`}>
         {t(fila.vencido ? "consolaAgente.vencidoHace" : "consolaAgente.venceEn", {
           minutos: Math.abs(fila.minutos_restantes),
         })}
@@ -155,12 +155,12 @@ function Espera({ fila }: { fila: EnCola }) {
   }
   if (fila.espera_min !== null) {
     return (
-      <span className="font-mono text-3xs text-ink-muted">
+      <span className="font-mono text-rotulo text-ink-muted">
         {t("consolaAgente.esperando", { minutos: fila.espera_min })}
       </span>
     );
   }
   // Ni plazo ni espera conocida. Se dice, porque un hueco se lee como «no
   // corre», y lo que pasa es que no lo sabemos.
-  return <span className="text-3xs text-ink-faint">{t("consolaAgente.sinReloj")}</span>;
+  return <span className="text-rotulo text-ink-faint">{t("consolaAgente.sinReloj")}</span>;
 }

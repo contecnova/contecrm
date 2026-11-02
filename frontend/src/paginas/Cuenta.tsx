@@ -462,7 +462,7 @@ export function Cuenta() {
               </span>
             ))}
             {nif ? (
-              <span className="text-2xs text-ink-faint">{nif}</span>
+              <span className="text-dato text-ink-faint">{nif}</span>
             ) : null}
           </>
         }
@@ -591,14 +591,14 @@ export function Cuenta() {
 
               <section className="card p-4">
                 <h2 className="section-label mb-2">{t("cuenta.calidad")}</h2>
-                <p className="text-sm font-medium text-ink">
+                <p className="text-titulo font-medium text-ink">
                   {cuenta.calidad.puntuacion} / 100
                 </p>
                 {cuenta.calidad.faltan.length > 0 ? (
                   <>
                     {/* Qué falta, por su nombre. Una puntuación sin el detalle no
                     dice qué hay que hacer para subirla. */}
-                    <p className="mt-2 text-3xs text-ink-faint">
+                    <p className="mt-2 text-rotulo text-ink-faint">
                       {t("cuenta.faltan")}
                     </p>
                     <ul className="mt-1 flex flex-wrap gap-1">
@@ -648,10 +648,10 @@ export function Cuenta() {
                         aria-hidden
                         className="absolute -left-[1.4rem] top-1.5 h-2 w-2 rounded-full bg-accent"
                       />
-                      <p className="text-xs text-ink">
+                      <p className="text-titulin text-ink">
                         {String(h.asunto ?? h.titulo ?? h.tipo ?? "")}
                       </p>
-                      <p className="mt-0.5 text-3xs text-ink-faint">
+                      <p className="mt-0.5 text-rotulo text-ink-faint">
                         {humanizar(String(h.tipo ?? ""))}
                         {h.momento || h.fecha || h.created_at
                           ? ` · ${escalar(h.momento ?? h.fecha ?? h.created_at)}`
@@ -670,12 +670,12 @@ export function Cuenta() {
               delante, que es el dato que cambia. */}
               <div role="status" aria-live="polite">
                 {masTimeline ? (
-                  <p className="mt-3 border-t border-ink-dim/30 pt-2 text-3xs text-ink-faint">
+                  <p className="mt-3 border-t border-ink-dim/30 pt-2 text-rotulo text-ink-faint">
                     {t("cuenta.timelineEntera", { cuantos: timeline.length })}
                   </p>
                 ) : null}
                 {puedeHaberMas ? (
-                  <p className="mt-3 border-t border-ink-dim/30 pt-2 text-3xs text-ink-faint">
+                  <p className="mt-3 border-t border-ink-dim/30 pt-2 text-rotulo text-ink-faint">
                     {t("cuenta.timelineRecortada", { cuantos: TOPE_DEL_360 })}{" "}
                     <button
                       type="button"
@@ -711,8 +711,8 @@ export function Cuenta() {
               >
                 {contactos.map((c) => (
                   <li key={c.id} className="py-1.5">
-                    <p className="truncate text-xs text-ink">{c.nombre}</p>
-                    <p className="truncate text-3xs text-ink-faint">
+                    <p className="truncate text-titulin text-ink">{c.nombre}</p>
+                    <p className="truncate text-rotulo text-ink-faint">
                       {[c.cargo, c.email].filter(Boolean).join(" · ") || "—"}
                     </p>
                     {c.no_contactar ? (
@@ -736,11 +736,11 @@ export function Cuenta() {
                   <li key={o.id} className="py-1.5">
                     <Link
                       to={`/m/oportunidades/oportunidad/${o.id}`}
-                      className="block truncate text-xs text-accent hover:underline"
+                      className="block truncate text-titulin text-accent hover:underline"
                     >
                       {o.nombre}
                     </Link>
-                    <p className="flex items-center gap-1.5 text-3xs text-ink-faint">
+                    <p className="flex items-center gap-1.5 text-rotulo text-ink-faint">
                       {importe(o.importe, o.moneda)}
                       <span
                         className={
@@ -768,8 +768,8 @@ export function Cuenta() {
               >
                 {casos.map((c) => (
                   <li key={c.id} className="py-1.5">
-                    <p className="truncate text-xs text-ink">{c.asunto}</p>
-                    <p className="text-3xs text-ink-faint">
+                    <p className="truncate text-titulin text-ink">{c.asunto}</p>
+                    <p className="text-rotulo text-ink-faint">
                       {[c.codigo, c.estado, c.prioridad]
                         .filter(Boolean)
                         .join(" · ")}
@@ -818,8 +818,8 @@ function Dato({ clave, valor }: { clave: string; valor: unknown }) {
   const { t } = useTranslation();
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="shrink-0 text-3xs text-ink-faint">{humanizar(clave)}</dt>
-      <dd className="truncate text-2xs text-ink">
+      <dt className="shrink-0 text-rotulo text-ink-faint">{humanizar(clave)}</dt>
+      <dd className="truncate text-dato text-ink">
         {valor ? (
           escalar(valor, clave)
         ) : (
@@ -880,7 +880,7 @@ function Relacionados({
 
           O sea: unas cuantas de cada una, y nada de espacio vacío. */}
       {cuantos === 0 ? (
-        <p className="py-2 text-3xs text-ink-faint">{vacio}</p>
+        <p className="py-2 text-rotulo text-ink-faint">{vacio}</p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           {/* La barra, en la caja, y la lista es lo ÚNICO que crece y se
@@ -900,7 +900,7 @@ function Relacionados({
               nueve filas se quiere ir al listado entero, a filtrar o a
               ordenar por otra cosa. */}
           {verTodas ? (
-            <p className="mt-2 shrink-0 border-t border-ink-dim/30 pt-2 text-3xs">
+            <p className="mt-2 shrink-0 border-t border-ink-dim/30 pt-2 text-rotulo">
               <Link to={verTodas} className="text-accent hover:underline">
                 {t("cuenta.verTodas")}
               </Link>
@@ -925,7 +925,7 @@ function Metricas({ datos }: { datos: Vista360["metricas"] }) {
   const sinDato = datos.sin_dato ?? [];
 
   if (metricas.length === 0 && sinDato.length === 0) {
-    return <p className="text-3xs text-ink-faint">{t("cuenta.sinMetricas")}</p>;
+    return <p className="text-rotulo text-ink-faint">{t("cuenta.sinMetricas")}</p>;
   }
   return (
     <>
@@ -935,16 +935,16 @@ function Metricas({ datos }: { datos: Vista360["metricas"] }) {
             key={m.clave}
             className="flex items-baseline justify-between gap-3"
           >
-            <dt className="shrink-0 text-3xs text-ink-faint">
+            <dt className="shrink-0 text-rotulo text-ink-faint">
               {humanizar(m.clave)}
             </dt>
-            <dd className="truncate text-2xs text-ink">
+            <dd className="truncate text-dato text-ink">
               {m.unidad === "moneda"
                 ? importe(m.valor, m.moneda ?? "EUR")
                 : escalar(m.valor)}
               {m.fresca ? null : (
                 <span
-                  className="ml-1 text-3xs text-warning"
+                  className="ml-1 text-rotulo text-warning"
                   title={t("cuenta.caducada")}
                 >
                   ({t("cuenta.deHace", { dias: m.de_hace_dias })})
@@ -955,7 +955,7 @@ function Metricas({ datos }: { datos: Vista360["metricas"] }) {
         ))}
       </dl>
       {sinDato.length > 0 ? (
-        <p className="mt-3 text-3xs text-ink-faint">
+        <p className="mt-3 text-rotulo text-ink-faint">
           {t("cuenta.sinDatoDe", {
             metricas: sinDato.map(humanizar).join(", "),
           })}
@@ -985,7 +985,7 @@ function LaJerarquia({ arbol }: { arbol: Arbol | null }) {
   function pintar(ramas: RamaDeJerarquia[], nivel: number) {
     return ramas.map((r) => (
       <li key={r.id} style={{ paddingLeft: nivel * 12 }}>
-        <div className="flex flex-wrap items-baseline gap-x-2 py-1 text-2xs">
+        <div className="flex flex-wrap items-baseline gap-x-2 py-1 text-dato">
           <Link
             to={`/m/cuentas/cuenta/${r.id}`}
             className="text-ink hover:underline"
@@ -1002,12 +1002,12 @@ function LaJerarquia({ arbol }: { arbol: Arbol | null }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("cuenta.jerarquia")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("cuenta.jerarquiaAyuda", { cual: arbol.jerarquia })}
       </p>
       {ramas.length ? (
         <ul>
-          <li className="text-2xs font-medium text-ink">{arbol.nombre}</li>
+          <li className="text-dato font-medium text-ink">{arbol.nombre}</li>
           {pintar(ramas, 1)}
         </ul>
       ) : (
@@ -1034,9 +1034,9 @@ function LaSalud({ salud }: { salud: Salud | null }) {
       <h2 className="section-label mb-1">{t("cuenta.salud")}</h2>
       {!salud.hay ? (
         <>
-          <p className="text-2xs text-ink-muted">{salud.porque}</p>
+          <p className="text-dato text-ink-muted">{salud.porque}</p>
           {salud.que_hacer ? (
-            <p className="mt-1 text-3xs text-ink-faint">{salud.que_hacer}</p>
+            <p className="mt-1 text-rotulo text-ink-faint">{salud.que_hacer}</p>
           ) : null}
         </>
       ) : (
@@ -1044,28 +1044,28 @@ function LaSalud({ salud }: { salud: Salud | null }) {
           <p
             className={
               salud.sirve_para_actuar
-                ? "text-2xs text-success"
-                : "text-2xs text-warning"
+                ? "text-dato text-success"
+                : "text-dato text-warning"
             }
           >
             {salud.sirve_para_actuar
               ? t("cuenta.saludSirve")
               : t("cuenta.saludNoSirve")}
           </p>
-          <p className="mt-1 text-sm font-medium text-ink">
+          <p className="mt-1 text-titulo font-medium text-ink">
             {t("cuenta.saludPuntuacion", {
               puntuacion: salud.puntuacion,
               nivel: salud.nivel,
             })}
           </p>
-          <p className="mt-1 text-3xs text-ink-muted">
+          <p className="mt-1 text-rotulo text-ink-muted">
             {t("cuenta.saludMedida", { dias: salud.medida_hace_dias })}
           </p>
           {salud.motivo ? (
-            <p className="mt-1 text-3xs text-ink-muted">{salud.motivo}</p>
+            <p className="mt-1 text-rotulo text-ink-muted">{salud.motivo}</p>
           ) : null}
           {salud.aviso ? (
-            <p className="mt-1 text-3xs text-warning">{salud.aviso}</p>
+            <p className="mt-1 text-rotulo text-warning">{salud.aviso}</p>
           ) : null}
         </>
       )}
@@ -1089,21 +1089,21 @@ function DeDondeSaleCadaDato({ linaje }: { linaje: Linaje | null }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("cuenta.linaje")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("cuenta.linajeAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">{t("cuenta.linajeAyuda")}</p>
       {!linaje.medible || campos.length === 0 ? (
-        <p className="text-2xs text-ink-muted">{linaje.que_significa}</p>
+        <p className="text-dato text-ink-muted">{linaje.que_significa}</p>
       ) : (
         <ul className="divide-y divide-ink-dim/30">
           {campos.map(([campo, fuentes]) => (
             <li key={campo} className="py-1.5">
-              <span className="text-2xs font-medium text-ink">
+              <span className="text-dato font-medium text-ink">
                 {humanizar(campo)}
               </span>
               <ul className="mt-0.5">
                 {(fuentes ?? []).map((f, i) => (
                   <li
                     key={`${f.fuente}-${i}`}
-                    className="flex flex-wrap items-baseline gap-x-2 text-3xs"
+                    className="flex flex-wrap items-baseline gap-x-2 text-rotulo"
                   >
                     <span
                       className={
@@ -1153,7 +1153,7 @@ function LoQueLlevaSinConfirmarse({
           <Vacio titulo={t("cuenta.sinObsoletos")} compacto />
           {/* Sin linaje no es que esté todo al día: es que no se sabe. */}
           {obsoletos.aviso ? (
-            <p className="mt-1 text-3xs text-ink-faint">{obsoletos.aviso}</p>
+            <p className="mt-1 text-rotulo text-ink-faint">{obsoletos.aviso}</p>
           ) : null}
         </>
       ) : (
@@ -1163,11 +1163,11 @@ function LoQueLlevaSinConfirmarse({
               key={`${o.campo}-${o.fuente}`}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-2xs font-medium text-ink">
+              <span className="text-dato font-medium text-ink">
                 {humanizar(o.campo)}
               </span>
               <span className="chip-dato">{o.fuente}</span>
-              <span className="text-3xs text-warning">
+              <span className="text-rotulo text-warning">
                 {t("cuenta.sinConfirmar", {
                   dias: o.dias_sin_confirmar,
                   tope: o.tope,

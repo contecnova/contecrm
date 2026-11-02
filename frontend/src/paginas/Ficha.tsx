@@ -541,12 +541,12 @@ function Comentarios({ tipo, id }: { tipo: string; id: string }) {
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           placeholder={t("ficha.escribir")}
-          className="flex-1 rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 text-xs text-ink"
+          className="flex-1 rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 text-titulin text-ink"
         />
         <button
           type="button"
           onClick={() => void enviar()}
-          className="rounded-lg bg-accent px-3 py-1.5 text-2xs text-paper hover:bg-accent-soft"
+          className="rounded-lg bg-accent px-3 py-1.5 text-dato text-paper hover:bg-accent-soft"
         >
           {t("ficha.enviar")}
         </button>
@@ -605,7 +605,7 @@ function Documentos({
         {/* Se dice de dónde sale el estado real: sin esta línea, alguien
             construiría un informe sobre el título creyendo que está al día. El
             documento vive en el gestor, aquí está el enlace y el contexto. */}
-        <p className="mb-2 text-2xs text-ink-faint">
+        <p className="mb-2 text-dato text-ink-faint">
           {t("ficha.documentosIntro")}
         </p>
         {fallo ? (
@@ -650,7 +650,7 @@ function Aprobacion({ filas }: { filas: Record<string, unknown>[] }) {
 
   return (
     <section className="mt-6 border-t border-ink-dim/30 pt-4">
-      <h3 className="mb-2 text-xs font-medium text-ink">
+      <h3 className="mb-2 text-titulin font-medium text-ink">
         {t("ficha.aprobacion")}
       </h3>
       <ul className="lista-acotada space-y-1 pr-1">
@@ -668,10 +668,10 @@ function Aprobacion({ filas }: { filas: Record<string, unknown>[] }) {
                 type="button"
                 onClick={() => setAbierto(esta ? null : id)}
                 aria-expanded={esta}
-                className="flex w-full items-center justify-between gap-2 text-left text-xs text-ink"
+                className="flex w-full items-center justify-between gap-2 text-left text-titulin text-ink"
               >
                 <span className="truncate">{titulo}</span>
-                <span className="shrink-0 text-2xs text-ink-muted">
+                <span className="shrink-0 text-dato text-ink-muted">
                   {esta ? t("ficha.cerrar") : t("ficha.verAprobacion")}
                 </span>
               </button>
@@ -763,7 +763,7 @@ function BuscarEnElCorpus({
 
   return (
     <section className="mt-6 border-t border-ink-dim/30 pt-4">
-      <h3 className="mb-2 text-xs font-medium text-ink">
+      <h3 className="mb-2 text-titulin font-medium text-ink">
         {t("ficha.buscarCorpus")}
       </h3>
       <div className="flex gap-2">
@@ -776,20 +776,20 @@ function BuscarEnElCorpus({
           }}
           placeholder={t("ficha.buscarCorpusPista")}
           aria-label={t("ficha.buscarCorpus")}
-          className="flex-1 rounded border border-ink-dim/60 bg-paper px-2 py-1 text-xs text-ink"
+          className="flex-1 rounded border border-ink-dim/60 bg-paper px-2 py-1 text-titulin text-ink"
         />
         <button
           type="button"
           onClick={() => void buscar()}
           disabled={buscando || texto.trim().length < 2}
-          className="rounded border border-ink-dim/60 px-3 py-1 text-xs text-ink disabled:opacity-50"
+          className="rounded border border-ink-dim/60 px-3 py-1 text-titulin text-ink disabled:opacity-50"
         >
           {buscando ? t("ficha.buscando") : t("ficha.buscar")}
         </button>
       </div>
       {fallo ? <Fallo error={fallo} /> : null}
       {resultados !== null && resultados.length === 0 ? (
-        <p className="mt-2 text-2xs text-ink-faint">
+        <p className="mt-2 text-dato text-ink-faint">
           {t("ficha.corpusSinResultados")}
         </p>
       ) : null}
@@ -800,13 +800,13 @@ function BuscarEnElCorpus({
               key={String(doc.id ?? doc.document_id ?? i)}
               className="flex items-center justify-between gap-2 rounded border border-ink-dim/30 px-2 py-1"
             >
-              <span className="truncate text-xs text-ink">
+              <span className="truncate text-titulin text-ink">
                 {String(doc.title ?? doc.titulo ?? doc.id ?? "")}
               </span>
               <button
                 type="button"
                 onClick={() => void enlazar(doc)}
-                className="shrink-0 rounded border border-ink-dim/60 px-2 py-0.5 text-2xs text-ink"
+                className="shrink-0 rounded border border-ink-dim/60 px-2 py-0.5 text-dato text-ink"
               >
                 {t("ficha.enlazar")}
               </button>
@@ -891,7 +891,7 @@ export function PreguntarSobreEsto({
       <div role="status" aria-live="polite">
         {salida ? (
           <p
-            className="mt-2 text-3xs text-ink-muted"
+            className="mt-2 text-rotulo text-ink-muted"
             data-testid="pregunta-en-contexto"
           >
             {salida.pregunta}

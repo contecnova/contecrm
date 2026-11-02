@@ -113,19 +113,19 @@ export function Entornos() {
           return (
             <li key={entorno} className="card p-4">
               <div className="flex flex-wrap items-baseline gap-2">
-                <span className="flex-1 text-sm text-ink">{entorno}</span>
+                <span className="flex-1 text-titulo text-ink">{entorno}</span>
                 {entorno === "produccion" ? (
                   <span className="badge badge-aviso">{t("entornos.esProduccion")}</span>
                 ) : null}
               </div>
 
               {!d ? (
-                <p className="mt-2 text-2xs text-ink-muted">{t("entornos.cargando")}</p>
+                <p className="mt-2 text-dato text-ink-muted">{t("entornos.cargando")}</p>
               ) : !d.hay ? (
                 <Vacio titulo={d.porque || t("entornos.sinDesplegar")} detalle="" />
               ) : (
                 <>
-                  <p className="mt-2 font-mono text-2xs text-ink">
+                  <p className="mt-2 font-mono text-dato text-ink">
                     {t("entornos.puesto", {
                       paquete: d.paquete,
                       version: d.version,
@@ -134,18 +134,18 @@ export function Entornos() {
                   </p>
                   {/* La huella y el commit: sin ellos «está el v7» no se
                       contrasta con nada. */}
-                  <p className="mt-1 font-mono text-3xs text-ink-muted">
+                  <p className="mt-1 font-mono text-rotulo text-ink-muted">
                     {t("entornos.huella", {
                       huella: (d.huella ?? "").slice(0, 12) || "—",
                       git: d.referencia_git || t("entornos.sinGit"),
                     })}
                   </p>
                   {d.motivo ? (
-                    <p className="mt-1 text-3xs text-ink-faint">{d.motivo}</p>
+                    <p className="mt-1 text-rotulo text-ink-faint">{d.motivo}</p>
                   ) : null}
                   {/* Si se puede volver atrás se dice ANTES de pulsar: un
                       rollback que a veces no funciona es peor que ninguno. */}
-                  <p className="mt-1 text-3xs text-ink-faint">
+                  <p className="mt-1 text-rotulo text-ink-faint">
                     {d.se_puede_volver_atras
                       ? t("entornos.sePuedeVolver")
                       : t("entornos.noSePuedeVolver")}
@@ -156,29 +156,29 @@ export function Entornos() {
               {/* El drift, con su `medible` delante. */}
               {g ? (
                 !g.medible ? (
-                  <p className="mt-2 text-2xs text-warning">
+                  <p className="mt-2 text-dato text-warning">
                     {g.porque || t("entornos.sinMedirDrift")}
                   </p>
                 ) : g.limpio ? (
-                  <p className="mt-2 text-2xs text-ink-muted">
+                  <p className="mt-2 text-dato text-ink-muted">
                     {t("entornos.limpio", { comparado: g.comparado ?? 0 })}
                   </p>
                 ) : (
                   <div className="mt-2">
                     {tocado.length > 0 ? (
-                      <p className="text-2xs text-warning">
+                      <p className="text-dato text-warning">
                         {t("entornos.tocadoAMano", { cuantos: tocado.length })}
                       </p>
                     ) : null}
                     {ido.length > 0 ? (
-                      <p className="mt-1 text-2xs text-danger">
+                      <p className="mt-1 text-dato text-danger">
                         {t("entornos.desaparecido", { cuantos: ido.length })}
                       </p>
                     ) : null}
                     {/* Lo que no se ha podido comparar se dice: un «limpio»
                         calculado sobre la mitad no es un limpio. */}
                     {(g.no_comparado ?? 0) > 0 ? (
-                      <p className="mt-1 text-3xs text-ink-faint">
+                      <p className="mt-1 text-rotulo text-ink-faint">
                         {t("entornos.noComparado", { cuantos: g.no_comparado })}
                       </p>
                     ) : null}

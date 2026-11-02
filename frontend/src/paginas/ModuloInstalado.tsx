@@ -135,7 +135,7 @@ export function ModuloInstalado() {
              telemetría cuenta sobre esto. */}
       <section className="card p-4">
         <h2 className="section-label mb-1">{t("modulo.manifiesto")}</h2>
-        <p className="text-sm text-ink" data-testid="modulo-manifiesto">
+        <p className="text-titulo text-ink" data-testid="modulo-manifiesto">
           {t("modulo.trae", {
             objetos: (modulo.objetos ?? []).length,
             campos: modulo.campos ?? 0,
@@ -146,10 +146,10 @@ export function ModuloInstalado() {
         </p>
         {/* El espacio de nombres, que es lo que impide que dos módulos de
             sectores distintos se pisen un objeto llamado «pedido». */}
-        <p className="mt-1 text-3xs text-ink-muted">
+        <p className="mt-1 text-rotulo text-ink-muted">
           {t("modulo.espacioDeNombres", { prefijo: modulo.espacio_de_nombres || modulo.clave })}
         </p>
-        <p className="text-3xs text-ink-muted">
+        <p className="text-rotulo text-ink-muted">
           {Object.keys(modulo.depende_de ?? {}).length
             ? t("modulo.dependeDe", {
                 cuales: Object.entries(modulo.depende_de ?? {})
@@ -162,7 +162,7 @@ export function ModuloInstalado() {
         {/* La huella: es lo que convierte «de quién es este módulo» en algo
             comprobable y no en una línea del manifiesto que cualquiera
             escribe. Si no consta, se dice. */}
-        <p className="mt-1 font-mono text-3xs text-ink-faint">
+        <p className="mt-1 font-mono text-rotulo text-ink-faint">
           {modulo.huella
             ? t("modulo.huella", { huella: modulo.huella.slice(0, 16) })
             : t("modulo.sinHuella")}
@@ -175,20 +175,20 @@ export function ModuloInstalado() {
         {integridad?.medible === false ? (
           /* Y cuando no se puede comparar se DICE, con su motivo. Un «íntegro»
              calculado sobre nada es peor que un «no se sabe». */
-          <p className="text-sm text-ink-muted" data-testid="modulo-integridad">
+          <p className="text-titulo text-ink-muted" data-testid="modulo-integridad">
             {integridad.motivo}
           </p>
         ) : integridad ? (
           <div data-testid="modulo-integridad">
             <p
               className={
-                integridad.integro ? "text-sm text-success" : "text-sm text-warning"
+                integridad.integro ? "text-titulo text-success" : "text-titulo text-warning"
               }
             >
               {integridad.integro ? t("modulo.integro") : t("modulo.tocado")}
             </p>
             {(integridad.tocados_a_mano ?? []).length ? (
-              <p className="mt-1 text-3xs text-ink-muted">
+              <p className="mt-1 text-rotulo text-ink-muted">
                 {t("modulo.tocadosAMano", {
                   cuales: integridad.tocados_a_mano?.slice(0, 6).join(", "),
                 })}
@@ -198,7 +198,7 @@ export function ModuloInstalado() {
                 lo añadido deja fuera el caso que más se esconde, que es que
                 alguien borró algo. */}
             {(integridad.desaparecidos ?? []).length ? (
-              <p className="text-3xs text-warning">
+              <p className="text-rotulo text-warning">
                 {t("modulo.desaparecidos", {
                   cuales: integridad.desaparecidos?.slice(0, 6).join(", "),
                 })}
@@ -215,7 +215,7 @@ export function ModuloInstalado() {
         <h2 className="section-label mb-1">{t("modulo.uso")}</h2>
         {telemetria ? (
           <div data-testid="modulo-telemetria">
-            <p className="text-sm text-ink">
+            <p className="text-titulo text-ink">
               {t("modulo.usados", {
                 usados: telemetria.usados,
                 elementos: telemetria.elementos,
@@ -225,17 +225,17 @@ export function ModuloInstalado() {
                 días de instalarlo es concluir sobre nada, y la lista invita a
                 hacerlo. */}
             {!telemetria.concluyente && telemetria.aviso ? (
-              <p className="mt-1 text-3xs text-warning">{telemetria.aviso}</p>
+              <p className="mt-1 text-rotulo text-warning">{telemetria.aviso}</p>
             ) : null}
             {telemetria.sin_usar.length ? (
-              <p className="mt-1 text-3xs text-ink-muted">
+              <p className="mt-1 text-rotulo text-ink-muted">
                 {t("modulo.sinUsar", {
                   cuales: telemetria.sin_usar.slice(0, 8).join(", "),
                 })}
               </p>
             ) : null}
             {telemetria.modificados_por_el_cliente.length ? (
-              <p className="text-3xs text-ink-faint">
+              <p className="text-rotulo text-ink-faint">
                 {t("modulo.ajustados", {
                   cuales: telemetria.modificados_por_el_cliente.slice(0, 6).join(", "),
                 })}
@@ -259,7 +259,7 @@ export function ModuloInstalado() {
         ) : (
           <ul className="divide-y divide-ink-dim/30" data-testid="modulo-pantallas">
             {pantallas.map((p) => (
-              <li key={p.clave} className="py-1.5 text-sm text-ink">
+              <li key={p.clave} className="py-1.5 text-titulo text-ink">
                 {p.titulo || p.clave}
               </li>
             ))}

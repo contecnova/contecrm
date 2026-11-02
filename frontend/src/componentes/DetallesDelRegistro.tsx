@@ -91,7 +91,7 @@ export function DetallesDelRegistro({
           la ficha y no dicen nada a quien la mira, pero quien abre una
           incidencia de soporte los necesita enteros. */}
       <details className="mt-2">
-        <summary className="cursor-pointer text-3xs text-ink-faint">
+        <summary className="cursor-pointer text-rotulo text-ink-faint">
           {t("ficha.identificadores")}
         </summary>
         <dl className="card mt-2 grid gap-x-8 gap-y-2 p-4 sm:grid-cols-2">
@@ -143,11 +143,11 @@ function Campo({
   // arriba— ahora lo colocan igual.
   return (
     <div className="min-w-0">
-      <dt className="truncate text-3xs text-ink-faint" title={humanizar(clave)}>
+      <dt className="truncate text-rotulo text-ink-faint" title={humanizar(clave)}>
         {humanizar(clave)}
       </dt>
       <dd
-        className={`truncate text-2xs text-ink ${monoespaciado ? "font-mono text-3xs text-ink-muted" : ""}`}
+        className={`truncate text-dato text-ink ${monoespaciado ? "font-mono text-rotulo text-ink-muted" : ""}`}
         title={String(valor ?? "")}
       >
         {/* Un valor compuesto se pinta con el MISMO renderizador que la tabla.

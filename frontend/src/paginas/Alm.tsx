@@ -164,14 +164,14 @@ export function Alm() {
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <div>
           <label
-            className="block text-2xs text-ink-muted"
+            className="block text-dato text-ink-muted"
             htmlFor="alm-entorno"
           >
             {t("alm.entorno")}
           </label>
           <select
             id="alm-entorno"
-            className="mt-1 rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 text-xs text-ink"
+            className="mt-1 rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 text-titulin text-ink"
             value={entorno}
             onChange={(e) => setEntorno(e.target.value)}
           >
@@ -188,7 +188,7 @@ export function Alm() {
         <button
           type="button"
           onClick={mirar}
-          className="rounded-lg bg-accent px-3 py-1.5 text-2xs text-paper"
+          className="rounded-lg bg-accent px-3 py-1.5 text-dato text-paper"
         >
           {t("alm.verDesvio")}
         </button>
@@ -198,7 +198,7 @@ export function Alm() {
 
       {puesto ? (
         <p
-          className="mt-4 text-2xs text-ink-muted"
+          className="mt-4 text-dato text-ink-muted"
           data-testid="alm-desplegado"
         >
           {puesto.hay
@@ -220,13 +220,13 @@ export function Alm() {
       {datos && datos.medible ? (
         <>
           <p
-            className={`mt-4 text-xs ${datos.limpio ? "text-success" : "text-warning"}`}
+            className={`mt-4 text-titulin ${datos.limpio ? "text-success" : "text-warning"}`}
             role="status"
           >
             {datos.que_significa}
           </p>
           {datos.no_comparado?.length ? (
-            <p className="mt-1 text-2xs text-ink-muted">
+            <p className="mt-1 text-dato text-ink-muted">
               {t("alm.noComparado", { tipos: datos.no_comparado.join(", ") })}
             </p>
           ) : null}
@@ -326,7 +326,7 @@ function ElPaquete() {
   return (
     <section className="card mt-6 p-4">
       <h2 className="section-label mb-1">{t("alm.paquete.titulo")}</h2>
-      <p className="mb-3 max-w-prose text-2xs text-ink-muted">
+      <p className="mb-3 max-w-prose text-dato text-ink-muted">
         {t("alm.paquete.porQue")}
       </p>
 
@@ -372,12 +372,12 @@ function ElPaquete() {
         className="mt-3 flex flex-col gap-2"
       >
         {paquete ? (
-          <p className="text-2xs text-ink">
+          <p className="text-dato text-ink">
             {t("alm.paquete.exportado", { objetos: cuantosObjetos(paquete) })}
           </p>
         ) : null}
         {resultado ? (
-          <pre className="lista-acotada rounded-lg bg-paper-sunk p-3 font-mono text-3xs text-ink-muted">
+          <pre className="lista-acotada rounded-lg bg-paper-sunk p-3 font-mono text-rotulo text-ink-muted">
             {JSON.stringify(resultado, null, 2)}
           </pre>
         ) : null}

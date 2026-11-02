@@ -138,7 +138,7 @@ export function Exportar({
       {/* En voz alta: el resultado de pulsar esto no se ve en la pantalla, y
           sin anunciarlo quien usa lector de pantalla no se entera de nada. */}
       {aviso ? (
-        <span className="text-3xs text-ink-muted" role="status" aria-live="polite">
+        <span className="text-rotulo text-ink-muted" role="status" aria-live="polite">
           {aviso}
         </span>
       ) : null}

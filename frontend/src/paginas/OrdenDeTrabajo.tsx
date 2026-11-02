@@ -158,7 +158,7 @@ export function OrdenDeTrabajo() {
         fila={orden as unknown as Record<string, unknown>}
         volverA={{ a: "/m/campo", titulo: modulo?.titulo ?? "", id }}
         distintivos={
-          <span className="text-2xs text-ink-muted">
+          <span className="text-dato text-ink-muted">
             {t("orden.trabajado", { minutos: orden.minutos_trabajados })}
           </span>
         }
@@ -211,7 +211,7 @@ export function OrdenDeTrabajo() {
             {/* Lo que invalida una firma, arriba del todo. */}
             {parte?.alterado_tras_firmar ? (
               <p
-                className="card mb-4 border-danger/40 p-3 text-2xs text-danger"
+                className="card mb-4 border-danger/40 p-3 text-dato text-danger"
                 role="status"
               >
                 {t("orden.alterado")}
@@ -220,13 +220,13 @@ export function OrdenDeTrabajo() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("orden.quienPaga")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("orden.porqueTresCestas")}
                 </p>
-                <p className="mt-2 font-mono text-2xs text-ink">
+                <p className="mt-2 font-mono text-dato text-ink">
                   {t("orden.cestas", {
                     facturar: orden.a_facturar,
                     garantia: orden.a_garantia,
@@ -235,7 +235,7 @@ export function OrdenDeTrabajo() {
                 {/* La tercera, aparte y señalada: es la que cuesta dinero si se
                 funde con cualquiera de las otras dos. */}
                 {orden.sin_determinar > 0 ? (
-                  <p className="mt-1 text-2xs text-warning">
+                  <p className="mt-1 text-dato text-warning">
                     {t("orden.sinDeterminar", {
                       cuantas: orden.sin_determinar,
                     })}
@@ -248,10 +248,10 @@ export function OrdenDeTrabajo() {
                       className="flex flex-wrap items-baseline gap-2"
                     >
                       <span className="chip-dato">{l.tipo}</span>
-                      <span className="flex-1 text-2xs text-ink">
+                      <span className="flex-1 text-dato text-ink">
                         {l.concepto}
                       </span>
-                      <span className="font-mono text-3xs text-ink-muted">
+                      <span className="font-mono text-rotulo text-ink-muted">
                         {l.cantidad} {l.unidad ?? ""}
                       </span>
                       <span
@@ -275,7 +275,7 @@ export function OrdenDeTrabajo() {
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("orden.parte")}
                 </h2>
                 {!parte ? (
@@ -285,13 +285,13 @@ export function OrdenDeTrabajo() {
                   />
                 ) : (
                   <>
-                    <p className="mt-2 text-2xs text-ink">{parte.resumen}</p>
+                    <p className="mt-2 text-dato text-ink">{parte.resumen}</p>
                     {parte.diagnostico ? (
-                      <p className="mt-1 text-2xs text-ink-muted">
+                      <p className="mt-1 text-dato text-ink-muted">
                         {parte.diagnostico}
                       </p>
                     ) : null}
-                    <p className="mt-2 font-mono text-3xs text-ink-muted">
+                    <p className="mt-2 font-mono text-rotulo text-ink-muted">
                       {t("orden.evidencias", {
                         checklist: (parte.checklist ?? []).length,
                         evidencias: (parte.evidencias ?? []).length,
@@ -299,7 +299,7 @@ export function OrdenDeTrabajo() {
                     </p>
                     {/* Firmado y conforme son dos cosas: un cliente puede firmar
                     que estuvimos y no estar conforme con el resultado. */}
-                    <p className="mt-1 text-2xs text-ink">
+                    <p className="mt-1 text-dato text-ink">
                       {parte.firmado
                         ? parte.conforme === false
                           ? t("orden.firmadoNoConforme")
@@ -311,17 +311,17 @@ export function OrdenDeTrabajo() {
               </section>
 
               <section className="card p-4 lg:col-span-2">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("orden.quienPuede")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("orden.porqueDescartados")}
                 </p>
                 {!candidatos ? (
                   <Vacio titulo={t("orden.sinCandidatos")} detalle="" />
                 ) : (
                   <>
-                    <p className="mt-2 font-mono text-3xs text-ink-muted">
+                    <p className="mt-2 font-mono text-rotulo text-ink-muted">
                       {t("orden.competencias", {
                         competencias:
                           (candidatos.competencias_requeridas ?? []).join(
@@ -330,11 +330,11 @@ export function OrdenDeTrabajo() {
                       })}
                     </p>
                     {!candidatos.hay_candidatos ? (
-                      <p className="mt-1 text-2xs text-warning">
+                      <p className="mt-1 text-dato text-warning">
                         {t("orden.nadieApto")}
                       </p>
                     ) : (
-                      <p className="mt-1 text-2xs text-ink">
+                      <p className="mt-1 text-dato text-ink">
                         {t("orden.aptos", {
                           cuantos: (candidatos.aptos ?? []).length,
                         })}
@@ -348,10 +348,10 @@ export function OrdenDeTrabajo() {
                             key={`${d.tecnico_id}-${i}`}
                             className="flex items-baseline gap-2"
                           >
-                            <span className="font-mono text-3xs text-ink">
+                            <span className="font-mono text-rotulo text-ink">
                               {d.tecnico_id}
                             </span>
-                            <span className="flex-1 text-2xs text-ink-muted">
+                            <span className="flex-1 text-dato text-ink-muted">
                               {d.porque}
                             </span>
                           </li>
@@ -364,7 +364,7 @@ export function OrdenDeTrabajo() {
             </div>
 
             {orden.activo_id ? (
-              <p className="mt-4 text-2xs">
+              <p className="mt-4 text-dato">
                 <Link
                   className="btn-link"
                   to={`/m/campo/activo/${orden.activo_id}`}

@@ -68,7 +68,7 @@ export function Filtros({
     <div className="mb-2 flex flex-wrap items-center gap-1.5">
       {puestos.map((f) => (
         <span key={parametroDe(f)} className="pill inline-flex items-center gap-1">
-          <span className="text-3xs">
+          <span className="text-rotulo">
             {humanizar(f.campo)}{" "}
             <span className="text-ink-muted">{rotuloDe(t, f, tipoDe(filas, f.campo))}</span>
           </span>

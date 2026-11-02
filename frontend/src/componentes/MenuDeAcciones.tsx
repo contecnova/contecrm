@@ -137,7 +137,7 @@ export function MenuDeAcciones({
                   key={o.clave}
                   type="button"
                   role="menuitem"
-                  className="block w-full rounded px-3 py-1.5 text-left text-xs text-ink hover:bg-paper-light"
+                  className="block w-full rounded px-3 py-1.5 text-left text-titulin text-ink hover:bg-paper-light"
                   onClick={() => {
                     setAbierto(false);
                     o.alElegir();
@@ -154,7 +154,7 @@ export function MenuDeAcciones({
                   key={o.clave}
                   type="button"
                   role="menuitem"
-                  className="block w-full rounded px-3 py-1.5 text-left text-xs text-danger hover:bg-danger/10"
+                  className="block w-full rounded px-3 py-1.5 text-left text-titulin text-danger hover:bg-danger/10"
                   onClick={() => {
                     setAbierto(false);
                     o.alElegir();

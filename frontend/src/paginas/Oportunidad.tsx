@@ -456,7 +456,7 @@ export function Oportunidad() {
       {/* Sólo el ponderado: el importe a secas ya está arriba, como dato
           clave y con su moneda. Esta tarjeta lo repetía al lado. */}
       <section className="card mb-4 p-4">
-        <p className="text-sm font-medium text-ink">
+        <p className="text-titulo font-medium text-ink">
           {t("oportunidad.ponderado", {
             valor: comoImporte(op.importe_ponderado, op.moneda),
             pct: op.probabilidad,
@@ -532,10 +532,10 @@ function LasLineas({
               key={l.id}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-2xs font-medium text-ink">
+              <span className="text-dato font-medium text-ink">
                 {l.descripcion}
               </span>
-              <span className="text-3xs text-ink-faint">
+              <span className="text-rotulo text-ink-faint">
                 {t("oportunidad.porUnidad", {
                   cantidad: l.cantidad,
                   precio: comoImporte(l.precio_unitario, moneda),
@@ -544,7 +544,7 @@ function LasLineas({
               {Number(l.descuento_pct) > 0 ? (
                 <span className="chip-dato">-{l.descuento_pct} %</span>
               ) : null}
-              <span className="text-2xs text-ink-muted">
+              <span className="text-dato text-ink-muted">
                 {comoImporte(l.total, moneda)}
               </span>
             </li>
@@ -554,10 +554,10 @@ function LasLineas({
 
       {metricas ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <h3 className="text-2xs font-medium text-ink">
+          <h3 className="text-dato font-medium text-ink">
             {t("oportunidad.metricas")}
           </h3>
-          <ul className="mt-1 flex flex-wrap gap-2 text-3xs">
+          <ul className="mt-1 flex flex-wrap gap-2 text-rotulo">
             <li className="chip-dato">
               ARR {comoImporte(metricas.arr, moneda)}
             </li>
@@ -574,14 +574,14 @@ function LasLineas({
           {/* Lo que NO cuenta como ARR, dicho. Sin esto, el número se cita en
               un comité como si fuera todo lo que entra. */}
           {metricas.lo_que_no_cuenta_como_arr.length > 0 ? (
-            <p className="mt-1 text-3xs text-ink-muted">
+            <p className="mt-1 text-rotulo text-ink-muted">
               {t("oportunidad.noCuentaComoArr", {
                 tipos: metricas.lo_que_no_cuenta_como_arr.join(", "),
                 puntual: comoImporte(metricas.puntual, moneda),
               })}
             </p>
           ) : null}
-          <p className="mt-1 text-3xs text-ink-faint">{metricas.porque}</p>
+          <p className="mt-1 text-rotulo text-ink-faint">{metricas.porque}</p>
         </div>
       ) : null}
     </section>
@@ -613,7 +613,7 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
               key={rol}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-2xs font-medium text-ink">{rol}</span>
+              <span className="text-dato font-medium text-ink">{rol}</span>
               {gente.map((p) => (
                 <span
                   key={p.contacto_id}
@@ -637,8 +637,8 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
       <p
         className={
           grupo.completo
-            ? "mt-2 text-2xs text-success"
-            : "mt-2 text-2xs text-warning"
+            ? "mt-2 text-dato text-success"
+            : "mt-2 text-dato text-warning"
         }
       >
         {grupo.que_mirar}
@@ -671,12 +671,12 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
                 key={`${p.usuario_id}-${p.papel}`}
                 className="flex flex-wrap items-baseline gap-x-3 py-1.5"
               >
-                <span className="text-2xs font-medium text-ink">
+                <span className="text-dato font-medium text-ink">
                   {p.porcentaje} %
                 </span>
                 <span className="chip-dato">{p.papel}</span>
                 {p.motivo ? (
-                  <span className="text-3xs text-ink-faint">{p.motivo}</span>
+                  <span className="text-rotulo text-ink-faint">{p.motivo}</span>
                 ) : null}
               </li>
             ))}
@@ -684,14 +684,14 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
           <p
             className={
               reparto.credito_cuadra
-                ? "mt-2 text-2xs text-ink-muted"
-                : "mt-2 text-2xs text-danger"
+                ? "mt-2 text-dato text-ink-muted"
+                : "mt-2 text-dato text-danger"
             }
           >
             {t("oportunidad.creditoTotal", { total: reparto.credito_total })}
             {reparto.credito_cuadra ? "" : ` · ${t("oportunidad.noCuadra")}`}
           </p>
-          <p className="mt-1 text-3xs text-ink-faint">
+          <p className="mt-1 text-rotulo text-ink-faint">
             {reparto.porque_el_overlay_no_suma}
           </p>
         </>
@@ -699,14 +699,14 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
 
       {reparto.relacionadas.length > 0 ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <h3 className="text-2xs font-medium text-ink">
+          <h3 className="text-dato font-medium text-ink">
             {t("oportunidad.relacionadas")}
           </h3>
           <ul className="mt-1 space-y-1">
             {reparto.relacionadas.map((r) => (
               <li
                 key={`${r.tipo}-${r.otra_id}`}
-                className="text-3xs text-ink-muted"
+                className="text-rotulo text-ink-muted"
               >
                 <span className="chip-dato">{r.tipo}</span>{" "}
                 {/* El sentido: sin él, «renovación» no dice si ésta es la que
@@ -741,7 +741,7 @@ function LoQueSeHaMovido({ cambios }: { cambios: CambioDePrevision[] }) {
         <ul className="divide-y divide-ink-dim/30">
           {cambios.map((c, i) => (
             <li key={`${c.campo}-${c.at}-${i}`} className="py-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-2 text-2xs">
+              <div className="flex flex-wrap items-baseline gap-x-2 text-dato">
                 <span className="font-medium text-ink">{c.campo}</span>
                 <span className="text-ink-faint">{c.anterior ?? "—"}</span>
                 <Icono nombre="arrow_forward" tamano="sm" />
@@ -756,11 +756,11 @@ function LoQueSeHaMovido({ cambios }: { cambios: CambioDePrevision[] }) {
                 ) : null}
               </div>
               {c.motivo ? (
-                <p className="text-3xs text-ink-faint">{c.motivo}</p>
+                <p className="text-rotulo text-ink-faint">{c.motivo}</p>
               ) : (
                 /* Un movimiento sin motivo es el que no se puede discutir.
                    Decirlo es lo que hace que la próxima vez se escriba. */
-                <p className="text-3xs text-warning">
+                <p className="text-rotulo text-warning">
                   {t("oportunidad.sinMotivo")}
                 </p>
               )}
@@ -808,7 +808,7 @@ function QueFaltaParaCerrar({
       <h2 className="section-label mb-1">{t("oportunidad.queFalta")}</h2>
       {evaluacion ? (
         <>
-          <p className="font-mono text-2xs text-ink">
+          <p className="font-mono text-dato text-ink">
             {t("oportunidad.cubiertos", {
               cubiertos: evaluacion.cubiertos,
               criterios: evaluacion.criterios,
@@ -818,8 +818,8 @@ function QueFaltaParaCerrar({
           <p
             className={
               evaluacion.cualificada
-                ? "mt-1 text-2xs text-success"
-                : "mt-1 text-2xs text-warning"
+                ? "mt-1 text-dato text-success"
+                : "mt-1 text-dato text-warning"
             }
           >
             {t(
@@ -832,7 +832,7 @@ function QueFaltaParaCerrar({
           {faltan.length > 0 ? (
             <ul className="mt-2 flex flex-col gap-1">
               {faltan.map((x) => (
-                <li key={x.clave} className="text-2xs text-ink">
+                <li key={x.clave} className="text-dato text-ink">
                   {/* La `etiqueta` que manda el servidor es la clave cruda
                       —«comprador_economico»—, así que se escribe como se lee.
                       Y se prefiere a la clave por si algún día trae el nombre
@@ -843,7 +843,7 @@ function QueFaltaParaCerrar({
             </ul>
           ) : null}
           {evaluacion.siguiente_paso ? (
-            <p className="mt-2 text-2xs text-ink">
+            <p className="mt-2 text-dato text-ink">
               {t("oportunidad.siguientePaso", {
                 paso: humanizar(evaluacion.siguiente_paso),
               })}
@@ -854,13 +854,13 @@ function QueFaltaParaCerrar({
 
       {playbook ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <p className="text-2xs font-medium text-ink">{playbook.titulo}</p>
+          <p className="text-dato font-medium text-ink">{playbook.titulo}</p>
           {/* El porqué del playbook: uno que aparece sin explicación se
               ignora, y entonces da igual que esté. */}
-          <p className="mt-1 text-3xs text-ink-faint">{playbook.por_que}</p>
+          <p className="mt-1 text-rotulo text-ink-faint">{playbook.por_que}</p>
           <ul className="mt-1 flex flex-col gap-1">
             {(playbook.pasos ?? []).map((paso, i) => (
-              <li key={i} className="text-2xs text-ink-muted">
+              <li key={i} className="text-dato text-ink-muted">
                 {paso}
               </li>
             ))}
@@ -905,7 +905,7 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
       {/* Si el cliente no lo ha visto, lo demás importa menos. */}
       <p
         className={
-          plan.compartido ? "text-2xs text-ink-muted" : "text-2xs text-warning"
+          plan.compartido ? "text-dato text-ink-muted" : "text-dato text-warning"
         }
       >
         {plan.compartido
@@ -916,7 +916,7 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
             : t("oportunidad.planCompartidoSinVer")
           : t("oportunidad.planSinCompartir")}
       </p>
-      <p className="mt-2 font-mono text-2xs text-ink">
+      <p className="mt-2 font-mono text-dato text-ink">
         {t("oportunidad.pasosDelPlan", {
           hechos: plan.hechos,
           pasos: plan.pasos,
@@ -924,28 +924,28 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
       </p>
       {/* Los tres retrasos por separado. */}
       {nuestros.length > 0 ? (
-        <p className="mt-1 text-2xs text-danger">
+        <p className="mt-1 text-dato text-danger">
           {t("oportunidad.retrasoNuestro", { cuantos: nuestros.length })}
         </p>
       ) : null}
       {suyos.length > 0 ? (
-        <p className="mt-1 text-2xs text-warning">
+        <p className="mt-1 text-dato text-warning">
           {t("oportunidad.retrasoDelCliente", { cuantos: suyos.length })}
         </p>
       ) : null}
       {conjuntos.length > 0 ? (
-        <p className="mt-1 text-2xs text-warning">
+        <p className="mt-1 text-dato text-warning">
           {t("oportunidad.retrasoConjunto", { cuantos: conjuntos.length })}
         </p>
       ) : null}
       {/* Y si la fecha de cierre ya no se la cree ni el plan, se dice. */}
       {!plan.la_fecha_es_creible ? (
-        <p className="mt-2 text-2xs text-danger">
+        <p className="mt-2 text-dato text-danger">
           {t("oportunidad.fechaNoCreible")}
         </p>
       ) : null}
       {plan.aviso ? (
-        <p className="mt-1 text-3xs text-ink-faint">{plan.aviso}</p>
+        <p className="mt-1 text-rotulo text-ink-faint">{plan.aviso}</p>
       ) : null}
     </section>
   );

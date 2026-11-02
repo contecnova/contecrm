@@ -116,7 +116,7 @@ export function Notificaciones() {
       >
         <Icono nombre="notifications" />
         {sinLeer > 0 ? (
-          <span className="absolute right-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-3xs font-bold leading-4 text-paper">
+          <span className="absolute right-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-rotulo font-bold leading-4 text-paper">
             {sinLeer > 9 ? "9+" : sinLeer}
           </span>
         ) : null}
@@ -129,9 +129,9 @@ export function Notificaciones() {
           className="absolute right-0 z-popover mt-2 w-80 animate-fade-in rounded-xl border border-ink-dim/60 bg-paper shadow-elevation-3"
         >
           <div className="flex items-center justify-between border-b border-ink-dim/30 px-3 py-2">
-            <p className="text-xs font-semibold text-ink">{t("avisos.titulo")}</p>
+            <p className="text-titulin font-semibold text-ink">{t("avisos.titulo")}</p>
             {sinLeer > 0 ? (
-              <button type="button" className="btn-link text-3xs" onClick={() => void marcarTodas()}>
+              <button type="button" className="btn-link text-rotulo" onClick={() => void marcarTodas()}>
                 {t("avisos.marcarTodas")}
               </button>
             ) : null}
@@ -144,11 +144,11 @@ export function Notificaciones() {
           </div>
 
           {fallo ? (
-            <p className="px-3 py-4 text-2xs text-danger">{fallo}</p>
+            <p className="px-3 py-4 text-dato text-danger">{fallo}</p>
           ) : avisos === null ? (
-            <p className="px-3 py-4 text-2xs text-ink-faint">{t("avisos.cargando")}</p>
+            <p className="px-3 py-4 text-dato text-ink-faint">{t("avisos.cargando")}</p>
           ) : avisos.length === 0 ? (
-            <p className="px-3 py-6 text-center text-2xs text-ink-faint">{t("avisos.vacio")}</p>
+            <p className="px-3 py-6 text-center text-dato text-ink-faint">{t("avisos.vacio")}</p>
           ) : (
             <ul className="max-h-96 divide-y divide-ink-dim/20 overflow-y-auto">
               {avisos.map((a) => {
@@ -162,13 +162,13 @@ export function Notificaciones() {
                           aria-hidden="true"
                         />
                       ) : null}
-                      <span className="min-w-0 flex-1 text-2xs text-ink">{a.titulo}</span>
-                      <span className="shrink-0 font-mono text-3xs text-ink-faint">
+                      <span className="min-w-0 flex-1 text-dato text-ink">{a.titulo}</span>
+                      <span className="shrink-0 font-mono text-rotulo text-ink-faint">
                         {a.created_at.slice(5, 16).replace("T", " ")}
                       </span>
                     </div>
                     {a.cuerpo ? (
-                      <p className="mt-0.5 truncate pl-3.5 text-3xs text-ink-muted">
+                      <p className="mt-0.5 truncate pl-3.5 text-rotulo text-ink-muted">
                         {a.cuerpo}
                       </p>
                     ) : null}

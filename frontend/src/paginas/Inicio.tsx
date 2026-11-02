@@ -189,7 +189,7 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
           encabezados— en el tamaño que le corresponde a una etiqueta de
           pantalla, no de titular. */}
       <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xs font-semibold uppercase tracking-[0.055em] text-ink-faint">
+        <h1 className="text-rotulo font-semibold uppercase tracking-[0.055em] text-ink-faint">
           {t("nav.inicio")}
         </h1>
         {altas.length > 0 ? (
@@ -222,7 +222,7 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
           es verdad. Lo que faltaba era el porqué. */}
       {!cargando && sinNadaMio ? (
         <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 border-accent/30 bg-accent/5 p-3">
-          <p className="text-xs text-ink">{t("inicio.nadaMio")}</p>
+          <p className="text-titulin text-ink">{t("inicio.nadaMio")}</p>
           {veOportunidades ? (
             <Link to="/m/oportunidades" className="btn-secondary shrink-0">
               {t("inicio.verDelEquipo")}
@@ -232,7 +232,7 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
       ) : null}
 
       {cargando ? (
-        <p className="text-2xs text-ink-faint" role="status">
+        <p className="text-dato text-ink-faint" role="status">
           {t("app.cargando")}
         </p>
       ) : (
@@ -294,11 +294,11 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
                   <li key={o.id} className="flex items-center justify-between gap-3 py-1">
                     <Link
                       to={`/m/oportunidades/oportunidad/${o.id}`}
-                      className="min-w-0 truncate text-2xs text-accent hover:underline"
+                      className="min-w-0 truncate text-dato text-accent hover:underline"
                     >
                       {o.nombre}
                     </Link>
-                    <span className="shrink-0 font-mono text-3xs text-ink-muted">
+                    <span className="shrink-0 font-mono text-rotulo text-ink-muted">
                       {Number(o.importe || 0).toLocaleString(localizacion())}
                     </span>
                   </li>
@@ -353,7 +353,7 @@ function Bloque({
   return (
     <section className="card p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="inline-flex items-center gap-1.5 text-xs font-medium text-ink">
+        <h2 className="inline-flex items-center gap-1.5 text-titulin font-medium text-ink">
           <Icono
             nombre={icono}
             tamano="sm"
@@ -375,7 +375,7 @@ function Bloque({
       {cuantos === 0 ? (
         // Decirlo, y no dejar un hueco: un bloque vacío se lee como «no ha
         // cargado», y entonces nadie se fía de los que sí tienen cosas.
-        <p className="py-3 text-center text-3xs text-ink-faint">{vacio}</p>
+        <p className="py-3 text-center text-rotulo text-ink-faint">{vacio}</p>
       ) : (
         <ul className="divide-y divide-ink-dim/30">{children}</ul>
       )}
@@ -389,13 +389,13 @@ function FilaActividad({ actividad, atrasada }: { actividad: Actividad; atrasada
     <li className="flex items-center justify-between gap-3 py-1">
       <Link
         to={`/m/actividades/actividad/${actividad.id}`}
-        className="min-w-0 truncate text-2xs text-accent hover:underline"
+        className="min-w-0 truncate text-dato text-accent hover:underline"
       >
         {actividad.asunto}
       </Link>
       {cuando ? (
         <span
-          className={`shrink-0 text-3xs ${atrasada ? "text-danger" : "text-ink-muted"}`}
+          className={`shrink-0 text-rotulo ${atrasada ? "text-danger" : "text-ink-muted"}`}
           title={cuando.toLocaleString(localizacion())}
         >
           {cuando.toLocaleDateString(localizacion(), { day: "numeric", month: "short" })}

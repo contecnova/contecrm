@@ -94,12 +94,12 @@ export function Conocimiento() {
               key={a.id}
               className="flex flex-wrap items-baseline gap-2 rounded-lg border border-ink-dim/40 bg-paper-light p-3"
             >
-              <span className="flex-1 text-sm text-ink">{a.titulo}</span>
+              <span className="flex-1 text-titulo text-ink">{a.titulo}</span>
               {/* Lo publicado y el borrador NO se enseñan igual: citarle a un
                   cliente un texto que nadie ha aprobado es el caso que esto
                   existe para evitar. */}
               {a.es_borrador ? (
-                <span className="rounded bg-warning/10 px-1.5 py-0.5 text-3xs uppercase text-warning">
+                <span className="rounded bg-warning/10 px-1.5 py-0.5 text-rotulo uppercase text-warning">
                   {t("conocimiento.borrador", { version: a.version_mostrada ?? "—" })}
                 </span>
               ) : null}
@@ -107,7 +107,7 @@ export function Conocimiento() {
                   como bueno se copia en una respuesta a un cliente, y ahí ya no
                   hay quien lo recoja. */}
               <span
-                className={`rounded px-1.5 py-0.5 text-3xs uppercase ${
+                className={`rounded px-1.5 py-0.5 text-rotulo uppercase ${
                   a.estado === "publicado"
                     ? "bg-success/10 text-success"
                     : "bg-warning/10 text-warning"
@@ -116,11 +116,11 @@ export function Conocimiento() {
                 {a.estado}
               </span>
               {a.publico ? (
-                <span className="rounded bg-accent/10 px-1.5 py-0.5 text-3xs uppercase text-accent">
+                <span className="rounded bg-accent/10 px-1.5 py-0.5 text-rotulo uppercase text-accent">
                   {t("conocimiento.enPortal")}
                 </span>
               ) : null}
-              <span className="font-mono text-2xs text-ink-faint">
+              <span className="font-mono text-dato text-ink-faint">
                 {t("conocimiento.vistas", { vistas: a.vistas })}
               </span>
             </li>

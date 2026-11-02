@@ -108,7 +108,7 @@ function Condicion({ nodo, nivel = 0 }: { nodo: unknown; nivel?: number }) {
     );
   }
   return (
-    <p className="text-2xs text-ink" style={{ marginLeft: nivel * 12 }}>
+    <p className="text-dato text-ink" style={{ marginLeft: nivel * 12 }}>
       <span className="font-mono">{String(n.campo ?? "—")}</span>{" "}
       <span className="text-ink-muted">{String(n.operador ?? "")}</span>{" "}
       <span className="font-mono">{JSON.stringify(n.valor ?? null)}</span>
@@ -248,7 +248,7 @@ export function Segmento() {
               )}
             </span>
             {segmento.descripcion ? (
-              <span className="text-2xs text-ink-muted">
+              <span className="text-dato text-ink-muted">
                 {segmento.descripcion}
               </span>
             ) : null}
@@ -306,39 +306,39 @@ export function Segmento() {
             no ve la pantalla no se entera de que ha pasado algo. */}
             <div role="status" aria-live="polite">
               {aviso ? (
-                <p className="card mb-3 p-3 text-2xs text-ink">{aviso}</p>
+                <p className="card mb-3 p-3 text-dato text-ink">{aviso}</p>
               ) : null}
             </div>
             {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("segmento.cuantos")}
                 </h2>
                 {!tamano ? (
                   <Vacio titulo={t("segmento.sinRecuento")} detalle="" />
                 ) : (
                   <>
-                    <p className="mt-2 font-mono text-lg text-ink">
+                    <p className="mt-2 font-mono text-grande text-ink">
                       {tamano.alcanzables}
                     </p>
                     {/* El hueco se NOMBRA. Enseñar sólo el total hace que alguien
                     planifique un envío a diez mil y salga a siete mil sin saber
                     por qué faltan tres mil. */}
-                    <p className="mt-1 text-2xs text-ink-muted">
+                    <p className="mt-1 text-dato text-ink-muted">
                       {t("segmento.deLosCuales", {
                         bruto: tamano.bruto,
                         suprimidos: tamano.suprimidos,
                       })}
                     </p>
-                    <p className="mt-1 text-3xs text-ink-faint">
+                    <p className="mt-1 text-rotulo text-ink-faint">
                       {t("segmento.calculado", {
                         fecha: fechaHora(tamano.calculado_at),
                       })}
                     </p>
                     {tamano.es_foto_congelada ? (
-                      <p className="mt-2 text-2xs text-warning">
+                      <p className="mt-2 text-dato text-warning">
                         {t("segmento.esFoto")}
                       </p>
                     ) : null}
@@ -357,17 +357,17 @@ export function Segmento() {
                   </button>
                 ) : null}
                 {segmento.dinamico ? (
-                  <p className="mt-1 text-3xs text-ink-faint">
+                  <p className="mt-1 text-rotulo text-ink-faint">
                     {t("segmento.porqueCongelar")}
                   </p>
                 ) : null}
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("segmento.solapamiento")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("segmento.porqueSolape")}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -395,18 +395,18 @@ export function Segmento() {
                 </div>
                 {solape ? (
                   <div className="mt-3" role="status" aria-live="polite">
-                    <p className="font-mono text-lg text-ink">
+                    <p className="font-mono text-grande text-ink">
                       {solape.comunes}
                     </p>
                     {/* El porcentaje sobre CADA uno: mil comunes es mucho si uno
                     tiene mil doscientos y poco si tiene cien mil. */}
-                    <p className="mt-1 text-2xs text-ink">
+                    <p className="mt-1 text-dato text-ink">
                       {t("segmento.pctDeCada", {
                         a: solape.pct_de_a ?? "—",
                         b: solape.pct_de_b ?? "—",
                       })}
                     </p>
-                    <p className="mt-1 text-2xs text-ink-muted">
+                    <p className="mt-1 text-dato text-ink-muted">
                       {t("segmento.solos", {
                         a: solape.solo_a,
                         b: solape.solo_b,
@@ -417,17 +417,17 @@ export function Segmento() {
               </section>
 
               <section className="card p-4 lg:col-span-2">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("segmento.definicion")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("segmento.porqueDefinicion")}
                 </p>
                 <div className="mt-2">
                   <Condicion nodo={segmento.definicion} />
                 </div>
                 {excluye.length > 0 ? (
-                  <p className="mt-3 text-2xs text-ink">
+                  <p className="mt-3 text-dato text-ink">
                     {t("segmento.excluye", { cuantos: excluye.length })}
                   </p>
                 ) : null}

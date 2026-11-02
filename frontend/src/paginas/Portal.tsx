@@ -153,16 +153,16 @@ function Entrada({
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
-      <h1 className="mb-1 text-center text-xl font-semibold text-ink">
+      <h1 className="mb-1 text-center text-grande font-semibold text-ink">
         Tu área de cliente
       </h1>
-      <p className="mb-6 text-center text-2xs text-ink-faint">
+      <p className="mb-6 text-center text-dato text-ink-faint">
         Tus peticiones y lo que has hablado con nosotros.
       </p>
 
       <div className="card p-5">
         {estado === "enviado" ? (
-          <p role="status" className="text-xs text-ink">
+          <p role="status" className="text-titulin text-ink">
             Si ese correo es de un cliente nuestro, le hemos mandado un enlace
             para entrar. El enlace vale una sola vez y caduca pronto.
           </p>
@@ -195,7 +195,7 @@ function Entrada({
           </form>
         )}
         {fallo ? (
-          <p role="alert" className="mt-3 text-2xs text-danger">
+          <p role="alert" className="mt-3 text-dato text-danger">
             {fallo}
           </p>
         ) : null}
@@ -231,18 +231,18 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
       <header className="mb-6 flex items-baseline justify-between gap-3">
-        <h1 className="text-lg font-semibold text-ink">Tu área de cliente</h1>
+        <h1 className="text-grande font-semibold text-ink">Tu área de cliente</h1>
         <button
           type="button"
           onClick={alSalir}
-          className="text-2xs text-ink-faint hover:text-ink"
+          className="text-dato text-ink-faint hover:text-ink"
         >
           Salir
         </button>
       </header>
 
       {fallo ? (
-        <p role="alert" className="mb-4 text-2xs text-danger">
+        <p role="alert" className="mb-4 text-dato text-danger">
           {fallo}
         </p>
       ) : null}
@@ -386,17 +386,17 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
 
   return (
     <section className="card mb-4 p-4">
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">
+      <h2 className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint">
         {definicion.titulo}
       </h2>
       {fallo ? (
-        <p role="alert" className="text-2xs text-danger">
+        <p role="alert" className="text-dato text-danger">
           {fallo}
         </p>
       ) : filas === null ? (
-        <p className="text-2xs text-ink-faint">Cargando…</p>
+        <p className="text-dato text-ink-faint">Cargando…</p>
       ) : filas.length === 0 ? (
-        <p className="text-2xs text-ink-faint">{definicion.vacio}</p>
+        <p className="text-dato text-ink-faint">{definicion.vacio}</p>
       ) : (
         <ul className="lista-acotada space-y-2 pr-1">
           {filas.map((fila, i) => (
@@ -404,9 +404,9 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
               key={String(fila.id ?? i)}
               className="rounded-lg bg-paper-sunk px-3 py-2"
             >
-              <p className="text-xs text-ink">{texto(fila, TITULO) || "—"}</p>
+              <p className="text-titulin text-ink">{texto(fila, TITULO) || "—"}</p>
               {texto(fila, DEBAJO) ? (
-                <p className="text-3xs text-ink-faint">{texto(fila, DEBAJO)}</p>
+                <p className="text-rotulo text-ink-faint">{texto(fila, DEBAJO)}</p>
               ) : null}
             </li>
           ))}
@@ -454,13 +454,13 @@ function NuevaPeticion({
 
   return (
     <section className="card mb-4 p-4">
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">
+      <h2 className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint">
         Pedir algo
       </h2>
       {/* `role="status"` y no un párrafo a secas: quien no ve la pantalla
           necesita enterarse de que la petición ha entrado y con qué código, que
           es justo lo que hay que decir por teléfono después. */}
-      <p role="status" className="mb-3 text-xs text-success">
+      <p role="status" className="mb-3 text-titulin text-success">
         {hecho ? `Recibido. Tu petición es la ${hecho}.` : ""}
       </p>
       <form onSubmit={enviar}>
@@ -494,19 +494,19 @@ function NuevaPeticion({
 function MisCasos({ casos }: { casos: Caso[] | null }) {
   return (
     <section className="card mb-4 p-4">
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">
+      <h2 className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint">
         Tus peticiones
       </h2>
       {casos === null ? (
-        <p className="text-2xs text-ink-faint">Cargando…</p>
+        <p className="text-dato text-ink-faint">Cargando…</p>
       ) : casos.length === 0 ? (
-        <p className="text-2xs text-ink-faint">Todavía no has pedido nada.</p>
+        <p className="text-dato text-ink-faint">Todavía no has pedido nada.</p>
       ) : (
         <ul className="lista-acotada space-y-2 pr-1">
           {casos.map((c) => (
             <li key={c.caso_id} className="rounded-lg bg-paper-sunk px-3 py-2">
-              <p className="text-xs text-ink">{c.asunto}</p>
-              <p className="text-3xs text-ink-faint">
+              <p className="text-titulin text-ink">{c.asunto}</p>
+              <p className="text-rotulo text-ink-faint">
                 {c.codigo} · {c.estado}
               </p>
             </li>
@@ -547,13 +547,13 @@ function Conversacion({
 
   return (
     <section className="card p-4">
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">
+      <h2 className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint">
         Hablar con nosotros
       </h2>
       {hilo === null ? (
-        <p className="mb-3 text-2xs text-ink-faint">Cargando…</p>
+        <p className="mb-3 text-dato text-ink-faint">Cargando…</p>
       ) : hilo.length === 0 ? (
-        <p className="mb-3 text-2xs text-ink-faint">
+        <p className="mb-3 text-dato text-ink-faint">
           Aquí aparecerá lo que hablemos.
         </p>
       ) : (
@@ -563,13 +563,13 @@ function Conversacion({
             return (
               <li
                 key={m.id ?? i}
-                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs ${
+                className={`max-w-[85%] rounded-xl px-3 py-2 text-titulin ${
                   mio
                     ? "ml-auto bg-accent/10 text-ink"
                     : "bg-paper-sunk text-ink"
                 }`}
               >
-                <p className="mb-0.5 text-3xs text-ink-faint">
+                <p className="mb-0.5 text-rotulo text-ink-faint">
                   {mio ? "Tú" : "Nosotros"}
                 </p>
                 {m.cuerpo}
@@ -667,13 +667,13 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
 
   return (
     <section className="card mb-4 p-4">
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">
+      <h2 className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint">
         Tus papeles con nosotros
       </h2>
       {documentos === null ? (
-        <p className="mb-3 text-2xs text-ink-faint">Cargando…</p>
+        <p className="mb-3 text-dato text-ink-faint">Cargando…</p>
       ) : documentos.length === 0 ? (
-        <p className="mb-3 text-2xs text-ink-faint">
+        <p className="mb-3 text-dato text-ink-faint">
           No hay nada pendiente de renovar.
         </p>
       ) : (
@@ -681,10 +681,10 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
           {documentos.map((d, i) => (
             <li
               key={d.clave ?? i}
-              className="rounded-lg bg-paper-sunk px-3 py-2 text-xs text-ink"
+              className="rounded-lg bg-paper-sunk px-3 py-2 text-titulin text-ink"
             >
               {d.nombre || d.clave}
-              <span className="ml-2 text-3xs text-ink-faint">
+              <span className="ml-2 text-rotulo text-ink-faint">
                 {d.vence
                   ? (d.dias ?? 0) < 0
                     ? `venció el ${d.vence}`
@@ -696,7 +696,7 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
         </ul>
       )}
 
-      <p role="status" className="mb-2 text-2xs text-success">
+      <p role="status" className="mb-2 text-dato text-success">
         {hecho}
       </p>
       <form onSubmit={subir} className="grid gap-2 sm:grid-cols-3">

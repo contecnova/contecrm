@@ -188,7 +188,7 @@ export function Plataforma({ sesion }: { sesion: Sesion | null }) {
         icono="shield_lock"
         entradilla={t("plataforma.entradilla")}
         acciones={
-          <label className="flex items-center gap-2 text-2xs text-ink-muted">
+          <label className="flex items-center gap-2 text-dato text-ink-muted">
             {t("plataforma.servicio")}
             <select
               className="campo"
@@ -261,7 +261,7 @@ function Panel({
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <h3 className="section-label">{titulo}</h3>
-          <p className="mt-0.5 text-3xs text-ink-faint">{ayuda}</p>
+          <p className="mt-0.5 text-rotulo text-ink-faint">{ayuda}</p>
         </div>
         {acciones}
       </div>
@@ -339,9 +339,9 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
               key={a.secuencia}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-2xs font-medium text-ink">{a.accion}</span>
-              <span className="text-3xs text-ink-muted">{a.objeto}</span>
-              <span className="text-3xs text-ink-faint">
+              <span className="text-dato font-medium text-ink">{a.accion}</span>
+              <span className="text-rotulo text-ink-muted">{a.objeto}</span>
+              <span className="text-rotulo text-ink-faint">
                 {escalar(a.cuando, "cuando")}
               </span>
               {/* Quién, y en nombre de quién: una acción hecha por soporte
@@ -351,10 +351,10 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
                 <span className="chip-dato">{t("plataforma.enNombreDe")}</span>
               ) : null}
               {a.origen ? (
-                <span className="text-3xs text-ink-faint">{a.origen}</span>
+                <span className="text-rotulo text-ink-faint">{a.origen}</span>
               ) : null}
               {a.ip ? (
-                <span className="text-3xs text-ink-faint">{a.ip}</span>
+                <span className="text-rotulo text-ink-faint">{a.ip}</span>
               ) : null}
             </li>
           ))}
@@ -401,11 +401,11 @@ function Anomalias({ puedeVer }: { puedeVer: boolean }) {
               <div className="flex flex-wrap items-baseline gap-x-3">
                 {/* Cuántos registros salieron, primero: es el número que dice
                     si esto es una consulta grande o una fuga. */}
-                <span className="text-sm font-medium text-ink">
+                <span className="text-titulo font-medium text-ink">
                   {a.registros}
                 </span>
-                <span className="text-2xs text-ink">{a.objeto}</span>
-                <span className="text-3xs text-ink-faint">
+                <span className="text-dato text-ink">{a.objeto}</span>
+                <span className="text-rotulo text-ink-faint">
                   {escalar(a.cuando, "cuando")}
                 </span>
                 <span
@@ -418,7 +418,7 @@ function Anomalias({ puedeVer }: { puedeVer: boolean }) {
                     : t("plataforma.permitida")}
                 </span>
               </div>
-              <p className="text-3xs text-ink-muted">{a.motivo}</p>
+              <p className="text-rotulo text-ink-muted">{a.motivo}</p>
             </li>
           ))}
         </ul>
@@ -485,7 +485,7 @@ function Cumplimiento({
       {rat ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-ink">
+            <p className="text-titulo font-medium text-ink">
               {t("plataforma.tratamientos", {
                 cuantos: rat.actividades.length,
               })}
@@ -494,7 +494,7 @@ function Cumplimiento({
                 peor que no tenerlo, porque nadie vuelve a mirarlo. */}
             {rat.objetos_sin_tratamiento_declarado.length > 0 ? (
               <>
-                <p className="mt-1 text-3xs text-danger">
+                <p className="mt-1 text-rotulo text-danger">
                   {t("plataforma.sinTratamiento", {
                     cuantos: rat.objetos_sin_tratamiento_declarado.length,
                   })}
@@ -508,30 +508,30 @@ function Cumplimiento({
                 </ul>
               </>
             ) : (
-              <p className="mt-1 text-3xs text-ink-faint">
+              <p className="mt-1 text-rotulo text-ink-faint">
                 {t("plataforma.ratCompleto")}
               </p>
             )}
           </div>
           <div>
-            <p className="text-sm font-medium text-ink">
+            <p className="text-titulo font-medium text-ink">
               {t("plataforma.permisos")}
             </p>
             {/* Los dos huecos son opuestos y los dos importan: un permiso que
                 nadie tiene es funcionalidad muerta; uno que nadie exige es un
                 privilegio dado por si acaso. */}
-            <p className="mt-1 text-3xs text-ink-muted">
+            <p className="mt-1 text-rotulo text-ink-muted">
               {t("plataforma.sinRol", {
                 cuantos: matriz?.exigidos_sin_ningun_rol.length ?? 0,
               })}
             </p>
-            <p className="text-3xs text-ink-muted">
+            <p className="text-rotulo text-ink-muted">
               {t("plataforma.sinRuta", {
                 cuantos: matriz?.concedidos_que_ninguna_ruta_exige.length ?? 0,
               })}
             </p>
             {matriz ? (
-              <p className="mt-1 text-3xs text-ink-faint">
+              <p className="mt-1 text-rotulo text-ink-faint">
                 {matriz.alcance_de_los_roles}
               </p>
             ) : null}
@@ -544,7 +544,7 @@ function Cumplimiento({
           recuentos es cómo se aprende a no mirarlos. */}
       {informe ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-3">
-          <p className="text-3xs text-ink-muted">
+          <p className="text-rotulo text-ink-muted">
             {t("plataforma.politicasActivas", {
               cuantas: informe.politicas_de_acceso.activas,
             })}
@@ -552,13 +552,13 @@ function Cumplimiento({
           {informe.avisos.length > 0 ? (
             <ul className="mt-1 space-y-0.5">
               {informe.avisos.map((aviso) => (
-                <li key={aviso} className="text-3xs text-danger">
+                <li key={aviso} className="text-rotulo text-danger">
                   {aviso}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-3xs text-ink-faint">
+            <p className="mt-1 text-rotulo text-ink-faint">
               {t("plataforma.sinAvisos")}
             </p>
           )}
@@ -638,16 +638,16 @@ function Recuperable({
               <span
                 className={
                   e.dias_para_purga <= 7
-                    ? "text-sm font-medium text-danger"
-                    : "text-sm font-medium text-ink"
+                    ? "text-titulo font-medium text-danger"
+                    : "text-titulo font-medium text-ink"
                 }
               >
                 {t("plataforma.diasParaPurga", { dias: e.dias_para_purga })}
               </span>
-              <span className="text-2xs text-ink">
+              <span className="text-dato text-ink">
                 {e.etiqueta || e.objeto}
               </span>
-              <span className="text-3xs text-ink-faint">{e.objeto}</span>
+              <span className="text-rotulo text-ink-faint">{e.objeto}</span>
               {/* Lo que se lleva por delante: restaurar una fila sin sus hijos
                   deja un registro a medias, y eso no se ve hasta abrirlo. */}
               {e.en_cascada > 0 ? (
@@ -660,7 +660,7 @@ function Recuperable({
         </ul>
       ) : null}
       {objetos && objetos.length > 0 ? (
-        <p className="mt-3 text-3xs text-ink-faint">
+        <p className="mt-3 text-rotulo text-ink-faint">
           {t("plataforma.restaurables", { objetos: objetos.join(", ") })}
         </p>
       ) : null}
@@ -728,14 +728,14 @@ function HastaDondeSeVuelve({
               <p
                 className={
                   rpo.dentro
-                    ? "text-sm font-medium text-ink"
-                    : "text-sm font-medium text-danger"
+                    ? "text-titulo font-medium text-ink"
+                    : "text-titulo font-medium text-danger"
                 }
               >
                 {t("plataforma.sePerderia", {
                   minutos: rpo.se_perderia_min ?? 0,
                 })}
-                <span className="text-3xs text-ink-faint">
+                <span className="text-rotulo text-ink-faint">
                   {" "}
                   {t("plataforma.comprometido", {
                     minutos: rpo.rpo_comprometido_min,
@@ -743,19 +743,19 @@ function HastaDondeSeVuelve({
                 </span>
               </p>
             ) : (
-              <p className="text-sm font-medium text-ink-muted">
+              <p className="text-titulo font-medium text-ink-muted">
                 {t("plataforma.noMedible")}
               </p>
             )}
-            <p className="mt-1 text-3xs text-ink-muted">{rpo.porque}</p>
+            <p className="mt-1 text-rotulo text-ink-muted">{rpo.porque}</p>
           </div>
           {ventana ? (
             <div>
               <p
                 className={
                   ventana.se_puede
-                    ? "text-sm font-medium text-ink"
-                    : "text-sm font-medium text-danger"
+                    ? "text-titulo font-medium text-ink"
+                    : "text-titulo font-medium text-danger"
                 }
               >
                 {t("plataforma.ventana", {
@@ -763,7 +763,7 @@ function HastaDondeSeVuelve({
                   retencion: ventana.retencion_dias,
                 })}
               </p>
-              <p className="mt-1 text-3xs text-ink-muted">{ventana.porque}</p>
+              <p className="mt-1 text-rotulo text-ink-muted">{ventana.porque}</p>
             </div>
           ) : null}
         </div>
@@ -821,7 +821,7 @@ function Aguanta({
       titulo={t("plataforma.volumen")}
       ayuda={t("plataforma.volumenAyuda")}
     >
-      <label className="mb-3 flex flex-wrap items-center gap-2 text-2xs text-ink-muted">
+      <label className="mb-3 flex flex-wrap items-center gap-2 text-dato text-ink-muted">
         {t("plataforma.ultimaParticion")}
         <input
           type="date"
@@ -838,8 +838,8 @@ function Aguanta({
           <p
             className={
               particiones.urgente
-                ? "text-sm font-medium text-danger"
-                : "text-sm font-medium text-ink"
+                ? "text-titulo font-medium text-danger"
+                : "text-titulo font-medium text-ink"
             }
           >
             {particiones.ya_falta_la_de_este_mes
@@ -857,7 +857,7 @@ function Aguanta({
               ))}
             </ul>
           ) : null}
-          <p className="mt-1 text-3xs text-ink-muted">{particiones.porque}</p>
+          <p className="mt-1 text-rotulo text-ink-muted">{particiones.porque}</p>
         </>
       ) : null}
     </Panel>
@@ -913,11 +913,11 @@ function ComoSeCorta({
             {plan.tablas.map((tabla) => (
               <li key={tabla.tabla} className="py-1.5">
                 <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="text-sm font-medium text-ink">
+                  <span className="text-titulo font-medium text-ink">
                     {tabla.tabla}
                   </span>
                   <span className="chip-dato">{tabla.estrategia}</span>
-                  <span className="text-3xs text-ink-muted">
+                  <span className="text-rotulo text-ink-muted">
                     {t("plataforma.mesesEnCaliente", {
                       meses: tabla.meses_en_caliente,
                     })}
@@ -925,11 +925,11 @@ function ComoSeCorta({
                 </div>
                 {/* Por qué crece, dicho por el servidor: sin eso la lista es un
                     inventario y no explica por qué sólo se parten éstas. */}
-                <p className="text-3xs text-ink-faint">{tabla.por_que_crece}</p>
+                <p className="text-rotulo text-ink-faint">{tabla.por_que_crece}</p>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-3xs text-ink-muted">
+          <p className="mt-2 text-rotulo text-ink-muted">
             {plan.porque_solo_estas}
           </p>
         </>
@@ -994,7 +994,7 @@ function RastroCompleto({
             />
           )}
           {agregados.length > 0 ? (
-            <p className="mt-2 text-3xs text-ink-muted">{rastro.porque}</p>
+            <p className="mt-2 text-rotulo text-ink-muted">{rastro.porque}</p>
           ) : null}
         </>
       ) : null}
@@ -1045,15 +1045,15 @@ function Boveda({
           <p
             className={
               estado.hay_boveda
-                ? "text-sm font-medium text-ink"
-                : "text-sm font-medium text-danger"
+                ? "text-titulo font-medium text-ink"
+                : "text-titulo font-medium text-danger"
             }
           >
             {estado.hay_boveda
               ? t("plataforma.conBoveda")
               : t("plataforma.sinBoveda")}
           </p>
-          <p className="mt-1 text-3xs text-ink-muted">{estado.que_significa}</p>
+          <p className="mt-1 text-rotulo text-ink-muted">{estado.que_significa}</p>
           {estado.tipos.length > 0 ? (
             <ul className="mt-1 flex flex-wrap gap-1">
               {estado.tipos.map((x) => (

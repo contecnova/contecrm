@@ -106,7 +106,7 @@ export function Formulario({
   if (campos.length === 0) {
     // Se dice, no se enseña un formulario vacío: uno vacío presentado como
     // «este recurso no pide nada» haría crear registros incompletos.
-    return <p className="text-2xs text-ink-faint">{t("formulario.sinContrato")}</p>;
+    return <p className="text-dato text-ink-faint">{t("formulario.sinContrato")}</p>;
   }
 
   const cambiar = (nombre: string) => (v: unknown) =>
@@ -136,7 +136,7 @@ export function Formulario({
             type="button"
             onClick={() => setVerOpcionales((v) => !v)}
             aria-expanded={verOpcionales}
-            className="inline-flex items-center gap-1.5 text-2xs text-ink-muted hover:text-ink"
+            className="inline-flex items-center gap-1.5 text-dato text-ink-muted hover:text-ink"
           >
             <Icono
               nombre="keyboard_arrow_down"
@@ -211,7 +211,7 @@ function Campo({
           Debajo llega cuando ya se ha escrito: «el nombre comercial con el que
           factura» sirve para decidir qué poner, no para comprobarlo después. */}
       {campo.descripcion && campo.tipo !== "booleano" ? (
-        <p id={ayuda} className="mb-1 text-3xs text-ink-faint">
+        <p id={ayuda} className="mb-1 text-rotulo text-ink-faint">
           {campo.descripcion}
         </p>
       ) : null}
@@ -219,7 +219,7 @@ function Campo({
       {campo.tipo === "booleano" ? (
         // `py-1.5` para que la casilla caiga a la altura de la caja de al
         // lado: sin eso flota a media celda y la fila se lee torcida.
-        <label htmlFor={id} className="inline-flex items-center gap-2 py-1.5 text-xs text-ink">
+        <label htmlFor={id} className="inline-flex items-center gap-2 py-1.5 text-titulin text-ink">
           <input
             type="checkbox"
             id={id}
@@ -300,7 +300,7 @@ function Opciones({
     <fieldset aria-describedby={ayuda} className="mt-1 flex flex-wrap gap-x-4 gap-y-1.5">
       <legend className="sr-only">{campo.titulo}</legend>
       {campo.opciones.map((opcion) => (
-        <label key={opcion} className="inline-flex items-center gap-1.5 text-xs text-ink">
+        <label key={opcion} className="inline-flex items-center gap-1.5 text-titulin text-ink">
           <input
             type="checkbox"
             checked={puestos.includes(opcion)}
@@ -449,7 +449,7 @@ function Lineas({
     <div className="space-y-2" aria-describedby={ayuda}>
       {filas.length > 0 ? (
         <div className="overflow-x-auto rounded-xl border border-ink-dim/60">
-          <table className="w-full text-sm">
+          <table className="w-full text-titulo">
             <thead className="bg-paper-sunk text-ink-muted">
               <tr>
                 {columnas.map((c) => (
@@ -529,11 +529,11 @@ function Lineas({
           </table>
         </div>
       ) : (
-        <p className="text-sm text-ink-muted">Todavía no hay ninguna línea.</p>
+        <p className="text-titulo text-ink-muted">Todavía no hay ninguna línea.</p>
       )}
       <button
         type="button"
-        className="rounded-xl border border-ink-dim/60 px-3 py-1.5 text-sm hover:bg-paper-sunk"
+        className="rounded-xl border border-ink-dim/60 px-3 py-1.5 text-titulo hover:bg-paper-sunk"
         onClick={() =>
           alCambiar([...filas, Object.fromEntries(columnas.map((c) => [c.nombre, ""]))])
         }
@@ -581,7 +581,7 @@ function Pares({
           rows={4}
           value={typeof valor === "string" ? valor : JSON.stringify(valor ?? {}, null, 2)}
           onChange={(e) => alCambiar(intentarJson(e.target.value))}
-          className="input-base font-mono text-3xs"
+          className="input-base font-mono text-rotulo"
         />
         <button
           type="button"
@@ -688,7 +688,7 @@ function Referencia({
         value={String(valor ?? "")}
         onChange={(e) => alCambiar(e.target.value)}
         placeholder={t("formulario.identificadorAMano")}
-        className="input-base font-mono text-3xs"
+        className="input-base font-mono text-rotulo"
       />
     );
   }
@@ -717,7 +717,7 @@ function Referencia({
               obligatorio: el buscador de arriba no es el campo. */}
           <input type="hidden" value={String(valor ?? "")} required={campo.obligatorio} readOnly />
           {opciones === null ? (
-            <p className="mt-1 text-3xs text-ink-faint">{t("app.cargando")}</p>
+            <p className="mt-1 text-rotulo text-ink-faint">{t("app.cargando")}</p>
           ) : (
             <ul className="mt-1 max-h-44 overflow-y-auto rounded-lg border border-ink-dim/60">
               {filtradas.slice(0, 40).map((o) => (
@@ -728,14 +728,14 @@ function Referencia({
                       alCambiar(String(o.id));
                       setBusqueda("");
                     }}
-                    className="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-2xs text-ink hover:bg-paper-light"
+                    className="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-dato text-ink hover:bg-paper-light"
                   >
                     <span className="truncate">{nombreDelRegistro(o) || String(o.id)}</span>
                   </button>
                 </li>
               ))}
               {filtradas.length === 0 ? (
-                <li className="px-2.5 py-2 text-3xs text-ink-faint">
+                <li className="px-2.5 py-2 text-rotulo text-ink-faint">
                   {t("formulario.sinCoincidencias")}
                 </li>
               ) : null}

@@ -282,16 +282,16 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
             >
               <header className="shrink-0 px-1.5 pb-2 pt-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <h2 className="truncate text-xs font-semibold text-ink">
+                  <h2 className="truncate text-titulin font-semibold text-ink">
                     {etapa.nombre}
                   </h2>
-                  <span className="shrink-0 text-3xs text-ink-faint">
+                  <span className="shrink-0 text-rotulo text-ink-faint">
                     {dentro.length}
                   </span>
                 </div>
                 {/* El total de la columna: sin él hay que contar a ojo, y contar
                     a ojo es cómo se llega a una previsión que no cuadra. */}
-                <p className="mt-0.5 text-2xs text-ink-muted">
+                <p className="mt-0.5 text-dato text-ink-muted">
                   {importe(total)}
                   {etapa.terminal ? null : ` · ${etapa.probabilidad} %`}
                 </p>
@@ -299,7 +299,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
 
               <div className="flex min-h-24 flex-col gap-2 overflow-y-auto lg:min-h-0 lg:flex-1">
                 {dentro.length === 0 ? (
-                  <p className="px-1.5 py-6 text-center text-3xs text-ink-faint">
+                  <p className="px-1.5 py-6 text-center text-rotulo text-ink-faint">
                     {t("pipeline.columnaVacia")}
                   </p>
                 ) : (
@@ -318,7 +318,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                     >
                       <Link
                         to={`/m/oportunidades/oportunidad/${o.id}`}
-                        className="block truncate text-xs font-medium text-ink hover:underline"
+                        className="block truncate text-titulin font-medium text-ink hover:underline"
                         title={o.nombre}
                       >
                         {o.nombre}
@@ -327,7 +327,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                           todo lo demás no distingue una oportunidad de doce mil
                           euros de una de doce millones, que es lo primero que
                           se mira en un tablero. */}
-                      <p className="mt-1 text-sm font-semibold leading-none text-ink">
+                      <p className="mt-1 text-titulo font-semibold leading-none text-ink">
                         {importe(o.importe, o.moneda)}
                       </p>
 
@@ -337,7 +337,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                              cierre vencida es la señal más barata de que el
                              embudo no está al día, y en gris se pierde. */
                           <span
-                            className={`inline-flex items-center gap-1 text-3xs ${
+                            className={`inline-flex items-center gap-1 text-rotulo ${
                               vencida(o)
                                 ? "font-medium text-danger"
                                 : "text-ink-faint"
@@ -347,17 +347,17 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                             {escalar(o.fecha_cierre)}
                           </span>
                         ) : null}
-                        <span className="rounded-lg border border-ink-dim/60 px-1.5 py-0.5 text-3xs text-ink-muted">
+                        <span className="rounded-lg border border-ink-dim/60 px-1.5 py-0.5 text-rotulo text-ink-muted">
                           {o.probabilidad} %
                         </span>
                         {o.owner_id ? (
                           <span
-                            className="ml-auto inline-flex items-center gap-1 text-3xs text-ink-muted"
+                            className="ml-auto inline-flex items-center gap-1 text-rotulo text-ink-muted"
                             title={nombreDe(personas, o.owner_id)}
                           >
                             <span
                               aria-hidden
-                              className="grid h-5 w-5 place-items-center rounded-full bg-paper-sunk text-[0.6rem] font-medium"
+                              className="grid h-5 w-5 place-items-center rounded-full bg-paper-sunk text-rotulo font-medium"
                             >
                               {inicialesDe(nombreDe(personas, o.owner_id))}
                             </span>
@@ -382,7 +382,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                             id={`etapa-${o.id}`}
                             value={o.etapa_id}
                             onChange={(e) => void mover(o.id, e.target.value)}
-                            className="input-sm mt-2 text-3xs sr-only focus:not-sr-only focus:relative"
+                            className="input-sm mt-2 text-rotulo sr-only focus:not-sr-only focus:relative"
                           >
                             {etapas.map((e) => (
                               <option key={e.id} value={e.id}>

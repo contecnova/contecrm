@@ -166,7 +166,7 @@ export function Duplicados() {
             ? t("duplicados.buscando")
             : t("duplicados.buscar")}
         </button>
-        <label className="flex items-center gap-2 text-2xs text-ink-muted">
+        <label className="flex items-center gap-2 text-dato text-ink-muted">
           <input
             type="checkbox"
             checked={soloPendientes}
@@ -179,7 +179,7 @@ export function Duplicados() {
         <span
           role="status"
           aria-live="polite"
-          className="text-2xs text-ink-faint"
+          className="text-dato text-ink-faint"
         >
           {barrido
             ? t("duplicados.resultadoBarrido", {
@@ -294,7 +294,7 @@ function ParejaDeFichas({
           aria-label={t("duplicados.confirmarTitulo")}
           className="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/5 p-3"
         >
-          <p className="text-2xs text-ink">
+          <p className="text-dato text-ink">
             {t("duplicados.queVaAPasar", {
               absorbida,
               superviviente:
@@ -342,7 +342,7 @@ function ParejaDeFichas({
             {t("duplicados.paraLuego")}
           </button>
           {/* Por qué no hay un «borrar ésta»: borrarla tira su histórico. */}
-          <span className="text-3xs text-ink-faint">
+          <span className="text-rotulo text-ink-faint">
             {elegida === ""
               ? t("duplicados.eligeCual")
               : t("duplicados.porQueNoBorrar")}
@@ -375,8 +375,8 @@ function Lado({
         elegida ? "border-accent/60 bg-accent/5" : "border-ink-dim/40"
       }`}
     >
-      <p className="truncate text-sm text-ink">{nombre}</p>
-      <div className="flex flex-wrap items-center gap-3 text-3xs">
+      <p className="truncate text-titulo text-ink">{nombre}</p>
+      <div className="flex flex-wrap items-center gap-3 text-rotulo">
         <Link
           to={`/m/cuentas/cuenta/${id}`}
           className="text-accent hover:underline"

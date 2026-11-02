@@ -88,7 +88,7 @@ export function CeldaEditable({
       ref: entrada as never,
       value: borrador,
       "aria-label": humanizar(campo),
-      className: "input-base !py-0.5 !text-2xs",
+      className: "input-base !py-0.5 !text-dato",
       onBlur: () => void guardar(),
       onKeyDown: (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
@@ -138,7 +138,7 @@ export function CeldaEditable({
         <Icono nombre="edit" tamano="sm" />
       </button>
       {fallo ? (
-        <span className="text-3xs text-danger" role="alert" title={fallo}>
+        <span className="text-rotulo text-danger" role="alert" title={fallo}>
           {t("tabla.noSeGuardo")}
         </span>
       ) : null}

@@ -224,9 +224,9 @@ function Panel({
                   className="flex items-start justify-between gap-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-2xs text-ink">{titulo}</p>
+                    <p className="truncate text-dato text-ink">{titulo}</p>
                     {detalle ? (
-                      <p className="truncate text-3xs text-ink-faint">
+                      <p className="truncate text-rotulo text-ink-faint">
                         {detalle}
                       </p>
                     ) : null}

@@ -86,7 +86,7 @@ export function RespuestaAnalitica({
   return (
     <div className="rounded-xl border border-ink-dim/60 bg-paper p-4">
       {titulo ? (
-        <h3 className="text-sm font-semibold text-ink">{titulo}</h3>
+        <h3 className="text-titulo font-semibold text-ink">{titulo}</h3>
       ) : null}
 
       {payload.type === "kpi_card" ? (
@@ -99,16 +99,16 @@ export function RespuestaAnalitica({
 
       {payload.sql ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-3xs text-ink-faint hover:text-ink-muted">
+          <summary className="cursor-pointer text-rotulo text-ink-faint hover:text-ink-muted">
             {t("explotacion.comoSeCalculo")}
           </summary>
-          <pre className="mt-2 overflow-x-auto rounded-md bg-paper-sunk p-2 font-mono text-3xs text-ink-muted">
+          <pre className="mt-2 overflow-x-auto rounded-md bg-paper-sunk p-2 font-mono text-rotulo text-ink-muted">
             {payload.sql}
           </pre>
           {payload.meta?.verification?.length ? (
             <ul className="mt-2 flex flex-col gap-1">
               {payload.meta.verification.map((v) => (
-                <li key={v.title} className="text-3xs text-ink-faint">
+                <li key={v.title} className="text-rotulo text-ink-faint">
                   <span className="font-medium text-ink-muted">{v.title}:</span>{" "}
                   {v.detail || v.status}
                 </li>
@@ -134,7 +134,7 @@ function Numero({
       ? payload.series[0].key
       : columnas[0];
   return (
-    <p className="mt-2 text-3xl font-bold tracking-tight text-ink">
+    <p className="mt-2 text-hero font-bold tracking-tight text-ink">
       {formatear(clave ? fila[clave] : undefined, payload.unit)}
     </p>
   );
@@ -206,7 +206,7 @@ function Tabla({
   filas: Array<Record<string, unknown>>;
 }) {
   if (filas.length === 0) {
-    return <p className="mt-2 text-2xs text-ink-muted">Sin resultados.</p>;
+    return <p className="mt-2 text-dato text-ink-muted">Sin resultados.</p>;
   }
   return (
     /* La tabla se recorre **dentro de su recuadro**, a lo alto y a lo ancho.
@@ -220,7 +220,7 @@ function Tabla({
        Y la cabecera se queda pegada arriba: una tabla que se recorre sin
        cabecera obliga a subir para saber qué columna se está mirando. */
     <div className="mt-3 max-h-[28rem] overflow-auto rounded-lg border border-ink-dim/30">
-      <table className="w-full text-2xs">
+      <table className="w-full text-dato">
         <thead className="sticky top-0 z-10 bg-paper-sunk text-ink-muted">
           <tr>
             {columnas.map((c) => (

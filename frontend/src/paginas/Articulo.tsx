@@ -181,7 +181,7 @@ export function Articulo() {
         fila={articulo as unknown as Record<string, unknown>}
         volverA={{ a: "/m/conocimiento", titulo: modulo?.titulo ?? "", id }}
         distintivos={
-          <span className="text-2xs text-ink-muted">
+          <span className="text-dato text-ink-muted">
             {t("articulo.version", { version: articulo.version })}
           </span>
         }
@@ -235,7 +235,7 @@ export function Articulo() {
           <>
             {articulo.aviso ? (
               <p
-                className="card mb-3 border-warning/40 p-3 text-2xs text-warning"
+                className="card mb-3 border-warning/40 p-3 text-dato text-warning"
                 role="status"
               >
                 {articulo.aviso}
@@ -245,27 +245,27 @@ export function Articulo() {
             {/* Lo que decide qué hacer con el artículo, arriba. Un artículo dañino
             no es uno que no sirve: es uno que alguien está siguiendo. */}
             {esDañino ? (
-              <p className="card mb-3 border-danger/40 p-3 text-2xs text-danger">
+              <p className="card mb-3 border-danger/40 p-3 text-dato text-danger">
                 {t("articulo.daniño")}
               </p>
             ) : null}
             {esHuerfano ? (
-              <p className="card mb-3 p-3 text-2xs text-ink-muted">
+              <p className="card mb-3 p-3 text-dato text-ink-muted">
                 {t("articulo.huerfano")}
               </p>
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("articulo.quienLoVe")}
                 </h2>
-                <p className="mt-2 text-2xs text-ink">
+                <p className="mt-2 text-dato text-ink">
                   {t(
                     `articulo.audiencia.${articulo.estado === "publicado" ? "publicado" : "borrador"}`,
                   )}
                 </p>
-                <p className="mt-2 font-mono text-2xs text-ink">
+                <p className="mt-2 font-mono text-dato text-ink">
                   {t("articulo.votos", {
                     utiles: articulo.utiles,
                     inutiles: articulo.inutiles,
@@ -275,22 +275,22 @@ export function Articulo() {
                 ocultarlo deja al cliente sin respuesta y enseñarlo sin avisar le
                 da una que puede estar vieja. */}
                 {articulo.pendiente_de_revision ? (
-                  <p className="mt-2 text-2xs text-warning">
+                  <p className="mt-2 text-dato text-warning">
                     {t("articulo.toca_revisar")}
                   </p>
                 ) : null}
                 {articulo.obsoleto ? (
-                  <p className="mt-2 text-2xs text-warning">
+                  <p className="mt-2 text-dato text-warning">
                     {t("articulo.obsoleto")}
                   </p>
                 ) : null}
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("articulo.idiomas")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("articulo.porqueIdiomas")}
                 </p>
                 {idiomas.length === 0 ? (
@@ -300,7 +300,7 @@ export function Articulo() {
                     {idiomas.map((x) => (
                       <li key={x.idioma} className="flex items-baseline gap-2">
                         <span className="chip-dato font-mono">{x.idioma}</span>
-                        <span className="flex-1 text-3xs text-ink-muted">
+                        <span className="flex-1 text-rotulo text-ink-muted">
                           {x.estado}
                         </span>
                         {/* Cuántas versiones por detrás, no sólo «desincronizada»:
@@ -308,8 +308,8 @@ export function Articulo() {
                         <span
                           className={
                             x.sincronizada
-                              ? "font-mono text-3xs text-ink-muted"
-                              : "font-mono text-3xs text-warning"
+                              ? "font-mono text-rotulo text-ink-muted"
+                              : "font-mono text-rotulo text-warning"
                           }
                         >
                           {x.sincronizada
@@ -323,7 +323,7 @@ export function Articulo() {
                   </ul>
                 )}
                 {atrasadas.length > 0 ? (
-                  <p className="mt-2 text-2xs text-warning">
+                  <p className="mt-2 text-dato text-warning">
                     {t("articulo.desincronizadas", {
                       cuantas: atrasadas.length,
                     })}
@@ -333,10 +333,10 @@ export function Articulo() {
 
               {eficacia ? (
                 <section className="card p-4 lg:col-span-2">
-                  <h2 className="text-sm font-medium text-ink">
+                  <h2 className="text-titulo font-medium text-ink">
                     {t("articulo.eficacia")}
                   </h2>
-                  <p className="mt-2 font-mono text-2xs text-ink">
+                  <p className="mt-2 font-mono text-dato text-ink">
                     {t("articulo.conjunto", {
                       publicados: eficacia.publicados,
                       daninos: eficacia.dañinos.length,
@@ -346,7 +346,7 @@ export function Articulo() {
                   </p>
                   {/* La deflexión con su aviso: es el número con el que se justifica
                   no contratar a nadie más en soporte, y es aproximado. */}
-                  <p className="mt-2 font-mono text-lg text-ink">
+                  <p className="mt-2 font-mono text-grande text-ink">
                     {eficacia.deflexion_aproximada_pct === null
                       ? t("articulo.sinDeflexion")
                       : t("articulo.deflexion", {
@@ -354,7 +354,7 @@ export function Articulo() {
                         })}
                   </p>
                   {eficacia.aviso_deflexion ? (
-                    <p className="mt-1 text-2xs text-ink-muted">
+                    <p className="mt-1 text-dato text-ink-muted">
                       {eficacia.aviso_deflexion}
                     </p>
                   ) : null}

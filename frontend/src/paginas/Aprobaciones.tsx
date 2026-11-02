@@ -112,7 +112,7 @@ export function Aprobaciones() {
         entradilla={t("aprobaciones.intro")}
       />
       {corpus?.activo === false ? (
-        <p className="mt-4 text-xs text-ink-muted">
+        <p className="mt-4 text-titulin text-ink-muted">
           {t("aprobaciones.sinCorpus")}
           {corpus.sin_el ? ` ${corpus.sin_el}.` : ""}
         </p>
@@ -120,7 +120,7 @@ export function Aprobaciones() {
       {corpus?.activo !== false && corpus?.alcanzable === false ? (
         // Con la dirección y el error del gestor: «no responde» a secas obliga
         // a abrir los logs para saber si es la URL, la red o que está parado.
-        <p className="mt-4 text-xs text-ink-muted">
+        <p className="mt-4 text-titulin text-ink-muted">
           {t("aprobaciones.corpusCaido", { url: corpus.url ?? "" })}
           {corpus.error ? ` (${corpus.error})` : ""}
         </p>
@@ -131,7 +131,7 @@ export function Aprobaciones() {
       <div className="mt-4">
         {solicitudes === null && !fallo && corpus === null ? <Cargando /> : null}
         {solicitudes !== null && solicitudes.length === 0 ? (
-          <p className="text-xs text-ink-muted">{t("aprobaciones.nadaPendiente")}</p>
+          <p className="text-titulin text-ink-muted">{t("aprobaciones.nadaPendiente")}</p>
         ) : null}
         <ul className="space-y-2">
           {(solicitudes ?? []).map((s) => (
@@ -203,10 +203,10 @@ function Fila({
     <li className="rounded-lg border border-ink-dim/30 px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-xs text-ink">
+          <p className="truncate text-titulin text-ink">
             {solicitud.entity_summary || solicitud.document_id || solicitud.id}
           </p>
-          <p className="text-3xs text-ink-faint">
+          <p className="text-rotulo text-ink-faint">
             {t("aprobaciones.estado", { estado: solicitud.status })}
             {solicitud.version_no ? ` · v${solicitud.version_no}` : ""}
             {solicitud.current_step ? ` · ${t("aprobaciones.etapa", { n: solicitud.current_step })}` : ""}
@@ -220,7 +220,7 @@ function Fila({
                 type="button"
                 onClick={() => setAbierta(abierta === d ? null : d)}
                 aria-pressed={abierta === d}
-                className={`rounded border border-ink-dim/60 px-2 py-0.5 text-2xs ${
+                className={`rounded border border-ink-dim/60 px-2 py-0.5 text-dato ${
                   abierta === d ? "bg-paper-light text-ink" : "text-ink-muted"
                 }`}
               >
@@ -231,7 +231,7 @@ function Fila({
         ) : (
           // Se dice POR QUÉ no hay botones. Una fila sin ellos y sin
           // explicación se lee como una pantalla a medias.
-          <span className="shrink-0 text-3xs text-ink-faint">
+          <span className="shrink-0 text-rotulo text-ink-faint">
             {t("aprobaciones.noTeToca")}
           </span>
         )}
@@ -239,7 +239,7 @@ function Fila({
 
       {abierta ? (
         <div className="mt-2 space-y-2 border-t border-ink-dim/30 pt-2">
-          <label className="block text-3xs text-ink-faint" htmlFor={`c-${solicitud.id}`}>
+          <label className="block text-rotulo text-ink-faint" htmlFor={`c-${solicitud.id}`}>
             {t("aprobaciones.comentario")}
           </label>
           <textarea
@@ -247,18 +247,18 @@ function Fila({
             value={comentario}
             onChange={(e) => setComentario(e.target.value)}
             rows={2}
-            className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-xs text-ink"
+            className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-titulin text-ink"
           />
           {abierta === "delegated" ? (
             <>
-              <label className="block text-3xs text-ink-faint" htmlFor={`d-${solicitud.id}`}>
+              <label className="block text-rotulo text-ink-faint" htmlFor={`d-${solicitud.id}`}>
                 {t("aprobaciones.delegarEn")}
               </label>
               <input
                 id={`d-${solicitud.id}`}
                 value={delegarEn}
                 onChange={(e) => setDelegarEn(e.target.value)}
-                className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-xs text-ink"
+                className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-titulin text-ink"
               />
             </>
           ) : null}
@@ -268,7 +268,7 @@ function Fila({
             // Delegar sin decir en quién es la mitad de una decisión: el gestor
             // lo rechaza, así que se para antes.
             disabled={enviando || (abierta === "delegated" && !delegarEn.trim())}
-            className="rounded border border-ink-dim/60 px-3 py-1 text-xs text-ink disabled:opacity-50"
+            className="rounded border border-ink-dim/60 px-3 py-1 text-titulin text-ink disabled:opacity-50"
           >
             {enviando ? t("aprobaciones.enviando") : t("aprobaciones.confirmar")}
           </button>
@@ -278,7 +278,7 @@ function Fila({
       {/* El contenedor está SIEMPRE, aunque vacío: un `role="status"` que
           aparece a la vez que su texto no siempre se lee, porque el lector
           puede no haber registrado la región cuando ya tiene contenido. */}
-      <p role="status" className="mt-2 text-3xs text-ink-faint">
+      <p role="status" className="mt-2 text-rotulo text-ink-faint">
         {resultado !== null ? t("aprobaciones.decidida", { estado: resultado }) : ""}
       </p>
       {fallo ? <Fallo error={fallo} /> : null}
@@ -314,7 +314,7 @@ function EstadoDelDocumento({ documentoId }: { documentoId: string }) {
   if (!ficha) return null;
   const avisos = Array.isArray(ficha.partial_warnings) ? ficha.partial_warnings.length : 0;
   return (
-    <p className="text-3xs text-ink-faint">
+    <p className="text-rotulo text-ink-faint">
       {t("aprobaciones.indexado", { estado: String(ficha.status ?? "") })}
       {/* Los avisos se dicen. «Indexado» a secas cuando se cayeron las figuras
           o las tablas hace creer que la búsqueda lo encuentra todo. */}
@@ -410,32 +410,32 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
   return (
     <div className="space-y-2">
       <EstadoDelDocumento documentoId={documentoId} />
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("aprobaciones.controlEstado", {
           estado: estado.control_state ?? "",
           version: estado.current_version_no ?? "",
         })}
       </p>
       {solicitud ? (
-        <p role="status" className="text-xs text-ink">
+        <p role="status" className="text-titulin text-ink">
           {t("aprobaciones.enCurso", { estado: solicitud.status })}
         </p>
       ) : estado.requires_approval === false ? (
-        <p className="text-xs text-ink-muted">{t("aprobaciones.noLaNecesita")}</p>
+        <p className="text-titulin text-ink-muted">{t("aprobaciones.noLaNecesita")}</p>
       ) : (
         <Vacio />
       )}
 
       {!solicitud && estado.puedo_pedir && puedePedirAqui ? (
         <div className="space-y-2 border-t border-ink-dim/30 pt-2">
-          <label className="block text-3xs text-ink-faint" htmlFor={`f-${documentoId}`}>
+          <label className="block text-rotulo text-ink-faint" htmlFor={`f-${documentoId}`}>
             {t("aprobaciones.flujo")}
           </label>
           <select
             id={`f-${documentoId}`}
             value={flujo}
             onChange={(e) => setFlujo(e.target.value)}
-            className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-xs text-ink"
+            className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-titulin text-ink"
           >
             {/* Sin elegir ninguno se resuelve el que toque, y eso se dice: un
                 desplegable vacío se lee como «falta rellenar esto». */}
@@ -446,7 +446,7 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
               </option>
             ))}
           </select>
-          <label className="block text-3xs text-ink-faint" htmlFor={`a-${documentoId}`}>
+          <label className="block text-rotulo text-ink-faint" htmlFor={`a-${documentoId}`}>
             {elegido?.exige_aprobadores
               ? t("aprobaciones.aprobadoresExigidos")
               : t("aprobaciones.aprobadores")}
@@ -456,18 +456,18 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
             value={aprobadores}
             onChange={(e) => setAprobadores(e.target.value)}
             placeholder={t("aprobaciones.aprobadoresPista")}
-            className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-xs text-ink"
+            className="w-full rounded border border-ink-dim/60 bg-paper px-2 py-1 text-titulin text-ink"
           />
           <button
             type="button"
             onClick={() => void pedir()}
             disabled={enviando || faltanAprobadores}
-            className="rounded border border-ink-dim/60 px-3 py-1 text-xs text-ink disabled:opacity-50"
+            className="rounded border border-ink-dim/60 px-3 py-1 text-titulin text-ink disabled:opacity-50"
           >
             {enviando ? t("aprobaciones.enviando") : t("aprobaciones.pedir")}
           </button>
           {faltanAprobadores ? (
-            <p className="text-3xs text-ink-faint">{t("aprobaciones.faltanAprobadores")}</p>
+            <p className="text-rotulo text-ink-faint">{t("aprobaciones.faltanAprobadores")}</p>
           ) : null}
         </div>
       ) : null}

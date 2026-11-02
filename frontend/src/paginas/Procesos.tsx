@@ -220,7 +220,7 @@ export function Procesos() {
 
       {problemas !== null ? (
         <div
-          className={`mt-3 rounded-xl border p-3 text-2xs ${
+          className={`mt-3 rounded-xl border p-3 text-dato ${
             problemas.length === 0
               ? "border-success/40 bg-success/5 text-success"
               : "border-danger/40 bg-danger/5 text-danger"
@@ -241,7 +241,7 @@ export function Procesos() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <section>
-          <h2 className="text-2xs font-medium uppercase tracking-wide text-ink-faint">
+          <h2 className="text-dato font-medium uppercase tracking-wide text-ink-faint">
             {t("procesos.lienzo")}
           </h2>
           {definicion ? (
@@ -251,14 +251,14 @@ export function Procesos() {
               alMover={guardarPosiciones}
             />
           ) : (
-            <p className="mt-2 text-2xs text-warning">
+            <p className="mt-2 text-dato text-warning">
               {t("procesos.jsonAMedias")}
             </p>
           )}
         </section>
 
         <section>
-          <h2 className="text-2xs font-medium uppercase tracking-wide text-ink-faint">
+          <h2 className="text-dato font-medium uppercase tracking-wide text-ink-faint">
             {t("procesos.codigo")}
           </h2>
           <label className="sr-only" htmlFor="definicion">
@@ -270,7 +270,7 @@ export function Procesos() {
             onChange={(e) => setTexto(e.target.value)}
             spellCheck={false}
             rows={22}
-            className="mt-2 w-full rounded-xl border border-ink-dim/60 bg-paper p-3 font-mono text-2xs text-ink"
+            className="mt-2 w-full rounded-xl border border-ink-dim/60 bg-paper p-3 font-mono text-dato text-ink"
           />
         </section>
       </div>
@@ -278,11 +278,11 @@ export function Procesos() {
       {resumen ? (
         <section className="card mt-6 p-4">
           <h2 className="section-label mb-1">{t("procesos.quienYCuanto")}</h2>
-          <p className="mb-2 text-3xs text-ink-faint">
+          <p className="mb-2 text-rotulo text-ink-faint">
             {t("procesos.quienYCuantoAyuda")}
           </p>
           {resumen.quien_aprobaria.length === 0 ? (
-            <p className="text-2xs text-ink-muted">
+            <p className="text-dato text-ink-muted">
               {t("procesos.sinManos")}
             </p>
           ) : (
@@ -292,11 +292,11 @@ export function Procesos() {
                   key={m.paso}
                   className="flex flex-wrap items-baseline gap-x-3 py-1.5"
                 >
-                  <span className="text-2xs font-medium text-ink">{m.paso}</span>
+                  <span className="text-dato font-medium text-ink">{m.paso}</span>
                   <span className="chip-dato">
                     {m.quien || t("procesos.sinDueno")}
                   </span>
-                  <span className="text-3xs text-ink-muted">
+                  <span className="text-rotulo text-ink-muted">
                     {m.horas
                       ? t("procesos.enHoras", { horas: m.horas })
                       : t("procesos.sinPlazo")}
@@ -305,15 +305,15 @@ export function Procesos() {
               ))}
             </ul>
           )}
-          <p className="mt-2 text-2xs text-ink">
+          <p className="mt-2 text-dato text-ink">
             {t("procesos.totalHoras", { horas: resumen.horas_declaradas })}
           </p>
           {/* Un total que no avisa de lo que no sabe es un total que engaña. */}
           <p
             className={
               resumen.pasos_sin_plazo.length
-                ? "mt-1 text-3xs text-warning"
-                : "mt-1 text-3xs text-ink-faint"
+                ? "mt-1 text-rotulo text-warning"
+                : "mt-1 text-rotulo text-ink-faint"
             }
           >
             {resumen.que_significa}
@@ -323,7 +323,7 @@ export function Procesos() {
 
       {recorrido ? (
         <section className="mt-6">
-          <h2 className="text-2xs font-medium uppercase tracking-wide text-ink-faint">
+          <h2 className="text-dato font-medium uppercase tracking-wide text-ink-faint">
             {t("procesos.recorrido")}
           </h2>
           {/* El recorrido de un proceso largo son cientos de pasos, y debajo
@@ -332,7 +332,7 @@ export function Procesos() {
             {recorrido.map((paso, i) => (
               <li
                 key={`${String(paso.paso)}-${i}`}
-                className="rounded-lg border border-ink-dim/30 bg-paper px-3 py-1.5 font-mono text-2xs text-ink"
+                className="rounded-lg border border-ink-dim/30 bg-paper px-3 py-1.5 font-mono text-dato text-ink"
               >
                 {JSON.stringify(paso)}
               </li>
@@ -389,7 +389,7 @@ function Lienzo({
         {nodos.map((n) => (
           <div
             key={n.nombre}
-            className="flex items-center gap-1 text-3xs text-ink-faint"
+            className="flex items-center gap-1 text-rotulo text-ink-faint"
           >
             <span className="font-mono">{n.nombre}</span>
             {(
@@ -428,7 +428,7 @@ function Campo({
 }) {
   const id = `campo-${etiqueta}`;
   return (
-    <label htmlFor={id} className="text-2xs text-ink-muted">
+    <label htmlFor={id} className="text-dato text-ink-muted">
       {etiqueta}
       <input
         id={id}
@@ -453,7 +453,7 @@ function Boton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg px-3 py-1.5 text-2xs ${
+      className={`rounded-lg px-3 py-1.5 text-dato ${
         destacado
           ? "bg-accent text-paper hover:bg-accent-soft"
           : "border border-ink-dim/60 text-ink-muted hover:bg-paper-light"

@@ -351,14 +351,14 @@ export function Preguntar() {
               qué herramientas usa y hasta dónde llega, así que saber cuál es
               forma parte de poder no fiarse de la respuesta. Lo que sobra es
               el desplegable, no el dato. */}
-          <p className="text-sm text-ink-muted">
+          <p className="text-titulo text-ink-muted">
             {t("preguntar.quienResponde")}:{" "}
             <span className="text-ink">{usables[0]?.clave}</span>
             {usables[0]?.modo === "iterativo"
               ? ` · ${t("preguntar.modoIterativo")}`
               : ""}
           </p>
-          <label className="flex flex-col gap-1 text-sm text-ink-muted">
+          <label className="flex flex-col gap-1 text-titulo text-ink-muted">
             {t("preguntar.quePides")}
             <textarea
               className="input-base min-h-20"
@@ -377,7 +377,7 @@ export function Preguntar() {
             </button>
             {/* Dicho antes de pulsar y no después: lo que devuelve este botón
                 es un plan, no un resultado. */}
-            <span className="text-2xs text-ink-faint">
+            <span className="text-dato text-ink-faint">
               {t("preguntar.noEjecutaNada")}
             </span>
           </div>
@@ -389,19 +389,19 @@ export function Preguntar() {
       {actuacion ? (
         <section className="flex flex-col gap-3 rounded-lg border border-ink-dim/40 bg-paper-light p-4">
           <header className="flex flex-wrap items-baseline gap-2">
-            <h2 className="flex-1 text-sm font-medium text-ink">
+            <h2 className="flex-1 text-titulo font-medium text-ink">
               {actuacion.objetivo}
             </h2>
-            <span className="rounded bg-ink-dim/15 px-1.5 py-0.5 text-3xs uppercase text-ink-muted">
+            <span className="rounded bg-ink-dim/15 px-1.5 py-0.5 text-rotulo uppercase text-ink-muted">
               {actuacion.estado}
             </span>
-            <span className="font-mono text-2xs text-ink-faint">
+            <span className="font-mono text-dato text-ink-faint">
               {t("preguntar.tokens", { tokens: actuacion.tokens })}
             </span>
           </header>
 
           {actuacion.pasos.length === 0 ? (
-            <p className="text-sm text-ink-muted">{t("preguntar.sinPasos")}</p>
+            <p className="text-titulo text-ink-muted">{t("preguntar.sinPasos")}</p>
           ) : (
             <ol className="flex flex-col gap-2">
               {actuacion.pasos.map((p) => (
@@ -409,10 +409,10 @@ export function Preguntar() {
                   key={p.orden}
                   className="flex flex-wrap items-baseline gap-2 rounded border border-ink-dim/30 p-2"
                 >
-                  <span className="font-mono text-2xs text-ink-faint">
+                  <span className="font-mono text-dato text-ink-faint">
                     {p.orden}
                   </span>
-                  <span className="flex-1 text-sm text-ink">
+                  <span className="flex-1 text-titulo text-ink">
                     {/* **En palabras, y el nombre técnico detrás.** Antes era
                         `porque || herramienta` y luego `herramienta`: cuando
                         el modelo no explica el paso —que es casi siempre en el
@@ -422,23 +422,23 @@ export function Preguntar() {
                         propia herramienta («Listar cuentas»), así que no hay
                         que inventarla ni mantener una segunda lista. */}
                     {p.porque || loQueHace.get(p.herramienta) || p.herramienta}
-                    <span className="ml-2 font-mono text-2xs text-ink-faint">
+                    <span className="ml-2 font-mono text-dato text-ink-faint">
                       {p.herramienta}
                     </span>
                   </span>
                   {/* El riesgo, antes de aprobar y no en la letra pequeña. */}
                   <span
-                    className={`rounded px-1.5 py-0.5 text-3xs uppercase ${
+                    className={`rounded px-1.5 py-0.5 text-rotulo uppercase ${
                       COLOR_RIESGO[p.riesgo] ?? COLOR_RIESGO.lectura
                     }`}
                   >
                     {p.riesgo}
                   </span>
-                  <span className="rounded bg-ink-dim/15 px-1.5 py-0.5 text-3xs uppercase text-ink-muted">
+                  <span className="rounded bg-ink-dim/15 px-1.5 py-0.5 text-rotulo uppercase text-ink-muted">
                     {p.estado}
                   </span>
                   {p.error ? (
-                    <span className="w-full text-2xs text-danger">
+                    <span className="w-full text-dato text-danger">
                       {p.error}
                     </span>
                   ) : null}
@@ -475,7 +475,7 @@ export function Preguntar() {
             {/* La vuelta que piensa se cuenta: si no, parece que el botón no ha
               hecho nada cuando lo que ha hecho es decidir el paso siguiente. */}
             {ultima?.paso_decidido ? (
-              <p className="flex items-start gap-2 text-sm text-ink-muted">
+              <p className="flex items-start gap-2 text-titulo text-ink-muted">
                 <Icono nombre="psychology" tamano="sm" />
                 <span>
                   {t("preguntar.haPensado")}{" "}
@@ -486,23 +486,23 @@ export function Preguntar() {
               </p>
             ) : null}
             {ultima?.conclusion ? (
-              <p className="rounded bg-accent/5 p-3 text-sm text-ink">
+              <p className="rounded bg-accent/5 p-3 text-titulo text-ink">
                 {ultima.conclusion}
               </p>
             ) : null}
             {terminada && actuacion.motivo_fin ? (
-              <p className="text-2xs text-ink-faint">
+              <p className="text-dato text-ink-faint">
                 {t("preguntar.paroPorque")} {actuacion.motivo_fin}
               </p>
             ) : null}
             {ultima?.herramientas_descartadas?.length ? (
-              <p className="text-2xs text-warning">
+              <p className="text-dato text-warning">
                 {t("preguntar.pidioLoQueNoTiene")}{" "}
                 {ultima.herramientas_descartadas.join(", ")}
               </p>
             ) : null}
             {esperando.length > 0 ? (
-              <p className="text-2xs text-warning">
+              <p className="text-dato text-warning">
                 {t("preguntar.esperaAPersona", { count: esperando.length })}
               </p>
             ) : null}
@@ -535,7 +535,7 @@ export function Preguntar() {
               deshacer que no lo advierta hace confiar en una reversión que no
               es total. */}
           {hechos.length > 0 && !actuacion.reversible_del_todo ? (
-            <p className="text-2xs text-danger">
+            <p className="text-dato text-danger">
               {t("preguntar.noTodoSeDeshace")}{" "}
               {actuacion.no_reversibles.map((n) => n.herramienta).join(", ")}
             </p>

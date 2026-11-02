@@ -188,7 +188,7 @@ export function Cuadros() {
       />
 
       {actual.descripcion ? (
-        <p className="max-w-prose text-2xs text-ink-muted">{actual.descripcion}</p>
+        <p className="max-w-prose text-dato text-ink-muted">{actual.descripcion}</p>
       ) : null}
 
       {actual.componentes.length === 0 ? (
@@ -293,7 +293,7 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
   return (
     <article className="rounded-lg border border-ink-dim/40 bg-paper-light p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-sm text-ink">{componente.titulo ?? componente.informe ?? componente.tipo}</h2>
+        <h2 className="text-titulo text-ink">{componente.titulo ?? componente.informe ?? componente.tipo}</h2>
         <span className="flex shrink-0 items-center gap-2">
           {/* La exportación existía en la API y no se podía pedir desde ninguna
               pantalla: había que llamarla a mano. Y llevaba tiempo rota —las
@@ -304,23 +304,23 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
               type="button"
               onClick={() => void descargar()}
               disabled={bajando}
-              className="rounded border border-ink-dim/60 px-2 py-0.5 text-3xs text-ink-muted disabled:opacity-50"
+              className="rounded border border-ink-dim/60 px-2 py-0.5 text-rotulo text-ink-muted disabled:opacity-50"
             >
               {bajando ? t("cuadros.bajando") : t("cuadros.descargar")}
             </button>
           ) : null}
-          <span className="text-3xs uppercase text-ink-faint">{componente.tipo}</span>
+          <span className="text-rotulo uppercase text-ink-faint">{componente.tipo}</span>
         </span>
       </div>
       {/* Que un componente ignore el filtro global se DICE: si no, quien cambia
           el trimestre y ve una cifra que no se mueve concluye que el filtro no
           funciona. */}
       {componente.ignora_filtros ? (
-        <p className="mt-1 text-3xs text-ink-faint">{t("cuadros.ignoraFiltros")}</p>
+        <p className="mt-1 text-rotulo text-ink-faint">{t("cuadros.ignoraFiltros")}</p>
       ) : null}
 
       {componente.tipo === "texto" ? (
-        <p className="mt-2 text-2xs text-ink-muted">{componente.texto ?? ""}</p>
+        <p className="mt-2 text-dato text-ink-muted">{componente.texto ?? ""}</p>
       ) : fallo ? (
         <Fallo error={fallo} />
       ) : !payload ? (
@@ -343,10 +343,10 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
           {/* Un informe cortado se dice. Leído como el total, se toman
               decisiones con la mitad de los datos. */}
           {resultado?.truncado ? (
-            <p className="mt-2 text-3xs text-ink-faint">{t("cuadros.truncado")}</p>
+            <p className="mt-2 text-rotulo text-ink-faint">{t("cuadros.truncado")}</p>
           ) : null}
           {resultado?.campos_retirados?.length ? (
-            <p className="mt-1 text-3xs text-ink-faint">
+            <p className="mt-1 text-rotulo text-ink-faint">
               {t("cuadros.camposRetirados", { campos: resultado.campos_retirados.join(", ") })}
             </p>
           ) : null}
@@ -354,14 +354,14 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
               nota al pie, son la advertencia de que la cifra de arriba no
               contesta la pregunta que parece contestar. */}
           {resultado?.aviso_datos ? (
-            <p className="mt-1 text-2xs text-ink-muted">{resultado.aviso_datos}</p>
+            <p className="mt-1 text-dato text-ink-muted">{resultado.aviso_datos}</p>
           ) : null}
           {resultado?.aviso_plan ? (
-            <p className="mt-1 text-2xs text-ink-muted">{resultado.aviso_plan}</p>
+            <p className="mt-1 text-dato text-ink-muted">{resultado.aviso_plan}</p>
           ) : null}
           {/* Siempre en el árbol, aunque vacío: una región de estado que
               aparece a la vez que su texto puede no llegar a leerse. */}
-          <p role="status" className="mt-1 text-3xs text-ink-faint">
+          <p role="status" className="mt-1 text-rotulo text-ink-faint">
             {bajado}
           </p>
         </>

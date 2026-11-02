@@ -131,8 +131,8 @@ export function Canales() {
       />
 
       <section className="card mb-4 p-4">
-        <h2 className="text-sm font-medium text-ink">{t("canalesmk.comprobar")}</h2>
-        <p className="mt-1 text-3xs text-ink-faint">{t("canalesmk.porqueComprobar")}</p>
+        <h2 className="text-titulo font-medium text-ink">{t("canalesmk.comprobar")}</h2>
+        <p className="mt-1 text-rotulo text-ink-faint">{t("canalesmk.porqueComprobar")}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
             className="input-base"
@@ -169,8 +169,8 @@ export function Canales() {
             <p
               className={
                 resultado.se_puede_mandar
-                  ? "text-2xs text-success"
-                  : "text-2xs text-danger"
+                  ? "text-dato text-success"
+                  : "text-dato text-danger"
               }
             >
               {resultado.se_puede_mandar
@@ -181,7 +181,7 @@ export function Canales() {
                 escribe el mensaje sin saber qué arreglar. */}
             <ul className="mt-1 flex flex-col gap-1">
               {(resultado.motivos ?? []).map((m, i) => (
-                <li key={i} className="text-2xs text-ink">
+                <li key={i} className="text-dato text-ink">
                   {m}
                 </li>
               ))}
@@ -189,17 +189,17 @@ export function Canales() {
             {/* La ventana de WhatsApp: fuera de ella sólo plantilla aprobada,
                 y mandar una no aprobada no falla — el proveedor la descarta. */}
             {resultado.necesita_plantilla ? (
-              <p className="mt-1 text-2xs text-warning">{t("canalesmk.necesitaPlantilla")}</p>
+              <p className="mt-1 text-dato text-warning">{t("canalesmk.necesitaPlantilla")}</p>
             ) : null}
             {resultado.como_se_da_de_baja ? (
-              <p className="mt-1 text-2xs text-ink-muted">
+              <p className="mt-1 text-dato text-ink-muted">
                 {t("canalesmk.bajaCon", { palabra: resultado.como_se_da_de_baja })}
               </p>
             ) : null}
             {/* El tope de calentamiento sólo cuando lo hay: `null` significa
                 que ese dominio no está calentando, no que el tope sea cero. */}
             {resultado.calentamiento ? (
-              <p className="mt-1 font-mono text-2xs text-warning">
+              <p className="mt-1 font-mono text-dato text-warning">
                 {t("canalesmk.calentando", {
                   tope: resultado.calentamiento.tope_hoy ?? "—",
                 })}
@@ -211,9 +211,9 @@ export function Canales() {
 
       {entrega ? (
         <section className="card mb-4 p-4">
-          <h2 className="text-sm font-medium text-ink">{t("canalesmk.queLlega")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("canalesmk.porqueLlega")}</p>
-          <p className="mt-2 font-mono text-2xs text-ink">
+          <h2 className="text-titulo font-medium text-ink">{t("canalesmk.queLlega")}</h2>
+          <p className="mt-1 text-rotulo text-ink-faint">{t("canalesmk.porqueLlega")}</p>
+          <p className="mt-2 font-mono text-dato text-ink">
             {t("canalesmk.mandados", {
               mandados: entrega.mandados,
               dias: entrega.dias,
@@ -223,33 +223,33 @@ export function Canales() {
           </p>
           {/* La tasa sólo cuando se puede medir: con veinte envíos un 5 % y un
               100 % son el mismo ruido, y el servidor ya lo dice. */}
-          <p className="mt-1 font-mono text-lg text-ink">
+          <p className="mt-1 font-mono text-grande text-ink">
             {entrega.medible
               ? t("canalesmk.apertura", { pct: entrega.tasa_apertura_pct })
               : t("canalesmk.aperturaNoMedible")}
           </p>
           {!entrega.medible && entrega.porque ? (
-            <p className="mt-1 text-2xs text-ink-muted">{entrega.porque}</p>
+            <p className="mt-1 text-dato text-ink-muted">{entrega.porque}</p>
           ) : null}
         </section>
       ) : null}
 
       <section>
-        <h2 className="text-sm font-medium text-ink">{t("canalesmk.declarados")}</h2>
+        <h2 className="text-titulo font-medium text-ink">{t("canalesmk.declarados")}</h2>
         {!canales || canales.length === 0 ? (
           <Vacio titulo={t("canalesmk.sinCanales")} detalle={t("canalesmk.sinCanalesDetalle")} />
         ) : (
           <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
             {canales.map((c) => (
               <li key={c.id} className="card flex flex-wrap items-baseline gap-2 p-3">
-                <span className="flex-1 text-sm text-ink">{c.nombre}</span>
+                <span className="flex-1 text-titulo text-ink">{c.nombre}</span>
                 <span className="chip-dato">{c.tipo}</span>
                 <span className={c.activo ? "badge badge-muted" : "badge badge-aviso"}>
                   {t(c.activo ? "canalesmk.activo" : "canalesmk.apagado")}
                 </span>
                 {/* La palabra de baja va en la lista, no escondida: quien
                     escribe el mensaje tiene que ponerla dentro. */}
-                <span className="w-full font-mono text-3xs text-ink-faint">
+                <span className="w-full font-mono text-rotulo text-ink-faint">
                   {c.como_se_da_de_baja
                     ? t("canalesmk.sedaDeBajaCon", { palabra: c.como_se_da_de_baja })
                     : t("canalesmk.sinFormaDeBaja")}

@@ -233,7 +233,7 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
             <span
               className={cn(
                 "truncate font-semibold text-ink",
-                plegado ? "text-sm md:hidden" : "text-sm",
+                plegado ? "text-titulo md:hidden" : "text-titulo",
               )}
             >
               {config().nombre}
@@ -245,7 +245,7 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
           {plegado ? (
             <span
               aria-hidden
-              className="hidden h-7 w-7 items-center justify-center rounded-md bg-accent text-3xs font-bold text-white md:flex"
+              className="hidden h-7 w-7 items-center justify-center rounded-md bg-accent text-rotulo font-bold text-white md:flex"
             >
               {config().nombre.slice(0, 1).toUpperCase()}
             </span>
@@ -308,7 +308,7 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
               vacío de golpe se lee como que algo se ha roto, no como que no
               hay nada que case. */}
           {filtro && areasFiltradas.length === 0 ? (
-            <p className="px-3 py-4 text-2xs text-ink-faint" role="status">
+            <p className="px-3 py-4 text-dato text-ink-faint" role="status">
               {t("nav.sinAjustes", { que: filtro })}
             </p>
           ) : null}
@@ -373,17 +373,17 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
           ) : null}
           <div className={cn(plegado && "md:hidden")}>
           {sesion ? (
-            <p className="truncate text-2xs text-ink-muted" title={sesion.email}>
+            <p className="truncate text-dato text-ink-muted" title={sesion.email}>
               {sesion.nombre || sesion.email}
             </p>
           ) : null}
           {sesion && sesion.roles.length > 0 ? (
-            <p className="mt-0.5 truncate text-3xs text-ink-faint">{sesion.roles.join(", ")}</p>
+            <p className="mt-0.5 truncate text-rotulo text-ink-faint">{sesion.roles.join(", ")}</p>
           ) : null}
           <button
             type="button"
             onClick={alSalir}
-            className="btn-link mt-2 inline-flex items-center gap-1.5 text-2xs"
+            className="btn-link mt-2 inline-flex items-center gap-1.5 text-dato"
           >
             <Icono nombre="logout" tamano="sm" />
             {t("app.cerrarSesion")}
@@ -530,7 +530,7 @@ function Enlace({ a, rotulo, icono }: { a: string; rotulo: string; icono?: strin
       className={({ isActive }) =>
         cn(
           "flex min-h-[28px] items-center gap-2 rounded-sm border py-[5px] pl-[14px] pr-2",
-          "text-sm-h font-medium transition-colors",
+          "text-titulin font-medium transition-colors",
           isActive
             ? "border-accent/25 bg-accent/10 text-accent"
             : "border-transparent text-ink-muted hover:bg-paper-light hover:text-ink",

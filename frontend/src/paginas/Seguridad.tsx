@@ -341,13 +341,13 @@ function Aislamiento() {
   return (
     <section className="card p-4">
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold">{t("seguridad.aislamiento")}</h2>
+        <h2 className="text-titulo font-semibold">{t("seguridad.aislamiento")}</h2>
         <span
           role="status"
           className={
             datos.todo_puesto
-              ? "text-sm text-success"
-              : "text-sm font-semibold text-warning"
+              ? "text-titulo text-success"
+              : "text-titulo font-semibold text-warning"
           }
           data-testid="aislamiento-veredicto"
         >
@@ -375,13 +375,13 @@ function Aislamiento() {
                   {capa.ok ? t("seguridad.capaPuesta") : t("seguridad.capaNoPuesta")}
                 </span>
                 {capa.medible_aqui === false ? (
-                  <span className="ml-2 text-xs text-ink-muted">
+                  <span className="ml-2 text-titulin text-ink-muted">
                     {t("seguridad.noSeMideAqui")}
                   </span>
                 ) : null}
               </p>
-              <p className="text-sm text-ink-muted">{capa.detalle}</p>
-              <p className="text-xs text-ink-faint">{capa.porque}</p>
+              <p className="text-titulo text-ink-muted">{capa.detalle}</p>
+              <p className="text-titulin text-ink-faint">{capa.porque}</p>
             </div>
           </li>
         ))}
@@ -503,13 +503,13 @@ function ComoSeEntra() {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("seguridad.entrada.titulo")}</h2>
-      <p className="mb-3 text-3xs text-ink-faint">
+      <p className="mb-3 text-rotulo text-ink-faint">
         {t("seguridad.entrada.ayuda")}
       </p>
 
       {/* El forzado del tenant, lo primero: manda sobre el de cada proveedor y
           mirar sólo el del proveedor da por abierta una puerta cerrada. */}
-      <p className={forzadoDelTenant ? "text-2xs text-ink" : "text-2xs text-warning"}>
+      <p className={forzadoDelTenant ? "text-dato text-ink" : "text-dato text-warning"}>
         {forzadoDelTenant
           ? t("seguridad.entrada.forzadoSi")
           : t("seguridad.entrada.forzadoNo")}
@@ -526,22 +526,22 @@ function ComoSeEntra() {
           {proveedores.map((p) => (
             <li key={p.id} className="py-2">
               <div className="flex flex-wrap items-baseline gap-x-3">
-                <span className="text-sm text-ink">{p.nombre}</span>
+                <span className="text-titulo text-ink">{p.nombre}</span>
                 <span className="chip-dato">{p.tipo}</span>
                 {!p.activo ? (
-                  <span className="text-3xs text-ink-faint">
+                  <span className="text-rotulo text-ink-faint">
                     {t("seguridad.entrada.apagado")}
                   </span>
                 ) : null}
                 {(p.dominios.length ? p.dominios : [p.dominio_email ?? ""])
                   .filter(Boolean)
                   .map((d) => (
-                    <span key={d} className="font-mono text-3xs text-ink-faint">
+                    <span key={d} className="font-mono text-rotulo text-ink-faint">
                       {d}
                     </span>
                   ))}
               </div>
-              <div className="mt-1 flex flex-col gap-0.5 text-3xs">
+              <div className="mt-1 flex flex-col gap-0.5 text-rotulo">
                 <span className="text-ink-muted">
                   {p.jit_provisioning
                     ? t("seguridad.entrada.jitSi")
@@ -590,7 +590,7 @@ function ComoSeEntra() {
         </ul>
       )}
 
-      <div className="mt-3 flex flex-col gap-1 text-3xs">
+      <div className="mt-3 flex flex-col gap-1 text-rotulo">
         {scim ? (
           <span className={scim.activo ? "text-ink-muted" : "text-warning"}>
             {scim.activo
@@ -697,13 +697,13 @@ function MiSegundoFactor() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.mio.titulo")}
       </h2>
 
       {plan ? (
         <p
-          className={`text-2xs ${plan.completo ? "text-ink-muted" : "text-warning"}`}
+          className={`text-dato ${plan.completo ? "text-ink-muted" : "text-warning"}`}
         >
           {plan.porque}
         </p>
@@ -721,7 +721,7 @@ function MiSegundoFactor() {
       {sinContrasena.length ? (
         <ul className="space-y-1" data-testid="sin-contrasena">
           {sinContrasena.map((f) => (
-            <li key={f.factor} className="text-2xs">
+            <li key={f.factor} className="text-dato">
               <span className={f.puede ? "text-success" : "text-ink-muted"}>
                 {f.puede
                   ? t("seguridad.mio.valeSolo", { factor: f.factor })
@@ -742,16 +742,16 @@ function MiSegundoFactor() {
         <ul className="space-y-1">
           {plan.pasos.map((paso) => (
             <li key={paso.paso} className="rounded-lg bg-paper-sunk px-3 py-2">
-              <p className="text-2xs text-ink">
+              <p className="text-dato text-ink">
                 {t(`seguridad.mio.${paso.paso}`, paso.paso)}
               </p>
-              <p className="text-3xs text-ink-faint">{paso.porque}</p>
+              <p className="text-rotulo text-ink-faint">{paso.porque}</p>
             </li>
           ))}
         </ul>
       ) : null}
 
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("seguridad.mio.entradaDeHoy", {
           factores:
             (nivel?.factores ?? []).map((f) => f.factor).join(", ") || "—",
@@ -764,14 +764,14 @@ function MiSegundoFactor() {
       {/* Qué va a pedir verificarse otra vez. Saberlo antes evita la sorpresa
           en mitad de una operación que no se puede dejar a medias. */}
       {sensibles?.length ? (
-        <p className="text-3xs text-ink-faint">
+        <p className="text-rotulo text-ink-faint">
           {t("seguridad.mio.sensibles")}:{" "}
           {sensibles.map((o) => o.descripcion).join(" · ")}
         </p>
       ) : null}
 
       {cambio ? (
-        <p className="text-3xs text-ink-faint">{cambio.porque}</p>
+        <p className="text-rotulo text-ink-faint">{cambio.porque}</p>
       ) : null}
     </section>
   );
@@ -782,12 +782,12 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
   const { t } = useTranslation();
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.mfa.titulo")}
       </h2>
       {/* El porcentaje va con el N al lado: un 78 % sobre nueve personas no es
           lo mismo que sobre novecientas, y sin el N se lee igual. */}
-      <p className="text-2xs text-ink-muted">
+      <p className="text-dato text-ink-muted">
         {datos.medible
           ? t("seguridad.mfa.resumen", {
               pct: datos.adopcion_pct,
@@ -797,12 +797,12 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
           : t("seguridad.mfa.sinUsuarios")}
       </p>
       {!datos.mfa_obligatoria ? (
-        <p className="text-3xs text-warning">
+        <p className="text-rotulo text-warning">
           {t("seguridad.mfa.noObligatoria")}
         </p>
       ) : null}
       {datos.canales_debiles_activos.length > 0 ? (
-        <p className="text-3xs text-warning">
+        <p className="text-rotulo text-warning">
           {t("seguridad.mfa.canalesDebiles", {
             canales: datos.canales_debiles_activos.join(", "),
           })}
@@ -820,13 +820,13 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
               key={u.usuario_id}
               className="flex flex-wrap items-baseline gap-x-3 px-3 py-1.5"
             >
-              <span className="min-w-0 flex-1 truncate text-2xs text-ink">
+              <span className="min-w-0 flex-1 truncate text-dato text-ink">
                 {u.nombre}
               </span>
-              <span className="truncate font-mono text-3xs text-ink-muted">
+              <span className="truncate font-mono text-rotulo text-ink-muted">
                 {u.email}
               </span>
-              <span className="text-3xs text-ink-faint">
+              <span className="text-rotulo text-ink-faint">
                 {u.roles.join(", ")}
               </span>
             </li>
@@ -853,10 +853,10 @@ function Certificados({ filas }: { filas: Certificado[] }) {
   );
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.certificados.titulo")}
       </h2>
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("seguridad.certificados.porQue")}
       </p>
       {ordenadas.length === 0 ? (
@@ -882,13 +882,13 @@ function Certificados({ filas }: { filas: Certificado[] }) {
               >
                 {t(`seguridad.certificados.estado.${c.estado}`)}
               </span>
-              <span className="min-w-0 flex-1 truncate text-2xs text-ink">
+              <span className="min-w-0 flex-1 truncate text-dato text-ink">
                 {c.proveedor}
               </span>
-              <span className="truncate font-mono text-3xs text-ink-faint">
+              <span className="truncate font-mono text-rotulo text-ink-faint">
                 {c.huella.slice(0, 16)}
               </span>
-              <span className="font-mono text-3xs text-ink-muted">
+              <span className="font-mono text-rotulo text-ink-muted">
                 {c.dias_restantes === null
                   ? t("seguridad.certificados.sinFecha")
                   : t("seguridad.certificados.dias", {
@@ -912,10 +912,10 @@ function Segregacion({
   const { t } = useTranslation();
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.sod.titulo")}
       </h2>
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("seguridad.sod.porQue", { reglas: datos.reglas })}
       </p>
       {datos.violaciones.length === 0 ? (
@@ -937,7 +937,7 @@ function Segregacion({
             <li key={`${v.usuario_id}:${v.regla}:${i}`} className="px-3 py-2">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="badge">{v.nivel}</span>
-                <span className="min-w-0 flex-1 truncate text-2xs text-ink">
+                <span className="min-w-0 flex-1 truncate text-dato text-ink">
                   {v.nombre}
                 </span>
                 {/* La excepción no esconde el conflicto: lo marca. Esconderlo
@@ -948,11 +948,11 @@ function Segregacion({
                     {t("seguridad.sod.conExcepcion")}
                   </span>
                 ) : null}
-                <span className="font-mono text-3xs text-ink-faint">
+                <span className="font-mono text-rotulo text-ink-faint">
                   {v.usuario_id.slice(0, 8)}
                 </span>
               </div>
-              <p className="mt-0.5 font-mono text-3xs text-ink-muted">
+              <p className="mt-0.5 font-mono text-rotulo text-ink-muted">
                 {v.por_el_lado_a.join(", ")} ↔ {v.por_el_lado_b.join(", ")}
               </p>
             </li>
@@ -997,10 +997,10 @@ function ExcepcionesDeCampo() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.campos.titulo")}
       </h2>
-      <p className="text-3xs text-ink-faint">{datos.que_significa}</p>
+      <p className="text-rotulo text-ink-faint">{datos.que_significa}</p>
       {datos.campos.length === 0 ? null : (
         <ul
           className="divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40"
@@ -1009,7 +1009,7 @@ function ExcepcionesDeCampo() {
           {datos.campos.map((c) => (
             <li
               key={`${c.objeto}:${c.campo}:${c.rol}`}
-              className="flex flex-wrap items-baseline gap-x-3 px-3 py-1.5 text-3xs"
+              className="flex flex-wrap items-baseline gap-x-3 px-3 py-1.5 text-rotulo"
             >
               <span className="font-mono text-ink">
                 {c.objeto}.{c.campo}
@@ -1105,15 +1105,15 @@ function Explicador() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.explicador.titulo")}
       </h2>
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("seguridad.explicador.porQue")}
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">
+          <span className="text-rotulo text-ink-muted">
             {t("seguridad.explicador.usuario")}
           </span>
           <input
@@ -1124,7 +1124,7 @@ function Explicador() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">
+          <span className="text-rotulo text-ink-muted">
             {t("seguridad.explicador.objeto")}
           </span>
           <input
@@ -1135,7 +1135,7 @@ function Explicador() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">
+          <span className="text-rotulo text-ink-muted">
             {t("seguridad.explicador.accion")}
           </span>
           <input
@@ -1168,16 +1168,16 @@ function Explicador() {
             <p
               className={
                 simulacion.permitido
-                  ? "text-sm font-medium text-success"
-                  : "text-sm font-medium text-warning"
+                  ? "text-titulo font-medium text-success"
+                  : "text-titulo font-medium text-warning"
               }
             >
               {simulacion.permitido
                 ? t("seguridad.simulador.permitido")
                 : t("seguridad.simulador.denegado")}
-              <span className="ml-2 text-3xs text-ink-faint">{simulacion.origen}</span>
+              <span className="ml-2 text-rotulo text-ink-faint">{simulacion.origen}</span>
             </p>
-            <p className="mt-1 text-3xs text-ink-muted">
+            <p className="mt-1 text-rotulo text-ink-muted">
               {t("seguridad.simulador.rbac", {
                 veredicto: simulacion.rbac?.concede
                   ? t("seguridad.simulador.concede")
@@ -1185,7 +1185,7 @@ function Explicador() {
                 permiso: simulacion.rbac?.permiso ?? "—",
               })}
             </p>
-            <p className="text-3xs text-ink-muted">
+            <p className="text-rotulo text-ink-muted">
               {t("seguridad.simulador.abac", {
                 veredicto: simulacion.abac?.permitido
                   ? t("seguridad.simulador.concede")
@@ -1194,7 +1194,7 @@ function Explicador() {
               {simulacion.abac?.explicacion ? ` — ${simulacion.abac.explicacion}` : ""}
             </p>
             {simulacion.ambito ? (
-              <p className="mt-1 text-3xs text-ink-faint">
+              <p className="mt-1 text-rotulo text-ink-faint">
                 {t("seguridad.simulador.contexto", {
                   roles: (simulacion.ambito.usuario?.roles ?? []).join(", ") || "—",
                   unidad: simulacion.ambito.usuario?.business_unit_id ?? "—",
@@ -1205,7 +1205,7 @@ function Explicador() {
           </div>
         ) : null}
         {salida ? (
-          <pre className="overflow-x-auto rounded-lg border border-ink-dim/40 p-3 text-3xs text-ink">
+          <pre className="overflow-x-auto rounded-lg border border-ink-dim/40 p-3 text-rotulo text-ink">
             {JSON.stringify(salida, null, 2)}
           </pre>
         ) : null}
@@ -1253,13 +1253,13 @@ function ExcepcionesAprobadas() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.excepciones.titulo")}
       </h2>
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("seguridad.excepciones.porQue")}
       </p>
-      <label className="flex items-center gap-2 text-3xs text-ink-muted">
+      <label className="flex items-center gap-2 text-rotulo text-ink-muted">
         <input
           type="checkbox"
           checked={caducadas}
@@ -1279,10 +1279,10 @@ function ExcepcionesAprobadas() {
           {filas.map((e) => (
             <li key={e.id} className="px-3 py-2">
               <div className="flex flex-wrap items-baseline gap-x-3">
-                <span className="font-mono text-2xs text-ink">
+                <span className="font-mono text-dato text-ink">
                   {e.regla_codigo}
                 </span>
-                <span className="font-mono text-3xs text-ink-faint">
+                <span className="font-mono text-rotulo text-ink-faint">
                   {e.usuario_id.slice(0, 8)}
                 </span>
                 {/* Caducada se marca y no se esconde: una excepción vencida
@@ -1301,7 +1301,7 @@ function ExcepcionesAprobadas() {
               </div>
               {/* El motivo, siempre: sin él la lista dice que hay excepciones
                   y no por qué, que es justo lo que hay que revisar. */}
-              <p className="mt-0.5 text-3xs text-ink-muted">{e.motivo}</p>
+              <p className="mt-0.5 text-rotulo text-ink-muted">{e.motivo}</p>
             </li>
           ))}
         </ul>
@@ -1348,10 +1348,10 @@ function AQuienLeToca() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">
+      <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.aQuienLeToca.titulo")}
       </h2>
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("seguridad.aQuienLeToca.porQue")}
       </p>
       <form
@@ -1361,7 +1361,7 @@ function AQuienLeToca() {
           void mirar();
         }}
       >
-        <label className="flex min-w-0 flex-1 flex-col gap-1 text-3xs text-ink-muted">
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-rotulo text-ink-muted">
           {t("seguridad.aQuienLeToca.correo")}
           <input
             type="email"
@@ -1383,7 +1383,7 @@ function AQuienLeToca() {
       {fallo ? <Fallo error={fallo} /> : null}
       <div role="status" aria-live="polite">
         {quien ? (
-          <p className="rounded-lg border border-ink-dim/40 p-3 text-2xs text-ink">
+          <p className="rounded-lg border border-ink-dim/40 p-3 text-dato text-ink">
             {quien.tiene_proveedor
               ? t("seguridad.aQuienLeToca.entraPorSso", {
                   nombre: quien.nombre,
@@ -1392,7 +1392,7 @@ function AQuienLeToca() {
               : t("seguridad.aQuienLeToca.entraPorContrasena")}
             {quien.tiene_proveedor &&
             quien.contrasena_local_permitida === false ? (
-              <span className="mt-1 block text-3xs text-warning">
+              <span className="mt-1 block text-rotulo text-warning">
                 {t("seguridad.aQuienLeToca.sinContrasenaLocal")}
               </span>
             ) : null}

@@ -41,11 +41,11 @@ export function Medidor({
   if (!Number.isFinite(objetivo) || objetivo <= 0) {
     return (
       <figure className="card p-3">
-        <figcaption className="text-xs font-medium text-ink">{titulo}</figcaption>
-        <p className="mt-2 text-2xl font-bold tracking-tight text-ink">
+        <figcaption className="text-titulin font-medium text-ink">{titulo}</figcaption>
+        <p className="mt-2 text-pagina font-bold tracking-tight text-ink">
           {exacto(valor, unidad)}
         </p>
-        <p className="mt-1 text-3xs text-ink-faint">{t("medidor.sinObjetivo")}</p>
+        <p className="mt-1 text-rotulo text-ink-faint">{t("medidor.sinObjetivo")}</p>
       </figure>
     );
   }
@@ -60,15 +60,15 @@ export function Medidor({
   return (
     <figure className="card p-3">
       <figcaption className="flex items-baseline justify-between gap-2">
-        <span className="text-xs font-medium text-ink">{titulo}</span>
+        <span className="text-titulin font-medium text-ink">{titulo}</span>
         {/* El porcentaje en tinta y no en el color de la barra: el texto de
             color se lee peor y duplica una señal que la barra ya da. */}
-        <span className="font-mono text-2xs text-ink-muted">
+        <span className="font-mono text-dato text-ink-muted">
           {Math.round(pct)}%
         </span>
       </figcaption>
 
-      <p className="mt-1 text-2xl font-bold tracking-tight text-ink">
+      <p className="mt-1 text-pagina font-bold tracking-tight text-ink">
         {exacto(valor, unidad)}
       </p>
 
@@ -94,7 +94,7 @@ export function Medidor({
         />
       </div>
 
-      <p className="mt-1 text-3xs text-ink-muted">
+      <p className="mt-1 text-rotulo text-ink-muted">
         {t(cumplido ? "medidor.cumplido" : "medidor.faltan", {
           objetivo: exacto(objetivo, unidad),
           falta: exacto(Math.max(0, objetivo - valor), unidad),

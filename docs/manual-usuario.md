@@ -102,6 +102,15 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
+**El tamaño de la letra.** Desde el 02-11-2026 el producto escribe con siete
+tamaños y **ninguno por debajo de 12 px**. Antes usaba once —con 10 y 11 px en
+tres de cada cuatro textos— y había pantallas con nueve tamaños distintos a la
+vez. Si ves una letra que no se lee, es un fallo: avísanos.
+
+**Compacto o cómodo.** En tu perfil eliges la densidad. En compacto caben más
+filas; en cómodo la tabla respira. Las dos escriben con la misma letra legible:
+lo que cambia es el aire, no el tamaño del texto.
+
 **Si operas la plataforma, de quién son los datos que ves.** En la barra de
 arriba hay un selector de cliente. Ves **uno cada vez**, el tuyo salvo que
 elijas otro, y mientras miras a otro el selector se pone en ámbar para que no

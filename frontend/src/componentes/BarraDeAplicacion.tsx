@@ -118,7 +118,7 @@ export function BarraDeAplicacion({
       <button
         type="button"
         onClick={alAbrirLanzador}
-        className="my-1.5 flex shrink-0 items-center gap-2 rounded-md px-2.5 text-sm font-bold text-ink hover:bg-paper-light"
+        className="my-1.5 flex shrink-0 items-center gap-2 rounded-md px-2.5 text-titulo font-bold text-ink hover:bg-paper-light"
         aria-haspopup="dialog"
       >
         <Icono nombre="apps" tamano="sm" className="text-ink-muted" />
@@ -136,7 +136,7 @@ export function BarraDeAplicacion({
               to={e.a}
               aria-current={aqui ? "page" : undefined}
               className={cn(
-                "flex shrink-0 items-center whitespace-nowrap border-b-[3px] px-3.5 text-sm transition-colors",
+                "flex shrink-0 items-center whitespace-nowrap border-b-[3px] px-3.5 text-titulo transition-colors",
                 aqui
                   ? "border-accent font-semibold text-accent"
                   : "border-transparent text-ink-muted hover:border-ink-dim hover:text-ink",
@@ -153,7 +153,7 @@ export function BarraDeAplicacion({
           <MenuDeAcciones
             opciones={enMas}
             etiqueta={t("app.masPestanas")}
-            clase="flex h-full items-center gap-1 whitespace-nowrap px-3 text-sm text-ink-muted hover:text-ink"
+            clase="flex h-full items-center gap-1 whitespace-nowrap px-3 text-titulo text-ink-muted hover:text-ink"
           />
         </div>
       ) : null}

@@ -120,7 +120,7 @@ export function PendienteDeFirma() {
         />
       ) : (
         <>
-          <p className="mb-3 text-2xs text-ink-muted" role="status">
+          <p className="mb-3 text-dato text-ink-muted" role="status">
             {t("firma.cuantos", { cuantos: panel.cuantos })}
           </p>
           <ul className="space-y-2">
@@ -132,16 +132,16 @@ export function PendienteDeFirma() {
                   <span
                     className={
                       sobre.dias_esperando >= 7
-                        ? "text-lg font-semibold leading-none text-danger"
-                        : "text-lg font-semibold leading-none text-ink"
+                        ? "text-grande font-semibold leading-none text-danger"
+                        : "text-grande font-semibold leading-none text-ink"
                     }
                   >
                     {t("firma.diasParado", { dias: sobre.dias_esperando })}
                   </span>
-                  <span className="text-sm font-medium text-ink">
+                  <span className="text-titulo font-medium text-ink">
                     {sobre.asunto}
                   </span>
-                  <span className="text-3xs text-ink-faint">
+                  <span className="text-rotulo text-ink-faint">
                     {sobre.referencia}
                   </span>
                   <span className="chip-dato">{sobre.nivel}</span>
@@ -149,7 +149,7 @@ export function PendienteDeFirma() {
                 </div>
 
                 <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
-                  <span className="text-2xs text-ink-muted">
+                  <span className="text-dato text-ink-muted">
                     {t("firma.firmados", {
                       firmados: sobre.firmados,
                       total: sobre.total,
@@ -166,8 +166,8 @@ export function PendienteDeFirma() {
                     <span
                       className={
                         sobre.caduca_en_dias <= 3
-                          ? "text-3xs text-danger"
-                          : "text-3xs text-ink-muted"
+                          ? "text-rotulo text-danger"
+                          : "text-rotulo text-ink-muted"
                       }
                     >
                       {t("firma.caducaEn", { dias: sobre.caduca_en_dias })}
@@ -175,7 +175,7 @@ export function PendienteDeFirma() {
                   ) : null}
                   <Link
                     to={`/m/operacion/sobre_firma/${sobre.sobre_id}`}
-                    className="btn-link text-3xs"
+                    className="btn-link text-rotulo"
                   >
                     {t("firma.abrirSobre")}
                   </Link>
@@ -184,7 +184,7 @@ export function PendienteDeFirma() {
                 {/* A quién le toca, por su nombre: «2 de 3» no dice a quién
                     hay que llamar, que es lo único que se va a hacer. */}
                 {sobre.esperando_a.length > 0 ? (
-                  <p className="mt-1 flex flex-wrap items-center gap-1 text-3xs text-ink-muted">
+                  <p className="mt-1 flex flex-wrap items-center gap-1 text-rotulo text-ink-muted">
                     <Icono nombre="hourglass_empty" /> {t("firma.esperandoA")}
                     {sobre.esperando_a.map((quien) => (
                       <span key={quien} className="chip-dato">
@@ -313,15 +313,15 @@ function ConQueSeFirma() {
         >
           {proveedores.map((p) => (
             <li key={p.clave} className="py-1.5">
-              <p className="text-sm text-ink">
+              <p className="text-titulo text-ink">
                 {p.nombre || p.clave}
                 {!p.activo ? (
-                  <span className="ml-2 text-3xs text-warning">{t("firma.inactivo")}</span>
+                  <span className="ml-2 text-rotulo text-warning">{t("firma.inactivo")}</span>
                 ) : null}
               </p>
               {/* Los niveles y las formas de identificar, que es lo que
                   distingue una firma que aguanta un juicio de un clic. */}
-              <p className="text-3xs text-ink-muted">
+              <p className="text-rotulo text-ink-muted">
                 {t("firma.niveles", { cuales: p.niveles.join(", ") || "—" })}
                 {" · "}
                 {t("firma.identificaciones", {
@@ -335,12 +335,12 @@ function ConQueSeFirma() {
 
       {reglas ? (
         <div className="mt-3" data-testid="firma-reglas">
-          <p className="text-3xs text-ink-faint">{reglas.que_significa}</p>
+          <p className="text-rotulo text-ink-faint">{reglas.que_significa}</p>
           <ul className="lista-acotada mt-1 space-y-0.5">
             {reglas.reglas.map((r) => (
               <li
                 key={r.id}
-                className={r.activa ? "text-3xs text-ink-muted" : "text-3xs text-ink-faint"}
+                className={r.activa ? "text-rotulo text-ink-muted" : "text-rotulo text-ink-faint"}
               >
                 {t("firma.regla", {
                   prioridad: r.prioridad,
@@ -358,7 +358,7 @@ function ConQueSeFirma() {
       {plantillas?.plantillas?.length ? (
         <ul className="lista-acotada mt-3 space-y-0.5" data-testid="firma-plantillas">
           {plantillas.plantillas.map((p) => (
-            <li key={p.clave} className="text-3xs text-ink-muted">
+            <li key={p.clave} className="text-rotulo text-ink-muted">
               {t("firma.plantilla", {
                 nombre: p.nombre,
                 tipo: p.tipo_documento || "—",
@@ -397,11 +397,11 @@ function LoQueCobraElProveedor() {
   return (
     <section className="card mt-6 p-4">
       <h2 className="section-label mb-1">{t("firma.llamadas.titulo")}</h2>
-      <p className="mb-3 max-w-prose text-2xs text-ink-muted">
+      <p className="mb-3 max-w-prose text-dato text-ink-muted">
         {t("firma.llamadas.porQue")}
       </p>
 
-      <label className="flex items-center gap-2 text-2xs text-ink-muted">
+      <label className="flex items-center gap-2 text-dato text-ink-muted">
         <input
           type="checkbox"
           checked={soloFallidas}
@@ -414,9 +414,9 @@ function LoQueCobraElProveedor() {
       <div role="status" aria-live="polite" className="mt-3">
         {datos ? (
           datos.aviso ? (
-            <p className="text-2xs text-ink-muted">{datos.aviso}</p>
+            <p className="text-dato text-ink-muted">{datos.aviso}</p>
           ) : (
-            <p className="text-2xs text-ink">
+            <p className="text-dato text-ink">
               {t("firma.llamadas.resumen", {
                 cuantas: datos.cuantas,
                 gasto: datos.gasto,
@@ -439,14 +439,14 @@ function LoQueCobraElProveedor() {
           {datos.llamadas.map((l) => (
             <li key={l.id} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-3">
-                <span className="text-2xs text-ink">{l.operacion}</span>
-                <span className="text-3xs text-ink-muted">{l.proveedor}</span>
+                <span className="text-dato text-ink">{l.operacion}</span>
+                <span className="text-rotulo text-ink-muted">{l.proveedor}</span>
                 <span
                   className={`badge ${l.ok ? "badge-muted" : "badge-danger"}`}
                 >
                   {l.codigo ?? "—"}
                 </span>
-                <span className="font-mono text-3xs text-ink-faint">
+                <span className="font-mono text-rotulo text-ink-faint">
                   {l.coste ?? t("firma.llamadas.sinCoste")}
                 </span>
               </div>
@@ -454,7 +454,7 @@ function LoQueCobraElProveedor() {
                   recortarlo obliga a ir al registro del servidor — justo lo
                   que esta tabla existe para evitar. */}
               {l.error ? (
-                <p className="mt-0.5 text-3xs text-danger">{l.error}</p>
+                <p className="mt-0.5 text-rotulo text-danger">{l.error}</p>
               ) : null}
             </li>
           ))}

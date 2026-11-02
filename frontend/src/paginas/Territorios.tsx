@@ -153,7 +153,7 @@ export function Territorios() {
 
       <section className="card mb-4 p-4">
         <h2 className="section-label mb-1">{t("territorios.queSiPublico")}</h2>
-        <p className="mb-2 text-3xs text-ink-faint">
+        <p className="mb-2 text-rotulo text-ink-faint">
           {t("territorios.queSiPublicoAyuda")}
         </p>
         <button
@@ -164,13 +164,13 @@ export function Territorios() {
         >
           {simulando ? t("territorios.simulando") : t("territorios.simular")}
         </button>
-        <p role="status" aria-live="polite" className="mt-2 text-2xs text-ink-muted">
+        <p role="status" aria-live="polite" className="mt-2 text-dato text-ink-muted">
           {aviso}
         </p>
 
         {simulacion ? (
           <div className="mt-2">
-            <p className="text-2xs text-ink">
+            <p className="text-dato text-ink">
               {t("territorios.resultado", {
                 cambian: simulacion.cambian.length,
                 quedan: simulacion.se_quedan,
@@ -179,7 +179,7 @@ export function Territorios() {
             {/* Lo que NO encaja va primero y en color: una cuenta sin dueño es
                 un problema que hay que ver, no un hueco que se rellena solo. */}
             {simulacion.sin_territorio.length > 0 ? (
-              <p className="mt-1 text-2xs text-warning">
+              <p className="mt-1 text-dato text-warning">
                 {t("territorios.sinTerritorio", {
                   cuantas: simulacion.sin_territorio.length,
                 })}
@@ -187,12 +187,12 @@ export function Territorios() {
             ) : null}
             {simulacion.solapes.length > 0 ? (
               <>
-                <p className="mt-1 text-2xs text-danger">
+                <p className="mt-1 text-dato text-danger">
                   {t("territorios.solapes", { cuantos: simulacion.solapes.length })}
                 </p>
                 <ul className="mt-1 space-y-1">
                   {simulacion.solapes.slice(0, 5).map((s, i) => (
-                    <li key={`${s.cuenta}-${i}`} className="text-3xs text-ink-muted">
+                    <li key={`${s.cuenta}-${i}`} className="text-rotulo text-ink-muted">
                       <span className="font-medium text-ink">{s.cuenta}</span>{" "}
                       {s.territorios.join(" · ")} — {s.por_que}
                     </li>
@@ -203,8 +203,8 @@ export function Territorios() {
             <p
               className={
                 simulacion.seguro_publicar
-                  ? "mt-2 text-2xs text-success"
-                  : "mt-2 text-2xs text-danger"
+                  ? "mt-2 text-dato text-success"
+                  : "mt-2 text-dato text-danger"
               }
             >
               {simulacion.seguro_publicar
@@ -257,9 +257,9 @@ function ElMapa({ territorios }: { territorios: Territorio[] }) {
               >
                 {x.prioridad}
               </span>
-              <span className="text-2xs font-medium text-ink">{x.nombre}</span>
-              <span className="text-3xs text-ink-faint">{x.clave}</span>
-              <span className="text-3xs text-ink-muted">
+              <span className="text-dato font-medium text-ink">{x.nombre}</span>
+              <span className="text-rotulo text-ink-faint">{x.clave}</span>
+              <span className="text-rotulo text-ink-muted">
                 {t("territorios.criterios", { cuantos: x.criterios.length })}
               </span>
             </li>
@@ -267,7 +267,7 @@ function ElMapa({ territorios }: { territorios: Territorio[] }) {
         </ul>
       )}
       {repetidas.size > 0 ? (
-        <p className="mt-2 text-3xs text-danger">
+        <p className="mt-2 text-rotulo text-danger">
           {t("territorios.prioridadRepetida", {
             cuantas: repetidas.size,
           })}
@@ -294,7 +294,7 @@ function LasExcepciones({ excepciones }: { excepciones: Excepciones | null }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("territorios.excepciones")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("territorios.excepcionesAyuda")}
       </p>
       {excepciones.excepciones.length === 0 ? (
@@ -303,7 +303,7 @@ function LasExcepciones({ excepciones }: { excepciones: Excepciones | null }) {
         <ul className="divide-y divide-ink-dim/30">
           {excepciones.excepciones.map((e) => (
             <li key={e.id} className="py-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+              <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                 <span className="font-medium text-ink">{e.cuenta_id.slice(0, 8)}</span>
                 {e.permanente ? (
                   <span className="chip-dato">{t("territorios.permanente")}</span>
@@ -321,7 +321,7 @@ function LasExcepciones({ excepciones }: { excepciones: Excepciones | null }) {
               </div>
               {/* El motivo es obligatorio al declararla: una excepción sin
                   motivo es indistinguible de un error de configuración. */}
-              <p className="text-3xs text-ink-muted">{e.motivo}</p>
+              <p className="text-rotulo text-ink-muted">{e.motivo}</p>
             </li>
           ))}
         </ul>
@@ -329,8 +329,8 @@ function LasExcepciones({ excepciones }: { excepciones: Excepciones | null }) {
       <p
         className={
           excepciones.vencen_pronto > 0
-            ? "mt-2 text-2xs text-warning"
-            : "mt-2 text-3xs text-ink-faint"
+            ? "mt-2 text-dato text-warning"
+            : "mt-2 text-rotulo text-ink-faint"
         }
       >
         {excepciones.que_significa}
@@ -358,14 +358,14 @@ function LasCuotas({ consecucion }: { consecucion: Consecucion | null }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("territorios.cuotas")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("territorios.cuotasAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">{t("territorios.cuotasAyuda")}</p>
       {!consecucion.medible ? (
-        <p className="text-2xs text-ink-muted">{consecucion.aviso}</p>
+        <p className="text-dato text-ink-muted">{consecucion.aviso}</p>
       ) : (
         <ul className="divide-y divide-ink-dim/30">
           {consecucion.cuotas.map((c) => (
             <li key={`${c.sujeto}-${c.metrica}`} className="py-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+              <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                 <span className="font-medium text-ink">{c.sujeto.slice(0, 8)}</span>
                 <span className="chip-dato">{c.metrica}</span>
                 <span className="text-ink-muted">
@@ -375,13 +375,13 @@ function LasCuotas({ consecucion }: { consecucion: Consecucion | null }) {
                   })}
                 </span>
                 {c.pct !== null ? (
-                  <span className="text-3xs text-ink-faint">{c.pct} %</span>
+                  <span className="text-rotulo text-ink-faint">{c.pct} %</span>
                 ) : null}
               </div>
               {/* El objetivo del PLAN al lado del efectivo: sin los dos, uno de
                   los dos números parece equivocado. */}
               {c.prorrateado ? (
-                <p className="text-3xs text-warning">
+                <p className="text-rotulo text-warning">
                   {t("territorios.prorrateada", {
                     plan: c.objetivo_sin_prorratear,
                   })}

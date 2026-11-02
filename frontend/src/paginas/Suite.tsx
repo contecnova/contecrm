@@ -148,7 +148,7 @@ export function SuiteGobierno() {
         <>
           {/* Lo primero y aparte: una baja sin aplicar es un acceso abierto. */}
           <p
-            className={`mt-4 text-xs ${
+            className={`mt-4 text-titulin ${
               datos.bajas_sin_aplicar > 0 ? "text-danger" : "text-success"
             }`}
             role="status"
@@ -185,7 +185,7 @@ export function SuiteGobierno() {
                 >
                   {h.bajas_sin_aplicar}
                 </Casilla>
-                <Casilla className="text-3xs text-ink-faint">
+                <Casilla className="text-rotulo text-ink-faint">
                   {h.ultimo_error ?? "—"}
                 </Casilla>
               </tr>
@@ -194,7 +194,7 @@ export function SuiteGobierno() {
 
           {datos.cuarentena > 0 ? (
             <>
-              <p className="mt-3 text-2xs text-warning" role="status">
+              <p className="mt-3 text-dato text-warning" role="status">
                 {t("suite.cuarentena", { cuantas: datos.cuarentena })}
               </p>
               <Cuarentena alReintentar={() => setRecargar((n) => n + 1)} />
@@ -229,7 +229,7 @@ export function SuiteGobierno() {
       <CuandoNoConecta />
       <AntesDeDesconectar />
 
-      <p className="mt-6 text-3xs text-ink-faint">
+      <p className="mt-6 text-rotulo text-ink-faint">
         {t("suite.noEsControlRemoto")}
       </p>
     </>
@@ -325,7 +325,7 @@ function LaSuiteComoUnTodo() {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("suite.comoUnTodo")}</h2>
-      <p className="mb-3 text-3xs text-ink-faint">
+      <p className="mb-3 text-rotulo text-ink-faint">
         {t("suite.comoUnTodoAyuda")}
       </p>
 
@@ -334,8 +334,8 @@ function LaSuiteComoUnTodo() {
         <p
           className={
             simulacion.total_a_aplicar > 0
-              ? "text-sm font-medium text-ink"
-              : "text-sm text-ink-muted"
+              ? "text-titulo font-medium text-ink"
+              : "text-titulo text-ink-muted"
           }
         >
           {t("suite.aAplicar", {
@@ -353,7 +353,7 @@ function LaSuiteComoUnTodo() {
       {simulacion?.herramientas?.length ? (
         <ul className="mt-2 space-y-1" data-testid="suite-simulacion">
           {simulacion.herramientas.map((h) => (
-            <li key={h.herramienta} className="text-3xs">
+            <li key={h.herramienta} className="text-rotulo">
               <span className="text-ink">{h.herramienta}</span>
               <span className="text-ink-muted">
                 {" · "}
@@ -377,7 +377,7 @@ function LaSuiteComoUnTodo() {
       ) : null}
 
       {identidad ? (
-        <p className="mt-1 text-3xs text-ink-muted">
+        <p className="mt-1 text-rotulo text-ink-muted">
           {t("suite.identidad", {
             nombre: String(identidad.nombre ?? "—"),
             estado: String(identidad.estado ?? "—"),
@@ -392,14 +392,14 @@ function LaSuiteComoUnTodo() {
           no se puede mirar no se puede comprobar. */}
       {organizacion.length ? (
         <div className="mt-2">
-          <p className="text-3xs text-ink-faint">
+          <p className="text-rotulo text-ink-faint">
             {t("suite.organigrama", { cuantas: organizacion.length })}
           </p>
           <ul className="mt-1 flex flex-wrap gap-1" data-testid="suite-organigrama">
             {organizacion.map((u) => (
               <li
                 key={u.id}
-                className={`rounded px-1.5 py-0.5 text-3xs ${
+                className={`rounded px-1.5 py-0.5 text-rotulo ${
                   u.activa ? "bg-ink-dim/20 text-ink-muted" : "bg-ink-dim/10 text-ink-faint"
                 }`}
                 title={u.padre ? t("suite.cuelgaDe", { de: u.padre }) : undefined}
@@ -420,7 +420,7 @@ function LaSuiteComoUnTodo() {
           otra, y escribirlo en el código lo convierte en un despliegue. */}
       {sso ? (
         <p
-          className="mt-2 text-3xs text-ink-muted"
+          className="mt-2 text-rotulo text-ink-muted"
           data-testid="suite-sso"
         >
           {sso.hay_proveedor
@@ -435,13 +435,13 @@ function LaSuiteComoUnTodo() {
         <ul className="mt-3 divide-y divide-ink-dim/30" data-testid="suite-herramientas">
           {herramientas.map((h) => (
             <li key={h.herramienta} className="py-1.5">
-              <p className="text-sm text-ink">
+              <p className="text-titulo text-ink">
                 {h.herramienta}
-                <span className="ml-2 text-3xs text-ink-faint">
+                <span className="ml-2 text-rotulo text-ink-faint">
                   {h.direccion || t("suite.sinDireccion")}
                 </span>
               </p>
-              <p className="text-3xs text-ink-muted">
+              <p className="text-rotulo text-ink-muted">
                 {t("suite.mapeoDeRoles", {
                   cuantos: Object.keys(h.mapeo_roles ?? {}).length,
                 })}
@@ -461,7 +461,7 @@ function LaSuiteComoUnTodo() {
           cuatro herramientas de cinco es un acceso que sigue abierto. */}
       {cierre ? (
         <p
-          className={`mt-1 text-3xs ${
+          className={`mt-1 text-rotulo ${
             (cierre.abiertas ?? []).length > 0
               ? "text-danger"
               : "text-ink-faint"
@@ -481,7 +481,7 @@ function LaSuiteComoUnTodo() {
           consta, se dice que no y qué falta para poder firmarlo. */}
       {cierre?.certificado ? (
         <p
-          className={`mt-1 text-3xs ${
+          className={`mt-1 text-rotulo ${
             cierre.completo ? "text-ink-faint" : "text-warning"
           }`}
           data-testid="suite-certificado"
@@ -496,7 +496,7 @@ function LaSuiteComoUnTodo() {
           {historial.slice(0, 5).map((cambio, i) => (
             <li
               key={String(cambio.id ?? i)}
-              className="text-3xs text-ink-muted"
+              className="text-rotulo text-ink-muted"
             >
               {cambio.que ?? cambio.accion ?? "—"}
               {cambio.herramienta ? ` · ${cambio.herramienta}` : ""}
@@ -565,7 +565,7 @@ function SaludDeLasSuites() {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("suite.saludSuites")}</h2>
-      <p className="mb-3 text-3xs text-ink-faint">
+      <p className="mb-3 text-rotulo text-ink-faint">
         {t("suite.saludSuitesAyuda")}
       </p>
 
@@ -583,8 +583,8 @@ function SaludDeLasSuites() {
           <p
             className={
               salud.paradas.length > 0
-                ? "text-sm font-medium text-danger"
-                : "text-sm font-medium text-ink"
+                ? "text-titulo font-medium text-danger"
+                : "text-titulo font-medium text-ink"
             }
           >
             {salud.paradas.length > 0
@@ -604,12 +604,12 @@ function SaludDeLasSuites() {
                 >
                   {/* Las horas paradas, delante: es el número que decide a cuál
                       se va primero. */}
-                  <span className="text-sm font-semibold leading-none text-danger">
+                  <span className="text-titulo font-semibold leading-none text-danger">
                     {t("suite.horasParada", {
                       horas: parada.horas_sin_sincronizar,
                     })}
                   </span>
-                  <span className="text-2xs text-ink">{parada.conexion}</span>
+                  <span className="text-dato text-ink">{parada.conexion}</span>
                   {parada.estado ? (
                     <span className="chip-dato">{parada.estado}</span>
                   ) : null}
@@ -617,7 +617,7 @@ function SaludDeLasSuites() {
                       obliga a abrir el registro del servidor, que es justo lo
                       que esta pantalla existe para evitar. */}
                   {parada.porque ? (
-                    <span className="text-3xs text-ink-muted">
+                    <span className="text-rotulo text-ink-muted">
                       {parada.porque}
                     </span>
                   ) : null}
@@ -629,12 +629,12 @@ function SaludDeLasSuites() {
           {/* Lo que va por sondeo entra con RETRASO, no al instante: se dice
               aparte porque no está parado y tampoco está al día. */}
           {salud.en_sondeo.length > 0 ? (
-            <p className="mt-2 text-3xs text-ink-muted">
+            <p className="mt-2 text-rotulo text-ink-muted">
               {t("suite.enSondeo", { cuantas: salud.en_sondeo.length })}
             </p>
           ) : null}
           {salud.sin_medir.length > 0 ? (
-            <p className="mt-1 text-3xs text-ink-muted">
+            <p className="mt-1 text-rotulo text-ink-muted">
               {t("suite.sinMedir", { cuantas: salud.sin_medir.length })}
             </p>
           ) : null}
@@ -643,17 +643,17 @@ function SaludDeLasSuites() {
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
-          <p className="text-2xs font-medium text-ink">
+          <p className="text-dato font-medium text-ink">
             {t("suite.credenciales")}
           </p>
           {/* Sin credenciales revisadas no se dice «al día»: no se ha mirado
               nada. Es la misma distinción que arriba con las conexiones. */}
           {credenciales !== null && credenciales.revisados === 0 ? (
-            <p className="text-3xs text-ink-faint">
+            <p className="text-rotulo text-ink-faint">
               {t("suite.credencialesSinRevisar")}
             </p>
           ) : piden.length === 0 ? (
-            <p className="text-3xs text-ink-muted">
+            <p className="text-rotulo text-ink-muted">
               {t("suite.credencialesAlDia", {
                 revisados: credenciales?.revisados ?? 0,
               })}
@@ -664,7 +664,7 @@ function SaludDeLasSuites() {
                   así que el día que lleguen dejan de entrar veinte buzones a la
                   vez y hay que volver a pedir autorización una por una. */}
               {rompibles.map((c) => (
-                <li key={c.consentimiento_id} className="text-3xs text-danger">
+                <li key={c.consentimiento_id} className="text-rotulo text-danger">
                   {c.perfil} · {c.recurso}
                   {/* El porqué que manda el servidor, no «error de
                       autenticación»: ése es el mensaje que atasca una
@@ -675,7 +675,7 @@ function SaludDeLasSuites() {
               {otrasQuePiden.map((c) => (
                 <li
                   key={c.consentimiento_id}
-                  className="text-3xs text-ink-muted"
+                  className="text-rotulo text-ink-muted"
                 >
                   {c.perfil} · {c.recurso} — {c.porque}
                 </li>
@@ -684,17 +684,17 @@ function SaludDeLasSuites() {
           )}
         </div>
         <div>
-          <p className="text-2xs font-medium text-ink">
+          <p className="text-dato font-medium text-ink">
             {t("suite.suscripciones")}
           </p>
           {porRenovar.length === 0 && sinDeclarar.length === 0 ? (
-            <p className="text-3xs text-ink-muted">
+            <p className="text-rotulo text-ink-muted">
               {t("suite.suscripcionesAlDia")}
             </p>
           ) : (
             <ul className="mt-1 space-y-0.5">
               {porRenovar.map((s) => (
-                <li key={s.id} className="text-3xs text-ink-muted">
+                <li key={s.id} className="text-rotulo text-ink-muted">
                   {s.recurso}
                   {s.caduca_at
                     ? ` — ${escalar(s.caduca_at, "caduca_at")}`
@@ -705,14 +705,14 @@ function SaludDeLasSuites() {
                   sabe, y se renueva igual por si acaso. El servidor sólo manda
                   sus identificadores, así que es lo que se enseña. */}
               {sinDeclarar.map((id) => (
-                <li key={id} className="text-3xs text-ink-faint">
+                <li key={id} className="text-rotulo text-ink-faint">
                   {t("suite.sinCaducidadDeclarada")} · {id.slice(0, 8)}
                 </li>
               ))}
             </ul>
           )}
           {suscripciones?.aviso ? (
-            <p className="mt-1 text-3xs text-ink-faint">
+            <p className="mt-1 text-rotulo text-ink-faint">
               {suscripciones.aviso}
             </p>
           ) : null}
@@ -985,7 +985,7 @@ export function QueSabeHacerCadaSuite() {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("suite.queSabeHacer")}</h2>
-      <p className="mb-3 text-3xs text-ink-faint">
+      <p className="mb-3 text-rotulo text-ink-faint">
         {t("suite.queSabeHacerAyuda")}
       </p>
 
@@ -998,7 +998,7 @@ export function QueSabeHacerCadaSuite() {
       ) : (
         <>
           {perfiles.length > 1 ? (
-            <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+            <label className="flex flex-col gap-1 text-dato text-ink-muted">
               {t("suite.quePerfil")}
               <select
                 className="input-base"
@@ -1013,7 +1013,7 @@ export function QueSabeHacerCadaSuite() {
               </select>
             </label>
           ) : (
-            <p className="text-2xs text-ink-muted">
+            <p className="text-dato text-ink-muted">
               {t("suite.quePerfil")}:{" "}
               <span className="text-ink">{perfiles[0]?.nombre}</span>
               {perfiles[0]?.sistema ? (
@@ -1040,14 +1040,14 @@ export function QueSabeHacerCadaSuite() {
                 {(capacidades.detalle ?? []).map((r) => (
                   <li key={r.recurso} className="py-2">
                     <div className="flex flex-wrap items-baseline gap-x-3">
-                      <span className="text-sm text-ink">{r.recurso}</span>
+                      <span className="text-titulo text-ink">{r.recurso}</span>
                       {r.sentidos.map((s) => (
                         <span key={s} className="chip-dato">
                           {s}
                         </span>
                       ))}
                       {r.incremento ? (
-                        <span className="font-mono text-3xs text-ink-faint">
+                        <span className="font-mono text-rotulo text-ink-faint">
                           {r.incremento}
                         </span>
                       ) : null}
@@ -1055,14 +1055,14 @@ export function QueSabeHacerCadaSuite() {
                     {/* El aviso lo escribe el servidor, no esta pantalla: si
                         mañana cambia lo que trae, cambia aquí sin tocar nada. */}
                     {r.trae_dato_de_terceros && r.aviso ? (
-                      <p className="mt-1 text-3xs text-warning">{r.aviso}</p>
+                      <p className="mt-1 text-rotulo text-warning">{r.aviso}</p>
                     ) : null}
                   </li>
                 ))}
               </ul>
             )
           ) : (
-            <p className="mt-3 text-3xs text-ink-faint">
+            <p className="mt-3 text-rotulo text-ink-faint">
               {t("suite.leyendoCapacidades")}
             </p>
           )}
@@ -1071,28 +1071,28 @@ export function QueSabeHacerCadaSuite() {
               cada persona, juntas. La segunda sólo puede estrechar la primera. */}
           {reglas ? (
             <div className="mt-4 rounded border border-ink-dim/30 p-3">
-              <p className="text-2xs text-ink">
+              <p className="text-dato text-ink">
                 {t("suite.criterioDeEntrada")}:{" "}
                 <span className="font-mono">{reglas.criterio}</span>
               </p>
               {reglas.nunca_entra.length > 0 ? (
-                <p className="mt-1 text-2xs text-ink-muted">
+                <p className="mt-1 text-dato text-ink-muted">
                   {t("suite.nuncaEntra")}: {reglas.nunca_entra.join(", ")}
                 </p>
               ) : null}
               {reglas.recursos_pedidos_que_no_permite_el_tenant.length > 0 ? (
-                <p className="mt-1 text-2xs text-warning">
+                <p className="mt-1 text-dato text-warning">
                   {t("suite.pedidoYNoPermitido")}:{" "}
                   {reglas.recursos_pedidos_que_no_permite_el_tenant.join(", ")}
                 </p>
               ) : null}
-              <p className="mt-1 text-3xs text-ink-faint">{reglas.porque}</p>
+              <p className="mt-1 text-rotulo text-ink-faint">{reglas.porque}</p>
             </div>
           ) : null}
 
           {/* Quién ha conectado su cuenta y con qué alcances. Sin esto, el
               alcance concedido sólo se podía mirar en la base de datos. */}
-          <p className="mt-4 text-2xs text-ink-muted">
+          <p className="mt-4 text-dato text-ink-muted">
             {t("suite.consentimientos", { cuantos: vivos.length })}
           </p>
           {vivos.length > 0 ? (
@@ -1100,18 +1100,18 @@ export function QueSabeHacerCadaSuite() {
               {vivos.map((c) => (
                 <li
                   key={c.id}
-                  className="flex flex-wrap items-baseline gap-x-3 py-1.5 text-2xs"
+                  className="flex flex-wrap items-baseline gap-x-3 py-1.5 text-dato"
                 >
                   <span className="text-ink">
                     {c.recurso} · {c.sentido}
                   </span>
-                  <span className="font-mono text-3xs text-ink-faint">
+                  <span className="font-mono text-rotulo text-ink-faint">
                     {c.alcances.join(" ")}
                   </span>
                   {/* Sin refresco, la conexión se cae el día que caduque el
                       permiso y nadie lo sabrá hasta que falte el correo. */}
                   {c.tiene_refresco === false ? (
-                    <span className="text-3xs text-warning">
+                    <span className="text-rotulo text-warning">
                       {t("suite.sinRefresco")}
                     </span>
                   ) : null}
@@ -1122,7 +1122,7 @@ export function QueSabeHacerCadaSuite() {
                       422 cuando no se acertaba—. */}
                   <button
                     type="button"
-                    className="rounded border border-ink-dim/60 px-2 py-0.5 text-3xs text-ink"
+                    className="rounded border border-ink-dim/60 px-2 py-0.5 text-rotulo text-ink"
                     onClick={() => void sePuedeYa(c)}
                   >
                     {t("suite.sePuedeSincronizar")}
@@ -1131,8 +1131,8 @@ export function QueSabeHacerCadaSuite() {
                     <span
                       className={
                         puedeYa[c.id]?.se_puede
-                          ? "text-3xs text-success"
-                          : "text-3xs text-warning"
+                          ? "text-rotulo text-success"
+                          : "text-rotulo text-warning"
                       }
                     >
                       {puedeYa[c.id]?.porque}
@@ -1197,7 +1197,7 @@ function Cuarentena({ alReintentar }: { alReintentar: () => void }) {
       {filas.map((f) => (
         <tr key={f.id} className="border-b border-ink-dim/30 last:border-0">
           <Casilla className="text-ink">{f.herramienta}</Casilla>
-          <Casilla className="text-3xs text-ink-muted">
+          <Casilla className="text-rotulo text-ink-muted">
             {/* La baja se marca: es la única cuyo retraso deja un acceso
                 abierto, y en una lista larga se pierde entre las demás. */}
             {f.gravedad === "alta" ? (
@@ -1206,7 +1206,7 @@ function Cuarentena({ alReintentar }: { alReintentar: () => void }) {
             {f.objeto}: {JSON.stringify(f.carga)}
           </Casilla>
           <Casilla className="text-ink-muted">{f.intentos}</Casilla>
-          <Casilla className="text-3xs text-ink-faint">
+          <Casilla className="text-rotulo text-ink-faint">
             {f.error ?? "—"}
           </Casilla>
           <Casilla>
@@ -1215,7 +1215,7 @@ function Cuarentena({ alReintentar }: { alReintentar: () => void }) {
                 type="button"
                 onClick={() => void reintentar(f.id)}
                 disabled={enviando === f.id}
-                className="rounded border border-ink-dim/60 px-2 py-1 text-3xs text-ink disabled:opacity-50"
+                className="rounded border border-ink-dim/60 px-2 py-1 text-rotulo text-ink disabled:opacity-50"
               >
                 {enviando === f.id
                   ? t("suite.reintentando")
@@ -1302,13 +1302,13 @@ function PreguntasSobreLaSuite() {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("suite.preguntas")}</h2>
-      <p className="mb-3 text-3xs text-ink-faint">{t("suite.preguntasAyuda")}</p>
+      <p className="mb-3 text-rotulo text-ink-faint">{t("suite.preguntasAyuda")}</p>
       {fallo ? <Fallo error={fallo} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* A quién corresponde una cuenta del proveedor. */}
         <div>
-          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+          <label className="flex flex-col gap-1 text-dato text-ink-muted">
             {t("suite.deQuienEsEstaCuenta")}
             <input
               className="input-base"
@@ -1332,7 +1332,7 @@ function PreguntasSobreLaSuite() {
             {t("suite.resolver")}
           </button>
           {resuelto ? (
-            <p className="mt-2 text-3xs text-ink-faint">
+            <p className="mt-2 text-rotulo text-ink-faint">
               {resuelto.usuario_id ? (
                 <span className="font-mono text-ink">{resuelto.usuario_id}</span>
               ) : null}
@@ -1346,7 +1346,7 @@ function PreguntasSobreLaSuite() {
 
         {/* Huecos reales, sin leer de qué es cada cita. */}
         <div>
-          <p className="text-2xs text-ink-muted">{t("suite.cuandoEstaLibre")}</p>
+          <p className="text-dato text-ink-muted">{t("suite.cuandoEstaLibre")}</p>
           <div className="mt-1 flex gap-2">
             <input
               type="datetime-local"
@@ -1381,7 +1381,7 @@ function PreguntasSobreLaSuite() {
             {t("suite.verHuecos")}
           </button>
           {huecos ? (
-            <div className="mt-2 text-3xs text-ink-faint">
+            <div className="mt-2 text-rotulo text-ink-faint">
               {/* Un tramo sin huecos es un DATO, no una lista vacía: el propio
                   servidor lo dice con esas palabras. */}
               {huecos.aviso ? <p className="text-warning">{huecos.aviso}</p> : null}
@@ -1397,7 +1397,7 @@ function PreguntasSobreLaSuite() {
 
         {/* Qué entraría de un fichero estándar, antes de importarlo. */}
         <div>
-          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+          <label className="flex flex-col gap-1 text-dato text-ink-muted">
             {t("suite.queEntrariaDe")}
             <select
               className="input-base"
@@ -1425,7 +1425,7 @@ function PreguntasSobreLaSuite() {
             {t("suite.comprobar")}
           </button>
           {importacion ? (
-            <div className="mt-2 text-3xs text-ink-faint">
+            <div className="mt-2 text-rotulo text-ink-faint">
               <p className="text-ink">
                 {t("suite.entrarianDe", {
                   entrarian: importacion.entrarian,
@@ -1502,7 +1502,7 @@ export function CuandoNoConecta() {
   return (
     <section className="card mt-6 p-4">
       <h2 className="section-label mb-1">{t("suite.noConecta")}</h2>
-      <p className="mb-3 max-w-prose text-2xs text-ink-muted">
+      <p className="mb-3 max-w-prose text-dato text-ink-muted">
         {t("suite.noConectaPorque")}
       </p>
 
@@ -1514,7 +1514,7 @@ export function CuandoNoConecta() {
         }}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+          <label className="flex flex-col gap-1 text-dato text-ink-muted">
             {t("suite.codigoHttp")}
             <input
               className="input-base"
@@ -1524,7 +1524,7 @@ export function CuandoNoConecta() {
               placeholder="401"
             />
           </label>
-          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+          <label className="flex flex-col gap-1 text-dato text-ink-muted">
             {t("suite.mensajeDelProveedor")}
             <input
               className="input-base"
@@ -1532,7 +1532,7 @@ export function CuandoNoConecta() {
               onChange={(e) => setMensaje(e.target.value)}
             />
           </label>
-          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+          <label className="flex flex-col gap-1 text-dato text-ink-muted">
             {t("suite.alcancesConcedidos")}
             <input
               className="input-base"
@@ -1541,7 +1541,7 @@ export function CuandoNoConecta() {
               placeholder="Mail.Read, Calendars.Read"
             />
           </label>
-          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+          <label className="flex flex-col gap-1 text-dato text-ink-muted">
             {t("suite.alcancesNecesarios")}
             <input
               className="input-base"
@@ -1570,9 +1570,9 @@ export function CuandoNoConecta() {
                 : "border-warning/40 bg-warning/5"
             }`}
           >
-            <p className="text-sm text-ink">{veredicto.que_pasa}</p>
+            <p className="text-titulo text-ink">{veredicto.que_pasa}</p>
             {veredicto.faltan_alcances?.length ? (
-              <p className="mt-1 flex flex-wrap items-center gap-1 text-3xs">
+              <p className="mt-1 flex flex-wrap items-center gap-1 text-rotulo">
                 <span className="text-ink-faint">{t("suite.faltanEstos")}</span>
                 {veredicto.faltan_alcances.map((a) => (
                   <span key={a} className="chip-dato">
@@ -1582,7 +1582,7 @@ export function CuandoNoConecta() {
               </p>
             ) : null}
             {veredicto.que_hacer ? (
-              <p className="mt-2 max-w-prose text-2xs text-ink-muted">
+              <p className="mt-2 max-w-prose text-dato text-ink-muted">
                 {veredicto.que_hacer}
               </p>
             ) : null}
@@ -1625,11 +1625,11 @@ export function AntesDeDesconectar() {
   return (
     <section className="card mt-6 p-4">
       <h2 className="section-label mb-1">{t("suite.antesDeDesconectar")}</h2>
-      <p className="mb-3 max-w-prose text-2xs text-ink-muted">
+      <p className="mb-3 max-w-prose text-dato text-ink-muted">
         {t("suite.antesDeDesconectarPorque")}
       </p>
 
-      <label className="flex max-w-xs flex-col gap-1 text-2xs text-ink-muted">
+      <label className="flex max-w-xs flex-col gap-1 text-dato text-ink-muted">
         {t("suite.porQueSeDesconecta")}
         <select
           className="input-base"
@@ -1688,10 +1688,10 @@ function Mitad({
       <ul className="lista-acotada space-y-2 pr-1">
         {filas.map((f, i) => (
           <li key={i}>
-            <p className="text-2xs text-ink">{f.que}</p>
+            <p className="text-dato text-ink">{f.que}</p>
             {/* El porqué, siempre: sin él la lista es una norma que alguien
                 discutirá, y con él es una decisión que se entiende. */}
-            <p className="text-3xs text-ink-faint">{f.porque}</p>
+            <p className="text-rotulo text-ink-faint">{f.porque}</p>
           </li>
         ))}
       </ul>

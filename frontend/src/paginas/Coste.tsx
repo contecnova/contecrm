@@ -91,13 +91,13 @@ export function Coste() {
         icono="payments"
       />
 
-      <label className="mt-4 block text-2xs text-ink-muted" htmlFor="coste-lineas">
+      <label className="mt-4 block text-dato text-ink-muted" htmlFor="coste-lineas">
         {t("coste.lineas")}
       </label>
       <textarea
         id="coste-lineas"
         rows={4}
-        className="mt-1 w-full rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 font-mono text-2xs text-ink"
+        className="mt-1 w-full rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 font-mono text-dato text-ink"
         value={lineas}
         onChange={(e) => setLineas(e.target.value)}
       />
@@ -105,14 +105,14 @@ export function Coste() {
         <button
           type="button"
           onClick={calcular}
-          className="rounded-lg bg-accent px-3 py-1.5 text-2xs text-paper"
+          className="rounded-lg bg-accent px-3 py-1.5 text-dato text-paper"
         >
           {t("coste.calcular")}
         </button>
         <button
           type="button"
           onClick={mirarCapacidad}
-          className="rounded-lg border border-ink-dim/60 px-3 py-1.5 text-2xs text-ink"
+          className="rounded-lg border border-ink-dim/60 px-3 py-1.5 text-dato text-ink"
         >
           {t("coste.verCapacidad")}
         </button>
@@ -122,28 +122,28 @@ export function Coste() {
 
       {margen ? (
         <section className="mt-6 rounded-xl border border-ink-dim/60 bg-paper p-4" role="status">
-          <h2 className="text-xs font-medium text-ink">{t("coste.margen")}</h2>
+          <h2 className="text-titulin font-medium text-ink">{t("coste.margen")}</h2>
           <p
-            className={`mt-2 text-lg ${Number(margen.margen) < 0 ? "text-danger" : "text-ink"}`}
+            className={`mt-2 text-grande ${Number(margen.margen) < 0 ? "text-danger" : "text-ink"}`}
           >
             {margen.margen} ({margen.margen_pct} %)
           </p>
-          <p className="mt-1 text-2xs text-ink-muted">{margen.porque}</p>
+          <p className="mt-1 text-dato text-ink-muted">{margen.porque}</p>
           {margen.necesita_aprobacion ? (
-            <p className="mt-2 text-2xs text-warning">{t("coste.necesitaAprobacion")}</p>
+            <p className="mt-2 text-dato text-warning">{t("coste.necesitaAprobacion")}</p>
           ) : null}
           {/* Un margen incompleto no se presenta como el margen: se dice qué
               falta por medir. */}
           {!margen.completo ? (
-            <p className="mt-2 text-2xs text-warning">{margen.aviso}</p>
+            <p className="mt-2 text-dato text-warning">{margen.aviso}</p>
           ) : null}
         </section>
       ) : null}
 
       {capacidad ? (
         <section className="mt-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
-          <h2 className="text-xs font-medium text-ink">{t("coste.capacidad")}</h2>
-          <dl className="mt-2 grid grid-cols-2 gap-y-1 text-2xs">
+          <h2 className="text-titulin font-medium text-ink">{t("coste.capacidad")}</h2>
+          <dl className="mt-2 grid grid-cols-2 gap-y-1 text-dato">
             <dt className="text-ink-muted">{t("coste.libre")}</dt>
             <dd className="text-ink">{capacidad.libre}</dd>
             <dt className="text-ink-muted">{t("coste.enOfertas")}</dt>
@@ -155,7 +155,7 @@ export function Coste() {
           </dl>
           {capacidad.aviso ? (
             <p
-              className={`mt-2 text-2xs ${capacidad.sobrevendida ? "text-danger" : "text-warning"}`}
+              className={`mt-2 text-dato ${capacidad.sobrevendida ? "text-danger" : "text-warning"}`}
             >
               {capacidad.aviso}
             </p>

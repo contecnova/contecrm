@@ -42,7 +42,7 @@ export function PestanasDeFicha({
           type="button"
           onClick={() => alElegir(p.clave)}
           aria-current={p.clave === activa ? "page" : undefined}
-          className={`-mb-px border-b-[3px] px-4 py-2 text-xs ${
+          className={`-mb-px border-b-[3px] px-4 py-2 text-titulin ${
             p.clave === activa
               ? "border-accent font-semibold text-accent"
               : "border-transparent text-ink-muted hover:border-ink-dim hover:text-ink"

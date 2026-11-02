@@ -155,13 +155,13 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
         fila={conversacion as unknown as Record<string, unknown>}
         volverA={{ a: "/m/conversaciones", titulo: modulo?.titulo ?? "", id }}
         distintivos={
-          <span className="text-2xs text-ink-muted">
+          <span className="text-dato text-ink-muted">
             {t("conversacion.entradilla")}
           </span>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2 text-3xs text-ink-muted">
+      <div className="flex flex-wrap items-center gap-2 text-rotulo text-ink-muted">
         <span className="badge badge-accent">{conversacion.canal_actual}</span>
         <span>{conversacion.estado}</span>
         {conversacion.atendida_por_bot ? (
@@ -172,7 +172,7 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
       {/* El resultado de pulsar algo se anuncia: es una región viva, así que
           quien usa lector de pantalla lo oye donde está, sin ir a buscarlo al
           final del hilo. */}
-      <p role="status" aria-live="polite" className="text-3xs text-success">
+      <p role="status" aria-live="polite" className="text-rotulo text-success">
         {aviso}
       </p>
 
@@ -194,7 +194,7 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
                     : "border-accent/40"
               }`}
             >
-              <div className="flex flex-wrap items-baseline gap-x-2 text-3xs text-ink-muted">
+              <div className="flex flex-wrap items-baseline gap-x-2 text-rotulo text-ink-muted">
                 <span className="badge badge-accent">{m.canal}</span>
                 <span>
                   {t(
@@ -212,7 +212,7 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
                   {m.at.slice(0, 16).replace("T", " ")}
                 </span>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-2xs text-ink">
+              <p className="mt-1 whitespace-pre-wrap text-dato text-ink">
                 {m.cuerpo}
               </p>
             </li>
@@ -223,7 +223,7 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
       {puedeEscribir ? (
         <Responder enviando={enviando} alEnviar={accion} />
       ) : (
-        <p className="text-3xs text-ink-faint">
+        <p className="text-rotulo text-ink-faint">
           {t("conversacion.soloLectura")}
         </p>
       )}
@@ -248,7 +248,7 @@ function Responder({
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-ink-dim/40 p-3">
       <label className="flex flex-col gap-1">
-        <span className="text-3xs text-ink-muted">
+        <span className="text-rotulo text-ink-muted">
           {t("conversacion.respuesta")}
         </span>
         <textarea
@@ -258,7 +258,7 @@ function Responder({
           className="input-base"
         />
       </label>
-      <label className="flex items-center gap-2 text-3xs text-ink-muted">
+      <label className="flex items-center gap-2 text-rotulo text-ink-muted">
         <input
           type="checkbox"
           checked={interno}
@@ -295,7 +295,7 @@ function Responder({
 
       <div className="flex flex-wrap items-end gap-2 border-t border-ink-dim/30 pt-3">
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">
+          <span className="text-rotulo text-ink-muted">
             {t("conversacion.cambiarCanal")}
           </span>
           <select
@@ -312,7 +312,7 @@ function Responder({
           </select>
         </label>
         <label className="flex flex-1 flex-col gap-1">
-          <span className="text-3xs text-ink-muted">
+          <span className="text-rotulo text-ink-muted">
             {t("conversacion.motivo")}
           </span>
           <input
@@ -336,7 +336,7 @@ function Responder({
       </div>
       {/* Cambiar de canal NO abre una conversación nueva: el hilo se conserva.
           Decirlo aquí evita que nadie abra una «por si acaso». */}
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("conversacion.transferirDetalle")}
       </p>
     </div>

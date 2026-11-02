@@ -84,7 +84,7 @@ export function Menciones() {
       {/* Un servicio mudo se dice: sin esto, una lista corta se lee como
           «no me han mencionado» y puede ser «no se ha podido preguntar». */}
       {datos.sin_respuesta.length > 0 ? (
-        <p className="card mb-3 border-warning/40 p-3 text-2xs text-warning" role="status">
+        <p className="card mb-3 border-warning/40 p-3 text-dato text-warning" role="status">
           {datos.aviso}
         </p>
       ) : null}
@@ -110,22 +110,22 @@ export function Menciones() {
                     <span className="badge badge-aviso">{t("menciones.interno")}</span>
                   ) : null}
                   <span className="flex-1" />
-                  <span className="font-mono text-3xs text-ink-faint">
+                  <span className="font-mono text-rotulo text-ink-faint">
                     {fechaHora(m.cuando)}
                   </span>
                 </div>
-                <p className="mt-1 text-2xs text-ink">{m.cuerpo}</p>
+                <p className="mt-1 text-dato text-ink">{m.cuerpo}</p>
                 {/* El enlace al registro: sin él hay que buscarlo a mano, que
                     es la mitad del trabajo que esto ahorra. */}
                 {modulo !== "" ? (
                   <Link
-                    className="btn-link mt-1 inline-block text-3xs"
+                    className="btn-link mt-1 inline-block text-rotulo"
                     to={`/m/${modulo}/${m.objeto_tipo}/${m.objeto_id}`}
                   >
                     {t("menciones.abrir")}
                   </Link>
                 ) : (
-                  <span className="mt-1 inline-block font-mono text-3xs text-ink-faint">
+                  <span className="mt-1 inline-block font-mono text-rotulo text-ink-faint">
                     {m.objeto_id}
                   </span>
                 )}

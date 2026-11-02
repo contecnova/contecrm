@@ -35,7 +35,7 @@ export function Rejilla({
    * Letra un punto más pequeña, para tablas de apoyo dentro de otra pantalla.
    *
    * Está aquí y no suelto porque **ya divergía**: dos de las cuatro copias
-   * usaban `text-2xs` y las otras dos `text-xs`, sin que nadie lo decidiera.
+   * usaban `text-dato` y las otras dos `text-titulin`, sin que nadie lo decidiera.
    *
    * Es una distinción RELATIVA a la densidad de quien mira, no un tamaño: se
    * calcula desde el token en `.celda-rejilla--apoyo`.
@@ -77,7 +77,7 @@ export function Rejilla({
     >
       {/* El tamaño de letra sale del token de densidad, en `.celda-rejilla`, y
           no de una clase fija: con la densidad por persona, una tabla con
-          `text-xs` clavado se queda igual de apretada cuando alguien pide el
+          `text-titulin` clavado se queda igual de apretada cuando alguien pide el
           modo cómodo — y entonces el interruptor parece que no hace nada. */}
       <table className={`w-full text-left ${compacta ? "es-apoyo" : ""}`}>
         {titulo ? <caption className="sr-only">{titulo}</caption> : null}
@@ -96,7 +96,7 @@ export function Rejilla({
               <th
                 key={i}
                 scope="col"
-                className="celda-rejilla whitespace-nowrap text-3xs font-semibold uppercase tracking-[0.055em] text-ink-muted"
+                className="celda-rejilla whitespace-nowrap text-rotulo font-semibold uppercase tracking-[0.055em] text-ink-muted"
               >
                 {c}
               </th>

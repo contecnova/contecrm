@@ -126,7 +126,7 @@ function Monton({
 
   return (
     <section>
-      <h2 className={`text-sm font-medium ${color}`}>
+      <h2 className={`text-titulo font-medium ${color}`}>
         {titulo}{" "}
         {/* El total es el de TODO, no el de lo que cabe en pantalla. */}
         <span className="text-ink-faint">({monton.total})</span>
@@ -134,7 +134,7 @@ function Monton({
 
       {monton.total === 0 ? (
         vacio ? (
-          <p className="mt-1 text-3xs text-ink-faint">{vacio}</p>
+          <p className="mt-1 text-rotulo text-ink-faint">{vacio}</p>
         ) : null
       ) : (
         <>
@@ -148,9 +148,9 @@ function Monton({
                   to={`/m/casos/caso/${c.id}`}
                   className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 hover:bg-paper-light"
                 >
-                  <span className="font-mono text-3xs text-ink-faint">{c.codigo || "—"}</span>
-                  <span className="min-w-0 flex-1 truncate text-2xs text-ink">{c.asunto}</span>
-                  <span className="text-3xs text-ink-muted">{c.estado}</span>
+                  <span className="font-mono text-rotulo text-ink-faint">{c.codigo || "—"}</span>
+                  <span className="min-w-0 flex-1 truncate text-dato text-ink">{c.asunto}</span>
+                  <span className="text-rotulo text-ink-muted">{c.estado}</span>
                   {c.prioridad === "alta" || c.prioridad === "urgente" ? (
                     <span className="badge badge-warning">{c.prioridad}</span>
                   ) : null}
@@ -162,7 +162,7 @@ function Monton({
           {escondidos > 0 ? (
             // Decir cuántos quedan fuera, y no dejar que la lista parezca
             // completa: es la diferencia entre recortar y mentir.
-            <p className="mt-1 text-3xs text-ink-faint">
+            <p className="mt-1 text-rotulo text-ink-faint">
               {t("casos.yMas", { count: escondidos })}
             </p>
           ) : null}
@@ -192,16 +192,16 @@ function Reloj({ vence, incumplio }: { vence: string | null; incumplio: boolean 
   // después. Enseñar «vence en 48 h» sobre un caso incumplido sería negar el
   // incumplimiento.
   if (incumplio) {
-    return <span className="font-mono text-3xs text-danger">{t("casos.incumplido")}</span>;
+    return <span className="font-mono text-rotulo text-danger">{t("casos.incumplido")}</span>;
   }
-  if (!vence) return <span className="text-3xs text-ink-faint">{t("casos.sinSla")}</span>;
+  if (!vence) return <span className="text-rotulo text-ink-faint">{t("casos.sinSla")}</span>;
 
   const restan = Date.parse(vence) - ahora;
   const horas = Math.floor(Math.abs(restan) / 3600_000);
   const minutos = Math.floor((Math.abs(restan) % 3600_000) / 60_000);
   const texto = `${horas}h ${minutos}m`;
   return (
-    <span className={`font-mono text-3xs ${restan < 0 ? "text-danger" : "text-ink-muted"}`}>
+    <span className={`font-mono text-rotulo ${restan < 0 ? "text-danger" : "text-ink-muted"}`}>
       {restan < 0 ? t("casos.vencidoHace", { tiempo: texto }) : t("casos.vence", { tiempo: texto })}
     </span>
   );

@@ -17,7 +17,14 @@
  * colores no lo lee quien no los distingue.
  */
 
-import { ALTO, ANCHO, aristas, type Arista, type Definicion, type Nodo } from "@/lib/grafo";
+import {
+  ALTO,
+  ANCHO,
+  aristas,
+  type Arista,
+  type Definicion,
+  type Nodo,
+} from "@/lib/grafo";
 
 /** Cómo se pinta una caja: su trazo y lo que lleva escrito dentro. */
 export interface Pintura {
@@ -26,6 +33,17 @@ export interface Pintura {
   /** Las líneas de texto de la caja, de arriba abajo. */
   lineas: string[];
 }
+
+/**
+ * Los tamaños de letra de un SVG, en la escala del sistema.
+ *
+ * Un `<text>` de SVG no admite una clase de Tailwind con el tamaño, así que
+ * va el número — y por eso se escapó: **medido el 02-11-2026**, las etiquetas
+ * de los ejes y de los nodos estaban en 9 px, por debajo de lo que se lee en
+ * un escritorio, en la portada y en el diagrama de procesos. Van al mínimo
+ * del sistema, que son 12.
+ */
+const LETRA_GRAFICA = 12;
 
 export function Diagrama({
   definicion,
@@ -68,7 +86,7 @@ export function Diagrama({
                 x={(desde.x + 140 + hasta.x) / 2}
                 y={(desde.y + hasta.y) / 2 + 12}
                 fill="rgb(var(--ink-faint))"
-                fontSize={9}
+                fontSize={LETRA_GRAFICA}
               >
                 {a.etiqueta}
               </text>
@@ -96,7 +114,7 @@ export function Diagrama({
                 x={n.x + 10}
                 y={n.y + 15 + i * 13}
                 fill={i === 0 ? "rgb(var(--ink))" : "rgb(var(--ink-faint))"}
-                fontSize={i === 0 ? 11 : 9}
+                fontSize={LETRA_GRAFICA}
               >
                 {linea}
               </text>

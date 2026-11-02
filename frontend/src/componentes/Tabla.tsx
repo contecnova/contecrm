@@ -417,7 +417,7 @@ export function Tabla({
                 pedírselo a quien la coloca obligaría a sacar ese estado fuera
                 para enseñar un texto. */}
             {ocupaLaPantalla ? (
-              <p className="text-3xs text-ink-faint" role="status">
+              <p className="text-rotulo text-ink-faint" role="status">
                 {busqueda.trim()
                   ? t("tabla.cuantosDeCuantos", {
                       cuantos: filasOrdenadas.length,
@@ -477,7 +477,7 @@ export function Tabla({
             {disponibles.map((c) => (
               <label
                 key={c}
-                className="inline-flex items-center gap-1.5 text-2xs text-ink"
+                className="inline-flex items-center gap-1.5 text-dato text-ink"
               >
                 <input
                   type="checkbox"
@@ -505,7 +505,7 @@ export function Tabla({
       {busqueda.trim() && filasOrdenadas.length === 0 ? (
         <p
           className={cn(
-            "text-2xs text-ink-faint",
+            "text-dato text-ink-faint",
             pegada ? "rounded-b border-x border-b border-ink-dim/50 bg-paper px-3 py-6 text-center" : "py-4",
           )}
           role="status"
@@ -620,7 +620,7 @@ export function Tabla({
       </Rejilla>
       )}
       {escondidas > 0 ? (
-        <p className="mt-1.5 text-3xs text-ink-faint">
+        <p className="mt-1.5 text-rotulo text-ink-faint">
           {t("tabla.masColumnas", { count: escondidas })}
         </p>
       ) : null}
@@ -694,7 +694,7 @@ export function Celda({ valor, campo }: { valor: unknown; campo: string }) {
         ))}
         {piezas.length > visibles.length ? (
           <span
-            className="text-3xs text-ink-faint"
+            className="text-rotulo text-ink-faint"
             title={piezas.map((t) => t.texto).join(" · ")}
           >
             +{piezas.length - visibles.length}
@@ -709,7 +709,7 @@ export function Celda({ valor, campo }: { valor: unknown; campo: string }) {
     // Ocho caracteres bastan para distinguir dos filas; treinta y seis de
     // hexadecimal no se leen, no se recuerdan y no se comparan de un vistazo.
     return (
-      <span className="font-mono text-3xs text-ink-muted" title={valor}>
+      <span className="font-mono text-rotulo text-ink-muted" title={valor}>
         {valor.slice(0, 8)}…
       </span>
     );

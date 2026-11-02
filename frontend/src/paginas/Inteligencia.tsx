@@ -122,13 +122,13 @@ export function Inteligencia() {
            confundirlas hace que alguien llame a un cliente que está bien. El
            servidor dice el motivo y qué haría falta; se enseñan los dos. */
         <section className="mt-6 max-w-2xl rounded-xl border border-warning/40 bg-warning/5 p-4">
-          <h2 className="flex items-center gap-1.5 text-sm font-medium text-warning">
+          <h2 className="flex items-center gap-1.5 text-titulo font-medium text-warning">
             <Icono nombre="info" tamano="sm" />
             {t("ia.sinMedir")}
           </h2>
-          {salud.porque ? <p className="mt-2 text-2xs text-ink-muted">{salud.porque}</p> : null}
+          {salud.porque ? <p className="mt-2 text-dato text-ink-muted">{salud.porque}</p> : null}
           {salud.que_hacer ? (
-            <p className="mt-2 text-2xs text-ink">
+            <p className="mt-2 text-dato text-ink">
               <span className="font-medium">{t("ia.queHacer")}</span> {salud.que_hacer}
             </p>
           ) : null}
@@ -138,10 +138,10 @@ export function Inteligencia() {
       {salud?.hay ? (
         <div className="mt-6 flex max-w-3xl flex-col gap-4">
           <section className="card p-4">
-            <p className="text-3xl font-bold tracking-tight text-ink">
+            <p className="text-hero font-bold tracking-tight text-ink">
               {salud.puntuacion ?? "—"}
             </p>
-            <p className="mt-1 text-2xs text-ink-muted">
+            <p className="mt-1 text-dato text-ink-muted">
               {salud.nivel}
               {salud.fiable === false ? ` · ${t("ia.pocoFiable")}` : ""}
             </p>
@@ -149,7 +149,7 @@ export function Inteligencia() {
                 hace tres meses no es una alerta: es un recuerdo, y llamar por
                 él molesta a un cliente cuyo problema ya se resolvió. */}
             {typeof salud.medida_hace_dias === "number" ? (
-              <p className={`mt-1 text-3xs ${salud.vigente === false ? "text-warning" : "text-ink-faint"}`}>
+              <p className={`mt-1 text-rotulo ${salud.vigente === false ? "text-warning" : "text-ink-faint"}`}>
                 {t("ia.medidaHace", { dias: salud.medida_hace_dias })}
               </p>
             ) : null}
@@ -160,15 +160,15 @@ export function Inteligencia() {
               escrito donde se sabe; reescribirlo aquí sería inventárselo. */}
           {salud.aviso ? (
             <section className="rounded-xl border border-warning/40 bg-warning/5 p-4">
-              <p className="text-2xs text-ink">{salud.aviso}</p>
+              <p className="text-dato text-ink">{salud.aviso}</p>
             </section>
           ) : null}
 
           {/* Por qué está en ese nivel. */}
           {salud.motivo ? (
             <section className="card p-4">
-              <h2 className="text-xs font-medium text-ink">{t("ia.porQue")}</h2>
-              <p className="mt-2 text-2xs text-ink-muted">{salud.motivo}</p>
+              <h2 className="text-titulin font-medium text-ink">{t("ia.porQue")}</h2>
+              <p className="mt-2 text-dato text-ink-muted">{salud.motivo}</p>
             </section>
           ) : null}
 
@@ -187,7 +187,7 @@ export function Inteligencia() {
               Así que lo que se enseña es lo que hay, y se dice dónde está el
               resto. */}
           {salud.de_donde_sale ? (
-            <p className="text-3xs text-ink-faint">{salud.de_donde_sale}</p>
+            <p className="text-rotulo text-ink-faint">{salud.de_donde_sale}</p>
           ) : null}
         </div>
       ) : null}

@@ -528,11 +528,11 @@ function NoExiste() {
   const { pathname } = useLocation();
   return (
     <div className="p-4" role="alert">
-      <h1 className="text-lg text-ink">{t("noExiste.titulo")}</h1>
-      <p className="mt-2 max-w-prose text-2xs text-ink-muted">
+      <h1 className="text-grande text-ink">{t("noExiste.titulo")}</h1>
+      <p className="mt-2 max-w-prose text-dato text-ink-muted">
         {t("noExiste.detalle")} <code className="font-mono text-ink">{pathname}</code>
       </p>
-      <Link to="/" className="mt-4 inline-block text-2xs text-accent underline">
+      <Link to="/" className="mt-4 inline-block text-dato text-accent underline">
         {t("noExiste.volver")}
       </Link>
     </div>

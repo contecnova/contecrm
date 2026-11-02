@@ -377,7 +377,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     return (
       <li className={cn("group", dentro && "ml-6 border-l border-ink-dim/60 pl-3")}>
         <div className={cn("rounded-xl px-3 py-2", mio ? "bg-accent/10" : "bg-paper-sunk")}>
-          <p className="flex items-baseline gap-2 text-3xs text-ink-faint">
+          <p className="flex items-baseline gap-2 text-rotulo text-ink-faint">
             <span className="font-medium text-ink-muted">
               {autor?.nombre || autor?.email || t("chat.alguien")}
             </span>
@@ -405,9 +405,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             ) : null}
           </p>
           {mensaje.borrado ? (
-            <p className="mt-1 text-xs italic text-ink-faint">{t("chat.borrado")}</p>
+            <p className="mt-1 text-titulin italic text-ink-faint">{t("chat.borrado")}</p>
           ) : (
-            <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{mensaje.cuerpo}</p>
+            <p className="mt-1 whitespace-pre-wrap text-titulin text-ink">{mensaje.cuerpo}</p>
           )}
 
           <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -416,7 +416,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 key={emoji}
                 type="button"
                 onClick={() => void reaccionar(mensaje.id, emoji)}
-                className="rounded-lg border border-ink-dim/60 px-1.5 py-0.5 text-3xs text-ink-muted hover:bg-paper"
+                className="rounded-lg border border-ink-dim/60 px-1.5 py-0.5 text-rotulo text-ink-muted hover:bg-paper"
               >
                 {emoji} {quienes.length}
               </button>
@@ -430,7 +430,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                   type="button"
                   title={t("chat.reaccionar")}
                   onClick={() => void reaccionar(mensaje.id, emoji)}
-                  className="rounded-lg px-1 py-0.5 text-3xs opacity-60 hover:opacity-100"
+                  className="rounded-lg px-1 py-0.5 text-rotulo opacity-60 hover:opacity-100"
                 >
                   {emoji}
                 </button>
@@ -440,7 +440,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               <button
                 type="button"
                 onClick={() => setHilo(mensaje.id)}
-                className="ml-1 hidden rounded-lg px-1.5 py-0.5 text-3xs text-ink-muted hover:bg-paper group-hover:block"
+                className="ml-1 hidden rounded-lg px-1.5 py-0.5 text-rotulo text-ink-muted hover:bg-paper group-hover:block"
               >
                 {t("chat.responder")}
               </button>
@@ -451,7 +451,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               <button
                 type="button"
                 onClick={() => void papelera(mensaje.id, Boolean(mensaje.borrado))}
-                className="ml-1 hidden rounded-lg px-1.5 py-0.5 text-3xs text-ink-muted hover:bg-paper group-hover:block"
+                className="ml-1 hidden rounded-lg px-1.5 py-0.5 text-rotulo text-ink-muted hover:bg-paper group-hover:block"
               >
                 {mensaje.borrado ? t("chat.recuperar") : t("chat.borrar")}
               </button>
@@ -479,7 +479,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
       <div className="mt-4 grid gap-3 lg:grid-cols-[16rem_1fr]">
         <aside className="rounded-xl border border-ink-dim/60 bg-paper p-2">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-2xs font-medium uppercase tracking-wide text-ink-faint">
+            <h2 className="text-dato font-medium uppercase tracking-wide text-ink-faint">
               {t("chat.conversaciones")}
             </h2>
             <button
@@ -502,7 +502,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
           {conversaciones === null ? (
             <Cargando />
           ) : conversaciones.length === 0 ? (
-            <p className="px-2 py-3 text-3xs text-ink-faint">{t("chat.sinConversaciones")}</p>
+            <p className="px-2 py-3 text-rotulo text-ink-faint">{t("chat.sinConversaciones")}</p>
           ) : (
             <ul className="space-y-0.5">
               {conversaciones.map((c) => (
@@ -511,7 +511,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     type="button"
                     onClick={() => setParametros({ c: c.id })}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs",
+                      "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-titulin",
                       c.id === activa
                         ? "bg-paper-light text-ink"
                         : "text-ink-muted hover:bg-paper-light",
@@ -519,7 +519,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                   >
                     <span className="truncate">{titulo(c)}</span>
                     {c.sin_leer > 0 ? (
-                      <span className="ml-2 rounded-full bg-accent px-1.5 text-3xs text-white">
+                      <span className="ml-2 rounded-full bg-accent px-1.5 text-rotulo text-white">
                         {c.sin_leer}
                       </span>
                     ) : null}
@@ -553,7 +553,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             />
             {hallazgos ? (
               <div className="mt-2">
-                <p className="text-3xs text-ink-faint" role="status">
+                <p className="text-rotulo text-ink-faint" role="status">
                   {t("chat.hallazgos", { cuantos: hallazgos.length })}
                 </p>
                 <ul className="lista-acotada mt-1 space-y-1">
@@ -562,7 +562,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                       <button
                         type="button"
                         onClick={() => setParametros({ c: m.conversacion_id })}
-                        className="w-full rounded-lg px-2 py-1 text-left text-3xs text-ink-muted hover:bg-paper-light"
+                        className="w-full rounded-lg px-2 py-1 text-left text-rotulo text-ink-muted hover:bg-paper-light"
                       >
                         {m.cuerpo.slice(0, 90)}
                       </button>
@@ -578,12 +578,12 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               Por eso va el «visto por última vez» y no sólo un punto verde. */}
           {presencia.length > 0 ? (
             <div className="mt-3 border-t border-ink-dim/60 pt-2">
-              <h2 className="text-3xs font-medium uppercase tracking-wide text-ink-faint">
+              <h2 className="text-rotulo font-medium uppercase tracking-wide text-ink-faint">
                 {t("chat.quienEsta")}
               </h2>
               <ul className="mt-1 space-y-0.5">
                 {presencia.map((pr) => (
-                  <li key={pr.usuario_id} className="flex items-baseline gap-2 text-3xs">
+                  <li key={pr.usuario_id} className="flex items-baseline gap-2 text-rotulo">
                     <span className="text-ink-muted">
                       {usuarios[pr.usuario_id]?.nombre ?? t("chat.alguien")}
                     </span>
@@ -620,14 +620,14 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
           ) : (
             <>
               <header className="border-b border-ink-dim/60 px-3 py-2">
-                <h2 className="text-xs font-medium text-ink">{titulo(abierta)}</h2>
+                <h2 className="text-titulin font-medium text-ink">{titulo(abierta)}</h2>
                 {abierta.proposito ? (
-                  <p className="text-3xs text-ink-faint">{abierta.proposito}</p>
+                  <p className="text-rotulo text-ink-faint">{abierta.proposito}</p>
                 ) : null}
                 {abierta.objeto_tipo ? (
                   /* Lo que hace que esto no sea un chat cualquiera: se ve de qué
                      registro se está hablando sin salir de aquí. */
-                  <p className="mt-0.5 text-3xs text-accent">
+                  <p className="mt-0.5 text-rotulo text-accent">
                     <Icono nombre="link" /> {t("chat.sobreEl", { objeto: abierta.objeto_tipo })}
                   </p>
                 ) : null}
@@ -635,7 +635,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     canal hay que poder saberlo, y el servidor lo devolvía sin
                     que ninguna pantalla lo enseñara. */}
                 {miembros.length > 0 ? (
-                  <p className="mt-0.5 flex flex-wrap items-baseline gap-1 text-3xs text-ink-faint">
+                  <p className="mt-0.5 flex flex-wrap items-baseline gap-1 text-rotulo text-ink-faint">
                     <span>{t("chat.miembros", { cuantos: miembros.length })}</span>
                     {miembros.map((m) => (
                       <span key={m.usuario_id} className="chip-dato">
@@ -669,7 +669,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               {versiones ? (
                 <div className="border-b border-ink-dim/60 bg-paper-sunk px-3 py-2">
                   <div className="flex items-baseline justify-between">
-                    <h3 className="text-3xs font-medium uppercase tracking-wide text-ink-faint">
+                    <h3 className="text-rotulo font-medium uppercase tracking-wide text-ink-faint">
                       {t("chat.queDeciaAntes")}
                     </h3>
                     <button
@@ -682,13 +682,13 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     </button>
                   </div>
                   {versiones.lista.length === 0 ? (
-                    <p className="text-3xs text-ink-faint">{t("chat.sinVersiones")}</p>
+                    <p className="text-rotulo text-ink-faint">{t("chat.sinVersiones")}</p>
                   ) : (
                     <ol className="mt-1 space-y-1">
                       {versiones.lista.map((v, i) => (
                         <li
                           key={i}
-                          className="rounded-lg bg-paper px-2 py-1 text-3xs text-ink-muted"
+                          className="rounded-lg bg-paper px-2 py-1 text-rotulo text-ink-muted"
                         >
                           {v.cuerpo}
                         </li>
@@ -707,7 +707,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
 
               <div className="border-t border-ink-dim/60 p-2">
                 {hilo ? (
-                  <p className="mb-1 flex items-center gap-2 text-3xs text-ink-faint">
+                  <p className="mb-1 flex items-center gap-2 text-rotulo text-ink-faint">
                     {t("chat.respondiendo")}
                     <button
                       type="button"
@@ -735,7 +735,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                   <button
                     type="submit"
                     disabled={enviando || !texto.trim()}
-                    className="rounded-xl bg-accent px-3 py-1.5 text-xs text-white disabled:opacity-50"
+                    className="rounded-xl bg-accent px-3 py-1.5 text-titulin text-white disabled:opacity-50"
                   >
                     {t("chat.enviar")}
                   </button>
@@ -792,7 +792,7 @@ function NuevaConversacion({
             aria-selected={modo === x}
             onClick={() => setModo(x)}
             className={cn(
-              "rounded-lg px-2 py-1 text-3xs",
+              "rounded-lg px-2 py-1 text-rotulo",
               modo === x ? "bg-accent/15 text-accent" : "text-ink-muted hover:bg-paper",
             )}
           >
@@ -811,7 +811,7 @@ function NuevaConversacion({
             className="input-base mb-1"
           />
           {gente.length === 0 ? (
-            <p className="px-1 py-2 text-3xs text-ink-faint">{t("chat.nadieAsi")}</p>
+            <p className="px-1 py-2 text-rotulo text-ink-faint">{t("chat.nadieAsi")}</p>
           ) : (
             <ul className="space-y-0.5">
               {gente.map((u) => (
@@ -819,7 +819,7 @@ function NuevaConversacion({
                   <button
                     type="button"
                     onClick={() => void alAbrir({ tipo: "directo", miembros: [u.id] })}
-                    className="w-full truncate rounded-lg px-2 py-1 text-left text-2xs text-ink hover:bg-paper"
+                    className="w-full truncate rounded-lg px-2 py-1 text-left text-dato text-ink hover:bg-paper"
                   >
                     {u.nombre || u.email}
                   </button>

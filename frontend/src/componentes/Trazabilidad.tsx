@@ -83,7 +83,7 @@ export function HistorialDeCampos({
       className="mt-3"
       onToggle={(e) => setAbierto(e.currentTarget.open)}
     >
-      <summary className="cursor-pointer text-3xs text-ink-faint">
+      <summary className="cursor-pointer text-rotulo text-ink-faint">
         {t("ficha.queHaCambiado")}
       </summary>
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
@@ -98,7 +98,7 @@ export function HistorialDeCampos({
         ) : (
           <ul className="card mt-2 flex flex-col gap-2 p-4">
             {datos.cambios.map((c, i) => (
-              <li key={`${c.campo}-${i}`} className="text-2xs">
+              <li key={`${c.campo}-${i}`} className="text-dato">
                 <span className="text-ink">{c.campo}</span>:{" "}
                 <span className="text-ink-faint line-through">
                   {c.valor_anterior ?? "—"}
@@ -195,17 +195,17 @@ export function ComoEstabaEsto({
       className="card mt-4 p-4"
       onToggle={(e) => setAbierto((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="cursor-pointer text-2xs font-medium text-ink">
+      <summary className="cursor-pointer text-dato font-medium text-ink">
         {t("ficha.comoEstaba")}
       </summary>
       {fallo ? (
-        <p className="mt-2 text-2xs text-ink-muted">
+        <p className="mt-2 text-dato text-ink-muted">
           {t("ficha.sinRastroCompleto")}
         </p>
       ) : null}
       {estado ? (
         <>
-          <p className="mt-2 text-2xs text-ink-muted">
+          <p className="mt-2 text-dato text-ink-muted">
             {t("ficha.hechos", {
               cuantos: estado.hechos,
               compensados: estado.hechos_compensados,
@@ -214,25 +214,25 @@ export function ComoEstabaEsto({
           {/* Los compensados se aplican y se anulan, no se saltan: saltarlos
               daría el estado que habría habido si nadie se hubiera equivocado,
               que no es lo que pasó. */}
-          <p className="mt-1 text-3xs text-ink-faint">{estado.porque}</p>
+          <p className="mt-1 text-rotulo text-ink-faint">{estado.porque}</p>
         </>
       ) : null}
       {cuadra ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
           <p
             className={
-              cuadra.cuadra ? "text-2xs text-success" : "text-2xs text-danger"
+              cuadra.cuadra ? "text-dato text-success" : "text-dato text-danger"
             }
           >
             {cuadra.cuadra ? t("ficha.cuadra") : t("ficha.noCuadra")}
           </p>
-          <p className="mt-1 text-3xs text-ink-muted">{cuadra.que_significa}</p>
+          <p className="mt-1 text-rotulo text-ink-muted">{cuadra.que_significa}</p>
           {(cuadra.diferencias ?? []).length > 0 ? (
             <ul className="mt-1 divide-y divide-ink-dim/30">
               {(cuadra.diferencias ?? []).map((d) => (
                 <li
                   key={d.campo}
-                  className="flex flex-wrap items-baseline gap-x-2 py-1 text-3xs"
+                  className="flex flex-wrap items-baseline gap-x-2 py-1 text-rotulo"
                 >
                   <span className="font-medium text-ink">{d.campo}</span>
                   <span className="text-ink-faint">

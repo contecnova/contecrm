@@ -322,6 +322,21 @@ Abre las 58 pantallas contra la pila local y, de cada listado, su primera
 ficha **con todas sus pestañas**. Dice dos cosas: cuáles revientan al pintar y
 cuáles enseñan el dato en crudo.
 
+**La letra fuera de la escala** es cualquier tamaño que no sea uno de los
+siete —12, 13, 14, 16, 20, 24 y 32—. Hay una prueba que lee el código y vigila
+las tres formas de escribir un tamaño (clase de la escala, clase arbitraria y
+número suelto), y **no basta**: se le escapó un 9 px escondido tras una
+constante, `fontSize={LETRA_GRAFICA}`, y lo cazó plantar el caso malo, no la
+prueba. Contra una indirección sólo vale mirar lo que el navegador pinta, y
+eso es esto. Los iconos no cuentan: son una ligadura dibujada.
+
+Y por eso la línea dice **cuántos textos ha mirado**, no sólo cuántos ha
+encontrado fuera: una pantalla que todavía no ha pintado nada da «ninguno
+fuera» con el mismo verde que una que está bien. Con el 9 px plantado a
+propósito, este barrido llegó a contestar «ninguna» mientras una sonda suelta
+sobre la misma pantalla lo veía — el número de mirados es lo que distingue las
+dos cosas.
+
 **El dato en crudo** es `null`, `undefined` o `[object Object]` a la vista.
 Sale cuando un valor vacío o compuesto llega a la pantalla sin pasar por el
 formateador de la casa, y no revienta nada: la pantalla funciona y miente.
@@ -331,7 +346,19 @@ barrido lo busca con los límites de palabra puestos, que «anular» lleva «nul
 dentro y es castellano.
 
 Las pestañas se recorren porque el fallo estaba en «Detalles», que no se pinta
-hasta que alguien la pulsa: abrir la ficha y mirar no lo veía.
+hasta que alguien la pulsa: abrir la ficha y mirar no lo veía. **Se buscan por
+su rótulo** —`nav[aria-label="Secciones de la ficha"]`— y no como «cualquier
+`nav` dentro de `main`»: con el selector ancho el barrido pulsaba todo botón
+de todo `nav` —paginación, menús, selectores—, a 900 ms cada uno. Pasó de tres
+minutos a más de quince, y cada clic dejaba el navegador donde le parecía, así
+que dejó de medir lo que creía medir: con un 9 px plantado a propósito
+contestaba «ninguna» mientras el mismo bucle sobre una sola pantalla lo veía.
+
+Con el selector acotado: 58 pantallas, 5.217 textos mirados, y el 9 px
+plantado sale nombrado y con código 1.
+
+Y `CRM_SOLO=/procesos,/m/cuentas` recorta el barrido a lo que se nombre, que
+es lo que permite perseguir un fallo sin esperar el recorrido entero.
 
 **Por qué hace falta algo que no es un gate.** El 01-11-2026 se encontraron dos
 pantallas muertas —la ficha de cualquier oportunidad con metodología activa y

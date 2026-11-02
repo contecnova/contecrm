@@ -68,8 +68,8 @@ function Resultado({ datos }: { datos: unknown }) {
           recurso && modulo && objeto && typeof valor === "string" && UUID_SUELTO.test(valor);
         return (
           <div key={clave} className="flex items-baseline justify-between gap-3">
-            <dt className="shrink-0 text-3xs text-ink-faint">{humanizar(clave)}</dt>
-            <dd className="truncate text-2xs text-ink">
+            <dt className="shrink-0 text-rotulo text-ink-faint">{humanizar(clave)}</dt>
+            <dd className="truncate text-dato text-ink">
               {enlazable ? (
                 <Link
                   to={`/m/${modulo}/${objeto}/${valor}`}
@@ -204,7 +204,7 @@ export function Acciones({
 
       {resultado ? (
         <div className="card mt-3 border-success/40 p-3" role="status">
-          <p className="inline-flex items-center gap-1.5 text-xs text-success">
+          <p className="inline-flex items-center gap-1.5 text-titulin text-success">
             <Icono nombre="check_circle" tamano="sm" />
             {t("acciones.hecho")}
           </p>
@@ -218,11 +218,11 @@ export function Acciones({
 
       {abierta ? (
         <div className="card mt-3 p-4">
-          <h3 className="text-xs font-medium text-ink">{abierta.nombre}</h3>
+          <h3 className="text-titulin font-medium text-ink">{abierta.nombre}</h3>
 
           {irreversible && !confirmada ? (
             <div className="mt-3" role="alertdialog" aria-label={abierta.nombre}>
-              <p className="text-2xs text-ink-muted">{t("acciones.noSeDeshace")}</p>
+              <p className="text-dato text-ink-muted">{t("acciones.noSeDeshace")}</p>
               <div className="mt-3 flex gap-2">
                 <button type="button" onClick={() => setConfirmada(true)} className="btn-danger">
                   {t("acciones.entendido")}

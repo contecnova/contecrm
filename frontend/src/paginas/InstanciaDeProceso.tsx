@@ -173,7 +173,7 @@ export function InstanciaDeProceso() {
               {t("instancia.version", { version: grafico.version })}
             </span>
             {grafico.paso_actual ? (
-              <span className="text-2xs text-ink-muted">
+              <span className="text-dato text-ink-muted">
                 {t("instancia.paradaEn", { paso: grafico.paso_actual })}
               </span>
             ) : null}
@@ -182,7 +182,7 @@ export function InstanciaDeProceso() {
       />
 
       {grafico.error ? (
-        <p className="card mb-4 border-danger/40 p-3 text-2xs text-danger">
+        <p className="card mb-4 border-danger/40 p-3 text-dato text-danger">
           {grafico.error}
         </p>
       ) : null}
@@ -208,7 +208,7 @@ export function InstanciaDeProceso() {
       <p
         role="status"
         aria-live="polite"
-        className="mt-3 text-2xs text-ink-muted"
+        className="mt-3 text-dato text-ink-muted"
       >
         {aviso}
       </p>
@@ -257,7 +257,7 @@ function ElGrafico({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("instancia.grafico")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("instancia.graficoAyuda")}
       </p>
       <div className="overflow-auto rounded-xl border border-ink-dim/60 bg-paper">
@@ -297,7 +297,7 @@ function ElCaminoEnOrden({ grafico }: { grafico: Grafico }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("instancia.camino")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("instancia.caminoAyuda")}
       </p>
       {grafico.recorrido.length === 0 ? (
@@ -307,7 +307,7 @@ function ElCaminoEnOrden({ grafico }: { grafico: Grafico }) {
           {grafico.recorrido.map((paso, i) => (
             <li
               key={`${String(paso.paso)}-${i}`}
-              className="rounded-lg border border-ink-dim/30 bg-paper px-3 py-1.5 text-2xs"
+              className="rounded-lg border border-ink-dim/30 bg-paper px-3 py-1.5 text-dato"
             >
               <span className="font-medium text-ink">{String(paso.paso)}</span>{" "}
               <span className="text-ink-faint">
@@ -391,11 +391,11 @@ function Rescate({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("instancia.rescate")}</h2>
-      <p className="mb-3 text-3xs text-ink-faint">
+      <p className="mb-3 text-rotulo text-ink-faint">
         {t("instancia.rescateAyuda")}
       </p>
 
-      <label htmlFor="motivo-rescate" className="text-2xs text-ink-muted">
+      <label htmlFor="motivo-rescate" className="text-dato text-ink-muted">
         {t("instancia.motivo")}
         <input
           id="motivo-rescate"
@@ -405,7 +405,7 @@ function Rescate({
         />
       </label>
       {motivoCorto ? (
-        <p className="mt-1 text-3xs text-ink-faint">
+        <p className="mt-1 text-rotulo text-ink-faint">
           {t("instancia.motivoCorto")}
         </p>
       ) : null}
@@ -421,12 +421,12 @@ function Rescate({
           {t("instancia.reintentar")}
         </button>
       </div>
-      <p className="mt-1 text-3xs text-ink-faint">
+      <p className="mt-1 text-rotulo text-ink-faint">
         {t("instancia.reintentarAyuda")}
       </p>
 
       <div className="mt-3 border-t border-ink-dim/30 pt-3">
-        <label htmlFor="destino-salto" className="text-2xs text-ink-muted">
+        <label htmlFor="destino-salto" className="text-dato text-ink-muted">
           {t("instancia.saltarA")}
           <select
             id="destino-salto"
@@ -442,7 +442,7 @@ function Rescate({
             ))}
           </select>
         </label>
-        <p className="mt-1 text-3xs text-ink-faint">
+        <p className="mt-1 text-rotulo text-ink-faint">
           {t("instancia.saltarAyuda")}
         </p>
         <button
@@ -462,7 +462,7 @@ function Rescate({
       </div>
 
       <div className="mt-3 border-t border-ink-dim/30 pt-3">
-        <label htmlFor="variables-rescate" className="text-2xs text-ink-muted">
+        <label htmlFor="variables-rescate" className="text-dato text-ink-muted">
           {t("instancia.variables")}
           <textarea
             id="variables-rescate"
@@ -470,10 +470,10 @@ function Rescate({
             onChange={(e) => setVariables(e.target.value)}
             rows={3}
             spellCheck={false}
-            className="mt-1 w-full rounded-xl border border-ink-dim/60 bg-paper p-2 font-mono text-3xs text-ink"
+            className="mt-1 w-full rounded-xl border border-ink-dim/60 bg-paper p-2 font-mono text-rotulo text-ink"
           />
         </label>
-        <p className="mt-1 text-3xs text-ink-faint">
+        <p className="mt-1 text-rotulo text-ink-faint">
           {t("instancia.variablesAyuda")}
         </p>
         <button
@@ -525,14 +525,14 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("instancia.atasco")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">
+      <p className="mb-2 text-rotulo text-ink-faint">
         {t("instancia.atascoAyuda")}
       </p>
       {analitica.instancias === 0 ? (
-        <p className="text-2xs text-ink-muted">{analitica.aviso}</p>
+        <p className="text-dato text-ink-muted">{analitica.aviso}</p>
       ) : (
         <>
-          <p className="text-2xs text-ink">
+          <p className="text-dato text-ink">
             {t("instancia.ejecuciones", {
               cuantas: analitica.instancias,
               terminadas: analitica.terminadas ?? 0,
@@ -540,17 +540,17 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
             })}
           </p>
           {analitica.concluyente === false ? (
-            <p className="mt-1 text-2xs text-warning">{analitica.aviso}</p>
+            <p className="mt-1 text-dato text-warning">{analitica.aviso}</p>
           ) : null}
           {analitica.cuello_de_botella ? (
-            <p className="mt-1 text-2xs text-ink">
+            <p className="mt-1 text-dato text-ink">
               {t("instancia.cuello", { paso: analitica.cuello_de_botella })}
             </p>
           ) : null}
           {/* La mediana AL LADO de la media: con una espera de tres días en una
               de veinte, la media dice que todo va bien. */}
           {analitica.ciclo_horas_medio !== null ? (
-            <p className="mt-1 text-3xs text-ink-muted">
+            <p className="mt-1 text-rotulo text-ink-muted">
               {t("instancia.ciclo", {
                 media: analitica.ciclo_horas_medio,
                 mediana: analitica.ciclo_horas_mediana ?? 0,
@@ -563,13 +563,13 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
                 key={p.paso}
                 className="flex flex-wrap items-baseline gap-x-3 py-1.5"
               >
-                <span className="text-2xs font-medium text-ink">{p.paso}</span>
+                <span className="text-dato font-medium text-ink">{p.paso}</span>
                 <span className="chip-dato">{p.tipo}</span>
-                <span className="text-3xs text-ink-muted">
+                <span className="text-rotulo text-ink-muted">
                   {t("instancia.veces", { veces: p.veces })}
                 </span>
                 {p.espera_horas_media !== null ? (
-                  <span className="text-3xs text-ink-muted">
+                  <span className="text-rotulo text-ink-muted">
                     {t("instancia.espera", {
                       media: p.espera_horas_media,
                       mediana: p.espera_horas_mediana ?? 0,
@@ -577,12 +577,12 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
                   </span>
                 ) : null}
                 {p.fallos > 0 ? (
-                  <span className="text-3xs text-danger">
+                  <span className="text-rotulo text-danger">
                     {t("instancia.fallos", { cuantos: p.fallos })}
                   </span>
                 ) : null}
                 {p.pendientes_ahora > 0 ? (
-                  <span className="text-3xs text-warning">
+                  <span className="text-rotulo text-warning">
                     {t("instancia.pendientesAhora", {
                       cuantas: p.pendientes_ahora,
                     })}

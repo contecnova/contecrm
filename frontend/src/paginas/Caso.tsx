@@ -235,7 +235,7 @@ export function Caso() {
             {/* La ruta de categorías con sus escalones separados: es un
                 camino, de lo general a lo concreto. */}
             {(caso.clasificacion ?? []).length > 0 ? (
-              <span className="text-2xs text-ink-muted">
+              <span className="text-dato text-ink-muted">
                 {(caso.clasificacion ?? []).join(" › ")}
               </span>
             ) : null}
@@ -290,7 +290,7 @@ export function Caso() {
         {editando || pestana === "relacionado" ? (
           <>
             {caso.descripcion ? (
-              <p className="card mb-4 p-3 text-2xs text-ink-muted">
+              <p className="card mb-4 p-3 text-dato text-ink-muted">
                 {caso.descripcion}
               </p>
             ) : null}
@@ -348,7 +348,7 @@ function ConQueTieneQueVer({
                 key={clave}
                 className="flex items-baseline justify-between gap-3 py-1.5"
               >
-                <span className="text-3xs text-ink-faint">
+                <span className="text-rotulo text-ink-faint">
                   {t(`caso.rel.${clave}`)}
                 </span>
                 {/* Sólo se enlaza lo que TIENE ficha: un enlace a una pantalla
@@ -356,12 +356,12 @@ function ConQueTieneQueVer({
                 {adonde ? (
                   <Link
                     to={`${adonde}${valor}`}
-                    className="text-2xs text-ink hover:underline"
+                    className="text-dato text-ink hover:underline"
                   >
                     {t("caso.abrir")}
                   </Link>
                 ) : (
-                  <span className="text-2xs text-ink-muted">
+                  <span className="text-dato text-ink-muted">
                     {String(valor).slice(0, 8)}
                   </span>
                 )}
@@ -396,10 +396,10 @@ function ElReloj({ sla }: { sla: Sla }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("caso.reloj")}</h2>
-      <p className="text-3xs text-ink-faint">
+      <p className="text-rotulo text-ink-faint">
         {t("caso.sla", { clave: sla.clave, version: sla.version })}
       </p>
-      <ul className="mt-2 space-y-1 text-2xs">
+      <ul className="mt-2 space-y-1 text-dato">
         <li
           className={
             sla.incumplio_primera_respuesta ? "text-danger" : "text-ink-muted"
@@ -424,7 +424,7 @@ function ElReloj({ sla }: { sla: Sla }) {
         </li>
       </ul>
       {horasEnPausa > 0 ? (
-        <p className="mt-2 text-3xs text-warning">
+        <p className="mt-2 text-rotulo text-warning">
           {t("caso.enPausa", { horas: horasEnPausa })}
         </p>
       ) : null}
@@ -454,7 +454,7 @@ function DeQuienCuelga({ arbol }: { arbol: Arbol }) {
       {nada ? (
         <Vacio titulo={t("caso.sinJerarquia")} compacto />
       ) : (
-        <ul className="space-y-1 text-2xs">
+        <ul className="space-y-1 text-dato">
           {arbol.padre ? (
             <li>
               <Link
@@ -519,7 +519,7 @@ function ComoAcabo({ cierre, casoId }: { cierre: Cierre; casoId: string }) {
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("caso.cierre")}</h2>
       {aFaltaDeCliente ? (
-        <p className="mb-2 text-2xs text-warning">
+        <p className="mb-2 text-dato text-warning">
           {t("caso.pendienteDelCliente", { estado: cierre.validacion_cliente })}
         </p>
       ) : null}
@@ -527,10 +527,10 @@ function ComoAcabo({ cierre, casoId }: { cierre: Cierre; casoId: string }) {
         <span className="chip-dato">{cierre.motivo}</span>
       ) : null}
       {cierre.resolucion ? (
-        <p className="mt-1 text-2xs text-ink-muted">{cierre.resolucion}</p>
+        <p className="mt-1 text-dato text-ink-muted">{cierre.resolucion}</p>
       ) : null}
       {cierre.reaperturas > 0 ? (
-        <p className="mt-2 text-2xs text-danger">
+        <p className="mt-2 text-dato text-danger">
           {t("caso.reaperturas", { cuantas: cierre.reaperturas })}
         </p>
       ) : null}
@@ -597,7 +597,7 @@ function EscribirloEnConocimiento({
 
   if (creado) {
     return (
-      <p className="mt-3 text-2xs text-ink" role="status">
+      <p className="mt-3 text-dato text-ink" role="status">
         {t("caso.articuloCreado", { clave: creado })}
       </p>
     );
@@ -619,7 +619,7 @@ function EscribirloEnConocimiento({
     <div className="mt-3 flex flex-col gap-2">
       {/* El aviso ANTES del formulario, no después de guardar: lo que hay que
           quitar del texto se quita mientras se escribe. */}
-      <p className="text-2xs text-warning">{t("caso.avisoResolucion")}</p>
+      <p className="text-dato text-warning">{t("caso.avisoResolucion")}</p>
       <input
         className="input-base"
         value={titulo}
@@ -634,7 +634,7 @@ function EscribirloEnConocimiento({
         aria-label={t("caso.cuerpoArticulo")}
         onChange={(e) => setCuerpo(e.target.value)}
       />
-      {error ? <p className="text-2xs text-danger">{error}</p> : null}
+      {error ? <p className="text-dato text-danger">{error}</p> : null}
       <div className="flex gap-2">
         <button
           type="button"
@@ -682,12 +682,12 @@ function ElHistorial({
               key={`${e.tipo}-${e.at}-${i}`}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-2xs font-medium text-ink">{e.tipo}</span>
-              <time className="text-3xs text-ink-faint" dateTime={e.at}>
+              <span className="text-dato font-medium text-ink">{e.tipo}</span>
+              <time className="text-rotulo text-ink-faint" dateTime={e.at}>
                 {e.at.slice(0, 16).replace("T", " ")}
               </time>
               {Object.entries(e.detalle ?? {}).map(([k, v]) => (
-                <span key={k} className="text-3xs text-ink-muted">
+                <span key={k} className="text-rotulo text-ink-muted">
                   {k}: {String(v)}
                 </span>
               ))}
@@ -735,23 +735,23 @@ function PorQueEstaAqui({
         <ol className="divide-y divide-ink-dim/30">
           {cuales.map((a, i) => (
             <li key={`${a.at}-${i}`} className="py-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+              <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                 <span className="font-medium text-ink">{a.cola ?? "—"}</span>
                 {a.regla ? <span className="chip-dato">{a.regla}</span> : null}
                 {a.estrategia ? (
-                  <span className="text-3xs text-ink-faint">
+                  <span className="text-rotulo text-ink-faint">
                     {a.estrategia}
                   </span>
                 ) : null}
-                <time className="text-3xs text-ink-faint" dateTime={a.at}>
+                <time className="text-rotulo text-ink-faint" dateTime={a.at}>
                   {a.at.slice(0, 16).replace("T", " ")}
                 </time>
               </div>
               {a.motivo ? (
-                <p className="text-3xs text-ink-muted">{a.motivo}</p>
+                <p className="text-rotulo text-ink-muted">{a.motivo}</p>
               ) : null}
               {typeof a.evaluadas === "number" ? (
-                <p className="text-3xs text-ink-faint">
+                <p className="text-rotulo text-ink-faint">
                   {t("caso.reglasMiradas", { cuantas: a.evaluadas })}
                 </p>
               ) : null}
@@ -783,8 +783,8 @@ function QueDerechoLoCubre({ saldo }: { saldo: Saldo | null }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("caso.derecho")}</h2>
-      <p className="text-2xs font-medium text-ink">{saldo.entitlement}</p>
-      <ul className="mt-2 space-y-1 text-2xs">
+      <p className="text-dato font-medium text-ink">{saldo.entitlement}</p>
+      <ul className="mt-2 space-y-1 text-dato">
         <li className={saldo.horas?.agotado ? "text-danger" : "text-ink-muted"}>
           {saldo.horas?.sin_limite
             ? t("caso.horasSinLimite", { consumidas: saldo.horas?.consumidas })
@@ -803,7 +803,7 @@ function QueDerechoLoCubre({ saldo }: { saldo: Saldo | null }) {
         </li>
       </ul>
       {saldo.vigente_hasta ? (
-        <p className="mt-2 text-3xs text-ink-faint">
+        <p className="mt-2 text-rotulo text-ink-faint">
           {/* Las tres fechas de esta pantalla salían en crudo:
               «vence 2026-10-28T14:38:22.843025+01:00». Un sello de tiempo de
               la API no es una fecha para nadie. */}
@@ -811,7 +811,7 @@ function QueDerechoLoCubre({ saldo }: { saldo: Saldo | null }) {
         </p>
       ) : null}
       {agotado && saldo.al_agotar ? (
-        <p className="mt-1 text-3xs text-danger">
+        <p className="mt-1 text-rotulo text-danger">
           {t("caso.alAgotar", { que: saldo.al_agotar })}
         </p>
       ) : null}

@@ -171,7 +171,7 @@ export function PeriodoDePrevision() {
         entradilla={
           <span className="flex flex-wrap items-center gap-2">
             <span className="chip-dato">{prevision.moneda}</span>
-            <span className="text-2xs text-ink-muted">
+            <span className="text-dato text-ink-muted">
               {t("prevision.cuantas", { cuantas: prevision.oportunidades })}
             </span>
           </span>
@@ -179,13 +179,13 @@ export function PeriodoDePrevision() {
       />
 
       <section className="card mb-4 p-4">
-        <p className="text-sm font-medium text-ink">
+        <p className="text-titulo font-medium text-ink">
           {t("prevision.total", {
             total: comoImporte(prevision.total, prevision.moneda),
             ponderado: comoImporte(prevision.ponderado, prevision.moneda),
           })}
         </p>
-        <p className="mt-1 text-2xs text-ink-muted">
+        <p className="mt-1 text-dato text-ink-muted">
           {t("prevision.compromiso", {
             valor: comoImporte(prevision.compromiso, prevision.moneda),
           })}
@@ -194,22 +194,22 @@ export function PeriodoDePrevision() {
             faltan importes en silencio es peor que uno que avisa, porque nadie
             lo cuestiona. */}
         {prevision.aviso ? (
-          <p className="mt-2 text-2xs text-warning">{prevision.aviso}</p>
+          <p className="mt-2 text-dato text-warning">{prevision.aviso}</p>
         ) : null}
 
         <ul className="mt-3 divide-y divide-ink-dim/30">
           {Object.entries(prevision.por_categoria).map(([categoria, v]) => (
             <li key={categoria} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-              <span className="text-2xs font-medium text-ink">{categoria}</span>
-              <span className="text-2xs text-ink-muted">
+              <span className="text-dato font-medium text-ink">{categoria}</span>
+              <span className="text-dato text-ink-muted">
                 {comoImporte(v.importe, prevision.moneda)}
               </span>
-              <span className="text-3xs text-ink-faint">
+              <span className="text-rotulo text-ink-faint">
                 {t("prevision.ponderadoCorto", {
                   valor: comoImporte(v.ponderado, prevision.moneda),
                 })}
               </span>
-              <span className="text-3xs text-ink-faint">
+              <span className="text-rotulo text-ink-faint">
                 {t("prevision.cuantas", { cuantas: v.oportunidades })}
               </span>
             </li>
@@ -252,25 +252,25 @@ function LosAjustes({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("prevision.ajustes")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("prevision.ajustesAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">{t("prevision.ajustesAyuda")}</p>
       {ajustes.length === 0 ? (
         <Vacio titulo={t("prevision.sinAjustes")} compacto />
       ) : (
         <ul className="divide-y divide-ink-dim/30">
           {ajustes.map((a) => (
             <li key={a.id} className="py-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+              <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                 <span className="font-medium text-ink">
                   {comoImporte(a.bruto, moneda)} → {comoImporte(a.ajustado, moneda)}
                 </span>
                 <span className={Number(a.delta) >= 0 ? "chip-dato" : "chip-dato chip-dato--no"}>
                   {a.delta}
                 </span>
-                <span className="text-3xs text-ink-faint">{a.ambito}</span>
+                <span className="text-rotulo text-ink-faint">{a.ambito}</span>
                 {a.categoria ? <span className="chip-dato">{a.categoria}</span> : null}
               </div>
               {/* El motivo es la mitad del ajuste: sin él no se puede juzgar. */}
-              <p className="text-3xs text-ink-muted">{a.motivo}</p>
+              <p className="text-rotulo text-ink-muted">{a.motivo}</p>
             </li>
           ))}
         </ul>
@@ -278,19 +278,19 @@ function LosAjustes({
 
       {acierto ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <h3 className="text-2xs font-medium text-ink">{t("prevision.acierto")}</h3>
+          <h3 className="text-dato font-medium text-ink">{t("prevision.acierto")}</h3>
           {!acierto.medible ? (
-            <p className="text-3xs text-ink-faint">{acierto.motivo}</p>
+            <p className="text-rotulo text-ink-faint">{acierto.motivo}</p>
           ) : (
             <>
-              <p className="mt-1 text-2xs text-ink-muted">
+              <p className="mt-1 text-dato text-ink-muted">
                 {t("prevision.contraReal", {
                   real: comoImporte(acierto.real ?? "0", moneda),
                   bruto: comoImporte(acierto.bruto ?? "0", moneda),
                   ajustado: comoImporte(acierto.ajustado ?? "0", moneda),
                 })}
               </p>
-              <p className={mejoro ? "mt-1 text-2xs text-success" : "mt-1 text-2xs text-danger"}>
+              <p className={mejoro ? "mt-1 text-dato text-success" : "mt-1 text-dato text-danger"}>
                 {mejoro
                   ? t("prevision.ajustarAcerco", { error: acierto.error_con_ajuste })
                   : t("prevision.ajustarAlejo", {
@@ -326,7 +326,7 @@ function ElDesglose({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("prevision.desglose")}</h2>
-      <label htmlFor="desglose-por" className="text-2xs text-ink-muted">
+      <label htmlFor="desglose-por" className="text-dato text-ink-muted">
         {t("prevision.agruparPor")}
         <select
           id="desglose-por"
@@ -347,11 +347,11 @@ function ElDesglose({
         <ul className="mt-2 divide-y divide-ink-dim/30">
           {Object.entries(desglose.grupos).map(([grupo, v]) => (
             <li key={grupo} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-              <span className="text-2xs font-medium text-ink">{grupo}</span>
-              <span className="text-2xs text-ink-muted">
+              <span className="text-dato font-medium text-ink">{grupo}</span>
+              <span className="text-dato text-ink-muted">
                 {comoImporte(v.importe, desglose.moneda)}
               </span>
-              <span className="text-3xs text-ink-faint">
+              <span className="text-rotulo text-ink-faint">
                 {t("prevision.lineas", { cuantas: v.lineas })}
               </span>
             </li>
@@ -359,7 +359,7 @@ function ElDesglose({
         </ul>
       )}
       {desglose && desglose.grupos_sin_tipo_de_cambio.length > 0 ? (
-        <p className="mt-2 text-3xs text-warning">
+        <p className="mt-2 text-rotulo text-warning">
           {t("prevision.gruposSinCambio", {
             grupos: desglose.grupos_sin_tipo_de_cambio.join(", "),
           })}
@@ -381,7 +381,7 @@ function LasFotos({ fotos }: { fotos: Instantanea[] }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("prevision.fotos")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("prevision.fotosAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">{t("prevision.fotosAyuda")}</p>
       {fotos.length === 0 ? (
         <Vacio titulo={t("prevision.sinFotos")} compacto />
       ) : (
@@ -392,11 +392,11 @@ function LasFotos({ fotos }: { fotos: Instantanea[] }) {
               .reduce((n, [, v]) => n + Number(v), 0);
             return (
               <li key={f.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-                <span className="text-2xs font-medium text-ink">{f.etiqueta}</span>
-                <time className="text-3xs text-ink-faint" dateTime={f.tomada_at}>
+                <span className="text-dato font-medium text-ink">{f.etiqueta}</span>
+                <time className="text-rotulo text-ink-faint" dateTime={f.tomada_at}>
                   {f.tomada_at.slice(0, 10)}
                 </time>
-                <span className="text-2xs text-ink-muted">
+                <span className="text-dato text-ink-muted">
                   {comoImporte(String(total), f.moneda)}
                 </span>
               </li>
@@ -431,14 +431,14 @@ function LoQueSeHaDeslizado({
         <Vacio titulo={t("prevision.sinDeslizamiento")} compacto />
       ) : (
         <>
-          <p className="text-2xs text-ink">
+          <p className="text-dato text-ink">
             {t("prevision.empujadas", {
               cuantas: deslizamiento.empujadas,
               dias: deslizamiento.dias_empujados,
             })}
           </p>
           {deslizamiento.empujadas_mas_de_una_vez > 0 ? (
-            <p className="mt-1 text-2xs text-danger">
+            <p className="mt-1 text-dato text-danger">
               {t("prevision.masDeUnaVez", {
                 cuantas: deslizamiento.empujadas_mas_de_una_vez,
               })}
@@ -450,7 +450,7 @@ function LoQueSeHaDeslizado({
                 key={`${d.nombre ?? ""}-${i}`}
                 className="flex flex-wrap items-baseline gap-x-3 py-1.5"
               >
-                <span className="text-2xs text-ink">{d.nombre ?? "—"}</span>
+                <span className="text-dato text-ink">{d.nombre ?? "—"}</span>
                 <span className="chip-dato chip-dato--no">
                   {t("prevision.dias", { dias: d.dias_netos })}
                 </span>

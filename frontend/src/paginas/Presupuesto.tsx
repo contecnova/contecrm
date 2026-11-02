@@ -193,7 +193,7 @@ export function Presupuesto() {
         distintivos={
           <>
             <span className="chip-dato font-mono">{presupuesto.numero}</span>
-            <span className="text-2xs text-ink-muted">
+            <span className="text-dato text-ink-muted">
               {t("presupuesto.version", { version: presupuesto.version })}
             </span>
           </>
@@ -250,17 +250,17 @@ export function Presupuesto() {
             burocracia, con el motivo se lee como un dato y se discute con él. */}
             {politica?.necesita_aprobacion ? (
               <div className="card mb-4 border-warning/40 p-3" role="status">
-                <p className="text-2xs text-warning">
+                <p className="text-dato text-warning">
                   {t("presupuesto.necesitaAprobacion")}
                 </p>
                 <ul className="mt-1 flex flex-col gap-1">
                   {(politica.motivos ?? []).map((m, i) => (
-                    <li key={i} className="text-2xs text-ink">
+                    <li key={i} className="text-dato text-ink">
                       {m}
                     </li>
                   ))}
                 </ul>
-                <p className="mt-1 font-mono text-3xs text-ink-muted">
+                <p className="mt-1 font-mono text-rotulo text-ink-muted">
                   {t("presupuesto.umbrales", {
                     umbral: politica.umbral_descuento ?? "—",
                     minimo: politica.margen_minimo ?? "—",
@@ -271,16 +271,16 @@ export function Presupuesto() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("presupuesto.numeros")}
                 </h2>
-                <p className="mt-2 font-mono text-lg text-ink">
+                <p className="mt-2 font-mono text-grande text-ink">
                   {importe(presupuesto.total, presupuesto.moneda)}
                 </p>
                 {/* El descuento y el margen juntos: un 30 % sobre 60 de margen y
                 sobre 12 son dos conversaciones distintas, y en la lista los dos
                 son «30 %». */}
-                <p className="mt-1 font-mono text-2xs text-ink">
+                <p className="mt-1 font-mono text-dato text-ink">
                   {t("presupuesto.descuentoYMargen", {
                     // Los dos por el formateador: la API manda los decimales como
                     // cadena —`Numeric` en JSON es texto para no perder precisión—
@@ -296,12 +296,12 @@ export function Presupuesto() {
                   })}
                 </p>
                 {presupuesto.margen_pct === null ? (
-                  <p className="mt-1 text-3xs text-ink-faint">
+                  <p className="mt-1 text-rotulo text-ink-faint">
                     {t("presupuesto.porqueSinMargen")}
                   </p>
                 ) : null}
                 {presupuesto.valido_hasta ? (
-                  <p className="mt-2 text-2xs text-ink-muted">
+                  <p className="mt-2 text-dato text-ink-muted">
                     {t("presupuesto.valido", {
                       fecha: fecha(presupuesto.valido_hasta),
                     })}
@@ -310,21 +310,21 @@ export function Presupuesto() {
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("presupuesto.queCambio")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("presupuesto.porqueCambios")}
                 </p>
                 {!cambios ? (
                   <Vacio titulo={t("presupuesto.sinCambios")} detalle="" />
                 ) : cambios.primera ? (
-                  <p className="mt-2 text-2xs text-ink-muted">
+                  <p className="mt-2 text-dato text-ink-muted">
                     {t("presupuesto.esLaPrimera")}
                   </p>
                 ) : (
                   <>
-                    <p className="mt-2 font-mono text-2xs text-ink">
+                    <p className="mt-2 font-mono text-dato text-ink">
                       {t("presupuesto.totalAntesDespues", {
                         antes: cambios.total_antes ?? "—",
                         ahora: cambios.total_ahora ?? "—",
@@ -337,11 +337,11 @@ export function Presupuesto() {
                           className="flex items-baseline gap-2"
                         >
                           <span className="chip-dato">{c.cambio}</span>
-                          <span className="flex-1 text-2xs text-ink">
+                          <span className="flex-1 text-dato text-ink">
                             {c.linea}
                           </span>
                           {c.cantidad_antes !== undefined ? (
-                            <span className="font-mono text-3xs text-ink-muted">
+                            <span className="font-mono text-rotulo text-ink-muted">
                               {t("presupuesto.deA", {
                                 antes: c.cantidad_antes,
                                 ahora: c.cantidad_ahora,
@@ -356,10 +356,10 @@ export function Presupuesto() {
               </section>
 
               <section className="card p-4 lg:col-span-2">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("presupuesto.documento")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("presupuesto.porqueDocumento")}
                 </p>
                 {!documento ? (
@@ -374,20 +374,20 @@ export function Presupuesto() {
                   <div className="mt-2" role="status" aria-live="polite">
                     {/* La marca y el idioma delante: descubrir en el correo del
                     cliente que salió con la marca equivocada no tiene arreglo. */}
-                    <p className="font-mono text-2xs text-ink">
+                    <p className="font-mono text-dato text-ink">
                       {t("presupuesto.conQueSale", {
                         plantilla: documento.plantilla,
                         marca: documento.marca ?? t("presupuesto.sinMarca"),
                         idioma: documento.idioma,
                       })}
                     </p>
-                    <p className="mt-1 text-3xs text-ink-muted">
+                    <p className="mt-1 text-rotulo text-ink-muted">
                       {t("presupuesto.lineasDelDocumento", {
                         cuantas: (documento.lineas ?? []).length,
                       })}
                     </p>
                     {documento.condiciones ? (
-                      <p className="mt-2 text-3xs text-ink-faint">
+                      <p className="mt-2 text-rotulo text-ink-faint">
                         {documento.condiciones}
                       </p>
                     ) : null}

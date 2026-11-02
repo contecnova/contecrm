@@ -114,7 +114,7 @@ export function ConfirmarBorrado({
       role="alertdialog"
       aria-label={t("ficha.eliminar")}
     >
-      <p className="text-xs text-ink">{t("ficha.confirmarBorrado")}</p>
+      <p className="text-titulin text-ink">{t("ficha.confirmarBorrado")}</p>
       <div className="mt-3 flex gap-2">
         <button type="button" onClick={alBorrar} disabled={enviando} className="btn-danger">
           {t("ficha.eliminarDeVerdad")}
@@ -195,7 +195,7 @@ export function FormularioDeEdicion({
           // El contrato no declara ningún campo modificable. Se dice, en vez de
           // enseñar un formulario vacío con un botón de guardar que no guarda
           // nada: quien lo pulsara creería que ha cambiado algo.
-          <p className="text-2xs text-ink-muted">{t("ficha.sinCamposEditables")}</p>
+          <p className="text-dato text-ink-muted">{t("ficha.sinCamposEditables")}</p>
         )
       ) : (
         <Cargando />

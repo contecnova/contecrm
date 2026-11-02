@@ -98,12 +98,12 @@ function Rama({ nodo, nivel = 0 }: { nodo: Nodo; nivel?: number }) {
   const { t } = useTranslation();
   return (
     <li style={{ marginLeft: nivel * 12 }}>
-      <span className="text-2xs text-ink">{nodo.nombre}</span>{" "}
+      <span className="text-dato text-ink">{nodo.nombre}</span>{" "}
       <span className="chip-dato font-mono">{nodo.codigo}</span>{" "}
-      <span className="text-3xs text-ink-muted">{nodo.estado}</span>
+      <span className="text-rotulo text-ink-muted">{nodo.estado}</span>
       {/* Un árbol cortado sin avisar se lee como un árbol completo. */}
       {nodo.truncado ? (
-        <span className="ml-1 text-3xs text-warning">
+        <span className="ml-1 text-rotulo text-warning">
           {t("activo.truncado")}
         </span>
       ) : null}
@@ -238,7 +238,7 @@ export function Activo() {
           <>
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("activo.cobertura")}
                 </h2>
                 {!cobertura ? (
@@ -246,18 +246,18 @@ export function Activo() {
                 ) : !cobertura.concluyente ? (
                   /* Lo que de verdad decide: «no se sabe» no es «no». */
                   <>
-                    <p className="mt-2 text-2xs text-warning">
+                    <p className="mt-2 text-dato text-warning">
                       {t("activo.noConcluyente")}
                     </p>
-                    <p className="mt-1 text-2xs text-ink">{cobertura.motivo}</p>
+                    <p className="mt-1 text-dato text-ink">{cobertura.motivo}</p>
                   </>
                 ) : (
                   <>
                     <p
                       className={
                         cobertura.cubierto
-                          ? "mt-2 text-2xs text-success"
-                          : "mt-2 text-2xs text-ink"
+                          ? "mt-2 text-dato text-success"
+                          : "mt-2 text-dato text-ink"
                       }
                     >
                       {t(
@@ -266,16 +266,16 @@ export function Activo() {
                           : "activo.noCubierto",
                       )}
                     </p>
-                    <p className="mt-1 text-2xs text-ink-muted">
+                    <p className="mt-1 text-dato text-ink-muted">
                       {cobertura.motivo}
                     </p>
                     {cobertura.hasta ? (
-                      <p className="mt-1 font-mono text-3xs text-ink-faint">
+                      <p className="mt-1 font-mono text-rotulo text-ink-faint">
                         {t("activo.hasta", { fecha: cobertura.hasta })}
                       </p>
                     ) : null}
                     {(cobertura.exclusiones ?? []).length > 0 ? (
-                      <p className="mt-1 text-2xs text-warning">
+                      <p className="mt-1 text-dato text-warning">
                         {t("activo.exclusiones", {
                           cuantas: (cobertura.exclusiones ?? []).length,
                         })}
@@ -286,14 +286,14 @@ export function Activo() {
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("activo.contador")}
                 </h2>
                 {!ficha || ficha.contador === null ? (
                   <Vacio titulo={t("activo.sinContador")} detalle="" />
                 ) : (
                   <>
-                    <p className="mt-2 font-mono text-lg text-ink">
+                    <p className="mt-2 font-mono text-grande text-ink">
                       {t("activo.lectura", {
                         contador: ficha.contador,
                         unidad: ficha.unidad_contador ?? "",
@@ -301,7 +301,7 @@ export function Activo() {
                     </p>
                     {/* Con su fecha SIEMPRE: una lectura sin fecha al lado se lee
                     como la de hoy, y sobre eso se decide un mantenimiento. */}
-                    <p className="mt-1 text-2xs text-ink-muted">
+                    <p className="mt-1 text-dato text-ink-muted">
                       {ficha.contador_at
                         ? t("activo.leidoEl", {
                             fecha: fecha(ficha.contador_at),
@@ -313,10 +313,10 @@ export function Activo() {
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("activo.arbol")}
                 </h2>
-                <p className="mt-1 text-3xs text-ink-faint">
+                <p className="mt-1 text-rotulo text-ink-faint">
                   {t("activo.porqueArbol")}
                 </p>
                 <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
@@ -325,13 +325,13 @@ export function Activo() {
               </section>
 
               <section className="card p-4">
-                <h2 className="text-sm font-medium text-ink">
+                <h2 className="text-titulo font-medium text-ink">
                   {t("activo.historial")}
                 </h2>
                 {/* La cadena delante: un historial que arranca en la sustitución
                 esconde justo el patrón que había que ver. */}
                 {(historial?.equipos_en_la_cadena ?? []).length > 1 ? (
-                  <p className="mt-1 text-2xs text-ink">
+                  <p className="mt-1 text-dato text-ink">
                     {t("activo.cadena", {
                       equipos: (historial?.equipos_en_la_cadena ?? []).length,
                     })}
@@ -344,7 +344,7 @@ export function Activo() {
                     {eventos.map((e, i) => (
                       <li key={i} className="flex items-baseline gap-2">
                         <span className="chip-dato">{e.tipo}</span>
-                        <span className="flex-1 font-mono text-3xs text-ink-muted">
+                        <span className="flex-1 font-mono text-rotulo text-ink-muted">
                           {fecha(e.cuando)}
                         </span>
                       </li>

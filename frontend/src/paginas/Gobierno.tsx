@@ -126,37 +126,37 @@ export function Gobierno() {
       {/* Un panel vacío en verde es el que más tranquiliza y el que peor
           informa: no dice que se cumpla, dice que no hay con qué comprobarlo. */}
       {!panel.medible ? (
-        <p className="card mb-4 border-warning/40 p-3 text-2xs text-warning" role="status">
+        <p className="card mb-4 border-warning/40 p-3 text-dato text-warning" role="status">
           {panel.porque}
         </p>
       ) : null}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
         <div className="card p-3">
-          <p className="text-3xs text-ink-muted">{t("grc.cobertura")}</p>
-          <p className="font-mono text-lg text-ink">
+          <p className="text-rotulo text-ink-muted">{t("grc.cobertura")}</p>
+          <p className="font-mono text-grande text-ink">
             {panel.cobertura_pct === null
               ? t("grc.sinMedir")
               : t("grc.pct", { pct: panel.cobertura_pct })}
           </p>
         </div>
         <div className="card p-3">
-          <p className="text-3xs text-ink-muted">{t("grc.riesgosAbiertos")}</p>
-          <p className="font-mono text-lg text-ink">{panel.riesgos_abiertos}</p>
+          <p className="text-rotulo text-ink-muted">{t("grc.riesgosAbiertos")}</p>
+          <p className="font-mono text-grande text-ink">{panel.riesgos_abiertos}</p>
         </div>
         <div className="card p-3">
-          <p className="text-3xs text-ink-muted">{t("grc.controlesActivos")}</p>
-          <p className="font-mono text-lg text-ink">{panel.controles_activos}</p>
+          <p className="text-rotulo text-ink-muted">{t("grc.controlesActivos")}</p>
+          <p className="font-mono text-grande text-ink">{panel.controles_activos}</p>
         </div>
         <div className="card p-3">
-          <p className="text-3xs text-ink-muted">{t("grc.controlesEvaluados")}</p>
-          <p className="font-mono text-lg text-ink">{panel.controles_evaluados}</p>
+          <p className="text-rotulo text-ink-muted">{t("grc.controlesEvaluados")}</p>
+          <p className="font-mono text-grande text-ink">{panel.controles_evaluados}</p>
         </div>
       </div>
 
       <div className="flex flex-col gap-6">
         <section>
-          <h2 className="text-sm font-medium text-ink">{t("grc.urgente")}</h2>
+          <h2 className="text-titulo font-medium text-ink">{t("grc.urgente")}</h2>
           {urgente.length === 0 ? (
             <Vacio
               titulo={t(panel.medible ? "grc.nadaUrgente" : "grc.nadaQueMirar")}
@@ -166,9 +166,9 @@ export function Gobierno() {
             <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
               {urgente.map((u, i) => (
                 <li key={`${u.que}-${i}`} className="card p-3">
-                  <p className="text-2xs text-ink">{u.que}</p>
+                  <p className="text-dato text-ink">{u.que}</p>
                   {/* El porqué y no un color: «no efectivo» no mueve a nadie. */}
-                  <p className="mt-1 text-3xs text-ink-muted">{u.por_que_urge}</p>
+                  <p className="mt-1 text-rotulo text-ink-muted">{u.por_que_urge}</p>
                 </li>
               ))}
             </ul>
@@ -176,14 +176,14 @@ export function Gobierno() {
         </section>
 
         <section>
-          <h2 className="text-sm font-medium text-ink">{t("grc.informeCobertura")}</h2>
+          <h2 className="text-titulo font-medium text-ink">{t("grc.informeCobertura")}</h2>
           {!cobertura?.medible ? (
-            <p className="mt-2 text-2xs text-ink-muted">
+            <p className="mt-2 text-dato text-ink-muted">
               {cobertura?.motivo || t("grc.sinCobertura")}
             </p>
           ) : (
             <>
-              <p className="mt-1 text-3xs text-ink-faint">
+              <p className="mt-1 text-rotulo text-ink-faint">
                 {t("grc.alcance", {
                   alcance: cobertura.alcance,
                   capacidades: cobertura.capacidades,
@@ -194,7 +194,7 @@ export function Gobierno() {
               {/* Un control sobre una capacidad que no existe consta como
                   cobertura y no cubre nada: es peor que no tener control. */}
               {huerfanos.length > 0 ? (
-                <p className="mt-2 text-2xs text-warning">
+                <p className="mt-2 text-dato text-warning">
                   {t("grc.huerfanos", { cuantos: huerfanos.length })}
                 </p>
               ) : null}
@@ -202,8 +202,8 @@ export function Gobierno() {
                 <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
                   {porSeccion.map(([seccion, datos]) => (
                     <li key={seccion} className="flex items-baseline gap-2">
-                      <span className="flex-1 text-2xs text-ink">{seccion}</span>
-                      <span className="font-mono text-3xs text-ink-muted">
+                      <span className="flex-1 text-dato text-ink">{seccion}</span>
+                      <span className="font-mono text-rotulo text-ink-muted">
                         {t("grc.deTotal", {
                           con: datos.con_control,
                           total: datos.total,
@@ -219,21 +219,21 @@ export function Gobierno() {
         </section>
 
         <section>
-          <h2 className="text-sm font-medium text-ink">{t("grc.marcos")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("grc.porqueMarcos")}</p>
+          <h2 className="text-titulo font-medium text-ink">{t("grc.marcos")}</h2>
+          <p className="mt-1 text-rotulo text-ink-faint">{t("grc.porqueMarcos")}</p>
           {Object.keys(marcos).length === 0 ? (
             <Vacio titulo={t("grc.sinMarcos")} detalle="" />
           ) : (
             <ul className="lista-acotada mt-2 flex flex-col gap-3 pr-1">
               {Object.entries(marcos).map(([marco, nodo]) => (
                 <li key={marco} className="card p-3">
-                  <p className="text-2xs font-medium text-ink">{marco}</p>
+                  <p className="text-dato font-medium text-ink">{marco}</p>
                   <ul className="mt-1 flex flex-col gap-1">
                     {Object.entries(nodo.referencias ?? {}).map(([referencia, datos]) => (
                       <li key={referencia}>
                         <span className="chip-dato font-mono">{referencia || "—"}</span>{" "}
                         {(datos.controles ?? []).map((c) => (
-                          <span key={c.codigo} className="text-3xs text-ink-muted">
+                          <span key={c.codigo} className="text-rotulo text-ink-muted">
                             {t("grc.control", {
                               codigo: c.codigo,
                               capacidades: (c.capacidades ?? []).length,

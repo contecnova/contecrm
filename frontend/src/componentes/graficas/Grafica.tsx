@@ -88,6 +88,17 @@ export const FORMA_DE_TIPO: Record<string, Forma> = {
 const ALTO = 220;
 const MARGEN = { arriba: 12, derecha: 12, abajo: 28, izquierda: 48 };
 
+/**
+ * Los tamaños de letra de un SVG, en la escala del sistema.
+ *
+ * Un `<text>` de SVG no admite una clase de Tailwind con el tamaño, así que
+ * va el número — y por eso se escapó: **medido el 02-11-2026**, las etiquetas
+ * de los ejes y de los nodos estaban en 9 px, por debajo de lo que se lee en
+ * un escritorio, en la portada y en el diagrama de procesos. Van al mínimo
+ * del sistema, que son 12.
+ */
+const LETRA_GRAFICA = 12;
+
 export function Grafica({
   forma,
   datos,
@@ -157,7 +168,10 @@ export function Grafica({
   const anchoUtil = ancho - MARGEN.izquierda - MARGEN.derecha;
   const altoUtil = ALTO - MARGEN.arriba - MARGEN.abajo;
   const x = (i: number) =>
-    MARGEN.izquierda + (categorias.length <= 1 ? anchoUtil / 2 : (anchoUtil * i) / (categorias.length - 1));
+    MARGEN.izquierda +
+    (categorias.length <= 1
+      ? anchoUtil / 2
+      : (anchoUtil * i) / (categorias.length - 1));
   const y = (v: number) => MARGEN.arriba + altoUtil - (altoUtil * v) / maximo;
 
   const sinDatos = categorias.length === 0 || series.length === 0;
@@ -165,7 +179,7 @@ export function Grafica({
   return (
     <figure className="card p-3" aria-labelledby={idTitulo}>
       <figcaption className="mb-2 flex items-start justify-between gap-2">
-        <span id={idTitulo} className="text-xs font-medium text-ink">
+        <span id={idTitulo} className="text-titulin font-medium text-ink">
           {titulo}
         </span>
         {/* La tabla no es un extra: es lo que hace esto legible con un lector
@@ -182,7 +196,9 @@ export function Grafica({
       </figcaption>
 
       {sinDatos ? (
-        <p className="py-6 text-center text-2xs text-ink-faint">{t("grafica.sinDatos")}</p>
+        <p className="py-6 text-center text-dato text-ink-faint">
+          {t("grafica.sinDatos")}
+        </p>
       ) : verTabla ? (
         <Tabla datos={datos} series={series} categorias={categorias} />
       ) : (
@@ -201,30 +217,37 @@ export function Grafica({
                 una magnitud sobre un eje vertical, y pintarle marcas de 0 a
                 1,5 k al lado es una escala que no mide nada de lo que se ve.
                 Cada etapa lleva su número al lado, que es lo que se lee. */}
-            {esEmbudo ? null : lineasEje.map((v) => (
-              <g key={v}>
-                <line
-                  x1={MARGEN.izquierda}
-                  x2={ancho - MARGEN.derecha}
-                  y1={y(v)}
-                  y2={y(v)}
-                  stroke="rgb(var(--viz-grid))"
-                  strokeWidth={1}
-                />
-                <text
-                  x={MARGEN.izquierda - 6}
-                  y={y(v) + 3}
-                  textAnchor="end"
-                  className="fill-ink-faint"
-                  style={{ fontSize: 9 }}
-                >
-                  {corto(v)}
-                </text>
-              </g>
-            ))}
+            {esEmbudo
+              ? null
+              : lineasEje.map((v) => (
+                  <g key={v}>
+                    <line
+                      x1={MARGEN.izquierda}
+                      x2={ancho - MARGEN.derecha}
+                      y1={y(v)}
+                      y2={y(v)}
+                      stroke="rgb(var(--viz-grid))"
+                      strokeWidth={1}
+                    />
+                    <text
+                      x={MARGEN.izquierda - 6}
+                      y={y(v) + 3}
+                      textAnchor="end"
+                      className="fill-ink-faint"
+                      style={{ fontSize: LETRA_GRAFICA }}
+                    >
+                      {corto(v)}
+                    </text>
+                  </g>
+                ))}
 
             {forma === "embudo" ? (
-              <Embudo series={series} categorias={categorias} maximo={maximo} ancho={ancho} />
+              <Embudo
+                series={series}
+                categorias={categorias}
+                maximo={maximo}
+                ancho={ancho}
+              />
             ) : apilada ? (
               <Apiladas
                 series={series}
@@ -266,17 +289,26 @@ export function Grafica({
             {esEmbudo
               ? null
               : categorias.map((c, i) =>
-              i % Math.ceil(categorias.length / 8) === 0 ? (
-                <text
-                  key={`${c}-${i}`}
-                  x={forma === "barras" || apilada ? bandaX(i, categorias.length, MARGEN.izquierda, anchoUtil) : x(i)}
-                  y={ALTO - 8}
-                  textAnchor="middle"
-                  className="fill-ink-faint"
-                  style={{ fontSize: 9 }}
-                >
-                  {c.length > 12 ? `${c.slice(0, 11)}…` : c}
-                </text>
+                  i % Math.ceil(categorias.length / 8) === 0 ? (
+                    <text
+                      key={`${c}-${i}`}
+                      x={
+                        forma === "barras" || apilada
+                          ? bandaX(
+                              i,
+                              categorias.length,
+                              MARGEN.izquierda,
+                              anchoUtil,
+                            )
+                          : x(i)
+                      }
+                      y={ALTO - 8}
+                      textAnchor="middle"
+                      className="fill-ink-faint"
+                      style={{ fontSize: LETRA_GRAFICA }}
+                    >
+                      {c.length > 12 ? `${c.slice(0, 11)}…` : c}
+                    </text>
                   ) : null,
                 )}
 
@@ -337,7 +369,7 @@ export function Grafica({
                   {/* El rótulo va en tinta, no en el color de la serie: el
                       texto de color se lee peor y encima duplica la señal que
                       ya da la muestra de al lado. */}
-                  <span className="text-3xs text-ink-muted">{s.rotulo}</span>
+                  <span className="text-rotulo text-ink-muted">{s.rotulo}</span>
                 </li>
               ))}
             </ul>
@@ -349,7 +381,12 @@ export function Grafica({
 }
 
 /** El centro de la banda `i` cuando las marcas ocupan ancho (barras, apiladas). */
-function bandaX(i: number, cuantas: number, izquierda: number, anchoUtil: number): number {
+function bandaX(
+  i: number,
+  cuantas: number,
+  izquierda: number,
+  anchoUtil: number,
+): number {
   return izquierda + (anchoUtil * (i + 0.5)) / cuantas;
 }
 
@@ -404,7 +441,9 @@ function Trazos({
             {tramos.map((tramo, n) => (
               <path
                 key={n}
-                d={tramo.map(([px, py], i) => `${i === 0 ? "M" : "L"} ${px} ${py}`).join(" ")}
+                d={tramo
+                  .map(([px, py], i) => `${i === 0 ? "M" : "L"} ${px} ${py}`)
+                  .join(" ")}
                 fill="none"
                 stroke={s.color}
                 strokeWidth={2}
@@ -414,7 +453,9 @@ function Trazos({
             ))}
             {/* El punto sólo donde se está mirando. Un marcador en cada punto
                 de una serie de cincuenta convierte la línea en un collar. */}
-            {encima !== null && s.valores[encima] !== null && s.valores[encima] !== undefined ? (
+            {encima !== null &&
+            s.valores[encima] !== null &&
+            s.valores[encima] !== undefined ? (
               <circle
                 cx={x(encima)}
                 cy={y(s.valores[encima] as number)}
@@ -562,7 +603,8 @@ function Embudo({
   const ROTULO = 92;
   const izquierda = ROTULO + 8;
   const util = ancho - izquierda - 56;
-  const altoEtapa = (ALTO - MARGEN.arriba - MARGEN.abajo) / Math.max(1, categorias.length);
+  const altoEtapa =
+    (ALTO - MARGEN.arriba - MARGEN.abajo) / Math.max(1, categorias.length);
   // El porcentaje va contra el TOTAL, no contra la primera etapa.
   //
   // Contra la primera sólo tiene sentido si el embudo decrece, que es verdad
@@ -593,7 +635,7 @@ function Embudo({
               y={medio}
               textAnchor="end"
               className="fill-ink-muted"
-              style={{ fontSize: 9 }}
+              style={{ fontSize: LETRA_GRAFICA }}
             >
               {c.length > 16 ? `${c.slice(0, 15)}…` : c}
             </text>
@@ -617,11 +659,14 @@ function Embudo({
               x={izquierda + anchoTramo + 6}
               y={medio}
               className="fill-ink"
-              style={{ fontSize: 9 }}
+              style={{ fontSize: LETRA_GRAFICA }}
             >
               {corto(v)}
               {total > 0 ? (
-                <tspan className="fill-ink-faint"> · {Math.round((v / total) * 100)}%</tspan>
+                <tspan className="fill-ink-faint">
+                  {" "}
+                  · {Math.round((v / total) * 100)}%
+                </tspan>
               ) : null}
             </text>
           </g>
@@ -645,7 +690,7 @@ function Emergente({
   const conValor = series.filter((s) => s.valores[indice] !== null);
   return (
     <div className="mt-1 rounded-lg border border-ink-dim/60 bg-paper-light px-2 py-1.5">
-      <p className="text-3xs font-medium text-ink">{categoria}</p>
+      <p className="text-rotulo font-medium text-ink">{categoria}</p>
       <ul className="mt-0.5 space-y-0.5">
         {conValor.map((s) => (
           <li key={s.clave} className="flex items-center justify-between gap-3">
@@ -655,11 +700,11 @@ function Emergente({
                 className="h-2 w-2 shrink-0 rounded-sm"
                 style={{ background: s.color }}
               />
-              <span className="text-3xs text-ink-muted">{s.rotulo}</span>
+              <span className="text-rotulo text-ink-muted">{s.rotulo}</span>
             </span>
             {/* Aquí el valor EXACTO, no el abreviado del eje: el emergente es
                 donde alguien viene a buscar el número de verdad. */}
-            <span className="font-mono text-3xs text-ink">
+            <span className="font-mono text-rotulo text-ink">
               {exacto(s.valores[indice] as Dato, unidad)}
             </span>
           </li>
@@ -683,11 +728,18 @@ function Tabla({
       <table className="w-full text-left">
         <thead className="border-b border-ink-dim/30">
           <tr>
-            <th scope="col" className="celda-rejilla font-medium text-ink-muted">
+            <th
+              scope="col"
+              className="celda-rejilla font-medium text-ink-muted"
+            >
               {datos.rotuloX || datos.ejeX}
             </th>
             {series.map((s) => (
-              <th key={s.clave} scope="col" className="celda-rejilla font-medium text-ink-muted">
+              <th
+                key={s.clave}
+                scope="col"
+                className="celda-rejilla font-medium text-ink-muted"
+              >
                 {s.rotulo}
               </th>
             ))}
@@ -695,12 +747,18 @@ function Tabla({
         </thead>
         <tbody>
           {categorias.map((c, i) => (
-            <tr key={`${c}-${i}`} className="border-b border-ink-dim/30 last:border-0">
+            <tr
+              key={`${c}-${i}`}
+              className="border-b border-ink-dim/30 last:border-0"
+            >
               <th scope="row" className="celda-rejilla font-normal text-ink">
                 {c}
               </th>
               {series.map((s) => (
-                <td key={s.clave} className="celda-rejilla text-right font-mono text-ink">
+                <td
+                  key={s.clave}
+                  className="celda-rejilla text-right font-mono text-ink"
+                >
                   {exacto(s.valores[i] as Dato, datos.unidad)}
                 </td>
               ))}

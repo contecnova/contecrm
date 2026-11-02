@@ -117,7 +117,12 @@ const st: Record<string, CSSProperties> = {
   },
   etiqueta: {
     display: "block",
-    fontSize: 11,
+    // 12 y no 11: es el mínimo del sistema desde el 02-11-2026, y el rótulo
+    // de un campo de la pantalla de entrada es justo donde menos conviene
+    // apretar. Esta pantalla entera está pendiente de pasar al sistema de
+    // diseño —escribe sus 68 estilos a mano, copiados de contecflow—, pero
+    // eso no es motivo para dejar texto ilegible mientras tanto.
+    fontSize: 12,
     fontWeight: 600,
     color: C.texto3,
     marginBottom: 6,
@@ -197,7 +202,7 @@ const st: Record<string, CSSProperties> = {
   separador: { display: "flex", alignItems: "center", gap: 12, margin: "4px 0" },
   separadorLinea: { flex: 1, height: 1, background: C.borde },
   separadorTexto: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 600,
     color: C.texto4,
     textTransform: "uppercase",

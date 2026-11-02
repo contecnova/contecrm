@@ -73,8 +73,8 @@ export function LanzadorDeAplicaciones({
         className="mx-auto mt-16 max-h-[78vh] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-ink-dim/60 bg-paper p-5 shadow-elevation-4"
       >
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="text-lg font-bold text-ink">{t("app.lanzador")}</h2>
-          <p className="text-2xs text-ink-faint">{t("app.lanzadorAtajo")}</p>
+          <h2 className="text-grande font-bold text-ink">{t("app.lanzador")}</h2>
+          <p className="text-dato text-ink-faint">{t("app.lanzadorAtajo")}</p>
         </div>
 
         {/* Las aplicaciones, como rejilla: son cuatro y se eligen de un
@@ -98,8 +98,8 @@ export function LanzadorDeAplicaciones({
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent/10 text-accent">
                 <Icono nombre={app.icono} />
               </span>
-              <span className="text-sm font-semibold text-ink">{t(app.clave)}</span>
-              <span className="text-2xs text-ink-faint">
+              <span className="text-titulo font-semibold text-ink">{t(app.clave)}</span>
+              <span className="text-dato text-ink-faint">
                 {t("app.cuantasPestanas", { count: pestanasDe(app, menu).length })}
               </span>
             </button>
@@ -109,20 +109,20 @@ export function LanzadorDeAplicaciones({
         {/* Y lo que hay dentro, para poder ir directo sin pasar por la
             aplicación. Es lo que hacía el menú lateral entero, pero aquí está
             agrupado por aplicación y sólo cuando se pide. */}
-        <h3 className="mb-2 mt-6 text-3xs font-semibold uppercase tracking-wide text-ink-faint">
+        <h3 className="mb-2 mt-6 text-rotulo font-semibold uppercase tracking-wide text-ink-faint">
           {t("app.todoLoQueHay")}
         </h3>
         <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
           {APLICACIONES.map((app) => (
             <div key={app.id}>
-              <p className="mb-1.5 text-2xs font-semibold text-ink-muted">{t(app.clave)}</p>
+              <p className="mb-1.5 text-dato font-semibold text-ink-muted">{t(app.clave)}</p>
               <ul className="flex flex-col">
                 {pestanasDe(app, menu).map((e) => (
                   <li key={e.a}>
                     <Link
                       to={e.a}
                       onClick={alCerrar}
-                      className="block truncate rounded px-1.5 py-1 text-xs text-ink-muted hover:bg-paper-light hover:text-ink"
+                      className="block truncate rounded px-1.5 py-1 text-titulin text-ink-muted hover:bg-paper-light hover:text-ink"
                       title={t(e.clave)}
                     >
                       {t(e.clave)}

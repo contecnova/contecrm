@@ -280,16 +280,16 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
         pegada
         trazabilidad={
           <details className="text-right">
-            <summary className="cursor-pointer text-3xs text-ink-faint">
+            <summary className="cursor-pointer text-rotulo text-ink-faint">
               {t("modulo.trazabilidad")}
             </summary>
-            <p className="mt-1 font-mono text-3xs text-ink-faint">
+            <p className="mt-1 font-mono text-rotulo text-ink-faint">
               {modulo.capacidad} · {t("modulo.seccion")} {modulo.seccion}
             </p>
             {capacidades.length > 0 ? (
               <ul
                 aria-label={t("modulo.capacidades", { count: capacidades.length })}
-                className="mt-1 flex max-w-md flex-wrap justify-end gap-x-3 gap-y-1 font-mono text-3xs text-ink-faint"
+                className="mt-1 flex max-w-md flex-wrap justify-end gap-x-3 gap-y-1 font-mono text-rotulo text-ink-faint"
               >
                 {capacidades.map((c) => (
                   <li key={c}>{c}</li>
@@ -326,7 +326,7 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
                 className="input-base"
               />
             </label>
-            <label className="mb-1.5 flex items-center gap-2 text-xs text-ink">
+            <label className="mb-1.5 flex items-center gap-2 text-titulin text-ink">
               <input
                 type="checkbox"
                 checked={vistaParaTodos}
@@ -347,7 +347,7 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
             </button>
           </form>
           {falloDeVista ? (
-            <p className="mt-2 text-2xs text-danger" role="alert">
+            <p className="mt-2 text-dato text-danger" role="alert">
               {t("vistas.noSeGuardo", { motivo: falloDeVista })}
             </p>
           ) : null}
@@ -441,17 +441,17 @@ function AccionesDeColeccion({
         ))}
       </div>
       {acciones.filter((a) => a.detalle).map((a) => (
-        <p key={a.ruta} className="text-3xs text-ink-faint">
+        <p key={a.ruta} className="text-rotulo text-ink-faint">
           {a.detalle}
         </p>
       ))}
       {resultado ? (
-        <p role="status" className="text-2xs text-success">
+        <p role="status" className="text-dato text-success">
           {resultado}
         </p>
       ) : null}
       {fallo ? (
-        <p role="alert" className="text-2xs text-danger">
+        <p role="alert" className="text-dato text-danger">
           {fallo}
         </p>
       ) : null}
@@ -916,9 +916,9 @@ function RecursoVista({
     <div className={enTabla ? "" : "rounded-b border-x border-b border-ink-dim/50 bg-paper p-3 shadow-elevation-1"}>
       {proposito?.resumen ? (
         <div className="mb-4 max-w-3xl">
-          <p className="text-xs text-ink">{proposito.resumen}</p>
+          <p className="text-titulin text-ink">{proposito.resumen}</p>
           {proposito.detalle ? (
-            <p className="mt-0.5 text-2xs text-ink-faint">{proposito.detalle}</p>
+            <p className="mt-0.5 text-dato text-ink-faint">{proposito.detalle}</p>
           ) : null}
         </div>
       ) : null}
@@ -972,7 +972,7 @@ function RecursoVista({
           que era de todos. Mismo sitio y misma forma que en «Plataforma», que
           tiene el mismo problema y lo resuelve igual. */}
       {declarado.por_servicio?.length ? (
-        <label className="mb-3 flex items-center gap-2 text-2xs text-ink-muted">
+        <label className="mb-3 flex items-center gap-2 text-dato text-ink-muted">
           {t("modulo.servicio")}
           <select
             className="input-base"
@@ -1003,11 +1003,11 @@ function RecursoVista({
       {fallo ? <Fallo error={fallo} reintentar={() => void cargar()} /> : null}
 
       {busqueda && !terminoValido ? (
-        <p className="text-2xs text-ink-faint" role="status">
+        <p className="text-dato text-ink-faint" role="status">
           {t("modulo.escribeParaBuscar", { minimo: busqueda.minimo ?? 1 })}
         </p>
       ) : periodo && !rangoValido ? (
-        <p className="text-2xs text-ink-faint" role="status">
+        <p className="text-dato text-ink-faint" role="status">
           {t(desde && hasta ? "modulo.rangoAlReves" : "modulo.eligePeriodo")}
         </p>
       ) : filas === null ? (
@@ -1065,7 +1065,7 @@ function RecursoVista({
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-3">
                 {botonDeAlta}
-                <p className="text-3xs text-ink-faint" role="status">
+                <p className="text-rotulo text-ink-faint" role="status">
                   {t("modulo.filasCargadas", { cuantas: filas.length })}
                 </p>
               </div>
@@ -1203,7 +1203,7 @@ function RecursoVista({
             <button
               type="button"
               onClick={() => void cargar(siguiente)}
-              className="mt-3 rounded-lg border border-ink-dim/60 px-3 py-1.5 text-2xs text-ink-muted hover:bg-paper-light"
+              className="mt-3 rounded-lg border border-ink-dim/60 px-3 py-1.5 text-dato text-ink-muted hover:bg-paper-light"
             >
               {t("modulo.cargarMas")}
             </button>
@@ -1312,8 +1312,8 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
         <dl className="flex flex-wrap gap-x-4 gap-y-1">
           {cifras.slice(0, 6).map(([clave, valor]) => (
             <div key={clave}>
-              <dt className="text-3xs text-ink-faint">{humanizar(clave)}</dt>
-              <dd className={`text-sm font-medium ${sinMedir ? "text-ink-muted" : "text-ink"}`}>
+              <dt className="text-rotulo text-ink-faint">{humanizar(clave)}</dt>
+              <dd className={`text-titulo font-medium ${sinMedir ? "text-ink-muted" : "text-ink"}`}>
                 {escalar(valor, clave)}
               </dd>
             </div>
@@ -1324,14 +1324,14 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
         <dl className="space-y-0.5">
           {textos.slice(0, 8).map(([clave, valor]) => (
             <div key={clave} className="flex flex-wrap items-baseline gap-x-2">
-              <dt className="text-2xs text-ink">{humanizar(clave)}</dt>
-              <dd className="text-3xs text-ink-faint">{String(valor)}</dd>
+              <dt className="text-dato text-ink">{humanizar(clave)}</dt>
+              <dd className="text-rotulo text-ink-faint">{String(valor)}</dd>
             </div>
           ))}
         </dl>
       ) : null}
       {explicacion ? (
-        <p className={`mt-1 text-3xs ${sinMedir ? "text-warning" : "text-ink-faint"}`}>
+        <p className={`mt-1 text-rotulo ${sinMedir ? "text-warning" : "text-ink-faint"}`}>
           {explicacion}
         </p>
       ) : null}

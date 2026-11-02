@@ -184,8 +184,8 @@ export function SobreDeFirma() {
             <p
               className={
                 evidencia.verificable
-                  ? "card mb-4 border-success/40 p-3 text-2xs text-success"
-                  : "card mb-4 border-danger/40 p-3 text-2xs text-danger"
+                  ? "card mb-4 border-success/40 p-3 text-dato text-success"
+                  : "card mb-4 border-danger/40 p-3 text-dato text-danger"
               }
             >
               {evidencia.verificable
@@ -202,7 +202,7 @@ export function SobreDeFirma() {
                   <ol className="divide-y divide-ink-dim/30">
                     {firmantes.map((f, i) => (
                       <li key={`${f.email}-${i}`} className="py-1.5">
-                        <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+                        <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                           <span className="font-medium text-ink">
                             {f.nombre || f.email}
                           </span>
@@ -220,18 +220,18 @@ export function SobreDeFirma() {
                         {/* Cómo se le identificó: una firma sin identificación es
                         una casilla marcada por alguien con acceso al correo. */}
                         {f.identificacion ? (
-                          <p className="text-3xs text-ink-faint">
+                          <p className="text-rotulo text-ink-faint">
                             {t("sobre.identificado", {
                               como: f.identificacion,
                             })}
                           </p>
                         ) : (
-                          <p className="text-3xs text-warning">
+                          <p className="text-rotulo text-warning">
                             {t("sobre.sinIdentificar")}
                           </p>
                         )}
                         {f.motivo_rechazo ? (
-                          <p className="text-3xs text-danger">
+                          <p className="text-rotulo text-danger">
                             {f.motivo_rechazo}
                           </p>
                         ) : null}
@@ -243,7 +243,7 @@ export function SobreDeFirma() {
 
               <section className="card p-4">
                 <h2 className="section-label mb-1">{t("sobre.prueba")}</h2>
-                <dl className="space-y-1 text-3xs">
+                <dl className="space-y-1 text-rotulo">
                   <Dato
                     clave={t("sobre.selloTiempo")}
                     valor={evidencia.sello_tiempo}
@@ -279,16 +279,16 @@ export function SobreDeFirma() {
                       key={`${e.tipo}-${i}`}
                       className="flex flex-wrap items-baseline gap-x-3 py-1.5"
                     >
-                      <span className="text-2xs font-medium text-ink">
+                      <span className="text-dato font-medium text-ink">
                         {e.tipo}
                       </span>
                       {e.firmante ? (
-                        <span className="text-3xs text-ink-faint">
+                        <span className="text-rotulo text-ink-faint">
                           {e.firmante}
                         </span>
                       ) : null}
                       {e.descripcion ? (
-                        <span className="text-3xs text-ink-muted">
+                        <span className="text-rotulo text-ink-muted">
                           {e.descripcion}
                         </span>
                       ) : null}

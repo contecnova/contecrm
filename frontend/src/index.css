@@ -253,7 +253,11 @@
      nadie sabe cuál manda. */
   --celda-pad-y: 0.375rem;
   --celda-pad-x: 0.625rem;
-  --celda-texto: 0.6875rem;
+  /* 13px, el cuerpo de la escala. Era 0.6875rem (11) y la tabla de apoyo
+     restaba un píxel, así que las tablas del producto escribían en 11 y 10 —
+     los dos por debajo del mínimo y ninguno en la escala. */
+  --celda-texto: 0.8125rem;
+  --celda-texto-apoyo: 0.75rem;
   --hueco-bloque: 1.25rem;
 
   /* ── Paleta categórica de gráficas ──────────────────────────────────
@@ -496,7 +500,8 @@
   --page-pad-y: 16px;
   --celda-pad-y: 0.75rem;
   --celda-pad-x: 1rem;
-  --celda-texto: 0.8125rem;
+  --celda-texto: 0.875rem;
+  --celda-texto-apoyo: 0.8125rem;
   --hueco-bloque: 2rem;
 }
 
@@ -525,7 +530,7 @@
      principal en compacto, que es exactamente al revés de lo que quiere
      decir. */
   .celda-rejilla--apoyo {
-    font-size: calc(var(--celda-texto) - 0.0625rem);
+    font-size: var(--celda-texto-apoyo);
     padding: calc(var(--celda-pad-y) * 0.75) var(--celda-pad-x);
   }
 
@@ -533,7 +538,7 @@
      acordarse en cada `<Casilla>`, y basta con que una se olvide para que la
      fila salga desalineada. */
   .es-apoyo .celda-rejilla {
-    font-size: calc(var(--celda-texto) - 0.0625rem);
+    font-size: var(--celda-texto-apoyo);
     padding: calc(var(--celda-pad-y) * 0.75) var(--celda-pad-x);
   }
 
@@ -558,7 +563,7 @@
      pesan más que la tabla que hay debajo. */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-1.5
-      bg-accent text-white rounded font-medium text-sm
+      bg-accent text-white rounded font-medium text-titulo
       hover:bg-accent-soft
       active:bg-accent-soft
       transition-colors
@@ -567,14 +572,14 @@
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-1.5
       bg-paper text-accent border border-ink-dim rounded
-      font-medium text-sm
+      font-medium text-titulo
       hover:bg-paper-light
       transition-colors
       disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center px-3 py-1.5
-      text-sm text-ink-muted hover:text-ink hover:bg-paper-light
+      text-titulo text-ink-muted hover:text-ink hover:bg-paper-light
       rounded-full transition-colors
       disabled:opacity-40 disabled:cursor-not-allowed;
   }
@@ -584,14 +589,14 @@
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 px-4 py-1.5
       bg-danger/10 text-danger border border-danger/30 rounded
-      font-medium text-sm
+      font-medium text-titulo
       hover:bg-danger/20 hover:border-danger/50
       transition-colors;
   }
   /* Inline micro-action used in admin tables / sidebar. Keeps the prior
      uppercase-mono signature but adopts smaller padding for Material density. */
   .btn-link {
-    @apply inline-flex items-center text-3xs font-mono
+    @apply inline-flex items-center text-rotulo font-mono
       uppercase tracking-wider px-1.5 py-0.5
       transition-colors
       disabled:opacity-40 disabled:cursor-not-allowed;
@@ -599,7 +604,7 @@
   /* Toggle pill — boolean states (activo/inactivo) */
   .toggle-badge {
     @apply inline-flex items-center px-2 py-0.5 rounded-full
-      text-3xs font-mono uppercase tracking-wider
+      text-rotulo font-mono uppercase tracking-wider
       transition-colors cursor-pointer;
   }
   .toggle-badge--on {
@@ -611,7 +616,7 @@
   /* Pill-style tag — category nav */
   .pill {
     @apply inline-flex items-center px-3 py-1 rounded-full
-      text-xs font-medium text-ink-muted
+      text-titulin font-medium text-ink-muted
       bg-paper-light border border-transparent
       hover:bg-paper-lighter hover:text-ink
       transition-colors cursor-pointer select-none;
@@ -622,13 +627,13 @@
 
   /* ── Inputs ─────────────────────────────────────────────────────────── */
   /* Canonical form label: misma talla/peso/espaciado en todos los formularios
-     (antes se repetía `text-xs font-semibold text-ink-muted` con mb-1 / mb-1.5
+     (antes se repetía `text-titulin font-semibold text-ink-muted` con mb-1 / mb-1.5
      / mb-2 a ojo, rompiendo la alineación vertical entre campos). */
   /* El rótulo, pegado a su campo. `mb-2` dejaba ocho píxeles entre el
      nombre y la caja y dos entre campos: a esa distancia el rótulo flota
      entre los dos y hay que mirar dos veces para saber de cuál es. */
   .label-base {
-    @apply block text-xs font-semibold text-ink-muted mb-1;
+    @apply block text-titulin font-semibold text-ink-muted mb-1;
   }
   /* El campo, con el alto de un campo.
      Tenía más relleno y más radio que un botón —`py-2.5` y `rounded-lg`—, así
@@ -659,7 +664,7 @@
   .input-base {
     @apply w-full px-3 py-1.5
       bg-paper border border-ink-dim rounded-md
-      text-sm text-ink placeholder:text-ink-faint
+      text-titulo text-ink placeholder:text-ink-faint
       focus:outline-none focus:border-accent focus:shadow-accent-glow
       transition-all;
   }
@@ -681,7 +686,7 @@
     @apply sm:col-span-2;
   }
   .input-sm {
-    @apply px-3 py-2 text-xs font-mono
+    @apply px-3 py-2 text-titulin font-mono
       bg-paper border border-ink-dim rounded-md
       text-ink placeholder:text-ink-faint
       focus:outline-none focus:border-accent
@@ -722,7 +727,7 @@
   /* ── Citation pills (chat answers) ─────────────────────────────────── */
   .citation-pill {
     @apply inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 mx-0.5
-      text-2xs font-mono font-medium
+      text-dato font-mono font-medium
       bg-accent/10 text-accent border border-accent/30 rounded-full
       hover:bg-accent/20 hover:border-accent/60
       focus:outline-none focus-visible:ring-2 focus-visible:ring-accent
@@ -751,15 +756,17 @@
     @apply opacity-100 visible pointer-events-auto;
   }
   .citation-hover-meta {
-    @apply block text-3xs font-mono uppercase tracking-widest text-accent mb-1;
+    @apply block text-rotulo font-mono uppercase tracking-widest text-accent mb-1;
   }
   .citation-hover-snippet {
-    @apply block text-xs text-ink leading-relaxed font-sans;
+    @apply block text-titulin text-ink leading-relaxed font-sans;
   }
   .citation-hover-foot {
-    /* Auditoría 2026-07-17 R30: era text-[0.55rem] (~8.8px), por debajo del
-       mínimo legible del sistema; usa el token canónico text-3xs (10px). */
-    @apply block mt-2 text-3xs font-mono uppercase tracking-widest text-ink-faint;
+    /* Dos auditorías sobre lo mismo: el 17-07-2026 era `text-[0.55rem]`
+       (~8,8 px) y se subió a 10 llamándolo «el mínimo legible del sistema».
+       No lo era: el 02-11-2026 el mínimo del sistema pasa a 12, que es donde
+       lo pone Lightning. */
+    @apply block mt-2 text-rotulo font-mono uppercase tracking-widest text-ink-faint;
   }
 
   .citation-group {
@@ -770,13 +777,13 @@
       last:rounded-r-full last:border-r;
   }
   .citation-sep {
-    @apply text-3xs font-mono text-accent/50 leading-5;
+    @apply text-rotulo font-mono text-accent/50 leading-5;
   }
 
   /* ── Badges ─────────────────────────────────────────────────────────── */
   .badge {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-      text-3xs font-mono uppercase tracking-wider;
+      text-rotulo font-mono uppercase tracking-wider;
   }
   .badge-success {
     @apply badge bg-success/10 text-success border border-success/30;
@@ -801,7 +808,7 @@
      sustituir. */
   .chip-dato {
     @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5
-      text-3xs bg-paper-light text-ink-muted border border-ink-dim/60;
+      text-rotulo bg-paper-light text-ink-muted border border-ink-dim/60;
   }
   .chip-dato--si {
     @apply bg-accent/10 text-accent border-accent/30;
@@ -812,7 +819,7 @@
 
   /* ── Tab nav — Material 3 segmented chips ─────────────────────────── */
   .tab-button {
-    @apply px-4 py-1.5 text-sm font-medium rounded-full transition-colors;
+    @apply px-4 py-1.5 text-titulo font-medium rounded-full transition-colors;
   }
   .tab-button-inactive {
     @apply tab-button text-ink-muted hover:text-ink hover:bg-paper-light;
@@ -827,7 +834,7 @@
      0.10em): un rótulo de grupo tiene que pesar MENOS que sus enlaces en tamaño
      y MÁS en peso, o compite con ellos por la atención en vez de ordenarlos. */
   .section-label {
-    @apply text-3xs font-bold uppercase tracking-[0.08em] text-ink-faint;
+    @apply text-rotulo font-bold uppercase tracking-[0.08em] text-ink-faint;
   }
 
   /* ── Canonical vertical spacing scale ─────────────────────────────── */
@@ -849,11 +856,11 @@
   .logo-tile {
     @apply inline-flex items-center justify-center
       w-9 h-9 rounded-xl
-      bg-accent text-white font-bold text-base
+      bg-accent text-white font-bold text-titulo
       shadow-elevation-1;
   }
   .logo-tile-lg {
-    @apply logo-tile w-12 h-12 rounded-2xl text-xl;
+    @apply logo-tile w-12 h-12 rounded-2xl text-grande;
   }
 
   /* ── Material Symbols icon helper ───────────────────────────────────
@@ -990,7 +997,7 @@ html[data-view-mode="focus"] .focus-hide {
 }
 .toast {
   @apply pointer-events-auto px-4 py-3 rounded-xl shadow-elevation-3
-    border text-sm flex items-start gap-3
+    border text-titulo flex items-start gap-3
     animate-slide-up bg-paper;
 }
 .toast-success {
@@ -1020,13 +1027,13 @@ html[data-view-mode="focus"] .focus-hide {
   @apply italic text-ink;
 }
 .prose-chat code {
-  @apply px-1.5 py-0.5 rounded-md bg-paper-light text-accent font-mono text-[0.85em];
+  @apply px-1.5 py-0.5 rounded-md bg-paper-light text-accent font-mono text-rotulo;
 }
 .prose-chat pre {
   @apply my-4 p-4 bg-paper-dark border border-ink-dim/60 rounded-lg overflow-x-auto;
 }
 .prose-chat pre code {
-  @apply bg-transparent p-0 text-ink-muted text-sm;
+  @apply bg-transparent p-0 text-ink-muted text-titulo;
 }
 .prose-chat ul,
 .prose-chat ol {
@@ -1051,16 +1058,16 @@ html[data-view-mode="focus"] .focus-hide {
   @apply font-sans font-bold text-ink mt-4 mb-2 first:mt-0;
 }
 .prose-chat h1 {
-  @apply text-2xl;
+  @apply text-pagina;
 }
 .prose-chat h2 {
-  @apply text-xl;
+  @apply text-grande;
 }
 .prose-chat h3 {
-  @apply text-lg;
+  @apply text-grande;
 }
 .prose-chat h4 {
-  @apply text-base;
+  @apply text-titulo;
 }
 .prose-chat a {
   @apply text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent;
@@ -1077,10 +1084,10 @@ html[data-view-mode="focus"] .focus-hide {
   @apply max-w-full h-auto rounded-md border border-ink-dim/60 bg-paper-dark shadow-sm;
 }
 .prose-chat .doc-figure-caption {
-  @apply mt-2 text-xs text-ink-faint italic text-center px-2;
+  @apply mt-2 text-titulin text-ink-faint italic text-center px-2;
 }
 .prose-chat .doc-figure-fallback {
-  @apply text-xs text-ink-faint italic;
+  @apply text-titulin text-ink-faint italic;
 }
 .prose-chat .doc-figure-inline {
   @apply inline-block align-middle max-h-32 w-auto rounded-sm border border-ink-dim/60 mx-1;
@@ -1093,7 +1100,7 @@ html[data-view-mode="focus"] .focus-hide {
 
 /* ── Tables in prose-chat (LLM output) ─────────────────────────────── */
 .prose-chat table {
-  @apply w-full my-4 text-sm border-collapse;
+  @apply w-full my-4 text-titulo border-collapse;
 }
 .prose-chat th {
   @apply px-3 py-2 text-left font-semibold text-ink bg-paper-light border border-ink-dim/60;

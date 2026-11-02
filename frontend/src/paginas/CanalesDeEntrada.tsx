@@ -99,14 +99,14 @@ export function CanalesDeEntrada() {
             return (
               <li key={c.id} className="card p-4">
                 <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="flex-1 text-sm text-ink">{c.nombre}</span>
+                  <span className="flex-1 text-titulo text-ink">{c.nombre}</span>
                   <span className="chip-dato">{c.tipo}</span>
                   <span className={c.activo ? "badge badge-muted" : "badge badge-aviso"}>
                     {t(c.activo ? "canales.escuchando" : "canales.apagado")}
                   </span>
                 </div>
 
-                <p className="mt-2 font-mono text-2xs text-ink">
+                <p className="mt-2 font-mono text-dato text-ink">
                   {t("canales.cifras", { recibidos: c.recibidos, descartados: total })}
                 </p>
 
@@ -136,10 +136,10 @@ export function CanalesDeEntrada() {
                     contestando «aceptado», así que un falso positivo no deja
                     ni rastro del lado de quien escribió. */}
                 {trampaManda ? (
-                  <p className="mt-2 text-2xs text-warning">{t("canales.trampaManda")}</p>
+                  <p className="mt-2 text-dato text-warning">{t("canales.trampaManda")}</p>
                 ) : null}
 
-                <dl className="mt-3 grid gap-x-4 gap-y-1 text-3xs text-ink-faint sm:grid-cols-2">
+                <dl className="mt-3 grid gap-x-4 gap-y-1 text-rotulo text-ink-faint sm:grid-cols-2">
                   <div>
                     <dt className="inline text-ink-muted">{t("canales.tope")}</dt>{" "}
                     <dd className="inline font-mono">{c.max_por_hora}</dd>
@@ -167,10 +167,10 @@ export function CanalesDeEntrada() {
                 {/* Sin dirección propia, el canal de correo no puede cortar su
                     propio eco: el buzón se contesta a sí mismo. */}
                 {c.tipo === "correo" && !c.direccion_propia ? (
-                  <p className="mt-2 text-2xs text-warning">{t("canales.sinEco")}</p>
+                  <p className="mt-2 text-dato text-warning">{t("canales.sinEco")}</p>
                 ) : null}
 
-                <p className="mt-2 text-3xs text-ink-faint">
+                <p className="mt-2 text-rotulo text-ink-faint">
                   {t("canales.mapea", { cuantos: Object.keys(c.mapeo ?? {}).length })}
                 </p>
               </li>

@@ -69,13 +69,13 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
           entradilla={t("consola.intro")}
           icono="settings"
         />
-        <p className="mt-2 text-3xs text-ink-faint">
+        <p className="mt-2 text-rotulo text-ink-faint">
           {t("consola.total", { total: superficie.total, administracion: superficie.administracion })}
         </p>
         {/* Un servicio que no contesta se dice y se nombra. Callarlo haría que
             la consola escondiera media administración como si no existiera. */}
         {superficie.servicios_sin_contestar.length > 0 ? (
-          <p className="mt-2 rounded-lg bg-warning/10 p-2 text-3xs text-warning" role="alert">
+          <p className="mt-2 rounded-lg bg-warning/10 p-2 text-rotulo text-warning" role="alert">
             {t("consola.incompleta", {
               count: superficie.servicios_sin_contestar.length,
               servicios: superficie.servicios_sin_contestar.join(", "),
@@ -89,14 +89,14 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
               key={a.recurso}
               type="button"
               onClick={() => setArea(a)}
-              className={`rounded-lg px-3 py-1.5 text-left text-xs ${
+              className={`rounded-lg px-3 py-1.5 text-left text-titulin ${
                 area?.recurso === a.recurso
                   ? "bg-paper-light text-ink"
                   : "text-ink-muted hover:bg-paper-light"
               }`}
             >
               {a.nombre}
-              <span className="ml-2 text-3xs text-ink-faint">{a.operaciones.length}</span>
+              <span className="ml-2 text-rotulo text-ink-faint">{a.operaciones.length}</span>
             </button>
           ))}
         </nav>
@@ -149,7 +149,7 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
 
   return (
     <>
-      <h2 className="text-sm font-medium text-ink">{area.nombre}</h2>
+      <h2 className="text-titulo font-medium text-ink">{area.nombre}</h2>
 
       {listado ? (
         fallo ? (
@@ -165,10 +165,10 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
           </div>
         )
       ) : (
-        <p className="mt-3 text-2xs text-ink-faint">{t("consola.sinListado")}</p>
+        <p className="mt-3 text-dato text-ink-faint">{t("consola.sinListado")}</p>
       )}
 
-      <h3 className="mt-6 text-2xs font-medium uppercase tracking-wide text-ink-faint">
+      <h3 className="mt-6 text-dato font-medium uppercase tracking-wide text-ink-faint">
         {t("consola.operaciones")}
       </h3>
       <ul className="mt-2 flex flex-col gap-1">
@@ -182,11 +182,11 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
               }`}
             >
               <div className="flex items-baseline gap-2">
-                <span className="font-mono text-3xs text-accent">{o.metodo}</span>
-                <span className="font-mono text-2xs text-ink-muted">{o.ruta}</span>
+                <span className="font-mono text-rotulo text-accent">{o.metodo}</span>
+                <span className="font-mono text-dato text-ink-muted">{o.ruta}</span>
               </div>
-              <p className="text-2xs text-ink">{o.resumen}</p>
-              <p className="text-3xs text-ink-faint">
+              <p className="text-dato text-ink">{o.resumen}</p>
+              <p className="text-rotulo text-ink-faint">
                 {o.permiso ? `${t("consola.permiso")}: ${o.permiso}` : null}
                 {!permitida ? ` · ${t("consola.sinPermiso")}` : null}
               </p>

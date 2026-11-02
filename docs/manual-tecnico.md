@@ -191,10 +191,48 @@ ninguna pantalla pueda ponerse la suya:
 
 Y el cuerpo va a **14px**, que es lo que faltaba de verdad: sin esa línea
 heredaba los 16px del navegador, y todo lo que no lleva una clase `text-*` salía
-un 14 % más grande que la misma frase en contecflow. Los tamaños de Tailwind
-—10/11/12/14/16/18/20/24/36/48— ya coincidían uno a uno con su escala; solo
-faltaban dos escalones suyos que Tailwind no tiene, 12.5px para los enlaces del
-menú y 22px para los títulos de pantalla.
+un 14 % más grande que la misma frase en contecflow.
+
+#### La escala tipográfica (02-11-2026)
+
+Hasta el 02-11-2026 se usaban los tamaños de Tailwind
+—10/11/12/14/16/18/20/24/36/48— más tres escalones añadidos, 12.5, 15 y 22.
+**Medido en las 58 pantallas**, eso daba once tamaños a la vista —32, 22, 20,
+18, 16, 14, 12, 11, 10, 9,6 y 9 px—, con saltos de un píxel entre 10, 11 y 12 y
+una pantalla usando nueve a la vez. Entre 10 y 11 nadie puede decidir, así que
+cada pantalla salía de un tamaño distinto.
+
+Y el número no era lo peor: **el 77 % del texto estaba en 10 u 11 px** —508
+usos de `text-3xs` y 458 de `text-2xs` de 1.257 en total—. Lightning no baja de
+12 y su cuerpo es 13.
+
+Ahora son **siete escalones, con nombre por su papel y ninguno por debajo de
+12**:
+
+| clase | px | para qué |
+|---|---|---|
+| `text-rotulo` | 12 | rótulos, metadatos, lo secundario |
+| `text-dato` | 13 | el cuerpo |
+| `text-titulin` | 14 | encabezado pequeño |
+| `text-titulo` | 16 | encabezado de sección |
+| `text-grande` | 20 | encabezado de bloque |
+| `text-pagina` | 24 | el título de la pantalla |
+| `text-hero` | 32 | la cifra que se mira de lejos |
+
+El nombre dice el papel y no el tamaño: así se puede volver a ajustar la escala
+sin tocar mil sitios. Y la escala va **en el tema y no en `extend`**, de modo
+que `text-sm`, `text-lg` y las demás de Tailwind dejan de existir — escribir
+una deja la clase sin regla.
+
+Las celdas de tabla tienen su propio token porque dependen de la densidad:
+13 px en compacto y 14 en cómodo, con 12 y 13 para una tabla de apoyo. Antes
+era 11 y «menos un píxel», que daba 10 — dos tamaños por debajo del mínimo y
+ninguno de los dos en la escala.
+
+Lo vigilan dos cosas, y hacen falta las dos: una prueba que lee el código
+(`la_escala_tipografica_no_se_inventa`) y la medida real en el navegador dentro
+del barrido de pantallas. A la primera se le escapó un 9 px escondido tras una
+constante.
 
 El panel se pliega a raíl de iconos por debajo de 1280px, y ahí se aparta a
 propósito de contecflow en una cosa: allí el raíl enseña el icono de cada
