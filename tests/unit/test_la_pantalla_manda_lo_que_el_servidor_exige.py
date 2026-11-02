@@ -34,6 +34,18 @@ from tests.unit._contratos import SERVICIOS  # noqa: E402
 # parámetros.
 RE_PETICION = re.compile(r"""["'`](/api/v1/[^"'`]*)["'`]""")
 
+# Lo que sigue a la ruta cuando la llamada NO es un `GET`.
+#
+# Los parámetros que este gate exige son los del `GET` —así lo dice
+# `_parametros_obligatorios`—, y una ruta puede tener varios métodos: el
+# listado de vistas de lista exige `recurso` al leer y no al crear, porque al
+# crear viaja en el cuerpo. Sin mirar el método, un `POST` correcto salía
+# marcado como si llamara mal.
+#
+# Se mira en los 300 caracteres siguientes porque `metodo:` va en el objeto de
+# opciones, justo detrás de la ruta: `llamar(RUTA, { metodo: "POST", … })`.
+RE_METODO = re.compile(r"""metodo:\s*["'`](POST|PATCH|PUT|DELETE)["'`]""")
+
 
 @functools.cache
 def _parametros_obligatorios() -> dict[str, tuple[str, ...]]:
@@ -95,8 +107,13 @@ def _peticiones_del_front() -> tuple[tuple[str, str], ...]:
     for fichero in sorted(FRONT.rglob("*.ts*")):
         if "/pruebas/" in fichero.as_posix():
             continue
-        for ruta in RE_PETICION.findall(fichero.read_text(encoding="utf-8")):
-            salida.append((fichero.name, ruta))
+        texto = fichero.read_text(encoding="utf-8")
+        for encaje in RE_PETICION.finditer(texto):
+            # Si justo detrás se declara un método de escritura, los exigidos
+            # del `GET` no son los suyos.
+            if RE_METODO.search(texto[encaje.end() : encaje.end() + 300]):
+                continue
+            salida.append((fichero.name, encaje.group(1)))
     return tuple(salida)
 
 

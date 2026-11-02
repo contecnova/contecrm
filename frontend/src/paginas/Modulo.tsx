@@ -31,7 +31,14 @@ import {
 } from "@/componentes/Vistas";
 import { Formulario } from "@/componentes/Formulario";
 import { Filtros } from "@/componentes/Filtros";
-import { Tabla } from "@/componentes/Tabla";
+import { Tabla, leerElegidas, leerOrden } from "@/componentes/Tabla";
+import {
+  borrarVista,
+  guardarVista,
+  vistaDeEntrada,
+  vistasDe,
+  type VistaDeLista,
+} from "@/lib/vistasDeLista";
 import { ErrorApi, llamar } from "@/lib/api";
 import { escalar, esIdentificadorTecnico, humanizar } from "@/lib/formato";
 import { comoQuery, leerFiltros, parametroDe, type Filtro } from "@/lib/filtros";
@@ -56,8 +63,21 @@ import { colorDeModulo, iconoDeGrupo } from "@/lib/navegacion";
 export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const { ruta = "" } = useParams();
-  const [parametros] = useSearchParams();
+  const [parametros, setParametros] = useSearchParams();
   const modulo = moduloDe(ruta);
+  // ── Las vistas de lista guardadas ──────────────────────────────────
+  //
+  // Una vista es el recorte con nombre de este listado. Los filtros ya viven
+  // en la URL, así que aplicar una vista es **poner sus parámetros**: lo que
+  // se guarda es exactamente lo que se puede pegar en un chat, y no una
+  // segunda forma de decir lo mismo.
+  const [vistas, setVistas] = useState<VistaDeLista[]>([]);
+  const [vistaActiva, setVistaActiva] = useState<VistaDeLista | null>(null);
+  const [guardandoVista, setGuardandoVista] = useState(false);
+  const [nombreDeLaVista, setNombreDeLaVista] = useState("");
+  const [vistaParaTodos, setVistaParaTodos] = useState(false);
+  const [falloDeVista, setFalloDeVista] = useState("");
+
   // `?r=Cuentas` elige la pestaña. Lo usa el botón «Crear» de la barra para
   // llevar directamente al alta que se ha pedido: sin esto caería en la primera
   // pestaña del módulo, que puede no ser la del recurso que se quiere crear.
@@ -68,6 +88,16 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const porNombre = recursosDe(ruta ?? "").findIndex((r) => r.nombre === pedido);
   const inicial = porNombre >= 0 ? porNombre : pestanaPrincipal(ruta ?? "");
   const [activo, setActivo] = useState(inicial);
+  // El recurso que se está mirando. Hace falta aquí arriba porque las vistas
+  // de lista son suyas: una vista guardada en «Cuentas» no tiene sentido en
+  // «Visitas», aunque las dos vivan en el mismo módulo.
+  const recursoActivo = recursosDe(ruta ?? "")[activo];
+  // La clave con la que se recuerdan columnas y orden incluye la VISTA: cada
+  // una se mira a su manera, y sin esto abrir «Las mías» devolvía las columnas
+  // de «Todo». Sin vista, la clave es la de siempre.
+  const recuerdaComo = `${ruta}.${recursoActivo?.nombre ?? ""}${
+    vistaActiva ? `.${vistaActiva.id}` : ""
+  }`;
   const visibilidad = useVisibilidad();
   /**
    * Las pestañas que esta persona puede abrir, con la papelera al final.
@@ -125,6 +155,92 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
     }
   }, [pestañas, activo]);
 
+  // Se piden al cambiar de recurso. Si hay una marcada por defecto, se aplica
+  // **sólo cuando la URL no trae ya filtros**: llegar por un enlace con un
+  // recorte dentro y que la pantalla lo pisara con la vista de entrada haría
+  // inútil compartir un listado filtrado.
+  useEffect(() => {
+    let vivo = true;
+    setVistaActiva(null);
+    void vistasDe(recursoActivo?.listar ?? "").then((suyas) => {
+      if (!vivo) return;
+      setVistas(suyas);
+      const entrada = vistaDeEntrada(suyas);
+      const yaHayFiltros = [...parametros.keys()].some((k) => k !== "r" && k !== "nuevo");
+      if (entrada && !yaHayFiltros) aplicarVista(entrada);
+    });
+    return () => {
+      vivo = false;
+    };
+    // `parametros` y `aplicarVista` quedan fuera a propósito: esto corre al
+    // cambiar de RECURSO, no cada vez que alguien toca un filtro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recursoActivo?.listar ?? ""]);
+
+  /** Aplicar una vista: sus filtros a la URL, y recordar cuál está puesta. */
+  const aplicarVista = useCallback(
+    (vista: VistaDeLista | null) => {
+      setVistaActiva(vista);
+      const siguientes = new URLSearchParams();
+      const pestaña = parametros.get("r");
+      if (pestaña) siguientes.set("r", pestaña);
+      for (const [k, v] of Object.entries(vista?.filtros ?? {})) {
+        if (typeof v === "string" || typeof v === "number") siguientes.set(k, String(v));
+      }
+      setParametros(siguientes, { replace: true });
+    },
+    [parametros, setParametros],
+  );
+
+  /** Lo que hay en pantalla ahora mismo, listo para guardarse. */
+  const recorteActual = useCallback(() => {
+    const filtrosActuales: Record<string, string> = {};
+    for (const [k, v] of parametros.entries()) {
+      if (k !== "r" && k !== "nuevo") filtrosActuales[k] = v;
+    }
+    return filtrosActuales;
+  }, [parametros]);
+
+  async function guardarLaVista() {
+    const nombre = nombreDeLaVista.trim();
+    if (!nombre) return;
+    setFalloDeVista("");
+    try {
+      const nueva = await guardarVista({
+        recurso: recursoActivo?.listar ?? "",
+        nombre,
+        filtros: recorteActual(),
+        // Las columnas y el orden que hay puestos, para que quien abra esta
+        // vista por primera vez la vea como la dejó quien la guardó.
+        columnas: leerElegidas(recuerdaComo) ?? [],
+        orden: leerOrden(recuerdaComo),
+        compartida: vistaParaTodos,
+      });
+      setVistas((previas) => [...previas, nueva]);
+      setVistaActiva(nueva);
+      setGuardandoVista(false);
+      setNombreDeLaVista("");
+      setVistaParaTodos(false);
+    } catch (error) {
+      setFalloDeVista(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function borrarLaVista(vista: VistaDeLista) {
+    const pregunta = vista.compartida
+      ? t("vistas.confirmarBorradoCompartida", { nombre: vista.nombre })
+      : t("vistas.confirmarBorrado", { nombre: vista.nombre });
+    if (!window.confirm(pregunta)) return;
+    try {
+      await borrarVista(vista.id);
+      setVistas((previas) => previas.filter((v) => v.id !== vista.id));
+      if (vistaActiva?.id === vista.id) aplicarVista(null);
+    } catch (error) {
+      setFalloDeVista(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+
   if (!modulo) return <Vacio />;
   const pestanas_ = recursosDe(ruta ?? "");
   const recurso = pestanas_[activo] ?? pestanas_[0];
@@ -146,6 +262,18 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
         recursos={pestanas_}
         activo={activo}
         alElegir={setActivo}
+        vistas={vistas}
+        vistaActiva={vistaActiva}
+        alElegirVista={aplicarVista}
+        alGuardarVista={() => {
+          // Se propone el nombre de la vista que hay puesta: lo normal es
+          // guardar una variante de la que se estaba mirando.
+          setNombreDeLaVista(vistaActiva ? `${vistaActiva.nombre} (copia)` : "");
+          setVistaParaTodos(false);
+          setFalloDeVista("");
+          setGuardandoVista(true);
+        }}
+        alBorrarVista={(v) => void borrarLaVista(v)}
         // La lista es UNA tarjeta: cabecera, barra y tabla pegadas. Siempre,
         // y lo de debajo se encarga de cerrarla — en tabla lo hace la propia
         // tabla y en las demás vistas el recuadro que las envuelve.
@@ -171,6 +299,61 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           </details>
         }
       />
+      {/* Guardar la vista. Es un panel y no un `prompt()` del navegador: hay
+          que decidir DOS cosas —cómo se llama y quién la ve— y la segunda es
+          la que no se puede preguntar con un cuadro de texto. Una vista
+          guardada «para mí» que luego resulta que la ve todo el mundo es la
+          clase de sorpresa que hace desconfiar de la función entera. */}
+      {guardandoVista ? (
+        <div className="card mb-3 border-accent/30 bg-accent/5 p-3">
+          <form
+            className="flex flex-wrap items-end gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void guardarLaVista();
+            }}
+          >
+            <label className="flex min-w-60 flex-col gap-1">
+              <span className="label-base">{t("vistas.comoSeLlama")}</span>
+              <input
+                // El foco se pone al abrir y NO con `autoFocus`: el panel
+                // aparece al pulsar, así que el foco va donde se acaba de
+                // pedir. `autoFocus` lo pondría también al montar la pantalla,
+                // que es otra cosa y es la que molesta.
+                ref={(e) => e?.focus()}
+                value={nombreDeLaVista}
+                onChange={(e) => setNombreDeLaVista(e.target.value)}
+                className="input-base"
+              />
+            </label>
+            <label className="mb-1.5 flex items-center gap-2 text-xs text-ink">
+              <input
+                type="checkbox"
+                checked={vistaParaTodos}
+                onChange={(e) => setVistaParaTodos(e.target.checked)}
+                className="h-3.5 w-3.5 rounded-sm border-ink-dim accent-accent"
+              />
+              {t("vistas.paraTodos")}
+            </label>
+            <button type="submit" className="btn-primary mb-1" disabled={!nombreDeLaVista.trim()}>
+              {t("modulo.guardar")}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary mb-1"
+              onClick={() => setGuardandoVista(false)}
+            >
+              {t("modulo.cancelar")}
+            </button>
+          </form>
+          {falloDeVista ? (
+            <p className="mt-2 text-2xs text-danger" role="alert">
+              {t("vistas.noSeGuardo", { motivo: falloDeVista })}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {recurso ? (
         /* La `key` NO es decorativa: sin ella React reutiliza esta misma
            instancia al cambiar de módulo o de pestaña, y con ella se quedan
@@ -187,6 +370,9 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           sesion={sesion}
           ruta={ruta}
           abrirAlta={parametros.get("nuevo") === "1"}
+          recuerdaColumnasComo={recuerdaComo}
+          columnasDeLaVista={vistaActiva?.columnas}
+          ordenDeLaVista={vistaActiva?.orden ?? null}
         />
       ) : (
         <Vacio />
@@ -295,12 +481,20 @@ function RecursoVista({
   sesion,
   ruta,
   abrirAlta = false,
+  recuerdaColumnasComo,
+  columnasDeLaVista,
+  ordenDeLaVista,
 }: {
   recurso: Recurso;
   sesion: Sesion | null;
   ruta: string;
   /** Se llega con el formulario ya abierto desde el botón «Crear». */
   abrirAlta?: boolean;
+  /** Con qué clave se recuerdan columnas y orden. La decide la pantalla. */
+  recuerdaColumnasComo: string;
+  /** Columnas y orden que trae la vista guardada, para sembrar la tabla. */
+  columnasDeLaVista?: string[];
+  ordenDeLaVista?: { columna: string; sentido: "asc" | "desc" } | null;
 }) {
   const { t } = useTranslation();
   /**
@@ -399,7 +593,9 @@ function RecursoVista({
   const [esquemaEditable, setEsquemaEditable] = useState<Map<string, CampoEsquema>>(
     () => new Map(),
   );
-  const recuerdaComo = `${ruta}.${recurso.nombre}`;
+  // La clave con la que se recuerdan columnas y orden. La trae la pantalla
+  // porque incluye la VISTA de lista, que es suya.
+  const recuerdaComo = recuerdaColumnasComo;
   const [vista, setVista] = useState<Vista>(() => vistaRecordada(recuerdaComo) ?? "tarjetas");
   /**
    * El valor por defecto se decide cuando llegan los datos, no antes.
@@ -951,6 +1147,8 @@ function RecursoVista({
               // El listado ES la pantalla: se recorre con la página.
               ocupaLaPantalla
               pegada
+              columnasIniciales={columnasDeLaVista}
+              ordenInicial={ordenDeLaVista ?? null}
               // Lo que se puede hacer con una fila sin abrirla. Sólo cuando el
               // registro TIENE ficha: un menú sobre una fila a la que no se
               // llega no puede ofrecer ni abrir ni editar, y un menú con una

@@ -993,7 +993,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "sales",
       },
       {
-        nombre: "Leads",
+        // «Candidatos», como el módulo y como en Salesforce: el rótulo salía
+        // «CANDIDATOS · LEADS», que es la misma cosa dicha dos veces en dos
+        // idiomas.
+        nombre: "Candidatos",
         principal: true,
         objeto: "lead",
         listar: "/api/v1/leads",

@@ -469,6 +469,28 @@ donde ponía «Vence at» pone «Vence».
 
 ### Las listas: ordenar, elegir columnas y cambiar de vista
 
+**Vistas guardadas.** Arriba del listado, en grande, está la vista que estás
+mirando. De entrada pone **«Todo»**, que es la lista completa. Filtra, ordena y
+elige columnas como quieras, y después abre ese desplegable y pulsa **Guardar
+esta vista…**: le pones nombre y a partir de ahí la tienes ahí para siempre.
+
+- **Se guardan en el servidor**, no en tu navegador: las tienes igual desde
+  otro ordenador.
+- Al guardarla decides **si la ve sólo quien la guarda o todo el equipo**. Para
+  compartirla hace falta permiso; para guardarte una tuya, no — es tan tuyo
+  como ordenar una columna.
+- **La vista de otra persona no la ves.** El nombre de una vista ya cuenta lo
+  que alguien está mirando.
+- Cada vista **recuerda sus columnas y su orden**. Las mismas cuentas vistas
+  como «Mi cartera» y como «En riesgo» no se miran igual.
+- Si marcas una como la de entrada, es la que se abre al llegar — salvo que
+  llegues por un enlace que ya trae un filtro dentro: ése manda.
+
+Encima, en pequeño, está **qué objeto** estás mirando (Cuentas, Contactos,
+Visitas…). Se cambia de tarde en tarde, así que va discreto; la vista, que se
+cambia cada día, es lo grande.
+
+
 Casi todo en contecrm es una lista: cuentas, oportunidades, casos, órdenes de
 trabajo. Todas funcionan igual, a propósito — lo que aprendas en una te sirve en
 las demás.

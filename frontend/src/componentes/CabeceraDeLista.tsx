@@ -8,21 +8,27 @@
  * pestañas no son una navegación: son una lista puesta en horizontal, y hay
  * que leerlas todas para encontrar la que se usa.
  *
- * Lightning resuelve esto con **el objeto arriba en pequeño y la vista debajo
- * en grande, con un desplegable**: «Leads / Todos los leads abiertos ▾». Se
- * copia tal cual, porque la pregunta que contesta es la misma —¿qué estoy
- * mirando y qué más puedo mirar aquí?— y así ocupa una línea en vez de dos
- * filas.
+ * Lightning reparte eso en **dos niveles, y cada uno contesta una pregunta
+ * distinta**:
+ *
+ * - Arriba, pequeño: **qué objeto** estoy mirando. Aquí es el recurso del
+ *   módulo —Cuentas, Contactos, Visitas—, y se elige en un desplegable
+ *   discreto porque se cambia de tarde en tarde.
+ * - Debajo, grande: **qué vista** de ese objeto. Es el recorte con nombre que
+ *   se abre cada día, y por eso es lo que manda en la pantalla.
+ *
+ * Sin vistas guardadas, la grande dice «Todo», que es exactamente lo que
+ * había antes: el listado completo, sin tener que elegir nada.
  *
  * Tres cosas deliberadas:
  *
- * - **El desplegable dice cuántas hay.** Con la tira, el número de pestañas se
- *   veía; escondiéndolas habría que adivinarlo.
- * - **La papelera se queda fuera del desplegable**, a la derecha y con su
- *   icono: no es un sitio donde se trabaja, es donde se mira cuando algo
- *   falta, y mezclada entre las demás obliga a leerlas todas.
- * - **Con una sola pestaña no hay desplegable**: un control que sólo ofrece lo
- *   que ya estás viendo es ruido.
+ * - **El desplegable del objeto dice cuántos hay.** Con la tira, el número se
+ *   veía; escondiéndolos habría que adivinarlo.
+ * - **La papelera se queda fuera**, a la derecha y con su icono: no es un
+ *   sitio donde se trabaja, es donde se mira cuando algo falta, y mezclada
+ *   entre las demás obliga a leerlas todas.
+ * - **Con un solo objeto no hay desplegable de objeto**: un control que sólo
+ *   ofrece lo que ya estás viendo es ruido.
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -31,45 +37,27 @@ import { useTranslation } from "react-i18next";
 import { Icono } from "@/componentes/Icono";
 import type { Recurso } from "@/lib/modulos";
 import { cn } from "@/lib/utiles";
+import type { VistaDeLista } from "@/lib/vistasDeLista";
 
-export function CabeceraDeLista({
-  icono,
-  color,
-  modulo,
-  recursos,
-  activo,
-  alElegir,
-  acciones,
-  trazabilidad,
-  pegada = false,
+/**
+ * Un desplegable con su cierre: Escape, pulsar fuera, y el foco de vuelta.
+ *
+ * Está aquí dentro y no en un componente del sistema porque la cabecera tiene
+ * DOS y son el mismo control con distinto tamaño. Dos copias del mismo
+ * comportamiento de cierre se separan a la primera corrección.
+ */
+function Desplegable({
+  etiqueta,
+  rotulo,
+  grande,
+  children,
 }: {
-  /** Símbolo de Material del grupo al que pertenece el módulo. */
-  icono: string;
-  /** El color del objeto, el de Salesforce. Sin él, el azul del acento. */
-  color?: string | null;
-  /** El módulo: va encima y en pequeño, como el objeto en Lightning. */
-  modulo: string;
-  /** Las pestañas del módulo, en su orden. */
-  recursos: Recurso[];
-  /** Índice de la que se está mirando. */
-  activo: number;
-  alElegir: (i: number) => void;
-  /** Lo que se puede hacer aquí: dar de alta, exportar. */
-  acciones?: ReactNode;
-  /** El desplegable de trazabilidad, que va donde nadie lo pise. */
-  trazabilidad?: ReactNode;
-  /**
-   * Pegada a lo que va debajo: sin margen, sin esquinas abajo y sin borde
-   * inferior, para que la cabecera, la barra de herramientas y la tabla sean
-   * **una sola tarjeta** y no tres flotando.
-   *
-   * Es como se ve una lista en Lightning, y la diferencia no es estética: tres
-   * recuadros con dos huecos entre ellos se leen como tres cosas distintas, y
-   * son la misma.
-   */
-  pegada?: boolean;
+  etiqueta: string;
+  rotulo: ReactNode;
+  grande?: boolean;
+  /** Recibe el cierre, para poder llamarlo al elegir. */
+  children: (cerrar: () => void) => ReactNode;
 }) {
-  const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const caja = useRef<HTMLDivElement>(null);
   const disparador = useRef<HTMLButtonElement>(null);
@@ -94,11 +82,131 @@ export function CabeceraDeLista({
     };
   }, [abierto]);
 
+  return (
+    <div className="relative min-w-0" ref={caja}>
+      <button
+        ref={disparador}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={abierto}
+        aria-label={etiqueta}
+        onClick={() => setAbierto((v) => !v)}
+        className={cn(
+          "flex min-w-0 items-center gap-1",
+          grande
+            ? "text-xl-em font-bold tracking-[-0.01em] text-ink hover:text-accent"
+            : "text-3xs font-semibold uppercase tracking-[0.055em] text-ink-faint hover:text-ink",
+        )}
+      >
+        <span className="truncate">{rotulo}</span>
+        <Icono nombre={abierto ? "expand_less" : "expand_more"} tamano="sm" />
+      </button>
+      {abierto ? (
+        <ul
+          role="listbox"
+          aria-label={etiqueta}
+          className="absolute left-0 z-popover mt-1 max-h-80 min-w-64 overflow-y-auto rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3"
+        >
+          {children(() => setAbierto(false))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function Opcion({
+  activa,
+  onClick,
+  children,
+  tono,
+}: {
+  activa?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  tono?: "accion";
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        role="option"
+        aria-selected={Boolean(activa)}
+        onClick={onClick}
+        className={cn(
+          "block w-full truncate rounded px-3 py-1.5 text-left text-xs",
+          activa
+            ? "bg-accent/10 font-semibold text-accent"
+            : tono === "accion"
+              ? "text-accent hover:bg-paper-light"
+              : "text-ink hover:bg-paper-light",
+        )}
+      >
+        {children}
+      </button>
+    </li>
+  );
+}
+
+export function CabeceraDeLista({
+  icono,
+  color,
+  modulo,
+  recursos,
+  activo,
+  alElegir,
+  acciones,
+  trazabilidad,
+  pegada = false,
+  vistas = [],
+  vistaActiva = null,
+  alElegirVista,
+  alGuardarVista,
+  alBorrarVista,
+}: {
+  /** Símbolo de Material del grupo al que pertenece el módulo. */
+  icono: string;
+  /** El color del objeto, el de Salesforce. Sin él, el azul del acento. */
+  color?: string | null;
+  /** El módulo: va encima y en pequeño, como el objeto en Lightning. */
+  modulo: string;
+  /** Las pestañas del módulo, en su orden. */
+  recursos: Recurso[];
+  /** Índice de la que se está mirando. */
+  activo: number;
+  alElegir: (i: number) => void;
+  /** Lo que se puede hacer aquí: dar de alta, exportar. */
+  acciones?: ReactNode;
+  /** El desplegable de trazabilidad, que va donde nadie lo pise. */
+  trazabilidad?: ReactNode;
+  /**
+   * Pegada a lo que va debajo: sin margen, sin esquinas abajo y sin borde
+   * inferior, para que la cabecera, la barra de herramientas y la tabla sean
+   * **una sola tarjeta** y no tres flotando.
+   */
+  pegada?: boolean;
+  /** Las vistas guardadas de este listado. Sin ellas, sólo sale «Todo». */
+  vistas?: VistaDeLista[];
+  vistaActiva?: VistaDeLista | null;
+  alElegirVista?: (vista: VistaDeLista | null) => void;
+  /** Guardar lo que hay en pantalla como una vista nueva. */
+  alGuardarVista?: () => void;
+  alBorrarVista?: (vista: VistaDeLista) => void;
+}) {
+  const { t } = useTranslation();
+
   // La papelera y demás pestañas con icono viven fuera del desplegable.
   const normales = recursos.map((r, i) => ({ r, i })).filter(({ r }) => !r.icono);
   const conIcono = recursos.map((r, i) => ({ r, i })).filter(({ r }) => r.icono);
   const actual = recursos[activo];
-  const hayQueElegir = normales.length > 1;
+  const hayQueElegirObjeto = normales.length > 1;
+  const hayVistas = Boolean(alElegirVista);
+  const nombreDeLaVista = vistaActiva?.nombre ?? t("vistas.todo");
+
+  // El rótulo pequeño: el objeto. Cuando el módulo se llama igual que su
+  // recurso —«Cuentas y contactos» / «Cuentas»— se dice una sola vez: la misma
+  // palabra dos veces en dos tamaños parece un fallo.
+  const mismoNombre = modulo.toLowerCase() === (actual?.nombre ?? "").toLowerCase();
+  const rotuloDelObjeto = mismoNombre ? modulo : `${modulo} · ${actual?.nombre ?? ""}`;
 
   return (
     <header className={cn("card px-4 py-3", pegada ? "mb-0 rounded-b-none border-b-0" : "mb-3")}>
@@ -113,80 +221,109 @@ export function CabeceraDeLista({
           >
             <Icono nombre={icono} />
           </span>
-          <div className="min-w-0" ref={caja}>
-            {/* El nombre del módulo encima, **salvo cuando es el mismo que el
-                de la vista**: «CUENTAS / Cuentas» es la misma palabra dos
-                veces en dos tamaños, y lo que parece es un fallo. Pasa justo
-                en los módulos que ya llevan el nombre de su objeto, que son
-                los que más se abren. */}
-            {modulo.toLowerCase() !== (actual?.nombre ?? "").toLowerCase() ? (
-              <p className="truncate text-3xs font-semibold uppercase tracking-[0.055em] text-ink-faint">
-                {modulo}
-              </p>
-            ) : null}
-            {hayQueElegir ? (
-              <div className="relative">
-                <button
-                  ref={disparador}
-                  type="button"
-                  aria-haspopup="listbox"
-                  aria-expanded={abierto}
-                  onClick={() => setAbierto((v) => !v)}
-                  className="flex min-w-0 items-center gap-1 text-xl-em font-bold tracking-[-0.01em] text-ink hover:text-accent"
-                >
-                  <span className="truncate">{actual?.nombre ?? modulo}</span>
-                  <Icono nombre={abierto ? "expand_less" : "expand_more"} tamano="sm" />
-                </button>
-                {abierto ? (
-                  <ul
-                    role="listbox"
-                    aria-label={modulo}
-                    className="absolute left-0 z-popover mt-1 max-h-80 min-w-64 overflow-y-auto rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3"
-                  >
+          <div className="min-w-0">
+            {/* Arriba, QUÉ OBJETO. Desplegable sólo si hay más de uno. */}
+            {hayQueElegirObjeto ? (
+              <Desplegable etiqueta={t("vistas.queObjeto")} rotulo={rotuloDelObjeto}>
+                {(cerrar) => (
+                  <>
                     {normales.map(({ r, i }) => (
-                      <li key={r.nombre}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={i === activo}
-                          onClick={() => {
-                            alElegir(i);
-                            setAbierto(false);
-                          }}
-                          className={cn(
-                            "block w-full truncate rounded px-3 py-1.5 text-left text-xs",
-                            i === activo
-                              ? "bg-accent/10 font-semibold text-accent"
-                              : "text-ink hover:bg-paper-light",
-                          )}
-                        >
-                          {r.nombre}
-                        </button>
-                      </li>
+                      <Opcion
+                        key={r.nombre}
+                        activa={i === activo}
+                        onClick={() => {
+                          alElegir(i);
+                          cerrar();
+                        }}
+                      >
+                        {r.nombre}
+                      </Opcion>
                     ))}
-                  </ul>
-                ) : null}
-              </div>
+                  </>
+                )}
+              </Desplegable>
+            ) : (
+              <p className="truncate text-3xs font-semibold uppercase tracking-[0.055em] text-ink-faint">
+                {rotuloDelObjeto}
+              </p>
+            )}
+
+            {/* Debajo, QUÉ VISTA. Es lo grande porque es lo que se cambia
+                cada día. Sin vistas guardadas dice «Todo», que es el listado
+                completo: lo que había antes de que esto existiera. */}
+            {hayVistas ? (
+              <Desplegable etiqueta={t("vistas.queVista")} rotulo={nombreDeLaVista} grande>
+                {(cerrar) => (
+                  <>
+                    <Opcion
+                      activa={!vistaActiva}
+                      onClick={() => {
+                        alElegirVista?.(null);
+                        cerrar();
+                      }}
+                    >
+                      {t("vistas.todo")}
+                    </Opcion>
+                    {vistas.map((v) => (
+                      <Opcion
+                        key={v.id}
+                        activa={v.id === vistaActiva?.id}
+                        onClick={() => {
+                          alElegirVista?.(v);
+                          cerrar();
+                        }}
+                      >
+                        {v.nombre}
+                        {/* Quién la ve. Sin esto, borrar una compartida
+                            creyéndola propia deja a todo el equipo sin su
+                            listado de cada día. */}
+                        {v.compartida ? (
+                          <span className="ml-2 text-3xs text-ink-faint">
+                            {t("vistas.deTodos")}
+                          </span>
+                        ) : null}
+                      </Opcion>
+                    ))}
+                    <li>
+                      <hr className="my-1 border-ink-dim/40" />
+                    </li>
+                    <Opcion
+                      tono="accion"
+                      onClick={() => {
+                        alGuardarVista?.();
+                        cerrar();
+                      }}
+                    >
+                      {t("vistas.guardarComo")}
+                    </Opcion>
+                    {vistaActiva && alBorrarVista ? (
+                      <Opcion
+                        tono="accion"
+                        onClick={() => {
+                          alBorrarVista(vistaActiva);
+                          cerrar();
+                        }}
+                      >
+                        {t("vistas.borrarEsta", { nombre: vistaActiva.nombre })}
+                      </Opcion>
+                    ) : null}
+                  </>
+                )}
+              </Desplegable>
             ) : (
               <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
                 {actual?.nombre ?? modulo}
               </h1>
             )}
+
             {/* Con desplegable el `<h1>` no puede ser el botón —un encabezado
                 no se pulsa—, así que el título accesible va aparte y oculto.
                 Sin esto la pantalla se queda sin encabezado de primer nivel y
                 quien navega por encabezados no sabe dónde ha entrado. */}
-            {hayQueElegir ? (
-              <h1 className="sr-only">
-                {/* Sin repetir: en los módulos que llevan el nombre de su
-                    objeto, «Cuentas — Cuentas» es lo que oye quien navega con
-                    lector, y suena a error. */}
-                {modulo.toLowerCase() === (actual?.nombre ?? "").toLowerCase()
-                  ? modulo
-                  : `${modulo} — ${actual?.nombre ?? ""}`}
-              </h1>
+            {hayVistas ? (
+              <h1 className="sr-only">{`${rotuloDelObjeto} — ${nombreDeLaVista}`}</h1>
             ) : null}
-            {hayQueElegir ? (
+            {hayQueElegirObjeto ? (
               <p className="mt-0.5 text-3xs text-ink-faint">
                 {t("modulo.cuantasPestanas", { count: normales.length })}
               </p>

@@ -205,6 +205,30 @@ export default {
       "configurado. Se configura desde tu perfil.",
   },
 
+  // ── Las vistas de lista ──────────────────────────────────────────────
+  // El recorte con nombre de un listado. Sin ninguna guardada, el listado se
+  // llama «Todo», que es exactamente lo que había antes: la lista completa,
+  // sin tener que elegir nada.
+  vistas: {
+    todo: "Todo",
+    queObjeto: "Qué se está mirando",
+    queVista: "Qué vista",
+    deTodos: "de todos",
+    guardarComo: "Guardar esta vista…",
+    borrarEsta: "Borrar «{{nombre}}»",
+    comoSeLlama: "¿Cómo se llama esta vista?",
+    // Se pregunta al guardar, no después: una vista guardada «para mí» que
+    // luego resulta que la ve todo el mundo es la clase de sorpresa que hace
+    // desconfiar de la función entera.
+    paraTodos: "Que la vea todo el equipo",
+    guardada: "Vista guardada.",
+    noSeGuardo: "No se ha podido guardar la vista: {{motivo}}",
+    confirmarBorrado: "¿Borrar la vista «{{nombre}}»? No se deshace.",
+    // La compartida avisa aparte: borrarla deja sin su listado a quien la use.
+    confirmarBorradoCompartida:
+      "«{{nombre}}» la ve todo el equipo. Si la borras, se queda sin ella. No se deshace.",
+  },
+
   tabla: {
     columnas: "Columnas ({{visibles}} de {{total}})",
     elegirColumnas: "Qué columnas se ven",

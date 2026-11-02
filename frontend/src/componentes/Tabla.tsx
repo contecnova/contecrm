@@ -37,7 +37,7 @@
  * qué mira.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -134,6 +134,17 @@ export interface Props {
    */
   accionesDeFila?: (fila: Record<string, unknown>) => OpcionDeMenu[];
   /**
+   * Con qué columnas y en qué orden empieza, cuando esta persona todavía no
+   * ha elegido nada para esta clave.
+   *
+   * Lo trae una vista de lista guardada. **Sólo siembra**: en cuanto alguien
+   * toca las columnas, manda su elección — una vista compartida que te
+   * devolviera sus columnas cada vez que entras haría imposible mirarla a tu
+   * manera, que es por lo que la gente deja de usar las vistas de otros.
+   */
+  columnasIniciales?: string[];
+  ordenInicial?: Orden;
+  /**
    * Editar una celda en la propia lista.
    *
    * `esquemaDeCampo` dice qué campos se pueden tocar y con qué control —lo
@@ -147,7 +158,15 @@ export interface Props {
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
 
-function leerElegidas(recuerdaComo?: string): string[] | null {
+/**
+ * Qué columnas hay puestas ahora mismo para esa clave.
+ *
+ * Exportada porque al guardar una VISTA DE LISTA hay que llevarse las columnas
+ * que hay en pantalla, y leerlas por segunda vez desde la pantalla sería tener
+ * dos lecturas del mismo almacenamiento que se separan a la primera
+ * corrección.
+ */
+export function leerElegidas(recuerdaComo?: string): string[] | null {
   if (!recuerdaComo) return null;
   try {
     const crudo = localStorage.getItem(`${CLAVE_COLUMNAS}.${recuerdaComo}`);
@@ -163,7 +182,8 @@ export type Orden = { columna: string; sentido: "asc" | "desc" } | null;
 
 const CLAVE_ORDEN = "contecrm.orden";
 
-function leerOrden(recuerdaComo?: string): Orden {
+/** Lo mismo con el orden. Ver `leerElegidas`. */
+export function leerOrden(recuerdaComo?: string): Orden {
   if (!recuerdaComo) return null;
   try {
     const crudo = localStorage.getItem(`${CLAVE_ORDEN}.${recuerdaComo}`);
@@ -270,6 +290,8 @@ export function Tabla({
   ocupaLaPantalla = false,
   pegada = false,
   accionesDeFila,
+  columnasIniciales,
+  ordenInicial,
   esquemaDeCampo,
   alEditarCelda,
 }: Props) {
@@ -281,14 +303,26 @@ export function Tabla({
     filas.some((fila) => tieneDato(fila[c])),
   );
 
-  const [elegidas, setElegidas] = useState<string[] | null>(() =>
-    leerElegidas(recuerdaComo),
+  const [elegidas, setElegidas] = useState<string[] | null>(
+    () => leerElegidas(recuerdaComo) ?? (columnasIniciales?.length ? columnasIniciales : null),
   );
   const [eligiendo, setEligiendo] = useState(false);
   // Por qué columna se ordena, y en qué sentido. `null` es «como vino»: el
   // orden del servidor, que suele ser el relevante —lo más reciente, lo que
   // más urge— y que no hay que perder sólo por ofrecer ordenar.
-  const [orden, setOrden] = useState<Orden>(() => leerOrden(recuerdaComo));
+  const [orden, setOrden] = useState<Orden>(() => leerOrden(recuerdaComo) ?? ordenInicial ?? null);
+
+  // Al cambiar de clave —otra pestaña, otra vista guardada— se vuelve a
+  // sembrar: sin esto, abrir una vista con sus propias columnas seguiría
+  // enseñando las de la anterior, porque el estado se inicializa una vez.
+  useEffect(() => {
+    setElegidas(leerElegidas(recuerdaComo) ?? (columnasIniciales?.length ? columnasIniciales : null));
+    setOrden(leerOrden(recuerdaComo) ?? ordenInicial ?? null);
+    // `columnasIniciales` y `ordenInicial` NO entran en las dependencias: los
+    // reconstruye quien llama en cada pintado, así que entrarían siempre y
+    // esto pisaría la elección de quien acaba de tocar una columna.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recuerdaComo]);
 
   function alternarOrden(columna: string) {
     setOrden((previo) => {
