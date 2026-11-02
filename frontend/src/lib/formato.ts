@@ -44,10 +44,17 @@ let DINERO = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
  * que trae hora sin traerse también el día de la semana, y el año de cuatro
  * cifras no es negociable.
  */
-const CAMPOS_FECHA = { day: "2-digit", month: "2-digit", year: "numeric" } as const;
+const CAMPOS_FECHA = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+} as const;
 const CAMPOS_HORA = { hour: "2-digit", minute: "2-digit" } as const;
 let FECHA = new Intl.DateTimeFormat(LOCALE, CAMPOS_FECHA);
-let FECHA_HORA = new Intl.DateTimeFormat(LOCALE, { ...CAMPOS_FECHA, ...CAMPOS_HORA });
+let FECHA_HORA = new Intl.DateTimeFormat(LOCALE, {
+  ...CAMPOS_FECHA,
+  ...CAMPOS_HORA,
+});
 const MONEDAS = new Map<string, Intl.NumberFormat>();
 
 /** La localización que se está usando ahora mismo. */
@@ -70,7 +77,10 @@ export function fijarLocalizacion(locale: string): void {
     const numero = new Intl.NumberFormat(limpio, { maximumFractionDigits: 2 });
     const dinero = new Intl.NumberFormat(limpio, { maximumFractionDigits: 0 });
     const fecha = new Intl.DateTimeFormat(limpio, CAMPOS_FECHA);
-    const fechaHora = new Intl.DateTimeFormat(limpio, { ...CAMPOS_FECHA, ...CAMPOS_HORA });
+    const fechaHora = new Intl.DateTimeFormat(limpio, {
+      ...CAMPOS_FECHA,
+      ...CAMPOS_HORA,
+    });
     LOCALE = limpio;
     NUMERO = numero;
     DINERO = dinero;
@@ -96,10 +106,12 @@ export function fijarLocalizacion(locale: string): void {
 
 const ISO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_MOMENTO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Nombres de campo que se leen como importes: se escriben sin decimales. */
-const PARECE_IMPORTE = /(importe|facturacion|precio|coste|margen|total|saldo|cuota)/i;
+const PARECE_IMPORTE =
+  /(importe|facturacion|precio|coste|margen|total|saldo|cuota)/i;
 
 /**
  * Prefijos técnicos que no aportan nada al leerlo.
@@ -221,7 +233,37 @@ const CON_TILDE: Record<string, string> = {
 };
 
 /** Siglas: se escriben enteras en mayúsculas, no «Nps» ni «Iva». */
-const SIGLAS = new Set(["id", "iva", "nps", "roi", "kpi", "sla", "slo", "api", "url", "uri", "crm", "erp", "bi", "ia", "sql", "csv", "pdf", "http", "https", "dns", "ip", "sso", "mfa", "rgpd", "cif", "nif", "iban", "sepa", "utc"]);
+const SIGLAS = new Set([
+  "id",
+  "iva",
+  "nps",
+  "roi",
+  "kpi",
+  "sla",
+  "slo",
+  "api",
+  "url",
+  "uri",
+  "crm",
+  "erp",
+  "bi",
+  "ia",
+  "sql",
+  "csv",
+  "pdf",
+  "http",
+  "https",
+  "dns",
+  "ip",
+  "sso",
+  "mfa",
+  "rgpd",
+  "cif",
+  "nif",
+  "iban",
+  "sepa",
+  "utc",
+]);
 
 /**
  * Una palabra suelta de un nombre de campo, escrita en castellano.
@@ -265,7 +307,10 @@ export function humanizar(campo: string | null | undefined): string {
   if (palabras.length === 0) return "";
   const primera = palabras[0]!;
   // Una sigla no se «capitaliza»: ya está entera en mayúsculas.
-  const inicio = primera === primera.toUpperCase() ? primera : primera.charAt(0).toUpperCase() + primera.slice(1);
+  const inicio =
+    primera === primera.toUpperCase()
+      ? primera
+      : primera.charAt(0).toUpperCase() + primera.slice(1);
   return [inicio, ...palabras.slice(1)].join(" ");
 }
 
@@ -278,16 +323,25 @@ export function tieneDato(valor: unknown): boolean {
 }
 
 /** Un número, una fecha o un texto, escritos en castellano. */
-export function escalar(valor: unknown, campo = ""): string {
+export function escalar(valor: unknown, campo = "", moneda = ""): string {
   if (typeof valor === "boolean") return valor ? "sí" : "no";
-  if (typeof valor === "number") {
-    return (PARECE_IMPORTE.test(campo) ? DINERO : NUMERO).format(valor);
-  }
+  // Un importe con la moneda del registro sale CON su símbolo. Sin ella no se
+  // inventa ninguna: una cifra con el símbolo equivocado es peor que una
+  // cifra sin símbolo. **Medido el 02-11-2026**: la ficha de una oportunidad
+  // decía «Importe 117.693» arriba y «117.693 €» tres centímetros más abajo,
+  // el mismo dato con dos formatos en la misma pantalla.
+  const comoDinero = (n: number) =>
+    PARECE_IMPORTE.test(campo)
+      ? moneda
+        ? importe(n, moneda)
+        : DINERO.format(n)
+      : NUMERO.format(n);
+  if (typeof valor === "number") return comoDinero(valor);
   const texto = String(valor);
   // Los decimales llegan como cadena desde la API (`Numeric` en JSON es texto
   // para no perder precisión), así que hay que reconocerlos aquí.
   if (/^-?\d+(\.\d+)?$/.test(texto) && texto.length < 18) {
-    return (PARECE_IMPORTE.test(campo) ? DINERO : NUMERO).format(Number(texto));
+    return comoDinero(Number(texto));
   }
   if (ISO_MOMENTO.test(texto)) {
     const d = new Date(texto);

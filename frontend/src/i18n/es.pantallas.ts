@@ -959,7 +959,6 @@ const pantallas = {
     sinEtapa: "sin etapa",
     bloqueada: "Bloqueada",
     ponderado: "{{valor}} ponderado al {{pct}} %",
-    cierrePrevisto: "Cierre previsto: {{fecha}}",
     lineas: "Qué se vende",
     sinLineas: "Todavía no tiene líneas",
     porUnidad: "{{cantidad}} × {{precio}}",

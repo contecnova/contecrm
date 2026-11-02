@@ -23,7 +23,11 @@ const CASO = {
   estado: "cerrado",
   prioridad: "alta",
   severidad: "grave",
-  clasificacion: "Hardware / Motor",
+  // Una LISTA, que es lo que manda el servidor: `ruta_de_categoria` devuelve
+  // el camino de la raíz a la hoja, y `[]` cuando el caso no tiene categoría.
+  // El doble lo daba como texto, así que la prueba iba verde con un tipo que
+  // en el producto pinta «Calidad de productoAcabado y aspecto».
+  clasificacion: ["Hardware", "Motor"],
   relacionado_con: {
     cuenta_id: "aaaaaaaa-0000-0000-0000-000000000001",
     contacto_id: null,
@@ -153,6 +157,27 @@ describe("un caso se atiende", () => {
     expect(screen.queryByText("caso.incumplioResolucion")).toBeNull();
     // 54.000 s = 15 h esperando al cliente. No es tiempo sin atender.
     expect(screen.getByText(/caso.enPausa.*15/)).toBeTruthy();
+  });
+
+  it("la clasificación es un camino, no una palabra pegada", async () => {
+    await montar();
+    // El servidor manda la RUTA de categorías, de la raíz a la hoja. Pintada
+    // como lista de React salían los escalones pegados: en la pantalla de un
+    // caso real se leía «Calidad de productoAcabado y aspecto», que no es
+    // ninguna categoría de nadie.
+    await waitFor(() =>
+      expect(screen.getByText("Hardware › Motor")).toBeTruthy(),
+    );
+    expect(screen.queryByText("HardwareMotor")).toBeNull();
+  });
+
+  it("el vencimiento del SLA es una fecha, no un sello de tiempo", async () => {
+    await montar();
+    // Se leía «Resolución: vence 2026-10-25T10:00:00Z». Un sello de tiempo de
+    // la API no es una fecha para quien atiende el caso.
+    const linea = await screen.findByText(/caso\.resolucionVence/);
+    expect(linea.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
+    expect(linea.textContent).toMatch(/25\/10\/2026/);
   });
 
   it("avisa de que un caso pendiente del cliente NO está cerrado", async () => {

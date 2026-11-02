@@ -457,6 +457,20 @@ suelta: lo ya pasado en azul claro, dónde estás en azul oscuro, y lo que queda
 en gris. Una etapa dice dónde estás; un recorrido dice además cuánto queda y
 qué viene después.
 
+En una **oportunidad** los pasos son los del pipeline que tenga asignada, con
+las etapas que tu empresa haya configurado. No es una lista escrita en el
+programa: si Administración añade una etapa, aparece aquí.
+
+**Arriba del todo está de dónde viene**: el listado del que salió y su
+identificador corto, para volver de un clic y para pegarlo en una incidencia.
+
+**Cada dato sale una sola vez.** Las insignias pegadas al nombre y la fila de
+datos de debajo no repiten el mismo campo; si el estado es uno de los datos
+clave, no sale además como etiqueta.
+
+**Los importes llevan la moneda del registro**, no la de tu navegador: una
+oportunidad en dólares se escribe en dólares.
+
 **Las fechas llevan el año entero.** Antes salían como `07/12/16`, y una fecha
 de vencimiento con el año en dos cifras es ambigua de verdad.
 

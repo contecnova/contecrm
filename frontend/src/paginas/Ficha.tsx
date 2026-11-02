@@ -15,12 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Link,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   Cargando,
@@ -271,24 +266,6 @@ export function Ficha() {
 
   return (
     <>
-      {/* De dónde viene y cuál es, encima del panel. Estaba DENTRO del panel,
-          en el sitio que en Lightning ocupan los botones del registro; con los
-          botones ahí no caben los dos. */}
-      <nav
-        aria-label={t("ficha.deDonde")}
-        className="mb-2 flex items-center gap-2 text-2xs text-ink-faint"
-      >
-        <Link
-          to={`/m/${rutaDelModulo}`}
-          className="text-accent hover:underline"
-        >
-          {modulo.titulo}
-        </Link>
-        <span className="font-mono" title={id}>
-          {id.slice(0, 8)}…
-        </span>
-      </nav>
-
       {/* El panel de datos clave, como el de Salesforce: qué es, cómo se
           llama, por dónde va, los cinco campos que importan y **qué se puede
           hacer con él**, todo arriba y sin entrar en ninguna pestaña.
@@ -305,6 +282,7 @@ export function Ficha() {
         tipo={tipo}
         nombre={nombre || recurso?.nombre || modulo.titulo}
         fila={fila}
+        volverA={{ a: `/m/${rutaDelModulo}`, titulo: modulo.titulo, id }}
         acciones={
           fila && !editando ? (
             <BotonesDeRegistro

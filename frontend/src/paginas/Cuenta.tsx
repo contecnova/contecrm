@@ -39,7 +39,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
 import {
   BotonesDeRegistro,
@@ -79,7 +84,12 @@ interface Linaje {
 }
 
 interface Obsoletos {
-  obsoletos: { campo: string; fuente: string; dias_sin_confirmar: number; tope: number }[];
+  obsoletos: {
+    campo: string;
+    fuente: string;
+    dias_sin_confirmar: number;
+    tope: number;
+  }[];
   campos_con_linaje: string[];
   aviso: string;
 }
@@ -248,7 +258,9 @@ export function Cuenta() {
   // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
   // clic más de lo que pidió.
   const [parametrosDeFicha] = useSearchParams();
-  const [editando, setEditando] = useState(parametrosDeFicha.get("editar") === "1");
+  const [editando, setEditando] = useState(
+    parametrosDeFicha.get("editar") === "1",
+  );
   // Qué acción del contrato está desplegada. Vive aquí y no dentro de
   // `<Acciones>` porque quien las ofrece es el menú de la barra: con el estado
   // dentro habría dos sitios desde los que abrir la misma cosa.
@@ -277,10 +289,14 @@ export function Cuenta() {
 
       // Las cuatro preguntas de calidad del dato de ESTE cliente. Cada una con
       // su propio fallo: que no haya linaje no puede dejar sin ver la ficha.
-      void llamar<Linaje>(`/api/v1/calidad-dato/linaje/cuenta/${id}`, { signal })
+      void llamar<Linaje>(`/api/v1/calidad-dato/linaje/cuenta/${id}`, {
+        signal,
+      })
         .then((r) => setLinaje(r.datos))
         .catch(() => undefined);
-      void llamar<Obsoletos>(`/api/v1/calidad-dato/obsoletos/cuenta/${id}`, { signal })
+      void llamar<Obsoletos>(`/api/v1/calidad-dato/obsoletos/cuenta/${id}`, {
+        signal,
+      })
         .then((r) => setObsoletos(r.datos))
         .catch(() => undefined);
       void llamar<Arbol>(`/api/v1/accounts/${id}/jerarquia`, { signal })
@@ -420,15 +436,25 @@ export function Cuenta() {
         tipo="cuenta"
         nombre={cuenta.nombre}
         fila={cuenta as unknown as Record<string, unknown>}
+        volverA={{
+          a: "/m/cuentas",
+          titulo: moduloCuentas?.titulo ?? "",
+          id,
+        }}
+        // El estado NO: es una de las columnas preferidas del recurso, así que
+        // ya sale como dato clave ahí debajo. Salía tres veces en la misma
+        // pantalla —insignia, dato clave y tarjeta «Datos»— y las tres
+        // decían «activa».
         distintivos={
           <>
-            <span className="badge badge-muted">{cuenta.estado}</span>
             {cuenta.roles.map((r) => (
               <span key={r} className="chip-dato chip-dato--si">
                 {r}
               </span>
             ))}
-            {nif ? <span className="text-2xs text-ink-faint">{nif}</span> : null}
+            {nif ? (
+              <span className="text-2xs text-ink-faint">{nif}</span>
+            ) : null}
           </>
         }
         acciones={
@@ -446,7 +472,10 @@ export function Cuenta() {
                   destructiva: esIrreversible(a),
                 }))}
               />
-              <Link to={`/m/oportunidades?r=Oportunidades&nuevo=1`} className="btn-primary">
+              <Link
+                to={`/m/oportunidades?r=Oportunidades&nuevo=1`}
+                className="btn-primary"
+              >
                 {t("cuenta.nuevaOportunidad")}
               </Link>
             </>
@@ -522,7 +551,6 @@ export function Cuenta() {
             <h2 className="section-label mb-3">{t("cuenta.datos")}</h2>
             <dl className="space-y-2">
               <Dato clave="sector" valor={cuenta.sector.codigo} />
-              <Dato clave="estado" valor={cuenta.estado} />
               {identificadores.map((i) => (
                 <Dato key={i.valor} clave={i.tipo} valor={i.valor} />
               ))}
@@ -895,7 +923,6 @@ function Metricas({ datos }: { datos: Vista360["metricas"] }) {
   );
 }
 
-
 /**
  * De qué grupo forma parte (CRM-01.01.01.02, CRM-01.01.01.03).
  *
@@ -917,14 +944,15 @@ function LaJerarquia({ arbol }: { arbol: Arbol | null }) {
     return ramas.map((r) => (
       <li key={r.id} style={{ paddingLeft: nivel * 12 }}>
         <div className="flex flex-wrap items-baseline gap-x-2 py-1 text-2xs">
-          <Link to={`/m/cuentas/cuenta/${r.id}`} className="text-ink hover:underline">
+          <Link
+            to={`/m/cuentas/cuenta/${r.id}`}
+            className="text-ink hover:underline"
+          >
             {r.nombre}
           </Link>
           {r.rol ? <span className="chip-dato">{r.rol}</span> : null}
         </div>
-        {r.hijos?.length ? (
-          <ul>{pintar(r.hijos ?? [], nivel + 1)}</ul>
-        ) : null}
+        {r.hijos?.length ? <ul>{pintar(r.hijos ?? [], nivel + 1)}</ul> : null}
       </li>
     ));
   }
@@ -1026,17 +1054,25 @@ function DeDondeSaleCadaDato({ linaje }: { linaje: Linaje | null }) {
         <ul className="divide-y divide-ink-dim/30">
           {campos.map(([campo, fuentes]) => (
             <li key={campo} className="py-1.5">
-              <span className="text-2xs font-medium text-ink">{humanizar(campo)}</span>
+              <span className="text-2xs font-medium text-ink">
+                {humanizar(campo)}
+              </span>
               <ul className="mt-0.5">
                 {(fuentes ?? []).map((f, i) => (
                   <li
                     key={`${f.fuente}-${i}`}
                     className="flex flex-wrap items-baseline gap-x-2 text-3xs"
                   >
-                    <span className={f.gana ? "chip-dato chip-dato--si" : "chip-dato"}>
+                    <span
+                      className={
+                        f.gana ? "chip-dato chip-dato--si" : "chip-dato"
+                      }
+                    >
                       {f.fuente}
                     </span>
-                    <span className="text-ink-muted">{String(f.valor ?? "")}</span>
+                    <span className="text-ink-muted">
+                      {String(f.valor ?? "")}
+                    </span>
                     <span className="text-ink-faint">
                       {t("cuenta.confianza", { valor: f.confianza })}
                     </span>
@@ -1058,7 +1094,11 @@ function DeDondeSaleCadaDato({ linaje }: { linaje: Linaje | null }) {
  * cuatro años se ve igual que el de ayer. Por eso van los días **y el tope**,
  * que es lo que convierte «lleva 400 días» en «se ha pasado».
  */
-function LoQueLlevaSinConfirmarse({ obsoletos }: { obsoletos: Obsoletos | null }) {
+function LoQueLlevaSinConfirmarse({
+  obsoletos,
+}: {
+  obsoletos: Obsoletos | null;
+}) {
   const { t } = useTranslation();
   if (!obsoletos) return null;
   const viejos = obsoletos.obsoletos ?? [];
@@ -1081,10 +1121,15 @@ function LoQueLlevaSinConfirmarse({ obsoletos }: { obsoletos: Obsoletos | null }
               key={`${o.campo}-${o.fuente}`}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-2xs font-medium text-ink">{humanizar(o.campo)}</span>
+              <span className="text-2xs font-medium text-ink">
+                {humanizar(o.campo)}
+              </span>
               <span className="chip-dato">{o.fuente}</span>
               <span className="text-3xs text-warning">
-                {t("cuenta.sinConfirmar", { dias: o.dias_sin_confirmar, tope: o.tope })}
+                {t("cuenta.sinConfirmar", {
+                  dias: o.dias_sin_confirmar,
+                  tope: o.tope,
+                })}
               </span>
             </li>
           ))}

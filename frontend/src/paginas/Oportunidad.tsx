@@ -45,7 +45,7 @@ import {
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
-import { llamar, salvoCancelacion } from "@/lib/api";
+import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { fecha, humanizar, importe as comoImporte } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
@@ -57,6 +57,7 @@ interface Oportunidad {
   nombre: string;
   cuenta_id: string | null;
   pipeline: string | null;
+  pipeline_id: string | null;
   etapa: string | null;
   importe: string;
   moneda: string;
@@ -67,6 +68,12 @@ interface Oportunidad {
   categoria_forecast: string | null;
   etapa_desde: string | null;
   bloqueada: boolean;
+}
+
+/** Un pipeline con sus etapas en orden, tal y como lo publica `sales`. */
+interface Pipeline {
+  id: string;
+  etapas: { nombre: string }[];
 }
 
 interface Linea {
@@ -92,7 +99,12 @@ interface Metricas {
 }
 
 interface Reparto {
-  reparto: { usuario_id: string; papel: string; porcentaje: string; motivo: string }[];
+  reparto: {
+    usuario_id: string;
+    papel: string;
+    porcentaje: string;
+    motivo: string;
+  }[];
   credito_total: string;
   credito_cuadra: boolean;
   porque_el_overlay_no_suma: string;
@@ -100,7 +112,10 @@ interface Reparto {
 }
 
 interface GrupoDeCompra {
-  roles: Record<string, { contacto_id: string; postura: number; motivo: string; hablado: boolean }[]>;
+  roles: Record<
+    string,
+    { contacto_id: string; postura: number; motivo: string; hablado: boolean }[]
+  >;
   faltan_por_identificar: string[];
   clave_sin_hablar: string[];
   en_contra: number;
@@ -199,7 +214,9 @@ export function Oportunidad() {
   // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
   // clic más de lo que pidió.
   const [parametrosDeFicha] = useSearchParams();
-  const [editando, setEditando] = useState(parametrosDeFicha.get("editar") === "1");
+  const [editando, setEditando] = useState(
+    parametrosDeFicha.get("editar") === "1",
+  );
   const [confirmando, setConfirmando] = useState(false);
   const [borrando, setBorrando] = useState(false);
   const navegar = useNavigate();
@@ -216,13 +233,17 @@ export function Oportunidad() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     setFallo(null);
-    llamar<Oportunidad>(`/api/v1/opportunities/${id}`, { signal: control.signal })
+    llamar<Oportunidad>(`/api/v1/opportunities/${id}`, {
+      signal: control.signal,
+    })
       .then((r) => setOp(r.datos))
       .catch(salvoCancelacion(setFallo));
 
     // Cada panel con su propio fallo: que no responda el histórico de
     // previsión no puede dejar sin ver las líneas, que es a lo que se entra.
-    listar<Linea>(`/api/v1/opportunities/${id}/lineas`, { signal: control.signal })
+    listar<Linea>(`/api/v1/opportunities/${id}/lineas`, {
+      signal: control.signal,
+    })
       .then((suyas) => {
         setLineas(suyas);
         // Las métricas las calcula el servicio que sabe qué es recurrente, con
@@ -240,7 +261,9 @@ export function Oportunidad() {
       })
       .catch(() => undefined);
 
-    void llamar<Reparto>(`/api/v1/ingresos/de/${id}`, { signal: control.signal })
+    void llamar<Reparto>(`/api/v1/ingresos/de/${id}`, {
+      signal: control.signal,
+    })
       .then((r) => setReparto(r.datos))
       .catch(() => undefined);
     void llamar<GrupoDeCompra>(`/api/v1/ingresos/grupo-compra/${id}`, {
@@ -280,9 +303,12 @@ export function Oportunidad() {
       .then((planes) => {
         const suyo = planes[0];
         if (!suyo) return;
-        void llamar<EstadoDelPlan>(`/api/v1/planes-conjuntos/${suyo.id}/estado`, {
-          signal: control.signal,
-        })
+        void llamar<EstadoDelPlan>(
+          `/api/v1/planes-conjuntos/${suyo.id}/estado`,
+          {
+            signal: control.signal,
+          },
+        )
           .then((r) => setPlan(r.datos))
           .catch(() => undefined);
       })
@@ -292,6 +318,35 @@ export function Oportunidad() {
   }, [id]);
 
   useEffect(cargar, [cargar]);
+
+  /**
+   * Las etapas de SU pipeline, para pintar la ruta del panel de cabecera.
+   *
+   * No salen del contrato: la oportunidad no declara `etapa` en su esquema
+   * —se cambia por un extremo aparte con el identificador de una etapa— y los
+   * pipelines son configuración de cada tenant. Así que se leen de donde de
+   * verdad están. **Medido el 02-11-2026**: hasta hoy la ficha de una
+   * oportunidad salía sin ruta, con la etapa como un campo suelto, aunque el
+   * comentario de aquí al lado decía que la pintaba el panel.
+   *
+   * Si falla no pasa nada: la ficha se queda como estaba y la etapa sale como
+   * un dato clave más. Es un adorno útil, no el contenido.
+   */
+  const pipelineId = op?.pipeline_id ?? "";
+  const [etapasDelPipeline, setEtapasDelPipeline] = useState<string[]>([]);
+  useEffect(() => {
+    if (!pipelineId) return undefined;
+    const control = new AbortController();
+    void llamar<Pipeline[]>("/api/v1/pipelines?limite=50", {
+      signal: control.signal,
+    })
+      .then((r) => {
+        const suyo = filas<Pipeline>(r.datos).find((x) => x.id === pipelineId);
+        setEtapasDelPipeline((suyo?.etapas ?? []).map((e) => e.nombre));
+      })
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [pipelineId]);
 
   // El playbook de SU etapa, y en su propio efecto: uno genérico no es un
   // playbook, es una lista. Va aparte porque depende de la etapa, que llega
@@ -331,22 +386,29 @@ export function Oportunidad() {
       {/* El mismo panel que las demás fichas, y aquí con **la ruta de
           etapas**, que es lo que de verdad se mira en una oportunidad: una
           etapa suelta dice dónde estás; la ruta dice además cuánto queda y qué
-          viene después. La pinta `DatosClave` cuando el contrato declara los
-          valores de la etapa, así que esta pantalla no tiene que saber nada. */}
+          viene después. Los pasos se los da esta pantalla porque los suyos no
+          están en el contrato sino en el pipeline del tenant. */}
       <DatosClave
         recurso={recurso}
         tipo="oportunidad"
         nombre={op.nombre}
         fila={op as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/oportunidades", titulo: modulo?.titulo ?? "", id }}
+        recorrido={{ campo: "etapa", pasos: etapasDelPipeline }}
         distintivos={
           <>
-            {op.codigo ? <span className="badge badge-muted">{op.codigo}</span> : null}
-            <span className="chip-dato">{op.estado}</span>
+            {/* El estado no: es una de las columnas preferidas del recurso y
+                sale como dato clave ahí debajo. Estaba en los dos sitios. */}
+            {op.codigo ? (
+              <span className="badge badge-muted">{op.codigo}</span>
+            ) : null}
             {op.categoria_forecast ? (
               <span className="chip-dato">{op.categoria_forecast}</span>
             ) : null}
             {op.bloqueada ? (
-              <span className="chip-dato chip-dato--no">{t("oportunidad.bloqueada")}</span>
+              <span className="chip-dato chip-dato--no">
+                {t("oportunidad.bloqueada")}
+              </span>
             ) : null}
           </>
         }
@@ -383,19 +445,19 @@ export function Oportunidad() {
         />
       ) : null}
 
+      {/* Sólo el ponderado: el importe a secas ya está arriba, como dato
+          clave y con su moneda. Esta tarjeta lo repetía al lado. */}
       <section className="card mb-4 p-4">
         <p className="text-sm font-medium text-ink">
-          {comoImporte(op.importe, op.moneda)} ·{" "}
           {t("oportunidad.ponderado", {
             valor: comoImporte(op.importe_ponderado, op.moneda),
             pct: op.probabilidad,
           })}
         </p>
-        {op.fecha_cierre ? (
-          <p className="mt-1 text-2xs text-ink-muted">
-            {t("oportunidad.cierrePrevisto", { fecha: op.fecha_cierre })}
-          </p>
-        ) : null}
+        {/* La fecha de cierre estaba aquí también, y en crudo: el panel de
+            arriba decía «21/04/2027» y esta línea «2027-04-21», el mismo dato
+            dos veces y con dos formatos en la misma pantalla. La pregunta la
+            contesta el panel; aquí sobraba. */}
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -435,8 +497,13 @@ function LasLineas({
       ) : (
         <ul className="divide-y divide-ink-dim/30">
           {lineas.map((l) => (
-            <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-              <span className="text-2xs font-medium text-ink">{l.descripcion}</span>
+            <li
+              key={l.id}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
+              <span className="text-2xs font-medium text-ink">
+                {l.descripcion}
+              </span>
               <span className="text-3xs text-ink-faint">
                 {t("oportunidad.porUnidad", {
                   cantidad: l.cantidad,
@@ -446,7 +513,9 @@ function LasLineas({
               {Number(l.descuento_pct) > 0 ? (
                 <span className="chip-dato">-{l.descuento_pct} %</span>
               ) : null}
-              <span className="text-2xs text-ink-muted">{comoImporte(l.total, moneda)}</span>
+              <span className="text-2xs text-ink-muted">
+                {comoImporte(l.total, moneda)}
+              </span>
             </li>
           ))}
         </ul>
@@ -454,12 +523,22 @@ function LasLineas({
 
       {metricas ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <h3 className="text-2xs font-medium text-ink">{t("oportunidad.metricas")}</h3>
+          <h3 className="text-2xs font-medium text-ink">
+            {t("oportunidad.metricas")}
+          </h3>
           <ul className="mt-1 flex flex-wrap gap-2 text-3xs">
-            <li className="chip-dato">ARR {comoImporte(metricas.arr, moneda)}</li>
-            <li className="chip-dato">MRR {comoImporte(metricas.mrr, moneda)}</li>
-            <li className="chip-dato">TCV {comoImporte(metricas.tcv, moneda)}</li>
-            <li className="chip-dato">ACV {comoImporte(metricas.acv, moneda)}</li>
+            <li className="chip-dato">
+              ARR {comoImporte(metricas.arr, moneda)}
+            </li>
+            <li className="chip-dato">
+              MRR {comoImporte(metricas.mrr, moneda)}
+            </li>
+            <li className="chip-dato">
+              TCV {comoImporte(metricas.tcv, moneda)}
+            </li>
+            <li className="chip-dato">
+              ACV {comoImporte(metricas.acv, moneda)}
+            </li>
           </ul>
           {/* Lo que NO cuenta como ARR, dicho. Sin esto, el número se cita en
               un comité como si fuera todo lo que entra. */}
@@ -499,14 +578,23 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
       ) : (
         <ul className="divide-y divide-ink-dim/30">
           {roles.map(([rol, gente]) => (
-            <li key={rol} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <li
+              key={rol}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
               <span className="text-2xs font-medium text-ink">{rol}</span>
               {gente.map((p) => (
                 <span
                   key={p.contacto_id}
-                  className={p.hablado ? "chip-dato chip-dato--si" : "chip-dato chip-dato--no"}
+                  className={
+                    p.hablado
+                      ? "chip-dato chip-dato--si"
+                      : "chip-dato chip-dato--no"
+                  }
                 >
-                  {p.hablado ? t("oportunidad.hablado") : t("oportunidad.sinHablar")}
+                  {p.hablado
+                    ? t("oportunidad.hablado")
+                    : t("oportunidad.sinHablar")}
                   {p.postura < 0 ? ` · ${t("oportunidad.enContra")}` : ""}
                 </span>
               ))}
@@ -517,7 +605,9 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
       {/* Lo que falta, en ámbar: es la mitad que hace útil este panel. */}
       <p
         className={
-          grupo.completo ? "mt-2 text-2xs text-success" : "mt-2 text-2xs text-warning"
+          grupo.completo
+            ? "mt-2 text-2xs text-success"
+            : "mt-2 text-2xs text-warning"
         }
       >
         {grupo.que_mirar}
@@ -550,7 +640,9 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
                 key={`${p.usuario_id}-${p.papel}`}
                 className="flex flex-wrap items-baseline gap-x-3 py-1.5"
               >
-                <span className="text-2xs font-medium text-ink">{p.porcentaje} %</span>
+                <span className="text-2xs font-medium text-ink">
+                  {p.porcentaje} %
+                </span>
                 <span className="chip-dato">{p.papel}</span>
                 {p.motivo ? (
                   <span className="text-3xs text-ink-faint">{p.motivo}</span>
@@ -568,16 +660,23 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
             {t("oportunidad.creditoTotal", { total: reparto.credito_total })}
             {reparto.credito_cuadra ? "" : ` · ${t("oportunidad.noCuadra")}`}
           </p>
-          <p className="mt-1 text-3xs text-ink-faint">{reparto.porque_el_overlay_no_suma}</p>
+          <p className="mt-1 text-3xs text-ink-faint">
+            {reparto.porque_el_overlay_no_suma}
+          </p>
         </>
       )}
 
       {reparto.relacionadas.length > 0 ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <h3 className="text-2xs font-medium text-ink">{t("oportunidad.relacionadas")}</h3>
+          <h3 className="text-2xs font-medium text-ink">
+            {t("oportunidad.relacionadas")}
+          </h3>
           <ul className="mt-1 space-y-1">
             {reparto.relacionadas.map((r) => (
-              <li key={`${r.tipo}-${r.otra_id}`} className="text-3xs text-ink-muted">
+              <li
+                key={`${r.tipo}-${r.otra_id}`}
+                className="text-3xs text-ink-muted"
+              >
                 <span className="chip-dato">{r.tipo}</span>{" "}
                 {/* El sentido: sin él, «renovación» no dice si ésta es la que
                     se renueva o la que renueva a otra, que en el informe de
@@ -630,7 +729,9 @@ function LoQueSeHaMovido({ cambios }: { cambios: CambioDePrevision[] }) {
               ) : (
                 /* Un movimiento sin motivo es el que no se puede discutir.
                    Decirlo es lo que hace que la próxima vez se escriba. */
-                <p className="text-3xs text-warning">{t("oportunidad.sinMotivo")}</p>
+                <p className="text-3xs text-warning">
+                  {t("oportunidad.sinMotivo")}
+                </p>
               )}
             </li>
           ))}
@@ -712,7 +813,9 @@ function QueFaltaParaCerrar({
           ) : null}
           {evaluacion.siguiente_paso ? (
             <p className="mt-2 text-2xs text-ink">
-              {t("oportunidad.siguientePaso", { paso: humanizar(evaluacion.siguiente_paso) })}
+              {t("oportunidad.siguientePaso", {
+                paso: humanizar(evaluacion.siguiente_paso),
+              })}
             </p>
           ) : null}
         </>
@@ -783,7 +886,10 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
           : t("oportunidad.planSinCompartir")}
       </p>
       <p className="mt-2 font-mono text-2xs text-ink">
-        {t("oportunidad.pasosDelPlan", { hechos: plan.hechos, pasos: plan.pasos })}
+        {t("oportunidad.pasosDelPlan", {
+          hechos: plan.hechos,
+          pasos: plan.pasos,
+        })}
       </p>
       {/* Los tres retrasos por separado. */}
       {nuestros.length > 0 ? (
@@ -803,7 +909,9 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
       ) : null}
       {/* Y si la fecha de cierre ya no se la cree ni el plan, se dice. */}
       {!plan.la_fecha_es_creible ? (
-        <p className="mt-2 text-2xs text-danger">{t("oportunidad.fechaNoCreible")}</p>
+        <p className="mt-2 text-2xs text-danger">
+          {t("oportunidad.fechaNoCreible")}
+        </p>
       ) : null}
       {plan.aviso ? (
         <p className="mt-1 text-3xs text-ink-faint">{plan.aviso}</p>

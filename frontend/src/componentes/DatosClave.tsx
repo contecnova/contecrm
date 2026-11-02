@@ -29,9 +29,15 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { camposDe, contratoDe, fichaDe, type CampoEsquema } from "@/lib/contrato";
+import {
+  camposDe,
+  contratoDe,
+  fichaDe,
+  type CampoEsquema,
+} from "@/lib/contrato";
 import { escalar, humanizar, tieneDato, campoDelNombre } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
 import { cn } from "@/lib/utiles";
@@ -74,15 +80,24 @@ export function campoDeEtapa(
   return null;
 }
 
-function Ruta({ campo, valor }: { campo: CampoEsquema; valor: string }) {
+function Ruta({
+  campo,
+  pasos,
+  valor,
+}: {
+  /** El nombre del campo, para decir de qué es la ruta. */
+  campo: string;
+  pasos: string[];
+  valor: string;
+}) {
   const { t } = useTranslation();
-  const actual = campo.opciones.indexOf(valor);
+  const actual = pasos.indexOf(valor);
   return (
     <ol
-      aria-label={t("ficha.ruta", { campo: humanizar(campo.nombre) })}
+      aria-label={t("ficha.ruta", { campo: humanizar(campo) })}
       className="flex min-w-0 flex-wrap items-stretch gap-px overflow-hidden rounded"
     >
-      {campo.opciones.map((opcion, i) => {
+      {pasos.map((opcion, i) => {
         const hecha = actual >= 0 && i < actual;
         const aqui = i === actual;
         return (
@@ -116,6 +131,8 @@ export function DatosClave({
   fila,
   acciones,
   distintivos,
+  recorrido,
+  volverA,
 }: {
   recurso: Recurso | undefined;
   /** El tipo del registro, que es lo que se pone encima del nombre. */
@@ -132,6 +149,31 @@ export function DatosClave({
    * pegadas al nombre por eso mismo.
    */
   distintivos?: ReactNode;
+  /**
+   * El recorrido cuando lo definen los DATOS y no el contrato.
+   *
+   * La ruta de etapas se saca del contrato: una lista cerrada con al menos
+   * tres valores. Eso vale para los objetos cuyas etapas son fijas, y no vale
+   * para el que más la necesita. **Medido el 02-11-2026**: la oportunidad no
+   * declara `etapa` en su esquema —se cambia por un extremo aparte, con el
+   * identificador de una etapa del pipeline, que es configuración de cada
+   * tenant—, así que `campoDeEtapa` no encontraba nada y la ficha de una
+   * oportunidad salía sin ruta. Es justo la pieza que en Salesforce define la
+   * pantalla, y el comentario de la pantalla decía que la pintaba.
+   *
+   * Con esto, quien conoce sus pasos los trae. Sigue sin haber nada escrito
+   * por objeto: los pasos son los que el tenant tenga configurados.
+   */
+  recorrido?: { campo: string; pasos: string[] } | null;
+  /**
+   * De dónde viene el registro: su listado y su identificador.
+   *
+   * Va aquí y no en cada pantalla para que **esté en el mismo sitio en todas
+   * las fichas**. La genérica lo tenía y las tres de a medida no, así que
+   * desde la de una cuenta no había forma de volver a Cuentas que no fuera el
+   * menú de arriba o el botón del navegador.
+   */
+  volverA?: { a: string; titulo: string; id?: string };
 }) {
   const { t } = useTranslation();
   const [campos, setCampos] = useState<CampoEsquema[]>([]);
@@ -147,69 +189,108 @@ export function DatosClave({
       // servicio nombra su parámetro por su objeto —`{oportunidad_id}`—, así
       // que buscar `/{id}` no encuentra nada.
       const plantilla = fichaDe(documento, recurso.listar);
-      if (vivo) setCampos(plantilla ? camposDe(documento, plantilla, "patch") : []);
+      if (vivo)
+        setCampos(plantilla ? camposDe(documento, plantilla, "patch") : []);
     });
     return () => {
       vivo = false;
     };
   }, [recurso]);
 
-  const etapa = fila ? campoDeEtapa(fila, campos) : null;
-  const valorEtapa = etapa ? String(fila?.[etapa.nombre] ?? "") : "";
+  // Los datos mandan sobre el contrato: cuando quien pinta la ficha trae los
+  // pasos es porque los ha leído de la configuración del tenant, que es más
+  // concreta que una lista cerrada del esquema.
+  const delContrato = fila ? campoDeEtapa(fila, campos) : null;
+  const campoRecorrido = recorrido?.campo ?? delContrato?.nombre ?? "";
+  const pasos =
+    recorrido && recorrido.pasos.length >= 3
+      ? recorrido.pasos
+      : (delContrato?.opciones ?? []);
+  const valorEtapa = campoRecorrido ? String(fila?.[campoRecorrido] ?? "") : "";
 
   // Los preferidos del recurso, quitando el que da nombre —ya es el título— y
   // la etapa, que se pinta como ruta y no como un par más.
   const titular = fila ? campoDelNombre(fila) : "";
+  // La moneda del propio registro, cuando la declara: con ella los importes
+  // salen con su símbolo, como la tarjeta que hay debajo en una oportunidad.
+  const laMoneda = typeof fila?.moneda === "string" ? fila.moneda : "";
   const clave = (recurso?.columnas ?? [])
-    .filter((c) => c !== titular && c !== etapa?.nombre && !/_id$/.test(c))
+    .filter((c) => c !== titular && c !== campoRecorrido && !/_id$/.test(c))
     .filter((c) => fila && tieneDato(fila[c]))
     .slice(0, CUANTOS);
 
   return (
-    <header className="card mb-4 px-4 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          {/* El TIPO encima y en pequeño, el nombre debajo y grande: es el
+    <>
+      {volverA ? (
+        <nav
+          aria-label={t("ficha.deDonde")}
+          className="mb-2 flex items-center gap-2 text-2xs text-ink-faint"
+        >
+          <Link to={volverA.a} className="text-accent hover:underline">
+            {volverA.titulo}
+          </Link>
+          {volverA.id ? (
+            <span className="font-mono" title={volverA.id}>
+              {volverA.id.slice(0, 8)}…
+            </span>
+          ) : null}
+        </nav>
+      ) : null}
+      <header className="card mb-4 px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            {/* El TIPO encima y en pequeño, el nombre debajo y grande: es el
               orden de Salesforce y resuelve una ambigüedad real —«Acme» puede
               ser una cuenta, un lead o un caso, y el título solo no lo dice. */}
-          <p className="text-3xs font-semibold uppercase tracking-wide text-ink-faint">
-            {humanizar(tipo)}
-          </p>
-          <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
-            {nombre || humanizar(tipo)}
-          </h1>
-          {distintivos ? (
-            <div className="mt-1 flex flex-wrap items-center gap-2">{distintivos}</div>
+            <p className="text-3xs font-semibold uppercase tracking-wide text-ink-faint">
+              {humanizar(tipo)}
+            </p>
+            <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
+              {nombre || humanizar(tipo)}
+            </h1>
+            {distintivos ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {distintivos}
+              </div>
+            ) : null}
+          </div>
+          {acciones ? (
+            <div className="flex shrink-0 items-center gap-2">{acciones}</div>
           ) : null}
         </div>
-        {acciones ? <div className="flex shrink-0 items-center gap-2">{acciones}</div> : null}
-      </div>
 
-      {etapa && valorEtapa ? (
-        <div className="mt-3">
-          <Ruta campo={etapa} valor={valorEtapa} />
-        </div>
-      ) : null}
+        {pasos.length >= 3 && valorEtapa ? (
+          <div className="mt-3">
+            <Ruta campo={campoRecorrido} pasos={pasos} valor={valorEtapa} />
+          </div>
+        ) : null}
 
-      {clave.length > 0 ? (
-        <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-ink-dim/50 pt-3 sm:grid-cols-3 lg:grid-cols-5">
-          {clave.map((c) => (
-            <div key={c} className="min-w-0">
-              <dt className="truncate text-3xs text-ink-faint" title={humanizar(c)}>
-                {humanizar(c)}
-              </dt>
-              <dd className="truncate text-sm text-ink" title={escalar(fila?.[c], c)}>
-                {escalar(fila?.[c], c)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      ) : fila === null ? (
-        // Mientras carga no se pinta un esqueleto: el panel ya tiene su alto
-        // con el título, y una fila de cajas grises que desaparece al segundo
-        // mueve todo lo de abajo justo cuando alguien va a pulsar.
-        <p className="sr-only">{t("app.cargando")}</p>
-      ) : null}
-    </header>
+        {clave.length > 0 ? (
+          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-ink-dim/50 pt-3 sm:grid-cols-3 lg:grid-cols-5">
+            {clave.map((c) => (
+              <div key={c} className="min-w-0">
+                <dt
+                  className="truncate text-3xs text-ink-faint"
+                  title={humanizar(c)}
+                >
+                  {humanizar(c)}
+                </dt>
+                <dd
+                  className="truncate text-sm text-ink"
+                  title={escalar(fila?.[c], c, laMoneda)}
+                >
+                  {escalar(fila?.[c], c, laMoneda)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : fila === null ? (
+          // Mientras carga no se pinta un esqueleto: el panel ya tiene su alto
+          // con el título, y una fila de cajas grises que desaparece al segundo
+          // mueve todo lo de abajo justo cuando alguien va a pulsar.
+          <p className="sr-only">{t("app.cargando")}</p>
+        ) : null}
+      </header>
+    </>
   );
 }

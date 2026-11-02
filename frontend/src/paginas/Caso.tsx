@@ -34,8 +34,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { fecha, fechaHora } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 
@@ -105,7 +106,16 @@ interface Caso {
   estado: string;
   prioridad: string;
   severidad: string;
-  clasificacion?: string | null;
+  /**
+   * El camino de categorías, de la raíz a la hoja.
+   *
+   * Es una LISTA —`ruta_de_categoria` la devuelve así porque los informes
+   * agrupan por nivel—, y aquí estaba declarada como texto. React pinta una
+   * lista pegando sus elementos sin nada en medio, así que en la cabecera de
+   * un caso salía «Calidad de productoAcabado y aspecto». Un tipo equivocado
+   * no da error: da una palabra inventada.
+   */
+  clasificacion?: string[] | null;
   relacionado_con: Record<string, string | null>;
   cierre: Cierre;
   sla: Sla;
@@ -194,32 +204,44 @@ export function Caso() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={caso.asunto}
-        icono="support_agent"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            {caso.codigo ? <span className="badge badge-muted">{caso.codigo}</span> : null}
-            <span className="chip-dato">{caso.estado}</span>
-            <span className="chip-dato">{caso.prioridad}</span>
+      {/* El mismo panel de cabecera que la cuenta, la oportunidad y la ficha
+          genérica. Aquí era un título suelto sobre el fondo de la página, con
+          los botones colgando debajo: cuatro fichas del mismo producto con
+          dos cabeceras distintas, y en ésta no había ni panel ni sitio para
+          los botones. */}
+      <DatosClave
+        recurso={recurso}
+        tipo="caso"
+        nombre={caso.asunto}
+        fila={caso as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/casos", titulo: modulo?.titulo ?? "", id }}
+        // Sólo lo que NO está ya en los datos clave de debajo. El código, el
+        // estado y la prioridad son las columnas preferidas del recurso, así
+        // que salían dos veces en el mismo panel: como insignia arriba y como
+        // par etiqueta/valor tres centímetros más abajo.
+        distintivos={
+          <>
             <span className="chip-dato">{caso.severidad}</span>
-            {caso.clasificacion ? (
-              <span className="text-2xs text-ink-muted">{caso.clasificacion}</span>
+            {/* La ruta de categorías con sus escalones separados: es un
+                camino, de lo general a lo concreto. */}
+            {(caso.clasificacion ?? []).length > 0 ? (
+              <span className="text-2xs text-ink-muted">
+                {(caso.clasificacion ?? []).join(" › ")}
+              </span>
             ) : null}
-          </span>
+          </>
+        }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -243,7 +265,9 @@ export function Caso() {
       ) : null}
 
       {caso.descripcion ? (
-        <p className="card mb-4 p-3 text-2xs text-ink-muted">{caso.descripcion}</p>
+        <p className="card mb-4 p-3 text-2xs text-ink-muted">
+          {caso.descripcion}
+        </p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -285,16 +309,26 @@ function ConQueTieneQueVer({
           {puestas.map(([clave, valor]) => {
             const adonde = ADONDE[clave];
             return (
-              <li key={clave} className="flex items-baseline justify-between gap-3 py-1.5">
-                <span className="text-3xs text-ink-faint">{t(`caso.rel.${clave}`)}</span>
+              <li
+                key={clave}
+                className="flex items-baseline justify-between gap-3 py-1.5"
+              >
+                <span className="text-3xs text-ink-faint">
+                  {t(`caso.rel.${clave}`)}
+                </span>
                 {/* Sólo se enlaza lo que TIENE ficha: un enlace a una pantalla
                     que no existe parece que algo se ha roto. */}
                 {adonde ? (
-                  <Link to={`${adonde}${valor}`} className="text-2xs text-ink hover:underline">
+                  <Link
+                    to={`${adonde}${valor}`}
+                    className="text-2xs text-ink hover:underline"
+                  >
                     {t("caso.abrir")}
                   </Link>
                 ) : (
-                  <span className="text-2xs text-ink-muted">{String(valor).slice(0, 8)}</span>
+                  <span className="text-2xs text-ink-muted">
+                    {String(valor).slice(0, 8)}
+                  </span>
                 )}
               </li>
             );
@@ -331,15 +365,27 @@ function ElReloj({ sla }: { sla: Sla }) {
         {t("caso.sla", { clave: sla.clave, version: sla.version })}
       </p>
       <ul className="mt-2 space-y-1 text-2xs">
-        <li className={sla.incumplio_primera_respuesta ? "text-danger" : "text-ink-muted"}>
+        <li
+          className={
+            sla.incumplio_primera_respuesta ? "text-danger" : "text-ink-muted"
+          }
+        >
           {sla.incumplio_primera_respuesta
             ? t("caso.incumplioPrimera")
-            : t("caso.primeraVence", { cuando: sla.vence_primera_respuesta_at ?? "—" })}
+            : t("caso.primeraVence", {
+                cuando: fechaHora(sla.vence_primera_respuesta_at),
+              })}
         </li>
-        <li className={sla.incumplio_resolucion ? "text-danger" : "text-ink-muted"}>
+        <li
+          className={
+            sla.incumplio_resolucion ? "text-danger" : "text-ink-muted"
+          }
+        >
           {sla.incumplio_resolucion
             ? t("caso.incumplioResolucion")
-            : t("caso.resolucionVence", { cuando: sla.vence_resolucion_at ?? "—" })}
+            : t("caso.resolucionVence", {
+                cuando: fechaHora(sla.vence_resolucion_at),
+              })}
         </li>
       </ul>
       {horasEnPausa > 0 ? (
@@ -361,7 +407,11 @@ function DeQuienCuelga({ arbol }: { arbol: Arbol }) {
   const { t } = useTranslation();
   const hijos = arbol?.hijos ?? [];
   const colgados = arbol?.colgados_del_maestro ?? [];
-  const nada = !arbol?.padre && !arbol?.duplicado_de && hijos.length === 0 && colgados.length === 0;
+  const nada =
+    !arbol?.padre &&
+    !arbol?.duplicado_de &&
+    hijos.length === 0 &&
+    colgados.length === 0;
 
   return (
     <section className="card p-4">
@@ -372,7 +422,10 @@ function DeQuienCuelga({ arbol }: { arbol: Arbol }) {
         <ul className="space-y-1 text-2xs">
           {arbol.padre ? (
             <li>
-              <Link to={`/m/casos/caso/${arbol.padre}`} className="text-ink hover:underline">
+              <Link
+                to={`/m/casos/caso/${arbol.padre}`}
+                className="text-ink hover:underline"
+              >
                 {t("caso.cuelgaDe")}
               </Link>
             </li>
@@ -389,7 +442,10 @@ function DeQuienCuelga({ arbol }: { arbol: Arbol }) {
           ) : null}
           {[...hijos, ...colgados].map((h) => (
             <li key={h.id} className="flex flex-wrap items-baseline gap-x-2">
-              <Link to={`/m/casos/caso/${h.id}`} className="text-ink hover:underline">
+              <Link
+                to={`/m/casos/caso/${h.id}`}
+                className="text-ink hover:underline"
+              >
                 {h.asunto}
               </Link>
               <span className="chip-dato">{h.estado}</span>
@@ -421,7 +477,8 @@ function ComoAcabo({ cierre, casoId }: { cierre: Cierre; casoId: string }) {
   }
 
   const aFaltaDeCliente =
-    cierre.validacion_cliente != null && cierre.validacion_cliente !== "aceptado";
+    cierre.validacion_cliente != null &&
+    cierre.validacion_cliente !== "aceptado";
 
   return (
     <section className="card p-4">
@@ -431,7 +488,9 @@ function ComoAcabo({ cierre, casoId }: { cierre: Cierre; casoId: string }) {
           {t("caso.pendienteDelCliente", { estado: cierre.validacion_cliente })}
         </p>
       ) : null}
-      {cierre.motivo ? <span className="chip-dato">{cierre.motivo}</span> : null}
+      {cierre.motivo ? (
+        <span className="chip-dato">{cierre.motivo}</span>
+      ) : null}
       {cierre.resolucion ? (
         <p className="mt-1 text-2xs text-ink-muted">{cierre.resolucion}</p>
       ) : null}
@@ -440,7 +499,10 @@ function ComoAcabo({ cierre, casoId }: { cierre: Cierre; casoId: string }) {
           {t("caso.reaperturas", { cuantas: cierre.reaperturas })}
         </p>
       ) : null}
-      <EscribirloEnConocimiento casoId={casoId} resolucion={cierre.resolucion} />
+      <EscribirloEnConocimiento
+        casoId={casoId}
+        resolucion={cierre.resolucion}
+      />
     </section>
   );
 }
@@ -508,7 +570,11 @@ function EscribirloEnConocimiento({
 
   if (!abierto) {
     return (
-      <button type="button" className="btn-link mt-3" onClick={() => setAbierto(true)}>
+      <button
+        type="button"
+        className="btn-link mt-3"
+        onClick={() => setAbierto(true)}
+      >
         {t("caso.escribirArticulo")}
       </button>
     );
@@ -543,7 +609,11 @@ function EscribirloEnConocimiento({
         >
           {guardando ? t("caso.guardando") : t("caso.guardarArticulo")}
         </button>
-        <button type="button" className="btn-link" onClick={() => setAbierto(false)}>
+        <button
+          type="button"
+          className="btn-link"
+          onClick={() => setAbierto(false)}
+        >
           {t("caso.cancelar")}
         </button>
       </div>
@@ -573,7 +643,10 @@ function ElHistorial({
       ) : (
         <ol className="lista-acotada divide-y divide-ink-dim/30 pr-1">
           {todos.map((e, i) => (
-            <li key={`${e.tipo}-${e.at}-${i}`} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <li
+              key={`${e.tipo}-${e.at}-${i}`}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
               <span className="text-2xs font-medium text-ink">{e.tipo}</span>
               <time className="text-3xs text-ink-faint" dateTime={e.at}>
                 {e.at.slice(0, 16).replace("T", " ")}
@@ -604,7 +677,11 @@ function ElHistorial({
  * cosas opuestas: una dice que el reparto funcionó y la otra que no hay reglas
  * que cubran este caso.
  */
-function PorQueEstaAqui({ asignaciones }: { asignaciones: Asignacion[] | null }) {
+function PorQueEstaAqui({
+  asignaciones,
+}: {
+  asignaciones: Asignacion[] | null;
+}) {
   const { t } = useTranslation();
   if (!asignaciones) return null;
   // `Array.isArray` y no `?? []`: esta ruta devuelve una LISTA, y un doble —o
@@ -627,7 +704,9 @@ function PorQueEstaAqui({ asignaciones }: { asignaciones: Asignacion[] | null })
                 <span className="font-medium text-ink">{a.cola ?? "—"}</span>
                 {a.regla ? <span className="chip-dato">{a.regla}</span> : null}
                 {a.estrategia ? (
-                  <span className="text-3xs text-ink-faint">{a.estrategia}</span>
+                  <span className="text-3xs text-ink-faint">
+                    {a.estrategia}
+                  </span>
                 ) : null}
                 <time className="text-3xs text-ink-faint" dateTime={a.at}>
                   {a.at.slice(0, 16).replace("T", " ")}
@@ -690,7 +769,10 @@ function QueDerechoLoCubre({ saldo }: { saldo: Saldo | null }) {
       </ul>
       {saldo.vigente_hasta ? (
         <p className="mt-2 text-3xs text-ink-faint">
-          {t("caso.vigenteHasta", { cuando: saldo.vigente_hasta })}
+          {/* Las tres fechas de esta pantalla salían en crudo:
+              «vence 2026-10-28T14:38:22.843025+01:00». Un sello de tiempo de
+              la API no es una fecha para nadie. */}
+          {t("caso.vigenteHasta", { cuando: fecha(saldo.vigente_hasta) })}
         </p>
       ) : null}
       {agotado && saldo.al_agotar ? (
