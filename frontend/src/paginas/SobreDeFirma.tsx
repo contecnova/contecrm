@@ -28,7 +28,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -57,7 +59,11 @@ interface Evidencia {
   /** Lo único que dice si esta firma se sostiene al discutirla. */
   verificable: boolean;
   firmantes: Firmante[];
-  eventos: { tipo: string; descripcion: string | null; firmante: string | null }[];
+  eventos: {
+    tipo: string;
+    descripcion: string | null;
+    firmante: string | null;
+  }[];
 }
 
 export function SobreDeFirma() {
@@ -75,6 +81,12 @@ export function SobreDeFirma() {
   const modulo = moduloDe("operacion");
   const recurso = modulo ? recursoDe(modulo, "sobre_firma") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -110,34 +122,26 @@ export function SobreDeFirma() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={evidencia.referencia ?? t("sobre.sinReferencia")}
-        icono="draw"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="chip-dato">{evidencia.estado}</span>
-            {/* El nivel eIDAS delante: una simple y una cualificada valen lo
-                mismo en pantalla y no valen lo mismo ante un juez. */}
-            {evidencia.nivel ? (
-              <span className="badge badge-muted">{evidencia.nivel}</span>
-            ) : null}
-            {evidencia.proveedor ? (
-              <span className="text-2xs text-ink-muted">{evidencia.proveedor}</span>
-            ) : null}
-          </span>
+      <DatosClave
+        recurso={recurso}
+        tipo="sobre_firma"
+        // Las insignias llevan sólo lo que NO es columna preferida del
+        // recurso: ésas salen como dato clave aquí mismo, y escribirlas
+        // además como insignia las pone dos veces en el mismo panel.
+        nombre={evidencia.referencia ?? t("sobre.sinReferencia")}
+        fila={evidencia as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/operacion", titulo: modulo?.titulo ?? "", id }}
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -160,91 +164,149 @@ export function SobreDeFirma() {
         />
       ) : null}
 
-      {/* El veredicto, arriba. Una firma sin los dos hashes no se puede
-          verificar, y el estado pone «firmado» igual. */}
-      <p
-        className={
-          evidencia.verificable
-            ? "card mb-4 border-success/40 p-3 text-2xs text-success"
-            : "card mb-4 border-danger/40 p-3 text-2xs text-danger"
-        }
-      >
-        {evidencia.verificable ? t("sobre.verificable") : t("sobre.noVerificable")}
-      </p>
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
+      ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="section-label mb-1">{t("sobre.firmantes")}</h2>
-          {firmantes.length === 0 ? (
-            <Vacio titulo={t("sobre.sinFirmantes")} compacto />
-          ) : (
-            <ol className="divide-y divide-ink-dim/30">
-              {firmantes.map((f, i) => (
-                <li key={`${f.email}-${i}`} className="py-1.5">
-                  <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
-                    <span className="font-medium text-ink">{f.nombre || f.email}</span>
-                    <span className="chip-dato">{f.papel}</span>
-                    <span
-                      className={
-                        f.estado === "firmado" ? "chip-dato chip-dato--si" : "chip-dato"
-                      }
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {/* El veredicto, arriba. Una firma sin los dos hashes no se puede
+            verificar, y el estado pone «firmado» igual. */}
+            <p
+              className={
+                evidencia.verificable
+                  ? "card mb-4 border-success/40 p-3 text-2xs text-success"
+                  : "card mb-4 border-danger/40 p-3 text-2xs text-danger"
+              }
+            >
+              {evidencia.verificable
+                ? t("sobre.verificable")
+                : t("sobre.noVerificable")}
+            </p>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="section-label mb-1">{t("sobre.firmantes")}</h2>
+                {firmantes.length === 0 ? (
+                  <Vacio titulo={t("sobre.sinFirmantes")} compacto />
+                ) : (
+                  <ol className="divide-y divide-ink-dim/30">
+                    {firmantes.map((f, i) => (
+                      <li key={`${f.email}-${i}`} className="py-1.5">
+                        <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+                          <span className="font-medium text-ink">
+                            {f.nombre || f.email}
+                          </span>
+                          <span className="chip-dato">{f.papel}</span>
+                          <span
+                            className={
+                              f.estado === "firmado"
+                                ? "chip-dato chip-dato--si"
+                                : "chip-dato"
+                            }
+                          >
+                            {f.estado}
+                          </span>
+                        </div>
+                        {/* Cómo se le identificó: una firma sin identificación es
+                        una casilla marcada por alguien con acceso al correo. */}
+                        {f.identificacion ? (
+                          <p className="text-3xs text-ink-faint">
+                            {t("sobre.identificado", {
+                              como: f.identificacion,
+                            })}
+                          </p>
+                        ) : (
+                          <p className="text-3xs text-warning">
+                            {t("sobre.sinIdentificar")}
+                          </p>
+                        )}
+                        {f.motivo_rechazo ? (
+                          <p className="text-3xs text-danger">
+                            {f.motivo_rechazo}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+
+              <section className="card p-4">
+                <h2 className="section-label mb-1">{t("sobre.prueba")}</h2>
+                <dl className="space-y-1 text-3xs">
+                  <Dato
+                    clave={t("sobre.selloTiempo")}
+                    valor={evidencia.sello_tiempo}
+                  />
+                  <Dato
+                    clave={t("sobre.hashEnviado")}
+                    valor={evidencia.hash_enviado}
+                  />
+                  <Dato
+                    clave={t("sobre.hashFirmado")}
+                    valor={evidencia.hash_firmado}
+                  />
+                  <Dato
+                    clave={t("sobre.certificado")}
+                    valor={evidencia.certificado_id}
+                  />
+                  <Dato
+                    clave={t("sobre.documentoFirmado")}
+                    valor={evidencia.documento_firmado_id}
+                  />
+                </dl>
+              </section>
+            </div>
+
+            <section className="card mt-4 p-4">
+              <h2 className="section-label mb-1">{t("sobre.eventos")}</h2>
+              {eventos.length === 0 ? (
+                <Vacio titulo={t("sobre.sinEventos")} compacto />
+              ) : (
+                <ol className="lista-acotada divide-y divide-ink-dim/30 pr-1">
+                  {eventos.map((e, i) => (
+                    <li
+                      key={`${e.tipo}-${i}`}
+                      className="flex flex-wrap items-baseline gap-x-3 py-1.5"
                     >
-                      {f.estado}
-                    </span>
-                  </div>
-                  {/* Cómo se le identificó: una firma sin identificación es
-                      una casilla marcada por alguien con acceso al correo. */}
-                  {f.identificacion ? (
-                    <p className="text-3xs text-ink-faint">
-                      {t("sobre.identificado", { como: f.identificacion })}
-                    </p>
-                  ) : (
-                    <p className="text-3xs text-warning">{t("sobre.sinIdentificar")}</p>
-                  )}
-                  {f.motivo_rechazo ? (
-                    <p className="text-3xs text-danger">{f.motivo_rechazo}</p>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        <section className="card p-4">
-          <h2 className="section-label mb-1">{t("sobre.prueba")}</h2>
-          <dl className="space-y-1 text-3xs">
-            <Dato clave={t("sobre.selloTiempo")} valor={evidencia.sello_tiempo} />
-            <Dato clave={t("sobre.hashEnviado")} valor={evidencia.hash_enviado} />
-            <Dato clave={t("sobre.hashFirmado")} valor={evidencia.hash_firmado} />
-            <Dato clave={t("sobre.certificado")} valor={evidencia.certificado_id} />
-            <Dato
-              clave={t("sobre.documentoFirmado")}
-              valor={evidencia.documento_firmado_id}
-            />
-          </dl>
-        </section>
-      </div>
-
-      <section className="card mt-4 p-4">
-        <h2 className="section-label mb-1">{t("sobre.eventos")}</h2>
-        {eventos.length === 0 ? (
-          <Vacio titulo={t("sobre.sinEventos")} compacto />
+                      <span className="text-2xs font-medium text-ink">
+                        {e.tipo}
+                      </span>
+                      {e.firmante ? (
+                        <span className="text-3xs text-ink-faint">
+                          {e.firmante}
+                        </span>
+                      ) : null}
+                      {e.descripcion ? (
+                        <span className="text-3xs text-ink-muted">
+                          {e.descripcion}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          </>
         ) : (
-          <ol className="lista-acotada divide-y divide-ink-dim/30 pr-1">
-            {eventos.map((e, i) => (
-              <li key={`${e.tipo}-${i}`} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-                <span className="text-2xs font-medium text-ink">{e.tipo}</span>
-                {e.firmante ? (
-                  <span className="text-3xs text-ink-faint">{e.firmante}</span>
-                ) : null}
-                {e.descripcion ? (
-                  <span className="text-3xs text-ink-muted">{e.descripcion}</span>
-                ) : null}
-              </li>
-            ))}
-          </ol>
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="sobre_firma"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
         )}
-      </section>
+      </div>
     </>
   );
 }

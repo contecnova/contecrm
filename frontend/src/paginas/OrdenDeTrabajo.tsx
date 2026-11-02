@@ -30,7 +30,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -104,6 +106,12 @@ export function OrdenDeTrabajo() {
   const modulo = moduloDe("campo");
   const recurso = modulo ? recursoDe(modulo, "ordenes-trabajo") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -141,30 +149,30 @@ export function OrdenDeTrabajo() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={orden.titulo}
-        icono="handyman"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="chip-dato font-mono">{orden.codigo}</span>
-            <span className="chip-dato">{orden.estado}</span>
-            <span className="text-2xs text-ink-muted">
-              {t("orden.trabajado", { minutos: orden.minutos_trabajados })}
-            </span>
+      <DatosClave
+        recurso={recurso}
+        tipo="ordenes-trabajo"
+        // Las insignias llevan sólo lo que NO es columna preferida del
+        // recurso: ésas salen como dato clave aquí mismo.
+        nombre={orden.titulo}
+        fila={orden as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/campo", titulo: modulo?.titulo ?? "", id }}
+        distintivos={
+          <span className="text-2xs text-ink-muted">
+            {t("orden.trabajado", { minutos: orden.minutos_trabajados })}
           </span>
         }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
+        }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
       {confirmando ? (
         <ConfirmarBorrado
           enviando={borrando}
@@ -185,131 +193,196 @@ export function OrdenDeTrabajo() {
         />
       ) : null}
 
-      {/* Lo que invalida una firma, arriba del todo. */}
-      {parte?.alterado_tras_firmar ? (
-        <p className="card mb-4 border-danger/40 p-3 text-2xs text-danger" role="status">
-          {t("orden.alterado")}
-        </p>
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("orden.quienPaga")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("orden.porqueTresCestas")}</p>
-          <p className="mt-2 font-mono text-2xs text-ink">
-            {t("orden.cestas", {
-              facturar: orden.a_facturar,
-              garantia: orden.a_garantia,
-            })}
-          </p>
-          {/* La tercera, aparte y señalada: es la que cuesta dinero si se
-              funde con cualquiera de las otras dos. */}
-          {orden.sin_determinar > 0 ? (
-            <p className="mt-1 text-2xs text-warning">
-              {t("orden.sinDeterminar", { cuantas: orden.sin_determinar })}
-            </p>
-          ) : null}
-          <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
-            {(orden.lineas ?? []).map((l) => (
-              <li key={l.id} className="flex flex-wrap items-baseline gap-2">
-                <span className="chip-dato">{l.tipo}</span>
-                <span className="flex-1 text-2xs text-ink">{l.concepto}</span>
-                <span className="font-mono text-3xs text-ink-muted">
-                  {l.cantidad} {l.unidad ?? ""}
-                </span>
-                <span
-                  className={
-                    l.cubierto_garantia === null
-                      ? "badge badge-aviso"
-                      : "chip-dato"
-                  }
-                >
-                  {t(
-                    l.cubierto_garantia === null
-                      ? "orden.porDecidir"
-                      : l.cubierto_garantia
-                        ? "orden.aGarantia"
-                        : "orden.aFacturar",
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {/* Lo que invalida una firma, arriba del todo. */}
+            {parte?.alterado_tras_firmar ? (
+              <p
+                className="card mb-4 border-danger/40 p-3 text-2xs text-danger"
+                role="status"
+              >
+                {t("orden.alterado")}
+              </p>
+            ) : null}
 
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("orden.parte")}</h2>
-          {!parte ? (
-            <Vacio titulo={t("orden.sinParte")} detalle={t("orden.sinParteDetalle")} />
-          ) : (
-            <>
-              <p className="mt-2 text-2xs text-ink">{parte.resumen}</p>
-              {parte.diagnostico ? (
-                <p className="mt-1 text-2xs text-ink-muted">{parte.diagnostico}</p>
-              ) : null}
-              <p className="mt-2 font-mono text-3xs text-ink-muted">
-                {t("orden.evidencias", {
-                  checklist: (parte.checklist ?? []).length,
-                  evidencias: (parte.evidencias ?? []).length,
-                })}
-              </p>
-              {/* Firmado y conforme son dos cosas: un cliente puede firmar
-                  que estuvimos y no estar conforme con el resultado. */}
-              <p className="mt-1 text-2xs text-ink">
-                {parte.firmado
-                  ? parte.conforme === false
-                    ? t("orden.firmadoNoConforme")
-                    : t("orden.firmado")
-                  : t("orden.sinFirmar")}
-              </p>
-            </>
-          )}
-        </section>
-
-        <section className="card p-4 lg:col-span-2">
-          <h2 className="text-sm font-medium text-ink">{t("orden.quienPuede")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("orden.porqueDescartados")}</p>
-          {!candidatos ? (
-            <Vacio titulo={t("orden.sinCandidatos")} detalle="" />
-          ) : (
-            <>
-              <p className="mt-2 font-mono text-3xs text-ink-muted">
-                {t("orden.competencias", {
-                  competencias:
-                    (candidatos.competencias_requeridas ?? []).join(", ") ||
-                    t("orden.ninguna"),
-                })}
-              </p>
-              {!candidatos.hay_candidatos ? (
-                <p className="mt-1 text-2xs text-warning">{t("orden.nadieApto")}</p>
-              ) : (
-                <p className="mt-1 text-2xs text-ink">
-                  {t("orden.aptos", { cuantos: (candidatos.aptos ?? []).length })}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("orden.quienPaga")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("orden.porqueTresCestas")}
                 </p>
-              )}
-              {/* El porqué de cada descartado: es lo que se puede arreglar. */}
-              {descartados.length > 0 ? (
+                <p className="mt-2 font-mono text-2xs text-ink">
+                  {t("orden.cestas", {
+                    facturar: orden.a_facturar,
+                    garantia: orden.a_garantia,
+                  })}
+                </p>
+                {/* La tercera, aparte y señalada: es la que cuesta dinero si se
+                funde con cualquiera de las otras dos. */}
+                {orden.sin_determinar > 0 ? (
+                  <p className="mt-1 text-2xs text-warning">
+                    {t("orden.sinDeterminar", {
+                      cuantas: orden.sin_determinar,
+                    })}
+                  </p>
+                ) : null}
                 <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
-                  {descartados.map((d, i) => (
-                    <li key={`${d.tecnico_id}-${i}`} className="flex items-baseline gap-2">
-                      <span className="font-mono text-3xs text-ink">{d.tecnico_id}</span>
-                      <span className="flex-1 text-2xs text-ink-muted">{d.porque}</span>
+                  {(orden.lineas ?? []).map((l) => (
+                    <li
+                      key={l.id}
+                      className="flex flex-wrap items-baseline gap-2"
+                    >
+                      <span className="chip-dato">{l.tipo}</span>
+                      <span className="flex-1 text-2xs text-ink">
+                        {l.concepto}
+                      </span>
+                      <span className="font-mono text-3xs text-ink-muted">
+                        {l.cantidad} {l.unidad ?? ""}
+                      </span>
+                      <span
+                        className={
+                          l.cubierto_garantia === null
+                            ? "badge badge-aviso"
+                            : "chip-dato"
+                        }
+                      >
+                        {t(
+                          l.cubierto_garantia === null
+                            ? "orden.porDecidir"
+                            : l.cubierto_garantia
+                              ? "orden.aGarantia"
+                              : "orden.aFacturar",
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>
-              ) : null}
-            </>
-          )}
-        </section>
-      </div>
+              </section>
 
-      {orden.activo_id ? (
-        <p className="mt-4 text-2xs">
-          <Link className="btn-link" to={`/m/campo/activo/${orden.activo_id}`}>
-            {t("orden.verActivo")}
-          </Link>
-        </p>
-      ) : null}
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("orden.parte")}
+                </h2>
+                {!parte ? (
+                  <Vacio
+                    titulo={t("orden.sinParte")}
+                    detalle={t("orden.sinParteDetalle")}
+                  />
+                ) : (
+                  <>
+                    <p className="mt-2 text-2xs text-ink">{parte.resumen}</p>
+                    {parte.diagnostico ? (
+                      <p className="mt-1 text-2xs text-ink-muted">
+                        {parte.diagnostico}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 font-mono text-3xs text-ink-muted">
+                      {t("orden.evidencias", {
+                        checklist: (parte.checklist ?? []).length,
+                        evidencias: (parte.evidencias ?? []).length,
+                      })}
+                    </p>
+                    {/* Firmado y conforme son dos cosas: un cliente puede firmar
+                    que estuvimos y no estar conforme con el resultado. */}
+                    <p className="mt-1 text-2xs text-ink">
+                      {parte.firmado
+                        ? parte.conforme === false
+                          ? t("orden.firmadoNoConforme")
+                          : t("orden.firmado")
+                        : t("orden.sinFirmar")}
+                    </p>
+                  </>
+                )}
+              </section>
+
+              <section className="card p-4 lg:col-span-2">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("orden.quienPuede")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("orden.porqueDescartados")}
+                </p>
+                {!candidatos ? (
+                  <Vacio titulo={t("orden.sinCandidatos")} detalle="" />
+                ) : (
+                  <>
+                    <p className="mt-2 font-mono text-3xs text-ink-muted">
+                      {t("orden.competencias", {
+                        competencias:
+                          (candidatos.competencias_requeridas ?? []).join(
+                            ", ",
+                          ) || t("orden.ninguna"),
+                      })}
+                    </p>
+                    {!candidatos.hay_candidatos ? (
+                      <p className="mt-1 text-2xs text-warning">
+                        {t("orden.nadieApto")}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-2xs text-ink">
+                        {t("orden.aptos", {
+                          cuantos: (candidatos.aptos ?? []).length,
+                        })}
+                      </p>
+                    )}
+                    {/* El porqué de cada descartado: es lo que se puede arreglar. */}
+                    {descartados.length > 0 ? (
+                      <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+                        {descartados.map((d, i) => (
+                          <li
+                            key={`${d.tecnico_id}-${i}`}
+                            className="flex items-baseline gap-2"
+                          >
+                            <span className="font-mono text-3xs text-ink">
+                              {d.tecnico_id}
+                            </span>
+                            <span className="flex-1 text-2xs text-ink-muted">
+                              {d.porque}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </>
+                )}
+              </section>
+            </div>
+
+            {orden.activo_id ? (
+              <p className="mt-4 text-2xs">
+                <Link
+                  className="btn-link"
+                  to={`/m/campo/activo/${orden.activo_id}`}
+                >
+                  {t("orden.verActivo")}
+                </Link>
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="ordenes-trabajo"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
+      </div>
     </>
   );
 }

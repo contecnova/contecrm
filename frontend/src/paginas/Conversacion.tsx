@@ -34,12 +34,21 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { moduloDe } from "@/lib/modulos";
 import { ErrorApi, llamar } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
 
 /** Los canales que admite el servidor. Mandar uno que no está da 422. */
-const CANALES = ["correo", "formulario", "chat", "social", "api", "telefono", "portal"] as const;
+const CANALES = [
+  "correo",
+  "formulario",
+  "chat",
+  "social",
+  "api",
+  "telefono",
+  "portal",
+] as const;
 
 interface Conversacion {
   id: string;
@@ -66,6 +75,7 @@ interface Mensaje {
 export function Conversacion({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const { id = "" } = useParams();
+  const modulo = moduloDe("conversaciones");
   const [conversacion, setConversacion] = useState<Conversacion | null>(null);
   const [hilo, setHilo] = useState<Mensaje[] | null>(null);
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
@@ -77,7 +87,9 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
 
   const cargar = useCallback(() => {
     const control = new AbortController();
-    llamar<Conversacion>(`/api/v1/conversaciones/${id}`, { signal: control.signal })
+    llamar<Conversacion>(`/api/v1/conversaciones/${id}`, {
+      signal: control.signal,
+    })
       .then(async (r) => {
         setConversacion(r.datos);
         // El historial **exige** un cliente: sin contacto ni identidad externa
@@ -92,9 +104,12 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
           setHilo([]);
           return;
         }
-        const h = await llamar<Mensaje[]>(`/api/v1/conversaciones/historial?${quien}`, {
-          signal: control.signal,
-        });
+        const h = await llamar<Mensaje[]>(
+          `/api/v1/conversaciones/historial?${quien}`,
+          {
+            signal: control.signal,
+          },
+        );
         setHilo(Array.isArray(h.datos) ? h.datos : []);
       })
       .catch((e: unknown) => {
@@ -109,7 +124,10 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
     setEnviando(true);
     setAviso("");
     try {
-      await llamar(`/api/v1/conversaciones/${id}/${ruta}`, { metodo: "POST", cuerpo });
+      await llamar(`/api/v1/conversaciones/${id}/${ruta}`, {
+        metodo: "POST",
+        cuerpo,
+      });
       setAviso(t(`conversacion.hecho.${ruta}`));
       cargar();
     } catch (e: unknown) {
@@ -126,10 +144,21 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <CabeceraPagina
-        titulo={conversacion.asunto || t("conversacion.sinAsunto")}
-        entradilla={t("conversacion.entradilla")}
-        icono="forum"
+      <DatosClave
+        // Sin `recurso`: esta pantalla no es un registro editable del
+        // catálogo, así que no hay columnas preferidas ni contrato. El panel
+        // sirve igual para que las catorce fichas se abran con la misma
+        // cabecera.
+        recurso={undefined}
+        tipo="conversacion"
+        nombre={conversacion.asunto || t("conversacion.sinAsunto")}
+        fila={conversacion as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/conversaciones", titulo: modulo?.titulo ?? "", id }}
+        distintivos={
+          <span className="text-2xs text-ink-muted">
+            {t("conversacion.entradilla")}
+          </span>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-2 text-3xs text-ink-muted">
@@ -148,7 +177,10 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
       </p>
 
       {hilo.length === 0 ? (
-        <Vacio titulo={t("conversacion.sinHilo")} detalle={t("conversacion.sinHiloDetalle")} />
+        <Vacio
+          titulo={t("conversacion.sinHilo")}
+          detalle={t("conversacion.sinHiloDetalle")}
+        />
       ) : (
         <ol className="flex flex-col gap-2">
           {hilo.map((m, i) => (
@@ -164,13 +196,25 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
             >
               <div className="flex flex-wrap items-baseline gap-x-2 text-3xs text-ink-muted">
                 <span className="badge badge-accent">{m.canal}</span>
-                <span>{t(`conversacion.${m.direccion === "entrante" ? "delCliente" : "nuestro"}`)}</span>
+                <span>
+                  {t(
+                    `conversacion.${m.direccion === "entrante" ? "delCliente" : "nuestro"}`,
+                  )}
+                </span>
                 {/* Que una nota es interna se dice con palabras y no sólo con
                     un color: quien no distingue los dos amarillos la manda. */}
-                {m.interno ? <span className="text-warning">{t("conversacion.interna")}</span> : null}
-                <span className="ml-auto font-mono">{m.at.slice(0, 16).replace("T", " ")}</span>
+                {m.interno ? (
+                  <span className="text-warning">
+                    {t("conversacion.interna")}
+                  </span>
+                ) : null}
+                <span className="ml-auto font-mono">
+                  {m.at.slice(0, 16).replace("T", " ")}
+                </span>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-2xs text-ink">{m.cuerpo}</p>
+              <p className="mt-1 whitespace-pre-wrap text-2xs text-ink">
+                {m.cuerpo}
+              </p>
             </li>
           ))}
         </ol>
@@ -179,7 +223,9 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
       {puedeEscribir ? (
         <Responder enviando={enviando} alEnviar={accion} />
       ) : (
-        <p className="text-3xs text-ink-faint">{t("conversacion.soloLectura")}</p>
+        <p className="text-3xs text-ink-faint">
+          {t("conversacion.soloLectura")}
+        </p>
       )}
     </div>
   );
@@ -202,7 +248,9 @@ function Responder({
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-ink-dim/40 p-3">
       <label className="flex flex-col gap-1">
-        <span className="text-3xs text-ink-muted">{t("conversacion.respuesta")}</span>
+        <span className="text-3xs text-ink-muted">
+          {t("conversacion.respuesta")}
+        </span>
         <textarea
           rows={3}
           value={cuerpo}
@@ -211,7 +259,11 @@ function Responder({
         />
       </label>
       <label className="flex items-center gap-2 text-3xs text-ink-muted">
-        <input type="checkbox" checked={interno} onChange={(e) => setInterno(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={interno}
+          onChange={(e) => setInterno(e.target.checked)}
+        />
         {t("conversacion.esNotaInterna")}
       </label>
       <div className="flex flex-wrap gap-2">
@@ -243,8 +295,14 @@ function Responder({
 
       <div className="flex flex-wrap items-end gap-2 border-t border-ink-dim/30 pt-3">
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">{t("conversacion.cambiarCanal")}</span>
-          <select value={canal} onChange={(e) => setCanal(e.target.value)} className="input-base">
+          <span className="text-3xs text-ink-muted">
+            {t("conversacion.cambiarCanal")}
+          </span>
+          <select
+            value={canal}
+            onChange={(e) => setCanal(e.target.value)}
+            className="input-base"
+          >
             <option value="">{t("conversacion.elegirCanal")}</option>
             {CANALES.map((c) => (
               <option key={c} value={c}>
@@ -254,8 +312,14 @@ function Responder({
           </select>
         </label>
         <label className="flex flex-1 flex-col gap-1">
-          <span className="text-3xs text-ink-muted">{t("conversacion.motivo")}</span>
-          <input value={motivo} onChange={(e) => setMotivo(e.target.value)} className="input-base" />
+          <span className="text-3xs text-ink-muted">
+            {t("conversacion.motivo")}
+          </span>
+          <input
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            className="input-base"
+          />
         </label>
         <button
           type="button"
@@ -272,7 +336,9 @@ function Responder({
       </div>
       {/* Cambiar de canal NO abre una conversación nueva: el hilo se conserva.
           Decirlo aquí evita que nadie abra una «por si acaso». */}
-      <p className="text-3xs text-ink-faint">{t("conversacion.transferirDetalle")}</p>
+      <p className="text-3xs text-ink-faint">
+        {t("conversacion.transferirDetalle")}
+      </p>
     </div>
   );
 }

@@ -39,7 +39,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -122,6 +124,12 @@ export function Campana() {
   const modulo = moduloDe("campanas");
   const recurso = modulo ? recursoDe(modulo, "campana") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -179,11 +187,14 @@ export function Campana() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={consumo.campana}
-        icono="campaign"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
+      <DatosClave
+        recurso={recurso}
+        tipo="campana"
+        nombre={consumo.campana}
+        fila={consumo as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/campanas", titulo: modulo?.titulo ?? "", id }}
+        distintivos={
+          <>
             {/* El gasto propio y el de los hijos, separados: una campaña que
                 no ha gastado nada y cuyas tácticas se han comido el
                 presupuesto se lee como barata si se suman. */}
@@ -195,26 +206,33 @@ export function Campana() {
               })}
             </span>
             {consumo.sin_presupuesto ? (
-              <span className="badge badge-muted">{t("campana.sinPresupuesto")}</span>
+              <span className="badge badge-muted">
+                {t("campana.sinPresupuesto")}
+              </span>
             ) : (
-              <span className={consumo.sobrepasado ? "badge badge-aviso" : "badge badge-muted"}>
+              <span
+                className={
+                  consumo.sobrepasado
+                    ? "badge badge-aviso"
+                    : "badge badge-muted"
+                }
+              >
                 {t("campana.consumido", { pct: consumo.consumido_pct ?? 0 })}
               </span>
             )}
-          </span>
+          </>
+        }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -237,140 +255,196 @@ export function Campana() {
         />
       ) : null}
 
-      {consumo.sobrepasado ? (
-        <p className="card mb-4 border-warning/40 p-3 text-2xs text-warning" role="status">
-          {t("campana.sobrepasado", { restante: consumo.restante ?? "—" })}
-        </p>
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("campana.planVsReal")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("campana.porquePlan")}</p>
-          {plan.length === 0 ? (
-            <Vacio titulo={t("campana.sinObjetivos")} detalle="" />
-          ) : (
-            <ul className="mt-2 flex flex-col gap-1">
-              {plan.map(([clave, datos]) => (
-                <li key={clave} className="flex items-baseline gap-2">
-                  <span className="flex-1 text-2xs text-ink">{clave}</span>
-                  {/* Un objetivo sobre algo que el embudo no mide NO se compara
-                      contra cero: se dice que no se puede comparar. */}
-                  <span className="font-mono text-2xs text-ink-muted">
-                    {datos.real === null
-                      ? t("campana.noComparable", { objetivo: datos.objetivo })
-                      : t("campana.deObjetivo", {
-                          real: datos.real,
-                          objetivo: datos.objetivo,
-                        })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("campana.coste")}</h2>
-          {!rendimiento ? (
-            <Vacio titulo={t("campana.sinRendimiento")} detalle="" />
-          ) : (
-            <>
-              <p className="mt-2 font-mono text-2xs text-ink">
-                {t("campana.porLead", {
-                  lead: rendimiento.coste_por_lead ?? "—",
-                  conversion: rendimiento.coste_por_conversion ?? "—",
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {consumo.sobrepasado ? (
+              <p
+                className="card mb-4 border-warning/40 p-3 text-2xs text-warning"
+                role="status"
+              >
+                {t("campana.sobrepasado", {
+                  restante: consumo.restante ?? "—",
                 })}
               </p>
-              {/* El ROI sólo cuando se puede medir. Sin ingresos atribuidos un
-                  0 % y un «no se sabe» se leen igual y son lo contrario. */}
-              <p className="mt-1 font-mono text-lg text-ink">
-                {rendimiento.roi_medible
-                  ? t("campana.roi", { pct: rendimiento.roi_pct })
-                  : t("campana.roiNoMedible")}
-              </p>
-              {rendimiento.aviso ? (
-                <p className="mt-1 text-2xs text-warning">{rendimiento.aviso}</p>
-              ) : null}
-            </>
-          )}
-        </section>
+            ) : null}
 
-        <section className="card p-4 lg:col-span-2">
-          <h2 className="text-sm font-medium text-ink">{t("campana.embudo")}</h2>
-          {!embudo ? (
-            <Vacio titulo={t("campana.sinEmbudo")} detalle="" />
-          ) : (
-            <>
-              <p className="mt-1 font-mono text-3xs text-ink-muted">
-                {t("campana.miembros", {
-                  miembros: embudo.miembros,
-                  excluidos: embudo.excluidos,
-                })}
-              </p>
-              <ul className="mt-2 flex flex-wrap gap-2">
-                {estados.map(([cual, cuantos]) => (
-                  <li key={cual}>
-                    {/* Se puede pinchar: el embudo dice CUÁNTOS y lo que hace
-                        falta es QUIÉNES, que es con quien se puede llamar. */}
-                    <button
-                      type="button"
-                      className={estado === cual ? "badge badge-muted" : "chip-dato"}
-                      onClick={() => verMiembros(cual)}
-                    >
-                      {t("campana.enEstado", { estado: cual, cuantos })}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {estado ? (
-                <div className="mt-3" role="status" aria-live="polite">
-                  <p className="text-3xs text-ink-faint">
-                    {t("campana.quienes", { estado, cuantos: miembros.length })}
-                  </p>
-                  <ul className="lista-acotada mt-1 flex flex-col gap-1 pr-1">
-                    {miembros.map((m) => (
-                      <li key={m.objeto_id} className="flex items-baseline gap-2">
-                        <span className="flex-1 font-mono text-3xs text-ink">
-                          {m.objeto_id}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("campana.planVsReal")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("campana.porquePlan")}
+                </p>
+                {plan.length === 0 ? (
+                  <Vacio titulo={t("campana.sinObjetivos")} detalle="" />
+                ) : (
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {plan.map(([clave, datos]) => (
+                      <li key={clave} className="flex items-baseline gap-2">
+                        <span className="flex-1 text-2xs text-ink">
+                          {clave}
                         </span>
-                        {/* De dónde salió: un miembro metido a mano y uno que
-                            entró por el segmento no se tratan igual. */}
-                        <span className="chip-dato">{m.fuente_alta}</span>
+                        {/* Un objetivo sobre algo que el embudo no mide NO se compara
+                        contra cero: se dice que no se puede comparar. */}
+                        <span className="font-mono text-2xs text-ink-muted">
+                          {datos.real === null
+                            ? t("campana.noComparable", {
+                                objetivo: datos.objetivo,
+                              })
+                            : t("campana.deObjetivo", {
+                                real: datos.real,
+                                objetivo: datos.objetivo,
+                              })}
+                        </span>
                       </li>
                     ))}
                   </ul>
-                </div>
-              ) : null}
-            </>
-          )}
-        </section>
+                )}
+              </section>
 
-        {evento ? (
-          <section className="card p-4 lg:col-span-2">
-            <h2 className="text-sm font-medium text-ink">{t("campana.evento")}</h2>
-            <p className="mt-2 font-mono text-2xs text-ink">
-              {t("campana.asistencia", {
-                inscritos: evento.inscritos,
-                asistieron: evento.asistieron,
-                faltaron: evento.no_aparecieron,
-                aforo: evento.aforo ?? "—",
-              })}
-            </p>
-            {/* Los sin marcar van delante de la tasa: una tasa calculada
-                ignorándolos es una tasa inventada. */}
-            {evento.sin_marcar > 0 ? (
-              <p className="mt-1 text-2xs text-warning">
-                {t("campana.sinMarcar", { cuantos: evento.sin_marcar })}
-              </p>
-            ) : null}
-            <p className="mt-1 font-mono text-lg text-ink">
-              {evento.medible
-                ? t("campana.tasa", { pct: evento.tasa_asistencia_pct })
-                : t("campana.tasaNoMedible")}
-            </p>
-          </section>
-        ) : null}
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("campana.coste")}
+                </h2>
+                {!rendimiento ? (
+                  <Vacio titulo={t("campana.sinRendimiento")} detalle="" />
+                ) : (
+                  <>
+                    <p className="mt-2 font-mono text-2xs text-ink">
+                      {t("campana.porLead", {
+                        lead: rendimiento.coste_por_lead ?? "—",
+                        conversion: rendimiento.coste_por_conversion ?? "—",
+                      })}
+                    </p>
+                    {/* El ROI sólo cuando se puede medir. Sin ingresos atribuidos un
+                    0 % y un «no se sabe» se leen igual y son lo contrario. */}
+                    <p className="mt-1 font-mono text-lg text-ink">
+                      {rendimiento.roi_medible
+                        ? t("campana.roi", { pct: rendimiento.roi_pct })
+                        : t("campana.roiNoMedible")}
+                    </p>
+                    {rendimiento.aviso ? (
+                      <p className="mt-1 text-2xs text-warning">
+                        {rendimiento.aviso}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </section>
+
+              <section className="card p-4 lg:col-span-2">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("campana.embudo")}
+                </h2>
+                {!embudo ? (
+                  <Vacio titulo={t("campana.sinEmbudo")} detalle="" />
+                ) : (
+                  <>
+                    <p className="mt-1 font-mono text-3xs text-ink-muted">
+                      {t("campana.miembros", {
+                        miembros: embudo.miembros,
+                        excluidos: embudo.excluidos,
+                      })}
+                    </p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {estados.map(([cual, cuantos]) => (
+                        <li key={cual}>
+                          {/* Se puede pinchar: el embudo dice CUÁNTOS y lo que hace
+                          falta es QUIÉNES, que es con quien se puede llamar. */}
+                          <button
+                            type="button"
+                            className={
+                              estado === cual
+                                ? "badge badge-muted"
+                                : "chip-dato"
+                            }
+                            onClick={() => verMiembros(cual)}
+                          >
+                            {t("campana.enEstado", { estado: cual, cuantos })}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {estado ? (
+                      <div className="mt-3" role="status" aria-live="polite">
+                        <p className="text-3xs text-ink-faint">
+                          {t("campana.quienes", {
+                            estado,
+                            cuantos: miembros.length,
+                          })}
+                        </p>
+                        <ul className="lista-acotada mt-1 flex flex-col gap-1 pr-1">
+                          {miembros.map((m) => (
+                            <li
+                              key={m.objeto_id}
+                              className="flex items-baseline gap-2"
+                            >
+                              <span className="flex-1 font-mono text-3xs text-ink">
+                                {m.objeto_id}
+                              </span>
+                              {/* De dónde salió: un miembro metido a mano y uno que
+                              entró por el segmento no se tratan igual. */}
+                              <span className="chip-dato">{m.fuente_alta}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </section>
+
+              {evento ? (
+                <section className="card p-4 lg:col-span-2">
+                  <h2 className="text-sm font-medium text-ink">
+                    {t("campana.evento")}
+                  </h2>
+                  <p className="mt-2 font-mono text-2xs text-ink">
+                    {t("campana.asistencia", {
+                      inscritos: evento.inscritos,
+                      asistieron: evento.asistieron,
+                      faltaron: evento.no_aparecieron,
+                      aforo: evento.aforo ?? "—",
+                    })}
+                  </p>
+                  {/* Los sin marcar van delante de la tasa: una tasa calculada
+                  ignorándolos es una tasa inventada. */}
+                  {evento.sin_marcar > 0 ? (
+                    <p className="mt-1 text-2xs text-warning">
+                      {t("campana.sinMarcar", { cuantos: evento.sin_marcar })}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 font-mono text-lg text-ink">
+                    {evento.medible
+                      ? t("campana.tasa", { pct: evento.tasa_asistencia_pct })
+                      : t("campana.tasaNoMedible")}
+                  </p>
+                </section>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="campana"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
       </div>
     </>
   );

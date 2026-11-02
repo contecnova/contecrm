@@ -133,6 +133,7 @@ export function DatosClave({
   distintivos,
   recorrido,
   volverA,
+  camposClave,
 }: {
   recurso: Recurso | undefined;
   /** El tipo del registro, que es lo que se pone encima del nombre. */
@@ -174,6 +175,17 @@ export function DatosClave({
    * menú de arriba o el botón del navegador.
    */
   volverA?: { a: string; titulo: string; id?: string };
+  /**
+   * Qué campos son los datos clave, cuando los del listado no valen aquí.
+   *
+   * Por defecto son las `columnas` preferidas del recurso, que es lo que hace
+   * que el listado y la ficha digan lo mismo. Hay fichas donde ese reparto
+   * miente: la de un segmento enseña **los alcanzables**, medidos ahora y con
+   * su desglose, y el `tamano` guardado del listado sale a su lado con la
+   * misma cara y otro significado. Dos números iguales con dos nombres
+   * parecidos es peor que uno solo.
+   */
+  camposClave?: string[];
 }) {
   const { t } = useTranslation();
   const [campos, setCampos] = useState<CampoEsquema[]>([]);
@@ -214,7 +226,7 @@ export function DatosClave({
   // La moneda del propio registro, cuando la declara: con ella los importes
   // salen con su símbolo, como la tarjeta que hay debajo en una oportunidad.
   const laMoneda = typeof fila?.moneda === "string" ? fila.moneda : "";
-  const clave = (recurso?.columnas ?? [])
+  const clave = (camposClave ?? recurso?.columnas ?? [])
     .filter((c) => c !== titular && c !== campoRecorrido && !/_id$/.test(c))
     .filter((c) => fila && tieneDato(fila[c]))
     .slice(0, CUANTOS);

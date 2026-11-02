@@ -54,7 +54,9 @@ import {
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { escalar } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
@@ -205,6 +207,12 @@ export function ObjetoDelModelo() {
   const moduloModelo = moduloDe("modelo");
   const recurso = moduloModelo ? recursoDe(moduloModelo, "objeto") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -279,34 +287,33 @@ export function ObjetoDelModelo() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={objeto.etiqueta || objeto.nombre}
-        icono={objeto.icono || "schema"}
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="badge badge-muted">{objeto.nombre}</span>
-            {/* De dónde sale: lo que trae el producto no se toca igual que lo
-                que añadió esta empresa. */}
-            <span className="chip-dato">{objeto.origen}</span>
-            {objeto.descripcion ? (
-              <span className="text-2xs text-ink-faint">
-                {objeto.descripcion}
-              </span>
-            ) : null}
-          </span>
+      <DatosClave
+        recurso={recurso}
+        tipo="objeto"
+        // Las insignias llevan sólo lo que NO es columna preferida del
+        // recurso: ésas salen como dato clave aquí mismo, y escribirlas
+        // además como insignia las pone dos veces en el mismo panel.
+        nombre={objeto.etiqueta || objeto.nombre}
+        fila={objeto as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/modelo", titulo: moduloModelo?.titulo ?? "", id }}
+        distintivos={
+          objeto.descripcion ? (
+            <span className="text-2xs text-ink-faint">
+              {objeto.descripcion}
+            </span>
+          ) : null
+        }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -329,257 +336,297 @@ export function ObjetoDelModelo() {
         />
       ) : null}
 
-      {fallo ? (
-        <div className="mb-3">
-          <Fallo error={fallo} reintentar={cargar} />
-        </div>
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
       ) : null}
 
-      {/* ── Cuánto sitio queda ──────────────────────────────────────────── */}
-      {limites ? (
-        <section className="card mb-4 p-4">
-          <h2 className="section-label mb-1">{t("modeloDatos.limites")}</h2>
-          <p
-            className={
-              limites.en_aviso
-                ? "text-sm font-medium text-danger"
-                : "text-sm font-medium text-ink"
-            }
-          >
-            {t("modeloDatos.camposDeTope", {
-              campos: limites.campos,
-              tope: limites.tope,
-            })}
-          </p>
-          {/* Qué pasa al llegar, dicho antes de llegar: un tope que sólo se
-              explica cuando se alcanza se explica tarde. */}
-          <p className="mt-1 text-3xs text-ink-muted">{limites.al_llegar}</p>
-        </section>
-      ) : null}
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {fallo ? (
+              <div className="mb-3">
+                <Fallo error={fallo} reintentar={cargar} />
+              </div>
+            ) : null}
 
-      {/* ── Qué pasaría al publicar ─────────────────────────────────────
-          Va ANTES de los campos a propósito: se mira justo después de tocar
-          uno y antes de pulsar publicar, que es el único momento en el que
-          sirve de algo. */}
-      <QuePasaSiPublico objeto={objeto.nombre} />
-
-      {/* ── Los campos, con sus escrituras al lado ──────────────────────── */}
-      <section className="card mb-4 p-4">
-        <h2 className="section-label mb-1">{t("modeloDatos.campos")}</h2>
-        <p className="mb-3 text-3xs text-ink-faint">
-          {t("modeloDatos.camposAyuda")}
-        </p>
-        {!describe ? <Cargando /> : null}
-        {describe && describe.campos.length === 0 ? (
-          <Vacio titulo={t("modeloDatos.sinCampos")} compacto />
-        ) : null}
-        {describe && describe.campos.length > 0 ? (
-          <ul className="divide-y divide-ink-dim/30">
-            {describe.campos.map((campo) => {
-              const uso = escrituras.get(campo.nombre);
-              return (
-                <li
-                  key={campo.id}
-                  className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            {/* ── Cuánto sitio queda ──────────────────────────────────────────── */}
+            {limites ? (
+              <section className="card mb-4 p-4">
+                <h2 className="section-label mb-1">
+                  {t("modeloDatos.limites")}
+                </h2>
+                <p
+                  className={
+                    limites.en_aviso
+                      ? "text-sm font-medium text-danger"
+                      : "text-sm font-medium text-ink"
+                  }
                 >
-                  <span className="text-2xs font-medium text-ink">
-                    {campo.etiqueta || campo.nombre}
-                  </span>
-                  <span className="text-3xs text-ink-faint">
-                    {campo.nombre}
-                  </span>
-                  <span className="chip-dato">{campo.tipo}</span>
-                  {/* Un campo CALCULADO no se teclea: su fórmula se valida al
-                      guardarla, no al leer el primer registro. Verlo marcado
-                      es lo que evita que alguien busque por qué «no se puede
-                      rellenar». */}
-                  {campo.tipo === "formula" || campo.tipo === "rollup" ? (
-                    <span className="chip-dato chip-dato--si">
-                      {t("modeloDatos.calculado")}
-                    </span>
-                  ) : null}
-                  {campo.obligatorio ? (
-                    <span className="chip-dato">
-                      {t("modeloDatos.obligatorio")}
-                    </span>
-                  ) : null}
-                  {campo.unico ? (
-                    <span className="chip-dato">{t("modeloDatos.unico")}</span>
-                  ) : null}
-                  {campo.solo_lectura ? (
-                    <span className="chip-dato">
-                      {t("modeloDatos.soloLectura")}
-                    </span>
-                  ) : null}
-                  {campo.sensibilidad && campo.sensibilidad !== "normal" ? (
-                    <span className="chip-dato chip-dato--no">
-                      {campo.sensibilidad}
-                    </span>
-                  ) : null}
-                  {campo.deprecado ? (
-                    <span className="chip-dato chip-dato--no">
-                      {t("modeloDatos.deprecado")}
-                    </span>
-                  ) : null}
-                  {/* Lo que contesta «¿puedo quitarlo?»: cuántas veces se ha
-                      ESCRITO. Leer mide quién mira; escribir mide si el campo
-                      se rellena. */}
-                  {uso ? (
-                    <span
-                      className={
-                        uso.escrituras === 0
-                          ? "text-3xs text-danger"
-                          : "text-3xs text-ink-muted"
-                      }
-                    >
-                      {uso.escrituras === 0
-                        ? t("modeloDatos.nuncaEscrito")
-                        : t("modeloDatos.escrituras", {
-                            cuantas: uso.escrituras,
-                          })}
-                    </span>
-                  ) : null}
-                  {uso?.materializado ? (
-                    <span className="chip-dato chip-dato--si">
-                      {t("modeloDatos.materializado")}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-        {rastro && rastro.sin_usar.length > 0 ? (
-          <p className="mt-3 text-3xs text-ink-muted">
-            <Icono nombre="info" />{" "}
-            {t("modeloDatos.sinUsar", { cuantos: rastro.sin_usar.length })}
-          </p>
-        ) : null}
-        {/* Que un campo añadido aquí entre solo en la API no es una promesa
-            del folleto: las escrituras de arriba las cuenta la API al
-            recibirlas, así que un número mayor que cero ES la prueba. */}
-        <p className="mt-3 text-3xs text-ink-faint">
-          <span className="font-medium text-ink-muted">
-            {t("modeloDatos.yaEstaEnLaApi")}
-          </span>{" "}
-          {t("modeloDatos.yaEstaEnLaApiAyuda")}
-        </p>
-      </section>
-
-      {/* ── Validaciones y tipos de registro ────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="section-label mb-1">{t("modeloDatos.reglas")}</h2>
-          <p className="mb-2 text-3xs text-ink-faint">
-            {t("modeloDatos.reglasAyuda")}
-          </p>
-          {describe && describe.reglas.length === 0 ? (
-            <Vacio titulo={t("modeloDatos.sinReglas")} compacto />
-          ) : null}
-          <ul className="divide-y divide-ink-dim/30">
-            {(describe?.reglas ?? []).map((regla) => (
-              <li key={regla.id} className="py-1.5">
-                <div className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="text-2xs font-medium text-ink">
-                    {regla.nombre}
-                  </span>
-                  <span className="chip-dato">{regla.momento}</span>
-                  {!regla.activa ? (
-                    <span className="chip-dato chip-dato--no">
-                      {t("modeloDatos.apagada")}
-                    </span>
-                  ) : null}
-                </div>
-                {/* El mensaje que verá quien la incumpla: es la mitad de la
-                    regla, y sin él no se puede juzgar si está bien escrita. */}
-                <p className="text-3xs text-ink-muted">{regla.mensaje}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="card p-4">
-          <h2 className="section-label mb-1">{t("modeloDatos.tipos")}</h2>
-          <p className="mb-2 text-3xs text-ink-faint">
-            {t("modeloDatos.tiposAyuda")}
-          </p>
-          {tipos && tipos.length === 0 ? (
-            <Vacio titulo={t("modeloDatos.sinTipos")} compacto />
-          ) : null}
-          <ul className="divide-y divide-ink-dim/30">
-            {(tipos ?? []).map((tipo) => (
-              <li
-                key={tipo.clave}
-                className="flex flex-wrap items-baseline gap-x-3 py-1.5"
-              >
-                <span className="text-2xs font-medium text-ink">
-                  {tipo.nombre}
-                </span>
-                <span className="text-3xs text-ink-faint">{tipo.clave}</span>
-                {tipo.por_defecto ? (
-                  <span className="chip-dato chip-dato--si">
-                    {t("modeloDatos.porDefecto")}
-                  </span>
-                ) : null}
-                {tipo.campos_ocultos.length > 0 ? (
-                  <span className="text-3xs text-ink-muted">
-                    {t("modeloDatos.ocultos", {
-                      cuantos: tipo.campos_ocultos.length,
-                    })}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-
-      {/* ── Lo que esta empresa puede cambiar sin escribir código ───────
-          Van juntos porque se miran juntos: quién ve qué formulario, qué
-          entiende la IA, qué campo ya pide columna, por qué estados pasa el
-          registro y cómo se lleva todo esto a otro entorno. */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <ElDisenoQueTeToca objeto={objeto.nombre} />
-        <LoQueEntiendeLaIa objeto={objeto.nombre} />
-        <CamposQueYaPidenColumna objeto={objeto.nombre} />
-        <LaMaquinaDeEstados estados={objeto.estados} />
-        <RenombrarYLlevarse objeto={objeto.nombre} rastro={rastro} />
-      </div>
-
-      {/* ── Qué se publicó y cuándo ─────────────────────────────────────── */}
-      {rastro && rastro.publicaciones.length > 0 ? (
-        <section className="card mt-4 p-4">
-          <h2 className="section-label mb-1">
-            {t("modeloDatos.publicaciones")}
-          </h2>
-          <p className="mb-2 text-3xs text-ink-faint">
-            {t("modeloDatos.publicacionesAyuda")}
-          </p>
-          <ul className="divide-y divide-ink-dim/30">
-            {rastro.publicaciones.map((pub) => (
-              <li
-                key={pub.version}
-                className="flex flex-wrap items-baseline gap-x-3 py-1.5"
-              >
-                <span className="text-2xs font-medium text-ink">
-                  v{pub.version}
-                </span>
-                <span className="text-3xs text-ink-faint">
-                  {escalar(pub.at, "at")}
-                </span>
-                <span className="text-3xs text-ink-muted">
-                  {t("modeloDatos.camposEnPublicacion", {
-                    cuantos: pub.campos,
+                  {t("modeloDatos.camposDeTope", {
+                    campos: limites.campos,
+                    tope: limites.tope,
                   })}
-                </span>
-                {pub.nota ? (
-                  <span className="text-3xs text-ink-muted">{pub.nota}</span>
+                </p>
+                {/* Qué pasa al llegar, dicho antes de llegar: un tope que sólo se
+                explica cuando se alcanza se explica tarde. */}
+                <p className="mt-1 text-3xs text-ink-muted">
+                  {limites.al_llegar}
+                </p>
+              </section>
+            ) : null}
+
+            {/* ── Qué pasaría al publicar ─────────────────────────────────────
+            Va ANTES de los campos a propósito: se mira justo después de tocar
+            uno y antes de pulsar publicar, que es el único momento en el que
+            sirve de algo. */}
+            <QuePasaSiPublico objeto={objeto.nombre} />
+
+            {/* ── Los campos, con sus escrituras al lado ──────────────────────── */}
+            <section className="card mb-4 p-4">
+              <h2 className="section-label mb-1">{t("modeloDatos.campos")}</h2>
+              <p className="mb-3 text-3xs text-ink-faint">
+                {t("modeloDatos.camposAyuda")}
+              </p>
+              {!describe ? <Cargando /> : null}
+              {describe && describe.campos.length === 0 ? (
+                <Vacio titulo={t("modeloDatos.sinCampos")} compacto />
+              ) : null}
+              {describe && describe.campos.length > 0 ? (
+                <ul className="divide-y divide-ink-dim/30">
+                  {describe.campos.map((campo) => {
+                    const uso = escrituras.get(campo.nombre);
+                    return (
+                      <li
+                        key={campo.id}
+                        className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                      >
+                        <span className="text-2xs font-medium text-ink">
+                          {campo.etiqueta || campo.nombre}
+                        </span>
+                        <span className="text-3xs text-ink-faint">
+                          {campo.nombre}
+                        </span>
+                        <span className="chip-dato">{campo.tipo}</span>
+                        {/* Un campo CALCULADO no se teclea: su fórmula se valida al
+                        guardarla, no al leer el primer registro. Verlo marcado
+                        es lo que evita que alguien busque por qué «no se puede
+                        rellenar». */}
+                        {campo.tipo === "formula" || campo.tipo === "rollup" ? (
+                          <span className="chip-dato chip-dato--si">
+                            {t("modeloDatos.calculado")}
+                          </span>
+                        ) : null}
+                        {campo.obligatorio ? (
+                          <span className="chip-dato">
+                            {t("modeloDatos.obligatorio")}
+                          </span>
+                        ) : null}
+                        {campo.unico ? (
+                          <span className="chip-dato">
+                            {t("modeloDatos.unico")}
+                          </span>
+                        ) : null}
+                        {campo.solo_lectura ? (
+                          <span className="chip-dato">
+                            {t("modeloDatos.soloLectura")}
+                          </span>
+                        ) : null}
+                        {campo.sensibilidad &&
+                        campo.sensibilidad !== "normal" ? (
+                          <span className="chip-dato chip-dato--no">
+                            {campo.sensibilidad}
+                          </span>
+                        ) : null}
+                        {campo.deprecado ? (
+                          <span className="chip-dato chip-dato--no">
+                            {t("modeloDatos.deprecado")}
+                          </span>
+                        ) : null}
+                        {/* Lo que contesta «¿puedo quitarlo?»: cuántas veces se ha
+                        ESCRITO. Leer mide quién mira; escribir mide si el campo
+                        se rellena. */}
+                        {uso ? (
+                          <span
+                            className={
+                              uso.escrituras === 0
+                                ? "text-3xs text-danger"
+                                : "text-3xs text-ink-muted"
+                            }
+                          >
+                            {uso.escrituras === 0
+                              ? t("modeloDatos.nuncaEscrito")
+                              : t("modeloDatos.escrituras", {
+                                  cuantas: uso.escrituras,
+                                })}
+                          </span>
+                        ) : null}
+                        {uso?.materializado ? (
+                          <span className="chip-dato chip-dato--si">
+                            {t("modeloDatos.materializado")}
+                          </span>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+              {rastro && rastro.sin_usar.length > 0 ? (
+                <p className="mt-3 text-3xs text-ink-muted">
+                  <Icono nombre="info" />{" "}
+                  {t("modeloDatos.sinUsar", {
+                    cuantos: rastro.sin_usar.length,
+                  })}
+                </p>
+              ) : null}
+              {/* Que un campo añadido aquí entre solo en la API no es una promesa
+              del folleto: las escrituras de arriba las cuenta la API al
+              recibirlas, así que un número mayor que cero ES la prueba. */}
+              <p className="mt-3 text-3xs text-ink-faint">
+                <span className="font-medium text-ink-muted">
+                  {t("modeloDatos.yaEstaEnLaApi")}
+                </span>{" "}
+                {t("modeloDatos.yaEstaEnLaApiAyuda")}
+              </p>
+            </section>
+
+            {/* ── Validaciones y tipos de registro ────────────────────────────── */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="section-label mb-1">
+                  {t("modeloDatos.reglas")}
+                </h2>
+                <p className="mb-2 text-3xs text-ink-faint">
+                  {t("modeloDatos.reglasAyuda")}
+                </p>
+                {describe && describe.reglas.length === 0 ? (
+                  <Vacio titulo={t("modeloDatos.sinReglas")} compacto />
                 ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+                <ul className="divide-y divide-ink-dim/30">
+                  {(describe?.reglas ?? []).map((regla) => (
+                    <li key={regla.id} className="py-1.5">
+                      <div className="flex flex-wrap items-baseline gap-x-3">
+                        <span className="text-2xs font-medium text-ink">
+                          {regla.nombre}
+                        </span>
+                        <span className="chip-dato">{regla.momento}</span>
+                        {!regla.activa ? (
+                          <span className="chip-dato chip-dato--no">
+                            {t("modeloDatos.apagada")}
+                          </span>
+                        ) : null}
+                      </div>
+                      {/* El mensaje que verá quien la incumpla: es la mitad de la
+                      regla, y sin él no se puede juzgar si está bien escrita. */}
+                      <p className="text-3xs text-ink-muted">{regla.mensaje}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="card p-4">
+                <h2 className="section-label mb-1">{t("modeloDatos.tipos")}</h2>
+                <p className="mb-2 text-3xs text-ink-faint">
+                  {t("modeloDatos.tiposAyuda")}
+                </p>
+                {tipos && tipos.length === 0 ? (
+                  <Vacio titulo={t("modeloDatos.sinTipos")} compacto />
+                ) : null}
+                <ul className="divide-y divide-ink-dim/30">
+                  {(tipos ?? []).map((tipo) => (
+                    <li
+                      key={tipo.clave}
+                      className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                    >
+                      <span className="text-2xs font-medium text-ink">
+                        {tipo.nombre}
+                      </span>
+                      <span className="text-3xs text-ink-faint">
+                        {tipo.clave}
+                      </span>
+                      {tipo.por_defecto ? (
+                        <span className="chip-dato chip-dato--si">
+                          {t("modeloDatos.porDefecto")}
+                        </span>
+                      ) : null}
+                      {tipo.campos_ocultos.length > 0 ? (
+                        <span className="text-3xs text-ink-muted">
+                          {t("modeloDatos.ocultos", {
+                            cuantos: tipo.campos_ocultos.length,
+                          })}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+
+            {/* ── Lo que esta empresa puede cambiar sin escribir código ───────
+            Van juntos porque se miran juntos: quién ve qué formulario, qué
+            entiende la IA, qué campo ya pide columna, por qué estados pasa el
+            registro y cómo se lleva todo esto a otro entorno. */}
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <ElDisenoQueTeToca objeto={objeto.nombre} />
+              <LoQueEntiendeLaIa objeto={objeto.nombre} />
+              <CamposQueYaPidenColumna objeto={objeto.nombre} />
+              <LaMaquinaDeEstados estados={objeto.estados} />
+              <RenombrarYLlevarse objeto={objeto.nombre} rastro={rastro} />
+            </div>
+
+            {/* ── Qué se publicó y cuándo ─────────────────────────────────────── */}
+            {rastro && rastro.publicaciones.length > 0 ? (
+              <section className="card mt-4 p-4">
+                <h2 className="section-label mb-1">
+                  {t("modeloDatos.publicaciones")}
+                </h2>
+                <p className="mb-2 text-3xs text-ink-faint">
+                  {t("modeloDatos.publicacionesAyuda")}
+                </p>
+                <ul className="divide-y divide-ink-dim/30">
+                  {rastro.publicaciones.map((pub) => (
+                    <li
+                      key={pub.version}
+                      className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                    >
+                      <span className="text-2xs font-medium text-ink">
+                        v{pub.version}
+                      </span>
+                      <span className="text-3xs text-ink-faint">
+                        {escalar(pub.at, "at")}
+                      </span>
+                      <span className="text-3xs text-ink-muted">
+                        {t("modeloDatos.camposEnPublicacion", {
+                          cuantos: pub.campos,
+                        })}
+                      </span>
+                      {pub.nota ? (
+                        <span className="text-3xs text-ink-muted">
+                          {pub.nota}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="objeto"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
+      </div>
     </>
   );
 }
@@ -1042,7 +1089,11 @@ function RenombrarYLlevarse({
         </button>
         {/* Qué llevaba el fichero, anunciado: un fichero en la carpeta de
             descargas no dice si se ha bajado lo que se quería. */}
-        <p role="status" aria-live="polite" className="mt-2 text-2xs text-ink-muted">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-2 text-2xs text-ink-muted"
+        >
           {bajado}
         </p>
       </div>

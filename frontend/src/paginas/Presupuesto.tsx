@@ -39,7 +39,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -128,6 +130,12 @@ export function Presupuesto() {
   const modulo = moduloDe("oportunidades");
   const recurso = modulo ? recursoDe(modulo, "presupuesto") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -136,7 +144,9 @@ export function Presupuesto() {
     llamar<Presupuesto>(`/api/v1/presupuestos/${id}`, { signal })
       .then((r) => setPresupuesto(r.datos))
       .catch(salvoCancelacion(setFallo));
-    llamar<Politica>(`/api/v1/presupuestos/${id}/politica-descuento`, { signal })
+    llamar<Politica>(`/api/v1/presupuestos/${id}/politica-descuento`, {
+      signal,
+    })
       .then((r) => setPolitica(r.datos))
       .catch(salvoCancelacion(() => setPolitica(null)));
     llamar<Cambios>(`/api/v1/presupuestos/${id}/cambios`, { signal })
@@ -171,30 +181,34 @@ export function Presupuesto() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={presupuesto.titulo || presupuesto.numero}
-        icono="request_quote"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
+      <DatosClave
+        recurso={recurso}
+        tipo="presupuesto"
+        // Las insignias llevan sólo lo que NO es columna preferida del
+        // recurso: ésas salen como dato clave aquí mismo, y escribirlas
+        // además como insignia las pone dos veces en el mismo panel.
+        nombre={presupuesto.titulo || presupuesto.numero}
+        fila={presupuesto as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/oportunidades", titulo: modulo?.titulo ?? "", id }}
+        distintivos={
+          <>
             <span className="chip-dato font-mono">{presupuesto.numero}</span>
-            <span className="chip-dato">{presupuesto.estado}</span>
             <span className="text-2xs text-ink-muted">
               {t("presupuesto.version", { version: presupuesto.version })}
             </span>
-          </span>
+          </>
+        }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -217,124 +231,179 @@ export function Presupuesto() {
         />
       ) : null}
 
-      {/* El aviso de aprobación arriba y CON SUS MOTIVOS: a secas se lee como
-          burocracia, con el motivo se lee como un dato y se discute con él. */}
-      {politica?.necesita_aprobacion ? (
-        <div className="card mb-4 border-warning/40 p-3" role="status">
-          <p className="text-2xs text-warning">{t("presupuesto.necesitaAprobacion")}</p>
-          <ul className="mt-1 flex flex-col gap-1">
-            {(politica.motivos ?? []).map((m, i) => (
-              <li key={i} className="text-2xs text-ink">
-                {m}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-1 font-mono text-3xs text-ink-muted">
-            {t("presupuesto.umbrales", {
-              umbral: politica.umbral_descuento ?? "—",
-              minimo: politica.margen_minimo ?? "—",
-            })}
-          </p>
-        </div>
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("presupuesto.numeros")}</h2>
-          <p className="mt-2 font-mono text-lg text-ink">
-            {importe(presupuesto.total, presupuesto.moneda)}
-          </p>
-          {/* El descuento y el margen juntos: un 30 % sobre 60 de margen y
-              sobre 12 son dos conversaciones distintas, y en la lista los dos
-              son «30 %». */}
-          <p className="mt-1 font-mono text-2xs text-ink">
-            {t("presupuesto.descuentoYMargen", {
-              // Los dos por el formateador: la API manda los decimales como
-              // cadena —`Numeric` en JSON es texto para no perder precisión—
-              // y pintados tal cual salen «0.00» y «49.67».
-              descuento: importe(presupuesto.descuento_total, presupuesto.moneda),
-              margen:
-                presupuesto.margen_pct === null
-                  ? t("presupuesto.sinMargen")
-                  : `${escalar(presupuesto.margen_pct)} %`,
-            })}
-          </p>
-          {presupuesto.margen_pct === null ? (
-            <p className="mt-1 text-3xs text-ink-faint">{t("presupuesto.porqueSinMargen")}</p>
-          ) : null}
-          {presupuesto.valido_hasta ? (
-            <p className="mt-2 text-2xs text-ink-muted">
-              {t("presupuesto.valido", {
-                fecha: fecha(presupuesto.valido_hasta),
-              })}
-            </p>
-          ) : null}
-        </section>
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {/* El aviso de aprobación arriba y CON SUS MOTIVOS: a secas se lee como
+            burocracia, con el motivo se lee como un dato y se discute con él. */}
+            {politica?.necesita_aprobacion ? (
+              <div className="card mb-4 border-warning/40 p-3" role="status">
+                <p className="text-2xs text-warning">
+                  {t("presupuesto.necesitaAprobacion")}
+                </p>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {(politica.motivos ?? []).map((m, i) => (
+                    <li key={i} className="text-2xs text-ink">
+                      {m}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 font-mono text-3xs text-ink-muted">
+                  {t("presupuesto.umbrales", {
+                    umbral: politica.umbral_descuento ?? "—",
+                    minimo: politica.margen_minimo ?? "—",
+                  })}
+                </p>
+              </div>
+            ) : null}
 
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("presupuesto.queCambio")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("presupuesto.porqueCambios")}</p>
-          {!cambios ? (
-            <Vacio titulo={t("presupuesto.sinCambios")} detalle="" />
-          ) : cambios.primera ? (
-            <p className="mt-2 text-2xs text-ink-muted">{t("presupuesto.esLaPrimera")}</p>
-          ) : (
-            <>
-              <p className="mt-2 font-mono text-2xs text-ink">
-                {t("presupuesto.totalAntesDespues", {
-                  antes: cambios.total_antes ?? "—",
-                  ahora: cambios.total_ahora ?? "—",
-                })}
-              </p>
-              <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
-                {(cambios.cambios ?? []).map((c, i) => (
-                  <li key={`${c.linea}-${i}`} className="flex items-baseline gap-2">
-                    <span className="chip-dato">{c.cambio}</span>
-                    <span className="flex-1 text-2xs text-ink">{c.linea}</span>
-                    {c.cantidad_antes !== undefined ? (
-                      <span className="font-mono text-3xs text-ink-muted">
-                        {t("presupuesto.deA", {
-                          antes: c.cantidad_antes,
-                          ahora: c.cantidad_ahora,
-                        })}
-                      </span>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("presupuesto.numeros")}
+                </h2>
+                <p className="mt-2 font-mono text-lg text-ink">
+                  {importe(presupuesto.total, presupuesto.moneda)}
+                </p>
+                {/* El descuento y el margen juntos: un 30 % sobre 60 de margen y
+                sobre 12 son dos conversaciones distintas, y en la lista los dos
+                son «30 %». */}
+                <p className="mt-1 font-mono text-2xs text-ink">
+                  {t("presupuesto.descuentoYMargen", {
+                    // Los dos por el formateador: la API manda los decimales como
+                    // cadena —`Numeric` en JSON es texto para no perder precisión—
+                    // y pintados tal cual salen «0.00» y «49.67».
+                    descuento: importe(
+                      presupuesto.descuento_total,
+                      presupuesto.moneda,
+                    ),
+                    margen:
+                      presupuesto.margen_pct === null
+                        ? t("presupuesto.sinMargen")
+                        : `${escalar(presupuesto.margen_pct)} %`,
+                  })}
+                </p>
+                {presupuesto.margen_pct === null ? (
+                  <p className="mt-1 text-3xs text-ink-faint">
+                    {t("presupuesto.porqueSinMargen")}
+                  </p>
+                ) : null}
+                {presupuesto.valido_hasta ? (
+                  <p className="mt-2 text-2xs text-ink-muted">
+                    {t("presupuesto.valido", {
+                      fecha: fecha(presupuesto.valido_hasta),
+                    })}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("presupuesto.queCambio")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("presupuesto.porqueCambios")}
+                </p>
+                {!cambios ? (
+                  <Vacio titulo={t("presupuesto.sinCambios")} detalle="" />
+                ) : cambios.primera ? (
+                  <p className="mt-2 text-2xs text-ink-muted">
+                    {t("presupuesto.esLaPrimera")}
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-2 font-mono text-2xs text-ink">
+                      {t("presupuesto.totalAntesDespues", {
+                        antes: cambios.total_antes ?? "—",
+                        ahora: cambios.total_ahora ?? "—",
+                      })}
+                    </p>
+                    <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+                      {(cambios.cambios ?? []).map((c, i) => (
+                        <li
+                          key={`${c.linea}-${i}`}
+                          className="flex items-baseline gap-2"
+                        >
+                          <span className="chip-dato">{c.cambio}</span>
+                          <span className="flex-1 text-2xs text-ink">
+                            {c.linea}
+                          </span>
+                          {c.cantidad_antes !== undefined ? (
+                            <span className="font-mono text-3xs text-ink-muted">
+                              {t("presupuesto.deA", {
+                                antes: c.cantidad_antes,
+                                ahora: c.cantidad_ahora,
+                              })}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </section>
+
+              <section className="card p-4 lg:col-span-2">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("presupuesto.documento")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("presupuesto.porqueDocumento")}
+                </p>
+                {!documento ? (
+                  <button
+                    type="button"
+                    className="btn-secundario mt-2"
+                    onClick={verDocumento}
+                  >
+                    {t("presupuesto.verDocumento")}
+                  </button>
+                ) : (
+                  <div className="mt-2" role="status" aria-live="polite">
+                    {/* La marca y el idioma delante: descubrir en el correo del
+                    cliente que salió con la marca equivocada no tiene arreglo. */}
+                    <p className="font-mono text-2xs text-ink">
+                      {t("presupuesto.conQueSale", {
+                        plantilla: documento.plantilla,
+                        marca: documento.marca ?? t("presupuesto.sinMarca"),
+                        idioma: documento.idioma,
+                      })}
+                    </p>
+                    <p className="mt-1 text-3xs text-ink-muted">
+                      {t("presupuesto.lineasDelDocumento", {
+                        cuantas: (documento.lineas ?? []).length,
+                      })}
+                    </p>
+                    {documento.condiciones ? (
+                      <p className="mt-2 text-3xs text-ink-faint">
+                        {documento.condiciones}
+                      </p>
                     ) : null}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
-
-        <section className="card p-4 lg:col-span-2">
-          <h2 className="text-sm font-medium text-ink">{t("presupuesto.documento")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("presupuesto.porqueDocumento")}</p>
-          {!documento ? (
-            <button type="button" className="btn-secundario mt-2" onClick={verDocumento}>
-              {t("presupuesto.verDocumento")}
-            </button>
-          ) : (
-            <div className="mt-2" role="status" aria-live="polite">
-              {/* La marca y el idioma delante: descubrir en el correo del
-                  cliente que salió con la marca equivocada no tiene arreglo. */}
-              <p className="font-mono text-2xs text-ink">
-                {t("presupuesto.conQueSale", {
-                  plantilla: documento.plantilla,
-                  marca: documento.marca ?? t("presupuesto.sinMarca"),
-                  idioma: documento.idioma,
-                })}
-              </p>
-              <p className="mt-1 text-3xs text-ink-muted">
-                {t("presupuesto.lineasDelDocumento", {
-                  cuantas: (documento.lineas ?? []).length,
-                })}
-              </p>
-              {documento.condiciones ? (
-                <p className="mt-2 text-3xs text-ink-faint">{documento.condiciones}</p>
-              ) : null}
+                  </div>
+                )}
+              </section>
             </div>
-          )}
-        </section>
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="presupuesto"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
       </div>
     </>
   );

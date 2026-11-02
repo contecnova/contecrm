@@ -21,15 +21,29 @@
  * preferida, y eso se ve antes de montar nada.
  */
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { objetoDe } from "@/lib/modulos";
 import { RECURSOS_POR_MODULO } from "@/lib/recursos";
 
-/** Las pantallas que pintan el panel con insignias escritas a mano. */
-const PANTALLAS = ["Cuenta.tsx", "Caso.tsx", "Oportunidad.tsx", "Ficha.tsx"];
+/**
+ * Las pantallas que pintan el panel, buscadas y no escritas a mano.
+ *
+ * Con una lista escrita, la ficha número catorce que estrena el panel entra
+ * sin que nadie la mire. Pasó el 02-11-2026: la lista tenía cuatro, siete
+ * fichas más estrenaron el panel el mismo día y dos trajeron la repetición
+ * dentro.
+ */
+const PANTALLAS = readdirSync(join(process.cwd(), "src", "paginas"))
+  .filter((n) => n.endsWith(".tsx"))
+  .filter((n) =>
+    readFileSync(join(process.cwd(), "src", "paginas", n), "utf-8").includes(
+      "<DatosClave",
+    ),
+  );
 
 /** Lo que hay entre `distintivos={` y su llave de cierre. */
 function bloqueDeDistintivos(fuente: string): string | null {
@@ -48,15 +62,22 @@ function bloqueDeDistintivos(fuente: string): string | null {
 
 /** El `tipo="…"` que esa misma llamada le pasa al panel. */
 function tipoDelPanel(fuente: string): string {
-  return /<DatosClave[\s\S]{0,400}?tipo="([a-z_]+)"/.exec(fuente)?.[1] ?? "";
+  // Con el guion dentro: hay objetos que se llaman «ordenes-trabajo», y sin
+  // él la prueba no sabía de qué objeto era el panel. Lo cazó su propia
+  // comprobación de que ha mirado algo, no un verde silencioso.
+  return /<DatosClave[\s\S]{0,400}?tipo="([a-z_-]+)"/.exec(fuente)?.[1] ?? "";
 }
 
 function columnasDe(objeto: string): string[] {
-  // Por el `objeto` declarado y NO con `recursoDe`: ése cae en la primera
-  // pestaña del módulo cuando no encuentra el objeto, así que devolvía las
-  // columnas de otro recurso y la prueba miraba la lista equivocada.
+  // Con `objetoDe`, que es como lo resuelve el producto: la mitad de los
+  // recursos no declaran `objeto` y lo sacan de su ruta —«ordenes-trabajo»—,
+  // así que buscarlo por el campo dejaba fuera a esos sin decirlo.
+  //
+  // Y NO con `recursoDe`: ése cae en la primera pestaña del módulo cuando no
+  // encuentra el objeto, así que devolvía las columnas de otro recurso y la
+  // prueba miraba la lista equivocada.
   for (const recursos of Object.values(RECURSOS_POR_MODULO)) {
-    const recurso = recursos.find((r) => r.objeto === objeto);
+    const recurso = recursos.find((r) => objetoDe(r) === objeto);
     if (recurso) return recurso.columnas ?? [];
   }
   return [];
@@ -76,6 +97,13 @@ describe("el panel de cabecera", () => {
       );
       const bloque = bloqueDeDistintivos(fuente);
       if (bloque === null) return; // Esa pantalla no escribe insignias.
+      // Una ficha que declara `recurso={undefined}` no es un registro del
+      // catálogo —una conversación, la instancia de un proceso—: no tiene
+      // columnas preferidas, así que no hay datos clave y nada puede
+      // repetirse. Se dice aquí y no se cuela por el camino del recurso que
+      // no se encuentra, que es otra cosa y tiene que seguir saliendo rojo.
+      if (/<DatosClave[\s\S]{0,300}?recurso=\{undefined\}/.test(fuente)) return;
+
       const objeto = tipoDelPanel(fuente);
       expect(objeto, `${archivo}: no se ve el tipo del panel`).not.toBe("");
       const columnas = columnasDe(objeto);

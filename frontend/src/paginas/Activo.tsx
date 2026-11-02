@@ -34,7 +34,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -101,7 +103,9 @@ function Rama({ nodo, nivel = 0 }: { nodo: Nodo; nivel?: number }) {
       <span className="text-3xs text-ink-muted">{nodo.estado}</span>
       {/* Un árbol cortado sin avisar se lee como un árbol completo. */}
       {nodo.truncado ? (
-        <span className="ml-1 text-3xs text-warning">{t("activo.truncado")}</span>
+        <span className="ml-1 text-3xs text-warning">
+          {t("activo.truncado")}
+        </span>
       ) : null}
       {(nodo.componentes ?? []).length > 0 ? (
         <ul className="mt-1 flex flex-col gap-1">
@@ -129,6 +133,12 @@ export function Activo() {
   const modulo = moduloDe("campo");
   const recurso = modulo ? recursoDe(modulo, "activo") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -171,32 +181,26 @@ export function Activo() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={arbol.nombre}
-        icono="precision_manufacturing"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="chip-dato font-mono">{arbol.codigo}</span>
-            <span className="chip-dato">{arbol.estado}</span>
-            {arbol.numero_serie ? (
-              <span className="font-mono text-2xs text-ink-muted">
-                {arbol.numero_serie}
-              </span>
-            ) : null}
-          </span>
+      <DatosClave
+        recurso={recurso}
+        tipo="activo"
+        // Las insignias llevan sólo lo que NO es columna preferida del
+        // recurso: ésas salen como dato clave aquí mismo, y escribirlas
+        // además como insignia las pone dos veces en el mismo panel.
+        nombre={arbol.nombre}
+        fila={arbol as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/campo", titulo: modulo?.titulo ?? "", id }}
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
       {confirmando ? (
         <ConfirmarBorrado
           enviando={borrando}
@@ -217,104 +221,147 @@ export function Activo() {
         />
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("activo.cobertura")}</h2>
-          {!cobertura ? (
-            <Vacio titulo={t("activo.sinCobertura")} detalle="" />
-          ) : !cobertura.concluyente ? (
-            /* Lo que de verdad decide: «no se sabe» no es «no». */
-            <>
-              <p className="mt-2 text-2xs text-warning">{t("activo.noConcluyente")}</p>
-              <p className="mt-1 text-2xs text-ink">{cobertura.motivo}</p>
-            </>
-          ) : (
-            <>
-              <p
-                className={
-                  cobertura.cubierto
-                    ? "mt-2 text-2xs text-success"
-                    : "mt-2 text-2xs text-ink"
-                }
-              >
-                {t(cobertura.cubierto ? "activo.cubierto" : "activo.noCubierto")}
-              </p>
-              <p className="mt-1 text-2xs text-ink-muted">{cobertura.motivo}</p>
-              {cobertura.hasta ? (
-                <p className="mt-1 font-mono text-3xs text-ink-faint">
-                  {t("activo.hasta", { fecha: cobertura.hasta })}
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
+      ) : null}
+
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("activo.cobertura")}
+                </h2>
+                {!cobertura ? (
+                  <Vacio titulo={t("activo.sinCobertura")} detalle="" />
+                ) : !cobertura.concluyente ? (
+                  /* Lo que de verdad decide: «no se sabe» no es «no». */
+                  <>
+                    <p className="mt-2 text-2xs text-warning">
+                      {t("activo.noConcluyente")}
+                    </p>
+                    <p className="mt-1 text-2xs text-ink">{cobertura.motivo}</p>
+                  </>
+                ) : (
+                  <>
+                    <p
+                      className={
+                        cobertura.cubierto
+                          ? "mt-2 text-2xs text-success"
+                          : "mt-2 text-2xs text-ink"
+                      }
+                    >
+                      {t(
+                        cobertura.cubierto
+                          ? "activo.cubierto"
+                          : "activo.noCubierto",
+                      )}
+                    </p>
+                    <p className="mt-1 text-2xs text-ink-muted">
+                      {cobertura.motivo}
+                    </p>
+                    {cobertura.hasta ? (
+                      <p className="mt-1 font-mono text-3xs text-ink-faint">
+                        {t("activo.hasta", { fecha: cobertura.hasta })}
+                      </p>
+                    ) : null}
+                    {(cobertura.exclusiones ?? []).length > 0 ? (
+                      <p className="mt-1 text-2xs text-warning">
+                        {t("activo.exclusiones", {
+                          cuantas: (cobertura.exclusiones ?? []).length,
+                        })}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </section>
+
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("activo.contador")}
+                </h2>
+                {!ficha || ficha.contador === null ? (
+                  <Vacio titulo={t("activo.sinContador")} detalle="" />
+                ) : (
+                  <>
+                    <p className="mt-2 font-mono text-lg text-ink">
+                      {t("activo.lectura", {
+                        contador: ficha.contador,
+                        unidad: ficha.unidad_contador ?? "",
+                      })}
+                    </p>
+                    {/* Con su fecha SIEMPRE: una lectura sin fecha al lado se lee
+                    como la de hoy, y sobre eso se decide un mantenimiento. */}
+                    <p className="mt-1 text-2xs text-ink-muted">
+                      {ficha.contador_at
+                        ? t("activo.leidoEl", {
+                            fecha: fecha(ficha.contador_at),
+                          })
+                        : t("activo.sinFechaDeLectura")}
+                    </p>
+                  </>
+                )}
+              </section>
+
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("activo.arbol")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("activo.porqueArbol")}
                 </p>
-              ) : null}
-              {(cobertura.exclusiones ?? []).length > 0 ? (
-                <p className="mt-1 text-2xs text-warning">
-                  {t("activo.exclusiones", {
-                    cuantas: (cobertura.exclusiones ?? []).length,
-                  })}
-                </p>
-              ) : null}
-            </>
-          )}
-        </section>
+                <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+                  <Rama nodo={arbol} />
+                </ul>
+              </section>
 
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("activo.contador")}</h2>
-          {!ficha || ficha.contador === null ? (
-            <Vacio titulo={t("activo.sinContador")} detalle="" />
-          ) : (
-            <>
-              <p className="mt-2 font-mono text-lg text-ink">
-                {t("activo.lectura", {
-                  contador: ficha.contador,
-                  unidad: ficha.unidad_contador ?? "",
-                })}
-              </p>
-              {/* Con su fecha SIEMPRE: una lectura sin fecha al lado se lee
-                  como la de hoy, y sobre eso se decide un mantenimiento. */}
-              <p className="mt-1 text-2xs text-ink-muted">
-                {ficha.contador_at
-                  ? t("activo.leidoEl", {
-                      fecha: fecha(ficha.contador_at),
-                    })
-                  : t("activo.sinFechaDeLectura")}
-              </p>
-            </>
-          )}
-        </section>
-
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("activo.arbol")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("activo.porqueArbol")}</p>
-          <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
-            <Rama nodo={arbol} />
-          </ul>
-        </section>
-
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("activo.historial")}</h2>
-          {/* La cadena delante: un historial que arranca en la sustitución
-              esconde justo el patrón que había que ver. */}
-          {(historial?.equipos_en_la_cadena ?? []).length > 1 ? (
-            <p className="mt-1 text-2xs text-ink">
-              {t("activo.cadena", {
-                equipos: (historial?.equipos_en_la_cadena ?? []).length,
-              })}
-            </p>
-          ) : null}
-          {eventos.length === 0 ? (
-            <Vacio titulo={t("activo.sinEventos")} detalle="" />
-          ) : (
-            <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
-              {eventos.map((e, i) => (
-                <li key={i} className="flex items-baseline gap-2">
-                  <span className="chip-dato">{e.tipo}</span>
-                  <span className="flex-1 font-mono text-3xs text-ink-muted">
-                    {fecha(e.cuando)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("activo.historial")}
+                </h2>
+                {/* La cadena delante: un historial que arranca en la sustitución
+                esconde justo el patrón que había que ver. */}
+                {(historial?.equipos_en_la_cadena ?? []).length > 1 ? (
+                  <p className="mt-1 text-2xs text-ink">
+                    {t("activo.cadena", {
+                      equipos: (historial?.equipos_en_la_cadena ?? []).length,
+                    })}
+                  </p>
+                ) : null}
+                {eventos.length === 0 ? (
+                  <Vacio titulo={t("activo.sinEventos")} detalle="" />
+                ) : (
+                  <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+                    {eventos.map((e, i) => (
+                      <li key={i} className="flex items-baseline gap-2">
+                        <span className="chip-dato">{e.tipo}</span>
+                        <span className="flex-1 font-mono text-3xs text-ink-muted">
+                          {fecha(e.cuando)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="activo"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
       </div>
     </>
   );

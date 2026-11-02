@@ -37,7 +37,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { moduloDe } from "@/lib/modulos";
@@ -136,6 +138,12 @@ export function Segmento() {
   const modulo = moduloDe("segmentos");
   const recurso = modulo ? recursoDe(modulo, "segmento") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -211,34 +219,52 @@ export function Segmento() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={segmento.nombre}
-        icono="group"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="chip-dato">{segmento.objeto}</span>
+      <DatosClave
+        recurso={recurso}
+        tipo="segmento"
+        // Las insignias llevan sólo lo que NO es columna preferida del
+        // recurso: ésas salen como dato clave aquí mismo, y escribirlas
+        // además como insignia las pone dos veces en el mismo panel.
+        nombre={segmento.nombre}
+        fila={segmento as unknown as Record<string, unknown>}
+        // El `tamano` guardado NO: esta pantalla enseña los alcanzables,
+        // medidos ahora y con su desglose, y el del listado sale a su lado
+        // con la misma cara y otro significado.
+        camposClave={["clave", "tamano_at"]}
+        volverA={{ a: "/m/segmentos", titulo: modulo?.titulo ?? "", id }}
+        distintivos={
+          <>
             {/* Dinámico o foto: los dos enseñan un número con la misma cara, y
                 sobre el segundo se manda un correo creyendo que es de hoy. */}
-            <span className={segmento.dinamico ? "badge badge-muted" : "badge badge-aviso"}>
-              {t(segmento.dinamico ? "segmento.dinamico" : "segmento.congeladoEtiqueta")}
+            <span
+              className={
+                segmento.dinamico ? "badge badge-muted" : "badge badge-aviso"
+              }
+            >
+              {t(
+                segmento.dinamico
+                  ? "segmento.dinamico"
+                  : "segmento.congeladoEtiqueta",
+              )}
             </span>
             {segmento.descripcion ? (
-              <span className="text-2xs text-ink-muted">{segmento.descripcion}</span>
+              <span className="text-2xs text-ink-muted">
+                {segmento.descripcion}
+              </span>
             ) : null}
-          </span>
+          </>
+        }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
         }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -261,111 +287,161 @@ export function Segmento() {
         />
       ) : null}
 
-      {/* `role="status"`: congelar y medir hacen aparecer un resultado, y quien
-          no ve la pantalla no se entera de que ha pasado algo. */}
-      <div role="status" aria-live="polite">
-        {aviso ? <p className="card mb-3 p-3 text-2xs text-ink">{aviso}</p> : null}
-      </div>
-      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
+      ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("segmento.cuantos")}</h2>
-          {!tamano ? (
-            <Vacio titulo={t("segmento.sinRecuento")} detalle="" />
-          ) : (
-            <>
-              <p className="mt-2 font-mono text-lg text-ink">{tamano.alcanzables}</p>
-              {/* El hueco se NOMBRA. Enseñar sólo el total hace que alguien
-                  planifique un envío a diez mil y salga a siete mil sin saber
-                  por qué faltan tres mil. */}
-              <p className="mt-1 text-2xs text-ink-muted">
-                {t("segmento.deLosCuales", {
-                  bruto: tamano.bruto,
-                  suprimidos: tamano.suprimidos,
-                })}
-              </p>
-              <p className="mt-1 text-3xs text-ink-faint">
-                {t("segmento.calculado", {
-                  fecha: fechaHora(tamano.calculado_at),
-                })}
-              </p>
-              {tamano.es_foto_congelada ? (
-                <p className="mt-2 text-2xs text-warning">{t("segmento.esFoto")}</p>
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {/* `role="status"`: congelar y medir hacen aparecer un resultado, y quien
+            no ve la pantalla no se entera de que ha pasado algo. */}
+            <div role="status" aria-live="polite">
+              {aviso ? (
+                <p className="card mb-3 p-3 text-2xs text-ink">{aviso}</p>
               ) : null}
-            </>
-          )}
-          {segmento.dinamico ? (
-            <button
-              type="button"
-              className="btn-secundario mt-3"
-              disabled={congelando}
-              onClick={() => void congelar()}
-            >
-              {congelando ? t("segmento.congelando") : t("segmento.congelar")}
-            </button>
-          ) : null}
-          {segmento.dinamico ? (
-            <p className="mt-1 text-3xs text-ink-faint">{t("segmento.porqueCongelar")}</p>
-          ) : null}
-        </section>
-
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("segmento.solapamiento")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("segmento.porqueSolape")}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <select
-              className="input-base"
-              value={contra}
-              aria-label={t("segmento.contra")}
-              onChange={(e) => setContra(e.target.value)}
-            >
-              <option value="">{t("segmento.elegirOtro")}</option>
-              {otros.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.nombre}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn-secundario"
-              disabled={!contra || midiendo}
-              onClick={() => void medirSolape()}
-            >
-              {midiendo ? t("segmento.midiendo") : t("segmento.medir")}
-            </button>
-          </div>
-          {solape ? (
-            <div className="mt-3" role="status" aria-live="polite">
-              <p className="font-mono text-lg text-ink">{solape.comunes}</p>
-              {/* El porcentaje sobre CADA uno: mil comunes es mucho si uno
-                  tiene mil doscientos y poco si tiene cien mil. */}
-              <p className="mt-1 text-2xs text-ink">
-                {t("segmento.pctDeCada", {
-                  a: solape.pct_de_a ?? "—",
-                  b: solape.pct_de_b ?? "—",
-                })}
-              </p>
-              <p className="mt-1 text-2xs text-ink-muted">
-                {t("segmento.solos", { a: solape.solo_a, b: solape.solo_b })}
-              </p>
             </div>
-          ) : null}
-        </section>
+            {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
 
-        <section className="card p-4 lg:col-span-2">
-          <h2 className="text-sm font-medium text-ink">{t("segmento.definicion")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("segmento.porqueDefinicion")}</p>
-          <div className="mt-2">
-            <Condicion nodo={segmento.definicion} />
-          </div>
-          {excluye.length > 0 ? (
-            <p className="mt-3 text-2xs text-ink">
-              {t("segmento.excluye", { cuantos: excluye.length })}
-            </p>
-          ) : null}
-        </section>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("segmento.cuantos")}
+                </h2>
+                {!tamano ? (
+                  <Vacio titulo={t("segmento.sinRecuento")} detalle="" />
+                ) : (
+                  <>
+                    <p className="mt-2 font-mono text-lg text-ink">
+                      {tamano.alcanzables}
+                    </p>
+                    {/* El hueco se NOMBRA. Enseñar sólo el total hace que alguien
+                    planifique un envío a diez mil y salga a siete mil sin saber
+                    por qué faltan tres mil. */}
+                    <p className="mt-1 text-2xs text-ink-muted">
+                      {t("segmento.deLosCuales", {
+                        bruto: tamano.bruto,
+                        suprimidos: tamano.suprimidos,
+                      })}
+                    </p>
+                    <p className="mt-1 text-3xs text-ink-faint">
+                      {t("segmento.calculado", {
+                        fecha: fechaHora(tamano.calculado_at),
+                      })}
+                    </p>
+                    {tamano.es_foto_congelada ? (
+                      <p className="mt-2 text-2xs text-warning">
+                        {t("segmento.esFoto")}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+                {segmento.dinamico ? (
+                  <button
+                    type="button"
+                    className="btn-secundario mt-3"
+                    disabled={congelando}
+                    onClick={() => void congelar()}
+                  >
+                    {congelando
+                      ? t("segmento.congelando")
+                      : t("segmento.congelar")}
+                  </button>
+                ) : null}
+                {segmento.dinamico ? (
+                  <p className="mt-1 text-3xs text-ink-faint">
+                    {t("segmento.porqueCongelar")}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("segmento.solapamiento")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("segmento.porqueSolape")}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <select
+                    className="input-base"
+                    value={contra}
+                    aria-label={t("segmento.contra")}
+                    onChange={(e) => setContra(e.target.value)}
+                  >
+                    <option value="">{t("segmento.elegirOtro")}</option>
+                    {otros.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-secundario"
+                    disabled={!contra || midiendo}
+                    onClick={() => void medirSolape()}
+                  >
+                    {midiendo ? t("segmento.midiendo") : t("segmento.medir")}
+                  </button>
+                </div>
+                {solape ? (
+                  <div className="mt-3" role="status" aria-live="polite">
+                    <p className="font-mono text-lg text-ink">
+                      {solape.comunes}
+                    </p>
+                    {/* El porcentaje sobre CADA uno: mil comunes es mucho si uno
+                    tiene mil doscientos y poco si tiene cien mil. */}
+                    <p className="mt-1 text-2xs text-ink">
+                      {t("segmento.pctDeCada", {
+                        a: solape.pct_de_a ?? "—",
+                        b: solape.pct_de_b ?? "—",
+                      })}
+                    </p>
+                    <p className="mt-1 text-2xs text-ink-muted">
+                      {t("segmento.solos", {
+                        a: solape.solo_a,
+                        b: solape.solo_b,
+                      })}
+                    </p>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="card p-4 lg:col-span-2">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("segmento.definicion")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("segmento.porqueDefinicion")}
+                </p>
+                <div className="mt-2">
+                  <Condicion nodo={segmento.definicion} />
+                </div>
+                {excluye.length > 0 ? (
+                  <p className="mt-3 text-2xs text-ink">
+                    {t("segmento.excluye", { cuantos: excluye.length })}
+                  </p>
+                ) : null}
+              </section>
+            </div>
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="segmento"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
       </div>
     </>
   );

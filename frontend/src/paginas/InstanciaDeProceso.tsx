@@ -28,7 +28,8 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { moduloDe } from "@/lib/modulos";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { Diagrama } from "@/componentes/Diagrama";
 import { colocar, type Definicion } from "@/lib/grafo";
@@ -107,6 +108,7 @@ const TRAZO: Record<string, string> = {
 export function InstanciaDeProceso() {
   const { t } = useTranslation();
   const { id = "" } = useParams();
+  const modulo = moduloDe("procesos");
   const [grafico, setGrafico] = useState<Grafico | null>(null);
   const [definicion, setDefinicion] = useState<Definicion | null>(null);
   const [analitica, setAnalitica] = useState<Analitica | null>(null);
@@ -152,11 +154,18 @@ export function InstanciaDeProceso() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={grafico.proceso}
-        icono="account_tree"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
+      <DatosClave
+        // Sin `recurso`: esta pantalla no es un registro editable del
+        // catálogo, así que no hay columnas preferidas ni contrato. El panel
+        // sirve igual para que las catorce fichas se abran con la misma
+        // cabecera.
+        recurso={undefined}
+        tipo="instancia"
+        nombre={grafico.proceso}
+        fila={grafico as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/procesos", titulo: modulo?.titulo ?? "", id }}
+        distintivos={
+          <>
             <span className="chip-dato">{grafico.estado}</span>
             {/* La versión SIEMPRE: sin ella no se sabe si se está viendo el
                 proceso que se ejecutó o el que se publicó después. */}
@@ -168,7 +177,7 @@ export function InstanciaDeProceso() {
                 {t("instancia.paradaEn", { paso: grafico.paso_actual })}
               </span>
             ) : null}
-          </span>
+          </>
         }
       />
 
@@ -196,7 +205,11 @@ export function InstanciaDeProceso() {
 
       {/* Lo que ha pasado al pulsar, anunciado: sin esto, quien no ve la
           pantalla no se entera de que el rescate ha hecho algo. */}
-      <p role="status" aria-live="polite" className="mt-3 text-2xs text-ink-muted">
+      <p
+        role="status"
+        aria-live="polite"
+        className="mt-3 text-2xs text-ink-muted"
+      >
         {aviso}
       </p>
     </>
@@ -244,7 +257,9 @@ function ElGrafico({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("instancia.grafico")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("instancia.graficoAyuda")}</p>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("instancia.graficoAyuda")}
+      </p>
       <div className="overflow-auto rounded-xl border border-ink-dim/60 bg-paper">
         {/* El MISMO dibujo que el editor, con otra forma de pintar las cajas.
             Dos diagramas del mismo objeto divergen en cuanto uno aprende una
@@ -282,7 +297,9 @@ function ElCaminoEnOrden({ grafico }: { grafico: Grafico }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("instancia.camino")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("instancia.caminoAyuda")}</p>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("instancia.caminoAyuda")}
+      </p>
       {grafico.recorrido.length === 0 ? (
         <Vacio titulo={t("instancia.sinRecorrido")} compacto />
       ) : (
@@ -293,7 +310,9 @@ function ElCaminoEnOrden({ grafico }: { grafico: Grafico }) {
               className="rounded-lg border border-ink-dim/30 bg-paper px-3 py-1.5 text-2xs"
             >
               <span className="font-medium text-ink">{String(paso.paso)}</span>{" "}
-              <span className="text-ink-faint">{String(paso.resultado ?? "")}</span>
+              <span className="text-ink-faint">
+                {String(paso.resultado ?? "")}
+              </span>
               {paso.error ? (
                 <span className="ml-2 text-danger">{String(paso.error)}</span>
               ) : null}
@@ -350,7 +369,11 @@ function Rescate({
     return [...new Set(salidas)];
   }, [definicion, grafico.paso_actual]);
 
-  async function pedir(ruta: string, cuerpo: Record<string, unknown>, aviso: string) {
+  async function pedir(
+    ruta: string,
+    cuerpo: Record<string, unknown>,
+    aviso: string,
+  ) {
     setFallo(null);
     try {
       await llamar(`/api/v1/instancias/${grafico.instancia_id}${ruta}`, {
@@ -368,7 +391,9 @@ function Rescate({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("instancia.rescate")}</h2>
-      <p className="mb-3 text-3xs text-ink-faint">{t("instancia.rescateAyuda")}</p>
+      <p className="mb-3 text-3xs text-ink-faint">
+        {t("instancia.rescateAyuda")}
+      </p>
 
       <label htmlFor="motivo-rescate" className="text-2xs text-ink-muted">
         {t("instancia.motivo")}
@@ -380,19 +405,25 @@ function Rescate({
         />
       </label>
       {motivoCorto ? (
-        <p className="mt-1 text-3xs text-ink-faint">{t("instancia.motivoCorto")}</p>
+        <p className="mt-1 text-3xs text-ink-faint">
+          {t("instancia.motivoCorto")}
+        </p>
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <button
           type="button"
           className="btn btn-secundario"
-          onClick={() => void pedir("/reintentar", {}, t("instancia.hechoReintento"))}
+          onClick={() =>
+            void pedir("/reintentar", {}, t("instancia.hechoReintento"))
+          }
         >
           {t("instancia.reintentar")}
         </button>
       </div>
-      <p className="mt-1 text-3xs text-ink-faint">{t("instancia.reintentarAyuda")}</p>
+      <p className="mt-1 text-3xs text-ink-faint">
+        {t("instancia.reintentarAyuda")}
+      </p>
 
       <div className="mt-3 border-t border-ink-dim/30 pt-3">
         <label htmlFor="destino-salto" className="text-2xs text-ink-muted">
@@ -411,13 +442,19 @@ function Rescate({
             ))}
           </select>
         </label>
-        <p className="mt-1 text-3xs text-ink-faint">{t("instancia.saltarAyuda")}</p>
+        <p className="mt-1 text-3xs text-ink-faint">
+          {t("instancia.saltarAyuda")}
+        </p>
         <button
           type="button"
           className="btn btn-secundario mt-2"
           disabled={!destino || motivoCorto}
           onClick={() =>
-            void pedir("/saltar-paso", { destino, motivo }, t("instancia.hechoSalto"))
+            void pedir(
+              "/saltar-paso",
+              { destino, motivo },
+              t("instancia.hechoSalto"),
+            )
           }
         >
           {t("instancia.saltar")}
@@ -436,7 +473,9 @@ function Rescate({
             className="mt-1 w-full rounded-xl border border-ink-dim/60 bg-paper p-2 font-mono text-3xs text-ink"
           />
         </label>
-        <p className="mt-1 text-3xs text-ink-faint">{t("instancia.variablesAyuda")}</p>
+        <p className="mt-1 text-3xs text-ink-faint">
+          {t("instancia.variablesAyuda")}
+        </p>
         <button
           type="button"
           className="btn btn-secundario mt-2"
@@ -486,7 +525,9 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("instancia.atasco")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("instancia.atascoAyuda")}</p>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("instancia.atascoAyuda")}
+      </p>
       {analitica.instancias === 0 ? (
         <p className="text-2xs text-ink-muted">{analitica.aviso}</p>
       ) : (
@@ -518,7 +559,10 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
           ) : null}
           <ul className="mt-2 divide-y divide-ink-dim/30">
             {analitica.pasos.map((p) => (
-              <li key={p.paso} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+              <li
+                key={p.paso}
+                className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+              >
                 <span className="text-2xs font-medium text-ink">{p.paso}</span>
                 <span className="chip-dato">{p.tipo}</span>
                 <span className="text-3xs text-ink-muted">
@@ -539,7 +583,9 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
                 ) : null}
                 {p.pendientes_ahora > 0 ? (
                   <span className="text-3xs text-warning">
-                    {t("instancia.pendientesAhora", { cuantas: p.pendientes_ahora })}
+                    {t("instancia.pendientesAhora", {
+                      cuantas: p.pendientes_ahora,
+                    })}
                   </span>
                 ) : null}
               </li>

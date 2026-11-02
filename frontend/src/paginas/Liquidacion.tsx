@@ -24,7 +24,9 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { moduloDe } from "@/lib/modulos";
+import { recursoDe } from "@/lib/recursos";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { importe as comoImporte } from "@/lib/formato";
 
@@ -67,6 +69,8 @@ interface Detalle {
 export function Liquidacion() {
   const { t } = useTranslation();
   const { id = "" } = useParams();
+  const modulo = moduloDe("canal");
+  const recurso = modulo ? recursoDe(modulo, "liquidacion") : undefined;
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
@@ -88,20 +92,15 @@ export function Liquidacion() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={comoImporte(detalle.total, detalle.moneda)}
-        icono="payments"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="chip-dato">{detalle.estado}</span>
-            <span className="text-2xs text-ink-muted">
-              {t("liquidacion.periodo", { desde: detalle.desde, hasta: detalle.hasta })}
-            </span>
-            {detalle.pago_referencia ? (
-              <span className="badge badge-muted">{detalle.pago_referencia}</span>
-            ) : null}
-          </span>
-        }
+      <DatosClave
+        // Con su recurso: la liquidación SÍ está en el catálogo, así que el
+        // panel saca de ahí sus datos clave —estado, periodo, referencia de
+        // pago— igual que el listado saca sus columnas.
+        recurso={recurso}
+        tipo="liquidacion"
+        nombre={comoImporte(detalle.total, detalle.moneda)}
+        fila={detalle as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/canal", titulo: modulo?.titulo ?? "", id }}
       />
 
       {/* Lo recortado por el tope, arriba. Sin esto, una liquidación con techo
@@ -129,7 +128,9 @@ function LasLineas({ lineas, moneda }: { lineas: Linea[]; moneda: string }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("liquidacion.lineas")}</h2>
-      <p className="mb-2 text-3xs text-ink-faint">{t("liquidacion.lineasAyuda")}</p>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("liquidacion.lineasAyuda")}
+      </p>
       {lineas.length === 0 ? (
         <Vacio titulo={t("liquidacion.sinLineas")} compacto />
       ) : (
@@ -138,7 +139,9 @@ function LasLineas({ lineas, moneda }: { lineas: Linea[]; moneda: string }) {
             <li key={l.id} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
                 <span className="font-medium text-ink">{l.concepto}</span>
-                <span className="text-ink-muted">{comoImporte(l.importe, moneda)}</span>
+                <span className="text-ink-muted">
+                  {comoImporte(l.importe, moneda)}
+                </span>
                 <span className="text-3xs text-ink-faint">
                   {t("liquidacion.baseYPct", {
                     base: comoImporte(l.base, moneda),
@@ -170,7 +173,13 @@ function LasLineas({ lineas, moneda }: { lineas: Linea[]; moneda: string }) {
  * resolución es lo que cierra la conversación: sin ella, la misma reclamación
  * vuelve el trimestre siguiente.
  */
-function LasDisputas({ disputas, moneda }: { disputas: Disputa[]; moneda: string }) {
+function LasDisputas({
+  disputas,
+  moneda,
+}: {
+  disputas: Disputa[];
+  moneda: string;
+}) {
   const { t } = useTranslation();
   return (
     <section className="card p-4">
@@ -193,7 +202,9 @@ function LasDisputas({ disputas, moneda }: { disputas: Disputa[]; moneda: string
               {d.resolucion ? (
                 <p className="text-3xs text-ink-muted">{d.resolucion}</p>
               ) : (
-                <p className="text-3xs text-warning">{t("liquidacion.sinResolver")}</p>
+                <p className="text-3xs text-warning">
+                  {t("liquidacion.sinResolver")}
+                </p>
               )}
             </li>
           ))}

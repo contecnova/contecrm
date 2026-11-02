@@ -40,7 +40,9 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { CabeceraPagina } from "@/componentes/Pagina";
+import { DatosClave } from "@/componentes/DatosClave";
+import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
+import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -82,7 +84,13 @@ interface Eficacia {
   articulos: number;
   publicados: number;
   /** Muchas vistas y votos negativos: peor que no tener artículo. */
-  dañinos: { clave: string; idioma: string; vistas: number; utiles: number; inutiles: number }[];
+  dañinos: {
+    clave: string;
+    idioma: string;
+    vistas: number;
+    utiles: number;
+    inutiles: number;
+  }[];
   huerfanos: { clave: string; idioma: string }[];
   caducados: { clave: string; idioma: string }[];
   vistas: number;
@@ -108,6 +116,12 @@ export function Articulo() {
   const modulo = moduloDe("conocimiento");
   const recurso = modulo ? recursoDe(modulo, "articulo") : undefined;
   const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
+  // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
+  // hasta hoy sólo se leían entrando a editar.
+  const [pestana, setPestana] = useState<"relacionado" | "detalles">(
+    "relacionado",
+  );
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -148,35 +162,40 @@ export function Articulo() {
 
   const idiomas = traducciones?.traducciones ?? [];
   const atrasadas = idiomas.filter((x) => !x.sincronizada);
-  const esDañino = (eficacia?.dañinos ?? []).some((d) => d.clave === articulo.clave);
-  const esHuerfano = (eficacia?.huerfanos ?? []).some((d) => d.clave === articulo.clave);
+  const esDañino = (eficacia?.dañinos ?? []).some(
+    (d) => d.clave === articulo.clave,
+  );
+  const esHuerfano = (eficacia?.huerfanos ?? []).some(
+    (d) => d.clave === articulo.clave,
+  );
 
   return (
     <>
-      <CabeceraPagina
-        titulo={articulo.titulo}
-        icono="menu_book"
-        entradilla={
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="chip-dato">{articulo.estado}</span>
-            <span className="chip-dato font-mono">{articulo.idioma}</span>
-            <span className="text-2xs text-ink-muted">
-              {t("articulo.version", { version: articulo.version })}
-            </span>
+      <DatosClave
+        recurso={recurso}
+        tipo="articulo"
+        // Las insignias llevan sólo lo que NO es columna preferida del
+        // recurso: ésas salen como dato clave aquí mismo, y escribirlas
+        // además como insignia las pone dos veces en el mismo panel.
+        nombre={articulo.titulo}
+        fila={articulo as unknown as Record<string, unknown>}
+        volverA={{ a: "/m/conocimiento", titulo: modulo?.titulo ?? "", id }}
+        distintivos={
+          <span className="text-2xs text-ink-muted">
+            {t("articulo.version", { version: articulo.version })}
           </span>
         }
+        acciones={
+          !editando ? (
+            <BotonesDeRegistro
+              puedeEditar={puedeEditar}
+              puedeBorrar={puedeBorrar}
+              alEditar={() => setEditando(true)}
+              alBorrar={() => setConfirmando(true)}
+            />
+          ) : null
+        }
       />
-
-      {!editando ? (
-        <div className="mb-3">
-          <BotonesDeRegistro
-            puedeEditar={puedeEditar}
-            puedeBorrar={puedeBorrar}
-            alEditar={() => setEditando(true)}
-            alBorrar={() => setConfirmando(true)}
-          />
-        </div>
-      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -199,104 +218,158 @@ export function Articulo() {
         />
       ) : null}
 
-      {articulo.aviso ? (
-        <p className="card mb-3 border-warning/40 p-3 text-2xs text-warning" role="status">
-          {articulo.aviso}
-        </p>
+      {!editando ? (
+        <PestanasDeFicha
+          etiqueta={t("ficha.secciones")}
+          pestanas={[
+            { clave: "relacionado", nombre: t("ficha.relacionado") },
+            { clave: "detalles", nombre: t("ficha.detalles") },
+          ]}
+          activa={pestana}
+          alElegir={(clave) => setPestana(clave as "relacionado" | "detalles")}
+        />
       ) : null}
 
-      {/* Lo que decide qué hacer con el artículo, arriba. Un artículo dañino
-          no es uno que no sirve: es uno que alguien está siguiendo. */}
-      {esDañino ? (
-        <p className="card mb-3 border-danger/40 p-3 text-2xs text-danger">
-          {t("articulo.daniño")}
-        </p>
-      ) : null}
-      {esHuerfano ? (
-        <p className="card mb-3 p-3 text-2xs text-ink-muted">{t("articulo.huerfano")}</p>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("articulo.quienLoVe")}</h2>
-          <p className="mt-2 text-2xs text-ink">
-            {t(`articulo.audiencia.${articulo.estado === "publicado" ? "publicado" : "borrador"}`)}
-          </p>
-          <p className="mt-2 font-mono text-2xs text-ink">
-            {t("articulo.votos", {
-              utiles: articulo.utiles,
-              inutiles: articulo.inutiles,
-            })}
-          </p>
-          {/* Lo pendiente de revisión no se esconde ni se oculta el artículo:
-              ocultarlo deja al cliente sin respuesta y enseñarlo sin avisar le
-              da una que puede estar vieja. */}
-          {articulo.pendiente_de_revision ? (
-            <p className="mt-2 text-2xs text-warning">{t("articulo.toca_revisar")}</p>
-          ) : null}
-          {articulo.obsoleto ? (
-            <p className="mt-2 text-2xs text-warning">{t("articulo.obsoleto")}</p>
-          ) : null}
-        </section>
-
-        <section className="card p-4">
-          <h2 className="text-sm font-medium text-ink">{t("articulo.idiomas")}</h2>
-          <p className="mt-1 text-3xs text-ink-faint">{t("articulo.porqueIdiomas")}</p>
-          {idiomas.length === 0 ? (
-            <Vacio titulo={t("articulo.sinTraducciones")} detalle="" />
-          ) : (
-            <ul className="mt-2 flex flex-col gap-1">
-              {idiomas.map((x) => (
-                <li key={x.idioma} className="flex items-baseline gap-2">
-                  <span className="chip-dato font-mono">{x.idioma}</span>
-                  <span className="flex-1 text-3xs text-ink-muted">{x.estado}</span>
-                  {/* Cuántas versiones por detrás, no sólo «desincronizada»:
-                      una es una errata y seis son otro artículo. */}
-                  <span
-                    className={
-                      x.sincronizada
-                        ? "font-mono text-3xs text-ink-muted"
-                        : "font-mono text-3xs text-warning"
-                    }
-                  >
-                    {x.sincronizada
-                      ? t("articulo.alDia")
-                      : t("articulo.porDetras", { cuantas: x.versiones_por_detras })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {atrasadas.length > 0 ? (
-            <p className="mt-2 text-2xs text-warning">
-              {t("articulo.desincronizadas", { cuantas: atrasadas.length })}
-            </p>
-          ) : null}
-        </section>
-
-        {eficacia ? (
-          <section className="card p-4 lg:col-span-2">
-            <h2 className="text-sm font-medium text-ink">{t("articulo.eficacia")}</h2>
-            <p className="mt-2 font-mono text-2xs text-ink">
-              {t("articulo.conjunto", {
-                publicados: eficacia.publicados,
-                daninos: eficacia.dañinos.length,
-                huerfanos: eficacia.huerfanos.length,
-                caducados: eficacia.caducados.length,
-              })}
-            </p>
-            {/* La deflexión con su aviso: es el número con el que se justifica
-                no contratar a nadie más en soporte, y es aproximado. */}
-            <p className="mt-2 font-mono text-lg text-ink">
-              {eficacia.deflexion_aproximada_pct === null
-                ? t("articulo.sinDeflexion")
-                : t("articulo.deflexion", { pct: eficacia.deflexion_aproximada_pct })}
-            </p>
-            {eficacia.aviso_deflexion ? (
-              <p className="mt-1 text-2xs text-ink-muted">{eficacia.aviso_deflexion}</p>
+      <div className="mt-4">
+        {editando || pestana === "relacionado" ? (
+          <>
+            {articulo.aviso ? (
+              <p
+                className="card mb-3 border-warning/40 p-3 text-2xs text-warning"
+                role="status"
+              >
+                {articulo.aviso}
+              </p>
             ) : null}
-          </section>
-        ) : null}
+
+            {/* Lo que decide qué hacer con el artículo, arriba. Un artículo dañino
+            no es uno que no sirve: es uno que alguien está siguiendo. */}
+            {esDañino ? (
+              <p className="card mb-3 border-danger/40 p-3 text-2xs text-danger">
+                {t("articulo.daniño")}
+              </p>
+            ) : null}
+            {esHuerfano ? (
+              <p className="card mb-3 p-3 text-2xs text-ink-muted">
+                {t("articulo.huerfano")}
+              </p>
+            ) : null}
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("articulo.quienLoVe")}
+                </h2>
+                <p className="mt-2 text-2xs text-ink">
+                  {t(
+                    `articulo.audiencia.${articulo.estado === "publicado" ? "publicado" : "borrador"}`,
+                  )}
+                </p>
+                <p className="mt-2 font-mono text-2xs text-ink">
+                  {t("articulo.votos", {
+                    utiles: articulo.utiles,
+                    inutiles: articulo.inutiles,
+                  })}
+                </p>
+                {/* Lo pendiente de revisión no se esconde ni se oculta el artículo:
+                ocultarlo deja al cliente sin respuesta y enseñarlo sin avisar le
+                da una que puede estar vieja. */}
+                {articulo.pendiente_de_revision ? (
+                  <p className="mt-2 text-2xs text-warning">
+                    {t("articulo.toca_revisar")}
+                  </p>
+                ) : null}
+                {articulo.obsoleto ? (
+                  <p className="mt-2 text-2xs text-warning">
+                    {t("articulo.obsoleto")}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="card p-4">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("articulo.idiomas")}
+                </h2>
+                <p className="mt-1 text-3xs text-ink-faint">
+                  {t("articulo.porqueIdiomas")}
+                </p>
+                {idiomas.length === 0 ? (
+                  <Vacio titulo={t("articulo.sinTraducciones")} detalle="" />
+                ) : (
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {idiomas.map((x) => (
+                      <li key={x.idioma} className="flex items-baseline gap-2">
+                        <span className="chip-dato font-mono">{x.idioma}</span>
+                        <span className="flex-1 text-3xs text-ink-muted">
+                          {x.estado}
+                        </span>
+                        {/* Cuántas versiones por detrás, no sólo «desincronizada»:
+                        una es una errata y seis son otro artículo. */}
+                        <span
+                          className={
+                            x.sincronizada
+                              ? "font-mono text-3xs text-ink-muted"
+                              : "font-mono text-3xs text-warning"
+                          }
+                        >
+                          {x.sincronizada
+                            ? t("articulo.alDia")
+                            : t("articulo.porDetras", {
+                                cuantas: x.versiones_por_detras,
+                              })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {atrasadas.length > 0 ? (
+                  <p className="mt-2 text-2xs text-warning">
+                    {t("articulo.desincronizadas", {
+                      cuantas: atrasadas.length,
+                    })}
+                  </p>
+                ) : null}
+              </section>
+
+              {eficacia ? (
+                <section className="card p-4 lg:col-span-2">
+                  <h2 className="text-sm font-medium text-ink">
+                    {t("articulo.eficacia")}
+                  </h2>
+                  <p className="mt-2 font-mono text-2xs text-ink">
+                    {t("articulo.conjunto", {
+                      publicados: eficacia.publicados,
+                      daninos: eficacia.dañinos.length,
+                      huerfanos: eficacia.huerfanos.length,
+                      caducados: eficacia.caducados.length,
+                    })}
+                  </p>
+                  {/* La deflexión con su aviso: es el número con el que se justifica
+                  no contratar a nadie más en soporte, y es aproximado. */}
+                  <p className="mt-2 font-mono text-lg text-ink">
+                    {eficacia.deflexion_aproximada_pct === null
+                      ? t("articulo.sinDeflexion")
+                      : t("articulo.deflexion", {
+                          pct: eficacia.deflexion_aproximada_pct,
+                        })}
+                  </p>
+                  {eficacia.aviso_deflexion ? (
+                    <p className="mt-1 text-2xs text-ink-muted">
+                      {eficacia.aviso_deflexion}
+                    </p>
+                  ) : null}
+                </section>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <DetallesDelRegistro
+            ruta={ruta}
+            objeto="articulo"
+            servicio={recurso?.servicio ?? ""}
+            id={id}
+          />
+        )}
       </div>
     </>
   );
