@@ -132,6 +132,12 @@ motivo: lo que más se busca es aquello en lo que se estaba.
 Es tuyo y va contigo: está guardado en el servidor, no en el navegador, así
 que lo ves igual desde otro ordenador.
 
+**El buscador encuentra registros, no sólo pantallas.** Escribe el nombre de
+un cliente, de una oportunidad o de un caso y sale, por debajo de las
+pantallas que casen. **Escribir más no encuentra menos**: el último trozo de
+lo que tecleas busca por principio de palabra, así que «Venta 9» encuentra
+«Venta 924762» igual que «Venta».
+
 **Ir a una pantalla escribiendo su nombre.** `⌘K` en Mac, `Ctrl+K` en el resto,
 o el buscador de la barra de arriba. Escribes «cuentas», «previsión» o «ventas»
 —vale el nombre del grupo— y las flechas y `Intro` te llevan. Con veinticinco

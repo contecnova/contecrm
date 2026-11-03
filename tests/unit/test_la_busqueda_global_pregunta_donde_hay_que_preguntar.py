@@ -26,14 +26,48 @@ import httpx
 import pytest
 
 
-def _gateway(preguntadas: list[str]) -> Any:
-    """Un gateway con dos servicios de mentira que sí tienen índice."""
+class _Peticion:
+    """La petición que llega del navegador: con su cookie y sin `authorization`."""
+
+    headers: dict[str, str] = {"cookie": "sesion=loquesea"}
+
+
+def _quien_llama() -> Any:
+    """Quien pregunta, como lo monta el gateway tras validar la sesión."""
+    from uuid import uuid4
+
+    from crmcore.http.deps import Principal
+
+    return Principal(
+        id=uuid4(),
+        tenant_id=uuid4(),
+        tipo="usuario",
+        roles=frozenset({"admin"}),
+        permisos=frozenset({"*"}),
+    )
+
+
+def _gateway(preguntadas: list[str], sin_identidad: list[str] | None = None) -> Any:
+    """Un gateway con dos servicios de mentira que sí tienen índice.
+
+    **El doble EXIGE identidad**, como el servicio de verdad. Sin eso esta
+    prueba no veía el segundo fallo de esta misma ruta: el gateway construía
+    las cabeceras colando las `x-*` de la petición entrante, y la sesión del
+    navegador es una **cookie** —no hay nada que colar—, así que los dos
+    servicios contestaban 401 y el buscador global devolvía cero resultados
+    siempre. Un doble que contesta a cualquiera da verde a eso.
+    """
     from crmcore.rutas_de_api import Destino
 
     import services.gateway.api as api
 
     def responder(peticion: httpx.Request) -> httpx.Response:
         preguntadas.append(peticion.url.path)
+        # Como el servicio de verdad: sin identidad firmada, 401.
+        if "x-crm-tenant" not in {k.lower() for k in peticion.headers}:
+            if sin_identidad is not None:
+                sin_identidad.append(peticion.url.path)
+            return httpx.Response(401, json={"detail": "Autenticación requerida"})
         # Como el servicio de verdad: sólo contesta en SU ruta.
         servicio = peticion.url.path.split("/")[3] if len(peticion.url.path.split("/")) > 3 else ""
         if not peticion.url.path.endswith(f"/{servicio}/buscar"):
@@ -61,10 +95,7 @@ async def test_se_pregunta_a_la_ruta_de_cada_servicio() -> None:
     preguntadas: list[str] = []
     api = _gateway(preguntadas)
 
-    class _Peticion:
-        headers: dict[str, str] = {}
-
-    salida = await api.buscar_global(_Peticion(), principal=None, q="acme", limite=20)
+    salida = await api.buscar_global(_Peticion(), principal=_quien_llama(), q="acme", limite=20)
 
     assert sorted(preguntadas) == ["/api/v1/party/buscar", "/api/v1/sales/buscar"], preguntadas
     # Y lo que importa de verdad: que vuelvan resultados.
@@ -87,11 +118,36 @@ async def test_lo_que_no_contesta_se_dice_en_vez_de_contarse_como_vacio() -> Non
     # `sales` deja de estar desplegado: ni se le pregunta ni se le da por vacío.
     api._destinos.pop("sales")
 
-    class _Peticion:
-        headers: dict[str, str] = {}
-
-    salida = await api.buscar_global(_Peticion(), principal=None, q="acme", limite=20)
+    salida = await api.buscar_global(_Peticion(), principal=_quien_llama(), q="acme", limite=20)
     assert preguntadas == ["/api/v1/party/buscar"]
     assert salida["total"] == 1
     # No está desplegado, así que no es un caído: no se inventa un fallo.
+    assert salida["servicios_sin_responder"] == []
+
+
+@pytest.mark.asyncio
+async def test_la_identidad_viaja_firmada_y_no_copiada_de_la_peticion() -> None:
+    """El segundo fallo de esta misma ruta, y el que la dejó inservible.
+
+    Las cabeceras se construían colando las `x-*` y `authorization` de la
+    petición entrante. La sesión del navegador es una **cookie**: no hay
+    `authorization` que copiar, así que `party` y `sales` recibían la consulta
+    sin identidad, contestaban **401**, el gateway los contaba como caídos y el
+    buscador —el `⌘K` de la barra de todas las pantallas— devolvía cero
+    resultados siempre.
+
+    Medido el 03-11-2026 haciendo el trabajo de verdad: dar de alta un cliente
+    y buscarlo por su nombre. `/api/v1/accounts?buscar=` lo encontraba y
+    `/api/v1/buscar` no.
+    """
+    preguntadas: list[str] = []
+    sin_identidad: list[str] = []
+    api = _gateway(preguntadas, sin_identidad)
+
+    salida = await api.buscar_global(_Peticion(), principal=_quien_llama(), q="acme", limite=20)
+
+    # Que se ha preguntado a los dos: si no, esto daría verde sin mirar.
+    assert len(preguntadas) == 2, preguntadas
+    assert sin_identidad == [], f"preguntó sin identidad a: {sin_identidad}"
+    assert salida["total"] == 2, salida
     assert salida["servicios_sin_responder"] == []

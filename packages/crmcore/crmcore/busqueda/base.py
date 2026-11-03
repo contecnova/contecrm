@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    cast,
     func,
     select,
     text,
@@ -212,7 +213,25 @@ class BuscadorPostgres:
             + " "
             + DocumentoIndexado.cuerpo,
         )
-        pregunta = func.websearch_to_tsquery(configuracion, consulta_texto)
+        # **El último término busca por PREFIJO.** `websearch_to_tsquery` casa
+        # palabras enteras, y quien teclea escribe el principio de lo que ve:
+        # medido el 03-11-2026 contra la instalación servida, buscar «Venta»
+        # encontraba «Venta 924762» y buscar **«Venta 9» no encontraba nada**.
+        # Escribir más del nombre hacía desaparecer el resultado, que es lo
+        # contrario de lo que espera cualquiera.
+        #
+        # Se hace sobre la consulta YA PARSEADA y no sobre el texto crudo: así
+        # se conserva lo que `websearch_to_tsquery` entiende —comillas para una
+        # frase, `-` para excluir, `or`— y no hay que reimplementarlo. El texto
+        # de un `tsquery` es sintaxis válida de `tsquery`, así que pegarle
+        # `:*` deja el último lexema como prefijo y nada más.
+        #
+        # El `nullif` es la red: una consulta que se queda sin lexemas —«de
+        # la», todo palabras vacías— daría `':*'`, que es un error de sintaxis
+        # en la cara del usuario. Con `NULL`, el `||` devuelve `NULL`, el `@@`
+        # no casa y la respuesta es «no hay resultados», que es la verdad.
+        parseada = cast(func.websearch_to_tsquery(configuracion, consulta_texto), Text)
+        pregunta = func.to_tsquery(configuracion, func.nullif(parseada, "") + ":*")
 
         seleccion = select(
             DocumentoIndexado, func.ts_rank(vector, pregunta).label("relevancia")

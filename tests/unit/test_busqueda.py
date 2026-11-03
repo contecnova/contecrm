@@ -218,3 +218,43 @@ def test_crear_un_lead_lo_deja_buscable(db: Any, tenant_id: UUID) -> None:
 
     resultados = buscar(db, tenant_id=tenant_id, texto="rivas")
     assert [r.objeto for r in resultados] == ["lead"]
+
+
+# ── Escribir más no puede encontrar menos ─────────────────────────────────
+
+
+def test_el_ultimo_termino_busca_por_prefijo(db: Any, tenant_id: UUID) -> None:
+    """**Medido el 03-11-2026** haciendo el trabajo de verdad contra la
+    instalación servida: se da de alta una oportunidad «Venta 924762», se
+    busca «Venta» y aparece, se escribe «Venta 9» y **desaparece**.
+
+    `websearch_to_tsquery` casa palabras enteras, y «9» no es una palabra de
+    «924762». Quien teclea escribe el principio de lo que ve, así que la
+    búsqueda se vaciaba justo cuando el usuario afinaba — que es lo contrario
+    de lo que espera cualquiera y la forma más rápida de que deje de usarla.
+    """
+    _doc(db, tenant_id, titulo="Venta 924762")
+    db.flush()
+
+    # Cada paso de lo que se teclea encuentra lo mismo, no menos.
+    for escrito in ("Venta", "Venta 9", "Venta 92", "Venta 924762"):
+        encontrados = [r.titulo for r in buscar(db, tenant_id=tenant_id, texto=escrito)]
+        assert encontrados == ["Venta 924762"], f"con «{escrito}» salió {encontrados}"
+
+    # Y el prefijo es del ÚLTIMO término, no de todos: «9 Venta» no es lo
+    # mismo que «Venta 9», y lo que no empieza así no se trae de propina.
+    assert buscar(db, tenant_id=tenant_id, texto="Compra 9") == []
+
+
+def test_una_consulta_sin_palabras_no_revienta(db: Any, tenant_id: UUID) -> None:
+    """La red del prefijo. Una consulta que se queda sin lexemas —todo
+    palabras vacías, o un paréntesis suelto— daría `':*'`, que es un error de
+    sintaxis de Postgres en la cara de quien no ha escrito nada raro."""
+    _doc(db, tenant_id, titulo="Construcciones Ejemplo")
+    db.flush()
+
+    for escrito in ("de la", "(", "   ", "-"):
+        assert buscar(db, tenant_id=tenant_id, texto=escrito) == [], escrito
+    # Y lo normal sigue encontrándose: si esto fallara, el vacío de arriba
+    # podría ser «la búsqueda está rota» en vez de «eso no es una consulta».
+    assert len(buscar(db, tenant_id=tenant_id, texto="construcciones")) == 1

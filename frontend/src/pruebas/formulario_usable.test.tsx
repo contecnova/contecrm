@@ -126,3 +126,49 @@ describe("el formulario", () => {
     expect(document.getElementById(descrito!)?.textContent).toContain("El de trabajo.");
   });
 });
+
+describe("un formulario sin campos obligatorios", () => {
+  it("enseña los campos delante, no un recuadro vacío", () => {
+    // **Medido el 03-11-2026** pulsando «Editar» en una oportunidad: el
+    // `PATCH` del contrato declara TODOS los campos opcionales —se manda lo
+    // que se cambia—, así que la lista de delante salía vacía y la ficha
+    // enseñaba un recuadro con «Más campos (29)», «Guardar cambios» y **ni un
+    // solo campo que tocar**.
+    const campos = [
+      { nombre: "nombre", tipo: "string", obligatorio: false },
+      { nombre: "importe", tipo: "number", obligatorio: false },
+      { nombre: "notas", tipo: "string", obligatorio: false },
+    ] as unknown as Parameters<typeof Formulario>[0]["campos"];
+
+    const { container } = render(
+      <Formulario
+        campos={campos}
+        recurso={{ nombre: "Oportunidades", listar: "/x", servicio: "sales", columnas: ["nombre", "importe"] } as never}
+        textoEnviar="Guardar"
+        alEnviar={() => undefined}
+      />,
+    );
+
+    // Delante, las columnas preferidas que el recurso ya declara.
+    const delante = container.querySelectorAll(".rejilla-formulario")[0];
+    expect(delante?.querySelectorAll("input, select, textarea").length).toBe(2);
+    // Y el resto, detrás, dicho con su número.
+    expect(screen.getByText(/formulario\.masCampos/)).toBeInTheDocument();
+  });
+
+  it("y si el recurso no declara columnas, los enseña todos", () => {
+    // Un formulario que no enseña nada no es un formulario: antes que
+    // esconderlo todo, se enseña todo.
+    const campos = [
+      { nombre: "a", tipo: "string", obligatorio: false },
+      { nombre: "b", tipo: "string", obligatorio: false },
+    ] as unknown as Parameters<typeof Formulario>[0]["campos"];
+
+    const { container } = render(
+      <Formulario campos={campos} textoEnviar="Guardar" alEnviar={() => undefined} />,
+    );
+    const delante = container.querySelectorAll(".rejilla-formulario")[0];
+    expect(delante?.querySelectorAll("input, select, textarea").length).toBe(2);
+    expect(screen.queryByText(/formulario\.masCampos/)).toBeNull();
+  });
+});

@@ -1504,11 +1504,27 @@ async def buscar_global(
     # siete devuelvan 404 multiplica por tres el tiempo de cada consulta.
     con_indice = [s for s in ("party", "sales") if s in _destinos]
 
-    cabeceras = {
-        k: v
-        for k, v in peticion.headers.items()
-        if k.lower().startswith("x-") or k.lower() == "authorization"
-    }
+    # **La identidad se FIRMA, no se copia.** Esto construía las cabeceras
+    # colando las `x-*` y `authorization` de la petición entrante, y la sesión
+    # del navegador es una **cookie**: no hay `authorization` que copiar, así
+    # que `party` y `sales` recibían la consulta sin identidad, contestaban 401
+    # y el gateway los contaba como caídos. Resultado: **el buscador global —el
+    # `⌘K` que hay en la barra de todas las pantallas— devolvía cero resultados
+    # siempre**, con `servicios_sin_responder` lleno y nadie mirándolo.
+    #
+    # Medido el 03-11-2026 haciendo el trabajo de verdad: se da de alta un
+    # cliente, se busca por su nombre y no aparece, mientras
+    # `/api/v1/accounts?buscar=` sí lo encuentra.
+    #
+    # Es lo que hacen las demás composiciones de este fichero —el estado, las
+    # menciones, la biblioteca de archivos—: `cabeceras_de_identidad` firma
+    # quién llama con la clave del despliegue, y eso llega igual venga la
+    # sesión de una cookie o de un token.
+    from crmcore.config import get_settings
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
 
     async def _preguntar(servicio: str) -> tuple[str, list[dict[str, Any]] | None]:
         destino = _destinos[servicio]

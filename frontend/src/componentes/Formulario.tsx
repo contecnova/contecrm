@@ -86,13 +86,34 @@ export function Formulario({
   const [estado, setEstado] = useState<Record<string, unknown>>(valores);
   const [verOpcionales, setVerOpcionales] = useState(false);
 
-  const { obligatorios, opcionales } = useMemo(
-    () => ({
-      obligatorios: campos.filter((c) => c.obligatorio),
-      opcionales: campos.filter((c) => !c.obligatorio),
-    }),
-    [campos],
-  );
+  /**
+   * Qué se enseña delante y qué se recoge en «Más campos».
+   *
+   * **Delante van los obligatorios.** Es lo correcto al dar de alta: lo que el
+   * servidor exige, y lo demás detrás para no convertir un alta en una
+   * declaración de la renta.
+   *
+   * **Pero al EDITAR no hay obligatorios.** El `PATCH` del contrato los
+   * declara todos opcionales —se manda lo que se cambia—, así que la lista de
+   * delante salía vacía y el formulario quedaba **sin un solo campo**: un
+   * recuadro con «Más campos (29)», «Guardar cambios» y nada que guardar.
+   * Medido el 03-11-2026 pulsando «Editar» en una oportunidad.
+   *
+   * Cuando no hay obligatorios, delante van las **columnas preferidas del
+   * recurso**, que es la importancia que el producto ya declara y la misma
+   * que usa el listado. Y si el recurso tampoco las declara, se enseñan
+   * todos: un formulario que no enseña nada no es un formulario.
+   */
+  const { obligatorios, opcionales } = useMemo(() => {
+    const exigidos = campos.filter((c) => c.obligatorio);
+    if (exigidos.length > 0) {
+      return { obligatorios: exigidos, opcionales: campos.filter((c) => !c.obligatorio) };
+    }
+    const preferidas = new Set(recurso?.columnas ?? []);
+    const delante = campos.filter((c) => preferidas.has(c.nombre));
+    if (delante.length === 0) return { obligatorios: campos, opcionales: [] };
+    return { obligatorios: delante, opcionales: campos.filter((c) => !preferidas.has(c.nombre)) };
+  }, [campos, recurso]);
 
   function enviar(evento: FormEvent) {
     evento.preventDefault();
