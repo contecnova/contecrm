@@ -8,7 +8,7 @@ Hay **dos niveles**, y la diferencia importa:
 
 | | Variables de entorno | Ajustes en caliente |
 |---|---|---|
-| **Dónde** | `.env` o el entorno del proceso | Consola de administración |
+| **Dónde** | `.env` o el entorno del proceso | Administración |
 | **Cuándo aplica** | Al arrancar | Al instante, sin reiniciar |
 | **Alcance** | Todo el despliegue | Por tenant, unidad de negocio o usuario |
 | **Cuántos** | 122 | 32 (un subconjunto) |

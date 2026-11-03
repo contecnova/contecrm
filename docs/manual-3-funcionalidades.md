@@ -9345,7 +9345,7 @@ separados en vez de fingir que sí con un valor inventado. Si no lo están, se a
 De los recorridos, la **optimización de hora y canal por destinatario**
 (`CRM-02.02.02.05`), que es de fase 5 y consta como pendiente en el catálogo.
 
-## Canales de ejecución y entregabilidad (`CRM-02.03.02`, `CRM-02.03.01`)
+## Canales de marketing y entregabilidad (`CRM-02.03.02`, `CRM-02.03.01`)
 
 **Un canal es configuración, no un módulo por proveedor.** Twilio, MessageBird o el
 agregador del cliente son la misma cosa con otra dirección y otra credencial,

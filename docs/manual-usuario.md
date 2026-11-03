@@ -1877,7 +1877,7 @@ Dos cosas que ahora se ven y antes había que adivinar:
   sabe que los ochenta mil se quedan a medias hasta que alguien intenta guardar
   uno viejo y no puede. Y cuando no se ha podido contar **lo dice**: «no se ha
   podido contar» y «no afecta a nadie» no son lo mismo.
-- **Llevarse la configuración a otro entorno.** En «Entornos y despliegue» se
+- **Llevarse la configuración a otro entorno.** En «Promoción entre entornos» se
   exporta la configuración, se **simula** su instalación y sólo después se
   aplica de verdad —en otro botón y en otro color—, porque un paquete es un
   cambio de modelo de datos en producción y el error más caro es pulsar

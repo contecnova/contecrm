@@ -322,6 +322,37 @@ Abre las 58 pantallas contra la pila local y, de cada listado, su primera
 ficha **con todas sus pestañas**. Dice dos cosas: cuáles revientan al pintar y
 cuáles enseñan el dato en crudo.
 
+## El manual llama a las pantallas por su nombre de hoy
+
+`tests/unit/test_el_manual_llama_a_las_pantallas_por_su_nombre.py` ·
+`scripts/sellar_rotulos.py` · `docs/rotulos-de-menu.json`
+
+Al renombrar una entrada del menú, el manual se queda con el nombre viejo y
+nadie lo mira: el gate de manuales comprueba que **cubran** todo y que no
+describan lo que ya no existe, pero una pantalla renombrada sigue existiendo,
+así que pasa.
+
+**Medido el 03-11-2026**, el día que se renombraron cinco entradas: tres citas
+se habían quedado atrás —«Entornos y despliegue», «Canales de ejecución» y
+«Consola de administración»—, y una en las instrucciones de cómo llevarse una
+configuración a producción. Quien siga el manual busca una entrada que no
+está.
+
+**Adivinarlo por parecido no vale, y lo dijo plantar el caso malo.** La
+primera versión buscaba citas que se parecieran mucho a una entrada sin ser
+ninguna; devolví «Entornos y despliegue» al manual y la prueba pasó, porque
+hoy se llama «Promoción entre entornos» y no se parecen en nada. **El
+renombrado que cambia el nombre entero es el que más despista y era justo el
+que se escapaba.**
+
+Se hace como el contrato publicado: se **sellan** los rótulos. El sello guarda
+cómo se llama hoy cada entrada; un rótulo sellado que ya no está en el menú es
+un renombrado, y entonces —y sólo entonces— se mira si el manual lo nombra.
+Renombrar no se bloquea: se bloquea renombrar sin arreglar el manual.
+
+    python scripts/sellar_rotulos.py            # comprueba
+    python scripts/sellar_rotulos.py --sellar   # lo vuelve a escribir
+
 ## Dos vacíos de caja grande seguidos
 
 El vacío tiene dos formas: la de **pantalla** —tarjeta con icono grande y
