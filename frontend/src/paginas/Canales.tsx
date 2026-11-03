@@ -281,7 +281,11 @@ export function Canales() {
                 </span>
                 {/* La palabra de baja va en la lista, no escondida: quien
                     escribe el mensaje tiene que ponerla dentro. */}
-                <span className="w-full font-mono text-rotulo text-ink-faint">
+                {/* Sin monoespaciada: lo que va aquí es «baja: «enlace en el
+                    pie»», una frase que describe cómo se da de baja alguien.
+                    La palabra concreta va entre comillas dentro, y para eso
+                    están las comillas. */}
+                <span className="w-full text-rotulo text-ink-faint">
                   {c.como_se_da_de_baja
                     ? t("canalesmk.sedaDeBajaCon", {
                         palabra: c.como_se_da_de_baja,

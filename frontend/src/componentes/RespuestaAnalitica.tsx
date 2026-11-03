@@ -22,6 +22,7 @@
  * que verlo.
  */
 
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -218,30 +219,24 @@ function Tabla({
        que lo normal se lea entero sin tocar nada.
 
        Y la cabecera se queda pegada arriba: una tabla que se recorre sin
-       cabecera obliga a subir para saber qué columna se está mirando. */
-    <div className="mt-3 max-h-[28rem] overflow-auto rounded-lg border border-ink-dim/30">
-      <table className="w-full text-dato">
-        <thead className="sticky top-0 z-10 bg-paper-sunk text-ink-muted">
-          <tr>
+       cabecera obliga a subir para saber qué columna se está mirando.
+
+       Las dos cosas las hace ya `Rejilla`, que es el armazón de la casa, y
+       mejor: su cabecera va en versalitas como la de Lightning y el tamaño de
+       la celda sale del token de densidad, así que el modo cómodo la ensancha.
+       Aquí estaba escrita a mano con `text-dato` clavado — que es justo la
+       divergencia que `Rejilla` vino a cerrar, y se había vuelto a abrir en
+       dos sitios. Medido el 03-11-2026. */
+    <div className="mt-3">
+      <Rejilla cabeceras={columnas}>
+        {filas.map((f, i) => (
+          <tr key={i} className="border-t border-ink-dim/30">
             {columnas.map((c) => (
-              <th key={c} className="px-2 py-1.5 text-left font-medium">
-                {c}
-              </th>
+              <Casilla key={c}>{formatear(f[c])}</Casilla>
             ))}
           </tr>
-        </thead>
-        <tbody>
-          {filas.map((f, i) => (
-            <tr key={i} className="border-t border-ink-dim/30">
-              {columnas.map((c) => (
-                <td key={c} className="px-2 py-1.5 text-ink">
-                  {formatear(f[c])}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        ))}
+      </Rejilla>
     </div>
   );
 }

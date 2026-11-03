@@ -1124,9 +1124,11 @@ export function QueSabeHacerCadaSuite() {
                   <span className="text-ink">
                     {c.recurso} · {c.sentido}
                   </span>
-                  <span className="font-mono text-rotulo text-ink-faint">
+                  {/* `<code>`: son alcances de OAuth —«Mail.Read
+                      offline_access»—, que son código. El elemento lo dice. */}
+                  <code className="text-rotulo text-ink-faint">
                     {c.alcances.join(" ")}
-                  </span>
+                  </code>
                   {/* Sin refresco, la conexión se cae el día que caduque el
                       permiso y nadie lo sabrá hasta que falte el correo. */}
                   {c.tiene_refresco === false ? (

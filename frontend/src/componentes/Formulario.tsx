@@ -41,6 +41,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
 import { humanizar, importe, nombreDelRegistro } from "@/lib/formato";
@@ -506,6 +507,7 @@ function Lineas({
   alCambiar: (v: unknown) => void;
   ayuda?: string;
 }) {
+  const { t } = useTranslation();
   const filas = Array.isArray(valor)
     ? (valor as Record<string, unknown>[])
     : [];
@@ -526,108 +528,109 @@ function Lineas({
   return (
     <div className="space-y-2" aria-describedby={ayuda}>
       {filas.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-ink-dim/60">
-          <table className="w-full text-titulo">
-            <thead className="bg-paper-sunk text-ink-muted">
+        // El armazón de la casa, no una tabla a mano: aquí estaba escrita
+        // con `text-titulo` clavado, mientras la tabla de resultados usaba
+        // `text-dato` y la de un listado el token de densidad. Tres tamaños
+        // para lo mismo — la divergencia que `Rejilla` vino a cerrar y que se
+        // había vuelto a abrir en dos sitios. Medido el 03-11-2026.
+        //
+        // Sin acotar: un formulario no se recorre con barra propia, se
+        // rellena de arriba abajo.
+        <Rejilla
+          acotada={false}
+          pie={
+            haySumas ? (
               <tr>
-                {columnas.map((c) => (
-                  <th
-                    key={c.nombre}
-                    className="px-3 py-2 text-left font-medium"
-                  >
-                    {c.titulo}
-                    {c.obligatorio ? (
-                      <span className="text-danger"> *</span>
-                    ) : null}
-                  </th>
+                {columnas.map((c, i) => (
+                  <Casilla key={c.nombre} className="text-ink-muted">
+                    {sumas[i] === null
+                      ? i === 0
+                        ? t("formulario.suma")
+                        : ""
+                      : importe(sumas[i] as number)}
+                  </Casilla>
                 ))}
-                <th className="w-10 px-2 py-2" />
+                <Casilla />
               </tr>
-            </thead>
-            <tbody>
-              {filas.map((fila, indice) => (
-                <tr key={indice} className="border-t border-ink-dim/30">
-                  {columnas.map((c) => (
-                    <td key={c.nombre} className="px-2 py-1">
-                      {c.opciones.length > 0 ? (
-                        <select
-                          aria-label={`${c.titulo}, línea ${indice + 1}`}
-                          className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
-                          value={String(fila[c.nombre] ?? "")}
-                          onChange={(e) =>
-                            cambiar(indice, c.nombre, e.target.value)
-                          }
-                        >
-                          <option value="">—</option>
-                          {c.opciones.map((o) => (
-                            <option key={o} value={o}>
-                              {humanizar(o)}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          aria-label={`${c.titulo}, línea ${indice + 1}`}
-                          className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
-                          type={
-                            c.tipo === "numero"
-                              ? "number"
-                              : c.tipo === "fecha"
-                                ? "date"
-                                : "text"
-                          }
-                          value={String(fila[c.nombre] ?? "")}
-                          onChange={(e) =>
-                            cambiar(
-                              indice,
-                              c.nombre,
-                              c.tipo === "numero"
-                                ? e.target.value === ""
-                                  ? ""
-                                  : Number(e.target.value)
-                                : e.target.value,
-                            )
-                          }
-                        />
-                      )}
-                    </td>
-                  ))}
-                  <td className="px-2 py-1 text-right">
-                    <button
-                      type="button"
-                      className="rounded-lg px-2 py-1 text-ink-muted hover:bg-paper-sunk hover:text-danger"
-                      aria-label={`Quitar la línea ${indice + 1}`}
-                      onClick={() =>
-                        alCambiar(filas.filter((_, i) => i !== indice))
+            ) : null
+          }
+          cabeceras={[
+            ...columnas.map((c) => (
+              <span key={c.nombre}>
+                {c.titulo}
+                {c.obligatorio ? <span className="text-danger"> *</span> : null}
+              </span>
+            )),
+            <span key="quitar" className="sr-only">
+              {t("formulario.quitarLinea")}
+            </span>,
+          ]}
+        >
+          {filas.map((fila, indice) => (
+            <tr key={indice} className="border-t border-ink-dim/30">
+              {columnas.map((c) => (
+                <td key={c.nombre} className="px-2 py-1">
+                  {c.opciones.length > 0 ? (
+                    <select
+                      aria-label={`${c.titulo}, línea ${indice + 1}`}
+                      className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
+                      value={String(fila[c.nombre] ?? "")}
+                      onChange={(e) =>
+                        cambiar(indice, c.nombre, e.target.value)
                       }
                     >
-                      <Icono nombre="close" />
-                    </button>
-                  </td>
-                </tr>
+                      <option value="">—</option>
+                      {c.opciones.map((o) => (
+                        <option key={o} value={o}>
+                          {humanizar(o)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      aria-label={`${c.titulo}, línea ${indice + 1}`}
+                      className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
+                      type={
+                        c.tipo === "numero"
+                          ? "number"
+                          : c.tipo === "fecha"
+                            ? "date"
+                            : "text"
+                      }
+                      value={String(fila[c.nombre] ?? "")}
+                      onChange={(e) =>
+                        cambiar(
+                          indice,
+                          c.nombre,
+                          c.tipo === "numero"
+                            ? e.target.value === ""
+                              ? ""
+                              : Number(e.target.value)
+                            : e.target.value,
+                        )
+                      }
+                    />
+                  )}
+                </td>
               ))}
-            </tbody>
-            {haySumas ? (
-              <tfoot className="border-t border-ink-dim/30 bg-paper-sunk">
-                <tr>
-                  {columnas.map((c, i) => (
-                    <td key={c.nombre} className="px-3 py-2 text-ink-muted">
-                      {sumas[i] === null
-                        ? i === 0
-                          ? "Suma"
-                          : ""
-                        : importe(sumas[i] as number)}
-                    </td>
-                  ))}
-                  <td />
-                </tr>
-              </tfoot>
-            ) : null}
-          </table>
-        </div>
+              <td className="px-2 py-1 text-right">
+                <button
+                  type="button"
+                  className="rounded-lg px-2 py-1 text-ink-muted hover:bg-paper-sunk hover:text-danger"
+                  aria-label={`Quitar la línea ${indice + 1}`}
+                  onClick={() =>
+                    alCambiar(filas.filter((_, i) => i !== indice))
+                  }
+                >
+                  <Icono nombre="close" />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </Rejilla>
       ) : (
         <p className="text-titulo text-ink-muted">
-          Todavía no hay ninguna línea.
+          {t("formulario.sinLineas")}
         </p>
       )}
       <button

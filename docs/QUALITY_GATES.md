@@ -322,6 +322,22 @@ Abre las 58 pantallas contra la pila local y, de cada listado, su primera
 ficha **con todas sus pestañas**. Dice dos cosas: cuáles revientan al pintar y
 cuáles enseñan el dato en crudo.
 
+## Una frase en letra de máquina
+
+La monoespaciada es para lo que se lee carácter a carácter: un identificador,
+un código, un hash, una cifra que se alinea en columna. Una frase en
+castellano, no; en Lightning no hay monoespaciada en la interfaz salvo para
+código.
+
+**Lo que sí es código se reconoce por su elemento** —`code`, `pre`,
+`textarea`, `input`— y no por una lista de excepciones. Los permisos
+incompatibles de `/seguridad` y los alcances de OAuth de `/suite` se pasaron a
+`<code>` justamente por eso, y de paso un lector de pantalla los anuncia como
+lo que son.
+
+La regla: con espacios y sin ningún dígito. Así pasan «0/61 · 0 %» y «25
+vistas», que son cifras, y no pasa «sin declarar».
+
 ## El manual llama a las pantallas por su nombre de hoy
 
 `tests/unit/test_el_manual_llama_a_las_pantallas_por_su_nombre.py` ·

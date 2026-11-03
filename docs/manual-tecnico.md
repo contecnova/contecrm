@@ -540,6 +540,23 @@ pantallas con tabla propia— y ya había empezado a separarse: dos usaban
 `text-2xs` y dos `text-xs`, y las celdas tenían tonos distintos sin que nadie lo
 hubiera decidido.
 
+**Y volvió a pasar.** Medido el 03-11-2026 quedaban **tres `<table>` escritas
+a mano** fuera del armazón, con tres tamaños distintos para lo mismo: la tabla
+de resultados analíticos en `text-dato`, las líneas de un formulario en
+`text-titulo` y la de un listado con el token de densidad —que es el único que
+responde al modo cómodo—. Las tres con la cabecera en texto normal, no en las
+versalitas de Lightning.
+
+Las líneas de un formulario no cabían porque llevan un pie con las sumas, así
+que `Rejilla` tiene **pie**: una tabla con totales es un caso común y sin él
+cada sitio que lo necesite se vuelve a escribir entero. La tercera era la
+vista de tabla de una gráfica —la alternativa para quien no puede leer el
+dibujo—, que salía con otro aspecto que las demás.
+
+Lo vigila `una_tabla_se_pinta_con_el_armazon`: ninguna `<table>` en
+`paginas/` ni `componentes/`, con una sola excepción declarada —el propio
+`Rejilla.tsx`—.
+
 No sustituye a `Tabla`: `Tabla` sirve para lo que llega de la API sin estructura
 conocida —elige columnas, las esconde, las recuerda— y `Rejilla` es para las
 tablas de forma fija, donde eso no aporta nada y lo único que hay que compartir

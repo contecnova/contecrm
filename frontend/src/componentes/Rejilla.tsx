@@ -23,6 +23,7 @@ export function Rejilla({
   compacta = false,
   acotada = true,
   pegada = false,
+  pie,
 }: {
   /** Rótulos de las columnas, en orden. */
   cabeceras: ReactNode[];
@@ -30,6 +31,15 @@ export function Rejilla({
   titulo?: string;
   /** Las filas, ya montadas: `<tr>` con `<Casilla>` dentro. */
   children: ReactNode;
+  /**
+   * El pie de la tabla: los totales, ya montados como `<tr>`.
+   *
+   * Está aquí porque una tabla con sumas es un caso común y lo era ya: las
+   * líneas de un formulario llevan las suyas y, por no caber en este armazón,
+   * se quedaron con una tabla escrita a mano. Con el pie fuera, el total se
+   * pinta distinto en cada sitio que lo necesite.
+   */
+  pie?: ReactNode;
   className?: string;
   /**
    * Letra un punto más pequeña, para tablas de apoyo dentro de otra pantalla.
@@ -104,6 +114,11 @@ export function Rejilla({
           </tr>
         </thead>
         <tbody>{children}</tbody>
+        {pie ? (
+          <tfoot className="border-t border-ink-dim/60 bg-paper-sunk">
+            {pie}
+          </tfoot>
+        ) : null}
       </table>
     </div>
   );

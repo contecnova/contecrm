@@ -29,6 +29,7 @@
  * número y lo único que funciona cuando alguien no distingue dos colores.
  */
 
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -723,50 +724,34 @@ function Tabla({
   series: SeriePintada[];
   categorias: string[];
 }) {
+  // El armazón de la casa, como el resto de las tablas: esta vista es la
+  // alternativa de quien no puede leer el dibujo, y salía con otra cabecera
+  // —texto normal en gris— y otro espaciado que las demás. Medido el
+  // 03-11-2026, al barrer las tablas escritas a mano que quedaban.
+  //
+  // Sin acotar: va dentro de la tarjeta de la gráfica, que ya mide lo suyo.
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left">
-        <thead className="border-b border-ink-dim/30">
-          <tr>
-            <th
-              scope="col"
-              className="celda-rejilla font-medium text-ink-muted"
-            >
-              {datos.rotuloX || datos.ejeX}
-            </th>
-            {series.map((s) => (
-              <th
-                key={s.clave}
-                scope="col"
-                className="celda-rejilla font-medium text-ink-muted"
-              >
-                {s.rotulo}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {categorias.map((c, i) => (
-            <tr
-              key={`${c}-${i}`}
-              className="border-b border-ink-dim/30 last:border-0"
-            >
-              <th scope="row" className="celda-rejilla font-normal text-ink">
-                {c}
-              </th>
-              {series.map((s) => (
-                <td
-                  key={s.clave}
-                  className="celda-rejilla text-right font-mono text-ink"
-                >
-                  {exacto(s.valores[i] as Dato, datos.unidad)}
-                </td>
-              ))}
-            </tr>
+    <Rejilla
+      acotada={false}
+      pegada
+      cabeceras={[datos.rotuloX || datos.ejeX, ...series.map((s) => s.rotulo)]}
+    >
+      {categorias.map((c, i) => (
+        <tr
+          key={`${c}-${i}`}
+          className="border-b border-ink-dim/30 last:border-0"
+        >
+          <th scope="row" className="celda-rejilla font-normal text-ink">
+            {c}
+          </th>
+          {series.map((s) => (
+            <Casilla key={s.clave} className="text-right font-mono text-ink">
+              {exacto(s.valores[i] as Dato, datos.unidad)}
+            </Casilla>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      ))}
+    </Rejilla>
   );
 }
 

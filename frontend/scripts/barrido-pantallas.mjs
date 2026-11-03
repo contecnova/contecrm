@@ -149,6 +149,7 @@ const crudas = [];
 const letraFuera = [];
 let textosMirados = 0;
 const dobleVacio = [];
+const monoEnFrases = [];
 // `CRM_SOLO=/procesos,/m/cuentas` recorta el barrido a lo que se nombre. Son
 // quince minutos enteros, y perseguir un fallo en una pantalla concreta con
 // eso convierte cada intento en una espera. No cambia nada de lo que mide.
@@ -245,6 +246,39 @@ for (const camino of lista) {
     dobleVacio.push(`${camino}\n     ${vaciosGrandes} vacíos de caja grande seguidos`);
   }
 
+  /**
+   * Una frase en monoespaciada.
+   *
+   * La letra de máquina es para lo que se lee carácter a carácter: un
+   * identificador, un código, un hash, una cifra que se alinea en columna.
+   * Una frase en castellano, no. **Medido el 03-11-2026**: 42 pantallas y 472
+   * textos salían así, y lo que salía era «sin medir», «escuchando»,
+   * «Apertura: no hay con qué medirla todavía».
+   *
+   * Lo que SÍ es código se reconoce por su elemento —`code`, `pre`,
+   * `textarea`, `input`— y no por una lista de excepciones: los permisos de
+   * `/seguridad` y los alcances de OAuth de `/suite` se pasaron a `<code>`
+   * por eso, y de paso un lector de pantalla los anuncia como lo que son.
+   *
+   * Con espacios y sin ningún dígito: así pasan «0/61 · 0 %» y «25 vistas»,
+   * que son cifras, y no pasa «sin declarar».
+   */
+  const frasesEnMono = await p.evaluate(() => {
+    const fuera = [];
+    for (const e of document.querySelectorAll("main *")) {
+      if (e.getClientRects().length === 0 || e.children.length) continue;
+      if (e.closest("code, pre, textarea, input")) continue;
+      const t = (e.textContent || "").trim();
+      if (!t || !/\s/.test(t) || /\d/.test(t)) continue;
+      if (!/mono/i.test(getComputedStyle(e).fontFamily)) continue;
+      fuera.push(t.slice(0, 44));
+    }
+    return [...new Set(fuera)];
+  });
+  if (frasesEnMono.length) {
+    monoEnFrases.push(`${camino}\n     ${frasesEnMono.join(" · ")}`);
+  }
+
   textosMirados += letra.mirados;
   if (letra.fuera.length) {
     letraFuera.push(`${camino}\n     ${letra.fuera.join(" · ")}`);
@@ -314,8 +348,19 @@ console.log(`ROTAS: ${rotas.length}`);
 console.log(`CON EL DATO EN CRUDO: ${crudas.length}`);
 console.log(`CON LETRA FUERA DE LA ESCALA: ${letraFuera.length} (de ${textosMirados} textos mirados)`);
 console.log(`CON VARIOS VACÍOS DE CAJA GRANDE: ${dobleVacio.length}`);
-if (rotas.length || crudas.length || letraFuera.length || dobleVacio.length) {
+console.log(`CON UNA FRASE EN LETRA DE MÁQUINA: ${monoEnFrases.length}`);
+if (
+  rotas.length ||
+  crudas.length ||
+  letraFuera.length ||
+  dobleVacio.length ||
+  monoEnFrases.length
+) {
   process.exitCode = 1;
 }
-console.log([...rotas, ...crudas, ...letraFuera, ...dobleVacio].map((r) => "  " + r).join("\n"));
+console.log(
+  [...rotas, ...crudas, ...letraFuera, ...dobleVacio, ...monoEnFrases]
+    .map((r) => "  " + r)
+    .join("\n"),
+);
 await navegador.close();

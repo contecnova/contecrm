@@ -67,6 +67,11 @@ export default {
     otras: "Otras {{count}}",
   },
   formulario: {
+    suma: "Suma",
+    quitarLinea: "Quitar la línea",
+    // Estaba escrito en el código, en castellano y sin pasar por aquí: una
+    // frase suelta que ninguna traducción alcanzaba.
+    sinLineas: "Todavía no hay ninguna línea.",
     buscarRegistro: "Busca un {{recurso}} por su nombre",
     sinCoincidencias: "Nada coincide",
     cambiar: "Cambiar",

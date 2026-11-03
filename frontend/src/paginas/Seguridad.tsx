@@ -975,9 +975,13 @@ function Segregacion({
                   {v.usuario_id.slice(0, 8)}
                 </span>
               </div>
-              <p className="mt-0.5 font-mono text-rotulo text-ink-muted">
+              {/* `<code>` y no un `span` con `font-mono`: son permisos, que
+                  son código. El elemento lo dice, así que un lector de
+                  pantalla lo anuncia como tal y el barrido lo distingue de
+                  una frase sin necesitar una lista de excepciones. */}
+              <code className="mt-0.5 block text-rotulo text-ink-muted">
                 {v.por_el_lado_a.join(", ")} ↔ {v.por_el_lado_b.join(", ")}
-              </p>
+              </code>
             </li>
           ))}
         </ul>
