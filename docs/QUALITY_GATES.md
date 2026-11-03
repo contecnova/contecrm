@@ -322,6 +322,37 @@ Abre las 58 pantallas contra la pila local y, de cada listado, su primera
 ficha **con todas sus pestañas**. Dice dos cosas: cuáles revientan al pintar y
 cuáles enseñan el dato en crudo.
 
+## Dos entradas del menú no se llaman igual
+
+`frontend/src/pruebas/dos_entradas_no_se_llaman_igual.test.ts`
+
+**Medido el 03-11-2026** en el menú de Administrar, que tiene veinte entradas:
+«Entornos y despliegue» junto a «Entornos y despliegues» —singular y plural, a
+dos filas—, «Usuarios y permisos» junto a «Usuarios y seguridad», «Consola de
+administración» junto a «Consola de agente», «Canales de entrada» junto a
+«Canales de ejecución». Es la queja que abrió el rediseño —«mil opciones que
+muchas son inútiles»— y no eran inútiles: eran pantallas distintas con nombres
+que se pisaban.
+
+**Por qué esta regla y no «la pantalla se llama como su entrada»**, que era lo
+primero que se intentó y se descartó midiendo: esa no se puede escribir sin
+equivocarse. El menú abrevia a propósito —«Coste» lleva a «Coste y capacidad»,
+«Estado» a «Estado del servicio»— y eso está bien; y «Procesos en curso»
+llevando al «Editor de procesos» comparte la palabra «procesos» y aun así dice
+lo contrario. Ninguna regla mecánica separa las dos cosas, así que la medición
+rótulo-contra-título se hizo a mano —13 de 30 descuadraban, 4 de verdad— y se
+arreglaron los cuatro.
+
+Lo que sí es objetivo es comparar los rótulos **entre ellos**: misma frase
+salvo el plural, una que es el principio de la otra, o mismo número de
+palabras cambiando sólo la última. La longitud importa: sin ella, «Casos» y
+«Bandeja de casos» saltarían, y ésos se distinguen de sobra porque «bandeja»
+dice qué es.
+
+Validado plantando las tres parejas. Y una lección de la plantación: devolver
+**un solo** rótulo viejo no reproduce la confusión, porque la confusión es de
+la pareja. Hay que devolver los dos.
+
 ## El castellano de las claves técnicas
 
 `tests/unit/test_el_producto_escribe_bien_el_castellano.py`

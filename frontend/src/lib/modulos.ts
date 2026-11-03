@@ -369,7 +369,10 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "canales",
-    titulo: "Canales de ejecución",
+    // «Canales de marketing»: hay otra entrada «Canales de entrada», que es
+    // por dónde llegan los casos de servicio. «De ejecución» y «de entrada»
+    // no distinguen nada si no sabes ya cuál es cuál.
+    titulo: "Canales de marketing",
     seccion: "2.3",
     capacidad: "CRM-07.04.03.11",
     grupo: "Marketing",

@@ -102,6 +102,19 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
+**Cada entrada del menú dice qué hace.** Hasta el 03-11-2026 había parejas
+que obligaban a entrar en las dos para saber cuál era cuál: «Entornos y
+despliegue» junto a «Entornos y despliegues», «Usuarios y permisos» junto a
+«Usuarios y seguridad», «Consola de administración» junto a «Consola de
+agente». Ahora cada una se llama por la pregunta que contesta: **Promoción
+entre entornos** (llevarse una configuración de desarrollo a producción),
+**Despliegues y desvíos** (qué hay desplegado en cada entorno y qué se ha
+tocado a mano), **Identidad y seguridad**, **Administración**.
+
+Y el **Editor de procesos** se llamaba «Procesos en curso», que es lo
+contrario: los procesos en curso son las instancias en marcha, y ésas están
+en «Procesos y orquestación».
+
 **Las colas largas se trabajan por tandas.** En «Duplicados por resolver»
 salen veinte parejas y un botón que dice **cuántas quedan**: «Ver 20 más ·
 Viendo 20 de 100». Antes salían las cien de golpe, que son veinticuatro

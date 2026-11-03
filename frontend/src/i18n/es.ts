@@ -104,14 +104,25 @@ export default {
     areaAutomatizacion: "Automatización",
     areaConfiguracion: "Configuración",
     inicio: "Inicio",
-    consola: "Consola de administración",
+    // «Administración», que es como se llama la pantalla. Decía «Consola de
+    // administración» y en el iniciador sale al lado de «Consola de agente»,
+    // que es para atender clientes: dos «consolas» seguidas no distinguen.
+    consola: "Administración",
     estado: "Estado",
-    seguridad: "Usuarios y seguridad",
+    // «Identidad y seguridad», como se llama la pantalla. Decía «Usuarios y
+    // seguridad» y justo encima hay «Usuarios y permisos», que es OTRA
+    // pantalla —el listado de usuarios y sus licencias—: dos entradas que
+    // empiezan igual obligan a entrar en las dos para saber cuál es.
+    seguridad: "Identidad y seguridad",
     plataforma: "Plataforma y cumplimiento",
     firma: "Pendiente de firma",
     cobertura: "Cobertura",
     recorrido: "Recorrido guiado",
-    procesos: "Procesos en curso",
+    // «Editor de procesos», que es lo que es: el lienzo donde se escribe,
+    // se valida y se simula un proceso. El rótulo decía lo CONTRARIO —los
+    // procesos en curso son las instancias en ejecución, que están en
+    // «Procesos y orquestación»—. Medido el 03-11-2026.
+    procesos: "Editor de procesos",
     aprobacionesDoc: "Aprobar documentos",
     explotacion: "Preguntas publicadas",
     cuadros: "Paneles",
@@ -119,7 +130,11 @@ export default {
     consolaAgente: "Consola de agente",
     canalesDeEntrada: "Canales de entrada",
     cicloDeVida: "Ciclo de vida del cliente",
-    entornos: "Entornos y despliegues",
+    // «Despliegues y desvíos», que es la pregunta que contesta: qué hay
+    // desplegado en cada entorno y qué se ha tocado a mano. Se llamaba
+    // «Entornos y despliegues» y la de al lado «Entornos y despliegue», en
+    // singular: dos entradas que empiezan igual obligan a entrar en las dos.
+    entornos: "Despliegues y desvíos",
     canales: "Canales y consentimiento",
     menciones: "Mis menciones",
     // «Prospección» ya era el módulo de leads: dos entradas con el mismo
@@ -138,7 +153,14 @@ export default {
     nexus: "Nexus",
     duplicados: "Duplicados",
     puesto: "Puesto",
-    alm: "Entornos y despliegue",
+    // «Entornos y cambios», como se llama la pantalla. Decía «Entornos y
+    // despliegue» y hay otra entrada «Entornos y despliegues»: en plural y
+    // en singular, una al lado de la otra. Ésta va de llevarse configuración
+    // de un entorno a otro; la otra, de qué hay desplegado en cada uno.
+    // «Promoción entre entornos», que es lo que se hace aquí: llevarse una
+    // configuración de desarrollo a pruebas, de pruebas a producción. Decía
+    // «Entornos y despliegue», que es la pregunta de la entrada de al lado.
+    alm: "Promoción entre entornos",
     rendimiento: "Rendimiento",
     suite: "Suite",
     ayuda: "Ayuda",
@@ -174,7 +196,11 @@ export default {
     sesionDe: "Sesión iniciada como",
   },
   pipeline: {
-    titulo: "Tablero de ventas",
+    // «Embudo de ventas», como la entrada que lleva aquí. Se llamaba
+    // «Tablero de ventas» y en el menú pone «Embudo de ventas»: quien lo
+    // busca lo busca por «embudo», que es la palabra del oficio, y al llegar
+    // encontraba otro nombre. Que sea un tablero lo cuenta la entradilla.
+    titulo: "Embudo de ventas",
     entradilla:
       "Arrastra una oportunidad para cambiarla de etapa. Cada columna dice " +
       "cuántas hay y cuánto suman.",
