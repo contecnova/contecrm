@@ -285,26 +285,37 @@ def test_nada_de_lo_publicado_ha_desaparecido_crm_00_02_01_06() -> None:
     todo: se bloquea quitar **sin decirlo**. Para retirar algo hay dos caminos y
     los dos son explícitos — anunciar la retirada con `API_SUNSET_DATE` y subir
     la versión mayor, o volver a sellar dejando constancia en el commit.
+
+    **La comparación la hace el gate, no esta prueba, y es a propósito.**
+    Levantar los catorce contratos y compararlos con el sello cuesta 16,6 s, y
+    es EXACTAMENTE lo que corre el gate `contrato-sellado` —el mismo script—
+    en cada commit y en cada push. Hacerlo dos veces en la misma pasada son
+    treinta y tres segundos para contestar una pregunta. Medido el 03-11-2026
+    con `--durations`, buscando de dónde salían los 699 s de CPU del preflight
+    completo contra un presupuesto de 660.
     """
     import json
-    import subprocess
-    import sys
     from pathlib import Path
 
     raiz = Path(__file__).resolve().parents[2]
     sello = raiz / "docs/contrato-publicado.json"
     assert sello.exists(), "no hay sello del contrato publicado"
 
-    # Que el sello mire de verdad: uno vacío —o roto— haría pasar esto en verde
-    # sin comparar nada, que es el verde de no mirar.
+    # Que el sello mire de verdad: uno vacío —o roto— haría pasar el gate en
+    # verde sin comparar nada, que es el verde de no mirar. Esto es lo que el
+    # gate NO puede comprobar de sí mismo, y es lo que se queda aquí.
     guardado = json.loads(sello.read_text(encoding="utf-8"))
     assert len(guardado) >= 10, f"el sello sólo cubre {len(guardado)} servicios"
     assert sum(len(v) for v in guardado.values()) >= 1000, "el sello está casi vacío"
 
-    salida = subprocess.run(
-        [sys.executable, "scripts/sellar_contrato.py"],
-        cwd=raiz,
-        capture_output=True,
-        text=True,
+    # Y que el gate SIGA existiendo. Sin esto, quitarlo del preflight dejaría la
+    # promesa sin guardián y nadie se enteraría: la comparación habría dejado de
+    # correr en los dos sitios a la vez.
+    preflight = (raiz / "scripts/preflight.py").read_text(encoding="utf-8")
+    assert '"contrato-sellado"' in preflight, (
+        "el gate que compara el contrato con su sello ya no está en el "
+        "preflight, y esta prueba dejó de compararlo confiando en él"
     )
-    assert salida.returncode == 0, salida.stdout + salida.stderr
+    assert (
+        "scripts/sellar_contrato.py" in preflight
+    ), "el gate «contrato-sellado» ya no corre el script que compara"

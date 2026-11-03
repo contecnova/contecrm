@@ -254,16 +254,22 @@ def test_el_adaptador_de_metadata_sigue_comprobando(db: Any, tenant_id: UUID) ->
 
 
 def test_ya_no_queda_ninguna_funcion_sin_llamante() -> None:
-    """La sonda llegó a marcar noventa y dos. Esta era la última."""
-    import importlib.util
-    import pathlib
+    """La sonda llegó a marcar noventa y dos. Esta era la última.
 
-    raiz = pathlib.Path(__file__).resolve().parents[2]
-    ruta = raiz / "tests" / "unit" / "test_nada_escrito_y_sin_enchufar.py"
-    spec = importlib.util.spec_from_file_location("sonda_", ruta)
-    assert spec and spec.loader
-    modulo = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(modulo)
+    **Se IMPORTA el módulo de la sonda, no se carga una copia.** Antes se
+    cargaba con `importlib` desde su ruta, lo que crea un módulo nuevo con las
+    cachés frías: el recorrido de los árboles se hacía entero otra vez, once
+    segundos, para contestar lo mismo que el otro fichero acababa de calcular.
+    Medido el 03-11-2026 con `--durations`: 13,1 s aquí y 10,9 s allí, de los
+    254 s de la suite con base.
+    """
+    import sys
+    from pathlib import Path
 
-    sueltas = modulo._sin_llamante()
+    aqui = str(Path(__file__).resolve().parent)
+    if aqui not in sys.path:
+        sys.path.insert(0, aqui)
+    import test_nada_escrito_y_sin_enchufar as sonda
+
+    sueltas = sonda._sin_llamante()
     assert sueltas == [], f"han vuelto a aparecer funciones sin llamante: {sueltas}"

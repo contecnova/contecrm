@@ -440,6 +440,23 @@ def _se_pasa_como_valor(nombre: str) -> bool:
 
 
 def _sin_llamante() -> list[str]:
+    """El recorrido, hecho UNA vez por proceso.
+
+    Se llama desde dos ficheros de pruebas —aquí y en
+    `test_a_que_apunta_una_referencia.py`, que vigila que la lista esté
+    vacía— y el recorrido cuesta **once segundos**: `_arboles()` ya estaba
+    cacheado, pero el bucle sobre los nodos no, así que se pagaba dos veces en
+    cada pasada completa. Medido el 03-11-2026 con `--durations`: 13,1 s en un
+    fichero y 10,9 s en el otro.
+
+    Se devuelve una COPIA de lo cacheado: compartir la lista dejaría que quien
+    la ordenara o la recortara cambiara lo que ve el otro.
+    """
+    return list(_sin_llamante_cacheado())
+
+
+@lru_cache(maxsize=1)
+def _sin_llamante_cacheado() -> tuple[str, ...]:
     llamadas = _llamadas_de_produccion()
     sueltas: list[str] = []
     arboles = _arboles()
@@ -468,7 +485,7 @@ def _sin_llamante() -> list[str]:
                 if _se_pasa_como_valor(nodo.name):
                     continue
                 sueltas.append(f"{fichero.relative_to(RAIZ)}::{nodo.name}")
-    return sorted(sueltas)
+    return tuple(sorted(sueltas))
 
 
 # ── Segunda medida: módulos que no carga nadie ────────────────────────────
