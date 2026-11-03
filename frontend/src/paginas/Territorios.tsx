@@ -91,7 +91,9 @@ export function Territorios() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     setFallo(null);
-    listar<Territorio>("/api/v1/territorios?limite=100", { signal: control.signal })
+    // SIN `?limite=`: igual que las menciones, esta ruta no lo declara y el
+    // servidor contesta 422. La pantalla llevaba muerta por eso.
+    listar<Territorio>("/api/v1/territorios", { signal: control.signal })
       .then(setTerritorios)
       .catch(salvoCancelacion(setFallo));
     void llamar<Excepciones>("/api/v1/territorios/excepciones", {
@@ -164,7 +166,11 @@ export function Territorios() {
         >
           {simulando ? t("territorios.simulando") : t("territorios.simular")}
         </button>
-        <p role="status" aria-live="polite" className="mt-2 text-dato text-ink-muted">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-2 text-dato text-ink-muted"
+        >
           {aviso}
         </p>
 
@@ -188,11 +194,16 @@ export function Territorios() {
             {simulacion.solapes.length > 0 ? (
               <>
                 <p className="mt-1 text-dato text-danger">
-                  {t("territorios.solapes", { cuantos: simulacion.solapes.length })}
+                  {t("territorios.solapes", {
+                    cuantos: simulacion.solapes.length,
+                  })}
                 </p>
                 <ul className="mt-1 space-y-1">
                   {simulacion.solapes.slice(0, 5).map((s, i) => (
-                    <li key={`${s.cuenta}-${i}`} className="text-rotulo text-ink-muted">
+                    <li
+                      key={`${s.cuenta}-${i}`}
+                      className="text-rotulo text-ink-muted"
+                    >
                       <span className="font-medium text-ink">{s.cuenta}</span>{" "}
                       {s.territorios.join(" · ")} — {s.por_que}
                     </li>
@@ -247,7 +258,10 @@ function ElMapa({ territorios }: { territorios: Territorio[] }) {
       ) : (
         <ul className="divide-y divide-ink-dim/30">
           {territorios.map((x) => (
-            <li key={x.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <li
+              key={x.id}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
               <span
                 className={
                   repetidas.has(x.prioridad)
@@ -304,9 +318,13 @@ function LasExcepciones({ excepciones }: { excepciones: Excepciones | null }) {
           {excepciones.excepciones.map((e) => (
             <li key={e.id} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
-                <span className="font-medium text-ink">{e.cuenta_id.slice(0, 8)}</span>
+                <span className="font-medium text-ink">
+                  {e.cuenta_id.slice(0, 8)}
+                </span>
                 {e.permanente ? (
-                  <span className="chip-dato">{t("territorios.permanente")}</span>
+                  <span className="chip-dato">
+                    {t("territorios.permanente")}
+                  </span>
                 ) : (
                   <span
                     className={
@@ -358,7 +376,9 @@ function LasCuotas({ consecucion }: { consecucion: Consecucion | null }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("territorios.cuotas")}</h2>
-      <p className="mb-2 text-rotulo text-ink-faint">{t("territorios.cuotasAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("territorios.cuotasAyuda")}
+      </p>
       {!consecucion.medible ? (
         <p className="text-dato text-ink-muted">{consecucion.aviso}</p>
       ) : (
@@ -366,7 +386,9 @@ function LasCuotas({ consecucion }: { consecucion: Consecucion | null }) {
           {consecucion.cuotas.map((c) => (
             <li key={`${c.sujeto}-${c.metrica}`} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
-                <span className="font-medium text-ink">{c.sujeto.slice(0, 8)}</span>
+                <span className="font-medium text-ink">
+                  {c.sujeto.slice(0, 8)}
+                </span>
                 <span className="chip-dato">{c.metrica}</span>
                 <span className="text-ink-muted">
                   {t("territorios.logradoDe", {

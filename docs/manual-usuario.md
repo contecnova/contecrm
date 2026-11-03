@@ -102,6 +102,11 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
+**El producto escribe en castellano.** Los nombres de campo que vienen del
+sistema —`forma_juridica_distinta`, `fecha_revision`— se escriben como se leen,
+con sus tildes y sus eñes. Si ves «Direccion», «Tamano» o «Forma juridica», es
+un fallo: avísanos.
+
 **La pantalla de entrada se ve como el resto.** Hasta el 02-11-2026 era la
 única con otra cara —otra paleta, otras formas— y salía oscura aunque tuvieras
 el tema claro. Ahora respeta tu tema.

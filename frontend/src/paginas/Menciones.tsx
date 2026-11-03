@@ -58,7 +58,12 @@ export function Menciones() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     setFallo(null);
-    llamar<Respuesta>("/api/v1/comentarios/mis-menciones?limite=100", {
+    // SIN `?limite=`: esta ruta no lo declara y el servidor rechaza a
+    // propósito un parámetro que no mira —«Esta operación no mira "limite"»,
+    // 422—, que es lo correcto: un filtro que se ignora en silencio es peor.
+    // Con él, esta pantalla llevaba MUERTA: salía el error y ni siquiera
+    // había `h1`. Medido el 02-11-2026; el servidor ya acota lo que junta.
+    llamar<Respuesta>("/api/v1/comentarios/mis-menciones", {
       signal: control.signal,
     })
       .then((r) => setDatos(r.datos))
@@ -84,7 +89,10 @@ export function Menciones() {
       {/* Un servicio mudo se dice: sin esto, una lista corta se lee como
           «no me han mencionado» y puede ser «no se ha podido preguntar». */}
       {datos.sin_respuesta.length > 0 ? (
-        <p className="card mb-3 border-warning/40 p-3 text-dato text-warning" role="status">
+        <p
+          className="card mb-3 border-warning/40 p-3 text-dato text-warning"
+          role="status"
+        >
           {datos.aviso}
         </p>
       ) : null}
@@ -107,7 +115,9 @@ export function Menciones() {
                 <div className="flex flex-wrap items-baseline gap-2">
                   <span className="chip-dato">{m.objeto_tipo}</span>
                   {m.interno ? (
-                    <span className="badge badge-aviso">{t("menciones.interno")}</span>
+                    <span className="badge badge-aviso">
+                      {t("menciones.interno")}
+                    </span>
                   ) : null}
                   <span className="flex-1" />
                   <span className="font-mono text-rotulo text-ink-faint">

@@ -52,6 +52,39 @@ const p = await ctx.newPage();
 const errores = [];
 p.on("pageerror", (e) => errores.push(String(e).slice(0, 160)));
 
+/**
+ * Lo que contesta la API, que es donde empieza una pantalla muerta.
+ *
+ * **Medido el 02-11-2026**: `/menciones` y `/territorios` llevaban muertas —un
+ * 422 por mandar `limite` a una ruta que no lo declara—, sin `h1` y con el
+ * error ocupando la pantalla entera. Este barrido decía «ROTAS: 0», porque
+ * buscaba DOS TEXTOS concretos —«no se ha podido pintar», «No se ha podido
+ * contactar»— y el de estas era otro. Un guardián que busca el texto del
+ * fallo que ya conoce no caza el siguiente.
+ *
+ * **Qué cuenta y qué no**, que es la parte fina:
+ *
+ * - **400, 404, 422 y 5xx sí**: el front pidió algo mal o el servidor se cayó.
+ *   Ninguna pantalla sana los provoca.
+ * - **401 y 403 no**: son la respuesta correcta a pedir lo que no te toca, y
+ *   las pantallas de plataforma las provocan a propósito.
+ * - **409 tampoco.** Es «el estado no lo permite», que es una respuesta de
+ *   negocio. Medido el 02-11-2026 en `/cuadros`: contesta 409 con «el CRM
+ *   todavía no está registrado como fuente en contecintelligence, se publica
+ *   desde Explotación», que es exactamente lo que hay que decir. Contarlo
+ *   habría puesto en rojo una pantalla que funciona, y un guardián que grita
+ *   por lo correcto se acaba ignorando.
+ */
+const CUENTAN = (e) => e === 400 || e === 404 || e === 422 || e >= 500;
+let api = [];
+p.on("response", (r) => {
+  const u = r.url();
+  if (!u.includes("/api/")) return;
+  if (CUENTAN(r.status())) {
+    api.push(`${r.status()} ${u.replace(APP, "").split("?")[0]}`);
+  }
+});
+
 await p.goto(APP, { waitUntil: "networkidle" });
 await p.fill('input[autocomplete="organization"]', EMPRESA);
 await p.fill('input[type="email"]', USUARIO);
@@ -107,12 +140,43 @@ const soloEstas = (process.env.CRM_SOLO ?? "")
 const lista = soloEstas.length ? soloEstas : [...caminos].sort();
 for (const camino of lista) {
   errores.length = 0;
-  await p.goto(APP + camino, { waitUntil: "domcontentloaded" }).catch(() => {});
-  await p.waitForTimeout(1600);
+  api = [];
+  // **Se espera a que la red calle**, no sólo un rato fijo. Con 1.600 ms a
+  // secas la medida salía distinta en cada pasada —5.252 textos mirados en
+  // una y 3.148 en la siguiente—, porque las pantallas con muchos datos se
+  // medían a medio pintar. Una pantalla a medio pintar da «ninguna fuera» con
+  // el mismo verde que una que está bien. Lo delató el contador de mirados,
+  // que está aquí justo para eso.
+  //
+  // El `catch` es necesario: una pantalla que refresca sola nunca llega a
+  // `networkidle`, y entonces manda el plazo.
+  await p.goto(APP + camino, { waitUntil: "networkidle", timeout: 15_000 })
+    .catch(() => p.goto(APP + camino, { waitUntil: "domcontentloaded" }).catch(() => {}));
+  await p.waitForTimeout(1200);
   const txt = (await p.locator("main").innerText().catch(() => "")).replace(/\s+/g, " ");
-  const rota = /no se ha podido pintar|No se ha podido contactar/i.test(txt);
-  if (rota || errores.length) {
-    rotas.push(`${camino}\n     ${errores[0] ?? txt.slice(0, 120)}`);
+  /**
+   * Una pantalla MUERTA es la que no llega a pintarse, y eso se reconoce por
+   * la marca y no por el texto: el texto cambia con cada fallo nuevo.
+   *
+   * La alerta SOLA no basta. `/cuadros` enseña una alerta correcta —falta
+   * publicar la descripción del CRM— y la pantalla funciona: tiene su título,
+   * su selector y sus cuadros. Lo que delata a una muerta es que **la alerta
+   * es todo lo que hay**: en `/territorios` no había ni `h1`.
+   */
+  const estado = await p.evaluate(() => {
+    const main = document.querySelector("main");
+    if (!main) return { alerta: false, h1: false };
+    return {
+      alerta: [...main.querySelectorAll('[role="alert"]')].some(
+        (e) => e.getClientRects().length > 0,
+      ),
+      h1: Boolean(main.querySelector("h1")),
+    };
+  });
+  if (errores.length || api.length || (estado.alerta && !estado.h1)) {
+    const porque =
+      errores[0] ?? api[0] ?? `la alerta es todo lo que hay: ${txt.slice(0, 90)}`;
+    rotas.push(`${camino}\n     ${porque}`);
   }
   const letra = await p.evaluate((escala) => {
     const vistos = new Map();
@@ -149,11 +213,24 @@ for (const camino of lista) {
   const enlace = await p.$("main tbody tr a");
   if (enlace) {
     errores.length = 0;
+    api = [];
     await enlace.click().catch(() => {});
     await p.waitForTimeout(1800);
     const t2 = (await p.locator("main").innerText().catch(() => "")).replace(/\s+/g, " ");
-    if (/no se ha podido pintar|No se ha podido contactar/i.test(t2) || errores.length) {
-      rotas.push(`${camino} → ficha ${new URL(p.url()).pathname}\n     ${errores[0] ?? t2.slice(0, 120)}`);
+    const enFicha = await p.evaluate(() => {
+      const main = document.querySelector("main");
+      if (!main) return { alerta: false, h1: false };
+      return {
+        alerta: [...main.querySelectorAll('[role="alert"]')].some(
+          (e) => e.getClientRects().length > 0,
+        ),
+        h1: Boolean(main.querySelector("h1")),
+      };
+    });
+    if (errores.length || api.length || (enFicha.alerta && !enFicha.h1)) {
+      rotas.push(
+        `${camino} → ficha ${new URL(p.url()).pathname}\n     ${errores[0] ?? api[0] ?? t2.slice(0, 120)}`,
+      );
     }
     // Y en la ficha se recorren además SUS pestañas: el dato en crudo estaba
     // en «Detalles», que no sale hasta que alguien la pulsa.

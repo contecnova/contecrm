@@ -140,7 +140,11 @@ describe("la cola de duplicados", () => {
     await montar();
     await screen.findByText("Plásticos Ebro, S.A.U.");
     expect(screen.getByText(/duplicados.probabilidad/)).toBeInTheDocument();
-    expect(screen.getByText("Forma juridica distinta")).toBeInTheDocument();
+    // Con tilde: la señal llega como clave técnica —`forma_juridica_distinta`—
+    // y la pantalla la escribe en castellano. Esta prueba esperaba «juridica»
+    // sin tilde, así que **fijaba la falta**: iba verde con lo que en la
+    // pantalla se leía mal. Visto el 03-11-2026 mirando la cola de duplicados.
+    expect(screen.getByText("Forma jurídica distinta")).toBeInTheDocument();
     expect(screen.getByText("Dominio")).toBeInTheDocument();
     // Y se puede abrir cada ficha: si son dos empresas distintas que se
     // parecen, lo que hace falta es cambiar algo en una.

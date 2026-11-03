@@ -193,6 +193,21 @@ Y el cuerpo va a **14px**, que es lo que faltaba de verdad: sin esa línea
 heredaba los 16px del navegador, y todo lo que no lleva una clase `text-*` salía
 un 14 % más grande que la misma frase en contecflow.
 
+#### El gateway publica su propio contrato (03-11-2026)
+
+`GET /api/v1/contrato/{servicio}` hace de proxy al OpenAPI de cada servicio,
+leyéndolo de la tabla de enrutado. El gateway **no se enruta a sí mismo** —eso
+expondría sus rutas por un camino paralelo a esa tabla, que es la única lista
+de acoplamiento del sistema—, así que `contrato/gateway` contestaba 404 y la
+pantalla «Contrato de la API» salía con un error.
+
+Ahora esa ruta devuelve su propio OpenAPI sin salir por la red. Y de paso
+cerró un agujero mayor: el gate `contrato-headless` **eximía al gateway** con
+este motivo escrito —«es un proxy, y su única ruta propia es el registro de
+servicios»—, que dejó de ser verdad sin que nadie lo revisara. **Medido: son
+39** —`/buscar`, `/superficie`, `/estado/*`, `/sesion/*`, `/integracion/*`—, y
+el `return` las dejaba a todas sin comprobar. Quitada la exención, pasan.
+
 #### La escala tipográfica (02-11-2026)
 
 Hasta el 02-11-2026 se usaban los tamaños de Tailwind

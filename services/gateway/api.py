@@ -126,7 +126,17 @@ async def servicios(_: PrincipalDep) -> Any:
         "acoplamiento del sistema."
     ),
 )
-async def contrato_de_servicio(servicio: str, _: PrincipalDep) -> Any:
+async def contrato_de_servicio(servicio: str, request: Request, _: PrincipalDep) -> Any:
+    # **El suyo, sin salir por la red.** El gateway no se enruta a sí mismo
+    # —eso expondría sus rutas por un camino paralelo a la tabla de enrutado—,
+    # así que pedir `contrato/gateway` daba 404 con «no hay ningún servicio
+    # enrutado con ese nombre». Y sus rutas propias NO son una: son 39
+    # —`/buscar`, `/superficie`, `/estado/*`, `/sesion/*`—, así que el front
+    # se quedaba sin el contrato de todas ellas y la pantalla «Contrato de la
+    # API» salía con un error. Medido el 03-11-2026.
+    if servicio == "gateway":
+        return request.app.openapi()
+
     if _cliente is None:
         raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
     destino = _destinos.get(servicio)

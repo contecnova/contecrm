@@ -57,11 +57,11 @@ def test_cada_servicio_publica_su_contrato(servicio: str) -> None:
     esquema = _app(servicio).openapi()
     assert esquema["openapi"].startswith("3."), "se espera OpenAPI 3.x"
     funcionales = [r for r in esquema["paths"] if r not in INFRAESTRUCTURA]
-    if servicio == "gateway":
-        # El gateway es un proxy: su contrato es el de los servicios de detrás,
-        # y su única ruta propia es el registro de servicios.
-        assert "/api/v1/servicios" in esquema["paths"]
-        return
+    # El gateway **ya no está exento**. Lo estuvo con este motivo escrito:
+    # «es un proxy, y su única ruta propia es el registro de servicios». Eso
+    # dejó de ser verdad sin que nadie lo revisara: **medido el 03-11-2026,
+    # son 39** —`/buscar`, `/superficie`, `/estado/*`, `/sesion/*`,
+    # `/integracion/*`—, y el `return` las dejaba a todas sin mirar.
     assert funcionales, f"«{servicio}» no publica ninguna ruta funcional"
 
 

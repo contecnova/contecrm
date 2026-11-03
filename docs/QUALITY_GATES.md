@@ -322,6 +322,76 @@ Abre las 58 pantallas contra la pila local y, de cada listado, su primera
 ficha **con todas sus pestañas**. Dice dos cosas: cuáles revientan al pintar y
 cuáles enseñan el dato en crudo.
 
+## El castellano de las claves técnicas
+
+`tests/unit/test_el_producto_escribe_bien_el_castellano.py`
+
+El front pinta claves de la API delante de las personas: como rótulo de un
+campo, como etiqueta de un valor, como nombre de columna. Lo hace `humanizar`,
+que parte por los guiones bajos, capitaliza y consulta un diccionario de
+palabras con tilde.
+
+**Medido el 03-11-2026.** Se vio «Forma juridica distinta» en la cola de
+duplicados. En vez de añadir esa palabra, se midió la familia: las claves que
+el producto puede enseñar, cruzadas con **cómo escribe él mismo cada palabra
+en sus propios textos**. Ésa es la autoridad y no hay que inventar nada: si el
+producto escribe «dirección», un rótulo que ponga «Direccion» está mal.
+Resultado: **127 palabras** añadidas al diccionario.
+
+Las tres decisiones que costaron, y las tres se tomaron plantando el caso
+malo:
+
+- **De dónde salen las claves.** Primero sólo propiedades y enums de los
+  catorce contratos: 1.586. No bastaba — `forma_juridica_distinta` no es
+  ninguna de las dos, la escribe `services/party/duplicados.py` como una
+  cadena suelta. Hubo que recoger también las cadenas con guion bajo de
+  `services/`, saltando los nombres de índice y restricción (`ix_`, `uq_`,
+  `fk_`…), que son del esquema y no se enseñan nunca.
+- **De dónde sale la ortografía.** Primero sólo los ficheros de texto de la
+  interfaz: 312 palabras con tilde. Tampoco bastaba — «jurídica» no aparece en
+  ninguna frase de la interfaz, así que el gate **no cazaba la palabra que lo
+  originó**, y eso se supo plantándola. Con los dos manuales dentro son 857, y
+  entonces sí.
+- **Qué se deja fuera.** 31 palabras donde la forma sin tilde también es
+  correcta: `cuenta_como_caso` es «caso» y no «casó», `solo_este_tenant` es el
+  demostrativo, `actua_como_id` es «actúa como». Están declaradas una a una
+  **con su motivo**, porque es una lista de excepciones y no de aceptadas: así
+  una palabra nueva entra vigilada.
+
+Y una prueba del front fijaba la falta: esperaba literalmente «Forma juridica
+distinta», así que iba verde con lo que en la pantalla se leía mal.
+
+**Una pantalla muerta** se reconoce por tres cosas, y ninguna es su texto:
+
+- una **excepción de JavaScript**;
+- una respuesta **400, 404, 422 o 5xx** de la API — el front pidió mal, o el
+  servidor se cayó. Ninguna pantalla sana las provoca;
+- o que **la alerta sea todo lo que hay**: hay `role="alert"` visible y no hay
+  ni `h1`.
+
+**Medido el 02-11-2026**: `/menciones` y `/territorios` llevaban muertas, las
+dos con un 422 por mandar `limite` a una ruta que no lo declara —el servidor
+rechaza a propósito un parámetro que no mira, que es lo correcto: un filtro
+ignorado en silencio es peor—. El barrido decía «ROTAS: 0» porque buscaba
+**dos textos concretos**, «no se ha podido pintar» y «No se ha podido
+contactar», y el de estas era otro. Un guardián que busca el texto del fallo
+que ya conoce no caza el siguiente.
+
+Lo que NO cuenta, y es la parte fina:
+
+- **401 y 403**: son la respuesta correcta a pedir lo que no te toca, y las
+  pantallas de plataforma las provocan a propósito.
+- **409**: es «el estado no lo permite», una respuesta de negocio. `/cuadros`
+  contesta 409 con «el CRM todavía no está registrado como fuente en
+  contecintelligence, se publica desde Explotación», que es exactamente lo que
+  hay que decir. Contarlo habría puesto en rojo una pantalla que funciona.
+- **La alerta sola.** `/cuadros` enseña esa alerta y tiene su título, su
+  selector y sus cuadros. Lo que delata a una muerta es que no haya nada más.
+
+Validado en los dos sentidos: con el `limite` replantado, `/territorios` sale
+nombrada con «422 /api/v1/territorios» y código 1, mientras `/cuadros` sigue
+en verde.
+
 **La letra fuera de la escala** es cualquier tamaño que no sea uno de los
 siete —12, 13, 14, 16, 20, 24 y 32—. Hay una prueba que lee el código y vigila
 las tres formas de escribir un tamaño (clase de la escala, clase arbitraria y
