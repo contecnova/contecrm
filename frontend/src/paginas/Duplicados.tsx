@@ -68,6 +68,9 @@ interface Barrido {
 
 const COLA = "/api/v1/data-quality/accounts/duplicates/cola";
 
+/** Una tanda cabe de sobra en la pantalla y deja trabajo para un rato. */
+const POR_TANDA = 20;
+
 export function Duplicados() {
   const { t } = useTranslation();
   const [parejas, setParejas] = useState<Pareja[] | null>(null);
@@ -81,6 +84,20 @@ export function Duplicados() {
   );
   /** La pareja que está esperando el «sí, fusiona». */
   const [confirmando, setConfirmando] = useState("");
+  /**
+   * Cuántas parejas se enseñan de una vez.
+   *
+   * **Medido el 03-11-2026**: llegaban cien y se pintaban las cien. Cada
+   * pareja mide 184 px, así que la pantalla era de **19.813 px** —caben 4,1
+   * de golpe, o sea veinticuatro pantallas de desplazamiento— para una cola
+   * donde se decide **de una en una**. Una cola así no se trabaja: se
+   * abandona.
+   *
+   * Se recorta aquí y no pidiendo menos al servidor porque las cien ya
+   * vienen en una sola llamada: pedir de veinte en veinte serían cinco
+   * llamadas para lo mismo, y «ver más» tiene que contestar al instante.
+   */
+  const [cuantasSeVen, setCuantasSeVen] = useState(POR_TANDA);
 
   const cargar = useCallback(
     (signal?: AbortSignal) => {
@@ -198,7 +215,7 @@ export function Duplicados() {
         />
       ) : (
         <ul className="flex flex-col gap-3">
-          {parejas.map((p) => (
+          {parejas.slice(0, cuantasSeVen).map((p) => (
             <li key={p.id}>
               <ParejaDeFichas
                 pareja={p}
@@ -216,6 +233,29 @@ export function Duplicados() {
           ))}
         </ul>
       )}
+
+      {/* Cuántas quedan y cómo traerlas. El número va en el botón porque
+          «ver más» a secas no dice si queda una o ochenta, y eso es lo que
+          decide si alguien sigue o lo deja para mañana. */}
+      {parejas.length > cuantasSeVen ? (
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setCuantasSeVen((n) => n + POR_TANDA)}
+          >
+            {t("duplicados.verMas", {
+              cuantas: Math.min(POR_TANDA, parejas.length - cuantasSeVen),
+            })}
+          </button>
+          <span className="text-rotulo text-ink-faint">
+            {t("duplicados.cuantasQuedan", {
+              vistas: cuantasSeVen,
+              total: parejas.length,
+            })}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

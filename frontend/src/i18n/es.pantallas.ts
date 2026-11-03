@@ -74,6 +74,9 @@ const pantallas = {
     todoEnsenado: "Todo lo publicado tiene pantalla.",
   },
   duplicados: {
+    // El número en el botón: «ver más» a secas no dice si queda una o ochenta.
+    verMas: "Ver {{cuantas}} más",
+    cuantasQuedan: "Viendo {{vistas}} de {{total}}",
     titulo: "Duplicados por resolver",
     entradilla:
       "Parejas que podrían ser la misma empresa, lo más probable primero y con QUÉ ha coincidido. Desde aquí se deciden: no es una lista para mirar.",
@@ -194,7 +197,8 @@ const pantallas = {
     ningunaConcluyente:
       "Ninguna plantilla se ha usado lo suficiente para sacar conclusiones",
     tasas: "{{respuesta}} % responden · {{reunion}} % acaban en reunión",
-    sobre: "{{enviados}} enviados · {{respondidos}} respuestas · {{reuniones}} reuniones",
+    sobre:
+      "{{enviados}} enviados · {{respondidos}} respuestas · {{reuniones}} reuniones",
     pocasVeces:
       "{{cuantas}} plantilla(s) se han usado demasiado poco para decir nada de ellas:",
     envios: "{{enviados}} envíos",
@@ -253,7 +257,8 @@ const pantallas = {
     noSePuede: "No se le puede escribir por aquí:",
     necesitaPlantilla:
       "Fuera de la ventana de 24 h sólo sale una plantilla APROBADA. Mandar una no aprobada no da error: el proveedor la descarta en silencio.",
-    bajaCon: "Se da de baja contestando «{{palabra}}». Esa palabra tiene que ir en el mensaje.",
+    bajaCon:
+      "Se da de baja contestando «{{palabra}}». Esa palabra tiene que ir en el mensaje.",
     calentando:
       "El dominio está calentando: hoy como mucho {{tope}} envíos. Pasarse quema la IP, y quemarla deja semanas sin que llegue nada por ese dominio — ni campañas ni facturas.",
     queLlega: "Qué llega de lo que mandamos",
@@ -290,7 +295,8 @@ const pantallas = {
       "NO se puede volver atrás: no hay un despliegue anterior al que volver. Contar con el rollback el día que haga falta sería contar con algo que no existe.",
     sinMedirDrift:
       "No se ha podido medir si alguien ha tocado este entorno a mano. No es lo mismo que estar limpio: es que no se sabe.",
-    limpio: "Sin cambios a mano: {{comparado}} elementos comparados y todos cuadran.",
+    limpio:
+      "Sin cambios a mano: {{comparado}} elementos comparados y todos cuadran.",
     tocadoAMano:
       "{{cuantos}} elemento(s) cambiados a mano por encima del paquete. El siguiente despliegue los va a pisar sin avisar.",
     desaparecido:
@@ -301,8 +307,7 @@ const pantallas = {
   presupuesto: {
     version: "versión {{version}}",
     necesitaAprobacion: "Esto no se puede mandar sin que alguien lo apruebe:",
-    umbrales:
-      "umbral de descuento {{umbral}} % · margen mínimo {{minimo}} %",
+    umbrales: "umbral de descuento {{umbral}} % · margen mínimo {{minimo}} %",
     numeros: "Los números",
     descuentoYMargen: "{{descuento}} de descuento · margen {{margen}}",
     sinMargen: "sin calcular",
@@ -320,7 +325,8 @@ const pantallas = {
     porqueDocumento:
       "La plantilla, la marca y el idioma salen de la configuración. Descubrir en el correo del cliente que salió con la marca equivocada no tiene arreglo.",
     verDocumento: "Ver el documento antes de mandarlo",
-    conQueSale: "plantilla «{{plantilla}}» · marca {{marca}} · idioma {{idioma}}",
+    conQueSale:
+      "plantilla «{{plantilla}}» · marca {{marca}} · idioma {{idioma}}",
     sinMarca: "la de por defecto",
     lineasDelDocumento: "{{cuantas}} líneas en el documento",
   },
@@ -339,7 +345,8 @@ const pantallas = {
     obsoleto: "Marcado como obsoleto.",
     daniño:
       "Este artículo está entre los DAÑINOS: lo ve mucha gente y la mayoría dice que no sirve. No es que no se use — es que alguien lo está siguiendo. Corregirlo va antes que escribir uno nuevo.",
-    huerfano: "Nadie lo usa ni lo cita en ningún caso. Puede que sobre, o que no se encuentre.",
+    huerfano:
+      "Nadie lo usa ni lo cita en ningún caso. Puede que sobre, o que no se encuentre.",
     idiomas: "En qué idiomas está",
     porqueIdiomas:
       "El fallo caro de una base multilingüe: se corrige el original, las traducciones se quedan como estaban, y el cliente de otro idioma lee el procedimiento viejo durante meses.",
@@ -397,7 +404,8 @@ const pantallas = {
     controlesEvaluados: "Evaluados",
     urgente: "Lo que no cuadra hoy",
     nadaUrgente: "Nada pendiente: todo lo declarado está evaluado y en plazo",
-    nadaQueMirar: "No hay nada que mirar todavía, que no es lo mismo que estar bien",
+    nadaQueMirar:
+      "No hay nada que mirar todavía, que no es lo mismo que estar bien",
     informeCobertura: "Qué capacidades del producto tienen control",
     sinCobertura: "No se puede medir la cobertura todavía",
     alcance:
@@ -482,7 +490,8 @@ const pantallas = {
     sinRecuento: "No se ha podido calcular el tamaño ahora mismo",
     deLosCuales: "de {{bruto}} en bruto; {{suprimidos}} caen por supresión",
     calculado: "calculado el {{fecha}}",
-    esFoto: "Este número es una foto: el segmento no se recalcula. Lo que ves es lo que se congeló.",
+    esFoto:
+      "Este número es una foto: el segmento no se recalcula. Lo que ves es lo que se congeló.",
     congelar: "Congelar en una lista fija",
     congelando: "Congelando…",
     congelado: "Congelado con {{cuantos}} miembros. Deja de recalcularse.",
@@ -678,7 +687,8 @@ const pantallas = {
     presionSinRespuesta:
       "{{cuantos}} servicio(s) no han contestado, así que esto no cubre la instalación entera.",
     frenados: "A quién le ha bajado la cuota el freno automático",
-    nadieObservado: "Todavía no se ha observado a ningún tenant en este proceso.",
+    nadieObservado:
+      "Todavía no se ha observado a ningún tenant en este proceso.",
     aCuota: "al {{pct}} % de su cuota",
     observado: "{{ventanas}} de {{minimo}} ventanas observadas",
   },
@@ -938,7 +948,8 @@ const pantallas = {
     queFalta: "Qué falta para poder cerrar",
     sinMetodologia:
       "No hay ninguna metodología de venta activa, así que no se puede decir qué falta.",
-    cubiertos: "{{cubiertos}} de {{criterios}} criterios · {{puntuacion}} puntos",
+    cubiertos:
+      "{{cubiertos}} de {{criterios}} criterios · {{puntuacion}} puntos",
     cualificada: "Cumple los criterios para cerrarse.",
     noCualificada: "Todavía no está cualificada para cerrarse:",
     siguientePaso: "Siguiente paso: {{paso}}",
@@ -950,7 +961,8 @@ const pantallas = {
     planCompartidoSinVer: "Compartido, y el cliente todavía no lo ha abierto.",
     planVisto: "El cliente lo vio el {{fecha}}.",
     pasosDelPlan: "{{hechos}} de {{pasos}} pasos hechos",
-    retrasoNuestro: "{{cuantos}} paso(s) retrasados NUESTROS. Eso se empuja aquí dentro.",
+    retrasoNuestro:
+      "{{cuantos}} paso(s) retrasados NUESTROS. Eso se empuja aquí dentro.",
     retrasoDelCliente:
       "{{cuantos}} paso(s) retrasados DEL CLIENTE. Esa conversación es con él.",
     retrasoConjunto: "{{cuantos}} paso(s) retrasados de los dos.",
@@ -982,7 +994,8 @@ const pantallas = {
     movimientos: "Lo que se ha movido",
     sinMovimientos: "Ni el importe ni la fecha se han movido",
     deslizada: "{{dias}} días más tarde",
-    sinMotivo: "Se movió sin motivo escrito: así no se puede discutir en un comité.",
+    sinMotivo:
+      "Se movió sin motivo escrito: así no se puede discutir en un comité.",
   },
   prevision: {
     cuantas: "{{cuantas}} oportunidades",
@@ -995,8 +1008,7 @@ const pantallas = {
       "sin él no se puede juzgar si estaba bien hecho.",
     sinAjustes: "Nadie ha tocado el número calculado",
     acierto: "¿Acercaron al real?",
-    contraReal:
-      "Real {{real}} · sin ajustar {{bruto}} · ajustado {{ajustado}}",
+    contraReal: "Real {{real}} · sin ajustar {{bruto}} · ajustado {{ajustado}}",
     ajustarAcerco: "Ajustar acercó: error de {{error}}.",
     ajustarAlejo:
       "Ajustar ALEJÓ del real: error de {{conAjuste}} ajustando y {{sinAjuste}} sin tocar nada.",
@@ -1037,7 +1049,8 @@ const pantallas = {
     simular: "Simular con mis cuentas",
     simulando: "Simulando…",
     simulado: "Simulado contra {{cuantas}} cuentas.",
-    resultado: "{{cambian}} cambiarían de territorio y {{quedan}} se quedarían igual.",
+    resultado:
+      "{{cambian}} cambiarían de territorio y {{quedan}} se quedarían igual.",
     sinTerritorio:
       "{{cuantas}} cuentas se quedarían SIN territorio. Eso no es un hueco que se rellene solo.",
     solapes:
@@ -1119,7 +1132,8 @@ const pantallas = {
     sinCerrar: "Todavía abierto",
     pendienteDelCliente:
       "Cerrado por el agente y PENDIENTE de que el cliente lo dé por bueno ({{estado}}). No cuenta como cerrado.",
-    reaperturas: "Se ha reabierto {{cuantas}} veces. Un caso cerrado tres veces no es un caso resuelto.",
+    reaperturas:
+      "Se ha reabierto {{cuantas}} veces. Un caso cerrado tres veces no es un caso resuelto.",
     historial: "Qué le ha pasado",
     sinHistorial: "Sin eventos todavía",
     porQueAqui: "Por qué está aquí",
@@ -1270,7 +1284,8 @@ const pantallas = {
       niega: "niega",
       rbac: "Por su rol: {{veredicto}} ({{permiso}})",
       abac: "Por los atributos: {{veredicto}}",
-      contexto: "Evaluado con roles {{roles}} · unidad {{unidad}} · hora {{hora}}",
+      contexto:
+        "Evaluado con roles {{roles}} · unidad {{unidad}} · hora {{hora}}",
     },
     capaPuesta: "(puesta)",
     capaNoPuesta: "(NO está haciendo su trabajo)",

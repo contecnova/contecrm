@@ -21,7 +21,7 @@
  *     hay que abrir las dos fichas para saber qué se compara.
  */
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -183,5 +183,60 @@ describe("la cola de duplicados", () => {
     );
     // «Hecho» a secas no dice si ha mirado tres fichas o tres mil.
     expect(screen.getByText(/duplicados.resultadoBarrido/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * La cola se trabaja por tandas.
+ *
+ * **Medido el 03-11-2026**: llegaban cien parejas y se pintaban las cien.
+ * Cada una mide 184 px, así que la pantalla era de **19.813 px** —caben 4,1
+ * de golpe, veinticuatro pantallas de desplazamiento— para una cola donde se
+ * decide **de una en una**. Una cola así no se trabaja: se abandona. Con la
+ * tanda de veinte son 4.197 px.
+ *
+ * Y el número va en el botón: «ver más» a secas no dice si queda una o
+ * ochenta, y eso es lo que decide si alguien sigue o lo deja para mañana.
+ */
+describe("la cola se trabaja por tandas", () => {
+  beforeEach(() => {
+    cola = Array.from({ length: 50 }, (_, i) => ({
+      ...PAREJA,
+      id: `d${i}`,
+      a_nombre: `Empresa ${i}, S.A.`,
+      b_nombre: `Empresa ${i}, S.L.`,
+    }));
+  });
+
+  it("no pinta las cincuenta de golpe", async () => {
+    await montar();
+    await waitFor(() =>
+      expect(screen.getByText("Empresa 0, S.A.")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Empresa 25, S.A.")).toBeNull();
+    expect(screen.getByText("duplicados.cuantasQuedan")).toBeInTheDocument();
+  });
+
+  it("trae otra tanda al pedirla, y deja de ofrecerla al llegar al final", async () => {
+    await montar();
+    await waitFor(() =>
+      expect(screen.getByText("Empresa 0, S.A.")).toBeInTheDocument(),
+    );
+    // Tres tandas de veinte cubren las cincuenta.
+    for (let vuelta = 0; vuelta < 3; vuelta += 1) {
+      const boton = screen.queryByText("duplicados.verMas");
+      if (!boton) break;
+      // El clic cambia estado, así que va envuelto: sin esto React avisa de
+      // que se está comprobando un árbol que todavía no ha terminado de
+      // pintarse, y lo que se mediría es el de antes.
+      await act(async () => {
+        boton.click();
+      });
+    }
+    await waitFor(() =>
+      expect(screen.getByText("Empresa 49, S.A.")).toBeInTheDocument(),
+    );
+    // Con todas a la vista, el pie sobra: decir «viendo 50 de 50» es ruido.
+    expect(screen.queryByText("duplicados.verMas")).toBeNull();
   });
 });

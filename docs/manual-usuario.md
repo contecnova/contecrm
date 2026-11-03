@@ -102,6 +102,12 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
+**Las colas largas se trabajan por tandas.** En «Duplicados por resolver»
+salen veinte parejas y un botón que dice **cuántas quedan**: «Ver 20 más ·
+Viendo 20 de 100». Antes salían las cien de golpe, que son veinticuatro
+pantallas de desplazamiento para una cola donde se decide de una en una. Una
+cola así no se trabaja: se abandona.
+
 **El producto escribe en castellano.** Los nombres de campo que vienen del
 sistema —`forma_juridica_distinta`, `fecha_revision`— se escriben como se leen,
 con sus tildes y sus eñes. Si ves «Direccion», «Tamano» o «Forma juridica», es
