@@ -474,6 +474,9 @@ export function Oportunidad() {
 
       {!editando ? (
         <PestanasDeFicha
+          tipo="oportunidad"
+          id={id ?? ""}
+
           etiqueta={t("ficha.secciones")}
           pestanas={[
             { clave: "relacionado", nombre: t("ficha.relacionado") },

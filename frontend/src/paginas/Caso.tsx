@@ -276,6 +276,8 @@ export function Caso() {
 
       {!editando ? (
         <PestanasDeFicha
+          tipo="caso"
+          id={id ?? ""}
           etiqueta={t("ficha.secciones")}
           pestanas={[
             { clave: "relacionado", nombre: t("ficha.relacionado") },

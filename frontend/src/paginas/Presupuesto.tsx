@@ -233,6 +233,9 @@ export function Presupuesto() {
 
       {!editando ? (
         <PestanasDeFicha
+          tipo="presupuesto"
+          id={id ?? ""}
+
           etiqueta={t("ficha.secciones")}
           pestanas={[
             { clave: "relacionado", nombre: t("ficha.relacionado") },

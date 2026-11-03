@@ -289,6 +289,9 @@ export function Segmento() {
 
       {!editando ? (
         <PestanasDeFicha
+          tipo="segmento"
+          id={id ?? ""}
+
           etiqueta={t("ficha.secciones")}
           pestanas={[
             { clave: "relacionado", nombre: t("ficha.relacionado") },

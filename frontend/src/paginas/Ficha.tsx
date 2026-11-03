@@ -321,6 +321,8 @@ export function Ficha() {
       ) : null}
 
       <PestanasDeFicha
+        tipo={tipo}
+        id={id ?? ""}
         etiqueta={t("ficha.secciones")}
         pestanas={pestanas.map((p) => ({ clave: p, nombre: t(`ficha.${p}`) }))}
         activa={activa}
@@ -393,9 +395,6 @@ export function Ficha() {
               </>
             ) : null}
 
-            {activa === "comentarios" ? (
-              <Comentarios tipo={tipo} id={id} />
-            ) : null}
           </>
         )}
       </div>
@@ -492,80 +491,6 @@ function Adjuntos({ tipo, id }: { tipo: string; id: string }) {
         )}
       </>
     </PanelRelacionado>
-  );
-}
-
-function Comentarios({ tipo, id }: { tipo: string; id: string }) {
-  const { t } = useTranslation();
-  const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
-  const [texto, setTexto] = useState("");
-  const [fallo, setFallo] = useState<unknown>(null);
-
-  const cargar = useCallback(async () => {
-    try {
-      const r = await llamar<Record<string, unknown>[]>(
-        `/api/v1/comentarios/${tipo}/${id}`,
-      );
-      setFilas(r.datos);
-    } catch (error) {
-      setFallo(error);
-    }
-  }, [tipo, id]);
-
-  useEffect(() => {
-    void cargar();
-  }, [cargar]);
-
-  async function enviar() {
-    if (!texto.trim()) return;
-    try {
-      await llamar(`/api/v1/comentarios/${tipo}/${id}`, {
-        metodo: "POST",
-        cuerpo: { texto },
-      });
-      setTexto("");
-      await cargar();
-    } catch (error) {
-      setFallo(error);
-    }
-  }
-
-  return (
-    <>
-      <div className="flex gap-2">
-        <label className="sr-only" htmlFor="comentario">
-          {t("ficha.escribir")}
-        </label>
-        <input
-          id="comentario"
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder={t("ficha.escribir")}
-          className="flex-1 rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 text-titulin text-ink"
-        />
-        <button
-          type="button"
-          onClick={() => void enviar()}
-          className="rounded-lg bg-accent px-3 py-1.5 text-dato text-paper hover:bg-accent-soft"
-        >
-          {t("ficha.enviar")}
-        </button>
-      </div>
-      {fallo ? (
-        <div className="mt-3">
-          <Fallo error={fallo} />
-        </div>
-      ) : null}
-      <div className="mt-3">
-        {filas === null ? (
-          <Cargando />
-        ) : filas.length === 0 ? (
-          <Vacio compacto />
-        ) : (
-          <Tabla filas={filas} titulo={t("ficha.comentarios")} />
-        )}
-      </div>
-    </>
   );
 }
 

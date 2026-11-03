@@ -341,6 +341,8 @@ export function ObjetoDelModelo() {
 
       {!editando ? (
         <PestanasDeFicha
+          tipo="objeto"
+          id={id ?? ""}
           etiqueta={t("ficha.secciones")}
           pestanas={[
             { clave: "relacionado", nombre: t("ficha.relacionado") },

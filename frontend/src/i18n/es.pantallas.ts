@@ -781,6 +781,8 @@ const pantallas = {
     observado: "{{ventanas}} de {{minimo}} ventanas observadas",
   },
   ficha: {
+    sinComentarios: "Todavía no ha escrito nadie",
+    comentarioEnviado: "Comentario enviado",
     comoEstaba: "Cómo estaba esto en un momento dado",
     sinRastroCompleto:
       "Este objeto no tiene el rastro completo encendido, así que no hay nada que reconstruir. Encenderlo para todo multiplicaría la escritura por algo que casi nunca se consulta.",

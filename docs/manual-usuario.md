@@ -571,6 +571,23 @@ Lo que hay que saber para leerla:
 
 ---
 
+### Escribir en un registro
+
+Toda ficha que admite conversación —un caso, una cuenta, una oportunidad, un
+presupuesto, una orden de trabajo— lleva una pestaña **«Comentarios»** al
+final, al lado de «Relacionado» y «Detalles». Ahí se escribe: una nota de lo
+que se ha hablado, una pregunta a un compañero, el resultado de una llamada.
+Con `Intro` se manda.
+
+Mencionando a alguien con `@` le llega un aviso, y la mención le sale en **«Mis
+menciones»**, en la arroba de la barra de arriba.
+
+Hasta el 03-11-2026 esa pestaña sólo estaba en las fichas genéricas: en un
+caso, en una cuenta o en una oportunidad **no había dónde escribir**, aunque
+el sistema guardara comentarios desde el primer día.
+
+---
+
 ### Seguir un registro, y saber qué sigues
 
 En la ficha de cualquier registro, arriba a la derecha, hay un botón

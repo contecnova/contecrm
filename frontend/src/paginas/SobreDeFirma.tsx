@@ -166,6 +166,9 @@ export function SobreDeFirma() {
 
       {!editando ? (
         <PestanasDeFicha
+          tipo="sobre_firma"
+          id={id ?? ""}
+
           etiqueta={t("ficha.secciones")}
           pestanas={[
             { clave: "relacionado", nombre: t("ficha.relacionado") },
