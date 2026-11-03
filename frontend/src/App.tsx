@@ -81,6 +81,10 @@ const Inteligencia = pantalla(
 // bucle de vueltas. Cargarla con el marco engordaría lo que el navegador baja
 // antes de pintar nada.
 // Diferida: se entra desde calidad del dato, no al abrir la aplicación.
+const LoQueSigo = pantalla(
+  () => import("@/paginas/LoQueSigo"),
+  (m) => m.LoQueSigo,
+);
 const Calendario = pantalla(
   () => import("@/paginas/Calendario"),
   (m) => m.Calendario,
@@ -496,6 +500,7 @@ export function App() {
           <Route path="/inteligencia" element={<Inteligencia />} />
           <Route path="/preguntar" element={<Preguntar />} />
           <Route path="/calendario" element={<Calendario />} />
+          <Route path="/lo-que-sigo" element={<LoQueSigo />} />
           <Route path="/duplicados" element={<Duplicados />} />
           <Route path="/puesto" element={<Puesto />} />
           <Route path="/alm" element={<Alm />} />

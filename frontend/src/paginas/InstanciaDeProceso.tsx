@@ -161,6 +161,9 @@ export function InstanciaDeProceso() {
         // cabecera.
         recurso={undefined}
         tipo="instancia"
+        // Una instancia dura lo que dura: seguirla sería suscribirse a algo
+        // que se acaba. Lo que se sigue es el registro sobre el que corre.
+        seguible={false}
         nombre={grafico.proceso}
         fila={grafico as unknown as Record<string, unknown>}
         volverA={{ a: "/m/procesos", titulo: modulo?.titulo ?? "", id }}

@@ -863,6 +863,74 @@ def test_las_estadisticas_de_entrega_dicen_si_se_pueden_medir(
         get_settings.cache_clear()
 
 
+def test_lo_que_sigo_se_puede_pedir_seguir_y_dejar(
+    db: Any,
+    cabeceras: dict[str, str],
+) -> None:
+    """La pantalla «Lo que sigo» y el botón «Seguir» de cada ficha.
+
+    Se recorre el ciclo entero por HTTP —listar, seguir, listar, dejar— porque
+    lo que esta prueba defiende es la **forma** que la pantalla lee: `items`,
+    y dentro `objeto_tipo`, `objeto_id`, `motivo` y `silenciado`. Sin
+    `silenciado` el botón diría «Siguiendo» a un propietario que ha silenciado
+    el registro, que es justo el caso en el que no llega ningún aviso.
+
+    La ruta vive en `identity`, que es por donde entra la pantalla.
+    """
+    import importlib
+    import os
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient as _Cliente
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        app = importlib.import_module("services.identity.main").app
+        with _Cliente(app) as cli:
+            r = cli.get("/api/v1/seguimientos", headers=cabeceras)
+            assert r.status_code == 200, r.text
+            antes = len(r.json()["items"])
+
+            objeto = str(uuid4())
+            alta = cli.post(
+                "/api/v1/seguimientos",
+                headers={**cabeceras, "Idempotency-Key": str(uuid4())},
+                json={"objeto_tipo": "cuenta", "objeto_id": objeto, "motivo": "manual"},
+            )
+            assert alta.status_code == 201, alta.text
+
+            r = cli.get("/api/v1/seguimientos?objeto_tipo=cuenta", headers=cabeceras)
+            assert r.status_code == 200, r.text
+            items = r.json()["items"]
+            assert len(items) == antes + 1
+            suyo = next(i for i in items if i["objeto_id"] == objeto)
+            # Los cuatro campos que la pantalla lee. Si alguno dejara de
+            # mandarse, «Lo que sigo» se quedaría sin nombre o sin su marca y
+            # nadie se enteraría hasta abrirla.
+            for campo in ("objeto_tipo", "objeto_id", "motivo", "silenciado"):
+                assert campo in suyo, f"el seguimiento no manda «{campo}»"
+            assert suyo["silenciado"] is False
+
+            baja = cli.delete(
+                f"/api/v1/seguimientos/cuenta/{objeto}",
+                headers={**cabeceras, "Idempotency-Key": str(uuid4())},
+            )
+            assert baja.status_code == 200, baja.text
+            assert baja.json() == {"seguia": True}
+
+            r = cli.get("/api/v1/seguimientos?objeto_tipo=cuenta", headers=cabeceras)
+            assert not [i for i in r.json()["items"] if i["objeto_id"] == objeto]
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
 # ── Metodología, playbook y plan conjunto (CRM-03.01.02.02, .03, .05) ───
 
 

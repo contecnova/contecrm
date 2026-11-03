@@ -38,6 +38,7 @@ import {
   fichaDe,
   type CampoEsquema,
 } from "@/lib/contrato";
+import { Seguir } from "@/componentes/Seguir";
 import { escalar, humanizar, tieneDato, campoDelNombre } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
 import { cn } from "@/lib/utiles";
@@ -130,6 +131,7 @@ export function DatosClave({
   nombre,
   fila,
   acciones,
+  seguible = true,
   distintivos,
   recorrido,
   volverA,
@@ -142,6 +144,20 @@ export function DatosClave({
   fila: Record<string, unknown> | null;
   /** Editar, borrar y lo que el contrato permita. */
   acciones?: ReactNode;
+  /**
+   * Si este registro se puede seguir. Casi todos sí.
+   *
+   * **El botón vive aquí y no en cada pantalla a propósito.** Hay catorce
+   * fichas con este panel, y ponerlo a mano en las catorce es catorce
+   * ocasiones de olvidarlo — y la que se olvidara no la notaría nadie,
+   * porque una ficha sin botón de seguir se ve igual que una ficha. Aquí lo
+   * tienen todas, y la que llegue mañana también.
+   *
+   * Se apaga en lo que no es un registro de negocio: un objeto del modelo de
+   * datos y una instancia de proceso no son cosas a las que uno «siga la
+   * pista», y ofrecerlo ahí sería ofrecer algo que no sirve para nada.
+   */
+  seguible?: boolean;
   /**
    * Insignias bajo el nombre: el estado, los roles de una cuenta, su NIF.
    *
@@ -226,6 +242,11 @@ export function DatosClave({
   // La moneda del propio registro, cuando la declara: con ella los importes
   // salen con su símbolo, como la tarjeta que hay debajo en una oportunidad.
   const laMoneda = typeof fila?.moneda === "string" ? fila.moneda : "";
+  // El identificador sale de la fila, no de la dirección: hay fichas que no
+  // llevan el `id` en la ruta, y una `useParams` aquí dentro leería el de la
+  // pantalla que la contenga, que no siempre es este registro.
+  const idDelRegistro = typeof fila?.id === "string" ? fila.id : "";
+  const puedeSeguirse = seguible && Boolean(tipo) && Boolean(idDelRegistro);
   const clave = (camposClave ?? recurso?.columnas ?? [])
     .filter((c) => c !== titular && c !== campoRecorrido && !/_id$/.test(c))
     .filter((c) => fila && tieneDato(fila[c]))
@@ -266,8 +287,14 @@ export function DatosClave({
               </div>
             ) : null}
           </div>
-          {acciones ? (
-            <div className="flex shrink-0 items-center gap-2">{acciones}</div>
+          {acciones || puedeSeguirse ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Seguir primero, a la izquierda de editar y borrar: es donde
+                  lo pone Lightning, y además lo separa de lo que cambia el
+                  registro — seguir no lo toca. */}
+              {puedeSeguirse ? <Seguir objetoTipo={tipo} objetoId={idDelRegistro} /> : null}
+              {acciones}
+            </div>
           ) : null}
         </div>
 

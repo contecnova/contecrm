@@ -344,6 +344,52 @@ def test_al_propietario_se_le_silencia_en_vez_de_desuscribirle(db: Any, tenant_i
     assert con_silenciados == [usuario]
 
 
+def test_volver_a_seguir_le_quita_el_silencio_al_propietario(db: Any, tenant_id: UUID) -> None:
+    """Pulsar «Seguir» es pedir que lleguen los avisos, y antes no llegaban.
+
+    Al propietario `dejar_de_seguir` lo silencia en vez de borrarle la fila, y
+    `seguir` devolvía esa misma fila silenciada: el servidor contestaba 201 con
+    la suscripción, y el propietario seguía sin recibir nada para siempre. No
+    lo cazaba nadie porque no había botón —`/api/v1/seguimientos` sólo salía en
+    una tabla de administración—, así que la vuelta atrás sólo se podía hacer
+    por API. Medido contra la instalación servida el 03-11-2026.
+    """
+    usuario, objeto = uuid4(), uuid4()
+    seg.seguir(
+        db,
+        tenant_id=tenant_id,
+        usuario_id=usuario,
+        objeto_tipo="caso",
+        objeto_id=objeto,
+        motivo="propietario",
+    )
+    seg.dejar_de_seguir(
+        db, tenant_id=tenant_id, usuario_id=usuario, objeto_tipo="caso", objeto_id=objeto
+    )
+    db.flush()
+    # Silenciado de verdad antes de volver: sin esto la prueba pasaría aunque
+    # `dejar_de_seguir` no hubiera hecho nada.
+    assert seg.seguidores(db, tenant_id=tenant_id, objeto_tipo="caso", objeto_id=objeto) == []
+
+    vuelto = seg.seguir(
+        db,
+        tenant_id=tenant_id,
+        usuario_id=usuario,
+        objeto_tipo="caso",
+        objeto_id=objeto,
+        motivo="manual",
+    )
+    db.flush()
+
+    assert vuelto.silenciado is False
+    assert seg.seguidores(db, tenant_id=tenant_id, objeto_tipo="caso", objeto_id=objeto) == [
+        usuario
+    ]
+    # Y sigue siendo propietario: volver a seguir a mano no le rebaja el
+    # motivo, porque no ha dejado de ser responsable del registro.
+    assert vuelto.motivo == "propietario"
+
+
 def test_notificar_avisa_a_los_seguidores_menos_a_quien_lo_provoco(
     db: Any, tenant_id: UUID
 ) -> None:

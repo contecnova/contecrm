@@ -525,6 +525,30 @@ cuentas y oportunidades: el campo es **Responsable**.
 
 ---
 
+### Seguir un registro, y saber qué sigues
+
+En la ficha de cualquier registro, arriba a la derecha, hay un botón
+**«Seguir»**. Lo que sigues es lo que te avisa cuando cambia, por los canales
+que tengas elegidos. Al seguirlo pone **«Siguiendo»**, y se deja de seguir
+pulsándolo otra vez.
+
+**Si eres el responsable del registro no dejas de serlo**: al dejar de
+seguirlo lo que pasa es que dejan de llegarte los avisos, y el registro sigue
+saliendo a tu nombre. El botón lo dice debajo, para que no parezca que no te
+ha hecho caso.
+
+**Lo que sigues está en la barra de arriba**, en el icono de la campana
+encendida, al lado de la arroba de tus menciones. Ahí sale cada registro **con
+su nombre y su enlace**, lo que esté silenciado marcado, y de lo que eres
+responsable también. Si alguno se borró, la fila lo dice en vez de
+desaparecer: una lista más corta sin explicación hace pensar que se ha perdido
+algo.
+
+Hasta el 03-11-2026 el botón no existía: se podía ver lo que uno seguía —en
+una pestaña de administración, sin los nombres— y no se podía seguir nada.
+
+---
+
 ### La ficha de un registro
 
 Al abrir cualquier registro, lo primero es el **panel de datos clave**: qué es

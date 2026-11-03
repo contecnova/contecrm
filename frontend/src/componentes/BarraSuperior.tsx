@@ -27,6 +27,7 @@ import { humanizar } from "@/lib/formato";
 import { MODULOS, grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
 import {
   AYUDA,
+  EN_LA_BARRA,
   ambitoDelCamino,
   entradaVisible,
   menuDe,
@@ -356,6 +357,26 @@ export function BarraSuperior({
         ) : null}
 
         <AvisoDeChat />
+
+        {/* Las menciones y lo que se sigue. Son personales y no de un dominio
+            —te mencionan en una cuenta, en una oportunidad y en un caso, y se
+            sigue lo mismo—, así que viven aquí y no en el menú de un área.
+
+            Se pintan de `EN_LA_BARRA` y no a mano: «/menciones» llevaba
+            exenta del guardián de caminos con el motivo «tiene su icono fijo
+            en la barra de arriba» y ese icono **no existía**. Estaba escrita,
+            enrutada y sin un solo enlace en todo el front. */}
+        {EN_LA_BARRA.map((entrada) => (
+          <Link
+            key={entrada.a}
+            to={entrada.a}
+            className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink"
+            aria-label={t(entrada.clave)}
+            title={t(entrada.clave)}
+          >
+            <Icono nombre={entrada.icono} />
+          </Link>
+        ))}
 
         {/* **La puerta de la configuración.** Antes vivía en la barra lateral,
             en el interruptor «Trabajar / Administrar». Al quitar la barra del

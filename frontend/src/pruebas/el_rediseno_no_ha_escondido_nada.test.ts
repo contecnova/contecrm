@@ -19,6 +19,9 @@
  * que no mira nada parece verde.
  */
 
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -29,7 +32,7 @@ import {
   pestanasDeTodas,
 } from "@/lib/aplicaciones";
 import { porGrupoVisible } from "@/lib/modulos";
-import { ACCESOS, AREAS, AYUDA, TRANSVERSALES, menuDe } from "@/lib/navegacion";
+import { ACCESOS, AREAS, AYUDA, EN_LA_BARRA, TRANSVERSALES, menuDe } from "@/lib/navegacion";
 
 /** El menú de quien lo puede ver todo: lo que se audita es el diseño, no un perfil. */
 function menuCompleto(ambito?: "trabajar" | "administrar") {
@@ -63,7 +66,8 @@ const TIENE_SU_PROPIO_SITIO: Record<string, string> = {
   "/": "Es la portada, y es pestaña de todas las aplicaciones.",
   "/puesto": "Pestaña de todas las aplicaciones, y además está en el menú de la persona.",
   "/chat": "Tiene su icono fijo en la barra de arriba: se habla de clientes, de ventas y de casos desde el mismo sitio, así que no es de un dominio.",
-  "/menciones": "Igual que el chat: te mencionan en una cuenta, en una oportunidad y en un caso.",
+  "/menciones": "Igual que el chat, con su icono en la barra de arriba: te mencionan en una cuenta, en una oportunidad y en un caso.",
+  "/lo-que-sigo": "Con las menciones, en la barra de arriba: se sigue una cuenta, una oportunidad y un caso, y es la vuelta del botón «Seguir» de la ficha.",
   "/ayuda": "Está en la interrogación de la barra de arriba, donde la pone Salesforce: habla del producto, no del cliente ni de su ajuste.",
   "/recorrido": "Con la ayuda, en la interrogación de la barra: es la visita guiada del producto, y dentro de la configuración se la encontraba quien no la buscaba.",
   "/cobertura": "Con la ayuda, en la interrogación de la barra: cuenta qué sabe hacer el producto, que es una pregunta sobre el producto y no un ajuste.",
@@ -123,6 +127,49 @@ describe("ninguna pantalla se ha quedado sin camino", () => {
     expect(enAyuda.size).toBe(AYUDA.length);
     for (const camino of ["/ayuda", "/recorrido", "/cobertura"]) {
       expect(enAyuda.has(camino), `«${camino}» está exenta y no está en el menú de ayuda`).toBe(true);
+    }
+  });
+
+  it("lo exento por «vivir en la barra de arriba» está en la barra de arriba", () => {
+    // **Esta prueba nace de un motivo que era falso.** «/menciones» llevaba
+    // exenta con «tiene su icono fijo en la barra de arriba», y medido el
+    // 03-11-2026 no había en todo el front **ni un solo enlace a
+    // `/menciones`**: se escribió el motivo, se dio por hecho el icono y
+    // nunca se puso. El guardián daba verde porque sólo miraba que el motivo
+    // tuviera más de treinta caracteres.
+    //
+    // Dos pasos, y hacen falta los dos: que lo exento esté DECLARADO en la
+    // barra, y que lo declarado esté ENLAZADO de verdad en su código. Con el
+    // primero solo, declararlo bastaría — que es el mismo fallo con otro
+    // nombre.
+    // Lo que vive arriba: los iconos sueltos y lo que cuelga de la
+    // interrogación. Las dos listas se pintan recorriéndolas, así que lo que
+    // esté en una está en la barra.
+    const declarados = new Set([...EN_LA_BARRA, ...AYUDA].map((e) => e.a));
+    const dicenQueEstanArriba = Object.entries(TIENE_SU_PROPIO_SITIO).filter(([, motivo]) =>
+      motivo.includes("barra de arriba"),
+    );
+    expect(dicenQueEstanArriba.length).toBeGreaterThan(0);
+
+    // El chat y Nexus se pintan con componente propio, así que su enlace vive
+    // en otro fichero: se miran los tres.
+    const raiz = resolve(process.cwd(), "src", "componentes");
+    const fuente = ["BarraSuperior.tsx", "AvisoDeChat.tsx", "Notificaciones.tsx"]
+      .map((f) => readFileSync(join(raiz, f), "utf-8"))
+      .join("\n");
+
+    for (const [camino, motivo] of dicenQueEstanArriba) {
+      const enlazado = fuente.includes(`to="${camino}"`) || declarados.has(camino);
+      expect(enlazado, `«${camino}» dice «${motivo}» y no está arriba`).toBe(true);
+    }
+    // Y lo declarado se pinta: una lista que nadie recorre es otra promesa.
+    expect(fuente).toContain("EN_LA_BARRA.map");
+    expect(fuente).toContain("AYUDA.map");
+    for (const entrada of EN_LA_BARRA) {
+      expect(
+        TIENE_SU_PROPIO_SITIO[entrada.a],
+        `«${entrada.a}» está en la barra y no se ha eximido del menú`,
+      ).toBeTruthy();
     }
   });
 

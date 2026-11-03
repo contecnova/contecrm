@@ -227,6 +227,30 @@ const pantallas = {
       "El historial sigue la cadena de sustituciones: son {{equipos}} equipos. La avería de hoy puede venir del que estaba antes.",
     sinEventos: "No hay nada anotado todavía",
   },
+  seguir: {
+    seguir: "Seguir",
+    siguiendo: "Siguiendo",
+    dejar: "Dejar de seguir",
+    // Al propietario se le silencia en vez de desuscribirle: no puede dejar
+    // de ser responsable de su registro. Sin decirlo, el botón parece que no
+    // hace caso.
+    eresPropietario: "Eres el responsable: dejas de recibir avisos, pero sigues saliendo como su responsable.",
+    noSePudo: "No se ha podido cambiar",
+    // Lo que uno sigue, desde la barra de arriba.
+    loQueSigo: "Lo que sigo",
+    nadaSeguido: "No sigues nada todavía",
+    nadaSeguidoPorque:
+      "Se sigue desde la ficha de un registro, con el botón «Seguir». Lo que " +
+      "sigues es lo que te avisa cuando cambia.",
+    silenciadoAqui: "silenciado",
+    motivoPropietario: "responsable",
+    yaNoEsta: "Este registro ya no existe",
+    dejado: "Has dejado de seguirlo",
+    entradilla:
+      "Lo que te avisa cuando cambia. Se sigue desde la ficha, con el botón " +
+      "«Seguir»; de lo que eres responsable te llega aunque no lo sigas a mano.",
+  },
+
   calendario: {
     titulo: "Calendario",
     entradilla:

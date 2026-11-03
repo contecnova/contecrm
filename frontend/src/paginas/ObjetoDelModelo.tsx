@@ -290,6 +290,9 @@ export function ObjetoDelModelo() {
       <DatosClave
         recurso={recurso}
         tipo="objeto"
+        // Un objeto del modelo de datos no es un registro de negocio: no le
+        // pasan cosas, lo cambia quien configura. Seguirlo no avisa de nada.
+        seguible={false}
         // Las insignias llevan sólo lo que NO es columna preferida del
         // recurso: ésas salen como dato clave aquí mismo, y escribirlas
         // además como insignia las pone dos veces en el mismo panel.

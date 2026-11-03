@@ -182,6 +182,12 @@ export const ACCESOS: Entrada[] = [
   // cuenta, en una oportunidad y en un caso, y buscarlas por área sería tener
   // que mirar tres sitios.
   { a: "/menciones", clave: "nav.menciones", icono: "alternate_email" },
+  // Lo mismo que las menciones y por lo mismo: se sigue una cuenta, una
+  // oportunidad y un caso, así que buscarlo por área sería mirar tres sitios.
+  // Y es la vuelta del botón «Seguir» de la ficha: sin ella se puede seguir y
+  // no se puede saber qué se sigue — que es como estaba, con la lista
+  // escondida en una pestaña de administración y sin los nombres.
+  { a: "/lo-que-sigo", clave: "nav.loQueSigo", icono: "notifications_active" },
 ];
 
 /**
@@ -296,6 +302,29 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // ninguna de sus dos colecciones: decir que sí lo contaría como enseñado y
   // mandaría aquí a quien busca un riesgo concreto.
   { area: "gobierno", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
+];
+
+/**
+ * Los iconos fijos de la barra de arriba.
+ *
+ * **Esta lista existe porque una de estas pantallas estaba perdida.** El
+ * guardián de caminos deja exentas las que «tienen su propio sitio», y
+ * «/menciones» estaba exenta con el motivo «tiene su icono fijo en la barra de
+ * arriba». Era falso: medido el 03-11-2026, no había en todo el front **ni un
+ * solo enlace a `/menciones`** fuera de su ruta del router. Se escribió el
+ * motivo, se dio por hecho el icono y nunca se puso.
+ *
+ * Escribirlo aquí lo convierte en algo comprobable: el guardián exige que lo
+ * exento por «vivir en la barra» esté en esta lista, y que lo de esta lista
+ * esté enlazado de verdad en la barra. Un motivo ya no basta.
+ *
+ * El chat y Nexus se pintan con componente propio —uno lleva su contador de
+ * sin leer y el otro depende del permiso de IA—, así que salen de aquí para
+ * el guardián y no para el bucle que los dibuja.
+ */
+export const EN_LA_BARRA: Entrada[] = [
+  { a: "/menciones", clave: "nav.menciones", icono: "alternate_email" },
+  { a: "/lo-que-sigo", clave: "nav.loQueSigo", icono: "notifications_active" },
 ];
 
 /**

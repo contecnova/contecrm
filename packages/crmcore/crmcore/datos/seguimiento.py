@@ -185,6 +185,18 @@ def seguir(
     Si ya lo sigue, se **mejora el motivo** cuando el nuevo es más fuerte:
     quien seguía una cuenta a mano y luego pasa a ser su propietario ya no puede
     dejar de seguirla, y eso tiene que reflejarse.
+
+    Y **volver a seguir quita el silencio**, que es lo que faltaba. Al
+    propietario `dejar_de_seguir` lo silencia en vez de borrarle la fila, y
+    antes esta función devolvía esa misma fila silenciada tal cual: el
+    propietario que dejaba de seguir su cuenta y luego se arrepentía pulsaba
+    «Seguir», el servidor contestaba 201 con la fila creada, y **seguía sin
+    recibir avisos para siempre**. Medido contra la instalación servida el
+    03-11-2026, pidiendo DELETE y POST seguidos.
+
+    No se veía porque no había botón: `/api/v1/seguimientos` se listaba en una
+    tabla de administración y nadie podía seguir ni dejar de seguir desde una
+    ficha. La vuelta a seguir sólo existía por API.
     """
     ya = db.execute(
         select(Seguimiento).where(
@@ -197,6 +209,9 @@ def seguir(
     if ya is not None:
         if motivo == "propietario" and ya.motivo != "propietario":
             ya.motivo = motivo
+        # Pedir seguir es pedir que lleguen los avisos. Dejar la fila
+        # silenciada haría que el botón dijera que sí y no pasara nada.
+        ya.silenciado = False
         return ya
 
     fila = Seguimiento(
