@@ -96,7 +96,10 @@ export function ConsolaAgente() {
       />
 
       {cola.length === 0 ? (
-        <Vacio titulo={t("consolaAgente.vacia")} detalle={t("consolaAgente.vaciaDetalle")} />
+        <Vacio
+          titulo={t("consolaAgente.vacia")}
+          detalle={t("consolaAgente.vaciaDetalle")}
+        />
       ) : (
         <ul className="divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40">
           {cola.map((c) => (
@@ -132,7 +135,6 @@ export function ConsolaAgente() {
   );
 }
 
-
 /**
  * Lo que corre en esta fila.
  *
@@ -146,10 +148,15 @@ function Espera({ fila }: { fila: EnCola }) {
   const { t } = useTranslation();
   if (fila.minutos_restantes !== null) {
     return (
-      <span className={`font-mono text-rotulo ${fila.vencido ? "text-danger" : "text-ink-muted"}`}>
-        {t(fila.vencido ? "consolaAgente.vencidoHace" : "consolaAgente.venceEn", {
-          minutos: Math.abs(fila.minutos_restantes),
-        })}
+      <span
+        className={`font-mono text-rotulo ${fila.vencido ? "text-danger" : "text-ink-muted"}`}
+      >
+        {t(
+          fila.vencido ? "consolaAgente.vencidoHace" : "consolaAgente.venceEn",
+          {
+            minutos: Math.abs(fila.minutos_restantes),
+          },
+        )}
       </span>
     );
   }
@@ -162,5 +169,9 @@ function Espera({ fila }: { fila: EnCola }) {
   }
   // Ni plazo ni espera conocida. Se dice, porque un hueco se lee como «no
   // corre», y lo que pasa es que no lo sabemos.
-  return <span className="text-rotulo text-ink-faint">{t("consolaAgente.sinReloj")}</span>;
+  return (
+    <span className="text-rotulo text-ink-faint">
+      {t("consolaAgente.sinReloj")}
+    </span>
+  );
 }

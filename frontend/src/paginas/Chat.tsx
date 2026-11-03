@@ -119,7 +119,9 @@ function titulo(c: Conversacion): string {
 export function Chat({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const [parametros, setParametros] = useSearchParams();
-  const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
+  const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(
+    null,
+  );
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [usuarios, setUsuarios] = useState<Record<string, Usuario>>({});
   /** Lo que se busca, y lo encontrado. Sólo en mis conversaciones. */
@@ -128,7 +130,10 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   /** Quién está, para saber si esperar respuesta o llamar. */
   const [presencia, setPresencia] = useState<Presencia[]>([]);
   /** Las versiones de un mensaje editado, cuando alguien las abre. */
-  const [versiones, setVersiones] = useState<{ de: string; lista: Version[] } | null>(null);
+  const [versiones, setVersiones] = useState<{
+    de: string;
+    lista: Version[];
+  } | null>(null);
   /** Quién está en la conversación abierta. */
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -141,18 +146,16 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   const activa = parametros.get("c") ?? "";
 
   const cargarConversaciones = useCallback(async (signal?: AbortSignal) => {
-    setConversaciones(await listar<Conversacion>("/api/v1/chat/conversaciones", { signal }));
+    setConversaciones(
+      await listar<Conversacion>("/api/v1/chat/conversaciones", { signal }),
+    );
   }, []);
 
   useEffect(() => {
     const control = new AbortController();
     void cargarConversaciones(control.signal).catch(salvoCancelacion(setFallo));
     listar<Usuario>("/api/v1/usuarios?limite=200", { signal: control.signal })
-      .then((us) =>
-        setUsuarios(
-          Object.fromEntries(us.map((u) => [u.id, u])),
-        ),
-      )
+      .then((us) => setUsuarios(Object.fromEntries(us.map((u) => [u.id, u]))))
       .catch(salvoCancelacion(() => undefined));
     return () => control.abort();
   }, [cargarConversaciones]);
@@ -164,14 +167,18 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
       return;
     }
     const control = new AbortController();
-    listar<Mensaje>(`/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`, {
-      signal: control.signal,
-    })
+    listar<Mensaje>(
+      `/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`,
+      {
+        signal: control.signal,
+      },
+    )
       .then(setMensajes)
       .catch(salvoCancelacion(setFallo));
-    void llamar(`/api/v1/chat/conversaciones/${activa}/leido`, { metodo: "POST", cuerpo: {} }).catch(
-      () => undefined,
-    );
+    void llamar(`/api/v1/chat/conversaciones/${activa}/leido`, {
+      metodo: "POST",
+      cuerpo: {},
+    }).catch(() => undefined);
     return () => control.abort();
   }, [activa]);
 
@@ -183,7 +190,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
    * es un temporizador que alguien acaba dejando en dos segundos para siempre.
    */
   useEffect(() => {
-    const fuente = new EventSource("/api/v1/chat/eventos", { withCredentials: true });
+    const fuente = new EventSource("/api/v1/chat/eventos", {
+      withCredentials: true,
+    });
     fuente.addEventListener("mensaje", (evento) => {
       try {
         const mensaje = JSON.parse((evento as MessageEvent).data) as Mensaje;
@@ -196,7 +205,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
         );
         if (mensaje.conversacion_id !== activa) return;
         setMensajes((previos) =>
-          previos.some((m) => m.id === mensaje.id) ? previos : [...previos, mensaje],
+          previos.some((m) => m.id === mensaje.id)
+            ? previos
+            : [...previos, mensaje],
         );
       } catch {
         // Un evento que no se entiende no tira la pantalla: se ignora y el
@@ -232,7 +243,10 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     const sueltos: Mensaje[] = [];
     for (const m of mensajes) {
       if (m.responde_a_id) {
-        porPadre.set(m.responde_a_id, [...(porPadre.get(m.responde_a_id) ?? []), m]);
+        porPadre.set(m.responde_a_id, [
+          ...(porPadre.get(m.responde_a_id) ?? []),
+          m,
+        ]);
       } else {
         sueltos.push(m);
       }
@@ -274,7 +288,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   /** Qué decía antes este mensaje. */
   async function verVersiones(mensajeId: string) {
     try {
-      const { datos } = await llamar<Version[]>(`/api/v1/chat/mensajes/${mensajeId}/versiones`);
+      const { datos } = await llamar<Version[]>(
+        `/api/v1/chat/mensajes/${mensajeId}/versiones`,
+      );
       setVersiones({ de: mensajeId, lista: datos });
     } catch (error) {
       setFallo(error);
@@ -289,12 +305,18 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
       // lista de usuarios en vez de pedir que se elijan en un desplegable, que
       // es lo que hace que nadie mencione a nadie.
       const menciones = Object.values(usuarios)
-        .filter((u) => texto.includes(`@${u.email}`) || texto.includes(`@${u.nombre}`))
+        .filter(
+          (u) =>
+            texto.includes(`@${u.email}`) || texto.includes(`@${u.nombre}`),
+        )
         .map((u) => u.id);
-      const r = await llamar<Mensaje>(`/api/v1/chat/conversaciones/${activa}/mensajes`, {
-        metodo: "POST",
-        cuerpo: { cuerpo: texto, responde_a_id: hilo, menciones },
-      });
+      const r = await llamar<Mensaje>(
+        `/api/v1/chat/conversaciones/${activa}/mensajes`,
+        {
+          metodo: "POST",
+          cuerpo: { cuerpo: texto, responde_a_id: hilo, menciones },
+        },
+      );
       setMensajes((previos) => [...previos, r.datos]);
       setTexto("");
       setHilo(null);
@@ -319,7 +341,11 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
 
   /** Recarga los mensajes de la conversación abierta. */
   async function recargarMensajes() {
-    setMensajes(await listar<Mensaje>(`/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`));
+    setMensajes(
+      await listar<Mensaje>(
+        `/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`,
+      ),
+    );
   }
 
   /**
@@ -370,13 +396,29 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     }
   }
 
-  function Burbuja({ mensaje, dentro = false }: { mensaje: Mensaje; dentro?: boolean }) {
+  function Burbuja({
+    mensaje,
+    dentro = false,
+  }: {
+    mensaje: Mensaje;
+    dentro?: boolean;
+  }) {
     const mio = mensaje.autor_id === sesion?.usuario_id;
     const autor = usuarios[mensaje.autor_id];
     const hijas = respuestas.get(mensaje.id) ?? [];
     return (
-      <li className={cn("group", dentro && "ml-6 border-l border-ink-dim/60 pl-3")}>
-        <div className={cn("rounded-xl px-3 py-2", mio ? "bg-accent/10" : "bg-paper-sunk")}>
+      <li
+        className={cn(
+          "group",
+          dentro && "ml-6 border-l border-ink-dim/60 pl-3",
+        )}
+      >
+        <div
+          className={cn(
+            "rounded-xl px-3 py-2",
+            mio ? "bg-accent/10" : "bg-paper-sunk",
+          )}
+        >
           <p className="flex items-baseline gap-2 text-rotulo text-ink-faint">
             <span className="font-medium text-ink-muted">
               {autor?.nombre || autor?.email || t("chat.alguien")}
@@ -405,9 +447,13 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             ) : null}
           </p>
           {mensaje.borrado ? (
-            <p className="mt-1 text-titulin italic text-ink-faint">{t("chat.borrado")}</p>
+            <p className="mt-1 text-titulin italic text-ink-faint">
+              {t("chat.borrado")}
+            </p>
           ) : (
-            <p className="mt-1 whitespace-pre-wrap text-titulin text-ink">{mensaje.cuerpo}</p>
+            <p className="mt-1 whitespace-pre-wrap text-titulin text-ink">
+              {mensaje.cuerpo}
+            </p>
           )}
 
           <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -424,17 +470,19 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             {/* Las reacciones aparecen al pasar por encima: siempre visibles,
                 seis emojis por mensaje ocupan más que el propio mensaje. */}
             <span className="hidden gap-0.5 group-hover:flex">
-              {REACCIONES.filter((e) => !(e in mensaje.reacciones)).map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  title={t("chat.reaccionar")}
-                  onClick={() => void reaccionar(mensaje.id, emoji)}
-                  className="rounded-lg px-1 py-0.5 text-rotulo opacity-60 hover:opacity-100"
-                >
-                  {emoji}
-                </button>
-              ))}
+              {REACCIONES.filter((e) => !(e in mensaje.reacciones)).map(
+                (emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    title={t("chat.reaccionar")}
+                    onClick={() => void reaccionar(mensaje.id, emoji)}
+                    className="rounded-lg px-1 py-0.5 text-rotulo opacity-60 hover:opacity-100"
+                  >
+                    {emoji}
+                  </button>
+                ),
+              )}
             </span>
             {!dentro && !mensaje.borrado ? (
               <button
@@ -450,7 +498,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             {mio ? (
               <button
                 type="button"
-                onClick={() => void papelera(mensaje.id, Boolean(mensaje.borrado))}
+                onClick={() =>
+                  void papelera(mensaje.id, Boolean(mensaje.borrado))
+                }
                 className="ml-1 hidden rounded-lg px-1.5 py-0.5 text-rotulo text-ink-muted hover:bg-paper group-hover:block"
               >
                 {mensaje.borrado ? t("chat.recuperar") : t("chat.borrar")}
@@ -473,7 +523,11 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
 
   return (
     <>
-      <CabeceraPagina titulo={t("chat.titulo")} entradilla={t("chat.intro")} icono="forum" />
+      <CabeceraPagina
+        titulo={t("chat.titulo")}
+        entradilla={t("chat.intro")}
+        icono="forum"
+      />
       {fallo ? <Fallo error={fallo} /> : null}
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[16rem_1fr]">
@@ -502,7 +556,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
           {conversaciones === null ? (
             <Cargando />
           ) : conversaciones.length === 0 ? (
-            <p className="px-2 py-3 text-rotulo text-ink-faint">{t("chat.sinConversaciones")}</p>
+            <p className="px-2 py-3 text-rotulo text-ink-faint">
+              {t("chat.sinConversaciones")}
+            </p>
           ) : (
             <ul className="space-y-0.5">
               {conversaciones.map((c) => (
@@ -583,7 +639,10 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               </h2>
               <ul className="mt-1 space-y-0.5">
                 {presencia.map((pr) => (
-                  <li key={pr.usuario_id} className="flex items-baseline gap-2 text-rotulo">
+                  <li
+                    key={pr.usuario_id}
+                    className="flex items-baseline gap-2 text-rotulo"
+                  >
                     <span className="text-ink-muted">
                       {usuarios[pr.usuario_id]?.nombre ?? t("chat.alguien")}
                     </span>
@@ -594,12 +653,15 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     {pr.visto_at ? (
                       <time className="text-ink-faint" dateTime={pr.visto_at}>
                         {t("chat.vistoA", {
-                          cuando: new Date(pr.visto_at).toLocaleString(localizacion(), {
-                            day: "2-digit",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }),
+                          cuando: new Date(pr.visto_at).toLocaleString(
+                            localizacion(),
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          ),
                         })}
                       </time>
                     ) : null}
@@ -620,15 +682,20 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
           ) : (
             <>
               <header className="border-b border-ink-dim/60 px-3 py-2">
-                <h2 className="text-titulin font-medium text-ink">{titulo(abierta)}</h2>
+                <h2 className="text-titulin font-medium text-ink">
+                  {titulo(abierta)}
+                </h2>
                 {abierta.proposito ? (
-                  <p className="text-rotulo text-ink-faint">{abierta.proposito}</p>
+                  <p className="text-rotulo text-ink-faint">
+                    {abierta.proposito}
+                  </p>
                 ) : null}
                 {abierta.objeto_tipo ? (
                   /* Lo que hace que esto no sea un chat cualquiera: se ve de qué
                      registro se está hablando sin salir de aquí. */
                   <p className="mt-0.5 text-rotulo text-accent">
-                    <Icono nombre="link" /> {t("chat.sobreEl", { objeto: abierta.objeto_tipo })}
+                    <Icono nombre="link" />{" "}
+                    {t("chat.sobreEl", { objeto: abierta.objeto_tipo })}
                   </p>
                 ) : null}
                 {/* QUIÉN LO VA A LEER. Antes de escribir algo delicado en un
@@ -636,7 +703,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     que ninguna pantalla lo enseñara. */}
                 {miembros.length > 0 ? (
                   <p className="mt-0.5 flex flex-wrap items-baseline gap-1 text-rotulo text-ink-faint">
-                    <span>{t("chat.miembros", { cuantos: miembros.length })}</span>
+                    <span>
+                      {t("chat.miembros", { cuantos: miembros.length })}
+                    </span>
                     {miembros.map((m) => (
                       <span key={m.usuario_id} className="chip-dato">
                         {usuarios[m.usuario_id]?.nombre ?? t("chat.alguien")}
@@ -655,9 +724,12 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 {mensajes.length > 0
                   ? t("chat.ultimoDe", {
                       quien:
-                        usuarios[mensajes[mensajes.length - 1]!.autor_id]?.nombre ??
-                        t("chat.alguien"),
-                      texto: mensajes[mensajes.length - 1]!.cuerpo.slice(0, 120),
+                        usuarios[mensajes[mensajes.length - 1]!.autor_id]
+                          ?.nombre ?? t("chat.alguien"),
+                      texto: mensajes[mensajes.length - 1]!.cuerpo.slice(
+                        0,
+                        120,
+                      ),
                     })
                   : ""}
               </p>
@@ -682,7 +754,9 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     </button>
                   </div>
                   {versiones.lista.length === 0 ? (
-                    <p className="text-rotulo text-ink-faint">{t("chat.sinVersiones")}</p>
+                    <p className="text-rotulo text-ink-faint">
+                      {t("chat.sinVersiones")}
+                    </p>
                   ) : (
                     <ol className="mt-1 space-y-1">
                       {versiones.lista.map((v, i) => (
@@ -793,7 +867,9 @@ function NuevaConversacion({
             onClick={() => setModo(x)}
             className={cn(
               "rounded-lg px-2 py-1 text-rotulo",
-              modo === x ? "bg-accent/15 text-accent" : "text-ink-muted hover:bg-paper",
+              modo === x
+                ? "bg-accent/15 text-accent"
+                : "text-ink-muted hover:bg-paper",
             )}
           >
             {t(x === "directo" ? "chat.conAlguien" : "chat.unCanal")}
@@ -811,14 +887,18 @@ function NuevaConversacion({
             className="input-base mb-1"
           />
           {gente.length === 0 ? (
-            <p className="px-1 py-2 text-rotulo text-ink-faint">{t("chat.nadieAsi")}</p>
+            <p className="px-1 py-2 text-rotulo text-ink-faint">
+              {t("chat.nadieAsi")}
+            </p>
           ) : (
             <ul className="space-y-0.5">
               {gente.map((u) => (
                 <li key={u.id}>
                   <button
                     type="button"
-                    onClick={() => void alAbrir({ tipo: "directo", miembros: [u.id] })}
+                    onClick={() =>
+                      void alAbrir({ tipo: "directo", miembros: [u.id] })
+                    }
                     className="w-full truncate rounded-lg px-2 py-1 text-left text-dato text-ink hover:bg-paper"
                   >
                     {u.nombre || u.email}
@@ -844,7 +924,11 @@ function NuevaConversacion({
             aria-label={t("chat.comoSeLlama")}
             className="input-base mb-1"
           />
-          <button type="submit" disabled={!nombre.trim()} className="btn-primary w-full">
+          <button
+            type="submit"
+            disabled={!nombre.trim()}
+            className="btn-primary w-full"
+          >
             {t("chat.crearCanal")}
           </button>
         </form>

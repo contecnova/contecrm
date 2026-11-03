@@ -58,8 +58,12 @@ export function AvisoDeChat() {
     <Link
       to="/chat"
       className="btn-icon relative text-ink-muted hover:bg-paper-light hover:text-ink"
-      aria-label={sinLeer > 0 ? t("chat.sinLeerAviso", { count: sinLeer }) : t("nav.chat")}
-      title={sinLeer > 0 ? t("chat.sinLeerAviso", { count: sinLeer }) : t("nav.chat")}
+      aria-label={
+        sinLeer > 0 ? t("chat.sinLeerAviso", { count: sinLeer }) : t("nav.chat")
+      }
+      title={
+        sinLeer > 0 ? t("chat.sinLeerAviso", { count: sinLeer }) : t("nav.chat")
+      }
     >
       <Icono nombre="forum" />
       {sinLeer > 0 ? (

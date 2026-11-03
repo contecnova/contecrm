@@ -818,7 +818,9 @@ function Dato({ clave, valor }: { clave: string; valor: unknown }) {
   const { t } = useTranslation();
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="shrink-0 text-rotulo text-ink-faint">{humanizar(clave)}</dt>
+      <dt className="shrink-0 text-rotulo text-ink-faint">
+        {humanizar(clave)}
+      </dt>
       <dd className="truncate text-dato text-ink">
         {valor ? (
           escalar(valor, clave)
@@ -925,7 +927,9 @@ function Metricas({ datos }: { datos: Vista360["metricas"] }) {
   const sinDato = datos.sin_dato ?? [];
 
   if (metricas.length === 0 && sinDato.length === 0) {
-    return <p className="text-rotulo text-ink-faint">{t("cuenta.sinMetricas")}</p>;
+    return (
+      <p className="text-rotulo text-ink-faint">{t("cuenta.sinMetricas")}</p>
+    );
   }
   return (
     <>
@@ -1089,7 +1093,9 @@ function DeDondeSaleCadaDato({ linaje }: { linaje: Linaje | null }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("cuenta.linaje")}</h2>
-      <p className="mb-2 text-rotulo text-ink-faint">{t("cuenta.linajeAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("cuenta.linajeAyuda")}
+      </p>
       {!linaje.medible || campos.length === 0 ? (
         <p className="text-dato text-ink-muted">{linaje.que_significa}</p>
       ) : (

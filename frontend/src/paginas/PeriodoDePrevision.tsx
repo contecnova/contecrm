@@ -89,7 +89,10 @@ interface Deslizamiento {
 interface Desglose {
   por: string;
   moneda: string;
-  grupos: Record<string, { importe: string; ponderado: string; lineas: number }>;
+  grupos: Record<
+    string,
+    { importe: string; ponderado: string; lineas: number }
+  >;
   grupos_sin_tipo_de_cambio: string[];
 }
 
@@ -100,7 +103,9 @@ export function PeriodoDePrevision() {
   const [ajustes, setAjustes] = useState<Ajuste[]>([]);
   const [acierto, setAcierto] = useState<Acierto | null>(null);
   const [fotos, setFotos] = useState<Instantanea[]>([]);
-  const [deslizamiento, setDeslizamiento] = useState<Deslizamiento | null>(null);
+  const [deslizamiento, setDeslizamiento] = useState<Deslizamiento | null>(
+    null,
+  );
   const [desglose, setDesglose] = useState<Desglose | null>(null);
   const [por, setPor] = useState("familia");
   const [fallo, setFallo] = useState<unknown>(null);
@@ -115,7 +120,9 @@ export function PeriodoDePrevision() {
     // contrato que no se puede leer no se puede vigilar.
     const suya = encodeURIComponent(clave);
 
-    llamar<Prevision>(`/api/v1/forecast/periodos/${suya}`, { signal: control.signal })
+    llamar<Prevision>(`/api/v1/forecast/periodos/${suya}`, {
+      signal: control.signal,
+    })
       .then((r) => setPrevision(r.datos))
       .catch(salvoCancelacion(setFallo));
 
@@ -131,14 +138,20 @@ export function PeriodoDePrevision() {
     })
       .then((r) => setAcierto(r.datos))
       .catch(() => undefined);
-    void llamar<Instantanea[]>(`/api/v1/forecast/periodos/${suya}/instantaneas`, {
-      signal: control.signal,
-    })
+    void llamar<Instantanea[]>(
+      `/api/v1/forecast/periodos/${suya}/instantaneas`,
+      {
+        signal: control.signal,
+      },
+    )
       .then((r) => setFotos(r.datos))
       .catch(() => undefined);
-    void llamar<Deslizamiento>(`/api/v1/forecast/periodos/${suya}/deslizamiento`, {
-      signal: control.signal,
-    })
+    void llamar<Deslizamiento>(
+      `/api/v1/forecast/periodos/${suya}/deslizamiento`,
+      {
+        signal: control.signal,
+      },
+    )
       .then((r) => setDeslizamiento(r.datos))
       .catch(() => undefined);
 
@@ -199,8 +212,13 @@ export function PeriodoDePrevision() {
 
         <ul className="mt-3 divide-y divide-ink-dim/30">
           {Object.entries(prevision.por_categoria).map(([categoria, v]) => (
-            <li key={categoria} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-              <span className="text-dato font-medium text-ink">{categoria}</span>
+            <li
+              key={categoria}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
+              <span className="text-dato font-medium text-ink">
+                {categoria}
+              </span>
               <span className="text-dato text-ink-muted">
                 {comoImporte(v.importe, prevision.moneda)}
               </span>
@@ -218,7 +236,11 @@ export function PeriodoDePrevision() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <LosAjustes ajustes={ajustes} acierto={acierto} moneda={prevision.moneda} />
+        <LosAjustes
+          ajustes={ajustes}
+          acierto={acierto}
+          moneda={prevision.moneda}
+        />
         <ElDesglose desglose={desglose} por={por} alCambiar={setPor} />
         <LasFotos fotos={fotos} />
         <LoQueSeHaDeslizado deslizamiento={deslizamiento} />
@@ -252,7 +274,9 @@ function LosAjustes({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("prevision.ajustes")}</h2>
-      <p className="mb-2 text-rotulo text-ink-faint">{t("prevision.ajustesAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("prevision.ajustesAyuda")}
+      </p>
       {ajustes.length === 0 ? (
         <Vacio titulo={t("prevision.sinAjustes")} compacto />
       ) : (
@@ -261,13 +285,22 @@ function LosAjustes({
             <li key={a.id} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-3 text-dato">
                 <span className="font-medium text-ink">
-                  {comoImporte(a.bruto, moneda)} → {comoImporte(a.ajustado, moneda)}
+                  {comoImporte(a.bruto, moneda)} →{" "}
+                  {comoImporte(a.ajustado, moneda)}
                 </span>
-                <span className={Number(a.delta) >= 0 ? "chip-dato" : "chip-dato chip-dato--no"}>
+                <span
+                  className={
+                    Number(a.delta) >= 0
+                      ? "chip-dato"
+                      : "chip-dato chip-dato--no"
+                  }
+                >
                   {a.delta}
                 </span>
                 <span className="text-rotulo text-ink-faint">{a.ambito}</span>
-                {a.categoria ? <span className="chip-dato">{a.categoria}</span> : null}
+                {a.categoria ? (
+                  <span className="chip-dato">{a.categoria}</span>
+                ) : null}
               </div>
               {/* El motivo es la mitad del ajuste: sin él no se puede juzgar. */}
               <p className="text-rotulo text-ink-muted">{a.motivo}</p>
@@ -278,7 +311,9 @@ function LosAjustes({
 
       {acierto ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
-          <h3 className="text-dato font-medium text-ink">{t("prevision.acierto")}</h3>
+          <h3 className="text-dato font-medium text-ink">
+            {t("prevision.acierto")}
+          </h3>
           {!acierto.medible ? (
             <p className="text-rotulo text-ink-faint">{acierto.motivo}</p>
           ) : (
@@ -290,9 +325,17 @@ function LosAjustes({
                   ajustado: comoImporte(acierto.ajustado ?? "0", moneda),
                 })}
               </p>
-              <p className={mejoro ? "mt-1 text-dato text-success" : "mt-1 text-dato text-danger"}>
+              <p
+                className={
+                  mejoro
+                    ? "mt-1 text-dato text-success"
+                    : "mt-1 text-dato text-danger"
+                }
+              >
                 {mejoro
-                  ? t("prevision.ajustarAcerco", { error: acierto.error_con_ajuste })
+                  ? t("prevision.ajustarAcerco", {
+                      error: acierto.error_con_ajuste,
+                    })
                   : t("prevision.ajustarAlejo", {
                       conAjuste: acierto.error_con_ajuste,
                       sinAjuste: acierto.error_sin_ajuste,
@@ -346,7 +389,10 @@ function ElDesglose({
       ) : (
         <ul className="mt-2 divide-y divide-ink-dim/30">
           {Object.entries(desglose.grupos).map(([grupo, v]) => (
-            <li key={grupo} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <li
+              key={grupo}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
               <span className="text-dato font-medium text-ink">{grupo}</span>
               <span className="text-dato text-ink-muted">
                 {comoImporte(v.importe, desglose.moneda)}
@@ -381,7 +427,9 @@ function LasFotos({ fotos }: { fotos: Instantanea[] }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("prevision.fotos")}</h2>
-      <p className="mb-2 text-rotulo text-ink-faint">{t("prevision.fotosAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("prevision.fotosAyuda")}
+      </p>
       {fotos.length === 0 ? (
         <Vacio titulo={t("prevision.sinFotos")} compacto />
       ) : (
@@ -391,9 +439,17 @@ function LasFotos({ fotos }: { fotos: Instantanea[] }) {
               .filter(([k]) => !k.startsWith("_"))
               .reduce((n, [, v]) => n + Number(v), 0);
             return (
-              <li key={f.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-                <span className="text-dato font-medium text-ink">{f.etiqueta}</span>
-                <time className="text-rotulo text-ink-faint" dateTime={f.tomada_at}>
+              <li
+                key={f.id}
+                className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+              >
+                <span className="text-dato font-medium text-ink">
+                  {f.etiqueta}
+                </span>
+                <time
+                  className="text-rotulo text-ink-faint"
+                  dateTime={f.tomada_at}
+                >
                   {f.tomada_at.slice(0, 10)}
                 </time>
                 <span className="text-dato text-ink-muted">

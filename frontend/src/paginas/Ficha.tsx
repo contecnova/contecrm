@@ -252,7 +252,7 @@ export function Ficha() {
     }
   }
 
-  if (!modulo) return <Vacio />;
+  if (!modulo) return <Vacio compacto />;
 
   const nombre = fila ? nombreDelRegistro(fila) : "";
 

@@ -13,6 +13,7 @@
  * las de cuando se paró y se leen como las de hoy.
  */
 
+import { cn } from "@/lib/utiles";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -85,7 +86,7 @@ export function Marketing() {
           {t("marketing.segmentos")}
         </h2>
         {segmentos.length === 0 ? (
-          <Vacio titulo={t("marketing.sinSegmentos")} detalle="" />
+          <Vacio compacto titulo={t("marketing.sinSegmentos")} detalle="" />
         ) : (
           <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
             {segmentos.map((s) => (
@@ -97,7 +98,15 @@ export function Marketing() {
                 <span className="text-dato text-ink-muted">
                   {t(s.dinamico ? "marketing.dinamico" : "marketing.congelado")}
                 </span>
-                <span className="font-mono text-dato text-ink">
+                {/* La monoespaciada es para el número, que se alinea en
+                    columna. «sin calcular» es una frase y en monoespaciada se
+                    lee como si fuera un código. */}
+                <span
+                  className={cn(
+                    "text-dato text-ink",
+                    s.tamano !== null && "font-mono",
+                  )}
+                >
                   {s.tamano === null ? t("marketing.sinCalcular") : s.tamano}
                 </span>
                 {/* La fecha del recuento va SIEMPRE: un número sin fecha se lee
@@ -121,7 +130,7 @@ export function Marketing() {
           {t("marketing.campanas")}
         </h2>
         {campanas.length === 0 ? (
-          <Vacio titulo={t("marketing.sinCampanas")} detalle="" />
+          <Vacio compacto titulo={t("marketing.sinCampanas")} detalle="" />
         ) : (
           <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
             {campanas.map((c) => (
@@ -135,7 +144,9 @@ export function Marketing() {
                   <span className="rounded bg-paper px-1.5 py-0.5 text-rotulo uppercase text-ink-muted">
                     {c.estado}
                   </span>
-                  <span className="flex-1 text-titulo text-ink">{c.nombre}</span>
+                  <span className="flex-1 text-titulo text-ink">
+                    {c.nombre}
+                  </span>
                   <span className="text-dato text-ink-muted">{c.canal}</span>
                 </div>
                 {/* Sólo los miembros, que es lo que el listado sabe de

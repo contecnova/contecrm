@@ -401,7 +401,9 @@ export function Preguntar() {
           </header>
 
           {actuacion.pasos.length === 0 ? (
-            <p className="text-titulo text-ink-muted">{t("preguntar.sinPasos")}</p>
+            <p className="text-titulo text-ink-muted">
+              {t("preguntar.sinPasos")}
+            </p>
           ) : (
             <ol className="flex flex-col gap-2">
               {actuacion.pasos.map((p) => (

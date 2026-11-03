@@ -763,7 +763,9 @@ function HastaDondeSeVuelve({
                   retencion: ventana.retencion_dias,
                 })}
               </p>
-              <p className="mt-1 text-rotulo text-ink-muted">{ventana.porque}</p>
+              <p className="mt-1 text-rotulo text-ink-muted">
+                {ventana.porque}
+              </p>
             </div>
           ) : null}
         </div>
@@ -857,7 +859,9 @@ function Aguanta({
               ))}
             </ul>
           ) : null}
-          <p className="mt-1 text-rotulo text-ink-muted">{particiones.porque}</p>
+          <p className="mt-1 text-rotulo text-ink-muted">
+            {particiones.porque}
+          </p>
         </>
       ) : null}
     </Panel>
@@ -925,7 +929,9 @@ function ComoSeCorta({
                 </div>
                 {/* Por qué crece, dicho por el servidor: sin eso la lista es un
                     inventario y no explica por qué sólo se parten éstas. */}
-                <p className="text-rotulo text-ink-faint">{tabla.por_que_crece}</p>
+                <p className="text-rotulo text-ink-faint">
+                  {tabla.por_que_crece}
+                </p>
               </li>
             ))}
           </ul>
@@ -1053,7 +1059,9 @@ function Boveda({
               ? t("plataforma.conBoveda")
               : t("plataforma.sinBoveda")}
           </p>
-          <p className="mt-1 text-rotulo text-ink-muted">{estado.que_significa}</p>
+          <p className="mt-1 text-rotulo text-ink-muted">
+            {estado.que_significa}
+          </p>
           {estado.tipos.length > 0 ? (
             <ul className="mt-1 flex flex-wrap gap-1">
               {estado.tipos.map((x) => (

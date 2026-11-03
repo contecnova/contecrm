@@ -42,7 +42,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
-import { MenuDeAcciones, type OpcionDeMenu } from "@/componentes/MenuDeAcciones";
+import {
+  MenuDeAcciones,
+  type OpcionDeMenu,
+} from "@/componentes/MenuDeAcciones";
 import type { CampoEsquema } from "@/lib/contrato";
 import { CeldaEditable } from "@/componentes/CeldaEditable";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
@@ -153,7 +156,11 @@ export interface Props {
    * rechazar es peor que no ofrecerlo.
    */
   esquemaDeCampo?: (campo: string) => CampoEsquema | undefined;
-  alEditarCelda?: (fila: Record<string, unknown>, campo: string, valor: unknown) => Promise<void>;
+  alEditarCelda?: (
+    fila: Record<string, unknown>,
+    campo: string,
+    valor: unknown,
+  ) => Promise<void>;
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -189,7 +196,9 @@ export function leerOrden(recuerdaComo?: string): Orden {
     const crudo = localStorage.getItem(`${CLAVE_ORDEN}.${recuerdaComo}`);
     if (!crudo) return null;
     const v = JSON.parse(crudo) as Orden;
-    return v && typeof v.columna === "string" && (v.sentido === "asc" || v.sentido === "desc")
+    return v &&
+      typeof v.columna === "string" &&
+      (v.sentido === "asc" || v.sentido === "desc")
       ? v
       : null;
   } catch {
@@ -237,12 +246,20 @@ function comparar(a: unknown, b: unknown): number {
   const numA = typeof a === "number" ? a : Number(String(a));
   const numB = typeof b === "number" ? b : Number(String(b));
   const esNumero =
-    !Number.isNaN(numA) && !Number.isNaN(numB) && String(a).trim() !== "" && String(b).trim() !== "";
+    !Number.isNaN(numA) &&
+    !Number.isNaN(numB) &&
+    String(a).trim() !== "" &&
+    String(b).trim() !== "";
   if (esNumero) return numA - numB;
 
   const fechaA = Date.parse(String(a));
   const fechaB = Date.parse(String(b));
-  if (!Number.isNaN(fechaA) && !Number.isNaN(fechaB) && ISO.test(String(a)) && ISO.test(String(b))) {
+  if (
+    !Number.isNaN(fechaA) &&
+    !Number.isNaN(fechaB) &&
+    ISO.test(String(a)) &&
+    ISO.test(String(b))
+  ) {
     return fechaA - fechaB;
   }
 
@@ -304,19 +321,26 @@ export function Tabla({
   );
 
   const [elegidas, setElegidas] = useState<string[] | null>(
-    () => leerElegidas(recuerdaComo) ?? (columnasIniciales?.length ? columnasIniciales : null),
+    () =>
+      leerElegidas(recuerdaComo) ??
+      (columnasIniciales?.length ? columnasIniciales : null),
   );
   const [eligiendo, setEligiendo] = useState(false);
   // Por qué columna se ordena, y en qué sentido. `null` es «como vino»: el
   // orden del servidor, que suele ser el relevante —lo más reciente, lo que
   // más urge— y que no hay que perder sólo por ofrecer ordenar.
-  const [orden, setOrden] = useState<Orden>(() => leerOrden(recuerdaComo) ?? ordenInicial ?? null);
+  const [orden, setOrden] = useState<Orden>(
+    () => leerOrden(recuerdaComo) ?? ordenInicial ?? null,
+  );
 
   // Al cambiar de clave —otra pestaña, otra vista guardada— se vuelve a
   // sembrar: sin esto, abrir una vista con sus propias columnas seguiría
   // enseñando las de la anterior, porque el estado se inicializa una vez.
   useEffect(() => {
-    setElegidas(leerElegidas(recuerdaComo) ?? (columnasIniciales?.length ? columnasIniciales : null));
+    setElegidas(
+      leerElegidas(recuerdaComo) ??
+        (columnasIniciales?.length ? columnasIniciales : null),
+    );
     setOrden(leerOrden(recuerdaComo) ?? ordenInicial ?? null);
     // `columnasIniciales` y `ordenInicial` NO entran en las dependencias: los
     // reconstruye quien llama en cada pintado, así que entrarían siempre y
@@ -331,9 +355,9 @@ export function Tabla({
           ? { columna, sentido: "asc" }
           : previo.sentido === "asc"
             ? { columna, sentido: "desc" }
-            // Tercer clic: se vuelve al orden del servidor. Sin esta vuelta,
-            // una vez ordenas no hay forma de recuperar el orden que traía.
-            : null;
+            : // Tercer clic: se vuelve al orden del servidor. Sin esta vuelta,
+              // una vez ordenas no hay forma de recuperar el orden que traía.
+              null;
       guardarOrden(recuerdaComo, siguiente);
       return siguiente;
     });
@@ -387,10 +411,15 @@ export function Tabla({
     const q = busqueda.trim().toLowerCase();
     if (!q) return filas;
     return filas.filter((f) =>
-      Object.values(f).some((v) => tieneDato(v) && String(v).toLowerCase().includes(q)),
+      Object.values(f).some(
+        (v) => tieneDato(v) && String(v).toLowerCase().includes(q),
+      ),
     );
   }, [filas, busqueda]);
-  const filasOrdenadas = useMemo(() => ordenar(filasBuscadas, orden), [filasBuscadas, orden]);
+  const filasOrdenadas = useMemo(
+    () => ordenar(filasBuscadas, orden),
+    [filasBuscadas, orden],
+  );
 
   const hayQueElegir = disponibles.length > cabeceras.length || elegidas;
 
@@ -400,9 +429,7 @@ export function Tabla({
         <div
           className={cn(
             "flex items-center justify-between gap-2",
-            pegada
-              ? "border-x border-ink-dim/50 bg-paper px-3 py-2"
-              : "mb-2",
+            pegada ? "border-x border-ink-dim/50 bg-paper px-3 py-2" : "mb-2",
           )}
         >
           <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -423,13 +450,20 @@ export function Tabla({
                       cuantos: filasOrdenadas.length,
                       total: filas.length,
                     })
-                  : t("tabla.cuantosElementos", { count: filasOrdenadas.length })}
+                  : t("tabla.cuantosElementos", {
+                      count: filasOrdenadas.length,
+                    })}
                 {orden ? (
                   <>
                     {" · "}
-                    {t(orden.sentido === "asc" ? "tabla.ordenadoAsc" : "tabla.ordenadoDesc", {
-                      columna: humanizar(orden.columna),
-                    })}
+                    {t(
+                      orden.sentido === "asc"
+                        ? "tabla.ordenadoAsc"
+                        : "tabla.ordenadoDesc",
+                      {
+                        columna: humanizar(orden.columna),
+                      },
+                    )}
                   </>
                 ) : null}
               </p>
@@ -506,118 +540,129 @@ export function Tabla({
         <p
           className={cn(
             "text-dato text-ink-faint",
-            pegada ? "rounded-b border-x border-b border-ink-dim/50 bg-paper px-3 py-6 text-center" : "py-4",
+            pegada
+              ? "rounded-b border-x border-b border-ink-dim/50 bg-paper px-3 py-6 text-center"
+              : "py-4",
           )}
           role="status"
         >
           {t("tabla.nadaConEso", { que: busqueda.trim(), total: filas.length })}
         </p>
       ) : (
-      <Rejilla
-        acotada={!ocupaLaPantalla}
-        pegada={pegada}
-        titulo={titulo}
-        cabeceras={[
-          ...cabeceras.map((c) => (
-          <button
-            key={c}
-            type="button"
-            title={c}
-            onClick={() => alternarOrden(c)}
-            // `aria-sort` va en la celda, pero la celda la pone `Rejilla`; el
-            // botón declara su estado para que un lector de pantalla lo diga
-            // al llegar, que es cuando hace falta.
-            aria-label={
-              orden?.columna === c
-                ? t(orden.sentido === "asc" ? "tabla.ordenAsc" : "tabla.ordenDesc", {
-                    columna: humanizar(c),
-                  })
-                : t("tabla.ordenarPor", { columna: humanizar(c) })
-            }
-            className="inline-flex items-center gap-0.5 hover:text-ink"
-          >
-            {humanizar(c)}
-            {orden?.columna === c ? (
-              <Icono
-                nombre={orden.sentido === "asc" ? "arrow_upward" : "arrow_downward"}
-                tamano="sm"
-              />
-            ) : null}
-          </button>
-          )),
-          // La columna del menú no lleva rótulo visible —en Lightning tampoco—
-          // pero sí nombre accesible: sin él se anuncia como «columna 5» y no
-          // dice qué hay dentro.
-          ...(accionesDeFila
-            ? [
-                <span key="__acciones" className="sr-only">
-                  {t("tabla.accionesDeFila")}
-                </span>,
-              ]
-            : []),
-        ]}
-      >
-        <>
-          {filasOrdenadas.map((fila, i) => (
-            <tr
-              key={clave(fila, i)}
-              className="border-b border-ink-dim/30 last:border-0 hover:bg-paper-light"
-            >
-              {cabeceras.map((c, columna) => {
-                const destino = columna === 0 && enlace ? enlace(fila) : null;
-                const editable = esquemaDeCampo?.(c);
-                // La primera columna NO se edita en línea: lleva el enlace que
-                // abre el registro, y meter un lápiz al lado del nombre pone
-                // dos acciones distintas a tres píxeles una de otra.
-                if (editable && alEditarCelda && columna > 0) {
+        <Rejilla
+          acotada={!ocupaLaPantalla}
+          pegada={pegada}
+          titulo={titulo}
+          cabeceras={[
+            ...cabeceras.map((c) => (
+              <button
+                key={c}
+                type="button"
+                title={c}
+                onClick={() => alternarOrden(c)}
+                // `aria-sort` va en la celda, pero la celda la pone `Rejilla`; el
+                // botón declara su estado para que un lector de pantalla lo diga
+                // al llegar, que es cuando hace falta.
+                aria-label={
+                  orden?.columna === c
+                    ? t(
+                        orden.sentido === "asc"
+                          ? "tabla.ordenAsc"
+                          : "tabla.ordenDesc",
+                        {
+                          columna: humanizar(c),
+                        },
+                      )
+                    : t("tabla.ordenarPor", { columna: humanizar(c) })
+                }
+                className="inline-flex items-center gap-0.5 hover:text-ink"
+              >
+                {humanizar(c)}
+                {orden?.columna === c ? (
+                  <Icono
+                    nombre={
+                      orden.sentido === "asc"
+                        ? "arrow_upward"
+                        : "arrow_downward"
+                    }
+                    tamano="sm"
+                  />
+                ) : null}
+              </button>
+            )),
+            // La columna del menú no lleva rótulo visible —en Lightning tampoco—
+            // pero sí nombre accesible: sin él se anuncia como «columna 5» y no
+            // dice qué hay dentro.
+            ...(accionesDeFila
+              ? [
+                  <span key="__acciones" className="sr-only">
+                    {t("tabla.accionesDeFila")}
+                  </span>,
+                ]
+              : []),
+          ]}
+        >
+          <>
+            {filasOrdenadas.map((fila, i) => (
+              <tr
+                key={clave(fila, i)}
+                className="border-b border-ink-dim/30 last:border-0 hover:bg-paper-light"
+              >
+                {cabeceras.map((c, columna) => {
+                  const destino = columna === 0 && enlace ? enlace(fila) : null;
+                  const editable = esquemaDeCampo?.(c);
+                  // La primera columna NO se edita en línea: lleva el enlace que
+                  // abre el registro, y meter un lápiz al lado del nombre pone
+                  // dos acciones distintas a tres píxeles una de otra.
+                  if (editable && alEditarCelda && columna > 0) {
+                    return (
+                      <Casilla key={c} enUnaLinea>
+                        <CeldaEditable
+                          valor={fila[c]}
+                          campo={c}
+                          esquema={editable}
+                          alGuardar={(v) => alEditarCelda(fila, c, v)}
+                        >
+                          <Celda valor={fila[c]} campo={c} />
+                        </CeldaEditable>
+                      </Casilla>
+                    );
+                  }
                   return (
                     <Casilla key={c} enUnaLinea>
-                      <CeldaEditable
-                        valor={fila[c]}
-                        campo={c}
-                        esquema={editable}
-                        alGuardar={(v) => alEditarCelda(fila, c, v)}
-                      >
+                      {destino ? (
+                        // Enlace de contenido, no de acción: `btn-link` es un
+                        // micro-enlace monoespaciado en mayúsculas, y el nombre
+                        // de una cuenta puesto ahí deja de parecer un nombre.
+                        <Link
+                          to={destino}
+                          className="text-accent hover:underline"
+                        >
+                          <Celda valor={fila[c]} campo={c} />
+                        </Link>
+                      ) : (
                         <Celda valor={fila[c]} campo={c} />
-                      </CeldaEditable>
+                      )}
                     </Casilla>
                   );
-                }
-                return (
-                  <Casilla key={c} enUnaLinea>
-                    {destino ? (
-                      // Enlace de contenido, no de acción: `btn-link` es un
-                      // micro-enlace monoespaciado en mayúsculas, y el nombre
-                      // de una cuenta puesto ahí deja de parecer un nombre.
-                      <Link
-                        to={destino}
-                        className="text-accent hover:underline"
-                      >
-                        <Celda valor={fila[c]} campo={c} />
-                      </Link>
-                    ) : (
-                      <Celda valor={fila[c]} campo={c} />
-                    )}
+                })}
+                {accionesDeFila ? (
+                  <Casilla enUnaLinea>
+                    <div className="flex justify-end">
+                      <MenuDeAcciones
+                        opciones={accionesDeFila(fila)}
+                        etiqueta={t("tabla.accionesDeFila")}
+                        soloIcono
+                        haciaLaIzquierda
+                        clase="btn-icon !h-7 !w-7 text-ink-muted hover:bg-paper-light hover:text-ink"
+                      />
+                    </div>
                   </Casilla>
-                );
-              })}
-              {accionesDeFila ? (
-                <Casilla enUnaLinea>
-                  <div className="flex justify-end">
-                    <MenuDeAcciones
-                      opciones={accionesDeFila(fila)}
-                      etiqueta={t("tabla.accionesDeFila")}
-                      soloIcono
-                      haciaLaIzquierda
-                      clase="btn-icon !h-7 !w-7 text-ink-muted hover:bg-paper-light hover:text-ink"
-                    />
-                  </div>
-                </Casilla>
-              ) : null}
-            </tr>
-          ))}
-        </>
-      </Rejilla>
+                ) : null}
+              </tr>
+            ))}
+          </>
+        </Rejilla>
       )}
       {escondidas > 0 ? (
         <p className="mt-1.5 text-rotulo text-ink-faint">

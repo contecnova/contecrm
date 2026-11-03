@@ -322,6 +322,31 @@ Abre las 58 pantallas contra la pila local y, de cada listado, su primera
 ficha **con todas sus pestañas**. Dice dos cosas: cuáles revientan al pintar y
 cuáles enseñan el dato en crudo.
 
+## Dos vacíos de caja grande seguidos
+
+El vacío tiene dos formas: la de **pantalla** —tarjeta con icono grande y
+texto centrado, unos 180 px— para cuando no hay nada que hacer ahí, y la de
+**sección** —una línea— para un bloque de una pantalla que sí tiene más cosas.
+
+**Medido el 03-11-2026**: `/entornos` pintaba cuatro de las grandes seguidas,
+760 px de nada; `/ciclo-de-vida` tres, y su primer dato caía a 945 px. Cuatro
+«no hay nada» seguidos no dicen «no tienes nada»: dicen «esto está vacío», que
+es otra cosa y desanima igual.
+
+Dos lecciones de la medición, las dos de la sonda y no del producto:
+
+- **Contarlos por el código engaña.** `Entornos.tsx` tiene **un** `<Vacio>` en
+  el fichero y pintaba cuatro, porque va dentro de un bucle por entorno. La
+  regla «si un fichero tiene dos o más, todos son de sección» acertó en 30 de
+  35 sitios y se saltó justo ése.
+- **Contarlos por el alto y el texto cuenta de más.** La primera versión de la
+  medida buscaba bloques altos con palabras de ausencia y dio por vacíos
+  bloques que no lo eran. Ahora el componente se marca —`data-vacio="pantalla"`
+  y `"seccion"`— y el barrido los cuenta por su marca.
+
+Y cinco de los 35 volvieron a ser grandes a mano, porque ahí el vacío **es**
+la pantalla: un listado sin filas, un módulo que no existe, «elige un área».
+
 ## Dos entradas del menú no se llaman igual
 
 `frontend/src/pruebas/dos_entradas_no_se_llaman_igual.test.ts`
@@ -460,6 +485,18 @@ plantado sale nombrado y con código 1.
 
 Y `CRM_SOLO=/procesos,/m/cuentas` recorta el barrido a lo que se nombre, que
 es lo que permite perseguir un fallo sin esperar el recorrido entero.
+
+**El recuento de pantallas tiene suelo, y por algo.** El 03-11-2026 el barrido
+pasó de 58 destinos a 57 y siguió en verde: el patrón que saca los módulos de
+`modulos.ts` exigía que `titulo:` fuera en la línea siguiente a `ruta:`, y
+poner un comentario entre los dos dejó una pantalla fuera **en silencio**. Al
+aflojarlo salieron **25 módulos donde antes se veían 23**: los que faltaban
+eran `/m/oportunidades` —uno de los módulos centrales del CRM— y `/m/canales`,
+y llevaban sin visitarse desde que se escribió el barrido.
+
+Ahora el recorrido falla si recoge menos de 55 destinos. El suelo no persigue
+el número exacto —una pantalla nueva entra sola— sino que el patrón deje de
+casar, que es cuando el barrido contesta «ninguna rota» sin haber mirado.
 
 **Por qué hace falta algo que no es un gate.** El 01-11-2026 se encontraron dos
 pantallas muertas —la ficha de cualquier oportunidad con metodología activa y

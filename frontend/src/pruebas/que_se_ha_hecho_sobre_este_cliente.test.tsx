@@ -42,7 +42,8 @@ vi.mock("@/lib/api", async () => {
   };
 });
 
-const { CicloDeVidaDelCliente } = await import("@/paginas/CicloDeVidaDelCliente");
+const { CicloDeVidaDelCliente } =
+  await import("@/paginas/CicloDeVidaDelCliente");
 
 const SIMULADA = {
   id: "o-1",
@@ -52,7 +53,10 @@ const SIMULADA = {
   origen_id: "t-1",
   destino_id: null,
   bloques: ["configuracion", "catalogo"],
-  plan: { recuentos: { cuentas: 120, contactos: 400 }, avisos: ["Sin anonimizar"] },
+  plan: {
+    recuentos: { cuentas: 120, contactos: 400 },
+    avisos: ["Sin anonimizar"],
+  },
   conflictos: [],
   motivo_fin: "",
   created_at: "2026-10-29T08:00:00Z",
@@ -76,12 +80,15 @@ beforeEach(() => {
 describe("lo simulado y lo hecho", () => {
   it("van en secciones distintas", async () => {
     render(<CicloDeVidaDelCliente />);
-    await screen.findByText("ciclovida.hechas");
+    // Por el DATO y no por el encabezado: «ciclovida.hechas» es el título de
+    // la sección y ya está en el primer pintado, así que esperar por él
+    // resuelve antes de que llegue la respuesta.
+    expect(
+      await screen.findByText('ciclovida.movio:{"bloques":2,"filas":520}'),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ciclovida.hechas")).toBeInTheDocument();
     expect(screen.getByText("ciclovida.simuladas")).toBeInTheDocument();
     // La ejecutada cuenta lo que MOVIÓ; la simulada, lo que SACARÍA.
-    expect(
-      screen.getByText('ciclovida.movio:{"bloques":2,"filas":520}'),
-    ).toBeInTheDocument();
     expect(
       screen.getByText('ciclovida.sacaria:{"bloques":2,"filas":520}'),
     ).toBeInTheDocument();
@@ -101,29 +108,41 @@ describe("lo simulado y lo hecho", () => {
       await screen.findByText('ciclovida.sacaria:{"bloques":2,"filas":520}'),
     ).toBeInTheDocument();
     expect(screen.getByText("ciclovida.sinHechas")).toBeInTheDocument();
-    expect(screen.queryByText("ciclovida.sinSimuladas")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("ciclovida.sinSimuladas"),
+    ).not.toBeInTheDocument();
   });
 
   it("una fallida enseña su motivo", async () => {
     operaciones = [
-      { ...EJECUTADA, estado: "fallida", motivo_fin: "El destino ya tenía datos" },
+      {
+        ...EJECUTADA,
+        estado: "fallida",
+        motivo_fin: "El destino ya tenía datos",
+      },
     ];
     render(<CicloDeVidaDelCliente />);
-    await screen.findByText("ciclovida.hechas");
-    expect(screen.getByText("El destino ya tenía datos")).toBeInTheDocument();
+    // **Se espera por el DATO, no por el encabezado.** «ciclovida.hechas» es
+    // el título de la sección y ya está en el primer pintado, así que
+    // `findByText` resuelve antes de que llegue la respuesta y lo que se
+    // comprueba después es el árbol de antes. Salía verde o rojo según la
+    // carga de la máquina: cazado el 03-11-2026 corriendo la suite entera.
+    expect(
+      await screen.findByText("El destino ya tenía datos"),
+    ).toBeInTheDocument();
   });
 
   it("los avisos del plan se pintan en la simulación, que es cuando sirven", async () => {
     render(<CicloDeVidaDelCliente />);
-    await screen.findByText("ciclovida.simuladas");
-    expect(screen.getByText("Sin anonimizar")).toBeInTheDocument();
+    expect(await screen.findByText("Sin anonimizar")).toBeInTheDocument();
   });
 
   it("los conflictos sin resolver se señalan", async () => {
     operaciones = [{ ...EJECUTADA, conflictos: [{ que: "claves repetidas" }] }];
     render(<CicloDeVidaDelCliente />);
-    await screen.findByText("ciclovida.hechas");
-    expect(screen.getByText('ciclovida.conflictos:{"cuantos":1}')).toBeInTheDocument();
+    expect(
+      await screen.findByText('ciclovida.conflictos:{"cuantos":1}'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -168,7 +187,9 @@ describe("las migraciones de modalidad", () => {
     ];
     render(<CicloDeVidaDelCliente />);
     await screen.findByText("ciclovida.migraciones");
-    expect(screen.queryByText(/ciclovida\.ventanaAbierta/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/ciclovida\.ventanaAbierta/),
+    ).not.toBeInTheDocument();
     // «Verificada» con diferencias no está bien: está medida.
     expect(
       screen.getByText('ciclovida.diferencias:{"cuantas":1}'),
@@ -177,14 +198,20 @@ describe("las migraciones de modalidad", () => {
 
   it("sin migraciones lo dice", async () => {
     render(<CicloDeVidaDelCliente />);
-    expect(await screen.findByText("ciclovida.sinMigraciones")).toBeInTheDocument();
+    expect(
+      await screen.findByText("ciclovida.sinMigraciones"),
+    ).toBeInTheDocument();
   });
 });
 
 describe("los perfiles de industria", () => {
   it("se listan con su clave", async () => {
     perfiles = [
-      { clave: "industrial", nombre: "Industrial", descripcion: "Pipelines de proyecto" },
+      {
+        clave: "industrial",
+        nombre: "Industrial",
+        descripcion: "Pipelines de proyecto",
+      },
     ];
     render(<CicloDeVidaDelCliente />);
     expect(await screen.findByText("Industrial")).toBeInTheDocument();

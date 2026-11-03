@@ -91,7 +91,10 @@ export function Coste() {
         icono="payments"
       />
 
-      <label className="mt-4 block text-dato text-ink-muted" htmlFor="coste-lineas">
+      <label
+        className="mt-4 block text-dato text-ink-muted"
+        htmlFor="coste-lineas"
+      >
         {t("coste.lineas")}
       </label>
       <textarea
@@ -121,8 +124,13 @@ export function Coste() {
       {fallo ? <Fallo error={fallo} /> : null}
 
       {margen ? (
-        <section className="mt-6 rounded-xl border border-ink-dim/60 bg-paper p-4" role="status">
-          <h2 className="text-titulin font-medium text-ink">{t("coste.margen")}</h2>
+        <section
+          className="mt-6 rounded-xl border border-ink-dim/60 bg-paper p-4"
+          role="status"
+        >
+          <h2 className="text-titulin font-medium text-ink">
+            {t("coste.margen")}
+          </h2>
           <p
             className={`mt-2 text-grande ${Number(margen.margen) < 0 ? "text-danger" : "text-ink"}`}
           >
@@ -130,7 +138,9 @@ export function Coste() {
           </p>
           <p className="mt-1 text-dato text-ink-muted">{margen.porque}</p>
           {margen.necesita_aprobacion ? (
-            <p className="mt-2 text-dato text-warning">{t("coste.necesitaAprobacion")}</p>
+            <p className="mt-2 text-dato text-warning">
+              {t("coste.necesitaAprobacion")}
+            </p>
           ) : null}
           {/* Un margen incompleto no se presenta como el margen: se dice qué
               falta por medir. */}
@@ -142,14 +152,22 @@ export function Coste() {
 
       {capacidad ? (
         <section className="mt-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
-          <h2 className="text-titulin font-medium text-ink">{t("coste.capacidad")}</h2>
+          <h2 className="text-titulin font-medium text-ink">
+            {t("coste.capacidad")}
+          </h2>
           <dl className="mt-2 grid grid-cols-2 gap-y-1 text-dato">
             <dt className="text-ink-muted">{t("coste.libre")}</dt>
             <dd className="text-ink">{capacidad.libre}</dd>
             <dt className="text-ink-muted">{t("coste.enOfertas")}</dt>
             <dd className="text-ink">{capacidad.en_ofertas_abiertas}</dd>
             <dt className="text-ink-muted">{t("coste.siSeGananTodas")}</dt>
-            <dd className={Number(capacidad.libre_si_se_ganan_todas) < 0 ? "text-warning" : "text-ink"}>
+            <dd
+              className={
+                Number(capacidad.libre_si_se_ganan_todas) < 0
+                  ? "text-warning"
+                  : "text-ink"
+              }
+            >
               {capacidad.libre_si_se_ganan_todas}
             </dd>
           </dl>

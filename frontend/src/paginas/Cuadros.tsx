@@ -28,7 +28,10 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Medidor } from "@/componentes/graficas/Medidor";
-import { RespuestaAnalitica, type Payload } from "@/componentes/RespuestaAnalitica";
+import {
+  RespuestaAnalitica,
+  type Payload,
+} from "@/componentes/RespuestaAnalitica";
 
 interface Componente {
   informe?: string;
@@ -150,7 +153,11 @@ export function Cuadros() {
   if (cuadros.length === 0)
     return (
       <div className="p-4">
-        <Vacio titulo={t("cuadros.ninguno")} detalle={t("cuadros.ningunoDetalle")} />
+        {/* Grande: sin ningún cuadro, esto es la pantalla. */}
+        <Vacio
+          titulo={t("cuadros.ninguno")}
+          detalle={t("cuadros.ningunoDetalle")}
+        />
       </div>
     );
 
@@ -165,6 +172,7 @@ export function Cuadros() {
     <div className="flex flex-col gap-4">
       <CabeceraPagina
         titulo={t("cuadros.titulo")}
+        entradilla={t("cuadros.entradilla")}
         icono="dashboard"
         acciones={
           <>
@@ -188,11 +196,17 @@ export function Cuadros() {
       />
 
       {actual.descripcion ? (
-        <p className="max-w-prose text-dato text-ink-muted">{actual.descripcion}</p>
+        <p className="max-w-prose text-dato text-ink-muted">
+          {actual.descripcion}
+        </p>
       ) : null}
 
       {actual.componentes.length === 0 ? (
-        <Vacio titulo={t("cuadros.sinComponentes")} detalle={t("cuadros.sinComponentesDetalle")} />
+        <Vacio
+          compacto
+          titulo={t("cuadros.sinComponentes")}
+          detalle={t("cuadros.sinComponentesDetalle")}
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {actual.componentes.map((c, i) => (
@@ -203,7 +217,6 @@ export function Cuadros() {
     </div>
   );
 }
-
 
 /**
  * Un componente del cuadro: ejecuta su informe y lo pinta.
@@ -237,14 +250,21 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
           // Se dice CUÁL falta, no «no se pudo cargar»: un cuadro que apunta a un
           // informe borrado es un problema de configuración, y con el nombre
           // delante se arregla en un minuto.
-          setFallo(new Error(t("cuadros.informeNoExiste", { clave: componente.informe })));
+          setFallo(
+            new Error(
+              t("cuadros.informeNoExiste", { clave: componente.informe }),
+            ),
+          );
           return;
         }
-        const r = await llamar<Resultado>(`/api/v1/informes/${informe.id}/ejecutar`, {
-          metodo: "POST",
-          cuerpo: {},
-          signal: control.signal,
-        });
+        const r = await llamar<Resultado>(
+          `/api/v1/informes/${informe.id}/ejecutar`,
+          {
+            metodo: "POST",
+            cuerpo: {},
+            signal: control.signal,
+          },
+        );
         setResultado(r.datos);
         setInformeId(informe.id);
       } catch (e) {
@@ -276,13 +296,17 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
         { metodo: "POST", cuerpo: { formato: "csv" } },
       );
       const contenido = r.datos.export?.contenido ?? "";
-      const url = URL.createObjectURL(new Blob([contenido], { type: "text/csv;charset=utf-8" }));
+      const url = URL.createObjectURL(
+        new Blob([contenido], { type: "text/csv;charset=utf-8" }),
+      );
       const enlace = document.createElement("a");
       enlace.href = url;
       enlace.download = `${componente.informe ?? "informe"}.csv`;
       enlace.click();
       URL.revokeObjectURL(url);
-      setBajado(t("cuadros.bajado", { filas: (contenido.split("\n").length || 1) - 2 }));
+      setBajado(
+        t("cuadros.bajado", { filas: (contenido.split("\n").length || 1) - 2 }),
+      );
     } catch (e) {
       setFallo(e);
     } finally {
@@ -293,7 +317,9 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
   return (
     <article className="rounded-lg border border-ink-dim/40 bg-paper-light p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-titulo text-ink">{componente.titulo ?? componente.informe ?? componente.tipo}</h2>
+        <h2 className="text-titulo text-ink">
+          {componente.titulo ?? componente.informe ?? componente.tipo}
+        </h2>
         <span className="flex shrink-0 items-center gap-2">
           {/* La exportación existía en la API y no se podía pedir desde ninguna
               pantalla: había que llamarla a mano. Y llevaba tiempo rota —las
@@ -309,18 +335,24 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
               {bajando ? t("cuadros.bajando") : t("cuadros.descargar")}
             </button>
           ) : null}
-          <span className="text-rotulo uppercase text-ink-faint">{componente.tipo}</span>
+          <span className="text-rotulo uppercase text-ink-faint">
+            {componente.tipo}
+          </span>
         </span>
       </div>
       {/* Que un componente ignore el filtro global se DICE: si no, quien cambia
           el trimestre y ve una cifra que no se mueve concluye que el filtro no
           funciona. */}
       {componente.ignora_filtros ? (
-        <p className="mt-1 text-rotulo text-ink-faint">{t("cuadros.ignoraFiltros")}</p>
+        <p className="mt-1 text-rotulo text-ink-faint">
+          {t("cuadros.ignoraFiltros")}
+        </p>
       ) : null}
 
       {componente.tipo === "texto" ? (
-        <p className="mt-2 text-dato text-ink-muted">{componente.texto ?? ""}</p>
+        <p className="mt-2 text-dato text-ink-muted">
+          {componente.texto ?? ""}
+        </p>
       ) : fallo ? (
         <Fallo error={fallo} />
       ) : !payload ? (
@@ -343,21 +375,29 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
           {/* Un informe cortado se dice. Leído como el total, se toman
               decisiones con la mitad de los datos. */}
           {resultado?.truncado ? (
-            <p className="mt-2 text-rotulo text-ink-faint">{t("cuadros.truncado")}</p>
+            <p className="mt-2 text-rotulo text-ink-faint">
+              {t("cuadros.truncado")}
+            </p>
           ) : null}
           {resultado?.campos_retirados?.length ? (
             <p className="mt-1 text-rotulo text-ink-faint">
-              {t("cuadros.camposRetirados", { campos: resultado.campos_retirados.join(", ") })}
+              {t("cuadros.camposRetirados", {
+                campos: resultado.campos_retirados.join(", "),
+              })}
             </p>
           ) : null}
           {/* Estos dos van con el texto normal y no en gris claro: no son una
               nota al pie, son la advertencia de que la cifra de arriba no
               contesta la pregunta que parece contestar. */}
           {resultado?.aviso_datos ? (
-            <p className="mt-1 text-dato text-ink-muted">{resultado.aviso_datos}</p>
+            <p className="mt-1 text-dato text-ink-muted">
+              {resultado.aviso_datos}
+            </p>
           ) : null}
           {resultado?.aviso_plan ? (
-            <p className="mt-1 text-dato text-ink-muted">{resultado.aviso_plan}</p>
+            <p className="mt-1 text-dato text-ink-muted">
+              {resultado.aviso_plan}
+            </p>
           ) : null}
           {/* Siempre en el árbol, aunque vacío: una región de estado que
               aparece a la vez que su texto puede no llegar a leerse. */}
@@ -401,7 +441,8 @@ function aPayload(componente: Componente, resultado: Resultado): Payload {
   if (tipo === "kpi_card") {
     const clave = componente.metrica ?? columnas[columnas.length - 1] ?? "";
     const total = data.reduce(
-      (suma, fila) => suma + (typeof fila[clave] === "number" ? (fila[clave] as number) : 0),
+      (suma, fila) =>
+        suma + (typeof fila[clave] === "number" ? (fila[clave] as number) : 0),
       0,
     );
     return {

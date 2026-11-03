@@ -195,8 +195,12 @@ export function CabeceraDeLista({
   const { t } = useTranslation();
 
   // La papelera y demás pestañas con icono viven fuera del desplegable.
-  const normales = recursos.map((r, i) => ({ r, i })).filter(({ r }) => !r.icono);
-  const conIcono = recursos.map((r, i) => ({ r, i })).filter(({ r }) => r.icono);
+  const normales = recursos
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => !r.icono);
+  const conIcono = recursos
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => r.icono);
   const actual = recursos[activo];
   const hayQueElegirObjeto = normales.length > 1;
   const hayVistas = Boolean(alElegirVista);
@@ -205,11 +209,19 @@ export function CabeceraDeLista({
   // El rótulo pequeño: el objeto. Cuando el módulo se llama igual que su
   // recurso —«Cuentas y contactos» / «Cuentas»— se dice una sola vez: la misma
   // palabra dos veces en dos tamaños parece un fallo.
-  const mismoNombre = modulo.toLowerCase() === (actual?.nombre ?? "").toLowerCase();
-  const rotuloDelObjeto = mismoNombre ? modulo : `${modulo} · ${actual?.nombre ?? ""}`;
+  const mismoNombre =
+    modulo.toLowerCase() === (actual?.nombre ?? "").toLowerCase();
+  const rotuloDelObjeto = mismoNombre
+    ? modulo
+    : `${modulo} · ${actual?.nombre ?? ""}`;
 
   return (
-    <header className={cn("card px-4 py-3", pegada ? "mb-0 rounded-b-none border-b-0" : "mb-3")}>
+    <header
+      className={cn(
+        "card px-4 py-3",
+        pegada ? "mb-0 rounded-b-none border-b-0" : "mb-3",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {/* El cuadrado con el color del objeto, relleno y con el símbolo en
@@ -224,7 +236,10 @@ export function CabeceraDeLista({
           <div className="min-w-0">
             {/* Arriba, QUÉ OBJETO. Desplegable sólo si hay más de uno. */}
             {hayQueElegirObjeto ? (
-              <Desplegable etiqueta={t("vistas.queObjeto")} rotulo={rotuloDelObjeto}>
+              <Desplegable
+                etiqueta={t("vistas.queObjeto")}
+                rotulo={rotuloDelObjeto}
+              >
                 {(cerrar) => (
                   <>
                     {normales.map(({ r, i }) => (
@@ -252,7 +267,11 @@ export function CabeceraDeLista({
                 cada día. Sin vistas guardadas dice «Todo», que es el listado
                 completo: lo que había antes de que esto existiera. */}
             {hayVistas ? (
-              <Desplegable etiqueta={t("vistas.queVista")} rotulo={nombreDeLaVista} grande>
+              <Desplegable
+                etiqueta={t("vistas.queVista")}
+                rotulo={nombreDeLaVista}
+                grande
+              >
                 {(cerrar) => (
                   <>
                     <Opcion
@@ -343,7 +362,9 @@ export function CabeceraDeLista({
               aria-label={r.nombre}
               className={cn(
                 "btn-icon",
-                i === activo ? "bg-accent/10 text-accent" : "text-ink-muted hover:bg-paper-light",
+                i === activo
+                  ? "bg-accent/10 text-accent"
+                  : "text-ink-muted hover:bg-paper-light",
               )}
             >
               <Icono nombre={r.icono!} />

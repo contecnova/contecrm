@@ -59,7 +59,9 @@ describe("cobertura de la interfaz", () => {
   it("lo que la consola enseña por ser de administración cuenta como enseñado", () => {
     // La consola se construye de la propia superficie, así que todo lo marcado
     // como administración ya tiene pantalla por construcción.
-    const informe = calcular(superficie([op("/api/v1/loquesea", { administracion: true })]));
+    const informe = calcular(
+      superficie([op("/api/v1/loquesea", { administracion: true })]),
+    );
     expect(informe.sinPantalla).toEqual([]);
   });
 
@@ -73,6 +75,9 @@ describe("cobertura de la interfaz", () => {
         op("/api/v1/mucho/{id}/algo"),
       ]),
     );
-    expect(informe.sinPantalla.map((r) => r.recurso)).toEqual(["mucho", "poco"]);
+    expect(informe.sinPantalla.map((r) => r.recurso)).toEqual([
+      "mucho",
+      "poco",
+    ]);
   });
 });

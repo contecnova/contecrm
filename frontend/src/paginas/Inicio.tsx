@@ -72,7 +72,9 @@ interface Etapa {
  * diferirlo no retrasa nada que se vea.
  */
 const Grafica = lazy(() =>
-  import("@/componentes/graficas/Grafica").then((m) => ({ default: m.Grafica })),
+  import("@/componentes/graficas/Grafica").then((m) => ({
+    default: m.Grafica,
+  })),
 );
 
 /** El final del día de hoy, en ISO, para pedir «lo que vence antes de medianoche». */
@@ -138,7 +140,10 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
     )
       .then(setCierran)
       .catch(salvoCancelacion(() => setCierran([])));
-    listar<Oportunidad>("/api/v1/opportunities?mias=true&estado=abierta&limite=200", { signal })
+    listar<Oportunidad>(
+      "/api/v1/opportunities?mias=true&estado=abierta&limite=200",
+      { signal },
+    )
       .then(setEmbudo)
       .catch(salvoCancelacion(() => setEmbudo([])));
     listar<{ etapas?: Etapa[] }>("/api/v1/pipelines", { signal })
@@ -249,83 +254,87 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
            más alta de su fila, y un hueco así se lee como «falta algo». */
         <div className="grid items-start gap-4 lg:grid-cols-3">
           <div className="flex flex-col gap-4">
-          {/* Lo que ya se pasó. Primero y aparte: es lo único que no espera. */}
-          <Bloque
-            titulo={t("inicio.vencidas")}
-            icono="error"
-            tono="peligro"
-            vacio={t("inicio.nadaVencido")}
-            ver={{ a: "/m/actividades", texto: t("inicio.verTodas") }}
-            cuantos={vencidas?.length ?? 0}
-          >
-            {(vencidas || []).map((a) => (
-              <FilaActividad key={a.id} actividad={a} atrasada />
-            ))}
-          </Bloque>
+            {/* Lo que ya se pasó. Primero y aparte: es lo único que no espera. */}
+            <Bloque
+              titulo={t("inicio.vencidas")}
+              icono="error"
+              tono="peligro"
+              vacio={t("inicio.nadaVencido")}
+              ver={{ a: "/m/actividades", texto: t("inicio.verTodas") }}
+              cuantos={vencidas?.length ?? 0}
+            >
+              {(vencidas || []).map((a) => (
+                <FilaActividad key={a.id} actividad={a} atrasada />
+              ))}
+            </Bloque>
 
-          <Bloque
-            titulo={t("inicio.hoy")}
-            icono="event"
-            vacio={t("inicio.nadaHoy")}
-            ver={{ a: "/m/actividades", texto: t("inicio.verTodas") }}
-            cuantos={hoy?.length ?? 0}
-          >
-            {(hoy || []).map((a) => (
-              <FilaActividad key={a.id} actividad={a} />
-            ))}
-          </Bloque>
-
+            <Bloque
+              titulo={t("inicio.hoy")}
+              icono="event"
+              vacio={t("inicio.nadaHoy")}
+              ver={{ a: "/m/actividades", texto: t("inicio.verTodas") }}
+              cuantos={hoy?.length ?? 0}
+            >
+              {(hoy || []).map((a) => (
+                <FilaActividad key={a.id} actividad={a} />
+              ))}
+            </Bloque>
           </div>
 
           {/* La columna ancha: el embudo y lo que cierra. Va DESPUÉS en el
               marcado y antes en pantalla (`order`), para que en móvil —una
               sola columna— lo primero siga siendo lo que urge. */}
           <div className="flex flex-col gap-4 lg:col-span-2 lg:-order-1">
-          {veOportunidades ? (
-            <>
-              <Bloque
-                titulo={t("inicio.cierranEstaSemana")}
-                icono="flag"
-                vacio={t("inicio.nadaCierra")}
-                ver={{ a: "/embudo", texto: t("inicio.verEmbudo") }}
-                cuantos={cierran?.length ?? 0}
-              >
-                {(cierran || []).map((o) => (
-                  <li key={o.id} className="flex items-center justify-between gap-3 py-1">
-                    <Link
-                      to={`/m/oportunidades/oportunidad/${o.id}`}
-                      className="min-w-0 truncate text-dato text-accent hover:underline"
+            {veOportunidades ? (
+              <>
+                <Bloque
+                  titulo={t("inicio.cierranEstaSemana")}
+                  icono="flag"
+                  vacio={t("inicio.nadaCierra")}
+                  ver={{ a: "/embudo", texto: t("inicio.verEmbudo") }}
+                  cuantos={cierran?.length ?? 0}
+                >
+                  {(cierran || []).map((o) => (
+                    <li
+                      key={o.id}
+                      className="flex items-center justify-between gap-3 py-1"
                     >
-                      {o.nombre}
-                    </Link>
-                    <span className="shrink-0 font-mono text-rotulo text-ink-muted">
-                      {Number(o.importe || 0).toLocaleString(localizacion())}
-                    </span>
-                  </li>
-                ))}
-              </Bloque>
+                      <Link
+                        to={`/m/oportunidades/oportunidad/${o.id}`}
+                        className="min-w-0 truncate text-dato text-accent hover:underline"
+                      >
+                        {o.nombre}
+                      </Link>
+                      <span className="shrink-0 font-mono text-rotulo text-ink-muted">
+                        {Number(o.importe || 0).toLocaleString(localizacion())}
+                      </span>
+                    </li>
+                  ))}
+                </Bloque>
 
-              {/* El embudo, dibujado. Era una de las pantallas que enseñaba
+                {/* El embudo, dibujado. Era una de las pantallas que enseñaba
                   barras de `div` con el número al lado para todo. */}
-              {porEtapa.length > 0 ? (
-                // Sin `fallback` visible: el hueco dura lo que tarda un
-                // fichero pequeño ya en caché, y un «cargando…» que parpadea
-                // molesta más de lo que informa.
-                <Suspense fallback={null}>
-                <Grafica
-                  forma="embudo"
-                  titulo={t("inicio.miEmbudo")}
-                  datos={{
-                    filas: porEtapa,
-                    ejeX: "etapa",
-                    rotuloX: t("inicio.etapa"),
-                    series: [{ clave: "importe", rotulo: t("inicio.importe") }],
-                  }}
-                />
-                </Suspense>
-              ) : null}
-            </>
-          ) : null}
+                {porEtapa.length > 0 ? (
+                  // Sin `fallback` visible: el hueco dura lo que tarda un
+                  // fichero pequeño ya en caché, y un «cargando…» que parpadea
+                  // molesta más de lo que informa.
+                  <Suspense fallback={null}>
+                    <Grafica
+                      forma="embudo"
+                      titulo={t("inicio.miEmbudo")}
+                      datos={{
+                        filas: porEtapa,
+                        ejeX: "etapa",
+                        rotuloX: t("inicio.etapa"),
+                        series: [
+                          { clave: "importe", rotulo: t("inicio.importe") },
+                        ],
+                      }}
+                    />
+                  </Suspense>
+                ) : null}
+              </>
+            ) : null}
           </div>
         </div>
       )}
@@ -363,7 +372,11 @@ function Bloque({
           {/* El número va pegado al rótulo, no suelto en una tarjeta aparte:
               un contador sin su lista obliga a buscar a qué se refiere. */}
           {cuantos > 0 ? (
-            <span className={tono === "peligro" ? "badge badge-danger" : "badge badge-muted"}>
+            <span
+              className={
+                tono === "peligro" ? "badge badge-danger" : "badge badge-muted"
+              }
+            >
               {cuantos}
             </span>
           ) : null}
@@ -383,7 +396,13 @@ function Bloque({
   );
 }
 
-function FilaActividad({ actividad, atrasada }: { actividad: Actividad; atrasada?: boolean }) {
+function FilaActividad({
+  actividad,
+  atrasada,
+}: {
+  actividad: Actividad;
+  atrasada?: boolean;
+}) {
   const cuando = actividad.vence_at ? new Date(actividad.vence_at) : null;
   return (
     <li className="flex items-center justify-between gap-3 py-1">
@@ -398,7 +417,10 @@ function FilaActividad({ actividad, atrasada }: { actividad: Actividad; atrasada
           className={`shrink-0 text-rotulo ${atrasada ? "text-danger" : "text-ink-muted"}`}
           title={cuando.toLocaleString(localizacion())}
         >
-          {cuando.toLocaleDateString(localizacion(), { day: "numeric", month: "short" })}
+          {cuando.toLocaleDateString(localizacion(), {
+            day: "numeric",
+            month: "short",
+          })}
         </span>
       ) : null}
     </li>

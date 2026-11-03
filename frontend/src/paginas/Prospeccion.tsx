@@ -128,11 +128,15 @@ export function Prospeccion() {
       />
 
       <section className="card mb-4 p-4">
-        <h2 className="text-titulo font-medium text-ink">{t("prospeccion.aQuienLeToca")}</h2>
+        <h2 className="text-titulo font-medium text-ink">
+          {t("prospeccion.aQuienLeToca")}
+        </h2>
         {/* Con botón y no al abrir: pedirlo AVANZA el round-robin, así que
             una pantalla que lo pidiera sola repartiría reuniones cada vez que
             alguien la mira. */}
-        <p className="mt-1 text-rotulo text-ink-faint">{t("prospeccion.porqueBoton")}</p>
+        <p className="mt-1 text-rotulo text-ink-faint">
+          {t("prospeccion.porqueBoton")}
+        </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
             className="input-base"
@@ -151,7 +155,9 @@ export function Prospeccion() {
           </button>
         </div>
         <div role="status" aria-live="polite">
-          {sinNadie ? <p className="mt-2 text-dato text-warning">{sinNadie}</p> : null}
+          {sinNadie ? (
+            <p className="mt-2 text-dato text-warning">{sinNadie}</p>
+          ) : null}
           {turno ? (
             <div className="mt-2">
               <p className="font-mono text-dato text-ink">
@@ -175,23 +181,34 @@ export function Prospeccion() {
       </section>
 
       <section>
-        <h2 className="text-titulo font-medium text-ink">{t("prospeccion.plantillas")}</h2>
-        <p className="mt-1 text-rotulo text-ink-faint">{t("prospeccion.porqueConcluyente")}</p>
+        <h2 className="text-titulo font-medium text-ink">
+          {t("prospeccion.plantillas")}
+        </h2>
+        <p className="mt-1 text-rotulo text-ink-faint">
+          {t("prospeccion.porqueConcluyente")}
+        </p>
         {!rendimiento?.medible ? (
           <Vacio
+            compacto
             titulo={t("prospeccion.sinMedir")}
             detalle={t("prospeccion.sinMedirDetalle")}
           />
         ) : (
           <>
             {concluyentes.length === 0 ? (
-              <Vacio titulo={t("prospeccion.ningunaConcluyente")} detalle="" />
+              <Vacio
+                compacto
+                titulo={t("prospeccion.ningunaConcluyente")}
+                detalle=""
+              />
             ) : (
               <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
                 {concluyentes.map((p) => (
                   <li key={p.clave} className="card p-3">
                     <div className="flex flex-wrap items-baseline gap-2">
-                      <span className="flex-1 text-titulo text-ink">{p.nombre}</span>
+                      <span className="flex-1 text-titulo text-ink">
+                        {p.nombre}
+                      </span>
                       <span className="font-mono text-dato text-ink">
                         {t("prospeccion.tasas", {
                           respuesta: p.tasa_respuesta ?? "—",
@@ -208,7 +225,9 @@ export function Prospeccion() {
                       })}
                     </p>
                     {p.aviso_apertura ? (
-                      <p className="mt-1 text-rotulo text-ink-faint">{p.aviso_apertura}</p>
+                      <p className="mt-1 text-rotulo text-ink-faint">
+                        {p.aviso_apertura}
+                      </p>
                     ) : null}
                   </li>
                 ))}
@@ -226,7 +245,9 @@ export function Prospeccion() {
                 <ul className="lista-acotada mt-1 flex flex-col gap-1 pr-1">
                   {pocas.map((p) => (
                     <li key={p.clave} className="flex items-baseline gap-2">
-                      <span className="flex-1 text-dato text-ink-muted">{p.nombre}</span>
+                      <span className="flex-1 text-dato text-ink-muted">
+                        {p.nombre}
+                      </span>
                       <span className="font-mono text-rotulo text-ink-faint">
                         {t("prospeccion.envios", { enviados: p.enviados })}
                       </span>

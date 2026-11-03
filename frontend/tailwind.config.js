@@ -251,13 +251,17 @@ export default {
         // cualquiera de las 56 pasa a medir lo que toca sin tocarla. Por eso
         // los valores se dejan en los mismos nombres en vez de buscar y
         // reemplazar — un reemplazo se olvida de la pantalla que nadie tocó.
-        DEFAULT: "0.25rem",        // 4px — Lightning
-        sm: "0.125rem",            // 2px — insignias pequeñas
+        // **Dos valores y ya**, medido el 03-11-2026 al cerrar el rediseño:
+        // `sm` valía 2 px —un escalón que Lightning no tiene, para cinco
+        // casillas y dos cuadraditos de leyenda— y `3xl` valía 28 px sin que
+        // lo usara nadie. Un escalón que no se usa es uno que alguien usará
+        // el día que no mire, y entonces vuelve a haber cuatro radios.
+        DEFAULT: "0.25rem",        // 4px — Lightning: botones, campos, tarjetas
+        sm: "0.25rem",             // 4px
         md: "0.25rem",             // 4px
         lg: "0.25rem",             // 4px
         xl: "0.5rem",              // 8px — lo que flota: menús, diálogos
         "2xl": "0.5rem",           // 8px
-        "3xl": "1.75rem",          // 28px
       },
       animation: {
         "pulse-slow": "pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",

@@ -50,12 +50,16 @@ export function CabeceraPagina({
           </h1>
         </div>
         {entradilla ? (
-          <p className={`mt-2 max-w-3xl text-titulin text-ink-muted${icono ? " pl-[2.875rem]" : ""}`}>
+          <p
+            className={`mt-2 max-w-3xl text-titulin text-ink-muted${icono ? " pl-[2.875rem]" : ""}`}
+          >
             {entradilla}
           </p>
         ) : null}
       </div>
-      {acciones ? <div className="flex shrink-0 items-center gap-2">{acciones}</div> : null}
+      {acciones ? (
+        <div className="flex shrink-0 items-center gap-2">{acciones}</div>
+      ) : null}
     </header>
   );
 }

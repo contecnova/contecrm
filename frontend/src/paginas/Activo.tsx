@@ -242,14 +242,20 @@ export function Activo() {
                   {t("activo.cobertura")}
                 </h2>
                 {!cobertura ? (
-                  <Vacio titulo={t("activo.sinCobertura")} detalle="" />
+                  <Vacio
+                    compacto
+                    titulo={t("activo.sinCobertura")}
+                    detalle=""
+                  />
                 ) : !cobertura.concluyente ? (
                   /* Lo que de verdad decide: «no se sabe» no es «no». */
                   <>
                     <p className="mt-2 text-dato text-warning">
                       {t("activo.noConcluyente")}
                     </p>
-                    <p className="mt-1 text-dato text-ink">{cobertura.motivo}</p>
+                    <p className="mt-1 text-dato text-ink">
+                      {cobertura.motivo}
+                    </p>
                   </>
                 ) : (
                   <>
@@ -290,7 +296,7 @@ export function Activo() {
                   {t("activo.contador")}
                 </h2>
                 {!ficha || ficha.contador === null ? (
-                  <Vacio titulo={t("activo.sinContador")} detalle="" />
+                  <Vacio compacto titulo={t("activo.sinContador")} detalle="" />
                 ) : (
                   <>
                     <p className="mt-2 font-mono text-grande text-ink">
@@ -338,7 +344,7 @@ export function Activo() {
                   </p>
                 ) : null}
                 {eventos.length === 0 ? (
-                  <Vacio titulo={t("activo.sinEventos")} detalle="" />
+                  <Vacio compacto titulo={t("activo.sinEventos")} detalle="" />
                 ) : (
                   <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
                     {eventos.map((e, i) => (

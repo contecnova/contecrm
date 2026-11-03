@@ -99,10 +99,16 @@ export function ModuloInstalado() {
     llamar<Modulo>(`/api/v1/metadata/modulos/${clave}`, opciones)
       .then((r) => setModulo(r.datos))
       .catch(salvoCancelacion(setFallo));
-    void llamar<Integridad>(`/api/v1/metadata/modulos/${clave}/integridad`, opciones)
+    void llamar<Integridad>(
+      `/api/v1/metadata/modulos/${clave}/integridad`,
+      opciones,
+    )
       .then((r) => setIntegridad(r.datos))
       .catch(() => undefined);
-    void llamar<Telemetria>(`/api/v1/metadata/modulos/${clave}/telemetria`, opciones)
+    void llamar<Telemetria>(
+      `/api/v1/metadata/modulos/${clave}/telemetria`,
+      opciones,
+    )
       .then((r) => setTelemetria(r.datos))
       .catch(() => undefined);
     void llamar<Superficie>("/api/v1/metadata/modulos/superficie", opciones)
@@ -116,7 +122,9 @@ export function ModuloInstalado() {
   if (fallo) return <Fallo error={fallo} reintentar={cargar} />;
   if (!modulo) return <Cargando />;
 
-  const pantallas = (superficie?.pantallas ?? []).filter((p) => p.modulo === clave);
+  const pantallas = (superficie?.pantallas ?? []).filter(
+    (p) => p.modulo === clave,
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -147,7 +155,9 @@ export function ModuloInstalado() {
         {/* El espacio de nombres, que es lo que impide que dos módulos de
             sectores distintos se pisen un objeto llamado «pedido». */}
         <p className="mt-1 text-rotulo text-ink-muted">
-          {t("modulo.espacioDeNombres", { prefijo: modulo.espacio_de_nombres || modulo.clave })}
+          {t("modulo.espacioDeNombres", {
+            prefijo: modulo.espacio_de_nombres || modulo.clave,
+          })}
         </p>
         <p className="text-rotulo text-ink-muted">
           {Object.keys(modulo.depende_de ?? {}).length
@@ -157,7 +167,9 @@ export function ModuloInstalado() {
                   .join(", "),
               })
             : t("modulo.sinDependencias")}
-          {modulo.nucleo_minimo ? ` · ${t("modulo.nucleo", { version: modulo.nucleo_minimo })}` : ""}
+          {modulo.nucleo_minimo
+            ? ` · ${t("modulo.nucleo", { version: modulo.nucleo_minimo })}`
+            : ""}
         </p>
         {/* La huella: es lo que convierte «de quién es este módulo» en algo
             comprobable y no en una línea del manifiesto que cualquiera
@@ -175,14 +187,19 @@ export function ModuloInstalado() {
         {integridad?.medible === false ? (
           /* Y cuando no se puede comparar se DICE, con su motivo. Un «íntegro»
              calculado sobre nada es peor que un «no se sabe». */
-          <p className="text-titulo text-ink-muted" data-testid="modulo-integridad">
+          <p
+            className="text-titulo text-ink-muted"
+            data-testid="modulo-integridad"
+          >
             {integridad.motivo}
           </p>
         ) : integridad ? (
           <div data-testid="modulo-integridad">
             <p
               className={
-                integridad.integro ? "text-titulo text-success" : "text-titulo text-warning"
+                integridad.integro
+                  ? "text-titulo text-success"
+                  : "text-titulo text-warning"
               }
             >
               {integridad.integro ? t("modulo.integro") : t("modulo.tocado")}
@@ -225,7 +242,9 @@ export function ModuloInstalado() {
                 días de instalarlo es concluir sobre nada, y la lista invita a
                 hacerlo. */}
             {!telemetria.concluyente && telemetria.aviso ? (
-              <p className="mt-1 text-rotulo text-warning">{telemetria.aviso}</p>
+              <p className="mt-1 text-rotulo text-warning">
+                {telemetria.aviso}
+              </p>
             ) : null}
             {telemetria.sin_usar.length ? (
               <p className="mt-1 text-rotulo text-ink-muted">
@@ -237,7 +256,9 @@ export function ModuloInstalado() {
             {telemetria.modificados_por_el_cliente.length ? (
               <p className="text-rotulo text-ink-faint">
                 {t("modulo.ajustados", {
-                  cuales: telemetria.modificados_por_el_cliente.slice(0, 6).join(", "),
+                  cuales: telemetria.modificados_por_el_cliente
+                    .slice(0, 6)
+                    .join(", "),
                 })}
               </p>
             ) : null}
@@ -257,7 +278,10 @@ export function ModuloInstalado() {
             detalle={t("modulo.sinPantallasPorque")}
           />
         ) : (
-          <ul className="divide-y divide-ink-dim/30" data-testid="modulo-pantallas">
+          <ul
+            className="divide-y divide-ink-dim/30"
+            data-testid="modulo-pantallas"
+          >
             {pantallas.map((p) => (
               <li key={p.clave} className="py-1.5 text-titulo text-ink">
                 {p.titulo || p.clave}

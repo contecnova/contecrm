@@ -280,6 +280,7 @@ export function OrdenDeTrabajo() {
                 </h2>
                 {!parte ? (
                   <Vacio
+                    compacto
                     titulo={t("orden.sinParte")}
                     detalle={t("orden.sinParteDetalle")}
                   />
@@ -318,7 +319,11 @@ export function OrdenDeTrabajo() {
                   {t("orden.porqueDescartados")}
                 </p>
                 {!candidatos ? (
-                  <Vacio titulo={t("orden.sinCandidatos")} detalle="" />
+                  <Vacio
+                    compacto
+                    titulo={t("orden.sinCandidatos")}
+                    detalle=""
+                  />
                 ) : (
                   <>
                     <p className="mt-2 font-mono text-rotulo text-ink-muted">

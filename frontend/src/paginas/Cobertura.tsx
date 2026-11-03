@@ -31,11 +31,16 @@ export function Cobertura() {
 
   useEffect(() => {
     const control = new AbortController();
-    cargarSuperficie(control.signal).then(setSuperficie).catch(salvoCancelacion(setFallo));
+    cargarSuperficie(control.signal)
+      .then(setSuperficie)
+      .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, []);
 
-  const informe = useMemo(() => (superficie ? calcular(superficie) : null), [superficie]);
+  const informe = useMemo(
+    () => (superficie ? calcular(superficie) : null),
+    [superficie],
+  );
 
   if (fallo) return <Fallo error={fallo} />;
   if (!informe) return <Cargando />;
@@ -65,9 +70,13 @@ export function Cobertura() {
       <h2 className="mt-8 text-dato font-medium uppercase tracking-wide text-ink-faint">
         {t("cobertura.escondido")}
       </h2>
-      <p className="mt-1 text-dato text-ink-faint">{t("cobertura.escondidoIntro")}</p>
+      <p className="mt-1 text-dato text-ink-faint">
+        {t("cobertura.escondidoIntro")}
+      </p>
       {informe.sinPantalla.length === 0 ? (
-        <p className="mt-3 text-dato text-success">{t("cobertura.todoEnsenado")}</p>
+        <p className="mt-3 text-dato text-success">
+          {t("cobertura.todoEnsenado")}
+        </p>
       ) : (
         <ul className="mt-3 flex flex-col gap-1">
           {informe.sinPantalla.map((r) => (
@@ -77,7 +86,8 @@ export function Cobertura() {
             >
               <span className="font-mono text-ink">{r.recurso}</span>
               <span className="ml-2 text-ink-faint">
-                {r.servicios.join(", ")} · {r.operaciones} {t("cobertura.operaciones")}
+                {r.servicios.join(", ")} · {r.operaciones}{" "}
+                {t("cobertura.operaciones")}
               </span>
             </li>
           ))}
@@ -87,11 +97,21 @@ export function Cobertura() {
   );
 }
 
-function Dato({ titulo, valor, alerta }: { titulo: string; valor: number; alerta?: boolean }) {
+function Dato({
+  titulo,
+  valor,
+  alerta,
+}: {
+  titulo: string;
+  valor: number;
+  alerta?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-ink-dim/60 bg-paper p-4">
       <p className="text-dato text-ink-faint">{titulo}</p>
-      <p className={`mt-1 text-grande ${alerta ? "text-warning" : "text-ink"}`}>{valor}</p>
+      <p className={`mt-1 text-grande ${alerta ? "text-warning" : "text-ink"}`}>
+        {valor}
+      </p>
     </div>
   );
 }
@@ -152,7 +172,8 @@ export function calcular(superficie: Superficie): Informe {
   // cuanto alguien añade una pestaña.
   const enseñados = new Set<string>();
   for (const modulo of MODULOS) {
-    for (const recurso of recursosDe(modulo.ruta)) enseñados.add(recursoDe(recurso.listar));
+    for (const recurso of recursosDe(modulo.ruta))
+      enseñados.add(recursoDe(recurso.listar));
   }
   // Y las pantallas escritas a mano, que declaran lo que enseñan. Sin esto, el
   // informe contaba «sin pantalla» proveedores, cuadros de mando, inteligencia
@@ -168,11 +189,17 @@ export function calcular(superficie: Superficie): Informe {
     if (operacion.administracion) enseñados.add(recursoDe(operacion.ruta));
   }
 
-  const porRecurso = new Map<string, { servicios: Set<string>; operaciones: number }>();
+  const porRecurso = new Map<
+    string,
+    { servicios: Set<string>; operaciones: number }
+  >();
   for (const operacion of superficie.operaciones) {
     const recurso = recursoDe(operacion.ruta);
     if (!recurso) continue;
-    const dato = porRecurso.get(recurso) ?? { servicios: new Set<string>(), operaciones: 0 };
+    const dato = porRecurso.get(recurso) ?? {
+      servicios: new Set<string>(),
+      operaciones: 0,
+    };
     dato.servicios.add(operacion.servicio);
     dato.operaciones += 1;
     porRecurso.set(recurso, dato);
@@ -191,7 +218,10 @@ export function calcular(superficie: Superficie): Informe {
     }))
     .sort((a, b) => b.operaciones - a.operaciones);
 
-  const operacionesSinPantalla = sinPantalla.reduce((n, r) => n + r.operaciones, 0);
+  const operacionesSinPantalla = sinPantalla.reduce(
+    (n, r) => n + r.operaciones,
+    0,
+  );
   return {
     publicadas: superficie.total,
     conPantalla: superficie.total - operacionesSinPantalla - deMaquina,

@@ -22,7 +22,10 @@ export function Cargando({ texto }: { texto?: string }) {
       role="status"
       aria-live="polite"
     >
-      <span className="h-4 w-4 animate-pulse-slow rounded-full bg-accent" aria-hidden="true" />
+      <span
+        className="h-4 w-4 animate-pulse-slow rounded-full bg-accent"
+        aria-hidden="true"
+      />
       {texto ?? t("app.cargando")}
     </div>
   );
@@ -54,7 +57,10 @@ export function Vacio({
   const { t } = useTranslation();
   const boton = accion ? (
     accion.a ? (
-      <Link to={accion.a} className="btn-primary mt-4 inline-flex items-center gap-1.5">
+      <Link
+        to={accion.a}
+        className="btn-primary mt-4 inline-flex items-center gap-1.5"
+      >
         <Icono nombre="add" tamano="sm" />
         {accion.texto}
       </Link>
@@ -72,7 +78,10 @@ export function Vacio({
 
   if (compacto) {
     return (
-      <div className="py-4">
+      // Marcado para poder CONTARLO: el barrido comprueba que ninguna
+      // pantalla pinte dos vacíos de caja grande, y sin esta marca habría que
+      // adivinarlo por la altura y el texto, que es como se cuentan de más.
+      <div data-vacio="seccion" className="py-4">
         <p className="flex items-center gap-2 text-dato text-ink-faint">
           <Icono nombre={icono} tamano="sm" />
           {titulo ?? t("vacio.titulo")}
@@ -91,10 +100,17 @@ export function Vacio({
   }
 
   return (
-    <div className="card flex flex-col items-center px-6 py-12 text-center">
+    <div
+      data-vacio="pantalla"
+      className="card flex flex-col items-center px-6 py-12 text-center"
+    >
       <Icono nombre={icono} tamano="xl" className="text-ink-dim" />
-      <p className="mt-3 text-titulo font-medium text-ink">{titulo ?? t("vacio.titulo")}</p>
-      <p className="mt-1 max-w-md text-dato text-ink-faint">{detalle ?? t("vacio.detalle")}</p>
+      <p className="mt-3 text-titulo font-medium text-ink">
+        {titulo ?? t("vacio.titulo")}
+      </p>
+      <p className="mt-1 max-w-md text-dato text-ink-faint">
+        {detalle ?? t("vacio.detalle")}
+      </p>
       {boton}
     </div>
   );
@@ -107,7 +123,13 @@ export function Vacio({
  * necesita entero, y a quien no, esconderlo del todo le deja sin nada que
  * pegar en un ticket.
  */
-export function Error({ error, reintentar }: { error: unknown; reintentar?: () => void }) {
+export function Error({
+  error,
+  reintentar,
+}: {
+  error: unknown;
+  reintentar?: () => void;
+}) {
   const { t } = useTranslation();
   const api = error instanceof ErrorApi ? error : null;
 
@@ -135,7 +157,10 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
   else if (api.titulo) mensaje = api.titulo;
 
   return (
-    <div className="rounded-xl border border-danger/40 bg-danger/5 p-6" role="alert">
+    <div
+      className="rounded-xl border border-danger/40 bg-danger/5 p-6"
+      role="alert"
+    >
       <p className="flex items-center gap-2 text-danger">
         <Icono nombre="error" tamano="sm" />
         {mensaje}
@@ -156,7 +181,9 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
       ) : null}
       {api?.detalle ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-dato text-ink-faint">{t("errores.detalleTecnico")}</summary>
+          <summary className="cursor-pointer text-dato text-ink-faint">
+            {t("errores.detalleTecnico")}
+          </summary>
           <pre className="mt-2 overflow-x-auto rounded-lg bg-paper-light p-3 font-mono text-dato text-ink-muted">
             {JSON.stringify(api.detalle, null, 2)}
           </pre>

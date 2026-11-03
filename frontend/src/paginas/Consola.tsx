@@ -30,7 +30,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  Retenidos,
+  Vacio,
+} from "@/componentes/Estados";
 import { Tabla, normalizar } from "@/componentes/Tabla";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
@@ -52,7 +57,9 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
 
   useEffect(() => {
     const control = new AbortController();
-    cargarSuperficie(control.signal).then(setSuperficie).catch(salvoCancelacion(setFallo));
+    cargarSuperficie(control.signal)
+      .then(setSuperficie)
+      .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, []);
 
@@ -70,12 +77,18 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
           icono="settings"
         />
         <p className="mt-2 text-rotulo text-ink-faint">
-          {t("consola.total", { total: superficie.total, administracion: superficie.administracion })}
+          {t("consola.total", {
+            total: superficie.total,
+            administracion: superficie.administracion,
+          })}
         </p>
         {/* Un servicio que no contesta se dice y se nombra. Callarlo haría que
             la consola escondiera media administración como si no existiera. */}
         {superficie.servicios_sin_contestar.length > 0 ? (
-          <p className="mt-2 rounded-lg bg-warning/10 p-2 text-rotulo text-warning" role="alert">
+          <p
+            className="mt-2 rounded-lg bg-warning/10 p-2 text-rotulo text-warning"
+            role="alert"
+          >
             {t("consola.incompleta", {
               count: superficie.servicios_sin_contestar.length,
               servicios: superficie.servicios_sin_contestar.join(", "),
@@ -83,7 +96,10 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
           </p>
         ) : null}
 
-        <nav aria-label={t("consola.areas")} className="mt-4 flex flex-col gap-0.5">
+        <nav
+          aria-label={t("consola.areas")}
+          className="mt-4 flex flex-col gap-0.5"
+        >
           {areas.map((a) => (
             <button
               key={a.recurso}
@@ -96,7 +112,9 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
               }`}
             >
               {a.nombre}
-              <span className="ml-2 text-rotulo text-ink-faint">{a.operaciones.length}</span>
+              <span className="ml-2 text-rotulo text-ink-faint">
+                {a.operaciones.length}
+              </span>
             </button>
           ))}
         </nav>
@@ -157,7 +175,7 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
         ) : filas === null ? (
           <Cargando />
         ) : filas.length === 0 ? (
-          <Vacio />
+          <Vacio compacto />
         ) : (
           <div className="mt-3">
             <Tabla filas={filas} titulo={area.nombre} />
@@ -165,7 +183,9 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
           </div>
         )
       ) : (
-        <p className="mt-3 text-dato text-ink-faint">{t("consola.sinListado")}</p>
+        <p className="mt-3 text-dato text-ink-faint">
+          {t("consola.sinListado")}
+        </p>
       )}
 
       <h3 className="mt-6 text-dato font-medium uppercase tracking-wide text-ink-faint">
@@ -182,8 +202,12 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
               }`}
             >
               <div className="flex items-baseline gap-2">
-                <span className="font-mono text-rotulo text-accent">{o.metodo}</span>
-                <span className="font-mono text-dato text-ink-muted">{o.ruta}</span>
+                <span className="font-mono text-rotulo text-accent">
+                  {o.metodo}
+                </span>
+                <span className="font-mono text-dato text-ink-muted">
+                  {o.ruta}
+                </span>
               </div>
               <p className="text-dato text-ink">{o.resumen}</p>
               <p className="text-rotulo text-ink-faint">

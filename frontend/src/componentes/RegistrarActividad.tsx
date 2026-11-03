@@ -66,9 +66,12 @@ export function RegistrarActividad({
     let vivo = true;
     void contratoDe("party").then((documento) => {
       const campos = camposDe(documento, "/api/v1/activities", "post");
-      const declarados = campos.find((c) => c.nombre === "tipo")?.opciones ?? [];
+      const declarados =
+        campos.find((c) => c.nombre === "tipo")?.opciones ?? [];
       if (vivo && declarados.length > 0) {
-        setTipos(declarados.filter((d) => (RAPIDOS as readonly string[]).includes(d)));
+        setTipos(
+          declarados.filter((d) => (RAPIDOS as readonly string[]).includes(d)),
+        );
       }
     });
     return () => {
@@ -159,7 +162,11 @@ export function RegistrarActividad({
             <button type="submit" disabled={enviando} className="btn-primary">
               {enviando ? t("app.cargando") : t("actividad.guardar")}
             </button>
-            <button type="button" onClick={() => setTipo(null)} className="btn-secondary">
+            <button
+              type="button"
+              onClick={() => setTipo(null)}
+              className="btn-secondary"
+            >
               {t("modulo.cancelar")}
             </button>
           </div>

@@ -290,7 +290,11 @@ export function Campana() {
                   {t("campana.porquePlan")}
                 </p>
                 {plan.length === 0 ? (
-                  <Vacio titulo={t("campana.sinObjetivos")} detalle="" />
+                  <Vacio
+                    compacto
+                    titulo={t("campana.sinObjetivos")}
+                    detalle=""
+                  />
                 ) : (
                   <ul className="mt-2 flex flex-col gap-1">
                     {plan.map(([clave, datos]) => (
@@ -321,7 +325,11 @@ export function Campana() {
                   {t("campana.coste")}
                 </h2>
                 {!rendimiento ? (
-                  <Vacio titulo={t("campana.sinRendimiento")} detalle="" />
+                  <Vacio
+                    compacto
+                    titulo={t("campana.sinRendimiento")}
+                    detalle=""
+                  />
                 ) : (
                   <>
                     <p className="mt-2 font-mono text-dato text-ink">
@@ -351,7 +359,7 @@ export function Campana() {
                   {t("campana.embudo")}
                 </h2>
                 {!embudo ? (
-                  <Vacio titulo={t("campana.sinEmbudo")} detalle="" />
+                  <Vacio compacto titulo={t("campana.sinEmbudo")} detalle="" />
                 ) : (
                   <>
                     <p className="mt-1 font-mono text-rotulo text-ink-muted">

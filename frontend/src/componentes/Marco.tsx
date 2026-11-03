@@ -22,7 +22,15 @@
  * configuración, no el de trabajo con el menú equivocado marcado.
  */
 
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { useLocation } from "react-router-dom";
@@ -60,7 +68,9 @@ import type { Sesion } from "@/lib/sesion";
  * de apertura está para que ese tipo de peso se note. Al abrirla se descarga en
  * una petición que ya va en paralelo con lo que se está escribiendo.
  */
-const Paleta = lazy(() => import("@/componentes/Paleta").then((m) => ({ default: m.Paleta })));
+const Paleta = lazy(() =>
+  import("@/componentes/Paleta").then((m) => ({ default: m.Paleta })),
+);
 
 /** Lo mismo que la paleta: no se ve hasta que alguien lo pide. */
 const Lanzador = lazy(() =>
@@ -80,7 +90,9 @@ export function Marco({ sesion, children }: Props) {
   const salir = useCallback(async () => {
     // Se recarga en vez de vaciar el estado: es la única forma de estar seguro
     // de que no queda nada del usuario anterior en memoria.
-    await llamar("/api/v1/sesion/salir", { metodo: "POST" }).catch(() => undefined);
+    await llamar("/api/v1/sesion/salir", { metodo: "POST" }).catch(
+      () => undefined,
+    );
     window.location.assign("/");
   }, []);
 
@@ -88,7 +100,10 @@ export function Marco({ sesion, children }: Props) {
   // esté donde esté el foco, que es justo lo que lo hace útil.
   useEffect(() => {
     function alTeclear(evento: KeyboardEvent) {
-      if ((evento.metaKey || evento.ctrlKey) && evento.key.toLowerCase() === "k") {
+      if (
+        (evento.metaKey || evento.ctrlKey) &&
+        evento.key.toLowerCase() === "k"
+      ) {
         evento.preventDefault();
         setPaleta((v) => !v);
       }
@@ -145,7 +160,12 @@ function Armazon({
 
   const ambito = ambitoDelCamino(pathname, grupoDelModulo);
   const menu = useMemo(
-    () => menuDe(porGrupoVisible(sesion, visibilidad), (e) => entradaVisible(sesion, e), "trabajar"),
+    () =>
+      menuDe(
+        porGrupoVisible(sesion, visibilidad),
+        (e) => entradaVisible(sesion, e),
+        "trabajar",
+      ),
     [sesion, visibilidad],
   );
 
@@ -203,12 +223,19 @@ function Armazon({
             administrador que olvida que está viendo el CRM en nombre de otra
             persona toma decisiones sobre datos que no son los que cree. */}
         {sesion?.suplantado_por ? (
-          <p className="bg-warning px-4 py-1 text-center text-dato text-ink" role="status">
+          <p
+            className="bg-warning px-4 py-1 text-center text-dato text-ink"
+            role="status"
+          >
             {t("app.suplantado")}
           </p>
         ) : null}
 
-        <BarraSuperior sesion={sesion} alSalir={alSalir} alAbrirPaleta={alAbrirPaleta} />
+        <BarraSuperior
+          sesion={sesion}
+          alSalir={alSalir}
+          alAbrirPaleta={alAbrirPaleta}
+        />
 
         {configurando ? null : (
           <BarraDeAplicacion

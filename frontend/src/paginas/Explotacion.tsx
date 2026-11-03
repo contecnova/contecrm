@@ -48,7 +48,10 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { RespuestaAnalitica, type Payload } from "@/componentes/RespuestaAnalitica";
+import {
+  RespuestaAnalitica,
+  type Payload,
+} from "@/componentes/RespuestaAnalitica";
 import { ErrorApi, llamar } from "@/lib/api";
 
 interface Diagnostico {
@@ -96,8 +99,12 @@ export function Explotacion() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     Promise.all([
-      llamar<Diagnostico>("/api/v1/explotacion/diagnostico", { signal: control.signal }),
-      llamar<Pregunta[]>("/api/v1/explotacion/preguntas", { signal: control.signal }),
+      llamar<Diagnostico>("/api/v1/explotacion/diagnostico", {
+        signal: control.signal,
+      }),
+      llamar<Pregunta[]>("/api/v1/explotacion/preguntas", {
+        signal: control.signal,
+      }),
     ])
       .then(([d, p]) => {
         setDiagnostico(d.datos);
@@ -168,7 +175,10 @@ export function Explotacion() {
           identidad, porque la duda de «¿veré lo que no debo?» es la primera
           que tiene alguien al saltar a otra herramienta. */}
       {diagnostico.url_publica ? (
-        <section className="card p-4" data-testid="explotacion-donde-se-construyen">
+        <section
+          className="card p-4"
+          data-testid="explotacion-donde-se-construyen"
+        >
           <h2 className="text-titulo font-medium text-ink">
             {t("explotacion.dondeSeConstruyen")}
           </h2>
@@ -187,9 +197,15 @@ export function Explotacion() {
       ) : null}
 
       <section>
-        <h2 className="text-titulo font-medium text-ink">{t("explotacion.publicadas")}</h2>
+        <h2 className="text-titulo font-medium text-ink">
+          {t("explotacion.publicadas")}
+        </h2>
         {publicadas.length === 0 ? (
-          <Vacio titulo={t("explotacion.sinPublicadas")} detalle={t("explotacion.sinPublicadasDetalle")} />
+          <Vacio
+            compacto
+            titulo={t("explotacion.sinPublicadas")}
+            detalle={t("explotacion.sinPublicadasDetalle")}
+          />
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {publicadas.map((p) => (
@@ -200,9 +216,15 @@ export function Explotacion() {
       </section>
 
       <section>
-        <h2 className="text-titulo font-medium text-ink">{t("explotacion.mias")}</h2>
+        <h2 className="text-titulo font-medium text-ink">
+          {t("explotacion.mias")}
+        </h2>
         {mias.length === 0 ? (
-          <Vacio titulo={t("explotacion.sinMias")} detalle={t("explotacion.sinMiasDetalle")} />
+          <Vacio
+            compacto
+            titulo={t("explotacion.sinMias")}
+            detalle={t("explotacion.sinMiasDetalle")}
+          />
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {mias.map((p) => (
@@ -252,19 +274,26 @@ function BotonRegistrar({ alTerminar }: { alTerminar: () => void }) {
       // botón girando para siempre y nadie sabe si sigue vivo.
       for (let intento = 0; intento < 60; intento += 1) {
         await new Promise((r) => setTimeout(r, 2000));
-        const ficha = await llamar<{ estado: string; error?: string | null }>(donde);
+        const ficha = await llamar<{ estado: string; error?: string | null }>(
+          donde,
+        );
         if (ficha.datos.estado === "completado") {
           alTerminar();
           return;
         }
-        if (ficha.datos.estado === "fallido" || ficha.datos.estado === "cancelado") {
+        if (
+          ficha.datos.estado === "fallido" ||
+          ficha.datos.estado === "cancelado"
+        ) {
           setFallo(ficha.datos.error || t("explotacion.registroFallido"));
           return;
         }
       }
       setFallo(t("explotacion.registroTarda"));
     } catch (e: unknown) {
-      setFallo(e instanceof ErrorApi ? e.titulo : t("explotacion.registroFallido"));
+      setFallo(
+        e instanceof ErrorApi ? e.titulo : t("explotacion.registroFallido"),
+      );
     } finally {
       setEnCurso(false);
     }
@@ -272,10 +301,17 @@ function BotonRegistrar({ alTerminar }: { alTerminar: () => void }) {
 
   return (
     <div className="mt-4">
-      <button type="button" className="btn-primary" onClick={() => void registrar()} disabled={enCurso}>
+      <button
+        type="button"
+        className="btn-primary"
+        onClick={() => void registrar()}
+        disabled={enCurso}
+      >
         {enCurso ? t("explotacion.registrando") : t("explotacion.registrar")}
       </button>
-      <p className="mt-1.5 text-rotulo text-ink-faint">{t("explotacion.registrarDetalle")}</p>
+      <p className="mt-1.5 text-rotulo text-ink-faint">
+        {t("explotacion.registrarDetalle")}
+      </p>
       {fallo ? (
         <p role="alert" className="mt-2 text-dato text-danger">
           {fallo}
@@ -306,7 +342,8 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
       .then((r) => {
         const vistas: string[] = [];
         for (const c of r.datos) {
-          if (c.pregunta && !vistas.includes(c.pregunta)) vistas.push(c.pregunta);
+          if (c.pregunta && !vistas.includes(c.pregunta))
+            vistas.push(c.pregunta);
           if (vistas.length === 8) break;
         }
         setRecientes(vistas);
@@ -314,7 +351,10 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
       .catch(() => undefined);
   }, []);
   const [pensando, setPensando] = useState(false);
-  const [respuesta, setRespuesta] = useState<{ payload: Payload; texto: string } | null>(null);
+  const [respuesta, setRespuesta] = useState<{
+    payload: Payload;
+    texto: string;
+  } | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
 
   async function preguntar(pregunta: string) {
@@ -323,16 +363,28 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
     setFallo(null);
     setRespuesta(null);
     try {
-      const token = await llamar<{ token: string }>("/api/v1/analitica/token", { metodo: "POST" });
-      const r = await fetch(`${diagnostico.url_publica.replace(/\/$/, "")}/api/ask`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token.datos.token}`,
-        },
-        body: JSON.stringify({ source_id: diagnostico.fuente_id, question: pregunta }),
+      const token = await llamar<{ token: string }>("/api/v1/analitica/token", {
+        metodo: "POST",
       });
-      const cuerpo = (await r.json()) as { payload?: Payload; text?: string; detail?: string };
+      const r = await fetch(
+        `${diagnostico.url_publica.replace(/\/$/, "")}/api/ask`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token.datos.token}`,
+          },
+          body: JSON.stringify({
+            source_id: diagnostico.fuente_id,
+            question: pregunta,
+          }),
+        },
+      );
+      const cuerpo = (await r.json()) as {
+        payload?: Payload;
+        text?: string;
+        detail?: string;
+      };
       if (!r.ok || !cuerpo.payload) {
         // El motivo de contecintelligence tal cual: dice cosas útiles como «los
         // datos no contienen información de cuentas, solo nombres», y traducirlo
@@ -345,10 +397,16 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
       // pestaña de al lado tenga sentido.
       void llamar("/api/v1/analitica/consultas", {
         metodo: "POST",
-        cuerpo: { pregunta, fuente: "contecintelligence", filas_devueltas: (cuerpo.payload.data || []).length },
+        cuerpo: {
+          pregunta,
+          fuente: "contecintelligence",
+          filas_devueltas: (cuerpo.payload.data || []).length,
+        },
       }).catch(() => undefined);
     } catch (e: unknown) {
-      setFallo(e instanceof ErrorApi ? e.titulo : t("explotacion.sinRespuesta"));
+      setFallo(
+        e instanceof ErrorApi ? e.titulo : t("explotacion.sinRespuesta"),
+      );
     } finally {
       setPensando(false);
     }
@@ -370,13 +428,19 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
           placeholder={t("explotacion.placeholder")}
           aria-label={t("explotacion.placeholder")}
         />
-        <button type="submit" className="btn-primary" disabled={pensando || !texto.trim()}>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={pensando || !texto.trim()}
+        >
           {pensando ? t("explotacion.pensando") : t("explotacion.preguntar")}
         </button>
       </form>
 
       <p className="text-rotulo text-ink-faint">
-        {recientes.length ? t("explotacion.recientes") : t("explotacion.ejemplos")}
+        {recientes.length
+          ? t("explotacion.recientes")
+          : t("explotacion.ejemplos")}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {(recientes.length ? recientes : EJEMPLOS).map((e) => (
@@ -395,12 +459,20 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
       </div>
 
       {fallo ? (
-        <p role="alert" className="flex items-start gap-1.5 text-dato text-danger">
+        <p
+          role="alert"
+          className="flex items-start gap-1.5 text-dato text-danger"
+        >
           <Icono nombre="error" tamano="sm" />
           <span>{fallo}</span>
         </p>
       ) : null}
-      {respuesta ? <RespuestaAnalitica payload={respuesta.payload} texto={respuesta.texto} /> : null}
+      {respuesta ? (
+        <RespuestaAnalitica
+          payload={respuesta.payload}
+          texto={respuesta.texto}
+        />
+      ) : null}
     </section>
   );
 }

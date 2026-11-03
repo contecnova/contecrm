@@ -89,8 +89,12 @@ export function CicloDeVidaDelCliente() {
     const { signal } = control;
     setFallo(null);
     Promise.all([
-      listar<Operacion>("/api/v1/ciclo-vida/operaciones?limite=100", { signal }),
-      listar<Migracion>("/api/v1/aislamiento/migraciones?limite=100", { signal }),
+      listar<Operacion>("/api/v1/ciclo-vida/operaciones?limite=100", {
+        signal,
+      }),
+      listar<Migracion>("/api/v1/aislamiento/migraciones?limite=100", {
+        signal,
+      }),
       listar<Perfil>("/api/v1/ciclo-vida/perfiles", { signal }),
     ])
       .then(([o, m, p]) => {
@@ -122,17 +126,24 @@ export function CicloDeVidaDelCliente() {
       />
 
       {abiertas.length > 0 ? (
-        <p className="card mb-4 border-warning/40 p-3 text-dato text-warning" role="status">
+        <p
+          className="card mb-4 border-warning/40 p-3 text-dato text-warning"
+          role="status"
+        >
           {t("ciclovida.ventanaAbierta", { cuantas: abiertas.length })}
         </p>
       ) : null}
 
       <div className="flex flex-col gap-6">
         <section>
-          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.hechas")}</h2>
-          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porqueHechas")}</p>
+          <h2 className="text-titulo font-medium text-ink">
+            {t("ciclovida.hechas")}
+          </h2>
+          <p className="mt-1 text-rotulo text-ink-faint">
+            {t("ciclovida.porqueHechas")}
+          </p>
           {hechas.length === 0 ? (
-            <Vacio titulo={t("ciclovida.sinHechas")} detalle="" />
+            <Vacio compacto titulo={t("ciclovida.sinHechas")} detalle="" />
           ) : (
             <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
               {hechas.map((o) => (
@@ -142,7 +153,9 @@ export function CicloDeVidaDelCliente() {
                     <span className="flex-1 text-dato text-ink">{o.uso}</span>
                     <span
                       className={
-                        o.estado === "fallida" ? "badge badge-aviso" : "badge badge-muted"
+                        o.estado === "fallida"
+                          ? "badge badge-aviso"
+                          : "badge badge-muted"
                       }
                     >
                       {o.estado}
@@ -161,7 +174,9 @@ export function CicloDeVidaDelCliente() {
                   ) : null}
                   {(o.conflictos ?? []).length > 0 ? (
                     <p className="mt-1 text-dato text-warning">
-                      {t("ciclovida.conflictos", { cuantos: o.conflictos.length })}
+                      {t("ciclovida.conflictos", {
+                        cuantos: o.conflictos.length,
+                      })}
                     </p>
                   ) : null}
                 </li>
@@ -171,12 +186,16 @@ export function CicloDeVidaDelCliente() {
         </section>
 
         <section>
-          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.simuladas")}</h2>
+          <h2 className="text-titulo font-medium text-ink">
+            {t("ciclovida.simuladas")}
+          </h2>
           {/* Aparte de las hechas a propósito: una simulada NO ha movido nada,
               y en una lista corrida las dos ocupan una línea igual. */}
-          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porqueSimuladas")}</p>
+          <p className="mt-1 text-rotulo text-ink-faint">
+            {t("ciclovida.porqueSimuladas")}
+          </p>
           {simuladas.length === 0 ? (
-            <Vacio titulo={t("ciclovida.sinSimuladas")} detalle="" />
+            <Vacio compacto titulo={t("ciclovida.sinSimuladas")} detalle="" />
           ) : (
             <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
               {simuladas.map((o) => (
@@ -206,10 +225,14 @@ export function CicloDeVidaDelCliente() {
         </section>
 
         <section>
-          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.migraciones")}</h2>
-          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porqueMigraciones")}</p>
+          <h2 className="text-titulo font-medium text-ink">
+            {t("ciclovida.migraciones")}
+          </h2>
+          <p className="mt-1 text-rotulo text-ink-faint">
+            {t("ciclovida.porqueMigraciones")}
+          </p>
           {migraciones.length === 0 ? (
-            <Vacio titulo={t("ciclovida.sinMigraciones")} detalle="" />
+            <Vacio compacto titulo={t("ciclovida.sinMigraciones")} detalle="" />
           ) : (
             <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
               {migraciones.map((m) => (
@@ -221,7 +244,9 @@ export function CicloDeVidaDelCliente() {
                     <span className="flex-1" />
                     <span
                       className={
-                        m.estado === "en_ventana" ? "badge badge-aviso" : "badge badge-muted"
+                        m.estado === "en_ventana"
+                          ? "badge badge-aviso"
+                          : "badge badge-muted"
                       }
                     >
                       {m.estado}
@@ -235,13 +260,17 @@ export function CicloDeVidaDelCliente() {
                           desde: fechaHora(m.solo_lectura_desde),
                           minutos: m.ventana_minutos,
                         })
-                      : t("ciclovida.ventanaPrevista", { minutos: m.ventana_minutos })}
+                      : t("ciclovida.ventanaPrevista", {
+                          minutos: m.ventana_minutos,
+                        })}
                   </p>
                   {/* Las diferencias de la verificación: una migración
                       «verificada» con diferencias no está bien, está medida. */}
                   {(m.diferencias ?? []).length > 0 ? (
                     <p className="mt-1 text-dato text-warning">
-                      {t("ciclovida.diferencias", { cuantas: m.diferencias.length })}
+                      {t("ciclovida.diferencias", {
+                        cuantas: m.diferencias.length,
+                      })}
                     </p>
                   ) : null}
                   {m.motivo_fin ? (
@@ -254,20 +283,28 @@ export function CicloDeVidaDelCliente() {
         </section>
 
         <section>
-          <h2 className="text-titulo font-medium text-ink">{t("ciclovida.perfiles")}</h2>
-          <p className="mt-1 text-rotulo text-ink-faint">{t("ciclovida.porquePerfiles")}</p>
+          <h2 className="text-titulo font-medium text-ink">
+            {t("ciclovida.perfiles")}
+          </h2>
+          <p className="mt-1 text-rotulo text-ink-faint">
+            {t("ciclovida.porquePerfiles")}
+          </p>
           {!cargado || perfiles.length === 0 ? (
-            <Vacio titulo={t("ciclovida.sinPerfiles")} detalle="" />
+            <Vacio compacto titulo={t("ciclovida.sinPerfiles")} detalle="" />
           ) : (
             <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
               {perfiles.map((p) => (
                 <li key={p.clave} className="card p-3">
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="flex-1 text-dato text-ink">{p.nombre}</span>
+                    <span className="flex-1 text-dato text-ink">
+                      {p.nombre}
+                    </span>
                     <span className="chip-dato font-mono">{p.clave}</span>
                   </div>
                   {p.descripcion ? (
-                    <p className="mt-1 text-rotulo text-ink-muted">{p.descripcion}</p>
+                    <p className="mt-1 text-rotulo text-ink-muted">
+                      {p.descripcion}
+                    </p>
                   ) : null}
                 </li>
               ))}

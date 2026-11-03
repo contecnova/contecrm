@@ -30,7 +30,10 @@ export function Recorrido() {
         icono="route"
       />
       <p className="mt-3 text-rotulo text-ink-faint">
-        {t("recorrido.cuantos", { modulos: MODULOS.length, grupos: grupos.length })}
+        {t("recorrido.cuantos", {
+          modulos: MODULOS.length,
+          grupos: grupos.length,
+        })}
       </p>
 
       <ol className="mt-6 flex flex-col gap-6">
@@ -47,9 +50,13 @@ export function Recorrido() {
                   className="rounded-xl border border-ink-dim/60 bg-paper p-3 hover:bg-paper-light"
                 >
                   <p className="text-titulin text-ink">{m.titulo}</p>
-                  <p className="mt-1 font-mono text-rotulo text-ink-faint">{m.capacidad}</p>
+                  <p className="mt-1 font-mono text-rotulo text-ink-faint">
+                    {m.capacidad}
+                  </p>
                   <p className="mt-1 text-rotulo text-ink-faint">
-                    {recursosDe(m.ruta).map((r) => r.nombre).join(" · ")}
+                    {recursosDe(m.ruta)
+                      .map((r) => r.nombre)
+                      .join(" · ")}
                   </p>
                 </Link>
               ))}

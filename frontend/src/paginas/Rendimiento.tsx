@@ -98,7 +98,9 @@ export function Rendimiento() {
         {presion.peor?.servicio ? (
           <p className="mt-2 text-dato text-ink">
             <span className="font-medium">{presion.peor.servicio}</span>
-            {presion.peor.que_significa ? ` · ${presion.peor.que_significa}` : null}
+            {presion.peor.que_significa
+              ? ` · ${presion.peor.que_significa}`
+              : null}
           </p>
         ) : null}
         {/* Un servicio que no contesta no cuenta como tranquilo: suele ser el

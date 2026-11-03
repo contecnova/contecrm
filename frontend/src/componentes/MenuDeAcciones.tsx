@@ -84,7 +84,8 @@ export function MenuDeAcciones({
   useEffect(() => {
     if (!abierto) return;
     function fuera(e: MouseEvent) {
-      if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false);
+      if (caja.current && !caja.current.contains(e.target as Node))
+        setAbierto(false);
     }
     function escape(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
@@ -121,7 +122,10 @@ export function MenuDeAcciones({
             onClick={() => setAbierto((v) => !v)}
           >
             {soloIcono ? null : t("acciones.mas")}
-            <Icono nombre={abierto ? "expand_less" : "expand_more"} tamano="sm" />
+            <Icono
+              nombre={abierto ? "expand_less" : "expand_more"}
+              tamano="sm"
+            />
           </button>
           {abierto ? (
             <div

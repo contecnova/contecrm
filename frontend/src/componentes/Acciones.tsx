@@ -40,7 +40,8 @@ import { type Accion } from "@/lib/acciones";
  * `cerrar` o `anular` significan lo mismo los ejecute quien los ejecute, y una
  * lista por ruta se queda corta con el primer recurso nuevo.
  */
-const IRREVERSIBLES = /^(descartar|cerrar|anular|cancelar|fusionar|purgar|revocar|baja|destruir)/;
+const IRREVERSIBLES =
+  /^(descartar|cerrar|anular|cancelar|fusionar|purgar|revocar|baja|destruir)/;
 
 /**
  * Lo que devolvió la acción, escrito para una persona.
@@ -65,10 +66,19 @@ function Resultado({ datos }: { datos: unknown }) {
         const objeto = objetoDe(clave);
         const modulo = recurso ? moduloDelRecurso(recurso) : null;
         const enlazable =
-          recurso && modulo && objeto && typeof valor === "string" && UUID_SUELTO.test(valor);
+          recurso &&
+          modulo &&
+          objeto &&
+          typeof valor === "string" &&
+          UUID_SUELTO.test(valor);
         return (
-          <div key={clave} className="flex items-baseline justify-between gap-3">
-            <dt className="shrink-0 text-rotulo text-ink-faint">{humanizar(clave)}</dt>
+          <div
+            key={clave}
+            className="flex items-baseline justify-between gap-3"
+          >
+            <dt className="shrink-0 text-rotulo text-ink-faint">
+              {humanizar(clave)}
+            </dt>
             <dd className="truncate text-dato text-ink">
               {enlazable ? (
                 <Link
@@ -93,7 +103,8 @@ function Resultado({ datos }: { datos: unknown }) {
   );
 }
 
-const UUID_SUELTO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_SUELTO =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** En qué módulo vive un recurso, para poder componer la ruta de su ficha. */
 function moduloDelRecurso(recurso: Recurso): string | null {
@@ -165,7 +176,10 @@ export function Acciones({
     setEnviando(true);
     setFallo(null);
     try {
-      const r = await llamar<unknown>(abierta.ruta, { metodo: "POST", cuerpo: valores });
+      const r = await llamar<unknown>(abierta.ruta, {
+        metodo: "POST",
+        cuerpo: valores,
+      });
       setResultado(r.datos ?? { hecho: true });
       setAbierta(null);
       setConfirmada(false);
@@ -195,7 +209,9 @@ export function Acciones({
               setResultado(null);
               setFallo(null);
             }}
-            className={abierta?.ruta === a.ruta ? "btn-primary" : "btn-secondary"}
+            className={
+              abierta?.ruta === a.ruta ? "btn-primary" : "btn-secondary"
+            }
           >
             {a.nombre}
           </button>
@@ -218,13 +234,25 @@ export function Acciones({
 
       {abierta ? (
         <div className="card mt-3 p-4">
-          <h3 className="text-titulin font-medium text-ink">{abierta.nombre}</h3>
+          <h3 className="text-titulin font-medium text-ink">
+            {abierta.nombre}
+          </h3>
 
           {irreversible && !confirmada ? (
-            <div className="mt-3" role="alertdialog" aria-label={abierta.nombre}>
-              <p className="text-dato text-ink-muted">{t("acciones.noSeDeshace")}</p>
+            <div
+              className="mt-3"
+              role="alertdialog"
+              aria-label={abierta.nombre}
+            >
+              <p className="text-dato text-ink-muted">
+                {t("acciones.noSeDeshace")}
+              </p>
               <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => setConfirmada(true)} className="btn-danger">
+                <button
+                  type="button"
+                  onClick={() => setConfirmada(true)}
+                  className="btn-danger"
+                >
                   {t("acciones.entendido")}
                 </button>
                 <button

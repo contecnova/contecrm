@@ -91,12 +91,20 @@ export function Exportar({
         if (codigo === "stepup.requerido") {
           setAviso(
             detalle.tiene_factor
-              ? t("exportar.vuelveAVerificarte", { minutos: detalle.validez_minutos ?? 15 })
+              ? t("exportar.vuelveAVerificarte", {
+                  minutos: detalle.validez_minutos ?? 15,
+                })
               : t("exportar.sinSegundoFactor"),
           );
           return;
         }
-        throw new ErrorApi(r.status, codigo, t("exportar.noSePudo"), detalle, cuerpo.slice(0, 300));
+        throw new ErrorApi(
+          r.status,
+          codigo,
+          t("exportar.noSePudo"),
+          detalle,
+          cuerpo.slice(0, 300),
+        );
       }
 
       // Si el servidor ha llegado al tope, se dice ANTES de que el fichero
@@ -116,9 +124,13 @@ export function Exportar({
       URL.revokeObjectURL(url);
       // Qué se ha bajado, dicho: el fichero aparece en la carpeta de descargas
       // sin que la pantalla cambie, y quien lo pulsa no sabe si ha pasado algo.
-      setAviso(truncada ? t("exportar.cortado", { cuantas }) : t("exportar.listo"));
+      setAviso(
+        truncada ? t("exportar.cortado", { cuantas }) : t("exportar.listo"),
+      );
     } catch (error) {
-      setAviso(error instanceof ErrorApi ? error.titulo : t("exportar.noSePudo"));
+      setAviso(
+        error instanceof ErrorApi ? error.titulo : t("exportar.noSePudo"),
+      );
     } finally {
       setBajando(false);
     }
@@ -133,12 +145,17 @@ export function Exportar({
         disabled={bajando}
         aria-label={t("exportar.deQue", { nombre })}
       >
-        <Icono nombre="download" /> {bajando ? t("exportar.bajando") : t("exportar.boton")}
+        <Icono nombre="download" />{" "}
+        {bajando ? t("exportar.bajando") : t("exportar.boton")}
       </button>
       {/* En voz alta: el resultado de pulsar esto no se ve en la pantalla, y
           sin anunciarlo quien usa lector de pantalla no se entera de nada. */}
       {aviso ? (
-        <span className="text-rotulo text-ink-muted" role="status" aria-live="polite">
+        <span
+          className="text-rotulo text-ink-muted"
+          role="status"
+          aria-live="polite"
+        >
           {aviso}
         </span>
       ) : null}

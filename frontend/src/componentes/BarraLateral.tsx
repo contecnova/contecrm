@@ -17,7 +17,14 @@
  * siempre el menú.
  */
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -51,7 +58,9 @@ const CLAVE_PLEGADAS = "contecrm.panel_plegadas";
  */
 function anchoDePliegue(): number {
   if (typeof window === "undefined") return 1280;
-  const leido = getComputedStyle(document.documentElement).getPropertyValue("--panel-plegar");
+  const leido = getComputedStyle(document.documentElement).getPropertyValue(
+    "--panel-plegar",
+  );
   return Number.parseInt(leido, 10) || 1280;
 }
 
@@ -86,7 +95,13 @@ function plano(texto: string): string {
     .trim();
 }
 
-export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSalir: () => void }) {
+export function BarraLateral({
+  sesion,
+  alSalir,
+}: {
+  sesion: Sesion | null;
+  alSalir: () => void;
+}) {
   const { t } = useTranslation();
   const { abierto, fijar } = usePanel();
   const visibilidad = useVisibilidad();
@@ -139,7 +154,8 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
   useEffect(() => {
     if (!abierto) return;
     const movil =
-      typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
     if (!movil) return;
     cerrarRef.current?.focus();
     function alPulsar(evento: KeyboardEvent) {
@@ -163,7 +179,12 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
   // pestaña de trabajar y el menú parecería estropeado.
   const ambito = ambitoDelCamino(ubicacion.pathname, grupoDelModulo);
   const areas = useMemo(
-    () => menuDe(porGrupoVisible(sesion, visibilidad), (e) => entradaVisible(sesion, e), ambito),
+    () =>
+      menuDe(
+        porGrupoVisible(sesion, visibilidad),
+        (e) => entradaVisible(sesion, e),
+        ambito,
+      ),
     [sesion, visibilidad, ambito],
   );
   // Lo que se ha escrito en el buscador del árbol.
@@ -181,7 +202,12 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
       .map((a) =>
         plano(t(a.clave)).includes(q)
           ? a
-          : { ...a, entradas: a.entradas.filter((e) => plano(rotuloDeEntrada(e.clave)).includes(q)) },
+          : {
+              ...a,
+              entradas: a.entradas.filter((e) =>
+                plano(rotuloDeEntrada(e.clave)).includes(q),
+              ),
+            },
       )
       .filter((a) => a.entradas.length > 0);
   }, [areas, filtro, t, rotuloDeEntrada]);
@@ -210,7 +236,9 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
           "flex h-screen flex-col overflow-x-hidden border-r border-ink-dim/60 bg-paper-dark",
           "fixed inset-y-0 left-0 z-modal transition-[width,transform] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] md:relative md:z-auto",
           abierto ? "translate-x-0" : "hidden -translate-x-full",
-          plegado ? "w-[var(--panel-w)] md:w-[var(--panel-w-plegado)]" : "w-[var(--panel-w)]",
+          plegado
+            ? "w-[var(--panel-w)] md:w-[var(--panel-w-plegado)]"
+            : "w-[var(--panel-w)]",
         )}
       >
         {/* ── Marca ────────────────────────────────────────────────────── */}
@@ -227,7 +255,10 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
             <img
               src={config().logotipo}
               alt={config().nombre}
-              className={cn("h-6", plegado && "md:h-7 md:w-7 md:object-contain")}
+              className={cn(
+                "h-6",
+                plegado && "md:h-7 md:w-7 md:object-contain",
+              )}
             />
           ) : (
             <span
@@ -256,7 +287,10 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
             className="btn-icon hidden text-ink-faint hover:bg-paper-light hover:text-ink md:inline-flex"
             aria-label={t(plegado ? "nav.desplegarPanel" : "nav.plegarPanel")}
           >
-            <Icono nombre={plegado ? "chevron_right" : "chevron_left"} tamano="sm" />
+            <Icono
+              nombre={plegado ? "chevron_right" : "chevron_left"}
+              tamano="sm"
+            />
           </button>
           <button
             ref={cerrarRef}
@@ -303,7 +337,12 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
         )}
 
         {/* ── Áreas ─────────────────────────────────────────────────────── */}
-        <div className={cn("min-h-0 flex-1 overflow-y-auto pb-2", plegado && "md:overflow-visible")}>
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto pb-2",
+            plegado && "md:overflow-visible",
+          )}
+        >
           {/* Sin resultados se dice, no se deja el árbol en blanco: un panel
               vacío de golpe se lee como que algo se ha roto, no como que no
               hay nada que case. */}
@@ -323,7 +362,9 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
                   veinticinco al azar, y el rótulo llega al pasar por encima. */}
               <AreaPlegada
                 area={area}
-                rotuloDe={(entrada) => (entrada.clave.includes(".") ? t(entrada.clave) : entrada.clave)}
+                rotuloDe={(entrada) =>
+                  entrada.clave.includes(".") ? t(entrada.clave) : entrada.clave
+                }
                 className={cn(plegado ? "hidden md:block" : "hidden")}
               />
               <div className={cn(plegado && "md:hidden")}>
@@ -341,7 +382,11 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
                       // Los módulos traen su título ya escrito; las
                       // transversales, una clave de traducción. Se distingue
                       // por el punto.
-                      rotulo={entrada.clave.includes(".") ? t(entrada.clave) : entrada.clave}
+                      rotulo={
+                        entrada.clave.includes(".")
+                          ? t(entrada.clave)
+                          : entrada.clave
+                      }
                     />
                   ))}
                 </Seccion>
@@ -372,22 +417,27 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
             </button>
           ) : null}
           <div className={cn(plegado && "md:hidden")}>
-          {sesion ? (
-            <p className="truncate text-dato text-ink-muted" title={sesion.email}>
-              {sesion.nombre || sesion.email}
-            </p>
-          ) : null}
-          {sesion && sesion.roles.length > 0 ? (
-            <p className="mt-0.5 truncate text-rotulo text-ink-faint">{sesion.roles.join(", ")}</p>
-          ) : null}
-          <button
-            type="button"
-            onClick={alSalir}
-            className="btn-link mt-2 inline-flex items-center gap-1.5 text-dato"
-          >
-            <Icono nombre="logout" tamano="sm" />
-            {t("app.cerrarSesion")}
-          </button>
+            {sesion ? (
+              <p
+                className="truncate text-dato text-ink-muted"
+                title={sesion.email}
+              >
+                {sesion.nombre || sesion.email}
+              </p>
+            ) : null}
+            {sesion && sesion.roles.length > 0 ? (
+              <p className="mt-0.5 truncate text-rotulo text-ink-faint">
+                {sesion.roles.join(", ")}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              onClick={alSalir}
+              className="btn-link mt-2 inline-flex items-center gap-1.5 text-dato"
+            >
+              <Icono nombre="logout" tamano="sm" />
+              {t("app.cerrarSesion")}
+            </button>
           </div>
         </div>
       </aside>
@@ -421,7 +471,7 @@ function Seccion({
           onClick={alAlternar}
           aria-expanded={!plegada}
           aria-controls={idContenido}
-          className="section-label flex min-w-0 flex-1 items-center gap-1.5 rounded-[5px] px-2 py-1.5 text-left transition-colors hover:text-ink-muted"
+          className="section-label flex min-w-0 flex-1 items-center gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:text-ink-muted"
         >
           <Icono
             nombre="keyboard_arrow_down"
@@ -436,7 +486,11 @@ function Seccion({
           sigue estando en el orden de tabulación, y quien navega con teclado
           recorre a ciegas una sección que no ve. */}
       {plegada ? null : (
-        <nav id={idContenido} aria-label={rotulo} className="flex flex-col gap-px px-1 pb-1.5">
+        <nav
+          id={idContenido}
+          aria-label={rotulo}
+          className="flex flex-col gap-px px-1 pb-1.5"
+        >
           {children}
         </nav>
       )}
@@ -476,9 +530,12 @@ function AreaPlegada({
   const salir = useCallback(() => {
     temporizador.current = setTimeout(() => setAbierta(false), 150);
   }, []);
-  useEffect(() => () => {
-    if (temporizador.current) clearTimeout(temporizador.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (temporizador.current) clearTimeout(temporizador.current);
+    },
+    [],
+  );
 
   return (
     <div
@@ -516,7 +573,15 @@ function AreaPlegada({
   );
 }
 
-function Enlace({ a, rotulo, icono }: { a: string; rotulo: string; icono?: string }) {
+function Enlace({
+  a,
+  rotulo,
+  icono,
+}: {
+  a: string;
+  rotulo: string;
+  icono?: string;
+}) {
   return (
     <NavLink
       to={a}
@@ -539,7 +604,9 @@ function Enlace({ a, rotulo, icono }: { a: string; rotulo: string; icono?: strin
     >
       {({ isActive }) => (
         <>
-          {icono ? <Icono nombre={icono} tamano="sm" relleno={isActive} /> : null}
+          {icono ? (
+            <Icono nombre={icono} tamano="sm" relleno={isActive} />
+          ) : null}
           <span className="truncate">{rotulo}</span>
         </>
       )}

@@ -226,7 +226,9 @@ export function ComoEstabaEsto({
           >
             {cuadra.cuadra ? t("ficha.cuadra") : t("ficha.noCuadra")}
           </p>
-          <p className="mt-1 text-rotulo text-ink-muted">{cuadra.que_significa}</p>
+          <p className="mt-1 text-rotulo text-ink-muted">
+            {cuadra.que_significa}
+          </p>
           {(cuadra.diferencias ?? []).length > 0 ? (
             <ul className="mt-1 divide-y divide-ink-dim/30">
               {(cuadra.diferencias ?? []).map((d) => (

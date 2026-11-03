@@ -73,7 +73,9 @@ export function LanzadorDeAplicaciones({
         className="mx-auto mt-16 max-h-[78vh] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-ink-dim/60 bg-paper p-5 shadow-elevation-4"
       >
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="text-grande font-bold text-ink">{t("app.lanzador")}</h2>
+          <h2 className="text-grande font-bold text-ink">
+            {t("app.lanzador")}
+          </h2>
           <p className="text-dato text-ink-faint">{t("app.lanzadorAtajo")}</p>
         </div>
 
@@ -98,9 +100,13 @@ export function LanzadorDeAplicaciones({
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent/10 text-accent">
                 <Icono nombre={app.icono} />
               </span>
-              <span className="text-titulo font-semibold text-ink">{t(app.clave)}</span>
+              <span className="text-titulo font-semibold text-ink">
+                {t(app.clave)}
+              </span>
               <span className="text-dato text-ink-faint">
-                {t("app.cuantasPestanas", { count: pestanasDe(app, menu).length })}
+                {t("app.cuantasPestanas", {
+                  count: pestanasDe(app, menu).length,
+                })}
               </span>
             </button>
           ))}
@@ -115,7 +121,9 @@ export function LanzadorDeAplicaciones({
         <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
           {APLICACIONES.map((app) => (
             <div key={app.id}>
-              <p className="mb-1.5 text-dato font-semibold text-ink-muted">{t(app.clave)}</p>
+              <p className="mb-1.5 text-dato font-semibold text-ink-muted">
+                {t(app.clave)}
+              </p>
               <ul className="flex flex-col">
                 {pestanasDe(app, menu).map((e) => (
                   <li key={e.a}>

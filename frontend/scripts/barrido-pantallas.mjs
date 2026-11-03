@@ -44,7 +44,15 @@ const nav = readFileSync(`${SRC}lib/navegacion.ts`, "utf8");
 const caminos = new Set(["/"]);
 for (const m of nav.matchAll(/\ba:\s*"(\/[^"]*)"/g)) caminos.add(m[1]);
 const mods = readFileSync(`${SRC}lib/modulos.ts`, "utf8");
-for (const m of mods.matchAll(/ruta:\s*"([a-z-]+)",\s*\n\s*titulo:/g)) caminos.add(`/m/${m[1]}`);
+// El `titulo:` puede no ir en la línea siguiente —si alguien deja ahí un
+// comentario explicando el nombre, por ejemplo—, así que entre los dos se
+// admite cualquier cosa que no sea otra `ruta:`. **Medido el 03-11-2026**:
+// con el patrón pegado, poner un comentario encima de un título hizo que el
+// barrido pasara de 58 pantallas a 57 y dejara una sin mirar en silencio. Lo
+// delató el recuento, que por eso se imprime y por eso tiene suelo.
+for (const m of mods.matchAll(/ruta:\s*"([a-z-]+)",[\s\S]{0,400}?titulo:/g)) {
+  caminos.add(`/m/${m[1]}`);
+}
 
 const navegador = await chromium.launch();
 const ctx = await navegador.newContext({ viewport: { width: 1440, height: 900 }, locale: "es-ES" });
@@ -126,10 +134,21 @@ const EN_CRUDO = /\bnull\b|\bundefined\b|\[object Object\]/;
  */
 const ESCALA = ["12px", "13px", "14px", "16px", "20px", "24px", "32px"];
 
+/**
+ * El suelo de pantallas.
+ *
+ * Un barrido que se queda corto contesta «ninguna rota» sin haber mirado, y
+ * eso ya pasó: un comentario entre `ruta:` y `titulo:` dejó una pantalla
+ * fuera y el recorrido siguió en verde. El suelo no persigue el número
+ * exacto —una pantalla nueva entra sola— sino que el patrón deje de casar.
+ */
+const SUELO = 55;
+
 const rotas = [];
 const crudas = [];
 const letraFuera = [];
 let textosMirados = 0;
+const dobleVacio = [];
 // `CRM_SOLO=/procesos,/m/cuentas` recorta el barrido a lo que se nombre. Son
 // quince minutos enteros, y perseguir un fallo en una pantalla concreta con
 // eso convierte cada intento en una espera. No cambia nada de lo que mide.
@@ -199,6 +218,33 @@ for (const camino of lista) {
   // verde que una que está bien, y eso ya pasó: con un 9 px plantado a
   // propósito, este barrido contestó «ninguna» mientras una sonda suelta lo
   // veía. Se suman y se dicen al final.
+  /**
+   * Dos vacíos de caja grande en la misma pantalla.
+   *
+   * El vacío tiene dos formas: la de PANTALLA —tarjeta con icono grande y
+   * texto centrado, 180 px— para cuando no hay nada que hacer ahí, y la de
+   * SECCIÓN —una línea— para cuando es un bloque de una pantalla que sí
+   * tiene más cosas.
+   *
+   * **Medido el 03-11-2026**: `/entornos` pintaba cuatro de las grandes
+   * seguidas, 760 px de nada, porque el vacío iba dentro de un bucle por
+   * entorno; `/ciclo-de-vida` tres, y su primer dato caía a 945 px. Cuatro
+   * «no hay nada» seguidos no dicen «no tienes nada»: dicen «esto está
+   * vacío», que es otra cosa y desanima igual.
+   *
+   * Se cuentan por su marca y no por su alto: contando por alto y texto, la
+   * primera versión de esta medida dio por vacíos bloques que no lo eran.
+   */
+  const vaciosGrandes = await p.evaluate(
+    () =>
+      [...document.querySelectorAll('main [data-vacio="pantalla"]')].filter(
+        (e) => e.getClientRects().length > 0,
+      ).length,
+  );
+  if (vaciosGrandes > 1) {
+    dobleVacio.push(`${camino}\n     ${vaciosGrandes} vacíos de caja grande seguidos`);
+  }
+
   textosMirados += letra.mirados;
   if (letra.fuera.length) {
     letraFuera.push(`${camino}\n     ${letra.fuera.join(" · ")}`);
@@ -256,9 +302,20 @@ for (const camino of lista) {
   }
 }
 console.log(`recorridas: ${lista.length} pantallas`);
+if (!soloEstas.length && lista.length < SUELO) {
+  console.error(
+    `SOLO ${lista.length} destinos, y hay al menos ${SUELO}: el patrón que los ` +
+      "saca de `navegacion.ts` y `modulos.ts` ha dejado de casar, así que este " +
+      "barrido no está mirando lo que cree.",
+  );
+  process.exitCode = 1;
+}
 console.log(`ROTAS: ${rotas.length}`);
 console.log(`CON EL DATO EN CRUDO: ${crudas.length}`);
 console.log(`CON LETRA FUERA DE LA ESCALA: ${letraFuera.length} (de ${textosMirados} textos mirados)`);
-if (rotas.length || crudas.length || letraFuera.length) process.exitCode = 1;
-console.log([...rotas, ...crudas, ...letraFuera].map((r) => "  " + r).join("\n"));
+console.log(`CON VARIOS VACÍOS DE CAJA GRANDE: ${dobleVacio.length}`);
+if (rotas.length || crudas.length || letraFuera.length || dobleVacio.length) {
+  process.exitCode = 1;
+}
+console.log([...rotas, ...crudas, ...letraFuera, ...dobleVacio].map((r) => "  " + r).join("\n"));
 await navegador.close();

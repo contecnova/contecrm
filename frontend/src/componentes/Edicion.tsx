@@ -20,11 +20,19 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Formulario } from "@/componentes/Formulario";
-import { camposDe, contratoDe, fichaDe, type CampoEsquema } from "@/lib/contrato";
+import {
+  camposDe,
+  contratoDe,
+  fichaDe,
+  type CampoEsquema,
+} from "@/lib/contrato";
 import { llamar } from "@/lib/api";
 import type { Recurso } from "@/lib/modulos";
 import { usePuedeOperar } from "@/lib/permisos";
-import { MenuDeAcciones, type OpcionDeMenu } from "@/componentes/MenuDeAcciones";
+import {
+  MenuDeAcciones,
+  type OpcionDeMenu,
+} from "@/componentes/MenuDeAcciones";
 
 /**
  * Qué se puede hacer con este registro, según el contrato y el permiso.
@@ -116,7 +124,12 @@ export function ConfirmarBorrado({
     >
       <p className="text-titulin text-ink">{t("ficha.confirmarBorrado")}</p>
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={alBorrar} disabled={enviando} className="btn-danger">
+        <button
+          type="button"
+          onClick={alBorrar}
+          disabled={enviando}
+          className="btn-danger"
+        >
           {t("ficha.eliminarDeVerdad")}
         </button>
         <button type="button" onClick={alCancelar} className="btn-secondary">
@@ -154,7 +167,8 @@ export function FormularioDeEdicion({
       // `/{id}` no aparecía la operación, así que el formulario de edición
       // salía sin ningún campo y no había nada que guardar.
       const plantilla = fichaDe(documento, recurso.listar);
-      if (vivo) setCampos(plantilla ? camposDe(documento, plantilla, "patch") : []);
+      if (vivo)
+        setCampos(plantilla ? camposDe(documento, plantilla, "patch") : []);
     });
     return () => {
       vivo = false;
@@ -195,7 +209,9 @@ export function FormularioDeEdicion({
           // El contrato no declara ningún campo modificable. Se dice, en vez de
           // enseñar un formulario vacío con un botón de guardar que no guarda
           // nada: quien lo pulsara creería que ha cambiado algo.
-          <p className="text-dato text-ink-muted">{t("ficha.sinCamposEditables")}</p>
+          <p className="text-dato text-ink-muted">
+            {t("ficha.sinCamposEditables")}
+          </p>
         )
       ) : (
         <Cargando />

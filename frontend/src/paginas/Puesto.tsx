@@ -68,7 +68,10 @@ export function Puesto() {
       />
 
       {!datos.medible ? (
-        <Vacio titulo={t("puesto.sinConexiones")} detalle={datos.que_significa} />
+        <Vacio
+          titulo={t("puesto.sinConexiones")}
+          detalle={datos.que_significa}
+        />
       ) : (
         <>
           <p
@@ -80,11 +83,14 @@ export function Puesto() {
 
           {datos.paradas.length > 0 ? (
             <section className="mt-4">
-              <h2 className="text-titulin font-medium text-danger">{t("puesto.paradas")}</h2>
+              <h2 className="text-titulin font-medium text-danger">
+                {t("puesto.paradas")}
+              </h2>
               <ul className="mt-2 space-y-1">
                 {datos.paradas.map((p) => (
                   <li key={p.conexion} className="text-dato text-ink">
-                    {p.conexion} · {t("puesto.horas", { horas: p.horas_sin_sincronizar })} ·{" "}
+                    {p.conexion} ·{" "}
+                    {t("puesto.horas", { horas: p.horas_sin_sincronizar })} ·{" "}
                     <span className="text-ink-muted">{p.porque}</span>
                   </li>
                 ))}
@@ -116,7 +122,9 @@ export function Puesto() {
           ) : null}
 
           {datos.los_en_sondeo ? (
-            <p className="mt-2 text-dato text-ink-muted">{datos.los_en_sondeo}</p>
+            <p className="mt-2 text-dato text-ink-muted">
+              {datos.los_en_sondeo}
+            </p>
           ) : null}
         </>
       )}

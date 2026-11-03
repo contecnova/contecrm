@@ -31,7 +31,13 @@
  * duplicarla aquí sería tener dos versiones de la misma regla.
  */
 
-import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
@@ -43,7 +49,13 @@ import { recursoDeReferencia } from "@/lib/referencias";
 import { cn } from "@/lib/utiles";
 
 /** Los tipos que ocupan las dos columnas de la rejilla. */
-const ANCHOS = new Set(["texto_largo", "lineas", "objeto", "lista_multiple", "etiquetas"]);
+const ANCHOS = new Set([
+  "texto_largo",
+  "lineas",
+  "objeto",
+  "lista_multiple",
+  "etiquetas",
+]);
 
 export interface Props {
   campos: CampoEsquema[];
@@ -93,7 +105,9 @@ export function Formulario({
         valor === undefined ||
         valor === "" ||
         (Array.isArray(valor) && valor.length === 0) ||
-        (valor !== null && typeof valor === "object" && Object.keys(valor).length === 0);
+        (valor !== null &&
+          typeof valor === "object" &&
+          Object.keys(valor).length === 0);
       if (vacio) {
         if (campo.obligatorio) limpio[campo.nombre] = valor;
         continue;
@@ -106,7 +120,9 @@ export function Formulario({
   if (campos.length === 0) {
     // Se dice, no se enseña un formulario vacío: uno vacío presentado como
     // «este recurso no pide nada» haría crear registros incompletos.
-    return <p className="text-dato text-ink-faint">{t("formulario.sinContrato")}</p>;
+    return (
+      <p className="text-dato text-ink-faint">{t("formulario.sinContrato")}</p>
+    );
   }
 
   const cambiar = (nombre: string) => (v: unknown) =>
@@ -119,15 +135,15 @@ export function Formulario({
           de treinta campos se va al doble de largo. Lo que necesita el ancho
           entero lo pide él (`campo-ancho`). */}
       <div className="rejilla-formulario">
-      {obligatorios.map((campo) => (
-        <Campo
-          key={campo.nombre}
-          campo={campo}
-          valor={estado[campo.nombre]}
-          alCambiar={cambiar(campo.nombre)}
-          propio={recurso}
-        />
-      ))}
+        {obligatorios.map((campo) => (
+          <Campo
+            key={campo.nombre}
+            campo={campo}
+            valor={estado[campo.nombre]}
+            alCambiar={cambiar(campo.nombre)}
+            propio={recurso}
+          />
+        ))}
       </div>
 
       {opcionales.length > 0 ? (
@@ -141,7 +157,10 @@ export function Formulario({
             <Icono
               nombre="keyboard_arrow_down"
               tamano="sm"
-              className={cn("transition-transform", !verOpcionales && "-rotate-90")}
+              className={cn(
+                "transition-transform",
+                !verOpcionales && "-rotate-90",
+              )}
             />
             {t("formulario.masCampos", { total: opcionales.length })}
           </button>
@@ -161,7 +180,11 @@ export function Formulario({
         </div>
       ) : null}
 
-      <button type="submit" disabled={enviando} className="btn-primary mt-1 self-start">
+      <button
+        type="submit"
+        disabled={enviando}
+        className="btn-primary mt-1 self-start"
+      >
         {enviando ? t("app.cargando") : textoEnviar}
       </button>
     </form>
@@ -182,7 +205,11 @@ function Campo({
 }) {
   const id = `campo-${campo.nombre}`;
   const ayuda = campo.descripcion ? `${id}-ayuda` : undefined;
-  const referencia = recursoDeReferencia(campo.nombre, campo.referencia, propio);
+  const referencia = recursoDeReferencia(
+    campo.nombre,
+    campo.referencia,
+    propio,
+  );
   const comun = {
     id,
     "aria-describedby": ayuda,
@@ -219,7 +246,10 @@ function Campo({
       {campo.tipo === "booleano" ? (
         // `py-1.5` para que la casilla caiga a la altura de la caja de al
         // lado: sin eso flota a media celda y la fila se lee torcida.
-        <label htmlFor={id} className="inline-flex items-center gap-2 py-1.5 text-titulin text-ink">
+        <label
+          htmlFor={id}
+          className="inline-flex items-center gap-2 py-1.5 text-titulin text-ink"
+        >
           <input
             type="checkbox"
             id={id}
@@ -231,7 +261,11 @@ function Campo({
           {campo.titulo}
         </label>
       ) : campo.tipo === "lista" ? (
-        <select {...comun} value={String(valor ?? "")} onChange={(e) => alCambiar(e.target.value)}>
+        <select
+          {...comun}
+          value={String(valor ?? "")}
+          onChange={(e) => alCambiar(e.target.value)}
+        >
           <option value="">—</option>
           {campo.opciones.map((o) => (
             <option key={o} value={o}>
@@ -240,15 +274,44 @@ function Campo({
           ))}
         </select>
       ) : campo.tipo === "lista_multiple" ? (
-        <Opciones campo={campo} valor={valor} alCambiar={alCambiar} ayuda={ayuda} />
+        <Opciones
+          campo={campo}
+          valor={valor}
+          alCambiar={alCambiar}
+          ayuda={ayuda}
+        />
       ) : campo.tipo === "etiquetas" ? (
-        <Etiquetas campo={campo} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
+        <Etiquetas
+          campo={campo}
+          valor={valor}
+          alCambiar={alCambiar}
+          id={id}
+          ayuda={ayuda}
+        />
       ) : referencia ? (
-        <Referencia campo={campo} recurso={referencia} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
+        <Referencia
+          campo={campo}
+          recurso={referencia}
+          valor={valor}
+          alCambiar={alCambiar}
+          id={id}
+          ayuda={ayuda}
+        />
       ) : campo.tipo === "lineas" ? (
-        <Lineas campo={campo} valor={valor} alCambiar={alCambiar} ayuda={ayuda} />
+        <Lineas
+          campo={campo}
+          valor={valor}
+          alCambiar={alCambiar}
+          ayuda={ayuda}
+        />
       ) : campo.tipo === "objeto" ? (
-        <Pares campo={campo} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
+        <Pares
+          campo={campo}
+          valor={valor}
+          alCambiar={alCambiar}
+          id={id}
+          ayuda={ayuda}
+        />
       ) : campo.tipo === "texto_largo" ? (
         // Tres líneas y no cuatro: con cuatro, tres campos de prosa seguidos ya
         // no caben en la pantalla y el formulario se recorre a rueda. Crece al
@@ -264,7 +327,13 @@ function Campo({
       ) : (
         <input
           {...comun}
-          type={campo.tipo === "numero" ? "number" : campo.tipo === "fecha" ? "date" : "text"}
+          type={
+            campo.tipo === "numero"
+              ? "number"
+              : campo.tipo === "fecha"
+                ? "date"
+                : "text"
+          }
           maxLength={campo.maximo ?? undefined}
           value={String(valor ?? "")}
           onChange={(e) =>
@@ -278,7 +347,6 @@ function Campo({
           }
         />
       )}
-
     </div>
   );
 }
@@ -297,10 +365,16 @@ function Opciones({
 }) {
   const puestos = Array.isArray(valor) ? valor.map(String) : [];
   return (
-    <fieldset aria-describedby={ayuda} className="mt-1 flex flex-wrap gap-x-4 gap-y-1.5">
+    <fieldset
+      aria-describedby={ayuda}
+      className="mt-1 flex flex-wrap gap-x-4 gap-y-1.5"
+    >
       <legend className="sr-only">{campo.titulo}</legend>
       {campo.opciones.map((opcion) => (
-        <label key={opcion} className="inline-flex items-center gap-1.5 text-titulin text-ink">
+        <label
+          key={opcion}
+          className="inline-flex items-center gap-1.5 text-titulin text-ink"
+        >
           <input
             type="checkbox"
             checked={puestos.includes(opcion)}
@@ -432,11 +506,15 @@ function Lineas({
   alCambiar: (v: unknown) => void;
   ayuda?: string;
 }) {
-  const filas = Array.isArray(valor) ? (valor as Record<string, unknown>[]) : [];
+  const filas = Array.isArray(valor)
+    ? (valor as Record<string, unknown>[])
+    : [];
   const columnas = campo.subcampos;
 
   const cambiar = (indice: number, nombre: string, nuevo: unknown) =>
-    alCambiar(filas.map((f, i) => (i === indice ? { ...f, [nombre]: nuevo } : f)));
+    alCambiar(
+      filas.map((f, i) => (i === indice ? { ...f, [nombre]: nuevo } : f)),
+    );
 
   const sumas = columnas.map((c) =>
     c.tipo === "numero"
@@ -453,9 +531,14 @@ function Lineas({
             <thead className="bg-paper-sunk text-ink-muted">
               <tr>
                 {columnas.map((c) => (
-                  <th key={c.nombre} className="px-3 py-2 text-left font-medium">
+                  <th
+                    key={c.nombre}
+                    className="px-3 py-2 text-left font-medium"
+                  >
                     {c.titulo}
-                    {c.obligatorio ? <span className="text-danger"> *</span> : null}
+                    {c.obligatorio ? (
+                      <span className="text-danger"> *</span>
+                    ) : null}
                   </th>
                 ))}
                 <th className="w-10 px-2 py-2" />
@@ -471,7 +554,9 @@ function Lineas({
                           aria-label={`${c.titulo}, línea ${indice + 1}`}
                           className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
                           value={String(fila[c.nombre] ?? "")}
-                          onChange={(e) => cambiar(indice, c.nombre, e.target.value)}
+                          onChange={(e) =>
+                            cambiar(indice, c.nombre, e.target.value)
+                          }
                         >
                           <option value="">—</option>
                           {c.opciones.map((o) => (
@@ -484,7 +569,13 @@ function Lineas({
                         <input
                           aria-label={`${c.titulo}, línea ${indice + 1}`}
                           className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
-                          type={c.tipo === "numero" ? "number" : c.tipo === "fecha" ? "date" : "text"}
+                          type={
+                            c.tipo === "numero"
+                              ? "number"
+                              : c.tipo === "fecha"
+                                ? "date"
+                                : "text"
+                          }
                           value={String(fila[c.nombre] ?? "")}
                           onChange={(e) =>
                             cambiar(
@@ -506,7 +597,9 @@ function Lineas({
                       type="button"
                       className="rounded-lg px-2 py-1 text-ink-muted hover:bg-paper-sunk hover:text-danger"
                       aria-label={`Quitar la línea ${indice + 1}`}
-                      onClick={() => alCambiar(filas.filter((_, i) => i !== indice))}
+                      onClick={() =>
+                        alCambiar(filas.filter((_, i) => i !== indice))
+                      }
                     >
                       <Icono nombre="close" />
                     </button>
@@ -519,7 +612,11 @@ function Lineas({
                 <tr>
                   {columnas.map((c, i) => (
                     <td key={c.nombre} className="px-3 py-2 text-ink-muted">
-                      {sumas[i] === null ? (i === 0 ? "Suma" : "") : importe(sumas[i] as number)}
+                      {sumas[i] === null
+                        ? i === 0
+                          ? "Suma"
+                          : ""
+                        : importe(sumas[i] as number)}
                     </td>
                   ))}
                   <td />
@@ -529,13 +626,18 @@ function Lineas({
           </table>
         </div>
       ) : (
-        <p className="text-titulo text-ink-muted">Todavía no hay ninguna línea.</p>
+        <p className="text-titulo text-ink-muted">
+          Todavía no hay ninguna línea.
+        </p>
       )}
       <button
         type="button"
         className="rounded-xl border border-ink-dim/60 px-3 py-1.5 text-titulo hover:bg-paper-sunk"
         onClick={() =>
-          alCambiar([...filas, Object.fromEntries(columnas.map((c) => [c.nombre, ""]))])
+          alCambiar([
+            ...filas,
+            Object.fromEntries(columnas.map((c) => [c.nombre, ""])),
+          ])
         }
       >
         <Icono nombre="add" /> Añadir línea
@@ -561,7 +663,10 @@ function Pares({
   const [crudo, setCrudo] = useState(false);
   const pares = useMemo(() => {
     if (valor && typeof valor === "object" && !Array.isArray(valor)) {
-      return Object.entries(valor as Record<string, unknown>).map(([k, v]) => [k, String(v)]);
+      return Object.entries(valor as Record<string, unknown>).map(([k, v]) => [
+        k,
+        String(v),
+      ]);
     }
     return [] as string[][];
   }, [valor]);
@@ -579,7 +684,11 @@ function Pares({
           id={id}
           aria-describedby={ayuda}
           rows={4}
-          value={typeof valor === "string" ? valor : JSON.stringify(valor ?? {}, null, 2)}
+          value={
+            typeof valor === "string"
+              ? valor
+              : JSON.stringify(valor ?? {}, null, 2)
+          }
           onChange={(e) => alCambiar(intentarJson(e.target.value))}
           className="input-base font-mono text-rotulo"
         />
@@ -597,7 +706,11 @@ function Pares({
   const filas = [...pares, ["", ""]];
   return (
     <div>
-      <div id={id} aria-describedby={ayuda} className="mt-1 flex flex-col gap-1.5">
+      <div
+        id={id}
+        aria-describedby={ayuda}
+        className="mt-1 flex flex-col gap-1.5"
+      >
         {filas.map(([clave, contenido], i) => (
           <div key={i} className="flex gap-2">
             <input
@@ -627,7 +740,11 @@ function Pares({
       </div>
       {/* El JSON sigue estando para el caso raro —un objeto anidado— pero deja
           de ser lo primero que se ve. */}
-      <button type="button" onClick={() => setCrudo(true)} className="btn-link mt-1">
+      <button
+        type="button"
+        onClick={() => setCrudo(true)}
+        className="btn-link mt-1"
+      >
         {t("formulario.editarComoJson")}
       </button>
     </div>
@@ -660,7 +777,9 @@ function Referencia({
   ayuda?: string;
 }) {
   const { t } = useTranslation();
-  const [opciones, setOpciones] = useState<Record<string, unknown>[] | null>(null);
+  const [opciones, setOpciones] = useState<Record<string, unknown>[] | null>(
+    null,
+  );
   const [busqueda, setBusqueda] = useState("");
   const [fallo, setFallo] = useState(false);
 
@@ -697,8 +816,14 @@ function Referencia({
     <div>
       {elegido ? (
         <p className="mt-1 flex items-center gap-2">
-          <span className="chip-dato chip-dato--si">{nombreDelRegistro(elegido)}</span>
-          <button type="button" onClick={() => alCambiar("")} className="btn-link">
+          <span className="chip-dato chip-dato--si">
+            {nombreDelRegistro(elegido)}
+          </span>
+          <button
+            type="button"
+            onClick={() => alCambiar("")}
+            className="btn-link"
+          >
             {t("formulario.cambiar")}
           </button>
         </p>
@@ -709,15 +834,24 @@ function Referencia({
             aria-describedby={ayuda}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder={t("formulario.buscarRegistro", { recurso: recurso.nombre.toLowerCase() })}
+            placeholder={t("formulario.buscarRegistro", {
+              recurso: recurso.nombre.toLowerCase(),
+            })}
             className="input-base"
             autoComplete="off"
           />
           {/* El valor real, para que el formulario lo siga exigiendo cuando es
               obligatorio: el buscador de arriba no es el campo. */}
-          <input type="hidden" value={String(valor ?? "")} required={campo.obligatorio} readOnly />
+          <input
+            type="hidden"
+            value={String(valor ?? "")}
+            required={campo.obligatorio}
+            readOnly
+          />
           {opciones === null ? (
-            <p className="mt-1 text-rotulo text-ink-faint">{t("app.cargando")}</p>
+            <p className="mt-1 text-rotulo text-ink-faint">
+              {t("app.cargando")}
+            </p>
           ) : (
             <ul className="mt-1 max-h-44 overflow-y-auto rounded-lg border border-ink-dim/60">
               {filtradas.slice(0, 40).map((o) => (
@@ -730,7 +864,9 @@ function Referencia({
                     }}
                     className="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-dato text-ink hover:bg-paper-light"
                   >
-                    <span className="truncate">{nombreDelRegistro(o) || String(o.id)}</span>
+                    <span className="truncate">
+                      {nombreDelRegistro(o) || String(o.id)}
+                    </span>
                   </button>
                 </li>
               ))}

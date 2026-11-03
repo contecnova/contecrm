@@ -525,7 +525,9 @@ export function ObjetoDelModelo() {
                       </div>
                       {/* El mensaje que verá quien la incumpla: es la mitad de la
                       regla, y sin él no se puede juzgar si está bien escrita. */}
-                      <p className="text-rotulo text-ink-muted">{regla.mensaje}</p>
+                      <p className="text-rotulo text-ink-muted">
+                        {regla.mensaje}
+                      </p>
                     </li>
                   ))}
                 </ul>
@@ -752,7 +754,9 @@ function ElDisenoQueTeToca({ objeto }: { objeto: string }) {
       </p>
       {diseno.hay_diseno ? (
         <div className="flex flex-wrap items-baseline gap-x-3">
-          <span className="text-dato font-medium text-ink">{diseno.nombre}</span>
+          <span className="text-dato font-medium text-ink">
+            {diseno.nombre}
+          </span>
           <span className="chip-dato">
             {t("modeloDatos.secciones", {
               cuantas: diseno.secciones?.length ?? 0,
@@ -812,7 +816,9 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("modeloDatos.ia")}</h2>
-      <p className="mb-2 text-rotulo text-ink-faint">{t("modeloDatos.iaAyuda")}</p>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("modeloDatos.iaAyuda")}
+      </p>
       {!cob.medible ? (
         <Vacio titulo={t("modeloDatos.iaNoMedible")} compacto />
       ) : (
@@ -929,7 +935,9 @@ function CamposQueYaPidenColumna({ objeto }: { objeto: string }) {
           ))}
         </ul>
       )}
-      <p className="mt-2 text-rotulo text-ink-faint">{datos.por_que_no_siempre}</p>
+      <p className="mt-2 text-rotulo text-ink-faint">
+        {datos.por_que_no_siempre}
+      </p>
     </section>
   );
 }

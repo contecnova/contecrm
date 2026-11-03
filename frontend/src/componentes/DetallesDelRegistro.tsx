@@ -143,7 +143,10 @@ function Campo({
   // arriba— ahora lo colocan igual.
   return (
     <div className="min-w-0">
-      <dt className="truncate text-rotulo text-ink-faint" title={humanizar(clave)}>
+      <dt
+        className="truncate text-rotulo text-ink-faint"
+        title={humanizar(clave)}
+      >
         {humanizar(clave)}
       </dt>
       <dd

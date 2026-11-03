@@ -102,6 +102,17 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
+**La letra de máquina, sólo donde toca.** Los códigos, los identificadores y
+las cifras que se comparan en columna se escriben con letra monoespaciada,
+porque se leen carácter a carácter. Las frases, no. Hasta el 03-11-2026 salían
+así cosas como «sin medir» o «Apertura: no hay con qué medirla todavía», que
+parecían un código y no lo eran.
+
+**Cuando una sección está vacía, lo dice en una línea.** Antes cada bloque sin
+datos ocupaba una tarjeta entera con su dibujo, y una pantalla con tres o
+cuatro seguidos era una pantalla de «aquí no hay nada» repetido. La tarjeta
+grande se reserva para cuando lo vacío es la pantalla entera.
+
 **Cada entrada del menú dice qué hace.** Hasta el 03-11-2026 había parejas
 que obligaban a entrar en las dos para saber cuál era cuál: «Entornos y
 despliegue» junto a «Entornos y despliegues», «Usuarios y permisos» junto a

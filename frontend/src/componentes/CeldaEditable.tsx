@@ -36,7 +36,8 @@ import { humanizar } from "@/lib/formato";
 
 /** El tipo de `<input>` que le toca a un campo del contrato. */
 function tipoDeEntrada(campo: CampoEsquema): string {
-  if (campo.tipo === "fecha") return campo.formato === "date-time" ? "datetime-local" : "date";
+  if (campo.tipo === "fecha")
+    return campo.formato === "date-time" ? "datetime-local" : "date";
   if (campo.tipo === "numero") return "number";
   return "text";
 }
@@ -77,7 +78,11 @@ export function CeldaEditable({
     const antes = valor === null || valor === undefined ? "" : String(valor);
     if (borrador === antes) return;
     try {
-      await alGuardar(esquema.tipo === "numero" && borrador !== "" ? Number(borrador) : borrador);
+      await alGuardar(
+        esquema.tipo === "numero" && borrador !== ""
+          ? Number(borrador)
+          : borrador,
+      );
     } catch (error) {
       setFallo(error instanceof Error ? error.message : String(error));
     }

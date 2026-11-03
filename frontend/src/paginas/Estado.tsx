@@ -96,7 +96,11 @@ interface Slo {
 
 /** `GET /estado/consumo`: cuánto se lleva gastado de lo contratado. */
 interface Consumo {
-  metricas: { metrica: string; consumido: number; por_modulo: Record<string, number> }[];
+  metricas: {
+    metrica: string;
+    consumido: number;
+    por_modulo: Record<string, number>;
+  }[];
 }
 
 /** `GET /estado/contratos`: si lo que un servicio promete llega de verdad. */
@@ -104,7 +108,11 @@ interface Contratos {
   en_verde: boolean;
   incumplimientos: unknown[];
   sin_respuesta: string[];
-  servicios: { servicio: string; cobertura_pct: number; incumplimientos: unknown[] }[];
+  servicios: {
+    servicio: string;
+    cobertura_pct: number;
+    incumplimientos: unknown[];
+  }[];
 }
 
 /** `GET /estado/consultas-degradadas`: lo que va más lento de lo que debería. */
@@ -197,7 +205,9 @@ export function Estado() {
     llamar<Frenados>("/api/v1/estado/frenados", { signal: control.signal })
       .then((r) => setFrenados(r.datos))
       .catch(() => undefined);
-    llamar<Degradadas>("/api/v1/estado/consultas-degradadas", { signal: control.signal })
+    llamar<Degradadas>("/api/v1/estado/consultas-degradadas", {
+      signal: control.signal,
+    })
       .then((r) => setDegradadas(r.datos))
       .catch(() => undefined);
     return () => control.abort();
@@ -210,6 +220,7 @@ export function Estado() {
     <>
       <CabeceraPagina
         titulo={t("estado.titulo")}
+        entradilla={t("estado.entradilla")}
         icono="monitor_heart"
         acciones={
           <span className={`badge ${INSIGNIA[datos.estado] ?? "badge-muted"}`}>
@@ -291,7 +302,9 @@ export function Estado() {
                     </span>
                   )}
                 </p>
-                <p className="mt-2 text-rotulo text-ink-faint">{c.como_se_mide}</p>
+                <p className="mt-2 text-rotulo text-ink-faint">
+                  {c.como_se_mide}
+                </p>
               </div>
             ))}
           </div>
@@ -311,10 +324,14 @@ export function Estado() {
           pintar. Lo cazaron sus propias pruebas. */}
       {slo?.servicios?.length ? (
         <>
-          <h2 className="mt-8 text-titulo font-medium text-ink">{t("estado.slo")}</h2>
+          <h2 className="mt-8 text-titulo font-medium text-ink">
+            {t("estado.slo")}
+          </h2>
           <p
             className={`mt-1 text-dato ${
-              slo.se_puede_desplegar === false ? "text-danger" : "text-ink-muted"
+              slo.se_puede_desplegar === false
+                ? "text-danger"
+                : "text-ink-muted"
             }`}
             role="status"
           >
@@ -357,12 +374,19 @@ export function Estado() {
           servicio» sí. */}
       {consumo?.metricas?.length ? (
         <>
-          <h2 className="mt-8 text-titulo font-medium text-ink">{t("estado.consumo")}</h2>
+          <h2 className="mt-8 text-titulo font-medium text-ink">
+            {t("estado.consumo")}
+          </h2>
           <ul className="mt-2 divide-y divide-ink-dim/30">
             {consumo.metricas.map((m) => (
-              <li key={m.metrica} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+              <li
+                key={m.metrica}
+                className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+              >
                 <span className="text-titulin text-ink">{m.metrica}</span>
-                <span className="text-titulo font-medium text-ink">{m.consumido}</span>
+                <span className="text-titulo font-medium text-ink">
+                  {m.consumido}
+                </span>
                 <span className="text-rotulo text-ink-faint">
                   {Object.entries(m.por_modulo ?? {})
                     .filter(([, v]) => v > 0)
@@ -381,7 +405,9 @@ export function Estado() {
           deberían. */}
       {contratos?.servicios || degradadas?.servicios ? (
         <>
-          <h2 className="mt-8 text-titulo font-medium text-ink">{t("estado.entreServicios")}</h2>
+          <h2 className="mt-8 text-titulo font-medium text-ink">
+            {t("estado.entreServicios")}
+          </h2>
           {contratos?.servicios ? (
             <p className="mt-1 text-dato text-ink-muted">
               {contratos.en_verde
@@ -432,7 +458,9 @@ function LaPresion({ presion }: { presion: Presion | null }) {
   const mudos = presion.sin_respuesta ?? [];
   return (
     <section className="card mt-4 p-4">
-      <h2 className="text-titulo font-medium text-ink">{t("estado.presion")}</h2>
+      <h2 className="text-titulo font-medium text-ink">
+        {t("estado.presion")}
+      </h2>
       {/* **No hay una presión global**: la que manda es la del que peor va,
           y el servidor la devuelve como ese servicio entero. Inventarse una
           media aquí sería inventarse el número que decide lo que se aplaza. */}
@@ -449,7 +477,9 @@ function LaPresion({ presion }: { presion: Presion | null }) {
             {t("estado.peorServicio", { servicio: presion.peor.servicio })}
           </p>
           {presion.que_significa ? (
-            <p className="mt-1 text-rotulo text-ink-faint">{presion.que_significa}</p>
+            <p className="mt-1 text-rotulo text-ink-faint">
+              {presion.que_significa}
+            </p>
           ) : null}
         </>
       )}
@@ -480,20 +510,33 @@ function LosFrenados({ frenados }: { frenados: Frenados | null }) {
   const observados = frenados.observados ?? [];
   return (
     <section className="card mt-4 p-4">
-      <h2 className="text-titulo font-medium text-ink">{t("estado.frenados")}</h2>
+      <h2 className="text-titulo font-medium text-ink">
+        {t("estado.frenados")}
+      </h2>
       {/* Lo que ve ESTE proceso: con varias réplicas cada una tiene su parte,
           y una lista corta no significa que no haya nadie frenado. */}
-      <p className="mt-1 text-rotulo text-ink-faint">{frenados.porque_solo_estos}</p>
+      <p className="mt-1 text-rotulo text-ink-faint">
+        {frenados.porque_solo_estos}
+      </p>
       {observados.length === 0 ? (
-        <p className="mt-2 text-dato text-ink-muted">{t("estado.nadieObservado")}</p>
+        <p className="mt-2 text-dato text-ink-muted">
+          {t("estado.nadieObservado")}
+        </p>
       ) : (
         <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
           {observados.map((f) => (
-            <li key={f.tenant_id} className="flex flex-wrap items-baseline gap-2">
-              <span className="font-mono text-rotulo text-ink">{f.tenant_id}</span>
+            <li
+              key={f.tenant_id}
+              className="flex flex-wrap items-baseline gap-2"
+            >
+              <span className="font-mono text-rotulo text-ink">
+                {f.tenant_id}
+              </span>
               {f.frenado ? (
                 <span className="badge badge-aviso">
-                  {t("estado.aCuota", { pct: Math.round(f.factor_de_cuota * 100) })}
+                  {t("estado.aCuota", {
+                    pct: Math.round(f.factor_de_cuota * 100),
+                  })}
                 </span>
               ) : (
                 <span className="chip-dato">
@@ -504,7 +547,9 @@ function LosFrenados({ frenados }: { frenados: Frenados | null }) {
                 </span>
               )}
               {f.frenado && f.motivo ? (
-                <span className="w-full text-rotulo text-ink-muted">{f.motivo}</span>
+                <span className="w-full text-rotulo text-ink-muted">
+                  {f.motivo}
+                </span>
               ) : null}
             </li>
           ))}

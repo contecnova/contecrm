@@ -25,6 +25,7 @@
  * mirando cuántos entraron.
  */
 
+import { cn } from "@/lib/utiles";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -52,7 +53,13 @@ interface Canal {
 }
 
 /** Los motivos que `recibir()` conoce, en el orden en que los aplica. */
-const MOTIVOS = ["trampa", "automatico", "propio", "tope", "incompleto"] as const;
+const MOTIVOS = [
+  "trampa",
+  "automatico",
+  "propio",
+  "tope",
+  "incompleto",
+] as const;
 
 export function CanalesDeEntrada() {
   const { t } = useTranslation();
@@ -62,7 +69,9 @@ export function CanalesDeEntrada() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     setFallo(null);
-    listar<Canal>("/api/v1/canales-servicio?limite=100", { signal: control.signal })
+    listar<Canal>("/api/v1/canales-servicio?limite=100", {
+      signal: control.signal,
+    })
       .then(setCanales)
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -81,7 +90,10 @@ export function CanalesDeEntrada() {
       />
 
       {!canales || canales.length === 0 ? (
-        <Vacio titulo={t("canales.sinCanales")} detalle={t("canales.sinCanalesDetalle")} />
+        <Vacio
+          titulo={t("canales.sinCanales")}
+          detalle={t("canales.sinCanalesDetalle")}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {canales.map((c) => {
@@ -90,24 +102,37 @@ export function CanalesDeEntrada() {
             // El reparto puede no sumar el total: los canales anteriores a
             // esta medida tienen el total y no el desglose, y repartirlo a
             // ojo sería inventarlo.
-            const desglosado = MOTIVOS.reduce((n, m) => n + (porMotivo[m] ?? 0), 0);
+            const desglosado = MOTIVOS.reduce(
+              (n, m) => n + (porMotivo[m] ?? 0),
+              0,
+            );
             const sinMotivo = Math.max(0, total - desglosado);
             const trampaManda =
               (porMotivo.trampa ?? 0) > 0 &&
-              (porMotivo.trampa ?? 0) >= Math.max(...MOTIVOS.map((m) => porMotivo[m] ?? 0));
+              (porMotivo.trampa ?? 0) >=
+                Math.max(...MOTIVOS.map((m) => porMotivo[m] ?? 0));
 
             return (
               <li key={c.id} className="card p-4">
                 <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="flex-1 text-titulo text-ink">{c.nombre}</span>
+                  <span className="flex-1 text-titulo text-ink">
+                    {c.nombre}
+                  </span>
                   <span className="chip-dato">{c.tipo}</span>
-                  <span className={c.activo ? "badge badge-muted" : "badge badge-aviso"}>
+                  <span
+                    className={
+                      c.activo ? "badge badge-muted" : "badge badge-aviso"
+                    }
+                  >
                     {t(c.activo ? "canales.escuchando" : "canales.apagado")}
                   </span>
                 </div>
 
                 <p className="mt-2 font-mono text-dato text-ink">
-                  {t("canales.cifras", { recibidos: c.recibidos, descartados: total })}
+                  {t("canales.cifras", {
+                    recibidos: c.recibidos,
+                    descartados: total,
+                  })}
                 </p>
 
                 {total > 0 ? (
@@ -116,7 +141,9 @@ export function CanalesDeEntrada() {
                       <li
                         key={m}
                         className={
-                          m === "trampa" ? "badge badge-aviso font-mono" : "chip-dato font-mono"
+                          m === "trampa"
+                            ? "badge badge-aviso font-mono"
+                            : "chip-dato font-mono"
                         }
                       >
                         {t(`canales.motivo.${m}`, { cuantos: porMotivo[m] })}
@@ -136,30 +163,48 @@ export function CanalesDeEntrada() {
                     contestando «aceptado», así que un falso positivo no deja
                     ni rastro del lado de quien escribió. */}
                 {trampaManda ? (
-                  <p className="mt-2 text-dato text-warning">{t("canales.trampaManda")}</p>
+                  <p className="mt-2 text-dato text-warning">
+                    {t("canales.trampaManda")}
+                  </p>
                 ) : null}
 
                 <dl className="mt-3 grid gap-x-4 gap-y-1 text-rotulo text-ink-faint sm:grid-cols-2">
                   <div>
-                    <dt className="inline text-ink-muted">{t("canales.tope")}</dt>{" "}
+                    <dt className="inline text-ink-muted">
+                      {t("canales.tope")}
+                    </dt>{" "}
                     <dd className="inline font-mono">{c.max_por_hora}</dd>
                   </div>
                   <div>
-                    <dt className="inline text-ink-muted">{t("canales.propia")}</dt>{" "}
-                    <dd className="inline font-mono">
+                    <dt className="inline text-ink-muted">
+                      {t("canales.propia")}
+                    </dt>{" "}
+                    <dd
+                      className={cn(
+                        "inline",
+                        c.direccion_propia && "font-mono",
+                      )}
+                    >
                       {c.direccion_propia || t("canales.sinPropia")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="inline text-ink-muted">{t("canales.trampa")}</dt>{" "}
-                    <dd className="inline font-mono">
+                    <dt className="inline text-ink-muted">
+                      {t("canales.trampa")}
+                    </dt>{" "}
+                    {/* La monoespaciada es para el nombre del campo, que es
+                        un identificador. «sin trampa» es una frase. */}
+                    <dd className={cn("inline", c.campo_trampa && "font-mono")}>
                       {c.campo_trampa || t("canales.sinTrampa")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="inline text-ink-muted">{t("canales.obligatorios")}</dt>{" "}
+                    <dt className="inline text-ink-muted">
+                      {t("canales.obligatorios")}
+                    </dt>{" "}
                     <dd className="inline font-mono">
-                      {(c.obligatorios ?? []).join(", ") || t("canales.ninguno")}
+                      {(c.obligatorios ?? []).join(", ") ||
+                        t("canales.ninguno")}
                     </dd>
                   </div>
                 </dl>
@@ -167,11 +212,15 @@ export function CanalesDeEntrada() {
                 {/* Sin dirección propia, el canal de correo no puede cortar su
                     propio eco: el buzón se contesta a sí mismo. */}
                 {c.tipo === "correo" && !c.direccion_propia ? (
-                  <p className="mt-2 text-dato text-warning">{t("canales.sinEco")}</p>
+                  <p className="mt-2 text-dato text-warning">
+                    {t("canales.sinEco")}
+                  </p>
                 ) : null}
 
                 <p className="mt-2 text-rotulo text-ink-faint">
-                  {t("canales.mapea", { cuantos: Object.keys(c.mapeo ?? {}).length })}
+                  {t("canales.mapea", {
+                    cuantos: Object.keys(c.mapeo ?? {}).length,
+                  })}
                 </p>
               </li>
             );

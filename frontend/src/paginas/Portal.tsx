@@ -231,7 +231,9 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
       <header className="mb-6 flex items-baseline justify-between gap-3">
-        <h1 className="text-grande font-semibold text-ink">Tu área de cliente</h1>
+        <h1 className="text-grande font-semibold text-ink">
+          Tu área de cliente
+        </h1>
         <button
           type="button"
           onClick={alSalir}
@@ -404,9 +406,13 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
               key={String(fila.id ?? i)}
               className="rounded-lg bg-paper-sunk px-3 py-2"
             >
-              <p className="text-titulin text-ink">{texto(fila, TITULO) || "—"}</p>
+              <p className="text-titulin text-ink">
+                {texto(fila, TITULO) || "—"}
+              </p>
               {texto(fila, DEBAJO) ? (
-                <p className="text-rotulo text-ink-faint">{texto(fila, DEBAJO)}</p>
+                <p className="text-rotulo text-ink-faint">
+                  {texto(fila, DEBAJO)}
+                </p>
               ) : null}
             </li>
           ))}

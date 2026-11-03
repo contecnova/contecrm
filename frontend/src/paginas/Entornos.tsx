@@ -32,7 +32,12 @@ import { Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 
-const ENTORNOS = ["desarrollo", "pruebas", "preproduccion", "produccion"] as const;
+const ENTORNOS = [
+  "desarrollo",
+  "pruebas",
+  "preproduccion",
+  "produccion",
+] as const;
 
 interface Desplegado {
   entorno: string;
@@ -115,14 +120,25 @@ export function Entornos() {
               <div className="flex flex-wrap items-baseline gap-2">
                 <span className="flex-1 text-titulo text-ink">{entorno}</span>
                 {entorno === "produccion" ? (
-                  <span className="badge badge-aviso">{t("entornos.esProduccion")}</span>
+                  <span className="badge badge-aviso">
+                    {t("entornos.esProduccion")}
+                  </span>
                 ) : null}
               </div>
 
               {!d ? (
-                <p className="mt-2 text-dato text-ink-muted">{t("entornos.cargando")}</p>
+                <p className="mt-2 text-dato text-ink-muted">
+                  {t("entornos.cargando")}
+                </p>
               ) : !d.hay ? (
-                <Vacio titulo={d.porque || t("entornos.sinDesplegar")} detalle="" />
+                // Compacto: hay uno por entorno —cuatro—, así que ninguno
+                // es «el vacío de la pantalla». En caja grande sumaban 760 px
+                // de nada. Medido el 03-11-2026.
+                <Vacio
+                  compacto
+                  titulo={d.porque || t("entornos.sinDesplegar")}
+                  detalle=""
+                />
               ) : (
                 <>
                   <p className="mt-2 font-mono text-dato text-ink">
@@ -141,7 +157,9 @@ export function Entornos() {
                     })}
                   </p>
                   {d.motivo ? (
-                    <p className="mt-1 text-rotulo text-ink-faint">{d.motivo}</p>
+                    <p className="mt-1 text-rotulo text-ink-faint">
+                      {d.motivo}
+                    </p>
                   ) : null}
                   {/* Si se puede volver atrás se dice ANTES de pulsar: un
                       rollback que a veces no funciona es peor que ninguno. */}

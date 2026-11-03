@@ -73,7 +73,10 @@ export function Casos() {
   if (!bandeja) return <Cargando />;
 
   const vacia =
-    bandeja.incumplidos.total + bandeja.en_riesgo.total + bandeja.resto.total === 0;
+    bandeja.incumplidos.total +
+      bandeja.en_riesgo.total +
+      bandeja.resto.total ===
+    0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -81,12 +84,17 @@ export function Casos() {
         titulo={t("casos.titulo")}
         // Se dice con qué antelación avisa, porque si no, ver un caso en «en
         // riesgo» y otro parecido fuera no tiene explicación posible.
-        entradilla={t("casos.entradillaConUmbral", { horas: bandeja.riesgo_horas })}
+        entradilla={t("casos.entradillaConUmbral", {
+          horas: bandeja.riesgo_horas,
+        })}
         icono="confirmation_number"
       />
 
       {vacia ? (
-        <Vacio titulo={t("casos.ninguno")} detalle={t("casos.ningunoDetalle")} />
+        <Vacio
+          titulo={t("casos.ninguno")}
+          detalle={t("casos.ningunoDetalle")}
+        />
       ) : (
         <>
           <Monton
@@ -101,7 +109,12 @@ export function Casos() {
             tono="warning"
             vacio={t("casos.ningunoEnRiesgo")}
           />
-          <Monton titulo={t("casos.resto")} monton={bandeja.resto} tono="normal" vacio="" />
+          <Monton
+            titulo={t("casos.resto")}
+            monton={bandeja.resto}
+            tono="normal"
+            vacio=""
+          />
         </>
       )}
     </div>
@@ -121,7 +134,11 @@ function Monton({
 }) {
   const { t } = useTranslation();
   const color =
-    tono === "danger" ? "text-danger" : tono === "warning" ? "text-warning" : "text-ink";
+    tono === "danger"
+      ? "text-danger"
+      : tono === "warning"
+        ? "text-warning"
+        : "text-ink";
   const escondidos = monton.total - monton.casos.length;
 
   return (
@@ -148,13 +165,20 @@ function Monton({
                   to={`/m/casos/caso/${c.id}`}
                   className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 hover:bg-paper-light"
                 >
-                  <span className="font-mono text-rotulo text-ink-faint">{c.codigo || "—"}</span>
-                  <span className="min-w-0 flex-1 truncate text-dato text-ink">{c.asunto}</span>
+                  <span className="font-mono text-rotulo text-ink-faint">
+                    {c.codigo || "—"}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-dato text-ink">
+                    {c.asunto}
+                  </span>
                   <span className="text-rotulo text-ink-muted">{c.estado}</span>
                   {c.prioridad === "alta" || c.prioridad === "urgente" ? (
                     <span className="badge badge-warning">{c.prioridad}</span>
                   ) : null}
-                  <Reloj vence={c.vence_resolucion_at} incumplio={c.incumplio_resolucion} />
+                  <Reloj
+                    vence={c.vence_resolucion_at}
+                    incumplio={c.incumplio_resolucion}
+                  />
                 </Link>
               </li>
             ))}
@@ -179,7 +203,13 @@ function Monton({
  * calculara, dos navegadores con la hora mal darían dos incumplimientos
  * distintos del mismo caso.
  */
-function Reloj({ vence, incumplio }: { vence: string | null; incumplio: boolean }) {
+function Reloj({
+  vence,
+  incumplio,
+}: {
+  vence: string | null;
+  incumplio: boolean;
+}) {
   const { t } = useTranslation();
   const [ahora, setAhora] = useState(() => Date.now());
 
@@ -192,17 +222,28 @@ function Reloj({ vence, incumplio }: { vence: string | null; incumplio: boolean 
   // después. Enseñar «vence en 48 h» sobre un caso incumplido sería negar el
   // incumplimiento.
   if (incumplio) {
-    return <span className="font-mono text-rotulo text-danger">{t("casos.incumplido")}</span>;
+    return (
+      <span className="font-mono text-rotulo text-danger">
+        {t("casos.incumplido")}
+      </span>
+    );
   }
-  if (!vence) return <span className="text-rotulo text-ink-faint">{t("casos.sinSla")}</span>;
+  if (!vence)
+    return (
+      <span className="text-rotulo text-ink-faint">{t("casos.sinSla")}</span>
+    );
 
   const restan = Date.parse(vence) - ahora;
   const horas = Math.floor(Math.abs(restan) / 3600_000);
   const minutos = Math.floor((Math.abs(restan) % 3600_000) / 60_000);
   const texto = `${horas}h ${minutos}m`;
   return (
-    <span className={`font-mono text-rotulo ${restan < 0 ? "text-danger" : "text-ink-muted"}`}>
-      {restan < 0 ? t("casos.vencidoHace", { tiempo: texto }) : t("casos.vence", { tiempo: texto })}
+    <span
+      className={`font-mono text-rotulo ${restan < 0 ? "text-danger" : "text-ink-muted"}`}
+    >
+      {restan < 0
+        ? t("casos.vencidoHace", { tiempo: texto })
+        : t("casos.vence", { tiempo: texto })}
     </span>
   );
 }

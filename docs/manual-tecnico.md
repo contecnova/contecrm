@@ -208,6 +208,44 @@ servicios»—, que dejó de ser verdad sin que nadie lo revisara. **Medido: son
 39** —`/buscar`, `/superficie`, `/estado/*`, `/sesion/*`, `/integracion/*`—, y
 el `return` las dejaba a todas sin comprobar. Quitada la exención, pasan.
 
+#### Dos radios y ya (03-11-2026)
+
+Lightning tiene **dos**: 4 px para todo —botones, campos, tarjetas,
+insignias— y 8 px para lo que flota encima. Esa falta de escala ES el aspecto.
+Los nombres de Tailwind se dejan todos apuntando a esos dos valores, para que
+un `rounded-xl` escrito en cualquier pantalla mida lo que toca sin tocarla: un
+buscar-y-reemplazar se olvida de la pantalla que nadie abrió.
+
+Al cerrar el rediseño quedaban dos escalones fuera: `sm` valía 2 px —para
+cinco casillas y dos cuadraditos de leyenda— y `3xl` valía 28 px **sin que lo
+usara nadie**. Un escalón que no se usa es uno que alguien usará el día que no
+mire, y entonces vuelve a haber cuatro radios. Los dos colapsan a 4 px.
+
+Lo vigila la misma prueba que la letra: ningún `rounded-[14px]` entre
+corchetes y ningún `border-radius` en píxeles que no sea 0, 4 u 8. La única
+excepción, con su motivo, es el pulgar de la barra de desplazamiento del
+navegador, que no es una caja del sistema.
+
+#### La monoespaciada, sólo para lo que se lee carácter a carácter
+
+**Medido el 03-11-2026**: 42 pantallas y 472 textos salían en Roboto Mono, y
+lo que salía no era código —«sin medir», «escuchando», «conversaciones», «0
+recibidos · 0 descartados», «Apertura: no hay con qué medirla todavía»—. La
+monoespaciada es para un identificador, un código, un hash o una cifra que se
+alinea en columna. Una frase en castellano, no; en Lightning no hay
+monoespaciada en la interfaz salvo para código.
+
+La llevaban cuatro clases base —`.badge`, `.toggle-badge`, `.btn-link` e
+`.input-sm`—, y quitarla de ahí bajó poco: **el grueso eran los 141
+`font-mono` escritos a mano**. El patrón que los explica es casi siempre el
+mismo: el hueco de un dato que normalmente es un identificador, y cuyo
+RESPALDO es una frase. Ahora la clase es condicional —`cn("…", valor &&
+"font-mono")`—, así que el identificador la lleva y el «sin declarar» no.
+
+Lo que sí se queda en monoespaciada, y se comprobó uno a uno: el JSON del
+editor de procesos, los permisos incompatibles de `/seguridad`
+(`quote:write ↔ aprobacion:decidir`) y los scopes de OAuth de `/suite`.
+
 #### La escala tipográfica (02-11-2026)
 
 Hasta el 02-11-2026 se usaban los tamaños de Tailwind

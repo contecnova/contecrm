@@ -127,7 +127,9 @@ export function PuntuacionDeLead() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     setFallo(null);
-    llamar<Explicacion>(`/api/v1/puntuacion/leads/${id}`, { signal: control.signal })
+    llamar<Explicacion>(`/api/v1/puntuacion/leads/${id}`, {
+      signal: control.signal,
+    })
       .then((r) => setExplicacion(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -155,7 +157,10 @@ export function PuntuacionDeLead() {
             {e.grado ? (
               <span className="badge badge-muted">
                 {tramo?.desde !== undefined
-                  ? t("puntuacion.gradoDesde", { grado: e.grado, desde: tramo.desde })
+                  ? t("puntuacion.gradoDesde", {
+                      grado: e.grado,
+                      desde: tramo.desde,
+                    })
                   : e.grado}
               </span>
             ) : null}
@@ -165,10 +170,14 @@ export function PuntuacionDeLead() {
       />
 
       {e.aviso ? (
-        <p className="card mb-3 border-warning/40 p-3 text-dato text-warning">{e.aviso}</p>
+        <p className="card mb-3 border-warning/40 p-3 text-dato text-warning">
+          {e.aviso}
+        </p>
       ) : null}
       {e.porque_no_se_sabe ? (
-        <p className="card mb-3 p-3 text-dato text-ink-muted">{e.porque_no_se_sabe}</p>
+        <p className="card mb-3 p-3 text-dato text-ink-muted">
+          {e.porque_no_se_sabe}
+        </p>
       ) : null}
 
       {/* Qué le falta para el siguiente escalón: es la única pregunta que se
@@ -184,25 +193,35 @@ export function PuntuacionDeLead() {
           {e.le_falta.que_significa}
         </p>
       ) : (
-        <p className="card mb-4 p-3 text-dato text-ink-muted">{t("puntuacion.yaEsSql")}</p>
+        <p className="card mb-4 p-3 text-dato text-ink-muted">
+          {t("puntuacion.yaEsSql")}
+        </p>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Eje
           titulo={t("puntuacion.interes")}
           valor={e.interes}
-          umbral={e.umbrales?.[e.calificacion === "sql" ? "sql" : "mql"].interes ?? null}
+          umbral={
+            e.umbrales?.[e.calificacion === "sql" ? "sql" : "mql"].interes ??
+            null
+          }
           factores={e.por_interes ?? []}
         />
         <Eje
           titulo={t("puntuacion.encaje")}
           valor={e.encaje}
-          umbral={e.umbrales?.[e.calificacion === "sql" ? "sql" : "mql"].encaje ?? null}
+          umbral={
+            e.umbrales?.[e.calificacion === "sql" ? "sql" : "mql"].encaje ??
+            null
+          }
           factores={e.por_encaje ?? []}
         />
 
         <section className="card p-4 lg:col-span-2">
-          <h2 className="text-titulo font-medium text-ink">{t("puntuacion.inactividad")}</h2>
+          <h2 className="text-titulo font-medium text-ink">
+            {t("puntuacion.inactividad")}
+          </h2>
           {/* Aparte y con su nombre: sin esto, un lead que hizo muchas cosas y
               tiene poco interés parece un scoring roto. */}
           {e.perdido_por_inactividad > 0 ? (
@@ -210,7 +229,9 @@ export function PuntuacionDeLead() {
               {t("puntuacion.perdidos", { puntos: e.perdido_por_inactividad })}
             </p>
           ) : (
-            <p className="mt-2 text-dato text-ink-muted">{t("puntuacion.sinDecaer")}</p>
+            <p className="mt-2 text-dato text-ink-muted">
+              {t("puntuacion.sinDecaer")}
+            </p>
           )}
           {e.decaimiento ? (
             <p className="mt-1 text-rotulo text-ink-faint">
@@ -232,8 +253,12 @@ export function PuntuacionDeLead() {
 
         {grados.length > 0 ? (
           <section className="card p-4 lg:col-span-2">
-            <h2 className="text-titulo font-medium text-ink">{t("puntuacion.tramos")}</h2>
-            <p className="mt-1 text-rotulo text-ink-faint">{t("puntuacion.porqueTramos")}</p>
+            <h2 className="text-titulo font-medium text-ink">
+              {t("puntuacion.tramos")}
+            </h2>
+            <p className="mt-1 text-rotulo text-ink-faint">
+              {t("puntuacion.porqueTramos")}
+            </p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {grados.map((g, i) => (
                 <li
@@ -244,7 +269,10 @@ export function PuntuacionDeLead() {
                       : "chip-dato font-mono"
                   }
                 >
-                  {t("puntuacion.tramo", { grado: g.grado ?? "—", desde: g.desde ?? 0 })}
+                  {t("puntuacion.tramo", {
+                    grado: g.grado ?? "—",
+                    desde: g.desde ?? 0,
+                  })}
                 </li>
               ))}
             </ul>

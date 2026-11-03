@@ -16,7 +16,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  Retenidos,
+  Vacio,
+} from "@/componentes/Estados";
 import { Exportar } from "@/componentes/Exportar";
 import {
   Agrupado,
@@ -41,7 +46,12 @@ import {
 } from "@/lib/vistasDeLista";
 import { ErrorApi, llamar } from "@/lib/api";
 import { escalar, esIdentificadorTecnico, humanizar } from "@/lib/formato";
-import { comoQuery, leerFiltros, parametroDe, type Filtro } from "@/lib/filtros";
+import {
+  comoQuery,
+  leerFiltros,
+  parametroDe,
+  type Filtro,
+} from "@/lib/filtros";
 import {
   admite,
   camposDe,
@@ -52,7 +62,12 @@ import {
   type Proposito,
 } from "@/lib/contrato";
 import { accionesDeColeccion } from "@/lib/acciones";
-import { moduloDe, objetoDe, recursoVisible, type Recurso } from "@/lib/modulos";
+import {
+  moduloDe,
+  objetoDe,
+  recursoVisible,
+  type Recurso,
+} from "@/lib/modulos";
 import { pestanaPrincipal, recursosDe } from "@/lib/recursos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
@@ -85,7 +100,9 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   // Sin `?r=`, la pestaña que el módulo DECLARA como suya, no la que esté
   // escrita primero: ese orden lo puso el catálogo y abría «Campañas» en la
   // papelera y «Casos» en un informe que pide fechas antes de enseñar nada.
-  const porNombre = recursosDe(ruta ?? "").findIndex((r) => r.nombre === pedido);
+  const porNombre = recursosDe(ruta ?? "").findIndex(
+    (r) => r.nombre === pedido,
+  );
   const inicial = porNombre >= 0 ? porNombre : pestanaPrincipal(ruta ?? "");
   const [activo, setActivo] = useState(inicial);
   // El recurso que se está mirando. Hace falta aquí arriba porque las vistas
@@ -166,7 +183,9 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
       if (!vivo) return;
       setVistas(suyas);
       const entrada = vistaDeEntrada(suyas);
-      const yaHayFiltros = [...parametros.keys()].some((k) => k !== "r" && k !== "nuevo");
+      const yaHayFiltros = [...parametros.keys()].some(
+        (k) => k !== "r" && k !== "nuevo",
+      );
       if (entrada && !yaHayFiltros) aplicarVista(entrada);
     });
     return () => {
@@ -185,7 +204,8 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
       const pestaña = parametros.get("r");
       if (pestaña) siguientes.set("r", pestaña);
       for (const [k, v] of Object.entries(vista?.filtros ?? {})) {
-        if (typeof v === "string" || typeof v === "number") siguientes.set(k, String(v));
+        if (typeof v === "string" || typeof v === "number")
+          siguientes.set(k, String(v));
       }
       setParametros(siguientes, { replace: true });
     },
@@ -240,7 +260,7 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
     }
   }
 
-
+  // Grande: cuando el módulo no existe, este vacío ES la pantalla.
   if (!modulo) return <Vacio />;
   const pestanas_ = recursosDe(ruta ?? "");
   const recurso = pestanas_[activo] ?? pestanas_[0];
@@ -268,7 +288,9 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
         alGuardarVista={() => {
           // Se propone el nombre de la vista que hay puesta: lo normal es
           // guardar una variante de la que se estaba mirando.
-          setNombreDeLaVista(vistaActiva ? `${vistaActiva.nombre} (copia)` : "");
+          setNombreDeLaVista(
+            vistaActiva ? `${vistaActiva.nombre} (copia)` : "",
+          );
           setVistaParaTodos(false);
           setFalloDeVista("");
           setGuardandoVista(true);
@@ -288,7 +310,9 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
             </p>
             {capacidades.length > 0 ? (
               <ul
-                aria-label={t("modulo.capacidades", { count: capacidades.length })}
+                aria-label={t("modulo.capacidades", {
+                  count: capacidades.length,
+                })}
                 className="mt-1 flex max-w-md flex-wrap justify-end gap-x-3 gap-y-1 font-mono text-rotulo text-ink-faint"
               >
                 {capacidades.map((c) => (
@@ -335,7 +359,11 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
               />
               {t("vistas.paraTodos")}
             </label>
-            <button type="submit" className="btn-primary mb-1" disabled={!nombreDeLaVista.trim()}>
+            <button
+              type="submit"
+              className="btn-primary mb-1"
+              disabled={!nombreDeLaVista.trim()}
+            >
               {t("modulo.guardar")}
             </button>
             <button
@@ -415,7 +443,9 @@ function AccionesDeColeccion({
     setFallo(null);
     setResultado(null);
     try {
-      const r = await llamar<Record<string, unknown>>(accion.ruta, { metodo: "POST" });
+      const r = await llamar<Record<string, unknown>>(accion.ruta, {
+        metodo: "POST",
+      });
       setResultado(resumir(r.datos));
       alTerminar();
     } catch (e: unknown) {
@@ -440,11 +470,13 @@ function AccionesDeColeccion({
           </button>
         ))}
       </div>
-      {acciones.filter((a) => a.detalle).map((a) => (
-        <p key={a.ruta} className="text-rotulo text-ink-faint">
-          {a.detalle}
-        </p>
-      ))}
+      {acciones
+        .filter((a) => a.detalle)
+        .map((a) => (
+          <p key={a.ruta} className="text-rotulo text-ink-faint">
+            {a.detalle}
+          </p>
+        ))}
       {resultado ? (
         <p role="status" className="text-dato text-success">
           {resultado}
@@ -506,7 +538,9 @@ function RecursoVista({
    * sistema y veía las de un servicio. Con el selector, una pestaña enseña
    * todos y ninguno queda escondido.
    */
-  const [servicioElegido, setServicioElegido] = useState(declarado.por_servicio?.[0] ?? "");
+  const [servicioElegido, setServicioElegido] = useState(
+    declarado.por_servicio?.[0] ?? "",
+  );
   // Al cambiar de pestaña hay que volver al primero: el componente se
   // reutiliza, y si no, se queda el servicio de la pestaña anterior —que
   // puede ni publicar esta colección— y la pantalla sale en 404.
@@ -566,7 +600,9 @@ function RecursoVista({
    * admitiera. Lo que se declara a mano sigue mandando —hay altas que van a una
    * ruta distinta de la que lista—, y lo que no se declara se descubre.
    */
-  const [rutaDeAlta, setRutaDeAlta] = useState<string | null>(recurso.crear ?? null);
+  const [rutaDeAlta, setRutaDeAlta] = useState<string | null>(
+    recurso.crear ?? null,
+  );
   /**
    * Con qué campo se abre un registro.
    *
@@ -585,18 +621,22 @@ function RecursoVista({
    * un motivo.
    */
   const [plantillaFicha, setPlantillaFicha] = useState<string | null>(null);
-  const [camposEditables, setCamposEditables] = useState<Set<string>>(() => new Set());
+  const [camposEditables, setCamposEditables] = useState<Set<string>>(
+    () => new Set(),
+  );
   // El esquema de los campos que el PATCH admite, por nombre. Hace falta para
   // editar en línea: el control de una celda depende del tipo —una lista
   // cerrada es un desplegable y una fecha un calendario—, y eso sólo lo dice
   // el contrato.
-  const [esquemaEditable, setEsquemaEditable] = useState<Map<string, CampoEsquema>>(
-    () => new Map(),
-  );
+  const [esquemaEditable, setEsquemaEditable] = useState<
+    Map<string, CampoEsquema>
+  >(() => new Map());
   // La clave con la que se recuerdan columnas y orden. La trae la pantalla
   // porque incluye la VISTA de lista, que es suya.
   const recuerdaComo = recuerdaColumnasComo;
-  const [vista, setVista] = useState<Vista>(() => vistaRecordada(recuerdaComo) ?? "tarjetas");
+  const [vista, setVista] = useState<Vista>(
+    () => vistaRecordada(recuerdaComo) ?? "tarjetas",
+  );
   /**
    * El valor por defecto se decide cuando llegan los datos, no antes.
    *
@@ -617,7 +657,10 @@ function RecursoVista({
 
   // Por qué campo agrupar sale de los datos que hay: con un solo valor no hay
   // nada que separar, y con uno distinto por fila serían columnas de una.
-  const campoAgrupacion = useMemo(() => campoDeAgrupacion(filas ?? []), [filas]);
+  const campoAgrupacion = useMemo(
+    () => campoDeAgrupacion(filas ?? []),
+    [filas],
+  );
   const vocabulario = useMemo(() => esVocabulario(filas ?? []), [filas]);
 
   /**
@@ -649,24 +692,38 @@ function RecursoVista({
   const editarCampo = useMemo(() => {
     if (!plantillaFicha) return undefined;
     const parametro = plantillaFicha.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
-    const campoClave = !parametro ? "id" : /(^|_)id$/.test(parametro) ? "id" : parametro;
-    return async (fila: Record<string, unknown>, campo: string, valor: unknown) => {
+    const campoClave = !parametro
+      ? "id"
+      : /(^|_)id$/.test(parametro)
+        ? "id"
+        : parametro;
+    return async (
+      fila: Record<string, unknown>,
+      campo: string,
+      valor: unknown,
+    ) => {
       if (!camposEditables.has(campo)) return;
       const clave = fila[campoClave] ?? fila.id;
       if (typeof clave !== "string") return;
       const antes = fila[campo];
-      const mismo = (f: Record<string, unknown>) => (f[campoClave] ?? f.id) === clave;
+      const mismo = (f: Record<string, unknown>) =>
+        (f[campoClave] ?? f.id) === clave;
       setFilas((actuales) =>
         (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campo]: valor } : f)),
       );
       try {
-        await llamar(plantillaFicha.replace(/\{[a-z_]+\}$/, encodeURIComponent(clave)), {
-          metodo: "PATCH",
-          cuerpo: { [campo]: valor },
-        });
+        await llamar(
+          plantillaFicha.replace(/\{[a-z_]+\}$/, encodeURIComponent(clave)),
+          {
+            metodo: "PATCH",
+            cuerpo: { [campo]: valor },
+          },
+        );
       } catch (error) {
         setFilas((actuales) =>
-          (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campo]: antes } : f)),
+          (actuales ?? []).map((f) =>
+            mismo(f) ? { ...f, [campo]: antes } : f,
+          ),
         );
         throw error;
       }
@@ -675,7 +732,11 @@ function RecursoVista({
 
   // El tablero sigue pidiendo lo suyo: mover por el campo de agrupación.
   const mover = useMemo(() => {
-    if (!editarCampo || !campoAgrupacion || !camposEditables.has(campoAgrupacion)) {
+    if (
+      !editarCampo ||
+      !campoAgrupacion ||
+      !camposEditables.has(campoAgrupacion)
+    ) {
       return undefined;
     }
     return (fila: Record<string, unknown>, valor: string) =>
@@ -708,11 +769,17 @@ function RecursoVista({
   const accionesDeLaColeccion = useMemo(() => {
     const aMano = recurso.acciones ?? [];
     const escritas = new Set(aMano.map((a) => a.ruta));
-    const descubiertas = accionesDeColeccion(superficie, recurso.listar, (permiso) =>
-      puede(sesion, permiso),
+    const descubiertas = accionesDeColeccion(
+      superficie,
+      recurso.listar,
+      (permiso) => puede(sesion, permiso),
     )
       .filter((a) => !escritas.has(a.ruta))
-      .map((a) => ({ ruta: a.ruta, nombre: a.nombre, permiso: a.permiso ?? undefined }));
+      .map((a) => ({
+        ruta: a.ruta,
+        nombre: a.nombre,
+        permiso: a.permiso ?? undefined,
+      }));
     return [...aMano, ...descubiertas];
   }, [superficie, recurso.acciones, recurso.listar, sesion]);
 
@@ -740,12 +807,14 @@ function RecursoVista({
       : undefined;
 
   const busqueda = recurso.busqueda;
-  const terminoValido = !busqueda || termino.trim().length >= (busqueda.minimo ?? 1);
+  const terminoValido =
+    !busqueda || termino.trim().length >= (busqueda.minimo ?? 1);
   // Un informe de periodo exige las dos fechas. No se inventa un rango por
   // defecto: el número que alguien copia a un correo tiene que ser de un
   // periodo que eligió alguien.
   const periodo = recurso.periodo === true;
-  const rangoValido = !periodo || (desde !== "" && hasta !== "" && desde <= hasta);
+  const rangoValido =
+    !periodo || (desde !== "" && hasta !== "" && desde <= hasta);
 
   const cargar = useCallback(
     async (cursor?: string) => {
@@ -764,7 +833,10 @@ function RecursoVista({
       setFallo(null);
       try {
         const partes: string[] = [];
-        if (busqueda) partes.push(`${busqueda.parametro}=${encodeURIComponent(termino.trim())}`);
+        if (busqueda)
+          partes.push(
+            `${busqueda.parametro}=${encodeURIComponent(termino.trim())}`,
+          );
         if (periodo) partes.push(`desde=${desde}`, `hasta=${hasta}`);
         // Los filtros van en la petición, no se aplican sobre lo recibido.
         // Filtrar en el navegador obliga a traerse todas las filas para
@@ -774,24 +846,43 @@ function RecursoVista({
         if (consulta) partes.push(consulta);
         if (cursor) partes.push(`cursor=${encodeURIComponent(cursor)}`);
         const separador = recurso.listar.includes("?") ? "&" : "?";
-        const ruta = partes.length ? `${recurso.listar}${separador}${partes.join("&")}` : recurso.listar;
+        const ruta = partes.length
+          ? `${recurso.listar}${separador}${partes.join("&")}`
+          : recurso.listar;
         const respuesta = await llamar<unknown>(ruta);
         if (mia !== peticion.current) return;
         const nuevas = comoFilas(respuesta.datos);
         // Se ACUMULA al paginar: sustituir haría que «cargar más» pareciera
         // saltar de página, y la lista perdería lo que el usuario ya miraba.
-        setFilas((previas) => (cursor && previas ? [...previas, ...nuevas] : nuevas));
+        setFilas((previas) =>
+          cursor && previas ? [...previas, ...nuevas] : nuevas,
+        );
         setRetenidos(respuesta.retenidos);
         setTapados(respuesta.enmascarados);
         const cuerpo = respuesta.datos as { siguiente?: string | null } | null;
-        setSiguiente(cuerpo && typeof cuerpo === "object" ? (cuerpo.siguiente ?? null) : null);
+        setSiguiente(
+          cuerpo && typeof cuerpo === "object"
+            ? (cuerpo.siguiente ?? null)
+            : null,
+        );
       } catch (error) {
         // El fallo de una petición ya superada no se enseña: sería un error
         // sobre algo que el usuario ya no está pidiendo.
         if (mia === peticion.current) setFallo(error);
       }
     },
-    [recurso.listar, puedeVer, busqueda, termino, terminoValido, periodo, rangoValido, desde, hasta, filtros],
+    [
+      recurso.listar,
+      puedeVer,
+      busqueda,
+      termino,
+      terminoValido,
+      periodo,
+      rangoValido,
+      desde,
+      hasta,
+      filtros,
+    ],
   );
 
   useEffect(() => {
@@ -811,10 +902,14 @@ function RecursoVista({
       // Con el nombre de la pestaña: el propósito sólo se pinta si dice
       // algo que ese rótulo no diga ya. 62 de los 214 resúmenes de esta
       // instalación eran «Listar <el nombre de la pestaña>».
-      setProposito(propositoDe(documento, recurso.listar, "get", recurso.nombre));
+      setProposito(
+        propositoDe(documento, recurso.listar, "get", recurso.nombre),
+      );
       // El alta: la declarada si la hay, y si no la de la propia ruta que
       // lista, que es donde la pone el servidor salvo excepción.
-      const alta = recurso.crear ?? (admite(documento, recurso.listar, "post") ? recurso.listar : null);
+      const alta =
+        recurso.crear ??
+        (admite(documento, recurso.listar, "post") ? recurso.listar : null);
       setRutaDeAlta(alta);
       setCampos(alta ? camposDe(documento, alta, "post") : null);
       // La ficha: basta con que el contrato tenga la operación de un registro.
@@ -826,19 +921,31 @@ function RecursoVista({
       // Lo que el PATCH del registro admite. Si el campo por el que se agrupa
       // no está, el tablero no deja arrastrar: ofrecer un gesto que el
       // servidor va a rechazar es peor que no ofrecerlo.
-      const editables = plantillaFicha ? camposDe(documento, plantillaFicha, "patch") : [];
+      const editables = plantillaFicha
+        ? camposDe(documento, plantillaFicha, "patch")
+        : [];
       setCamposEditables(new Set(editables.map((c) => c.nombre)));
       setEsquemaEditable(new Map(editables.map((c) => [c.nombre, c])));
       const parametro = plantillaFicha?.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
       // `{cuenta_id}` es el identificador de siempre; `{clave}` es otro campo
       // de la fila, y hay que mandar ese.
-      const campo = !parametro ? "" : /(^|_)id$/.test(parametro) ? "id" : parametro;
+      const campo = !parametro
+        ? ""
+        : /(^|_)id$/.test(parametro)
+          ? "id"
+          : parametro;
       setCampoFicha(campo || (recurso.objeto ? "id" : ""));
     });
     return () => {
       vivo = false;
     };
-  }, [recurso.servicio, recurso.listar, recurso.crear, recurso.objeto, recurso.nombre]);
+  }, [
+    recurso.servicio,
+    recurso.listar,
+    recurso.crear,
+    recurso.objeto,
+    recurso.nombre,
+  ]);
 
   if (!puedeVer) {
     // Con el mismo lenguaje que el resto de estados. Una línea de texto suelta
@@ -847,7 +954,11 @@ function RecursoVista({
     return (
       <Vacio
         icono="lock"
-        titulo={recurso.solo_plataforma ? t("errores.soloPlataforma") : t("errores.sinPermiso")}
+        titulo={
+          recurso.solo_plataforma
+            ? t("errores.soloPlataforma")
+            : t("errores.sinPermiso")
+        }
         detalle={
           recurso.solo_plataforma
             ? t("errores.soloPlataformaDetalle")
@@ -913,12 +1024,20 @@ function RecursoVista({
   const enTabla = vista === "tabla" && !vocabulario && (filas?.length ?? 0) > 0;
 
   return (
-    <div className={enTabla ? "" : "rounded-b border-x border-b border-ink-dim/50 bg-paper p-3 shadow-elevation-1"}>
+    <div
+      className={
+        enTabla
+          ? ""
+          : "rounded-b border-x border-b border-ink-dim/50 bg-paper p-3 shadow-elevation-1"
+      }
+    >
       {proposito?.resumen ? (
         <div className="mb-4 max-w-3xl">
           <p className="text-titulin text-ink">{proposito.resumen}</p>
           {proposito.detalle ? (
-            <p className="mt-0.5 text-dato text-ink-faint">{proposito.detalle}</p>
+            <p className="mt-0.5 text-dato text-ink-faint">
+              {proposito.detalle}
+            </p>
           ) : null}
         </div>
       ) : null}
@@ -1028,10 +1147,17 @@ function RecursoVista({
             <Vacio
               icono="inbox"
               titulo={t("modulo.sinRegistros")}
-              detalle={rutaDeAlta ? t("modulo.sinRegistrosDetalle") : t("vacio.detalle")}
+              detalle={
+                rutaDeAlta
+                  ? t("modulo.sinRegistrosDetalle")
+                  : t("vacio.detalle")
+              }
               accion={
                 rutaDeAlta && campos
-                  ? { texto: t("modulo.nuevo"), alPulsar: () => setCreando(true) }
+                  ? {
+                      texto: t("modulo.nuevo"),
+                      alPulsar: () => setCreando(true),
+                    }
                   : undefined
               }
             />
@@ -1105,7 +1231,11 @@ function RecursoVista({
               mover={mover}
             />
           ) : vista === "tarjetas" ? (
-            <Tarjetas filas={filas} columnas={recurso.columnas} enlace={aLaFicha} />
+            <Tarjetas
+              filas={filas}
+              columnas={recurso.columnas}
+              enlace={aLaFicha}
+            />
           ) : (
             <Tabla
               filas={filas}
@@ -1225,12 +1355,12 @@ export function ordenar(
   preferidas: string[] | undefined,
 ): string[] {
   const todas = new Set<string>();
-  for (const fila of filas) for (const clave of Object.keys(fila)) todas.add(clave);
+  for (const fila of filas)
+    for (const clave of Object.keys(fila)) todas.add(clave);
   if (!preferidas) return [...todas];
   const delante = preferidas.filter((c) => todas.has(c));
   return [...delante, ...[...todas].filter((c) => !delante.includes(c))];
 }
-
 
 /**
  * Una medida: un objeto con cifras y una frase que dice qué significan.
@@ -1246,7 +1376,9 @@ export function ordenar(
  * medido.
  */
 export function Medidas({ rutas }: { rutas: string[] }) {
-  const [datos, setDatos] = useState<Record<string, Record<string, unknown>>>({});
+  const [datos, setDatos] = useState<Record<string, Record<string, unknown>>>(
+    {},
+  );
 
   useEffect(() => {
     const control = new AbortController();
@@ -1285,7 +1417,9 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
   const sinMedir = NO_CONCLUYE.some((c) => datos[c] === false);
   const util = Object.entries(datos).filter(
     ([clave]) =>
-      !EXPLICAN.includes(clave) && !NO_CONCLUYE.includes(clave) && !esIdentificadorTecnico(clave),
+      !EXPLICAN.includes(clave) &&
+      !NO_CONCLUYE.includes(clave) &&
+      !esIdentificadorTecnico(clave),
   );
   const cifras = util.filter(
     ([, valor]) =>
@@ -1298,7 +1432,10 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
   // al escribir la regla que las usa. Antes salían como un recuadro vacío: lo
   // vio quien lo usa, y tenía razón en preguntar para qué servía esa caja.
   const textos = util.filter(
-    ([, valor]) => typeof valor === "string" && valor.trim().length > 2 && !/^-?\d/.test(valor),
+    ([, valor]) =>
+      typeof valor === "string" &&
+      valor.trim().length > 2 &&
+      !/^-?\d/.test(valor),
   );
 
   // **Sin nada que enseñar, no se enseña.** Un recuadro con marco y vacío se
@@ -1313,7 +1450,9 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
           {cifras.slice(0, 6).map(([clave, valor]) => (
             <div key={clave}>
               <dt className="text-rotulo text-ink-faint">{humanizar(clave)}</dt>
-              <dd className={`text-titulo font-medium ${sinMedir ? "text-ink-muted" : "text-ink"}`}>
+              <dd
+                className={`text-titulo font-medium ${sinMedir ? "text-ink-muted" : "text-ink"}`}
+              >
                 {escalar(valor, clave)}
               </dd>
             </div>
@@ -1331,7 +1470,9 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
         </dl>
       ) : null}
       {explicacion ? (
-        <p className={`mt-1 text-rotulo ${sinMedir ? "text-warning" : "text-ink-faint"}`}>
+        <p
+          className={`mt-1 text-rotulo ${sinMedir ? "text-warning" : "text-ink-faint"}`}
+        >
           {explicacion}
         </p>
       ) : null}

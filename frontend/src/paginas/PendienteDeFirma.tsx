@@ -115,6 +115,7 @@ export function PendienteDeFirma() {
           esperando, y un verde vacío se lee igual que uno ganado. */}
       {!panel.medible ? (
         <Vacio
+          compacto
           titulo={t("firma.nadaEsperando")}
           detalle={t("firma.nadaEsperandoDetalle")}
         />
@@ -275,10 +276,13 @@ interface PlantillaFirma {
 function ConQueSeFirma() {
   const { t } = useTranslation();
   const [proveedores, setProveedores] = useState<ProveedorFirma[] | null>(null);
-  const [reglas, setReglas] = useState<{ reglas: ReglaFirma[]; que_significa: string } | null>(
-    null,
-  );
-  const [plantillas, setPlantillas] = useState<{ plantillas: PlantillaFirma[] } | null>(null);
+  const [reglas, setReglas] = useState<{
+    reglas: ReglaFirma[];
+    que_significa: string;
+  } | null>(null);
+  const [plantillas, setPlantillas] = useState<{
+    plantillas: PlantillaFirma[];
+  } | null>(null);
 
   useEffect(() => {
     const control = new AbortController();
@@ -292,7 +296,10 @@ function ConQueSeFirma() {
     )
       .then((r) => setReglas(r.datos))
       .catch(() => undefined);
-    void llamar<{ plantillas: PlantillaFirma[] }>("/api/v1/firma/plantillas", opciones)
+    void llamar<{ plantillas: PlantillaFirma[] }>(
+      "/api/v1/firma/plantillas",
+      opciones,
+    )
       .then((r) => setPlantillas(r.datos))
       .catch(() => undefined);
     return () => control.abort();
@@ -305,7 +312,11 @@ function ConQueSeFirma() {
       <h2 className="section-label mb-1">{t("firma.conQue")}</h2>
 
       {proveedores.length === 0 ? (
-        <Vacio titulo={t("firma.sinProveedor")} detalle={t("firma.sinProveedorPorque")} />
+        <Vacio
+          compacto
+          titulo={t("firma.sinProveedor")}
+          detalle={t("firma.sinProveedorPorque")}
+        />
       ) : (
         <ul
           className="lista-acotada divide-y divide-ink-dim/30"
@@ -316,7 +327,9 @@ function ConQueSeFirma() {
               <p className="text-titulo text-ink">
                 {p.nombre || p.clave}
                 {!p.activo ? (
-                  <span className="ml-2 text-rotulo text-warning">{t("firma.inactivo")}</span>
+                  <span className="ml-2 text-rotulo text-warning">
+                    {t("firma.inactivo")}
+                  </span>
                 ) : null}
               </p>
               {/* Los niveles y las formas de identificar, que es lo que
@@ -340,7 +353,11 @@ function ConQueSeFirma() {
             {reglas.reglas.map((r) => (
               <li
                 key={r.id}
-                className={r.activa ? "text-rotulo text-ink-muted" : "text-rotulo text-ink-faint"}
+                className={
+                  r.activa
+                    ? "text-rotulo text-ink-muted"
+                    : "text-rotulo text-ink-faint"
+                }
               >
                 {t("firma.regla", {
                   prioridad: r.prioridad,
@@ -356,7 +373,10 @@ function ConQueSeFirma() {
       ) : null}
 
       {plantillas?.plantillas?.length ? (
-        <ul className="lista-acotada mt-3 space-y-0.5" data-testid="firma-plantillas">
+        <ul
+          className="lista-acotada mt-3 space-y-0.5"
+          data-testid="firma-plantillas"
+        >
           {plantillas.plantillas.map((p) => (
             <li key={p.clave} className="text-rotulo text-ink-muted">
               {t("firma.plantilla", {
@@ -440,7 +460,9 @@ function LoQueCobraElProveedor() {
             <li key={l.id} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="text-dato text-ink">{l.operacion}</span>
-                <span className="text-rotulo text-ink-muted">{l.proveedor}</span>
+                <span className="text-rotulo text-ink-muted">
+                  {l.proveedor}
+                </span>
                 <span
                   className={`badge ${l.ok ? "badge-muted" : "badge-danger"}`}
                 >

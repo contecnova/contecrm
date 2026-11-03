@@ -106,7 +106,12 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { ErrorApi, filas as filasDe, llamar, salvoCancelacion } from "@/lib/api";
+import {
+  ErrorApi,
+  filas as filasDe,
+  llamar,
+  salvoCancelacion,
+} from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
 
 interface CapaDeAislamiento {
@@ -328,7 +333,9 @@ function Aislamiento() {
 
   const cargar = useCallback(() => {
     const control = new AbortController();
-    llamar<Garantias>("/api/v1/aislamiento/garantias", { signal: control.signal })
+    llamar<Garantias>("/api/v1/aislamiento/garantias", {
+      signal: control.signal,
+    })
       .then((r) => setDatos(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -341,7 +348,9 @@ function Aislamiento() {
   return (
     <section className="card p-4">
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-titulo font-semibold">{t("seguridad.aislamiento")}</h2>
+        <h2 className="text-titulo font-semibold">
+          {t("seguridad.aislamiento")}
+        </h2>
         <span
           role="status"
           className={
@@ -361,7 +370,9 @@ function Aislamiento() {
             <span
               aria-hidden="true"
               className={
-                capa.ok ? "mt-1 text-success" : "mt-1 font-semibold text-warning"
+                capa.ok
+                  ? "mt-1 text-success"
+                  : "mt-1 font-semibold text-warning"
               }
             >
               {capa.ok ? "✓" : "✗"}
@@ -372,7 +383,9 @@ function Aislamiento() {
                 {/* El estado también en texto: un color no lo lee quien no
                     distingue el verde del rojo, y aquí el dato es el estado. */}
                 <span className="sr-only">
-                  {capa.ok ? t("seguridad.capaPuesta") : t("seguridad.capaNoPuesta")}
+                  {capa.ok
+                    ? t("seguridad.capaPuesta")
+                    : t("seguridad.capaNoPuesta")}
                 </span>
                 {capa.medible_aqui === false ? (
                   <span className="ml-2 text-titulin text-ink-muted">
@@ -509,7 +522,11 @@ function ComoSeEntra() {
 
       {/* El forzado del tenant, lo primero: manda sobre el de cada proveedor y
           mirar sólo el del proveedor da por abierta una puerta cerrada. */}
-      <p className={forzadoDelTenant ? "text-dato text-ink" : "text-dato text-warning"}>
+      <p
+        className={
+          forzadoDelTenant ? "text-dato text-ink" : "text-dato text-warning"
+        }
+      >
         {forzadoDelTenant
           ? t("seguridad.entrada.forzadoSi")
           : t("seguridad.entrada.forzadoNo")}
@@ -536,7 +553,10 @@ function ComoSeEntra() {
                 {(p.dominios.length ? p.dominios : [p.dominio_email ?? ""])
                   .filter(Boolean)
                   .map((d) => (
-                    <span key={d} className="font-mono text-rotulo text-ink-faint">
+                    <span
+                      key={d}
+                      className="font-mono text-rotulo text-ink-faint"
+                    >
                       {d}
                     </span>
                   ))}
@@ -810,6 +830,7 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
       ) : null}
       {datos.usuarios_sin_factor.length === 0 ? (
         <Vacio
+          compacto
           titulo={t("seguridad.mfa.todos")}
           detalle={t("seguridad.mfa.todosDetalle")}
         />
@@ -861,6 +882,7 @@ function Certificados({ filas }: { filas: Certificado[] }) {
       </p>
       {ordenadas.length === 0 ? (
         <Vacio
+          compacto
           titulo={t("seguridad.certificados.ninguno")}
           detalle={t("seguridad.certificados.ningunoDetalle")}
         />
@@ -920,6 +942,7 @@ function Segregacion({
       </p>
       {datos.violaciones.length === 0 ? (
         <Vacio
+          compacto
           titulo={t(
             datos.reglas === 0
               ? "seguridad.sod.sinReglas"
@@ -1164,7 +1187,10 @@ function Explicador() {
             depende de él decide distinto a las nueve de la noche, y eso no se
             puede reproducir sin saber con qué contexto se evaluó. */}
         {simulacion ? (
-          <div className="rounded-lg border border-ink-dim/40 p-3" data-testid="simulacion-acceso">
+          <div
+            className="rounded-lg border border-ink-dim/40 p-3"
+            data-testid="simulacion-acceso"
+          >
             <p
               className={
                 simulacion.permitido
@@ -1175,7 +1201,9 @@ function Explicador() {
               {simulacion.permitido
                 ? t("seguridad.simulador.permitido")
                 : t("seguridad.simulador.denegado")}
-              <span className="ml-2 text-rotulo text-ink-faint">{simulacion.origen}</span>
+              <span className="ml-2 text-rotulo text-ink-faint">
+                {simulacion.origen}
+              </span>
             </p>
             <p className="mt-1 text-rotulo text-ink-muted">
               {t("seguridad.simulador.rbac", {
@@ -1191,12 +1219,15 @@ function Explicador() {
                   ? t("seguridad.simulador.concede")
                   : t("seguridad.simulador.niega"),
               })}
-              {simulacion.abac?.explicacion ? ` — ${simulacion.abac.explicacion}` : ""}
+              {simulacion.abac?.explicacion
+                ? ` — ${simulacion.abac.explicacion}`
+                : ""}
             </p>
             {simulacion.ambito ? (
               <p className="mt-1 text-rotulo text-ink-faint">
                 {t("seguridad.simulador.contexto", {
-                  roles: (simulacion.ambito.usuario?.roles ?? []).join(", ") || "—",
+                  roles:
+                    (simulacion.ambito.usuario?.roles ?? []).join(", ") || "—",
                   unidad: simulacion.ambito.usuario?.business_unit_id ?? "—",
                   hora: simulacion.ambito.contexto?.hora ?? "—",
                 })}

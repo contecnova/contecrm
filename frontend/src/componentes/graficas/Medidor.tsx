@@ -41,11 +41,15 @@ export function Medidor({
   if (!Number.isFinite(objetivo) || objetivo <= 0) {
     return (
       <figure className="card p-3">
-        <figcaption className="text-titulin font-medium text-ink">{titulo}</figcaption>
+        <figcaption className="text-titulin font-medium text-ink">
+          {titulo}
+        </figcaption>
         <p className="mt-2 text-pagina font-bold tracking-tight text-ink">
           {exacto(valor, unidad)}
         </p>
-        <p className="mt-1 text-rotulo text-ink-faint">{t("medidor.sinObjetivo")}</p>
+        <p className="mt-1 text-rotulo text-ink-faint">
+          {t("medidor.sinObjetivo")}
+        </p>
       </figure>
     );
   }

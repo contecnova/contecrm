@@ -24,9 +24,11 @@ export function marcas(maximo: number, cuantas = 4): number[] {
   const bruto = maximo / cuantas;
   const decada = Math.pow(10, Math.floor(Math.log10(bruto)));
   const paso =
-    [1, 2, 2.5, 5, 10].map((m) => m * decada).find((p) => p >= bruto) ?? 10 * decada;
+    [1, 2, 2.5, 5, 10].map((m) => m * decada).find((p) => p >= bruto) ??
+    10 * decada;
   const salida: number[] = [];
-  for (let v = 0; v <= maximo + paso * 0.001; v += paso) salida.push(Number(v.toFixed(10)));
+  for (let v = 0; v <= maximo + paso * 0.001; v += paso)
+    salida.push(Number(v.toFixed(10)));
   return salida;
 }
 
@@ -54,8 +56,10 @@ export function techo(valores: Dato[]): number {
  */
 export function corto(valor: number): string {
   const abs = Math.abs(valor);
-  if (abs >= 1_000_000) return `${(valor / 1_000_000).toLocaleString(localizacion(), { maximumFractionDigits: 1 })} M`;
-  if (abs >= 1_000) return `${(valor / 1_000).toLocaleString(localizacion(), { maximumFractionDigits: 1 })} k`;
+  if (abs >= 1_000_000)
+    return `${(valor / 1_000_000).toLocaleString(localizacion(), { maximumFractionDigits: 1 })} M`;
+  if (abs >= 1_000)
+    return `${(valor / 1_000).toLocaleString(localizacion(), { maximumFractionDigits: 1 })} k`;
   return valor.toLocaleString(localizacion(), { maximumFractionDigits: 2 });
 }
 

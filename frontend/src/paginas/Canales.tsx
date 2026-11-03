@@ -34,6 +34,7 @@
  * reputación. Cuando hay tope, sale el tope.
  */
 
+import { cn } from "@/lib/utiles";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -131,8 +132,12 @@ export function Canales() {
       />
 
       <section className="card mb-4 p-4">
-        <h2 className="text-titulo font-medium text-ink">{t("canalesmk.comprobar")}</h2>
-        <p className="mt-1 text-rotulo text-ink-faint">{t("canalesmk.porqueComprobar")}</p>
+        <h2 className="text-titulo font-medium text-ink">
+          {t("canalesmk.comprobar")}
+        </h2>
+        <p className="mt-1 text-rotulo text-ink-faint">
+          {t("canalesmk.porqueComprobar")}
+        </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
             className="input-base"
@@ -189,11 +194,15 @@ export function Canales() {
             {/* La ventana de WhatsApp: fuera de ella sólo plantilla aprobada,
                 y mandar una no aprobada no falla — el proveedor la descarta. */}
             {resultado.necesita_plantilla ? (
-              <p className="mt-1 text-dato text-warning">{t("canalesmk.necesitaPlantilla")}</p>
+              <p className="mt-1 text-dato text-warning">
+                {t("canalesmk.necesitaPlantilla")}
+              </p>
             ) : null}
             {resultado.como_se_da_de_baja ? (
               <p className="mt-1 text-dato text-ink-muted">
-                {t("canalesmk.bajaCon", { palabra: resultado.como_se_da_de_baja })}
+                {t("canalesmk.bajaCon", {
+                  palabra: resultado.como_se_da_de_baja,
+                })}
               </p>
             ) : null}
             {/* El tope de calentamiento sólo cuando lo hay: `null` significa
@@ -211,8 +220,12 @@ export function Canales() {
 
       {entrega ? (
         <section className="card mb-4 p-4">
-          <h2 className="text-titulo font-medium text-ink">{t("canalesmk.queLlega")}</h2>
-          <p className="mt-1 text-rotulo text-ink-faint">{t("canalesmk.porqueLlega")}</p>
+          <h2 className="text-titulo font-medium text-ink">
+            {t("canalesmk.queLlega")}
+          </h2>
+          <p className="mt-1 text-rotulo text-ink-faint">
+            {t("canalesmk.porqueLlega")}
+          </p>
           <p className="mt-2 font-mono text-dato text-ink">
             {t("canalesmk.mandados", {
               mandados: entrega.mandados,
@@ -223,7 +236,14 @@ export function Canales() {
           </p>
           {/* La tasa sólo cuando se puede medir: con veinte envíos un 5 % y un
               100 % son el mismo ruido, y el servidor ya lo dice. */}
-          <p className="mt-1 font-mono text-grande text-ink">
+          {/* La monoespaciada es para la cifra. Cuando no se puede medir,
+              lo que hay es una frase y en monoespaciada parece un código. */}
+          <p
+            className={cn(
+              "mt-1 text-grande text-ink",
+              entrega.medible && "font-mono",
+            )}
+          >
             {entrega.medible
               ? t("canalesmk.apertura", { pct: entrega.tasa_apertura_pct })
               : t("canalesmk.aperturaNoMedible")}
@@ -235,23 +255,37 @@ export function Canales() {
       ) : null}
 
       <section>
-        <h2 className="text-titulo font-medium text-ink">{t("canalesmk.declarados")}</h2>
+        <h2 className="text-titulo font-medium text-ink">
+          {t("canalesmk.declarados")}
+        </h2>
         {!canales || canales.length === 0 ? (
-          <Vacio titulo={t("canalesmk.sinCanales")} detalle={t("canalesmk.sinCanalesDetalle")} />
+          <Vacio
+            titulo={t("canalesmk.sinCanales")}
+            detalle={t("canalesmk.sinCanalesDetalle")}
+          />
         ) : (
           <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
             {canales.map((c) => (
-              <li key={c.id} className="card flex flex-wrap items-baseline gap-2 p-3">
+              <li
+                key={c.id}
+                className="card flex flex-wrap items-baseline gap-2 p-3"
+              >
                 <span className="flex-1 text-titulo text-ink">{c.nombre}</span>
                 <span className="chip-dato">{c.tipo}</span>
-                <span className={c.activo ? "badge badge-muted" : "badge badge-aviso"}>
+                <span
+                  className={
+                    c.activo ? "badge badge-muted" : "badge badge-aviso"
+                  }
+                >
                   {t(c.activo ? "canalesmk.activo" : "canalesmk.apagado")}
                 </span>
                 {/* La palabra de baja va en la lista, no escondida: quien
                     escribe el mensaje tiene que ponerla dentro. */}
                 <span className="w-full font-mono text-rotulo text-ink-faint">
                   {c.como_se_da_de_baja
-                    ? t("canalesmk.sedaDeBajaCon", { palabra: c.como_se_da_de_baja })
+                    ? t("canalesmk.sedaDeBajaCon", {
+                        palabra: c.como_se_da_de_baja,
+                      })
                     : t("canalesmk.sinFormaDeBaja")}
                 </span>
               </li>

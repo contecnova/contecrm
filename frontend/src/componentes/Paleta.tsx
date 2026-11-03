@@ -29,7 +29,11 @@ import { Icono } from "@/componentes/Icono";
 import { llamar } from "@/lib/api";
 import { MODULOS, moduloDeObjeto, recursoVisible } from "@/lib/modulos";
 import { VISIBILIDAD } from "@/lib/visibilidad";
-import { entradaVisible, iconoDeGrupo, todasLasEntradas } from "@/lib/navegacion";
+import {
+  entradaVisible,
+  iconoDeGrupo,
+  todasLasEntradas,
+} from "@/lib/navegacion";
 import { useVisibilidad } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
@@ -55,10 +59,7 @@ interface Destino {
 
 /** Normaliza para comparar: sin acentos y en minúsculas. */
 function normalizar(texto: string): string {
-  return texto
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+  return texto.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 export function Paleta({
@@ -95,9 +96,16 @@ export function Paleta({
     // único que necesita es decidir si el módulo se ofrece.
     const modulos: Destino[] = MODULOS.filter((m) =>
       (VISIBILIDAD[m.ruta] ?? []).some((pe) =>
-        recursoVisible(sesion, { listar: pe.r, permiso: pe.p, solo_plataforma: pe.sp, servicio: pe.s },
-        visibilidad,
-      ),
+        recursoVisible(
+          sesion,
+          {
+            listar: pe.r,
+            permiso: pe.p,
+            solo_plataforma: pe.sp,
+            servicio: pe.s,
+          },
+          visibilidad,
+        ),
       ),
     ).map((m) => ({
       a: `/m/${m.ruta}`,
@@ -168,7 +176,9 @@ export function Paleta({
     const aguja = normalizar(consulta.trim());
     if (!aguja) return destinos;
     const pantallas = destinos.filter(
-      (d) => normalizar(d.rotulo).includes(aguja) || normalizar(d.grupo).includes(aguja),
+      (d) =>
+        normalizar(d.rotulo).includes(aguja) ||
+        normalizar(d.grupo).includes(aguja),
     );
     // Los registros DEBAJO: la paleta se abre para ir a un sitio, y ponerlos
     // delante cambiaría lo que hace el `Intro` de quien ya la usa.
@@ -195,7 +205,8 @@ export function Paleta({
   // en una lista de cuarenta destinos la selección se va fuera de la ventana y
   // parece que las flechas no hacen nada.
   useEffect(() => {
-    const marcado = listaRef.current?.children[indice] as HTMLElement | undefined;
+    const marcado = listaRef.current?.children[indice] as
+      HTMLElement | undefined;
     marcado?.scrollIntoView({ block: "nearest" });
   }, [indice]);
 
@@ -209,13 +220,17 @@ export function Paleta({
     }
     if (evento.key === "ArrowDown") {
       evento.preventDefault();
-      setIndice((i) => (resultados.length === 0 ? 0 : (i + 1) % resultados.length));
+      setIndice((i) =>
+        resultados.length === 0 ? 0 : (i + 1) % resultados.length,
+      );
       return;
     }
     if (evento.key === "ArrowUp") {
       evento.preventDefault();
       setIndice((i) =>
-        resultados.length === 0 ? 0 : (i - 1 + resultados.length) % resultados.length,
+        resultados.length === 0
+          ? 0
+          : (i - 1 + resultados.length) % resultados.length,
       );
       return;
     }
@@ -260,7 +275,9 @@ export function Paleta({
             className="h-12 flex-1 bg-transparent text-titulo text-ink outline-none placeholder:text-ink-faint"
             autoComplete="off"
             aria-controls="paleta-resultados"
-            aria-activedescendant={resultados[indice] ? `paleta-op-${indice}` : undefined}
+            aria-activedescendant={
+              resultados[indice] ? `paleta-op-${indice}` : undefined
+            }
           />
           <kbd className="rounded border border-ink-dim/60 bg-paper-light px-1.5 py-0.5 font-mono text-rotulo text-ink-muted">
             Esc
@@ -268,7 +285,10 @@ export function Paleta({
         </div>
 
         {resultados.length === 0 ? (
-          <p className="px-4 py-8 text-center text-titulin text-ink-faint" role="status">
+          <p
+            className="px-4 py-8 text-center text-titulin text-ink-faint"
+            role="status"
+          >
             {t("nav.sinResultados", { consulta })}
           </p>
         ) : (
@@ -289,12 +309,20 @@ export function Paleta({
                   onMouseEnter={() => setIndice(i)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-titulo transition-colors",
-                    i === indice ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light",
+                    i === indice
+                      ? "bg-paper-light text-ink"
+                      : "text-ink-muted hover:bg-paper-light",
                   )}
                 >
-                  <Icono nombre={destino.icono} tamano="sm" className="text-ink-faint" />
+                  <Icono
+                    nombre={destino.icono}
+                    tamano="sm"
+                    className="text-ink-faint"
+                  />
                   <span className="flex-1 truncate">{destino.rotulo}</span>
-                  <span className="shrink-0 text-rotulo text-ink-faint">{destino.grupo}</span>
+                  <span className="shrink-0 text-rotulo text-ink-faint">
+                    {destino.grupo}
+                  </span>
                 </button>
               </li>
             ))}

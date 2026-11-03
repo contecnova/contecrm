@@ -157,6 +157,44 @@ describe("la escala tipográfica", () => {
     ).toEqual([]);
   });
 
+  it("no inventa radios de esquina fuera de la escala", () => {
+    // La misma idea que con la letra, y por el mismo motivo: Lightning tiene
+    // **dos** radios —4 px para todo y 8 px para lo que flota— y esa falta de
+    // escala ES el aspecto. Lo que no puede haber es un `rounded-[14px]`
+    // suelto, que es un tercer radio que nadie decidió.
+    //
+    // Los NOMBRES de Tailwind sí valen: la escala se redefine en el tema, así
+    // que `rounded-xl` escrito en cualquier pantalla mide lo que toca sin
+    // tocarla. Un reemplazo se olvida de la pantalla que nadie abrió.
+    const fuera: string[] = [];
+    for (const ruta of revisados) {
+      const texto = sinComentarios(readFileSync(ruta, "utf-8"));
+      for (const m of texto.matchAll(
+        /(?<![\w-])rounded(?:-[a-z]+)?-\[[^\]]+\]/g,
+      )) {
+        fuera.push(`${ruta.replace(RAIZ, "src")}: ${m[0]}`);
+      }
+      for (const m of texto.matchAll(/border-radius:\s*(\d+(?:\.\d+)?)px/g)) {
+        const px = Number(m[1]);
+        // La barra de desplazamiento del navegador no es una caja del
+        // sistema: su pulgar lleva el radio que lo hace parecer un pulgar.
+        if (
+          /scrollbar/.test(texto.slice(Math.max(0, m.index - 220), m.index))
+        ) {
+          continue;
+        }
+        if (px !== 0 && px !== 4 && px !== 8 && px !== 9999) {
+          fuera.push(`${ruta.replace(RAIZ, "src")}: ${m[0].trim()}`);
+        }
+      }
+    }
+    expect(
+      fuera,
+      "un radio entre corchetes es un escalón nuevo que nadie decidió:\n  " +
+        fuera.join("\n  "),
+    ).toEqual([]);
+  });
+
   it("el tema declara exactamente esos siete y ningún otro", () => {
     const config = readFileSync(
       resolve(process.cwd(), "tailwind.config.js"),

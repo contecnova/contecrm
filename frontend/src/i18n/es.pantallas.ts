@@ -601,6 +601,12 @@ const pantallas = {
     truncado: "Cortado por el tope de filas: no es el total.",
     camposRetirados: "No ves estos campos: {{campos}}.",
     titulo: "Cuadros de mando",
+    // Toda pantalla dice para qué es. Éstas dos eran las únicas de 36 que no
+    // lo decían, y una pantalla sin esa línea obliga a deducirlo del
+    // contenido — que es justo lo que no se puede hacer cuando está vacía.
+    entradilla:
+      "Varios informes juntos, en el orden en que se miran. Cada uno dice de " +
+      "cuándo son sus datos: un cuadro sin esa fecha se lee como si fuera de hoy.",
     elegir: "Elegir cuadro",
     ninguno: "Todavía no hay cuadros de mando",
     ningunoDetalle: "Un cuadro junta varios informes en una pantalla.",
@@ -656,6 +662,9 @@ const pantallas = {
   },
   estado: {
     titulo: "Estado del servicio",
+    entradilla:
+      "Si el sistema va bien, y si no, qué parte. Lo dice el propio sistema " +
+      "midiéndose: lo que no se ha podido medir sale como tal, no como «bien».",
     componente: "Componente",
     servicio: "Servicio",
     situacion: "Situación",

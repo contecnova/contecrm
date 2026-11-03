@@ -23,7 +23,10 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
-import { MenuDeAcciones, type OpcionDeMenu } from "@/componentes/MenuDeAcciones";
+import {
+  MenuDeAcciones,
+  type OpcionDeMenu,
+} from "@/componentes/MenuDeAcciones";
 import type { Aplicacion } from "@/lib/aplicaciones";
 import type { Entrada } from "@/lib/navegacion";
 import { cn } from "@/lib/utiles";
@@ -126,26 +129,31 @@ export function BarraDeAplicacion({
         <Icono nombre="expand_more" tamano="sm" className="text-ink-muted" />
       </button>
 
-      <div ref={caja} className="flex min-w-0 flex-1 items-stretch overflow-hidden">
-        {(anchos.current.length === pestanas.length ? visibles : pestanas).map((e) => {
-          const aqui = activa(pathname, e);
-          return (
-            <Link
-              key={e.a}
-              data-pestana
-              to={e.a}
-              aria-current={aqui ? "page" : undefined}
-              className={cn(
-                "flex shrink-0 items-center whitespace-nowrap border-b-[3px] px-3.5 text-titulo transition-colors",
-                aqui
-                  ? "border-accent font-semibold text-accent"
-                  : "border-transparent text-ink-muted hover:border-ink-dim hover:text-ink",
-              )}
-            >
-              {t(e.clave)}
-            </Link>
-          );
-        })}
+      <div
+        ref={caja}
+        className="flex min-w-0 flex-1 items-stretch overflow-hidden"
+      >
+        {(anchos.current.length === pestanas.length ? visibles : pestanas).map(
+          (e) => {
+            const aqui = activa(pathname, e);
+            return (
+              <Link
+                key={e.a}
+                data-pestana
+                to={e.a}
+                aria-current={aqui ? "page" : undefined}
+                className={cn(
+                  "flex shrink-0 items-center whitespace-nowrap border-b-[3px] px-3.5 text-titulo transition-colors",
+                  aqui
+                    ? "border-accent font-semibold text-accent"
+                    : "border-transparent text-ink-muted hover:border-ink-dim hover:text-ink",
+                )}
+              >
+                {t(e.clave)}
+              </Link>
+            );
+          },
+        )}
       </div>
 
       {enMas.length > 0 ? (

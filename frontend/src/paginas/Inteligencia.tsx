@@ -32,7 +32,6 @@ interface Cuenta {
   nombre: string;
 }
 
-
 interface Salud {
   hay: boolean;
   /** Por qué no hay medida. Sólo cuando `hay` es falso. */
@@ -51,8 +50,6 @@ interface Salud {
   /** De dónde sale y dónde está el detalle: esto es una copia. */
   de_donde_sale?: string;
 }
-
-
 
 export function Inteligencia() {
   const { t } = useTranslation();
@@ -91,10 +88,13 @@ export function Inteligencia() {
       });
   }, [elegida]);
 
-
   return (
     <>
-      <CabeceraPagina titulo={t("ia.titulo")} entradilla={t("ia.intro")} icono="neurology" />
+      <CabeceraPagina
+        titulo={t("ia.titulo")}
+        entradilla={t("ia.intro")}
+        icono="neurology"
+      />
 
       <div className="mt-4 max-w-md">
         <label className="label-base" htmlFor="ia-cuenta">
@@ -106,7 +106,9 @@ export function Inteligencia() {
           value={elegida}
           onChange={(e) => setElegida(e.target.value)}
         >
-          <option value="">{cuentas === null ? t("ia.cargando") : t("ia.eligeCuenta")}</option>
+          <option value="">
+            {cuentas === null ? t("ia.cargando") : t("ia.eligeCuenta")}
+          </option>
           {(cuentas ?? []).map((c) => (
             <option key={c.id} value={c.id}>
               {c.nombre}
@@ -126,10 +128,13 @@ export function Inteligencia() {
             <Icono nombre="info" tamano="sm" />
             {t("ia.sinMedir")}
           </h2>
-          {salud.porque ? <p className="mt-2 text-dato text-ink-muted">{salud.porque}</p> : null}
+          {salud.porque ? (
+            <p className="mt-2 text-dato text-ink-muted">{salud.porque}</p>
+          ) : null}
           {salud.que_hacer ? (
             <p className="mt-2 text-dato text-ink">
-              <span className="font-medium">{t("ia.queHacer")}</span> {salud.que_hacer}
+              <span className="font-medium">{t("ia.queHacer")}</span>{" "}
+              {salud.que_hacer}
             </p>
           ) : null}
         </section>
@@ -149,7 +154,9 @@ export function Inteligencia() {
                 hace tres meses no es una alerta: es un recuerdo, y llamar por
                 él molesta a un cliente cuyo problema ya se resolvió. */}
             {typeof salud.medida_hace_dias === "number" ? (
-              <p className={`mt-1 text-rotulo ${salud.vigente === false ? "text-warning" : "text-ink-faint"}`}>
+              <p
+                className={`mt-1 text-rotulo ${salud.vigente === false ? "text-warning" : "text-ink-faint"}`}
+              >
                 {t("ia.medidaHace", { dias: salud.medida_hace_dias })}
               </p>
             ) : null}
@@ -167,7 +174,9 @@ export function Inteligencia() {
           {/* Por qué está en ese nivel. */}
           {salud.motivo ? (
             <section className="card p-4">
-              <h2 className="text-titulin font-medium text-ink">{t("ia.porQue")}</h2>
+              <h2 className="text-titulin font-medium text-ink">
+                {t("ia.porQue")}
+              </h2>
               <p className="mt-2 text-dato text-ink-muted">{salud.motivo}</p>
             </section>
           ) : null}

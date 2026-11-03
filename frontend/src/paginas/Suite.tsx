@@ -141,6 +141,7 @@ export function SuiteGobierno() {
         /* Un verde silencioso haría creer que el cliente está en la suite
            cuando solo está en el CRM. */
         <Vacio
+          compacto
           titulo={t("suite.sinHerramientas")}
           detalle={t("suite.sinHerramientasPorque")}
         />
@@ -368,7 +369,9 @@ function LaSuiteComoUnTodo() {
                   abierto, y leerla entre treinta altas es no leerla. */}
               {(h.bajas ?? []).length ? (
                 <p className="text-danger">
-                  {t("suite.bajasDelPlan", { cuales: h.bajas.slice(0, 5).join(", ") })}
+                  {t("suite.bajasDelPlan", {
+                    cuales: h.bajas.slice(0, 5).join(", "),
+                  })}
                 </p>
               ) : null}
             </li>
@@ -395,14 +398,21 @@ function LaSuiteComoUnTodo() {
           <p className="text-rotulo text-ink-faint">
             {t("suite.organigrama", { cuantas: organizacion.length })}
           </p>
-          <ul className="mt-1 flex flex-wrap gap-1" data-testid="suite-organigrama">
+          <ul
+            className="mt-1 flex flex-wrap gap-1"
+            data-testid="suite-organigrama"
+          >
             {organizacion.map((u) => (
               <li
                 key={u.id}
                 className={`rounded px-1.5 py-0.5 text-rotulo ${
-                  u.activa ? "bg-ink-dim/20 text-ink-muted" : "bg-ink-dim/10 text-ink-faint"
+                  u.activa
+                    ? "bg-ink-dim/20 text-ink-muted"
+                    : "bg-ink-dim/10 text-ink-faint"
                 }`}
-                title={u.padre ? t("suite.cuelgaDe", { de: u.padre }) : undefined}
+                title={
+                  u.padre ? t("suite.cuelgaDe", { de: u.padre }) : undefined
+                }
               >
                 {u.nombre}
                 {u.padre ? " ↳" : ""}
@@ -419,10 +429,7 @@ function LaSuiteComoUnTodo() {
           como dato porque el mismo usuario es administrador en una y lector en
           otra, y escribirlo en el código lo convierte en un despliegue. */}
       {sso ? (
-        <p
-          className="mt-2 text-rotulo text-ink-muted"
-          data-testid="suite-sso"
-        >
+        <p className="mt-2 text-rotulo text-ink-muted" data-testid="suite-sso">
           {sso.hay_proveedor
             ? t("suite.ssoCompartido", {
                 cuantas: (sso.herramientas ?? []).length,
@@ -432,7 +439,10 @@ function LaSuiteComoUnTodo() {
       ) : null}
 
       {herramientas.length ? (
-        <ul className="mt-3 divide-y divide-ink-dim/30" data-testid="suite-herramientas">
+        <ul
+          className="mt-3 divide-y divide-ink-dim/30"
+          data-testid="suite-herramientas"
+        >
           {herramientas.map((h) => (
             <li key={h.herramienta} className="py-1.5">
               <p className="text-titulo text-ink">
@@ -664,7 +674,10 @@ function SaludDeLasSuites() {
                   así que el día que lleguen dejan de entrar veinte buzones a la
                   vez y hay que volver a pedir autorización una por una. */}
               {rompibles.map((c) => (
-                <li key={c.consentimiento_id} className="text-rotulo text-danger">
+                <li
+                  key={c.consentimiento_id}
+                  className="text-rotulo text-danger"
+                >
                   {c.perfil} · {c.recurso}
                   {/* El porqué que manda el servidor, no «error de
                       autenticación»: ése es el mensaje que atasca una
@@ -913,7 +926,11 @@ export function QueSabeHacerCadaSuite() {
         "/api/v1/suites/antes-de-sincronizar",
         {
           metodo: "POST",
-          cuerpo: { usuario_id: c.usuario_id, perfil: c.perfil, recurso: c.recurso },
+          cuerpo: {
+            usuario_id: c.usuario_id,
+            perfil: c.perfil,
+            recurso: c.recurso,
+          },
         },
       );
       setPuedeYa((antes) => ({ ...antes, [c.id]: r.datos }));
@@ -926,7 +943,9 @@ export function QueSabeHacerCadaSuite() {
       // pantalla lo deja en blanco y esconde la única frase que dice qué
       // hacer.
       const porque =
-        e instanceof ErrorApi ? e.explicacion || e.titulo : t("suite.noSeHaPodido");
+        e instanceof ErrorApi
+          ? e.explicacion || e.titulo
+          : t("suite.noSeHaPodido");
       setPuedeYa((antes) => ({
         ...antes,
         [c.id]: { se_puede: false, porque },
@@ -1302,7 +1321,9 @@ function PreguntasSobreLaSuite() {
   return (
     <section className="card mt-4 p-4">
       <h2 className="section-label mb-1">{t("suite.preguntas")}</h2>
-      <p className="mb-3 text-rotulo text-ink-faint">{t("suite.preguntasAyuda")}</p>
+      <p className="mb-3 text-rotulo text-ink-faint">
+        {t("suite.preguntasAyuda")}
+      </p>
       {fallo ? <Fallo error={fallo} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -1334,7 +1355,9 @@ function PreguntasSobreLaSuite() {
           {resuelto ? (
             <p className="mt-2 text-rotulo text-ink-faint">
               {resuelto.usuario_id ? (
-                <span className="font-mono text-ink">{resuelto.usuario_id}</span>
+                <span className="font-mono text-ink">
+                  {resuelto.usuario_id}
+                </span>
               ) : null}
               {resuelto.es_compartido ? (
                 <span className="ml-2 chip-dato">{t("suite.compartido")}</span>
@@ -1346,7 +1369,9 @@ function PreguntasSobreLaSuite() {
 
         {/* Huecos reales, sin leer de qué es cada cita. */}
         <div>
-          <p className="text-dato text-ink-muted">{t("suite.cuandoEstaLibre")}</p>
+          <p className="text-dato text-ink-muted">
+            {t("suite.cuandoEstaLibre")}
+          </p>
           <div className="mt-1 flex gap-2">
             <input
               type="datetime-local"
@@ -1384,13 +1409,17 @@ function PreguntasSobreLaSuite() {
             <div className="mt-2 text-rotulo text-ink-faint">
               {/* Un tramo sin huecos es un DATO, no una lista vacía: el propio
                   servidor lo dice con esas palabras. */}
-              {huecos.aviso ? <p className="text-warning">{huecos.aviso}</p> : null}
+              {huecos.aviso ? (
+                <p className="text-warning">{huecos.aviso}</p>
+              ) : null}
               {huecos.huecos.map((h) => (
                 <p key={`${h.desde}-${h.hasta}`} className="text-ink">
                   {h.desde} → {h.hasta}
                 </p>
               ))}
-              <p className="mt-1">{huecos.lo_que_se_lee}. {huecos.porque}</p>
+              <p className="mt-1">
+                {huecos.lo_que_se_lee}. {huecos.porque}
+              </p>
             </div>
           ) : null}
         </div>
@@ -1444,7 +1473,6 @@ function PreguntasSobreLaSuite() {
             </div>
           ) : null}
         </div>
-
       </div>
     </section>
   );

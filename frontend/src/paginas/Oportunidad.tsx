@@ -407,8 +407,12 @@ export function Oportunidad() {
           <>
             {/* El estado no: es una de las columnas preferidas del recurso y
                 sale como dato clave ahí debajo. Estaba en los dos sitios. */}
+            {/* El código lleva `font-mono` explícito: SÍ es un identificador
+                —«OPP-2026-00314»— y se lee carácter a carácter. La clase
+                `.badge` dejó de forzarla el 03-11-2026 porque la llevaba
+                también sobre palabras corrientes. */}
             {op.codigo ? (
-              <span className="badge badge-muted">{op.codigo}</span>
+              <span className="badge badge-muted font-mono">{op.codigo}</span>
             ) : null}
             {op.categoria_forecast ? (
               <span className="chip-dato">{op.categoria_forecast}</span>
@@ -905,7 +909,9 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
       {/* Si el cliente no lo ha visto, lo demás importa menos. */}
       <p
         className={
-          plan.compartido ? "text-dato text-ink-muted" : "text-dato text-warning"
+          plan.compartido
+            ? "text-dato text-ink-muted"
+            : "text-dato text-warning"
         }
       >
         {plan.compartido

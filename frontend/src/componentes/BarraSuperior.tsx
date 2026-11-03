@@ -422,7 +422,9 @@ export function BarraSuperior({
             >
               {sesion ? (
                 <div className="mb-1 border-b border-ink-dim/30 px-3 py-2">
-                  <p className="text-dato text-ink-muted">{t("nav.sesionDe")}</p>
+                  <p className="text-dato text-ink-muted">
+                    {t("nav.sesionDe")}
+                  </p>
                   <p
                     className="truncate text-titulin font-medium text-ink"
                     title={sesion.email}

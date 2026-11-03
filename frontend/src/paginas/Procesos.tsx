@@ -282,9 +282,7 @@ export function Procesos() {
             {t("procesos.quienYCuantoAyuda")}
           </p>
           {resumen.quien_aprobaria.length === 0 ? (
-            <p className="text-dato text-ink-muted">
-              {t("procesos.sinManos")}
-            </p>
+            <p className="text-dato text-ink-muted">{t("procesos.sinManos")}</p>
           ) : (
             <ul className="divide-y divide-ink-dim/30">
               {resumen.quien_aprobaria.map((m) => (
@@ -292,7 +290,9 @@ export function Procesos() {
                   key={m.paso}
                   className="flex flex-wrap items-baseline gap-x-3 py-1.5"
                 >
-                  <span className="text-dato font-medium text-ink">{m.paso}</span>
+                  <span className="text-dato font-medium text-ink">
+                    {m.paso}
+                  </span>
                   <span className="chip-dato">
                     {m.quien || t("procesos.sinDueno")}
                   </span>

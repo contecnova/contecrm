@@ -26,7 +26,12 @@ import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { Celda } from "@/componentes/Tabla";
-import { inicialesDe, nombreDe, usePersonas, type Persona } from "@/lib/personas";
+import {
+  inicialesDe,
+  nombreDe,
+  usePersonas,
+  type Persona,
+} from "@/lib/personas";
 import {
   CAMPOS_DE_CIFRA,
   CAMPOS_DE_ESTADO,
@@ -64,7 +69,8 @@ const AGRUPABLES = [
 ];
 
 /** Campos cuya suma dice algo. Sumar «probabilidad» no dice nada. */
-const SUMABLES = /^(importe|total|importe_ponderado|presupuesto|asignado|coste|cantidad)/;
+const SUMABLES =
+  /^(importe|total|importe_ponderado|presupuesto|asignado|coste|cantidad)/;
 
 /**
  * La vista que este usuario eligió para este recurso, o `null` si nunca eligió.
@@ -76,9 +82,14 @@ const SUMABLES = /^(importe|total|importe_ponderado|presupuesto|asignado|coste|c
  */
 export function vistaRecordada(recuerdaComo: string): Vista | null {
   try {
-    const guardado = JSON.parse(localStorage.getItem(CLAVE) ?? "{}") as Record<string, Vista>;
+    const guardado = JSON.parse(localStorage.getItem(CLAVE) ?? "{}") as Record<
+      string,
+      Vista
+    >;
     const vista = guardado[recuerdaComo];
-    return vista === "tabla" || vista === "tarjetas" || vista === "agrupado" ? vista : null;
+    return vista === "tabla" || vista === "tarjetas" || vista === "agrupado"
+      ? vista
+      : null;
   } catch {
     // Puede fallar en navegación privada o con el almacenamiento bloqueado.
     return null;
@@ -114,8 +125,14 @@ export function vistaPorDefecto(): Vista {
 
 function recordarVista(recuerdaComo: string, vista: Vista): void {
   try {
-    const guardado = JSON.parse(localStorage.getItem(CLAVE) ?? "{}") as Record<string, Vista>;
-    localStorage.setItem(CLAVE, JSON.stringify({ ...guardado, [recuerdaComo]: vista }));
+    const guardado = JSON.parse(localStorage.getItem(CLAVE) ?? "{}") as Record<
+      string,
+      Vista
+    >;
+    localStorage.setItem(
+      CLAVE,
+      JSON.stringify({ ...guardado, [recuerdaComo]: vista }),
+    );
   } catch {
     // Que no se recuerde no impide trabajar.
   }
@@ -131,7 +148,8 @@ export function campoDeAgrupacion(filas: Record<string, unknown>[]): string {
     const valores = new Set(filas.map((f) => String(f[candidato] ?? "")));
     // Con un solo valor no hay nada que separar, y con tantos como filas
     // tampoco: serían columnas de una fila cada una.
-    if (valores.size > 1 && valores.size <= Math.max(2, filas.length / 2)) return candidato;
+    if (valores.size > 1 && valores.size <= Math.max(2, filas.length / 2))
+      return candidato;
   }
   return "";
 }
@@ -151,11 +169,20 @@ export function SelectorVista({
     { clave: "tabla", icono: "table_rows", titulo: "Tabla" },
     { clave: "tarjetas", icono: "grid_view", titulo: "Tarjetas" },
     ...(puedeAgrupar
-      ? [{ clave: "agrupado" as Vista, icono: "view_kanban", titulo: "Por columnas" }]
+      ? [
+          {
+            clave: "agrupado" as Vista,
+            icono: "view_kanban",
+            titulo: "Por columnas",
+          },
+        ]
       : []),
   ];
   return (
-    <div className="flex items-center gap-0.5 rounded-xl border border-ink-dim/60 p-0.5" role="group">
+    <div
+      className="flex items-center gap-0.5 rounded-xl border border-ink-dim/60 p-0.5"
+      role="group"
+    >
       {opciones.map((o) => (
         <button
           key={o.clave}
@@ -169,7 +196,9 @@ export function SelectorVista({
           }}
           className={cn(
             "rounded-lg px-2 py-1 text-titulin",
-            vista === o.clave ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light",
+            vista === o.clave
+              ? "bg-paper-light text-ink"
+              : "text-ink-muted hover:bg-paper-light",
           )}
         >
           <Icono nombre={o.icono} />
@@ -188,7 +217,8 @@ export function SelectorVista({
  */
 function tituloDe(fila: Record<string, unknown>): string {
   const claves = Object.keys(fila);
-  if (claves.length === 1) return humanizar(String(fila[claves[0] as string] ?? ""));
+  if (claves.length === 1)
+    return humanizar(String(fila[claves[0] as string] ?? ""));
   return nombreDelRegistro(fila);
 }
 
@@ -209,11 +239,17 @@ function camposDeTarjeta(
   filas: Record<string, unknown>[],
   columnas: string[] | undefined,
 ): string[] {
-  const titulares = new Set(filas.map((f) => campoDelNombre(f)).filter(Boolean));
+  const titulares = new Set(
+    filas.map((f) => campoDelNombre(f)).filter(Boolean),
+  );
   const claves =
     columnas ??
-    [...new Set(filas.flatMap((f) => Object.keys(f)))].filter((c) => !esIdentificadorTecnico(c));
-  return claves.filter((c) => !titulares.has(c) && filas.some((f) => tieneDato(f[c]))).slice(0, 5);
+    [...new Set(filas.flatMap((f) => Object.keys(f)))].filter(
+      (c) => !esIdentificadorTecnico(c),
+    );
+  return claves
+    .filter((c) => !titulares.has(c) && filas.some((f) => tieneDato(f[c])))
+    .slice(0, 5);
 }
 
 /**
@@ -279,14 +315,28 @@ function Tarjeta({
   compacta?: boolean;
 }) {
   const retraso = retrasoDe(fila);
-  const cifra = campos.find((c) => CAMPOS_DE_CIFRA.test(c) && tieneDato(fila[c]));
-  const estados = campos.filter((c) => CAMPOS_DE_ESTADO.includes(c) && tieneDato(fila[c]));
-  const responsable = ["owner_id", "asignado_a", "responsable_id", "autor_id", "propietario_id"]
+  const cifra = campos.find(
+    (c) => CAMPOS_DE_CIFRA.test(c) && tieneDato(fila[c]),
+  );
+  const estados = campos.filter(
+    (c) => CAMPOS_DE_ESTADO.includes(c) && tieneDato(fila[c]),
+  );
+  const responsable = [
+    "owner_id",
+    "asignado_a",
+    "responsable_id",
+    "autor_id",
+    "propietario_id",
+  ]
     .filter((c) => tieneDato(fila[c]))
     .at(0);
   // Lo que queda: ni la cifra, ni los estados, ni el responsable, ni el título.
   const resto = campos.filter(
-    (c) => c !== cifra && c !== responsable && !estados.includes(c) && !esIdentificadorTecnico(c),
+    (c) =>
+      c !== cifra &&
+      c !== responsable &&
+      !estados.includes(c) &&
+      !esIdentificadorTecnico(c),
   );
 
   return (
@@ -297,7 +347,12 @@ function Tarjeta({
         </p>
       ) : null}
 
-      <p className={cn("font-medium text-ink", compacta ? "text-titulin" : "text-titulo")}>
+      <p
+        className={cn(
+          "font-medium text-ink",
+          compacta ? "text-titulin" : "text-titulo",
+        )}
+      >
         {tituloDe(fila)}
       </p>
 
@@ -365,7 +420,10 @@ export function Tarjetas({
   columnas?: string[];
   enlace?: (fila: Record<string, unknown>) => string | null;
 }) {
-  const campos = useMemo(() => camposDeTarjeta(filas, columnas), [filas, columnas]);
+  const campos = useMemo(
+    () => camposDeTarjeta(filas, columnas),
+    [filas, columnas],
+  );
   const personas = usePersonas();
   return (
     // Todas las tarjetas del mismo alto, y el de la mayor **de la rejilla
@@ -384,7 +442,9 @@ export function Tarjetas({
     <ul className="grid auto-rows-fr items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {filas.map((fila, i) => {
         const a = enlace?.(fila) ?? null;
-        const cuerpo = <Tarjeta fila={fila} campos={campos} personas={personas} />;
+        const cuerpo = (
+          <Tarjeta fila={fila} campos={campos} personas={personas} />
+        );
         return (
           <li key={String(fila.id ?? i)} className="h-full">
             {a ? (
@@ -432,7 +492,8 @@ export function Tarjetas({
  * entonces «—» pasaría a existir de verdad en los datos. Vaciar un campo es
  * una decisión que se toma en la ficha, con su campo delante.
  */
-const SIN_COLUMNA = "Esa columna agrupa lo que no tiene valor: no se puede mover ahí";
+const SIN_COLUMNA =
+  "Esa columna agrupa lo que no tiene valor: no se puede mover ahí";
 
 /**
  * Por qué no se movió, con la frase del servidor.
@@ -459,10 +520,16 @@ export function Agrupado({
   /** Guarda el nuevo valor del campo de agrupación. Ausente: no se arrastra. */
   mover?: (fila: Record<string, unknown>, valor: string) => Promise<void>;
 }) {
-  const campos = useMemo(() => camposDeTarjeta(filas, columnas), [filas, columnas]);
+  const campos = useMemo(
+    () => camposDeTarjeta(filas, columnas),
+    [filas, columnas],
+  );
   const personas = usePersonas();
   const sumable = useMemo(
-    () => campos.find((c) => SUMABLES.test(c) && filas.some((f) => Number(f[c]) > 0)) ?? "",
+    () =>
+      campos.find(
+        (c) => SUMABLES.test(c) && filas.some((f) => Number(f[c]) > 0),
+      ) ?? "",
     [campos, filas],
   );
 
@@ -518,7 +585,9 @@ export function Agrupado({
         {dicho}
       </p>
       {grupos.map(([clave, suyas]) => {
-        const suma = sumable ? suyas.reduce((t, f) => t + (Number(f[sumable]) || 0), 0) : 0;
+        const suma = sumable
+          ? suyas.reduce((t, f) => t + (Number(f[sumable]) || 0), 0)
+          : 0;
         return (
           <section
             key={clave}
@@ -536,7 +605,11 @@ export function Agrupado({
                   }
                 : undefined
             }
-            onDragLeave={mover ? () => setEncima((c) => (c === clave ? null : c)) : undefined}
+            onDragLeave={
+              mover
+                ? () => setEncima((c) => (c === clave ? null : c))
+                : undefined
+            }
             onDrop={
               mover
                 ? (e) => {
@@ -550,15 +623,21 @@ export function Agrupado({
           >
             <header className="mb-2">
               <div className="flex items-baseline justify-between gap-2">
-                <h3 className="truncate text-titulin font-medium text-ink">{humanizar(clave)}</h3>
-                <span className="text-rotulo text-ink-faint">{suyas.length}</span>
+                <h3 className="truncate text-titulin font-medium text-ink">
+                  {humanizar(clave)}
+                </h3>
+                <span className="text-rotulo text-ink-faint">
+                  {suyas.length}
+                </span>
               </div>
               {/* La barra dice de un vistazo dónde se acumula el trabajo, que es
                   lo que un número solo no enseña hasta que se comparan todos. */}
               <div className="mt-1 h-1 rounded-full bg-paper-sunk">
                 <div
                   className="h-1 rounded-full bg-accent"
-                  style={{ width: `${Math.round((suyas.length / mayor) * 100)}%` }}
+                  style={{
+                    width: `${Math.round((suyas.length / mayor) * 100)}%`,
+                  }}
                 />
               </div>
               {sumable ? (

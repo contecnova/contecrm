@@ -56,7 +56,11 @@ export function Filtros({
     // proxies y entonces el filtro desaparece sin decirlo.
     alCambiar([
       ...puestos,
-      { campo, sufijo: elegido.sufijo, valor: necesitaValor ? valor.trim() : "1" },
+      {
+        campo,
+        sufijo: elegido.sufijo,
+        valor: necesitaValor ? valor.trim() : "1",
+      },
     ]);
     setCampo("");
     setSufijo("");
@@ -67,14 +71,23 @@ export function Filtros({
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5">
       {puestos.map((f) => (
-        <span key={parametroDe(f)} className="pill inline-flex items-center gap-1">
+        <span
+          key={parametroDe(f)}
+          className="pill inline-flex items-center gap-1"
+        >
           <span className="text-rotulo">
             {humanizar(f.campo)}{" "}
-            <span className="text-ink-muted">{rotuloDe(t, f, tipoDe(filas, f.campo))}</span>
+            <span className="text-ink-muted">
+              {rotuloDe(t, f, tipoDe(filas, f.campo))}
+            </span>
           </span>
           <button
             type="button"
-            onClick={() => alCambiar(puestos.filter((x) => parametroDe(x) !== parametroDe(f)))}
+            onClick={() =>
+              alCambiar(
+                puestos.filter((x) => parametroDe(x) !== parametroDe(f)),
+              )
+            }
             className="btn-icon h-4 w-4 text-ink-muted hover:text-ink"
             aria-label={t("filtros.quitar", { campo: humanizar(f.campo) })}
           >
@@ -84,7 +97,11 @@ export function Filtros({
       ))}
 
       {puestos.length > 1 ? (
-        <button type="button" onClick={() => alCambiar([])} className="btn-link">
+        <button
+          type="button"
+          onClick={() => alCambiar([])}
+          className="btn-link"
+        >
           {t("filtros.quitarTodos")}
         </button>
       ) : null}
@@ -129,7 +146,13 @@ export function Filtros({
               // El tipo del campo decide el teclado y el selector: pedir una
               // fecha en una caja de texto libre produce formatos que el
               // servidor rechaza, y el error llega donde no se entiende.
-              type={tipo === "fecha" ? "date" : tipo === "numero" ? "number" : "text"}
+              type={
+                tipo === "fecha"
+                  ? "date"
+                  : tipo === "numero"
+                    ? "number"
+                    : "text"
+              }
               value={valor}
               onChange={(e) => setValor(e.target.value)}
               onKeyDown={(e) => {
@@ -141,10 +164,19 @@ export function Filtros({
             />
           ) : null}
 
-          <button type="button" onClick={anadir} disabled={!listo} className="btn-secondary">
+          <button
+            type="button"
+            onClick={anadir}
+            disabled={!listo}
+            className="btn-secondary"
+          >
             {t("filtros.aplicar")}
           </button>
-          <button type="button" onClick={() => setAbierto(false)} className="btn-link">
+          <button
+            type="button"
+            onClick={() => setAbierto(false)}
+            className="btn-link"
+          >
             {t("filtros.cancelar")}
           </button>
         </span>

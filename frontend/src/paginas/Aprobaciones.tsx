@@ -86,11 +86,15 @@ export function Aprobaciones() {
     // sirve para cambiar una explicación clara por el error que salga primero
     // —y el que salía era «este tenant no tiene organización asignada», que
     // manda a configurar algo cuando lo que pasa es que contecmind no está—.
-    if (corpus && (corpus.activo === false || corpus.alcanzable === false)) return;
+    if (corpus && (corpus.activo === false || corpus.alcanzable === false))
+      return;
     const control = new AbortController();
-    llamar<{ items: Solicitud[] }>("/api/v1/documentos/aprobaciones/pendientes", {
-      signal: control.signal,
-    })
+    llamar<{ items: Solicitud[] }>(
+      "/api/v1/documentos/aprobaciones/pendientes",
+      {
+        signal: control.signal,
+      },
+    )
       .then((r) => setSolicitudes(r.datos.items ?? []))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -129,9 +133,13 @@ export function Aprobaciones() {
         <Fallo error={fallo} />
       ) : null}
       <div className="mt-4">
-        {solicitudes === null && !fallo && corpus === null ? <Cargando /> : null}
+        {solicitudes === null && !fallo && corpus === null ? (
+          <Cargando />
+        ) : null}
         {solicitudes !== null && solicitudes.length === 0 ? (
-          <p className="text-titulin text-ink-muted">{t("aprobaciones.nadaPendiente")}</p>
+          <p className="text-titulin text-ink-muted">
+            {t("aprobaciones.nadaPendiente")}
+          </p>
         ) : null}
         <ul className="space-y-2">
           {(solicitudes ?? []).map((s) => (
@@ -209,7 +217,9 @@ function Fila({
           <p className="text-rotulo text-ink-faint">
             {t("aprobaciones.estado", { estado: solicitud.status })}
             {solicitud.version_no ? ` · v${solicitud.version_no}` : ""}
-            {solicitud.current_step ? ` · ${t("aprobaciones.etapa", { n: solicitud.current_step })}` : ""}
+            {solicitud.current_step
+              ? ` · ${t("aprobaciones.etapa", { n: solicitud.current_step })}`
+              : ""}
           </p>
         </div>
         {puede ? (
@@ -239,7 +249,10 @@ function Fila({
 
       {abierta ? (
         <div className="mt-2 space-y-2 border-t border-ink-dim/30 pt-2">
-          <label className="block text-rotulo text-ink-faint" htmlFor={`c-${solicitud.id}`}>
+          <label
+            className="block text-rotulo text-ink-faint"
+            htmlFor={`c-${solicitud.id}`}
+          >
             {t("aprobaciones.comentario")}
           </label>
           <textarea
@@ -251,7 +264,10 @@ function Fila({
           />
           {abierta === "delegated" ? (
             <>
-              <label className="block text-rotulo text-ink-faint" htmlFor={`d-${solicitud.id}`}>
+              <label
+                className="block text-rotulo text-ink-faint"
+                htmlFor={`d-${solicitud.id}`}
+              >
                 {t("aprobaciones.delegarEn")}
               </label>
               <input
@@ -267,10 +283,14 @@ function Fila({
             onClick={() => void decidir()}
             // Delegar sin decir en quién es la mitad de una decisión: el gestor
             // lo rechaza, así que se para antes.
-            disabled={enviando || (abierta === "delegated" && !delegarEn.trim())}
+            disabled={
+              enviando || (abierta === "delegated" && !delegarEn.trim())
+            }
             className="rounded border border-ink-dim/60 px-3 py-1 text-titulin text-ink disabled:opacity-50"
           >
-            {enviando ? t("aprobaciones.enviando") : t("aprobaciones.confirmar")}
+            {enviando
+              ? t("aprobaciones.enviando")
+              : t("aprobaciones.confirmar")}
           </button>
         </div>
       ) : null}
@@ -279,7 +299,9 @@ function Fila({
           aparece a la vez que su texto no siempre se lee, porque el lector
           puede no haber registrado la región cuando ya tiene contenido. */}
       <p role="status" className="mt-2 text-rotulo text-ink-faint">
-        {resultado !== null ? t("aprobaciones.decidida", { estado: resultado }) : ""}
+        {resultado !== null
+          ? t("aprobaciones.decidida", { estado: resultado })
+          : ""}
       </p>
       {fallo ? <Fallo error={fallo} /> : null}
     </li>
@@ -312,7 +334,9 @@ function EstadoDelDocumento({ documentoId }: { documentoId: string }) {
   }, [documentoId]);
 
   if (!ficha) return null;
-  const avisos = Array.isArray(ficha.partial_warnings) ? ficha.partial_warnings.length : 0;
+  const avisos = Array.isArray(ficha.partial_warnings)
+    ? ficha.partial_warnings.length
+    : 0;
   return (
     <p className="text-rotulo text-ink-faint">
       {t("aprobaciones.indexado", { estado: String(ficha.status ?? "") })}
@@ -332,7 +356,11 @@ function EstadoDelDocumento({ documentoId }: { documentoId: string }) {
  * dos implementaciones acaban discrepando justo en el matiz que importa —el de
  * «aprobado» contra «publicado»—.
  */
-export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) {
+export function AprobacionDeDocumento({
+  documentoId,
+}: {
+  documentoId: string;
+}) {
   const { t } = useTranslation();
   const puedeOperar = usePuedeOperar();
   const [estado, setEstado] = useState<{
@@ -353,9 +381,12 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
 
   useEffect(() => {
     const control = new AbortController();
-    llamar<typeof estado & object>(`/api/v1/documentos/aprobacion/${documentoId}`, {
-      signal: control.signal,
-    })
+    llamar<typeof estado & object>(
+      `/api/v1/documentos/aprobacion/${documentoId}`,
+      {
+        signal: control.signal,
+      },
+    )
       .then((r) => setEstado(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -363,10 +394,9 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
 
   useEffect(() => {
     const control = new AbortController();
-    llamar<{ items: { id: string; name: string; exige_aprobadores?: boolean }[] }>(
-      "/api/v1/documentos/aprobaciones/flujos",
-      { signal: control.signal },
-    )
+    llamar<{
+      items: { id: string; name: string; exige_aprobadores?: boolean }[];
+    }>("/api/v1/documentos/aprobaciones/flujos", { signal: control.signal })
       .then((r) => setFlujos(r.datos.items ?? []))
       // Quedarse sin flujos no impide pedir la aprobación: sin flujo se
       // resuelve el que toque. Por eso este fallo no tumba el panel.
@@ -377,7 +407,8 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
   const elegido = (flujos ?? []).find((f) => f.id === flujo);
   // Si el flujo elegido los exige, se piden ANTES de dejar enviar: el gestor
   // contesta 422 y ese error llegaría después de rellenar el formulario.
-  const faltanAprobadores = Boolean(elegido?.exige_aprobadores) && !aprobadores.trim();
+  const faltanAprobadores =
+    Boolean(elegido?.exige_aprobadores) && !aprobadores.trim();
 
   const pedir = useCallback(async () => {
     setEnviando(true);
@@ -405,7 +436,10 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
   if (estado === null) return <Cargando />;
 
   const solicitud = estado.solicitud;
-  const puedePedirAqui = puedeOperar("POST", `/api/v1/documentos/aprobacion/${documentoId}`);
+  const puedePedirAqui = puedeOperar(
+    "POST",
+    `/api/v1/documentos/aprobacion/${documentoId}`,
+  );
 
   return (
     <div className="space-y-2">
@@ -421,14 +455,19 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
           {t("aprobaciones.enCurso", { estado: solicitud.status })}
         </p>
       ) : estado.requires_approval === false ? (
-        <p className="text-titulin text-ink-muted">{t("aprobaciones.noLaNecesita")}</p>
+        <p className="text-titulin text-ink-muted">
+          {t("aprobaciones.noLaNecesita")}
+        </p>
       ) : (
         <Vacio />
       )}
 
       {!solicitud && estado.puedo_pedir && puedePedirAqui ? (
         <div className="space-y-2 border-t border-ink-dim/30 pt-2">
-          <label className="block text-rotulo text-ink-faint" htmlFor={`f-${documentoId}`}>
+          <label
+            className="block text-rotulo text-ink-faint"
+            htmlFor={`f-${documentoId}`}
+          >
             {t("aprobaciones.flujo")}
           </label>
           <select
@@ -446,7 +485,10 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
               </option>
             ))}
           </select>
-          <label className="block text-rotulo text-ink-faint" htmlFor={`a-${documentoId}`}>
+          <label
+            className="block text-rotulo text-ink-faint"
+            htmlFor={`a-${documentoId}`}
+          >
             {elegido?.exige_aprobadores
               ? t("aprobaciones.aprobadoresExigidos")
               : t("aprobaciones.aprobadores")}
@@ -467,7 +509,9 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
             {enviando ? t("aprobaciones.enviando") : t("aprobaciones.pedir")}
           </button>
           {faltanAprobadores ? (
-            <p className="text-rotulo text-ink-faint">{t("aprobaciones.faltanAprobadores")}</p>
+            <p className="text-rotulo text-ink-faint">
+              {t("aprobaciones.faltanAprobadores")}
+            </p>
           ) : null}
         </div>
       ) : null}

@@ -44,7 +44,9 @@ export function Conocimiento() {
 
   const cargar = useCallback(() => {
     const control = new AbortController();
-    listar<Articulo>("/api/v1/conocimiento/articulos", { signal: control.signal })
+    listar<Articulo>("/api/v1/conocimiento/articulos", {
+      signal: control.signal,
+    })
       .then(setArticulos)
       .catch((e: unknown) => {
         if (e instanceof ErrorApi) setFallo(e);
@@ -59,7 +61,9 @@ export function Conocimiento() {
 
   const filtrados = busqueda
     ? articulos.filter((a) =>
-        (a.titulo ?? a.clave ?? "").toLowerCase().includes(busqueda.toLowerCase()),
+        (a.titulo ?? a.clave ?? "")
+          .toLowerCase()
+          .includes(busqueda.toLowerCase()),
       )
     : articulos;
 
@@ -100,7 +104,9 @@ export function Conocimiento() {
                   existe para evitar. */}
               {a.es_borrador ? (
                 <span className="rounded bg-warning/10 px-1.5 py-0.5 text-rotulo uppercase text-warning">
-                  {t("conocimiento.borrador", { version: a.version_mostrada ?? "—" })}
+                  {t("conocimiento.borrador", {
+                    version: a.version_mostrada ?? "—",
+                  })}
                 </span>
               ) : null}
               {/* El estado va AL LADO del título: un artículo a medias que se lee
