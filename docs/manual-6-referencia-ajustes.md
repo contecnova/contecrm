@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**287 ajustes** en total, de los cuales **90** son editables en caliente por tenant.
+**289 ajustes** en total, de los cuales **91** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -28,6 +28,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `API_SUNSET_DATE` | — | *(vacío)* |  | Fecha de retirada de ESTA versión mayor, en ISO-8601, o vacío si no hay una anunciada. Cuando está puesta, toda respuesta lleva las cabeceras `Sunset` y `Deprecation` (CRM-00.02.01.07) para que los consumidores se enteren por el canal que ya están leyendo, sin depender de una circular. |
 | `API_DOCS_ENABLED` | — | `True` |  | Documentación interactiva. Se puede apagar en producción si el operador prefiere no publicar el esquema, aunque por defecto va encendida: un sistema headless sin documentación navegable es mucho peor que uno que enseña su contrato. |
 | `TAREAS_FONDO_ENABLED` | — | `True` |  | Los barridos del núcleo —purgar la bandeja de entrada de eventos, la de salida y los adjuntos huérfanos— que arranca TODO servicio. Se puede apagar, y hay dos motivos de verdad para hacerlo: - **En producción**, porque las tres tablas son comunes y catorce servicios barriendo las mismas filas es… |
+| `POOL_COMPUTO` | 🔥 `pool_computo` | *(vacío)* |  | A qué **pool de cómputo** atiende este proceso (CRM-00.01.01.06). Un tenant puede tener workers dedicados —se vende, y hasta hoy el campo existía en la base, salía por la API y no lo miraba nadie: todos los procesos barrían todos los tenants—. Con esto, un proceso arrancado con… |
 | `UI_DENSIDAD` | 🔥 `ui_densidad` | `compacta` |  | Densidad por defecto de la interfaz. «compacta» cabe mucho más en pantalla y es lo que quiere quien trabaja aquí ocho horas: catorce filas de una lista en vez de cuatro. «comoda» da aire y se lee de lejos, que es lo que hace falta en una demostración o en una pantalla compartida. Esto es el… |
 
 ## Base de datos y aislamiento
@@ -269,6 +270,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CUOTA_SMS_MES` | 🔥 `cuota_sms_mes` | `0` | 0–100000000 |  |
 | `CUOTA_WORKFLOWS_MES` | 🔥 `cuota_workflows_mes` | `0` | 0–100000000 |  |
 | `CUOTA_REGISTROS` | 🔥 `cuota_registros` | `0` | 0–1000000000 |  |
+| `VISTOS_POR_PERSONA` | — | `50` | 1–1000 | Cuántos registros se guardan en el historial de «visto hace poco» de cada persona. Operativo y no de negocio: es el tamaño de un historial de navegación, no una decisión de nadie sobre su CRM. Sin tope, la tabla guarda cada registro que cada persona abrió alguna vez y sacar los diez últimos… |
 
 ## Observabilidad y auditoría
 

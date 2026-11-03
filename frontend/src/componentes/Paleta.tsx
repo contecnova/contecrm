@@ -35,6 +35,7 @@ import {
   todasLasEntradas,
 } from "@/lib/navegacion";
 import { useVisibilidad } from "@/lib/permisos";
+import { ultimosVistos, type Visto } from "@/lib/vistos";
 import type { Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
 
@@ -117,6 +118,16 @@ export function Paleta({
   }, [t, sesion, visibilidad]);
 
   const [registros, setRegistros] = useState<Destino[]>([]);
+  /**
+   * Lo que esta persona abrió hace poco, para la caja vacía.
+   *
+   * **Es lo que hace Salesforce al pinchar el buscador**, y por un motivo: lo
+   * que más se busca es aquello en lo que se estaba. Con la caja vacía, la
+   * paleta enseñaba las 61 pantallas por orden de declaración — útil para
+   * descubrir el producto y para nada más, porque quien la abre ya sabe a
+   * dónde va.
+   */
+  const [vistos, setVistos] = useState<Visto[]>([]);
 
   /**
    * Los registros que casan, pedidos al servidor.
@@ -172,9 +183,26 @@ export function Paleta({
     };
   }, [consulta]);
 
+  const recientes = useMemo<Destino[]>(
+    () =>
+      vistos
+        // Sin módulo conocido no se enlaza: una fila que lleva a una pantalla
+        // que no existe es peor que una fila de menos.
+        .filter((v) => moduloDeObjeto(v.objeto_tipo))
+        .map((v) => ({
+          a: `/m/${moduloDeObjeto(v.objeto_tipo)}/${v.objeto_tipo}/${v.objeto_id}`,
+          rotulo: v.nombre || v.objeto_id,
+          grupo: t("nav.vistoHacePoco"),
+          icono: "history",
+        })),
+    [vistos, t],
+  );
+
   const resultados = useMemo(() => {
     const aguja = normalizar(consulta.trim());
-    if (!aguja) return destinos;
+    // Con la caja vacía, primero lo último que se abrió. Es a donde va quien
+    // abre la paleta sin saber todavía qué va a escribir.
+    if (!aguja) return [...recientes, ...destinos];
     const pantallas = destinos.filter(
       (d) =>
         normalizar(d.rotulo).includes(aguja) ||
@@ -183,7 +211,32 @@ export function Paleta({
     // Los registros DEBAJO: la paleta se abre para ir a un sitio, y ponerlos
     // delante cambiaría lo que hace el `Intro` de quien ya la usa.
     return [...pantallas, ...registros];
-  }, [consulta, destinos, registros]);
+  }, [consulta, destinos, registros, recientes]);
+
+  // Lo visto se pide al ABRIR y no al montar: la paleta vive en el marco toda
+  // la sesión, así que pedirlo al montar daría la lista de cuando se entró.
+  //
+  // **Y el efecto NO depende de `t`.** Lo hizo en la primera versión, para
+  // poner el rótulo del grupo dentro, y `useTranslation` devuelve una función
+  // nueva en cada render: el efecto se volvía a lanzar en cada pulsación con
+  // la paleta abierta, una petición por tecla y un `AbortController` vivo por
+  // cada una. En la suite eso llevó el proceso a **4 GB** y lo reventó con
+  // «JavaScript heap out of memory»; en el navegador habría sido una ráfaga
+  // de peticiones al escribir. Cazado el 03-11-2026 desenchufando piezas una
+  // a una, y no era la que yo creía.
+  //
+  // Lo que se guarda es el DATO; el rótulo se pone al pintar.
+  useEffect(() => {
+    if (!abierta) return;
+    const control = new AbortController();
+    void ultimosVistos(8, control.signal)
+      .then(setVistos)
+      // Un fallo aquí no rompe la paleta: se queda sin lo reciente y las
+      // pantallas siguen, que es a lo que se abre el 90 % de las veces.
+      .catch(() => setVistos([]));
+    return () => control.abort();
+  }, [abierta]);
+
 
   // Al abrir se limpia y se enfoca. Conservar la consulta anterior parece
   // cómodo y no lo es: se abre la paleta para ir a otro sitio, no al mismo.

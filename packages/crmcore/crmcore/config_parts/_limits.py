@@ -430,3 +430,13 @@ class _LimitsSettings(BaseSettings):
     cuota_sms_mes: int = Field(0, ge=0, le=100_000_000)
     cuota_workflows_mes: int = Field(0, ge=0, le=100_000_000)
     cuota_registros: int = Field(0, ge=0, le=1_000_000_000)
+
+    # Cuántos registros se guardan en el historial de «visto hace poco» de cada
+    # persona. Operativo y no de negocio: es el tamaño de un historial de
+    # navegación, no una decisión de nadie sobre su CRM. Sin tope, la tabla
+    # guarda cada registro que cada persona abrió alguna vez y sacar los diez
+    # últimos acaba ordenando cien mil filas.
+    #
+    # Cuántos se ENSEÑAN lo pide quien llama: la paleta pide ocho, y una vista
+    # de objeto podría pedir otra cosa.
+    vistos_por_persona: int = Field(50, ge=1, le=1_000)

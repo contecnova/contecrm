@@ -123,6 +123,15 @@ paso anterior es el listado del que salió. **En una ficha no pone «Inicio»**:
 barra tiene el sitio que tiene, y «Inicio» sale en todas las pantallas, así que
 no distingue ninguna; a la portada se vuelve con el logo de la esquina.
 
+**Lo último que has abierto, al pinchar el buscador.** Con la caja vacía, lo
+primero que sale es **«Visto hace poco»**: los registros que has abierto, del
+más reciente al más antiguo y uno por registro —abrir diez veces la misma
+cuenta no la repite diez veces—. Es lo que hace Salesforce y por el mismo
+motivo: lo que más se busca es aquello en lo que se estaba.
+
+Es tuyo y va contigo: está guardado en el servidor, no en el navegador, así
+que lo ves igual desde otro ordenador.
+
 **Ir a una pantalla escribiendo su nombre.** `⌘K` en Mac, `Ctrl+K` en el resto,
 o el buscador de la barra de arriba. Escribes «cuentas», «previsión» o «ventas»
 —vale el nombre del grupo— y las flechas y `Intro` te llevan. Con veinticinco

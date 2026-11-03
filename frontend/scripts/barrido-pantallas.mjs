@@ -82,6 +82,18 @@ p.on("pageerror", (e) => errores.push(String(e).slice(0, 160)));
  *   desde Explotación», que es exactamente lo que hay que decir. Contarlo
  *   habría puesto en rojo una pantalla que funciona, y un guardián que grita
  *   por lo correcto se acaba ignorando.
+ * - **Un 503 sí cuenta, pero se vuelve a mirar antes de decirlo.** El 503 de
+ *   esta pila es «el gateway no ha podido conectar con el servicio», y eso
+ *   pasa aquí por la ráfaga del propio barrido, no por la pantalla. Medido el
+ *   03-11-2026 contra la pila local y **sin front por medio**: 300 peticiones
+ *   concurrentes a `/api/v1/localizacion` dieron 185 respuestas y **115
+ *   conexiones que ni llegaron a abrirse**. Con una sola pasada, el barrido
+ *   acusaba a una pantalla distinta cada vez —`/m/casos`, `/m/canal`,
+ *   `/cobertura`— por un fallo que no era de ninguna.
+ *
+ *   Así que se recorre otra vez **esa** pantalla. Si a la segunda contesta,
+ *   no es una rota; y se dice cuántas lo necesitaron, porque una pila que
+ *   falla una de cada tres conexiones es un dato que no se puede tapar.
  */
 const CUENTAN = (e) => e === 400 || e === 404 || e === 422 || e >= 500;
 let api = [];
@@ -145,6 +157,8 @@ const ESCALA = ["12px", "13px", "14px", "16px", "20px", "24px", "32px"];
 const SUELO = 55;
 
 const rotas = [];
+// Las que fallaron sólo por una conexión caída y a la segunda contestaron.
+const reintentadas = [];
 const crudas = [];
 const letraFuera = [];
 let textosMirados = 0;
@@ -194,9 +208,30 @@ for (const camino of lista) {
     };
   });
   if (errores.length || api.length || (estado.alerta && !estado.h1)) {
-    const porque =
-      errores[0] ?? api[0] ?? `la alerta es todo lo que hay: ${txt.slice(0, 90)}`;
-    rotas.push(`${camino}\n     ${porque}`);
+    // Si lo ÚNICO que falló fueron 503, se vuelve a mirar: ese código aquí
+    // es «el gateway no ha podido conectar», y lo provoca la ráfaga de este
+    // mismo barrido. Lo demás no se reintenta: un 404 o una excepción de JS
+    // no se arreglan solos, y reintentarlos sería esconderlos.
+    const soloCaida =
+      errores.length === 0 &&
+      !(estado.alerta && !estado.h1) &&
+      api.length > 0 &&
+      api.every((e) => e.startsWith("503"));
+    let perdona = false;
+    if (soloCaida) {
+      api = [];
+      errores.length = 0;
+      await p.goto(APP + camino, { waitUntil: "networkidle", timeout: 15_000 })
+        .catch(() => p.goto(APP + camino, { waitUntil: "domcontentloaded" }).catch(() => {}));
+      await p.waitForTimeout(1200);
+      perdona = errores.length === 0 && api.length === 0;
+      if (perdona) reintentadas.push(camino);
+    }
+    if (!perdona) {
+      const porque =
+        errores[0] ?? api[0] ?? `la alerta es todo lo que hay: ${txt.slice(0, 90)}`;
+      rotas.push(`${camino}\n     ${porque}`);
+    }
   }
   const letra = await p.evaluate((escala) => {
     const vistos = new Map();
@@ -345,6 +380,12 @@ if (!soloEstas.length && lista.length < SUELO) {
   process.exitCode = 1;
 }
 console.log(`ROTAS: ${rotas.length}`);
+// Se dice SIEMPRE, también cuando es cero: «ninguna lo necesitó» y «no se
+// mira» se leen igual si sólo se imprime cuando hay alguna.
+console.log(
+  `CON LA CONEXIÓN CAÍDA Y BIEN AL SEGUNDO INTENTO: ${reintentadas.length}` +
+    (reintentadas.length ? ` — ${reintentadas.join(", ")}` : ""),
+);
 console.log(`CON EL DATO EN CRUDO: ${crudas.length}`);
 console.log(`CON LETRA FUERA DE LA ESCALA: ${letraFuera.length} (de ${textosMirados} textos mirados)`);
 console.log(`CON VARIOS VACÍOS DE CAJA GRANDE: ${dobleVacio.length}`);

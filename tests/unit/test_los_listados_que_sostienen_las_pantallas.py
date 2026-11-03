@@ -931,6 +931,93 @@ def test_lo_que_sigo_se_puede_pedir_seguir_y_dejar(
         get_settings.cache_clear()
 
 
+def test_lo_visto_hace_poco_se_apunta_y_se_pide(
+    db: Any,
+    cabeceras: dict[str, str],
+) -> None:
+    """«Visto hace poco»: lo primero que sale al pinchar el buscador.
+
+    Se recorre por HTTP porque lo que esta prueba defiende es la **forma** que
+    lee el buscador: `objeto_tipo`, `objeto_id`, `nombre` y `visto_at`. Sin
+    `nombre` la lista enseñaría identificadores, que es lo mismo que no
+    tenerla.
+    """
+    import importlib
+    import os
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient as _Cliente
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        app = importlib.import_module("services.identity.main").app
+        with _Cliente(app) as cli:
+            # DOS, y en este orden. Con uno solo, cualquier orden pasa: el
+            # guardián del orden daba verde con el listado puesto al revés a
+            # propósito, que es la forma más fácil de tener una comprobación
+            # que no mira nada.
+            viejo = str(uuid4())
+            cli.post(
+                "/api/v1/vistos",
+                headers={**cabeceras, "Idempotency-Key": str(uuid4())},
+                json={"objeto_tipo": "cuenta", "objeto_id": viejo, "nombre": "El de antes"},
+            )
+            objeto = str(uuid4())
+            alta = cli.post(
+                "/api/v1/vistos",
+                headers={**cabeceras, "Idempotency-Key": str(uuid4())},
+                json={"objeto_tipo": "cuenta", "objeto_id": objeto, "nombre": "Ibérica"},
+            )
+            assert alta.status_code == 200, alta.text
+
+            r = cli.get("/api/v1/vistos?limite=10", headers=cabeceras)
+            assert r.status_code == 200, r.text
+            lista = r.json()["items"]
+            # **Del más reciente al más antiguo.** Es lo único que distingue
+            # esta lista de un listado cualquiera, y se hizo mal: al pasarla a
+            # paginación por cursor se dejó `orden="visto_at"` y el listado
+            # salía al revés —lo primero, un registro de hacía dos horas—.
+            # Cazado pidiéndola contra la instalación servida el 03-11-2026.
+            fechas = [v["visto_at"] for v in lista]
+            assert len(fechas) >= 2, f"sólo se miran {len(fechas)}: no se mide el orden"
+            assert fechas == sorted(fechas, reverse=True), fechas
+            # Y el último que se abrió va el primero, que es la frase entera.
+            assert lista[0]["objeto_id"] == objeto
+            suyo = next(v for v in lista if v["objeto_id"] == objeto)
+            for campo in ("objeto_tipo", "objeto_id", "nombre", "visto_at"):
+                assert campo in suyo, f"lo visto no manda «{campo}»"
+            assert suyo["nombre"] == "Ibérica"
+
+            # Otra vez el mismo, renombrado: una fila, con el nombre de hoy.
+            cli.post(
+                "/api/v1/vistos",
+                headers={**cabeceras, "Idempotency-Key": str(uuid4())},
+                json={
+                    "objeto_tipo": "cuenta",
+                    "objeto_id": objeto,
+                    "nombre": "Ibérica Levante",
+                },
+            )
+            lista = cli.get("/api/v1/vistos?limite=50", headers=cabeceras).json()["items"]
+            suyos = [v for v in lista if v["objeto_id"] == objeto]
+            assert len(suyos) == 1, "la misma cuenta dos veces ocupa dos sitios"
+            assert suyos[0]["nombre"] == "Ibérica Levante"
+
+            # Y se puede acotar por tipo, que es lo que pide la vista de un
+            # objeto concreto.
+            solo = cli.get("/api/v1/vistos?objeto_tipo=caso", headers=cabeceras).json()["items"]
+            assert not [v for v in solo if v["objeto_id"] == objeto]
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
 # ── Metodología, playbook y plan conjunto (CRM-03.01.02.02, .03, .05) ───
 
 

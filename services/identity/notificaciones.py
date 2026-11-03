@@ -31,6 +31,7 @@ from crmcore.datos.seguimiento import (
     seguidores,
     seguir,
 )
+from crmcore.datos.vistos import RegistroVisto, anotar_visto
 from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso, montar_ficha  # noqa: E402
@@ -459,6 +460,104 @@ def quien_sigue(objeto_tipo: str, objeto_id: UUID, db: DbDep, principal: Autenti
     )
 
 
+# ── Visto hace poco ───────────────────────────────────────────────────────
+#
+# Lo que cada persona ha abierto, para volver a ello sin buscarlo otra vez.
+# Es lo que en Salesforce es «Recently Viewed»: la vista por defecto de cada
+# objeto y lo primero que sale al pinchar el buscador.
+#
+# Va en este router y no en uno nuevo porque es la misma clase de cosa que
+# seguir: una relación entre UNA persona y un registro, que no exige permiso
+# de administración porque es suya.
+router_vistos = APIRouter(prefix="/vistos", tags=["seguimiento"])
+
+
+class AnotarVisto(BaseModel):
+    objeto_tipo: str = Field(..., max_length=60)
+    objeto_id: UUID
+    # El nombre con el que se vio. Se guarda para no tener que preguntárselo
+    # a cuatro servicios cada vez que alguien pincha el buscador.
+    nombre: str = Field("", max_length=300)
+
+
+class VistoOut(BaseModel):
+    objeto_tipo: str
+    objeto_id: UUID
+    nombre: str
+    visto_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+@router_vistos.get(
+    "",
+    response_model=PaginaDeListado,
+    summary="Lo que he abierto hace poco",
+    description=(
+        "Del más reciente al más antiguo, **uno por registro**: abrir diez "
+        "veces la misma cuenta no la repite diez veces en la lista. Se guardan "
+        "las `VISTOS_POR_PERSONA` últimas de cada uno."
+    ),
+)
+def mis_vistos(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(10, ge=1, le=200),
+    cursor: str = Query(""),
+    objeto_tipo: str = Query("", max_length=60),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
+) -> Any:
+    # Un token de servicio no es una persona y no tiene historial. Página
+    # vacía y no un error: quien integra no ha hecho nada mal.
+    consulta = select(RegistroVisto).where(
+        RegistroVisto.usuario_id == (principal.id or UUID(int=0))
+    )
+    if objeto_tipo:
+        consulta = consulta.where(RegistroVisto.objeto_tipo == objeto_tipo)
+    # Con cursor como todos los listados raíz: sin él, quien lo lee cree que la
+    # primera página es la tabla. El tope real lo pone la poda, pero eso no lo
+    # sabe quien integra.
+    return paginar_consulta(
+        db,
+        RegistroVisto,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="-visto_at",
+        modelo_salida=VistoOut,
+        contar=contar,
+    )
+
+
+@router_vistos.post(
+    "",
+    response_model=VistoOut,
+    summary="Apuntar que he abierto un registro",
+    description=(
+        "Idempotente por registro: si ya estaba, se le actualiza la hora y el "
+        "nombre. Sin permiso de administración, porque es el historial de "
+        "quien llama."
+    ),
+)
+def anotar(datos: AnotarVisto, uow: UowDep, principal: AutenticadoDep) -> Any:
+    if principal.id is None:
+        raise ErrorValidacion(
+            "Esta llamada no la hace una persona, así que no tiene historial " "que apuntar.",
+            error_code="vistos.sin_usuario",
+        )
+    return anotar_visto(
+        uow.db,
+        tenant_id=principal.tenant_id,
+        usuario_id=principal.id,
+        objeto_tipo=datos.objeto_tipo,
+        objeto_id=datos.objeto_id,
+        nombre=datos.nombre,
+    )
+
+
+declarar_recurso(router_vistos, "registro_visto", RegistroVisto)
+
+
 class NotificacionOut(BaseModel):
     id: UUID
     tipo: str
@@ -684,7 +783,7 @@ def estadisticas_entrega(
     return estadisticas_de_entrega(db, principal.tenant_id, dias=dias)
 
 
-ROUTERS_NOTIFICACION = [router_seguimiento, router_notificaciones]
+ROUTERS_NOTIFICACION = [router_seguimiento, router_vistos, router_notificaciones]
 
 
 # ── La ficha del registro ─────────────────────────────────────────────────

@@ -16,9 +16,12 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore.config import get_settings
 from crmcore.datos import adjuntos as adj
 from crmcore.datos import seguimiento as seg
+from crmcore.datos import vistos
 from crmcore.errors import CuotaAgotada, ErrorValidacion, Prohibido
+from sqlalchemy import func, select
 
 
 @pytest.fixture(autouse=True)
@@ -388,6 +391,130 @@ def test_volver_a_seguir_le_quita_el_silencio_al_propietario(db: Any, tenant_id:
     # Y sigue siendo propietario: volver a seguir a mano no le rebaja el
     # motivo, porque no ha dejado de ser responsable del registro.
     assert vuelto.motivo == "propietario"
+
+
+def _vistos_de(db: Any, *, tenant_id: UUID, usuario_id: UUID, objeto_tipo: str = ""):
+    """Lo que ve esa persona, en el mismo orden que el extremo: del más
+    reciente al más antiguo.
+
+    Escrito aquí y no en `crmcore.datos.vistos`: la lectura de verdad es un
+    listado raíz con su cursor y vive con su router, y una segunda función de
+    lectura en el módulo se quedaría sin llamante —lo cazó el guardián de
+    funciones muertas— o acabaría ordenando distinto que el extremo.
+    """
+    consulta = select(vistos.RegistroVisto).where(
+        vistos.RegistroVisto.tenant_id == tenant_id,
+        vistos.RegistroVisto.usuario_id == usuario_id,
+    )
+    if objeto_tipo:
+        consulta = consulta.where(vistos.RegistroVisto.objeto_tipo == objeto_tipo)
+    return list(db.execute(consulta.order_by(vistos.RegistroVisto.visto_at.desc())).scalars().all())
+
+
+def test_lo_visto_guarda_una_fila_por_registro_y_no_una_por_visita(
+    db: Any, tenant_id: UUID
+) -> None:
+    """La pregunta es «¿qué he mirado?», no «¿cuántas veces?».
+
+    Con una fila por visita, abrir diez veces la misma cuenta la repetiría diez
+    veces en la lista y escondería las otras nueve — que es justo lo que la
+    lista viene a enseñar.
+    """
+    usuario, cuenta, caso = uuid4(), uuid4(), uuid4()
+    vistos.anotar_visto(
+        db,
+        tenant_id=tenant_id,
+        usuario_id=usuario,
+        objeto_tipo="cuenta",
+        objeto_id=cuenta,
+        nombre="Ibérica",
+    )
+    db.flush()
+    vistos.anotar_visto(
+        db,
+        tenant_id=tenant_id,
+        usuario_id=usuario,
+        objeto_tipo="caso",
+        objeto_id=caso,
+        nombre="Avería",
+    )
+    db.flush()
+    # La misma cuenta otra vez, y además renombrada.
+    vistos.anotar_visto(
+        db,
+        tenant_id=tenant_id,
+        usuario_id=usuario,
+        objeto_tipo="cuenta",
+        objeto_id=cuenta,
+        nombre="Ibérica Levante",
+    )
+    db.flush()
+
+    lista = _vistos_de(db, tenant_id=tenant_id, usuario_id=usuario)
+    assert len(lista) == 2, "la misma cuenta dos veces ocupa dos sitios"
+    # Y la cuenta vuelve a estar la primera: la lista es por última visita.
+    assert lista[0].objeto_id == cuenta
+    # Con el nombre de HOY. Enseñar el de la primera visita mandaría a buscar
+    # algo que ya no se llama así.
+    assert lista[0].nombre == "Ibérica Levante"
+    # Y con una FECHA dentro, no la expresión de SQL que se le asignó: quien
+    # devuelva esta fila tal cual revienta al serializarla. Cazado por la
+    # prueba de HTTP, que es la que llegaba a leer el campo.
+    assert isinstance(lista[0].visto_at, datetime)
+
+    # Y se puede acotar por tipo, que es lo que pide la vista de un objeto.
+    solo_casos = _vistos_de(db, tenant_id=tenant_id, usuario_id=usuario, objeto_tipo="caso")
+    assert [v.objeto_id for v in solo_casos] == [caso]
+
+
+def test_lo_visto_se_poda_y_no_crece_sin_fin(db: Any, tenant_id: UUID) -> None:
+    """Sin podar, la tabla guarda cada registro que alguien abrió alguna vez y
+    sacar los diez últimos acaba ordenando cien mil filas.
+
+    El tope sale del `.env` (`VISTOS_POR_PERSONA`) y no de una constante: lo
+    que cambia entre un despliegue de diez personas y uno de cincuenta mil es
+    exactamente esto. Se lee aquí en vez de fijarlo para que la prueba siga
+    midiendo lo que el producto hace, no lo que hacía cuando se escribió.
+    """
+    tope = get_settings().vistos_por_persona
+    usuario = uuid4()
+    for i in range(tope + 5):
+        vistos.anotar_visto(
+            db,
+            tenant_id=tenant_id,
+            usuario_id=usuario,
+            objeto_tipo="cuenta",
+            objeto_id=uuid4(),
+            nombre=f"Cuenta {i}",
+        )
+        db.flush()
+
+    quedan = db.execute(
+        select(func.count())
+        .select_from(vistos.RegistroVisto)
+        .where(vistos.RegistroVisto.usuario_id == usuario)
+    ).scalar_one()
+    assert quedan == tope, f"quedan {quedan} y el tope es {tope}"
+    # Y lo que se poda es lo VIEJO: la última que se abrió sigue la primera.
+    lista = _vistos_de(db, tenant_id=tenant_id, usuario_id=usuario)
+    assert lista[0].nombre == f"Cuenta {tope + 4}"
+
+
+def test_lo_visto_de_uno_no_sale_en_la_lista_de_otro(db: Any, tenant_id: UUID) -> None:
+    """Es un historial personal: si se cruzara, cada uno vería por dónde ha
+    andado el resto del equipo."""
+    uno, otro, cuenta = uuid4(), uuid4(), uuid4()
+    vistos.anotar_visto(
+        db,
+        tenant_id=tenant_id,
+        usuario_id=uno,
+        objeto_tipo="cuenta",
+        objeto_id=cuenta,
+        nombre="Ibérica",
+    )
+    db.flush()
+    assert _vistos_de(db, tenant_id=tenant_id, usuario_id=otro) == []
+    assert len(_vistos_de(db, tenant_id=tenant_id, usuario_id=uno)) == 1
 
 
 def test_notificar_avisa_a_los_seguidores_menos_a_quien_lo_provoco(

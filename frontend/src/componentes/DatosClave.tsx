@@ -39,6 +39,7 @@ import {
   type CampoEsquema,
 } from "@/lib/contrato";
 import { Seguir } from "@/componentes/Seguir";
+import { anotarVisto } from "@/lib/vistos";
 import { escalar, humanizar, tieneDato, campoDelNombre } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
 import { cn } from "@/lib/utiles";
@@ -247,6 +248,21 @@ export function DatosClave({
   // pantalla que la contenga, que no siempre es este registro.
   const idDelRegistro = typeof fila?.id === "string" ? fila.id : "";
   const puedeSeguirse = seguible && Boolean(tipo) && Boolean(idDelRegistro);
+
+  // **Apuntar que se ha abierto.** Aquí dentro por lo mismo que el botón de
+  // seguir: hay catorce fichas con este panel, y llamarlo desde cada una son
+  // catorce ocasiones de olvidarlo —y la que se olvidara no la notaría nadie,
+  // porque una ficha que no se apunta se ve igual que una que sí—.
+  //
+  // Se apunta aunque no se pueda seguir: un objeto del modelo de datos no se
+  // sigue y sí se vuelve a él, que es de lo que va esta lista.
+  useEffect(() => {
+    if (!tipo || !idDelRegistro) return;
+    anotarVisto(tipo, idDelRegistro, nombre || titular || "");
+    // Sólo cuando cambia el REGISTRO. Con `nombre` en las dependencias, una
+    // ficha que termina de cargar y rellena su título apuntaría dos veces, y
+    // al editar un nombre otra vez más.
+  }, [tipo, idDelRegistro]); // eslint-disable-line react-hooks/exhaustive-deps
   const clave = (camposClave ?? recurso?.columnas ?? [])
     .filter((c) => c !== titular && c !== campoRecorrido && !/_id$/.test(c))
     .filter((c) => fila && tieneDato(fila[c]))

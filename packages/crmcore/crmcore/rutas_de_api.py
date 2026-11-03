@@ -78,6 +78,10 @@ PREFIJOS: dict[str, str] = {
     "sharing-rules": "identity",
     "notificaciones": "identity",
     "seguimientos": "identity",
+    # Lo que cada persona ha abierto hace poco. Al lado de los seguimientos
+    # porque es la misma clase de cosa: una relación entre una persona y un
+    # registro, y quien conoce a las personas es identidad.
+    "vistos": "identity",
     # El chat interno vive en identidad porque es quien conoce a las personas,
     # sus permisos y por dónde quieren que se les avise (CRM-06.02.02).
     "chat": "identity",

@@ -15,6 +15,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { esApunteDelMarco } from "@/pruebas/preparar";
+
 const CASO = {
   id: "k-1",
   codigo: "CAS-2026-00042",
@@ -101,7 +103,14 @@ vi.mock("@/lib/api", async () => {
     llamar: vi.fn(
       async (ruta: string, opciones?: { metodo?: string; cuerpo?: unknown }) => {
         if ((opciones?.metodo ?? "GET") !== "GET") {
-          enviado.push({ ruta, cuerpo: opciones?.cuerpo });
+          // Lo que manda el MARCO al abrir la ficha —hoy el apunte de «visto
+          // hace poco»— no es lo que mandó la acción del usuario, que es lo
+          // único que aquí se cuenta. La lista vive en `preparar.ts` para que
+          // la siguiente prueba que recoja escrituras no tenga que volver a
+          // descubrirlo.
+          if (!esApunteDelMarco(ruta)) {
+            enviado.push({ ruta, cuerpo: opciones?.cuerpo });
+          }
           return { datos: { id: "art-1", clave: "caso-k-1" }, version: null };
         }
         let datos: unknown = CASO;

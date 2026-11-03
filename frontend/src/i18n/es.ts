@@ -149,6 +149,7 @@ export default {
     canales: "Canales y consentimiento",
     menciones: "Mis menciones",
     loQueSigo: "Lo que sigo",
+    vistoHacePoco: "Visto hace poco",
     // «Prospección» ya era el módulo de leads: dos entradas con el mismo
     // nombre en el mismo grupo obligan a entrar en las dos para saber cuál es
     // cuál. Ésta dice lo que contesta.

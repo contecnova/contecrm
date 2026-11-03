@@ -237,6 +237,7 @@ stateDiagram-v2
 | `POST /api/v1/usuarios/invitar-externo` | Dar acceso temporal a alguien de fuera | email*, motivo*, permisos, dias, objeto, objeto_id | 201, 422 | — |
 | `DELETE /api/v1/usuarios/{usuario_id}` | Dar de baja a un usuario del tenant | usuario_id* | 204, 422 | `user.deprovisioned`, `user.org.changed` |
 | `POST /api/v1/usuarios/{usuario_id}/desactivar` | Dar de baja a un usuario | usuario_id*, motivo*, transferir_a | 200, 422 | `user.deprovisioned`, `user.org.changed` |
+| `POST /api/v1/vistos` | Apuntar que he abierto un registro | objeto_tipo*, objeto_id*, nombre | 200, 422 | — |
 
 ### metadata
 

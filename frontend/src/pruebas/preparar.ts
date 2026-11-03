@@ -56,3 +56,25 @@ if (typeof globalThis.EventSource === "undefined") {
 if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
 }
+
+/**
+ * Llamadas que una pantalla hace **por su cuenta**, no por lo que pulsó nadie.
+ *
+ * Hoy sólo una: el apunte de «visto hace poco», que el panel de datos clave
+ * manda al abrir cualquier ficha. Es una escritura de verdad y por eso aparece
+ * en las pruebas que recogen todo lo que no es GET — y ahí no mide nada: lo
+ * que esas pruebas afirman es **qué mandó la acción del usuario**, y contar
+ * además el apunte del historial pone en rojo una pantalla que funciona.
+ *
+ * Vive aquí y no en cada prueba para que la siguiente que recoja escrituras lo
+ * encuentre. Medido el 03-11-2026: al añadir el historial, de las dos pruebas
+ * que recogen escrituras saltó una —la del caso— y la otra no, porque su
+ * pantalla no lleva ese panel. Una sola, pero con el apunte escrito en un solo
+ * sitio la siguiente no tiene que volver a descubrirlo.
+ */
+export const DE_LA_PANTALLA_Y_NO_DEL_USUARIO = ["/api/v1/vistos"];
+
+/** Si esa ruta es del propio marco y no de lo que pulsó nadie. */
+export function esApunteDelMarco(ruta: string): boolean {
+  return DE_LA_PANTALLA_Y_NO_DEL_USUARIO.some((r) => ruta.startsWith(r));
+}

@@ -464,6 +464,7 @@ from crmcore.datos.seguimiento import (  # noqa: E402
     PreferenciaNotificacion,
     Seguimiento,
 )
+from crmcore.datos.vistos import RegistroVisto  # noqa: E402
 from crmcore.notificaciones.entrega import EntregaNotificacion  # noqa: E402
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
@@ -474,6 +475,7 @@ from services.identity.sod import ExcepcionSoD, ReglaSoD  # noqa: E402
 from services.identity.sso import EstadoSSO  # noqa: E402
 
 __all__ = [
+    "RegistroVisto",
     "Passkey",
     "RetoPasskey",
     "EnlaceRestablecer",
