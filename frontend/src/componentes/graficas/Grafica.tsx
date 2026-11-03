@@ -601,8 +601,22 @@ function Embudo({
   // en un eje horizontal abajo. Se vio al mirar el dibujo: con los nombres
   // abajo, «Contactado» quedaba debajo de la barra de «Ganada» y el último se
   // cortaba a «Ganad».
-  const ROTULO = 92;
+  // **El ancho del rótulo lo marcan los rótulos, no un número fijo.** Con 92
+  // de ancho y el corte a los 16 caracteres, la portada enseñaba «Oferta
+  // presenta…» y «Pendiente de ad…» mientras al lado del embudo sobraban
+  // 1.284 px de pantalla vacía: dos de las siete etapas del embudo de ventas
+  // no se podían leer. Medido en el navegador el 03-11-2026.
+  //
+  // 6,3 por carácter es el ancho medio de la letra de la casa a 12 px; no
+  // hace falta afinar más porque sólo decide cuánto sitio reservar. El tope
+  // del 30 % está para que un nombre de etapa larguísimo no se coma la barra,
+  // que es lo que de verdad se viene a mirar.
+  const LARGO = Math.max(...categorias.map((c) => c.length), 8);
+  const ROTULO = Math.min(ancho * 0.3, Math.max(92, LARGO * 6.3 + 4));
   const izquierda = ROTULO + 8;
+  // Cuántos caracteres caben de verdad en ese ancho: cortar a 16 fijos con un
+  // rótulo que ahora mide el doble dejaría el corte donde estaba.
+  const CABEN = Math.max(8, Math.floor((ROTULO - 4) / 6.3));
   const util = ancho - izquierda - 56;
   const altoEtapa =
     (ALTO - MARGEN.arriba - MARGEN.abajo) / Math.max(1, categorias.length);
@@ -638,7 +652,7 @@ function Embudo({
               className="fill-ink-muted"
               style={{ fontSize: LETRA_GRAFICA }}
             >
-              {c.length > 16 ? `${c.slice(0, 15)}…` : c}
+              {c.length > CABEN ? `${c.slice(0, CABEN - 1)}…` : c}
             </text>
             <rect
               x={izquierda}

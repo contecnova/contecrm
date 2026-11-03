@@ -12995,8 +12995,8 @@ declarada en dos usuarios no se elige: se dice que es ambigua, porque elegir har
 que la misma conversación se atribuyera a uno u otro según el día.
 
 **Dónde se preguntan las dos cosas del momento malo.** En la pantalla de
-**Suite**, al final, hay dos recuadros que contestan lo que uno se pregunta
-justo cuando algo falla:
+**Aplicaciones conectadas** —en el menú, bajo «Usuarios y empresa»—, al final,
+hay dos recuadros que contestan lo que uno se pregunta justo cuando algo falla:
 
 - *«Esto no conecta: ¿qué falta exactamente?»* — se pega el código que devuelve
   el proveedor, su mensaje tal cual, y los alcances que tiene y los que hacen

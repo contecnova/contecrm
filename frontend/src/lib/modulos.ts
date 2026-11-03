@@ -197,42 +197,42 @@ export const MODULOS: Modulo[] = [
     titulo: "Empresas y unidades",
     seccion: "0.1",
     capacidad: "CRM-07.04.03.01",
-    grupo: "Plataforma",
+    grupo: "Usuarios y empresa",
   },
 {
     ruta: "contrato",
     titulo: "Contrato de la API",
     seccion: "0.2",
     capacidad: "CRM-07.04.03.02",
-    grupo: "Plataforma",
+    grupo: "Herramientas de plataforma",
   },
 {
     ruta: "procesos",
     titulo: "Procesos y orquestación",
     seccion: "0.3",
     capacidad: "CRM-07.04.03.03",
-    grupo: "Plataforma",
+    grupo: "Automatización",
   },
 {
     ruta: "modelo",
     titulo: "Gestor de objetos",
     seccion: "0.4",
     capacidad: "CRM-07.04.03.04",
-    grupo: "Plataforma",
+    grupo: "Herramientas de plataforma",
   },
 {
     ruta: "acceso",
     titulo: "Usuarios y permisos",
     seccion: "0.5",
     capacidad: "CRM-07.04.03.05",
-    grupo: "Plataforma",
+    grupo: "Usuarios y empresa",
   },
 {
     ruta: "operacion",
     titulo: "Operación",
     seccion: "0.6",
     capacidad: "CRM-07.04.03.06",
-    grupo: "Plataforma",
+    grupo: "Entornos y despliegue",
   },
 {
     ruta: "cuentas",
@@ -327,10 +327,15 @@ export const MODULOS: Modulo[] = [
   },
 {
     ruta: "gobierno",
-    titulo: "Gobierno y cumplimiento",
+    // «Riesgos y controles», que es lo que lista: riesgos, controles,
+    // segregación, retención, bloqueos legales y clases de dato. Se llamaba
+    // «Gobierno y cumplimiento», que es el nombre de su área entera del menú:
+    // un rótulo que repite el de la sección que lo contiene no distingue nada
+    // de sus dos vecinas.
+    titulo: "Riesgos y controles",
     seccion: "7.3",
     capacidad: "CRM-07.04.03.28",
-    grupo: "Gobierno",
+    grupo: "Gobierno y cumplimiento",
   },
 {
     ruta: "segmentos",

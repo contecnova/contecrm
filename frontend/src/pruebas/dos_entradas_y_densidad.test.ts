@@ -42,8 +42,8 @@ describe("las dos entradas", () => {
     const trabajar = menuDe(SIN_MODULOS, TODAS, "trabajar").map((a) => a.id);
     const administrar = menuDe(SIN_MODULOS, TODAS, "administrar").map((a) => a.id);
     expect(trabajar).toContain("ventas");
-    expect(trabajar).not.toContain("configuracion");
-    expect(administrar).toContain("configuracion");
+    expect(trabajar).not.toContain("usuarios");
+    expect(administrar).toContain("usuarios");
     expect(administrar).not.toContain("ventas");
   });
 
@@ -53,7 +53,7 @@ describe("las dos entradas", () => {
     // porque está «en la otra pestaña» es peor que no tener pestañas.
     const todo = menuDe(SIN_MODULOS, TODAS).map((a) => a.id);
     expect(todo).toContain("ventas");
-    expect(todo).toContain("configuracion");
+    expect(todo).toContain("usuarios");
   });
 
   it("las aprobaciones son trabajo aunque vivan en Automatización", () => {
@@ -106,7 +106,7 @@ describe("las dos entradas", () => {
      * Se comprueba con módulos reales del catálogo y en los dos sentidos: el
      * de administración se queda, y el de trabajo sigue siendo de trabajo.
      */
-    expect(grupoDelModulo("tenants")).toBe("Plataforma");
+    expect(grupoDelModulo("tenants")).toBe("Usuarios y empresa");
     expect(ambitoDelCamino("/m/tenants", grupoDelModulo)).toBe("administrar");
     expect(ambitoDelCamino("/m/modelo", grupoDelModulo)).toBe("administrar");
     expect(ambitoDelCamino("/m/acceso", grupoDelModulo)).toBe("administrar");

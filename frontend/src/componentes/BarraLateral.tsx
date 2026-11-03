@@ -476,10 +476,17 @@ function Seccion({
           <Icono
             nombre="keyboard_arrow_down"
             tamano="sm"
-            className={cn("transition-transform", plegada && "-rotate-90")}
+            className={cn("shrink-0 transition-transform", plegada && "-rotate-90")}
           />
-          {icono ? <Icono nombre={icono} tamano="sm" /> : null}
-          <span className="truncate">{rotulo}</span>
+          {icono ? <Icono nombre={icono} tamano="sm" className="shrink-0" /> : null}
+          {/* **Parte en dos líneas, no corta.** El panel mide 222px y un
+              rótulo en mayúsculas no cabe entero: con `truncate`, los cinco
+              temas de la configuración salían «USUARIOS Y EMPRE…»,
+              «HERRAMIENTAS DE …», «ENTORNOS Y DESPL…» y «GOBIERNO Y CUMPL…»
+              —cuatro de cinco cortados, y dos de ellos empezando igual—.
+              Un título de sección que hay que adivinar no agrupa nada.
+              Medido en el navegador el 03-11-2026. */}
+          <span className="min-w-0 leading-tight">{rotulo}</span>
         </button>
       </div>
       {/* Se desmonta al plegar en vez de esconderse con CSS: escondido con CSS

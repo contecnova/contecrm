@@ -127,6 +127,33 @@ describe("lo que se pinta", () => {
     expect(container.textContent).toContain("3%");
   });
 
+  it("el nombre de una etapa larga se lee entero, no cortado", () => {
+    // **Medido en el navegador el 03-11-2026**, en la portada: el embudo de
+    // ventas enseñaba «Oferta presenta…» y «Pendiente de ad…» mientras a su
+    // derecha sobraban 1.284 px de pantalla vacía. El sitio del rótulo era un
+    // 92 fijo y el corte, 16 caracteres: dos de las siete etapas del producto
+    // no se podían leer, en la primera pantalla que ve nadie.
+    //
+    // Son los nombres de etapa de verdad, los que trae el producto.
+    const largas: DatosGrafica = {
+      filas: [
+        { etapa: "Oferta presentada", n: 10 },
+        { etapa: "Pendiente de adjudicación", n: 4 },
+        { etapa: "Ganada", n: 2 },
+      ],
+      ejeX: "etapa",
+      series: [{ clave: "n", rotulo: "Oportunidades" }],
+    };
+    const { container } = render(<Grafica forma="embudo" datos={largas} titulo="Embudo" />);
+    const rotulos = [...container.querySelectorAll('text[text-anchor="end"]')].map(
+      (e) => e.textContent ?? "",
+    );
+    // Que se han mirado los tres: una lista vacía daría verde sin cortar nada.
+    expect(rotulos).toHaveLength(3);
+    expect(rotulos.filter((r) => r.includes("\u2026"))).toEqual([]);
+    expect(rotulos).toContain("Pendiente de adjudicación");
+  });
+
   it("siempre se puede ver como tabla, con el valor exacto", async () => {
     render(<Grafica forma="barras" datos={MESES} titulo="Por mes" />);
     await userEvent.click(screen.getByRole("button", { name: /tabla/i }));

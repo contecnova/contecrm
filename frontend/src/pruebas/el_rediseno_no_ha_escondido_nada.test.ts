@@ -29,7 +29,7 @@ import {
   pestanasDeTodas,
 } from "@/lib/aplicaciones";
 import { porGrupoVisible } from "@/lib/modulos";
-import { ACCESOS, AREAS, TRANSVERSALES, menuDe } from "@/lib/navegacion";
+import { ACCESOS, AREAS, AYUDA, TRANSVERSALES, menuDe } from "@/lib/navegacion";
 
 /** El menú de quien lo puede ver todo: lo que se audita es el diseño, no un perfil. */
 function menuCompleto(ambito?: "trabajar" | "administrar") {
@@ -64,6 +64,9 @@ const TIENE_SU_PROPIO_SITIO: Record<string, string> = {
   "/puesto": "Pestaña de todas las aplicaciones, y además está en el menú de la persona.",
   "/chat": "Tiene su icono fijo en la barra de arriba: se habla de clientes, de ventas y de casos desde el mismo sitio, así que no es de un dominio.",
   "/menciones": "Igual que el chat: te mencionan en una cuenta, en una oportunidad y en un caso.",
+  "/ayuda": "Está en la interrogación de la barra de arriba, donde la pone Salesforce: habla del producto, no del cliente ni de su ajuste.",
+  "/recorrido": "Con la ayuda, en la interrogación de la barra: es la visita guiada del producto, y dentro de la configuración se la encontraba quien no la buscaba.",
+  "/cobertura": "Con la ayuda, en la interrogación de la barra: cuenta qué sabe hacer el producto, que es una pregunta sobre el producto y no un ajuste.",
 };
 
 describe("toda área está detrás de exactamente una puerta", () => {
@@ -109,6 +112,18 @@ describe("ninguna pantalla se ha quedado sin camino", () => {
       (a) => !trabajando.has(a) && !configurando.has(a) && !(a in TIENE_SU_PROPIO_SITIO),
     );
     expect(perdidas, `sin ningún camino: ${perdidas.join(", ")}`).toEqual([]);
+  });
+
+  it("las que están exentas por vivir en la interrogación, están en la interrogación", () => {
+    // Sin esto, «tiene su propio sitio» sería una forma de borrar una pantalla
+    // del producto sin que nada se quejara: se la quita del menú, se escribe
+    // el motivo y el guardián da verde. Es el fallo que esta prueba existe
+    // para cazar, cometido a mano.
+    const enAyuda = new Set(AYUDA.map((e) => e.a));
+    expect(enAyuda.size).toBe(AYUDA.length);
+    for (const camino of ["/ayuda", "/recorrido", "/cobertura"]) {
+      expect(enAyuda.has(camino), `«${camino}» está exenta y no está en el menú de ayuda`).toBe(true);
+    }
   });
 
   it("y las excepciones no se escriben sin motivo", () => {

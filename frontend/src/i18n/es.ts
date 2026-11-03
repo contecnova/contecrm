@@ -106,8 +106,14 @@ export default {
     areaMarketing: "Marketing",
     areaServicio: "Servicio",
     areaAnalisis: "Analítica",
+    // Los cinco temas de Administrar. Eran dos —«Automatización» con 2
+    // entradas y «Configuración» con 18— y se llaman como el árbol de Setup
+    // de Salesforce, que es lo que ya conoce quien viene de un CRM.
     areaAutomatizacion: "Automatización",
-    areaConfiguracion: "Configuración",
+    areaUsuarios: "Usuarios y empresa",
+    areaPlataforma: "Herramientas de plataforma",
+    areaEntornos: "Entornos y despliegue",
+    areaGobierno: "Gobierno y cumplimiento",
     inicio: "Inicio",
     // «Administración», que es como se llama la pantalla. Decía «Consola de
     // administración» y en el iniciador sale al lado de «Consola de agente»,
@@ -167,7 +173,13 @@ export default {
     // «Entornos y despliegue», que es la pregunta de la entrada de al lado.
     alm: "Promoción entre entornos",
     rendimiento: "Rendimiento",
-    suite: "Suite",
+    // «Aplicaciones conectadas», que es como lo llama Salesforce y lo que
+    // contesta: qué herramientas de la casa están enganchadas a este cliente,
+    // quién entra en cada una y qué falta por aplicar. Decía «Suite» a secas,
+    // que no contesta nada. Y no «Gobierno de la suite», que es el título de
+    // la pantalla: al lado está «Gobierno de la IA» y las dos empezarían por
+    // la misma palabra —lo cazó el guardián de los rótulos parecidos—.
+    suite: "Aplicaciones conectadas",
     ayuda: "Ayuda",
     accesos: "Accesos",
     // El buscador del árbol de configuración. Dice que BUSCA UN AJUSTE y no

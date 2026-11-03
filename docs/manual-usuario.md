@@ -87,6 +87,37 @@ ajuste. El mismo botón te devuelve al trabajo.
 > El engranaje **sólo sale si tienes algo que configurar**. Si no lo ves, no es
 > que falte: es que tu perfil no abre ninguna de esas pantallas.
 
+**El árbol de la configuración tiene cinco temas**, y son los del árbol de
+Setup de Salesforce, por lo mismo que el resto: quien ya usa un CRM sabe en
+cuál mirar sin leerlos todos.
+
+| tema | qué hay dentro |
+|---|---|
+| **Usuarios y empresa** | las personas, lo que pueden hacer y bajo qué empresa: Empresas y unidades, Usuarios y permisos, Identidad y seguridad, Administración, Aplicaciones conectadas |
+| **Herramientas de plataforma** | lo que se modela y lo que se publica: Gestor de objetos, Contrato de la API |
+| **Automatización** | Procesos y orquestación, y el Editor de procesos |
+| **Entornos y despliegue** | Operación, Promoción entre entornos, Despliegues y desvíos, Ciclo de vida del cliente, Estado |
+| **Gobierno y cumplimiento** | Riesgos y controles, Plataforma y cumplimiento, Panel de cumplimiento |
+
+Hasta el 03-11-2026 eran dos: «Automatización», con dos entradas, y
+«Configuración», con dieciocho —entre ellas «Ayuda» y «Estado», que no ajustan
+nada—. Un desplegable con dieciocho enlaces dentro es la lista de antes con un
+título encima: agrupar no sirve de nada si un grupo se queda con el 90 %.
+Ahora ninguno pasa de diez, que es lo que se lee de un vistazo, y hay una
+prueba que lo impide.
+
+**La ayuda está en la interrogación**, al lado del engranaje — donde la pone
+Salesforce. Dentro hay tres cosas, y las tres hablan **del producto**, no de tu
+cliente ni de tus ajustes:
+
+- **Ayuda**, cómo se usa esto.
+- **Recorrido guiado**, la visita por lo que hay.
+- **Cobertura**, qué sabe hacer el producto y qué tiene pantalla.
+
+Estaban dentro de la configuración, en la misma rama que «Usuarios y
+permisos». Quien busca ayuda no entra a configurar para encontrarla, y quien
+configura se las topaba en medio.
+
 Arriba, la línea de la barra dice dónde estás y permite volver: en una ficha, el
 paso anterior es el listado del que salió. **En una ficha no pone «Inicio»**: la
 barra tiene el sitio que tiene, y «Inicio» sale en todas las pantallas, así que
@@ -466,6 +497,8 @@ Si vienes de Salesforce, el vocabulario es el suyo a propósito:
 | **Previsiones** | lo que se espera cerrar |
 | **Socios** | el canal indirecto |
 | **Configuración** | todo lo que se ajusta, detrás del engranaje |
+| **Usuarios y empresa**, **Herramientas de plataforma**, **Entornos y despliegue** | los temas del árbol de configuración, como el Setup de allí |
+| **Aplicaciones conectadas** | qué herramientas de la casa están enganchadas a este cliente |
 | **Iniciador de aplicaciones** | el botón del nombre de la aplicación |
 
 No es por copiar: es que un nombre propio obliga a aprender el producto antes
@@ -1572,8 +1605,9 @@ electrónica desde cualquier registro.
 
 ### Qué sabe hacer la suite que tienes conectada (sección 6.1)
 
-En **Operación → Suite** está, además de si el correo y el calendario de cada
-uno están entrando, **qué hace exactamente** la suite que tienes conectada. Era
+En **Usuarios y empresa → Aplicaciones conectadas** está, además de si el
+correo y el calendario de cada uno están entrando, **qué hace exactamente** la
+suite que tienes conectada. Era
 lo que no se podía mirar: la conexión funcionaba o no funcionaba, y por qué era
 cosa de abrir la base de datos.
 

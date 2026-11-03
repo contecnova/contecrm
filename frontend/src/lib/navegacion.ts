@@ -109,11 +109,24 @@ export const AREAS = [
   { id: "marketing", clave: "nav.areaMarketing", icono: "campaign", ambito: "trabajar" },
   { id: "servicio", clave: "nav.areaServicio", icono: "support_agent", ambito: "trabajar" },
   { id: "analisis", clave: "nav.areaAnalisis", icono: "insights", ambito: "trabajar" },
-  // Automatización y configuración son lo que se ajusta de tarde en tarde: se
-  // diseña una vez y se revisa cuando algo cambia. Es trabajo, pero no es el
-  // trabajo del día.
+  // ── Lo de administrar ───────────────────────────────────────────────────
+  //
+  // **Eran dos áreas y una era un cajón de sastre.** Medido el 03-11-2026:
+  // «Automatización» tenía 2 entradas y «Configuración» 18 —desde «Usuarios y
+  // permisos» hasta «Ayuda» y «Estado», que no configuran nada—, y las tres
+  // pantallas de cumplimiento estaban repartidas entre las dos. Un árbol con
+  // una rama de dieciocho hojas no es un árbol: es la lista de antes con un
+  // título encima.
+  //
+  // Los temas son los del árbol de Setup de Salesforce, por lo mismo que el
+  // resto del rediseño: Administration (personas y empresa), Platform Tools
+  // (lo que se modela y lo que se automatiza), Environments (lo que se
+  // despliega) y lo de gobierno aparte.
+  { id: "usuarios", clave: "nav.areaUsuarios", icono: "manage_accounts", ambito: "administrar" },
+  { id: "plataforma", clave: "nav.areaPlataforma", icono: "handyman", ambito: "administrar" },
   { id: "automatizacion", clave: "nav.areaAutomatizacion", icono: "bolt", ambito: "administrar" },
-  { id: "configuracion", clave: "nav.areaConfiguracion", icono: "settings", ambito: "administrar" },
+  { id: "entornos", clave: "nav.areaEntornos", icono: "layers", ambito: "administrar" },
+  { id: "gobierno", clave: "nav.areaGobierno", icono: "gavel", ambito: "administrar" },
 ] as const;
 
 export type IdArea = (typeof AREAS)[number]["id"];
@@ -126,9 +139,16 @@ export function ambitoDelArea(id: IdArea): IdAmbito {
 /**
  * A qué área va cada grupo del catálogo.
  *
- * `Gobierno` y `Plataforma` caen en configuración: son cosas que se ajustan una
- * vez y se revisan de tarde en tarde, no trabajo diario. Meterlas entre las
- * pantallas de uso diario es parte de lo que hacía el menú ilegible.
+ * Los cinco últimos son de administrar: cosas que se ajustan una vez y se
+ * revisan de tarde en tarde, no trabajo diario. Meterlas entre las pantallas
+ * de uso diario es parte de lo que hacía el menú ilegible.
+ *
+ * **Los grupos del catálogo se llaman igual que su área.** Antes los seis
+ * módulos de plataforma —empresas, usuarios, objetos, contrato, procesos y
+ * operación— compartían el grupo «Plataforma» y caían todos en la misma rama
+ * del árbol, que es la mitad de por qué esa rama tenía dieciocho hojas. Y el
+ * grupo sale además en el buscador, así que dos nombres distintos para lo
+ * mismo obligaban a aprender dos taxonomías.
  */
 export const AREA_DE_GRUPO: Record<string, IdArea> = {
   Clientes: "clientes",
@@ -136,8 +156,11 @@ export const AREA_DE_GRUPO: Record<string, IdArea> = {
   Marketing: "marketing",
   Servicio: "servicio",
   "Analítica": "analisis",
-  Gobierno: "configuracion",
-  Plataforma: "configuracion",
+  "Usuarios y empresa": "usuarios",
+  "Herramientas de plataforma": "plataforma",
+  "Automatización": "automatizacion",
+  "Entornos y despliegue": "entornos",
+  "Gobierno y cumplimiento": "gobierno",
 };
 
 /**
@@ -212,50 +235,84 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "analisis", a: "/rendimiento", clave: "nav.rendimiento", icono: "speed"  },
   { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar"  },
 
+  // ── Automatización ──────────────────────────────────────────────────────
   { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read"  },
   // La única excepción de ámbito del producto: vive en Automatización, que es
   // de administrar, y es trabajo diario de cualquier responsable. Aprobar un
   // descuento no es configurar nada, y esconderlo detrás de «Administrar» es
   // garantizar que las aprobaciones se queden esperando.
   { area: "automatizacion", ambito: "trabajar", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["documentos"] },
-  { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["suite"] },
 
-  { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read"  },
+  // ── Usuarios y empresa ──────────────────────────────────────────────────
+  // Las personas, lo que pueden hacer y bajo qué empresa. Es el nodo
+  // «Administration» del árbol de Salesforce.
+  //
   // Las cuatro preguntas de seguridad que el módulo genérico no puede contestar
   // porque no son tablas: quién no tiene segundo factor, qué certificado del
   // IdP caduca, quién tiene permisos incompatibles y por qué esta persona ve
   // esto. `user:read` porque es lo que exigen sus extremos.
-  { area: "configuracion", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
+  { area: "usuarios", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
+  { area: "usuarios", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read"  },
+  // Quién entra en cada herramienta de la casa y qué falta por aplicar. Va con
+  // las personas y no con la automatización, que es donde estaba: lo que se
+  // mira aquí son accesos, no un motor. Y el rótulo decía «Suite» a secas,
+  // que no contesta nada.
+  { area: "usuarios", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["suite"] },
+
+  // ── Herramientas de plataforma ──────────────────────────────────────────
+  // Lo que se modela y lo que se publica: el nodo «Platform Tools».
+
+  // ── Entornos y despliegue ───────────────────────────────────────────────
+  { area: "entornos", a: "/alm", clave: "nav.alm", icono: "swap_horiz", permiso: "metadata:read" , recursos: ["entornos"] },
+  { area: "entornos", a: "/entornos", clave: "nav.entornos", icono: "difference", permiso: "metadata:read" },
+  // En Configuración y con permiso de tenant: quien clona, fusiona o migra un
+  // cliente no es quien vende ni quien atiende.
+  { area: "entornos", a: "/ciclo-de-vida", clave: "nav.cicloDeVida", icono: "swap_horiz", permiso: "tenant:read" },
+  // Si la plataforma responde, y desde cuándo no. No es configuración —no se
+  // ajusta nada aquí—, pero sí es la pregunta de quien despliega.
+  { area: "entornos", a: "/estado", clave: "nav.estado", icono: "monitor_heart" },
+
+  // ── Gobierno y cumplimiento ─────────────────────────────────────────────
+  // Las tres pantallas de cumplimiento, juntas por primera vez: estaban
+  // repartidas entre «Gobierno» (el módulo, con los registros), «Panel de
+  // cumplimiento» (si eso se puede medir) y «Plataforma y cumplimiento» (el
+  // rastro y la privacidad), en dos ramas distintas del menú.
+  //
   // El audit trail, las anomalías de exportación, el registro de tratamiento,
   // la matriz de permisos y la papelera: rutas que el producto publica desde
   // el primer día y a las que no se llegaba desde ninguna pantalla. Medido
   // sobre el contrato: 477 colecciones GET sin un solo botón, 170 de ellas la
   // misma ruta repetida en los catorce servicios.
-  { area: "configuracion", a: "/plataforma", clave: "nav.plataforma", icono: "shield_lock", permiso: "tenant:read" , recursos: ["grc"] },
-  { area: "configuracion", a: "/alm", clave: "nav.alm", icono: "layers", permiso: "metadata:read" , recursos: ["entornos"] },
-  // El recorrido guiado y la cobertura hablan **del producto**, no del trabajo
-  // de nadie: estaban en Marketing, donde quien busca sus campañas se topa con
-  // una visita guiada, y donde quien la busca no la encuentra. Y el recorrido
-  // enseña más o menos lo mismo que Inicio, así que tampoco competía bien.
-  { area: "configuracion", a: "/recorrido", clave: "nav.recorrido", icono: "route" },
-  { area: "configuracion", a: "/cobertura", clave: "nav.cobertura", icono: "fact_check" },
-  // En Configuración y con permiso de tenant: quien clona, fusiona o migra un
-  // cliente no es quien vende ni quien atiende.
-  // Al lado del módulo «Gobierno y cumplimiento» y no en vez de él: aquel
-  // lista los riesgos y los controles —los registros— y éste contesta si eso
-  // que hay se puede medir y qué no cuadra hoy. Sin `recursos`, porque no
-  // enseña ninguna de sus dos colecciones: decir que sí lo contaría como
-  // enseñado y mandaría aquí a quien busca un riesgo concreto.
-  { area: "configuracion", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
-  { area: "configuracion", a: "/entornos", clave: "nav.entornos", icono: "layers", permiso: "metadata:read" },
-  { area: "configuracion", a: "/ciclo-de-vida", clave: "nav.cicloDeVida", icono: "swap_horiz", permiso: "tenant:read" },
-  { area: "configuracion", a: "/estado", clave: "nav.estado", icono: "monitor_heart" },
-  { area: "configuracion", a: "/ayuda", clave: "nav.ayuda", icono: "help" },
+  { area: "gobierno", a: "/plataforma", clave: "nav.plataforma", icono: "shield_lock", permiso: "tenant:read" , recursos: ["grc"] },
+  // Al lado del módulo «Riesgos y controles» y no en vez de él: aquel lista
+  // los riesgos y los controles —los registros— y éste contesta si eso que
+  // hay se puede medir y qué no cuadra hoy. Sin `recursos`, porque no enseña
+  // ninguna de sus dos colecciones: decir que sí lo contaría como enseñado y
+  // mandaría aquí a quien busca un riesgo concreto.
+  { area: "gobierno", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
+];
+
+/**
+ * El menú de ayuda: la interrogación de la barra de arriba.
+ *
+ * **No son configuración y estaban dentro de ella.** «Ayuda», «Recorrido
+ * guiado» y «Cobertura» hablan del producto —cómo se usa, qué sabe hacer—, no
+ * del cliente ni de su ajuste, y vivían en la misma rama que «Usuarios y
+ * permisos» y «Promoción entre entornos». Quien busca ayuda no entra en la
+ * configuración a buscarla, y quien configura se las encuentra en medio.
+ *
+ * Van donde las pone Salesforce: la interrogación de la barra, al lado del
+ * engranaje. Y se abren desde donde uno esté, que es cuando hacen falta.
+ */
+export const AYUDA: Entrada[] = [
+  { a: "/ayuda", clave: "nav.ayuda", icono: "help" },
+  { a: "/recorrido", clave: "nav.recorrido", icono: "route" },
+  { a: "/cobertura", clave: "nav.cobertura", icono: "fact_check" },
 ];
 
 /** Todas las entradas fijas, sin los módulos. Para la paleta y la miga de pan. */
 export function todasLasEntradas(): Entrada[] {
-  return [...ACCESOS, ...TRANSVERSALES];
+  return [...ACCESOS, ...TRANSVERSALES, ...AYUDA];
 }
 
 /**
@@ -273,13 +330,16 @@ export function entradaVisible(sesion: Sesion | null, entrada: Entrada): boolean
 /** Icono por defecto de un módulo funcional, según su grupo del catálogo. */
 export function iconoDeGrupo(grupo: string): string {
   const POR_GRUPO: Record<string, string> = {
-    Plataforma: "tenancy",
     Clientes: "groups",
     Ventas: "trending_up",
     Marketing: "campaign",
     Servicio: "support_agent",
     "Analítica": "insights",
-    Gobierno: "gavel",
+    "Usuarios y empresa": "manage_accounts",
+    "Herramientas de plataforma": "handyman",
+    "Automatización": "bolt",
+    "Entornos y despliegue": "layers",
+    "Gobierno y cumplimiento": "gavel",
   };
   // `folder` y no un icono al azar: un grupo nuevo del catálogo tiene que salir
   // con algo neutro, no con el icono del grupo anterior por descuido.
@@ -376,7 +436,7 @@ export function ambitoDelCamino(
   const modulo = /^\/m\/([^/]+)/.exec(camino);
   if (modulo && grupoDelModulo) {
     const grupo = grupoDelModulo(modulo[1] ?? "");
-    if (grupo) return ambitoDelArea(AREA_DE_GRUPO[grupo] ?? "configuracion");
+    if (grupo) return ambitoDelArea(AREA_DE_GRUPO[grupo] ?? "plataforma");
   }
   const entrada = TRANSVERSALES.filter((e) => camino.startsWith(e.a)).sort(
     (a, b) => b.a.length - a.a.length,
@@ -392,7 +452,7 @@ export function menuDe(
 ): AreaPintada[] {
   const porArea = new Map<IdArea, Entrada[]>();
   for (const [grupo, modulos] of modulosPorGrupo) {
-    const area = AREA_DE_GRUPO[grupo] ?? "configuracion";
+    const area = AREA_DE_GRUPO[grupo] ?? "plataforma";
     const previas = porArea.get(area) ?? [];
     porArea.set(area, [
       ...previas,

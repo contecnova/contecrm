@@ -26,6 +26,7 @@ import { ALTAS } from "@/lib/altas";
 import { humanizar } from "@/lib/formato";
 import { MODULOS, grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
 import {
+  AYUDA,
   ambitoDelCamino,
   entradaVisible,
   menuDe,
@@ -87,7 +88,9 @@ export function BarraSuperior({
   );
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [crearAbierto, setCrearAbierto] = useState(false);
+  const [ayudaAbierta, setAyudaAbierta] = useState(false);
   const crearRef = useRef<HTMLDivElement>(null);
+  const ayudaRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLButtonElement>(null);
 
@@ -142,6 +145,27 @@ export function BarraSuperior({
       window.removeEventListener("keydown", tecla);
     };
   }, [crearAbierto]);
+
+  // Lo mismo para la interrogación. Dos efectos y no uno compartido: el que
+  // los juntara tendría que decidir cuál cerrar, y cerrar los dos al pulsar
+  // dentro de uno es justo lo que no se quiere.
+  useEffect(() => {
+    if (!ayudaAbierta) return;
+    function fuera(evento: MouseEvent) {
+      if (ayudaRef.current && !ayudaRef.current.contains(evento.target as Node)) {
+        setAyudaAbierta(false);
+      }
+    }
+    function tecla(evento: KeyboardEvent) {
+      if (evento.key === "Escape") setAyudaAbierta(false);
+    }
+    window.addEventListener("mousedown", fuera);
+    window.addEventListener("keydown", tecla);
+    return () => {
+      window.removeEventListener("mousedown", fuera);
+      window.removeEventListener("keydown", tecla);
+    };
+  }, [ayudaAbierta]);
 
   // La densidad se lee del documento y no de un estado propio: quien la fija al
   // arrancar es `App`, con lo que dice el perfil. Un `useState` con su propio
@@ -364,6 +388,52 @@ export function BarraSuperior({
             <Icono nombre={enConfiguracion ? "work" : "settings"} />
           </Link>
         ) : null}
+
+        {/* **La interrogación.** «Ayuda», «Recorrido guiado» y «Cobertura»
+            estaban dentro de la configuración, en la misma rama que «Usuarios
+            y permisos»: quien busca ayuda no entra a configurar para
+            encontrarla, y quien configura se las topa en medio. Hablan del
+            producto, no del cliente.
+
+            Va donde la pone Salesforce —detrás del engranaje, en ese orden—
+            y por lo mismo: quien ya usa un CRM la busca ahí. */}
+        <div className="relative" ref={ayudaRef}>
+          <button
+            type="button"
+            onClick={() => setAyudaAbierta((v) => !v)}
+            className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink"
+            aria-haspopup="menu"
+            aria-expanded={ayudaAbierta}
+            aria-label={t("nav.ayuda")}
+            title={t("nav.ayuda")}
+          >
+            <Icono nombre="help" />
+          </button>
+          {ayudaAbierta ? (
+            <div
+              role="menu"
+              aria-label={t("nav.ayuda")}
+              className="absolute right-0 z-popover mt-2 w-60 animate-fade-in rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3"
+            >
+              {AYUDA.map((entrada) => (
+                <Link
+                  key={entrada.a}
+                  role="menuitem"
+                  to={entrada.a}
+                  onClick={() => setAyudaAbierta(false)}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-titulo text-ink hover:bg-paper-light"
+                >
+                  <Icono
+                    nombre={entrada.icono}
+                    tamano="sm"
+                    className="text-ink-muted"
+                  />
+                  {t(entrada.clave)}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         {/* Densidad. Al lado del tema porque son la misma clase de cosa para
             quien mira —cómo se ve esto—, aunque por dentro una viva en el
