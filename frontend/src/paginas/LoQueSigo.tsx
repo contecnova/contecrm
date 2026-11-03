@@ -27,9 +27,9 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
-import { humanizar, nombreDelRegistro } from "@/lib/formato";
-import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
-import { recursoDe } from "@/lib/recursos";
+import { humanizar } from "@/lib/formato";
+import { nombresDeRegistros } from "@/lib/nombres";
+import { moduloDeObjeto } from "@/lib/modulos";
 
 interface Seguimiento {
   id: string;
@@ -51,40 +51,8 @@ interface Fila extends Seguimiento {
   nombre: string;
   /** A dónde lleva, o cadena vacía si no hay ficha a la que llevar. */
   a: string;
-}
-
-/**
- * Los nombres de un montón de registros del mismo tipo, de una vez.
- *
- * Devuelve lo que ha podido: un tipo sin módulo declarado —o un listado que
- * falla— deja esos registros sin nombre, y eso se enseña como «ya no está» o
- * como el tipo a secas, nunca como si no existieran.
- */
-async function nombresDe(
-  objetoTipo: string,
-  ids: string[],
-  signal: AbortSignal,
-): Promise<Map<string, string>> {
-  const nombres = new Map<string, string>();
-  const ruta = moduloDeObjeto(objetoTipo);
-  if (!ruta) return nombres;
-  const modulo = moduloDe(ruta);
-  const recurso = modulo ? recursoDe(modulo, objetoTipo) : undefined;
-  if (!recurso) return nombres;
-  try {
-    const { datos } = await llamar<Pagina<Record<string, unknown>>>(
-      `${recurso.listar}?id__en=${ids.join(",")}&limite=200`,
-      { signal },
-    );
-    for (const fila of datos.items ?? []) {
-      const id = String(fila.id ?? "");
-      if (id) nombres.set(id, nombreDelRegistro(fila));
-    }
-  } catch {
-    // Un tipo que no contesta no puede dejar la pantalla entera sin pintar:
-    // lo suyo sale sin nombre y lo demás sigue leyéndose.
-  }
-  return nombres;
+  /** Se ha podido mirar y no estaba: el registro se ha borrado. */
+  desaparecido: boolean;
 }
 
 export function LoQueSigo() {
@@ -106,16 +74,10 @@ export function LoQueSigo() {
         { signal: control.signal },
       );
       const seguidos = datos.items ?? [];
-      const porTipo = new Map<string, string[]>();
-      for (const s of seguidos) {
-        porTipo.set(s.objeto_tipo, [...(porTipo.get(s.objeto_tipo) ?? []), s.objeto_id]);
-      }
-      const nombres = new Map<string, string>();
-      for (const [tipo, ids] of porTipo) {
-        for (const [id, nombre] of await nombresDe(tipo, ids, control.signal)) {
-          nombres.set(id, nombre);
-        }
-      }
+      // Resolver los nombres es lo mismo que hace la biblioteca de archivos,
+      // así que vive en un sitio: dos copias de «dime cómo se llaman estos
+      // registros» acaban resolviendo distinto.
+      const { nombres, preguntados } = await nombresDeRegistros(seguidos, control.signal);
       setFilas(
         seguidos.map((s) => {
           const ruta = moduloDeObjeto(s.objeto_tipo);
@@ -123,6 +85,12 @@ export function LoQueSigo() {
           return {
             ...s,
             nombre,
+            // **«Ya no existe» sólo si se ha podido mirar.** Antes se decía
+            // de todo lo que no traía nombre, y eso incluye lo que no se ha
+            // podido preguntar —un tipo sin pantalla, un listado que no
+            // contesta—: afirmar que el registro de alguien se ha borrado
+            // cuando sigue ahí es la peor de las dos equivocaciones.
+            desaparecido: !nombre && preguntados.has(s.objeto_tipo),
             a: ruta && nombre ? `/m/${ruta}/${s.objeto_tipo}/${s.objeto_id}` : "",
           };
         }),
@@ -186,10 +154,8 @@ export function LoQueSigo() {
                     {f.nombre}
                   </Link>
                 ) : (
-                  // Sin nombre: o ya no existe, o su tipo no tiene ficha. Las
-                  // dos cosas se dicen; ninguna se esconde quitando la fila.
                   <span className="text-dato text-ink-muted">
-                    {t("seguir.yaNoEsta")}
+                    {t(f.desaparecido ? "seguir.yaNoEsta" : "seguir.noSeHaPodidoMirar")}
                   </span>
                 )}
               </span>

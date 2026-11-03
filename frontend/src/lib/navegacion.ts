@@ -225,6 +225,12 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // día, y aquí la capacidad decía «agenda» y lo que había eran tres
   // listados. Medido el 03-11-2026.
   { area: "clientes", a: "/calendario", clave: "nav.calendario", icono: "calendar_month", permiso: "activity:read" },
+  // La biblioteca de documentos. En Clientes y no en Configuración: quien
+  // busca un contrato es quien lo negoció, no quien administra el sistema.
+  // En Salesforce «Archivos» es pestaña desde el primer día, y por lo mismo:
+  // un adjunto que sólo se ve desde su ficha obliga a recordar de qué cuenta
+  // cuelga, que es justo lo que no se recuerda.
+  { area: "clientes", a: "/archivos", clave: "nav.archivos", icono: "folder_open" },
   // Las parejas que podrían ser la misma ficha, con los botones para
   // decidirlas. Va en Clientes y no en Configuración: quien resuelve un
   // duplicado es quien conoce a los dos clientes, no quien administra.

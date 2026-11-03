@@ -757,6 +757,118 @@ async def mis_menciones_de_todo(principal: AutenticadoDep) -> Any:
 
 
 @router.get(
+    "/adjuntos",
+    summary="La biblioteca de archivos: todos los documentos del CRM",
+    description=(
+        "Todos los documentos del CRM, del más reciente al más antiguo y con "
+        "el registro del que cuelga cada uno. Se puede acotar por parte del "
+        "nombre del fichero, por extensión y por tipo de registro.\n\n"
+        "Cada servicio guarda los suyos en su propio esquema, así que se "
+        "juntan aquí. Un servicio que no contesta **no se calla**: sale en "
+        "`sin_respuesta`, porque una lista corta y una lista incompleta se "
+        "leen igual y significan lo contrario.\n\n"
+        "**No pagina con cursor** y es a propósito: un cursor sobre tres "
+        "listas de tres bases distintas no se puede seguir sin inventar un "
+        "orden global que ninguna de las tres conoce. Se pide un tope a cada "
+        "uno, se junta por fecha y `hay_mas` dice si alguno se ha quedado "
+        "corto."
+    ),
+)
+# **De dónde sale esta ruta.** Los documentos se podían ver desde el registro
+# del que cuelgan y sólo desde ahí, así que para encontrar uno había que
+# acordarse antes de a qué cuenta pertenece — que es justo lo que no se
+# recuerda. Va en el gateway y no en un servicio porque cada uno guarda los
+# suyos en su propio esquema: la biblioteca de uno solo serían los documentos
+# de un tercio del producto presentados como todos. En paralelo por lo mismo
+# que la página de estado: en serie, tres servicios con cinco segundos de
+# plazo son quince segundos de espera.
+async def biblioteca_de_archivos(
+    principal: AutenticadoDep,
+    buscar: str = "",
+    extension: str = "",
+    objeto_tipo: str = "",
+    limite: int = 50,
+) -> Any:
+    import asyncio
+    from urllib.parse import urlencode
+
+    from crmcore.config import get_settings
+    from crmcore.rutas_de_api import OBJETOS_ADJUNTO
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+    tope = max(1, min(int(limite or 50), 200))
+    # Los servicios que guardan documentos salen de la misma tabla que usa el
+    # enrutado, no de una lista escrita aquí: una lista propia se queda corta
+    # el día que un servicio nuevo monte el router.
+    #
+    # Y si se pide un tipo concreto, sólo a quien lo tiene: preguntarle a los
+    # tres por «oportunidad» son dos respuestas vacías y dos viajes de red.
+    if objeto_tipo:
+        duenos = {OBJETOS_ADJUNTO[objeto_tipo]} if objeto_tipo in OBJETOS_ADJUNTO else set()
+    else:
+        duenos = set(OBJETOS_ADJUNTO.values())
+    servicios = sorted(duenos & set(_destinos))
+
+    consulta = {
+        k: v
+        for k, v in (("buscar", buscar), ("extension", extension), ("objeto_tipo", objeto_tipo))
+        if v
+    }
+    consulta["limite"] = str(tope)
+
+    async def _preguntar(nombre: str) -> tuple[str, dict[str, Any] | None]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/adjuntos?{urlencode(consulta)}",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                return nombre, None
+            return nombre, dict(respuesta.json())
+        except Exception:  # noqa: BLE001 — un servicio mudo es información
+            return nombre, None
+
+    partes = await asyncio.gather(*(_preguntar(n) for n in servicios))
+    documentos: list[dict[str, Any]] = []
+    mudos: list[str] = []
+    recortados: list[str] = []
+    for nombre, pagina in partes:
+        if pagina is None:
+            mudos.append(nombre)
+            continue
+        if pagina.get("hay_mas"):
+            recortados.append(nombre)
+        for fila in pagina.get("items", []):
+            documentos.append({**fila, "servicio": nombre})
+
+    # Lo más reciente primero, y luego el tope: ordenar DESPUÉS de juntar es lo
+    # que hace que el resultado no dependa de cuál contestó antes.
+    documentos.sort(key=lambda d: str(d.get("created_at") or ""), reverse=True)
+    documentos = documentos[:tope]
+
+    avisos = []
+    if mudos:
+        avisos.append(
+            f"{len(mudos)} servicio(s) no contestan: puede haber documentos que no salen aquí."
+        )
+    if recortados:
+        avisos.append("Hay más documentos de los que caben: acota con el nombre o la extensión.")
+    return {
+        "documentos": documentos,
+        "cuantos": len(documentos),
+        "sin_respuesta": mudos,
+        "hay_mas": bool(recortados),
+        "aviso": " ".join(avisos),
+    }
+
+
+@router.get(
     "/estado/consultas-degradadas",
     summary="Qué consultas se han vuelto lentas, en toda la instalación",
     description=(

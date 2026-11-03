@@ -552,6 +552,12 @@ def servicio_de(ruta: str, servicios: frozenset[str] | None = None) -> str | Non
                 return None
             return OBJETOS_COMENTARIO.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "adjuntos":
+            # `/adjuntos` a secas no lleva tipo porque pregunta por TODOS: es
+            # la biblioteca de archivos, y la contesta el propio gateway
+            # juntando los servicios que guardan documentos. Como
+            # `mis-menciones`, no se proxia a ninguno.
+            if len(partes) == 3:
+                return None
             # Un tipo de objeto desconocido devuelve `None` y el gateway
             # responde 404, que es lo correcto: no hay servicio que lo tenga.
             return _por_objeto(partes, OBJETOS_ADJUNTO)

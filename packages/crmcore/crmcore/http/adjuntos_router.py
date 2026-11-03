@@ -33,6 +33,12 @@ from crmcore.datos.adjuntos import (
 )
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso
+from crmcore.http.pagination import (
+    CONTAR_TOTAL_DESCRIPCION,
+    PaginaDeListado,
+    paginar_consulta,
+)
 
 
 class AdjuntoOut(BaseModel):
@@ -58,6 +64,11 @@ class AdjuntoOut(BaseModel):
     analisis: str
     carpeta_id: UUID | None
     externo_sistema: str
+    # Cuándo se subió. Lo necesita la biblioteca de archivos para ordenar: los
+    # documentos los guarda cada servicio en su esquema, así que juntarlos
+    # exige una fecha comparable entre ellos, y sin ella la lista saldría por
+    # el orden en que contestó cada uno.
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -92,6 +103,9 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
     delante, la ruta identifica al dueño sin ambigüedad.
     """
     router = APIRouter(prefix="/adjuntos", tags=["adjuntos"])
+    # De qué objeto es este listado. Sin declararlo, un informe sobre
+    # documentos no encuentra su tabla.
+    declarar_recurso(router, "adjunto", Adjunto)
 
     def _traer(db: Any, adjunto_id: UUID, objeto_tipo: str) -> Adjunto:
         """Carga el adjunto comprobando que es del tipo que dice la ruta.
@@ -157,6 +171,65 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
             usuario_id=principal.id,
             documento_id=documento_id,
             carpeta_id=carpeta_id,
+        )
+
+    @router.get(
+        "",
+        response_model=PaginaDeListado,
+        summary="Todos los documentos de este servicio",
+        description=(
+            "Los documentos que guarda **este** servicio, sin pedir de qué "
+            "registro cuelgan. Es lo que sostiene la biblioteca de archivos: "
+            "la pregunta «¿dónde está ese contrato?» no se puede contestar si "
+            "para listar hay que saber antes de qué cuenta cuelga.\n\n"
+            "Cada servicio guarda los suyos en su propio esquema, así que la "
+            "biblioteca los junta preguntando a todos y **dice a cuál no ha "
+            "podido preguntar**: una lista corta y una lista incompleta se "
+            "leen igual y significan lo contrario."
+        ),
+    )
+    def todos(
+        request: Request,
+        db: DbDep,
+        principal: AutenticadoDep,
+        objeto_tipo: str = Query("", max_length=60),
+        buscar: str = Query("", max_length=200, description="Parte del nombre del fichero"),
+        extension: str = Query("", max_length=20),
+        limite: int = Query(50, ge=1, le=200),
+        cursor: str = Query(""),
+        contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
+    ) -> Any:
+        consulta = select(Adjunto).where(
+            Adjunto.deleted_at.is_(None),
+            # Sólo la versión vigente: con todas, un documento de nueve
+            # versiones ocupa nueve líneas de la biblioteca y esconde los
+            # demás. Las versiones se ven desde el documento.
+            Adjunto.es_actual.is_(True),
+        )
+        if objeto_tipo:
+            _validar_objeto(objeto_tipo)
+            consulta = consulta.where(Adjunto.objeto_tipo == objeto_tipo)
+        if buscar:
+            # Por el nombre y sin distinguir mayúsculas, que es como se busca
+            # un fichero. El `%` y el `_` del que escribe se escapan: sin eso,
+            # buscar «informe_2026» trae cualquier cosa con «informe» y una
+            # letra, y quien lo escribió cree que no hay nada mejor.
+            aguja = buscar.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            consulta = consulta.where(Adjunto.nombre.ilike(f"%{aguja}%", escape="\\"))
+        if extension:
+            consulta = consulta.where(Adjunto.extension == extension.lower().lstrip("."))
+        consulta = aplicar_filtros_de_la_url(
+            request, Adjunto, consulta, principal=principal, db=db, objeto="adjunto"
+        )
+        return paginar_consulta(
+            db,
+            Adjunto,
+            consulta,
+            limite=limite,
+            cursor=cursor,
+            orden="-created_at",
+            modelo_salida=AdjuntoOut,
+            contar=contar,
         )
 
     @router.get(

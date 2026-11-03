@@ -227,6 +227,32 @@ const pantallas = {
       "El historial sigue la cadena de sustituciones: son {{equipos}} equipos. La avería de hoy puede venir del que estaba antes.",
     sinEventos: "No hay nada anotado todavía",
   },
+  archivos: {
+    titulo: "Archivos",
+    entradilla:
+      "Todos los documentos del CRM, con el registro del que cuelga cada uno. " +
+      "Hasta ahora sólo se veían desde su ficha, así que para encontrar uno " +
+      "había que acordarse antes de a qué cliente pertenece.",
+    buscar: "Buscar por nombre de fichero…",
+    nombre: "Fichero",
+    de: "Cuelga de",
+    cuando: "Subido",
+    tamano: "Tamaño",
+    version: "v{{version}}",
+    ninguno: "Todavía no hay documentos",
+    ningunoPorque:
+      "Los documentos se suben desde la ficha del registro al que acompañan: " +
+      "una cuenta, una oportunidad, un caso.",
+    registroBorrado: "el registro ya no existe",
+    // Distinto del anterior a propósito: «ya no existe» sólo se dice de lo
+    // que se ha podido mirar. De lo que no, se dice que no se sabe.
+    registroSinMirar: "no se ha podido mirar",
+    ningunoAsi: "Ningún fichero se llama así",
+    ningunoAsiPorque:
+      "Se busca por el nombre del fichero, no por su contenido ni por el " +
+      "cliente. Prueba con menos letras.",
+  },
+
   seguir: {
     seguir: "Seguir",
     siguiendo: "Siguiendo",
@@ -245,6 +271,9 @@ const pantallas = {
     silenciadoAqui: "silenciado",
     motivoPropietario: "responsable",
     yaNoEsta: "Este registro ya no existe",
+    // Distinto de lo anterior a propósito: «ya no existe» sólo se dice de lo
+    // que se ha podido mirar. De lo que no, se dice que no se sabe.
+    noSeHaPodidoMirar: "No se ha podido mirar este registro",
     dejado: "Has dejado de seguirlo",
     entradilla:
       "Lo que te avisa cuando cambia. Se sigue desde la ficha, con el botón " +

@@ -85,6 +85,10 @@ const LoQueSigo = pantalla(
   () => import("@/paginas/LoQueSigo"),
   (m) => m.LoQueSigo,
 );
+const Archivos = pantalla(
+  () => import("@/paginas/Archivos"),
+  (m) => m.Archivos,
+);
 const Calendario = pantalla(
   () => import("@/paginas/Calendario"),
   (m) => m.Calendario,
@@ -499,6 +503,7 @@ export function App() {
           <Route path="/coste" element={<Coste />} />
           <Route path="/inteligencia" element={<Inteligencia />} />
           <Route path="/preguntar" element={<Preguntar />} />
+          <Route path="/archivos" element={<Archivos />} />
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/lo-que-sigo" element={<LoQueSigo />} />
           <Route path="/duplicados" element={<Duplicados />} />

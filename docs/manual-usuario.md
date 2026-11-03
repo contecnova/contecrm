@@ -534,6 +534,37 @@ cuentas y oportunidades: el campo es **Responsable**.
 
 ---
 
+### Archivos: dónde está ese documento
+
+**«Archivos»** está en la barra de Ventas. Es la lista de **todos** los
+documentos del CRM, con un buscador por nombre de fichero. Hasta el
+03-11-2026 un adjunto sólo se veía desde la ficha del registro al que
+acompaña, así que para encontrar uno había que acordarse antes de a qué
+cliente pertenece — que es justo lo que no se recuerda.
+
+Lo que hay que saber para leerla:
+
+- **Cada fichero dice de qué cuelga**, con el nombre del registro y el enlace
+  para ir allí: «pliego.txt» no dice nada, «pliego.txt de Talleres Ibéricos»
+  sí. Debajo, de qué clase de registro es —una cuenta y una oportunidad suya
+  son dos fichas distintas—.
+- **Si el registro ya no está, lo dice** en vez de enlazarlo: el enlace
+  llevaría a una ficha que no existe. Y si no se ha podido mirar, dice eso
+  otro: no es lo mismo, y afirmar que algo se ha borrado cuando sigue ahí
+  sería peor que no decir nada.
+- **De cada documento sale la versión vigente**, no todas: un documento de
+  nueve versiones ocuparía nueve líneas y escondería los demás. Las versiones
+  se ven desde su ficha.
+- **Si algún servicio no contesta, sale un aviso arriba.** Los documentos los
+  guarda cada módulo por su cuenta: una lista corta y una lista incompleta se
+  leen igual, y aquí no pueden.
+- **Un fichero marcado como infectado no se puede abrir** desde aquí. El
+  servidor ya se niega a entregarlo; ofrecer el enlace sería ofrecer un error.
+- **Se busca por el nombre del fichero**, no por su contenido ni por el
+  cliente.
+
+---
+
 ### Seguir un registro, y saber qué sigues
 
 En la ficha de cualquier registro, arriba a la derecha, hay un botón

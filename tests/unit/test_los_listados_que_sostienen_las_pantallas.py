@@ -794,6 +794,97 @@ def test_comprobar_un_envio_dice_por_que_no(
     assert cuerpo["calentamiento"] is None
 
 
+# ── La biblioteca de archivos (CRM-06.01.01.05) ─────────────────────────
+
+
+def test_un_servicio_lista_sus_documentos_sin_pedir_de_que_registro_cuelgan(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Es lo que sostiene la pantalla «Archivos».
+
+    La única forma de listar documentos era `/adjuntos/{tipo}?objeto_id=…`, o
+    sea sabiendo ya de qué registro cuelgan — que es justo lo que no se sabe
+    cuando uno busca «aquel contrato». Sin este listado la biblioteca no se
+    puede hacer, y con él se hace sin que ningún servicio lea la tabla de otro.
+    """
+    from crmcore.datos import adjuntos as adj
+
+    caso = uuid4()
+    adj.subir(
+        db,
+        tenant_id=tenant_id,
+        objeto_tipo="caso",
+        objeto_id=caso,
+        nombre="acta-de-la-visita.txt",
+        datos="lo que se habló".encode(),
+    )
+    # Dos versiones del mismo documento: la biblioteca enseña la vigente.
+    v1 = adj.subir(
+        db,
+        tenant_id=tenant_id,
+        objeto_tipo="caso",
+        objeto_id=caso,
+        nombre="pliego.txt",
+        datos=b"version uno",
+    )
+    adj.subir(
+        db,
+        tenant_id=tenant_id,
+        objeto_tipo="caso",
+        objeto_id=caso,
+        nombre="pliego.txt",
+        datos=b"version dos",
+        documento_id=v1.documento_id,
+    )
+    db.flush()
+
+    r = servicio_http.get("/api/v1/adjuntos?limite=50", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    nombres = [d["nombre"] for d in items]
+    assert "acta-de-la-visita.txt" in nombres
+    # **Una línea por documento, no una por versión.** Con todas, un documento
+    # de nueve versiones ocupa nueve líneas y esconde los demás.
+    assert nombres.count("pliego.txt") == 1
+    pliego = next(d for d in items if d["nombre"] == "pliego.txt")
+    assert pliego["version"] == 2
+
+    # Los campos que la pantalla lee. `created_at` es el que permite juntar
+    # los de los tres servicios en un orden que signifique algo.
+    for campo in ("objeto_tipo", "objeto_id", "nombre", "tamano", "analisis", "created_at"):
+        assert campo in pliego, f"el documento no manda «{campo}»"
+
+    # Y se busca por el nombre, que es como se busca un fichero.
+    r = servicio_http.get("/api/v1/adjuntos?buscar=acta", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert [d["nombre"] for d in r.json()["items"]] == ["acta-de-la-visita.txt"]
+
+
+def test_el_porcentaje_del_nombre_no_lo_busca_todo(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """`%` y `_` son comodines de SQL, y quien escribe un nombre de fichero no
+    lo sabe: buscar «informe_2026» traería cualquier cosa con «informe» y una
+    letra, y quien lo escribió creería que no hay nada mejor."""
+    from crmcore.datos import adjuntos as adj
+
+    caso = uuid4()
+    for nombre in ("informe_2026.txt", "informeX2026.txt"):
+        adj.subir(
+            db,
+            tenant_id=tenant_id,
+            objeto_tipo="caso",
+            objeto_id=caso,
+            nombre=nombre,
+            datos=b"x",
+        )
+    db.flush()
+
+    r = servicio_http.get("/api/v1/adjuntos?buscar=informe_2026", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert [d["nombre"] for d in r.json()["items"]] == ["informe_2026.txt"]
+
+
 # ── Las menciones, juntadas por el gateway (CRM-06.02.01.01) ────────────
 
 

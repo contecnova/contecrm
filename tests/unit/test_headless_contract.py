@@ -196,6 +196,13 @@ _AGREGADAS_EN_EL_GATEWAY = {
     # del producto presentadas como todas. El gateway pregunta a los que montan
     # el router de comentarios y junta, diciendo cuáles no contestaron.
     "/api/v1/comentarios/mis-menciones",
+    # Lo mismo con los documentos: los guarda el servicio DUEÑO del registro,
+    # así que la biblioteca de un servicio suelto son los documentos de un
+    # tercio del producto presentados como todos. El gateway pregunta a los
+    # que montan el router de adjuntos, junta por fecha y dice cuáles no
+    # contestaron. La de un tipo concreto —`/adjuntos/{tipo}`— sí se enruta,
+    # porque ahí el tipo dice quién es el dueño.
+    "/api/v1/adjuntos",
 }
 
 

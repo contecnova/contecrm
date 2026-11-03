@@ -168,6 +168,7 @@ export default {
     // «Calendario», como lo llama Salesforce. Al lado de «Actividades», que
     // es la misma materia en lista.
     calendario: "Calendario",
+    archivos: "Archivos",
     puesto: "Puesto",
     // «Entornos y cambios», como se llama la pantalla. Decía «Entornos y
     // despliegue» y hay otra entrada «Entornos y despliegues»: en plural y
