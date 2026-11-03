@@ -945,6 +945,32 @@ en un solo hilo. Lo relevante:
 - **Lo privado no entra.** Un correo o una cita marcados como privados se saltan, y
   se cuentan aparte para que nadie crea que se sincronizó todo.
 
+### El calendario: tu mes de un vistazo
+
+«Calendario» está en la barra de Ventas, al lado de «Actividades». Es la misma
+materia vista de otra forma: allí la lista, aquí los días unos al lado de
+otros. Hasta el 03-11-2026 sólo estaba la lista, y la pregunta de una agenda
+—«¿qué tengo el jueves?», «¿qué semana tengo cargada?»— no se contestaba
+leyendo una lista ordenada por fecha.
+
+Lo que hay que saber para leerlo bien:
+
+- **No todo lo que sale ese día pasa ese día.** Una reunión o una visita
+  **empiezan**; una tarea o una llamada por devolver **vencen**. Cuando en el
+  mes hay de las dos clases, las que sólo vencen llevan un reloj. Si todas son
+  de la misma clase el reloj no sale: una marca que llevan todas no distingue
+  nada.
+- **Se piden las seis semanas que se ven**, no el mes. Los días de los bordes
+  —el final del mes anterior y el principio del siguiente— traen lo suyo. Si
+  sólo se pidiera el mes, esas casillas saldrían vacías con la misma cara que
+  un día sin nada, y «no hay» y «no se ha mirado» no pueden leerse igual en
+  algo que se usa para decidir que hay hueco.
+- **Si el mes no cabe entero, lo dice.** Sale un aviso con cuántas se están
+  enseñando. Acotar con «Sólo las mías» suele bastar para verlo completo.
+- **Un día cargado se abre abajo**, con todo lo de ese día, pulsando el «+n»
+  de su casilla. En la casilla caben tres.
+- **Lo completado sale tachado**, para que un día lleno no parezca pendiente.
+
 ---
 
 ## Segmentos y audiencias (sección 2.1)

@@ -213,6 +213,12 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // funcionan y a quién le toca la próxima reunión.
   { area: "ventas", a: "/prospeccion", clave: "nav.prospeccion", icono: "forward_to_inbox", permiso: "lead:read" },
 
+  // El mes de uno. Va en Clientes, al lado de «Actividades», porque es la
+  // misma materia vista de otra forma: allí la lista, aquí los días unos al
+  // lado de otros. En Salesforce el calendario es pestaña desde el primer
+  // día, y aquí la capacidad decía «agenda» y lo que había eran tres
+  // listados. Medido el 03-11-2026.
+  { area: "clientes", a: "/calendario", clave: "nav.calendario", icono: "calendar_month", permiso: "activity:read" },
   // Las parejas que podrían ser la misma ficha, con los botones para
   // decidirlas. Va en Clientes y no en Configuración: quien resuelve un
   // duplicado es quien conoce a los dos clientes, no quien administra.

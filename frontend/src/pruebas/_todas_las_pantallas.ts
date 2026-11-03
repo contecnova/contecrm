@@ -13,6 +13,7 @@
 export { Alm } from "@/paginas/Alm";
 export { Aprobaciones } from "@/paginas/Aprobaciones";
 export { Ayuda } from "@/paginas/Ayuda";
+export { Calendario } from "@/paginas/Calendario";
 export { Casos } from "@/paginas/Casos";
 export { Chat } from "@/paginas/Chat";
 export { Cobertura } from "@/paginas/Cobertura";

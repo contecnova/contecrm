@@ -227,6 +227,32 @@ const pantallas = {
       "El historial sigue la cadena de sustituciones: son {{equipos}} equipos. La avería de hoy puede venir del que estaba antes.",
     sinEventos: "No hay nada anotado todavía",
   },
+  calendario: {
+    titulo: "Calendario",
+    entradilla:
+      "El mes de un vistazo: lo que empieza ese día y lo que se le acaba el " +
+      "plazo. Cuando las hay de las dos clases, las que sólo vencen van " +
+      "marcadas con un reloj: una tarea no ocurre ese día, lo que pasa es que " +
+      "se le acaba el plazo.",
+    soloMias: "Sólo las mías",
+    hoy: "Hoy",
+    mesAnterior: "Mes anterior",
+    mesSiguiente: "Mes siguiente",
+    masDelDia: "+{{cuantas}}",
+    soloVence: "Sólo vence ese día",
+    ningunaEsteMes: "Nada apuntado este mes",
+    ningunaPorque:
+      "Ni una actividad con fecha en estas semanas. Se apuntan desde la ficha " +
+      "del cliente o desde Actividades.",
+    ningunaMiaPorque:
+      "Ninguna asignada a ti este mes. Quita «Sólo las mías» para ver las del " +
+      "equipo: puede que el mes sí tenga trabajo y no sea tuyo.",
+    faltan:
+      "Este mes trae más actividades de las que se han podido traer: se " +
+      "enseñan {{cuantas}}, por vencimiento. Acota con «Sólo las mías» para " +
+      "verlo entero.",
+  },
+
   menciones: {
     titulo: "Dónde me han mencionado",
     entradilla:
