@@ -204,13 +204,16 @@ describe("las acciones de una colección", () => {
     );
     // Lo pinta como pares clave/valor, que para un cuerpo abierto es mejor que
     // un cuadro de JSON: nadie tiene que acertar con las comillas.
-    const clave = (await screen.findAllByLabelText(/formulario\.claveDe.*Datos/))[0];
-    await userEvent.type(clave, "peso_kg");
+    const claves = await screen.findAllByLabelText(/formulario\.claveDe.*Datos/);
+    const clave = claves[0];
+    expect(clave).toBeDefined();
+    await userEvent.type(clave as HTMLElement, "peso_kg");
     // Al escribir la primera clave aparece la fila vacía siguiente, así que
     // hay dos casillas de valor: la de este par es la primera.
     const valores = await screen.findAllByLabelText(/formulario\.valorDe.*Datos/);
-    await userEvent.type(valores[0], "14");
-    const formulario = clave.closest("form");
+    expect(valores[0]).toBeDefined();
+    await userEvent.type(valores[0] as HTMLElement, "14");
+    const formulario = (clave as HTMLElement).closest("form");
     await userEvent.click(
       within(formulario as HTMLFormElement).getByRole("button", {
         name: /Simular con datos libres/,
