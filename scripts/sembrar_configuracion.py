@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import date, timedelta
@@ -196,10 +197,24 @@ class Api:
         """
         if getattr(self, "_tenia_factor", True) or not getattr(self, "_secreto_totp", ""):
             return
-        estado, cuerpo = self._llamar("POST", "/api/v1/auth/mfa/desactivar")
-        if estado == 401 and _codigo_de(cuerpo) == "stepup.requerido":
-            if self._entrar_con_factor():
-                estado, cuerpo = self._llamar("POST", "/api/v1/auth/mfa/desactivar")
+        # Se reintenta unas cuantas veces, y no una.
+        #
+        # Entre el alta del factor y el final del sembrado pasan minutos: la
+        # ventana caduca, y el reintento puede toparse además con el freno del
+        # gateway (429) si la pasada ha hecho muchas llamadas. Medido el
+        # 04-11-2026: con un solo reintento, la cuenta se quedó pidiendo código
+        # otra vez.
+        estado, cuerpo = 0, None
+        for intento in range(5):
+            estado, cuerpo = self._llamar("POST", "/api/v1/auth/mfa/desactivar")
+            if estado in (200, 204):
+                break
+            if estado == 401 and _codigo_de(cuerpo) == "stepup.requerido":
+                self._entrar_con_factor()
+            elif estado == 429:
+                time.sleep(5 * (intento + 1))
+            else:
+                break
         if estado not in (200, 204):
             self.fallos.append(
                 f"POST /api/v1/auth/mfa/desactivar → {estado} {_motivo(cuerpo)} — "
@@ -346,10 +361,24 @@ class Api:
         movimientos no se ejecutaba ni una vez**. Dos fallos tapándose el uno al
         otro, con el informe en verde las dos veces.
         """
+        # SE MIRA ANTES DE CREAR, y no al revés.
+        #
+        # Crear primero y buscar sólo al chocar funciona cuando la API rechaza
+        # el duplicado con un 409. En las colecciones que **no exigen
+        # unicidad** no choca nada: cada pasada añade una copia. Medido el
+        # 04-11-2026, `activos-marketing` crecía de tres en tres por pasada.
+        #
+        # Mirar antes cuesta un listado por llamada y sólo cambia el resultado
+        # justo donde iba a duplicar.
+        esperado = cuerpo.get(clave)
+        if esperado is not None:
+            for existente in self.listar(ruta, 200):
+                if existente.get(clave) == esperado and existente.get("id"):
+                    self.cuenta["saltados"] += 1
+                    return existente
         fila = self.crear(ruta, cuerpo)
         if fila and fila.get("id"):
             return fila
-        esperado = cuerpo.get(clave)
         if esperado is None:
             return None
         for existente in self.listar(ruta, 200):
@@ -372,7 +401,32 @@ class Api:
         self.fallos.append(f"GET {ruta} → {estado} {_motivo(cuerpo)}")
         return None
 
-    def crear(self, ruta: str, cuerpo: dict, *, metodo: str = "POST") -> dict | None:
+    def crear(
+        self, ruta: str, cuerpo: dict, *, metodo: str = "POST", unico_por: str = ""
+    ) -> dict | None:
+        """Da de alta. Con `unico_por`, **mira antes si ya está**.
+
+        El sembrador se pasa muchas veces sobre la misma instalación, y su
+        contrato es que eso sea inofensivo. Lo es cuando la API rechaza el
+        duplicado con un 409: ahí se cuenta como «ya existía» y se sigue. Pero
+        hay colecciones que **no exigen unicidad** —una clave de API, un
+        webhook, una plantilla— y en ésas cada pasada añade una copia.
+
+        **Medido el 04-11-2026** comparando lo que el sembrador declara con lo
+        que hay: diez colecciones acumulaban, y `claves-api` tenía **128 filas
+        para tres declaradas**. No falla nada; lo que pasa es que esa pantalla
+        es ilegible y cada copia es una credencial de verdad.
+
+        El campo por el que se mira lo dice quien llama, porque «el nombre»
+        depende de la colección: `nombre`, `clave`, `url`, `direccion`.
+        """
+        if unico_por:
+            esperado = cuerpo.get(unico_por)
+            if esperado is not None:
+                for existente in self.listar(ruta, 200):
+                    if existente.get(unico_por) == esperado:
+                        self.cuenta["saltados"] += 1
+                        return existente if existente.get("id") else None
         estado, respuesta = self._llamar(metodo, ruta, cuerpo)
         # La ventana del factor fuerte dura minutos y este sembrado dura más,
         # así que caduca a media pasada. Se renueva y se repite UNA vez: por el
@@ -717,10 +771,12 @@ def sembrar_identidad(api: Api) -> None:
             "scopes": ["account:read", "account:write", "contact:read", "order:read"],
             "dias": 365,
         },
+        unico_por="nombre",
     )
     api.crear(
         "/api/v1/claves-api",
         {"nombre": "Formularios de la web corporativa", "scopes": ["lead:write"], "dias": 180},
+        unico_por="nombre",
     )
     api.crear(
         "/api/v1/proveedores-identidad",
@@ -1121,8 +1177,11 @@ def sembrar_procesos(api: Api) -> None:
                 "variables": {"descuento": descuento, "importe": importe},
                 "origen_tipo": "oportunidad",
             },
+            unico_por="clave",
         )
-    api.crear("/api/v1/instancias", {"clave": "alta_cliente", "variables": {"cif": ""}})
+    api.crear(
+        "/api/v1/instancias", {"clave": "alta_cliente", "variables": {"cif": ""}}, unico_por="clave"
+    )
 
 
 # ── Automatización, integraciones y eventos ───────────────────────────────
@@ -1310,7 +1369,7 @@ def sembrar_integraciones(api: Api) -> None:
         },
     ]
     for webhook in webhooks:
-        api.crear("/api/v1/webhooks", webhook)
+        api.crear("/api/v1/webhooks", webhook, unico_por="url")
 
 
 # ── Ventas: captura, enrutado y atribución ────────────────────────────────
@@ -1866,7 +1925,7 @@ def sembrar_marketing(api: Api) -> None:
         },
     ]
     for rebote in rebotes:
-        api.crear("/api/v1/rebotes", rebote)
+        api.crear("/api/v1/rebotes", rebote, unico_por="direccion")
 
 
 # ── Servicio: canales, SLA, macros, conocimiento y portal ─────────────────
@@ -2501,6 +2560,7 @@ def sembrar_canal(api: Api) -> None:
                 "asignado": 15000 + i * 10000,
                 "moneda": "EUR",
             },
+            unico_por="nombre",
         )
 
 
@@ -3973,7 +4033,9 @@ def sembrar_la_plataforma_y_la_ia(api: Api) -> None:
         ("Portal de cliente", "integracion", 180),
         ("Cuadro de mando de dirección", "lectura", 90),
     ):
-        api.crear("/api/v1/claves-api", {"nombre": nombre, "rol": rol, "dias": dias})
+        api.crear(
+            "/api/v1/claves-api", {"nombre": nombre, "rol": rol, "dias": dias}, unico_por="nombre"
+        )
 
     # 5. Reglas de compartición: lo que un equipo ve del de al lado sin ser suyo.
     roles = api.listar("/api/v1/roles", 10)
@@ -5053,6 +5115,7 @@ def sembrar_lo_que_sale_vacio(api: Api) -> None:
                 "{{oportunidad}}, por importe de {{importe}}.\n\nVigencia: 30 días."
             ),
         },
+        unico_por="clave",
     )
     api.crear(
         "/api/v1/canales-entrada",
@@ -5075,6 +5138,7 @@ def sembrar_lo_que_sale_vacio(api: Api) -> None:
             "usos_permitidos": ["web", "correo"],
             "licencia": "propia",
         },
+        unico_por="clave",
     )
     api.crear(
         "/api/v1/recorridos",
@@ -5577,6 +5641,7 @@ def sembrar_las_que_siguen_vacias(api: Api) -> None:
                 {"nombre": "dar_de_alta_en_soporte", "servicio": "service"},
             ],
         },
+        unico_por="clave",
     )
 
     # ── Dónde vive cada clase de dato, y qué sale de la región ────────────
@@ -5808,6 +5873,20 @@ def main() -> int:
     aprobador = api.como(cfg.aprobador, cfg.contrasena, cfg.tenant) if cfg.aprobador else None
 
     partes = list(PARTES) if cfg.parte == "todo" else [cfg.parte]
+    try:
+        return _sembrar(api, cfg, aprobador, partes)
+    finally:
+        # LA CUENTA SE DEVUELVE COMO ESTABA, PASE LO QUE PASE.
+        #
+        # Estaba fuera del `finally` a propósito —«si revienta a medias, el
+        # fallo lo dice»— y era un mal cambio: lo que queda entonces es una
+        # cuenta pidiendo un código que sólo existió dentro de este proceso.
+        # Pasó dos veces el 04-11-2026. Conservar un diagnóstico no vale una
+        # cuenta inalcanzable; el diagnóstico sale igual por los fallos.
+        api.soltar_factor()
+
+
+def _sembrar(api: Api, cfg: Any, aprobador: Any, partes: list[str]) -> int:
     for nombre in partes:
         if nombre not in PARTES:
             raise SystemExit(f"Parte desconocida: «{nombre}». Hay: {', '.join(PARTES)}")
@@ -5817,12 +5896,6 @@ def main() -> int:
         else:
             PARTES[nombre](api)
         print(f"  {nombre:16} {api.cuenta['creados'] - antes:4} registros")
-
-    # Y la cuenta se devuelve como estaba. Va aquí y no en un `finally` a
-    # propósito: si el sembrado revienta a medias, el factor se queda puesto y
-    # el fallo lo dice — mejor eso que quitarlo en silencio mientras se está
-    # mirando por qué ha reventado.
-    api.soltar_factor()
 
     print(f"\nCreados {api.cuenta['creados']}, ya existían {api.cuenta['saltados']}.")
 

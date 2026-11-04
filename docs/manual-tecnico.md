@@ -2555,6 +2555,37 @@ Y el rescate, para la cuenta que ya se quedó fuera:
 nuevo —quien lo ejecuta ya tiene el `.env`, o sea la contraseña— y es lo que
 hace verdad otra vez la regla de que el fichero manda en cada arranque.
 
+#### Pasar el sembrador dos veces dejaba dos copias
+
+Su contrato es que pasarlo otra vez sea inofensivo, y se cumplía **sólo donde
+la API rechaza el duplicado con un 409**. En las colecciones que no exigen
+unicidad no choca nada: cada pasada añade una copia.
+
+Medido comparando lo que declara con lo que hay, en una instalación sembrada
+varias veces: **diez colecciones acumulaban**, y `claves-api` tenía 128 filas
+para tres declaradas. No falla y no avisa; lo que queda es una pantalla
+ilegible, y cada copia es una credencial de verdad.
+
+Dos mecanismos, porque fallaban los dos:
+
+- `crear(..., unico_por="campo")` mira antes de dar de alta. Se pide caso a
+  caso **a propósito**: hay colecciones donde dos filas iguales son dos hechos
+  distintos —dos movimientos de almacén del mismo repuesto— y volverlas
+  idempotentes perdería el segundo.
+- `asegurar(...)` miraba **después**: creaba y sólo buscaba al chocar, que es
+  justo lo que duplica donde no hay 409. Ahora mira antes. Cuesta un listado
+  por llamada y sólo cambia el resultado donde iba a duplicar.
+
+Comprobado pasando el sembrado entero sobre una instalación ya sembrada: las
+ocho colecciones medidas se quedan en el mismo número.
+
+**Y la liberación del segundo factor pasa a un `finally`.** Estaba fuera a
+propósito —«si revienta a medias, el fallo lo dice»— y era un mal cambio: lo
+que queda entonces es una cuenta pidiendo un código que sólo existió dentro de
+aquel proceso. Pasó dos veces el mismo día. Además se reintenta: entre el alta
+del factor y el final pasan minutos, así que la ventana caduca, y el reintento
+puede toparse con el freno del gateway si la pasada ha hecho muchas llamadas.
+
 #### El sembrador no entra por una puerta sin vuelta
 
 `sembrar_configuracion.py` perdía siete altas en cada pasada —tres políticas de
