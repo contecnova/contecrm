@@ -330,6 +330,24 @@ arrancar_local() {
     aviso "CI_URL_PUBLICA vacío en .env: la explotación no podrá preguntar"
   fi
 
+  # ── Y lo mismo con contecmind, que se quedó fuera ──────────────────────────
+  #
+  # El arreglo de arriba se escribió para contecintelligence y no se recorrió la
+  # familia: el otro vecino tiene el problema idéntico y nadie lo miró. Medido
+  # el 04-11-2026 abriendo «Aprobaciones», que decía «El gestor documental no
+  # responde en http://contecmind:4000» — y no respondía porque desde un proceso
+  # de la máquina ese nombre no existe, igual que no existía el de CI.
+  #
+  # La dirección no se escribe aquí: sale de `DMS_URL_PUBLICA`, que significa
+  # por definición «contecmind desde fuera de su contenedor».
+  local dms_fuera
+  dms_fuera=$(valor_env DMS_URL_PUBLICA)
+  if [[ -n "$dms_fuera" ]]; then
+    export DMS_BASE_URL="${DMS_BASE_URL_LOCAL:-$dms_fuera}"
+  else
+    aviso "DMS_URL_PUBLICA vacío en .env: el área documental no podrá funcionar"
+  fi
+
   info "Aplicando migraciones…"
   $PY scripts/migrar.py --todos upgrade head >/dev/null
   $PY scripts/aplicar_rls.py --todos >/dev/null

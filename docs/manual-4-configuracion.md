@@ -219,6 +219,37 @@ es antes de hablar con nadie. Ahora lo fija
 `tests/unit/test_cliente_intelligence.py`: las dos rutas, el orden, cómo viaja
 cada credencial y los nombres de los campos.
 
+#### La dirección de un vecino depende de CÓMO hayas arrancado
+
+Hay dos arranques y cada uno necesita una dirección distinta para lo mismo. No
+es una preferencia: es la única que resuelve.
+
+| | `./setup.sh arrancar` (por defecto) | `./setup.sh arrancar --docker` |
+|---|---|---|
+| Dónde corre contecrm | procesos de la máquina | contenedores |
+| contecintelligence | `CI_URL_PUBLICA` → `http://localhost:8100` | `CI_BASE_URL` → `http://contecintelligence:8000` |
+| contecmind | `DMS_URL_PUBLICA` → `http://127.0.0.1:8200` | `DMS_BASE_URL` → `http://contecmind:4000` |
+
+En el arranque por defecto los servicios son procesos de la máquina, y para
+ellos `http://contecmind:4000` —el nombre del servicio dentro de la red de
+Docker— **no existe**: da «nodename nor servname provided». `setup.sh` lo sabe y
+exporta la dirección de cada vecino desde su ajuste `*_URL_PUBLICA`, que
+significa por definición «ese vecino visto desde fuera de su contenedor». No hay
+ninguna dirección escrita a mano en el arranque: salen las dos del `.env`.
+
+Los puertos de la tabla son los que publica cada vecino en su propio compose
+(contecintelligence su backend, contecmind su nginx — su API no publica puerto a
+propósito). Si los cambias allí, cambia aquí el `*_URL_PUBLICA`.
+
+**Cómo se ve cuando está mal.** No se ve como una dirección mal puesta: el
+vecino está perfecto y contesta a quien le llama bien. Lo que se ve es la
+pantalla que depende de él diciendo que no responde — «El gestor documental no
+responde en http://contecmind:4000»—, que manda a mirar al vecino, que está
+sano. Por eso `./setup.sh vecinos estado` ahora dice primero en qué modo corre
+contecrm, mide la dirección que cada vecino publica de verdad y, si la que el
+CRM tiene escrita no contesta, da la línea exacta que hay que poner en el
+`.env`.
+
 #### Cuando los vecinos no están en la misma pila
 
 El guardia anti-SSRF (`url_guard`) rechaza cualquier URL que resuelva a IP

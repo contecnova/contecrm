@@ -29,6 +29,23 @@ class _DocumentalSettings(BaseSettings):
     # levante la propia pila o uno ya en marcha en otra máquina, que es lo
     # normal en una instalación con varias soluciones de la casa.
     dms_base_url: str = ""
+    # La dirección de contecmind **desde fuera de su contenedor**. Es la pareja
+    # de `ci_url_publica` y existe por la misma razón: `dms_base_url` es el
+    # nombre que contecmind tiene DENTRO de la red de Docker, y ese nombre no
+    # resuelve para nadie que no esté en esa red.
+    #
+    # No es sólo cosa del navegador. El arranque por defecto —`./setup.sh
+    # arrancar`, sin `--docker`— deja los catorce servicios como procesos de la
+    # máquina, y para ellos `http://contecmind:4000` es exactamente igual de
+    # inalcanzable: «nodename nor servname provided». Con eso, el área
+    # documental entera queda muerta en la instalación que usa todo el mundo —
+    # «Aprobaciones» abría diciendo que el gestor documental no responde, y era
+    # verdad: nadie podía llegar a él—. Lo mismo que ya le pasó a la explotación
+    # con contecintelligence, en el vecino de al lado.
+    #
+    # Con esto, `setup.sh` sabe qué dirección exportar en cada modo sin escribir
+    # ninguna a mano, y `scripts/vecinos.py` sabe cuál tiene que comprobar.
+    dms_url_publica: str = ""
     # Credencial de aplicación. **No baja nunca al navegador**: con ella se
     # canjea en el servidor un token corto por usuario, igual que con
     # contecintelligence. La credencial puede representar a todos los tenants.

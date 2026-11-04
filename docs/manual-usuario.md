@@ -1183,6 +1183,19 @@ dos sitios, no dos listas, así que daba igual desde cuál se tocara; pero tener
 el mismo registro en dos pantallas es cómo se acaba mirando la que no toca y
 creyendo que falta algo. Se quedan aquí.
 
+### Si la pantalla dice que el gestor documental no responde
+
+Las aprobaciones de contenido se apoyan en el gestor documental, que es una
+pieza aparte. Cuando no contesta, la pantalla **te lo dice con esas palabras y
+con la dirección a la que ha llamado**, en vez de salir vacía. La diferencia
+importa: una lista vacía te hace pensar que no hay nada pendiente de aprobar, y
+lo que pasa es que no se ha podido preguntar.
+
+No es nada que puedas arreglar desde el CRM, y tampoco significa que hayas
+perdido nada: lo que esté en curso sigue ahí y aparecerá en cuanto el gestor
+vuelva. Pásale el aviso a quien lleve la instalación — la dirección que sale en
+el mensaje es justo lo que necesita.
+
 ---
 
 ## Oportunidades y pipeline (sección 3.1)

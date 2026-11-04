@@ -77,6 +77,12 @@ class Vecino:
     sonda: str
     # El ajuste del `.env` de contecrm que tiene que apuntar aquí.
     ajuste_url: str
+    # El ajuste que manda cuando contecrm corre EN LOCAL: la dirección del
+    # vecino vista desde fuera de su contenedor. `ajuste_url` lleva el nombre de
+    # la red de Docker, que para un proceso de la máquina no existe, así que
+    # `setup.sh` exporta ésta por encima al arrancar en local. Mirar la otra
+    # daría un fallo donde no lo hay —y al revés, taparía el que sí hay—.
+    ajuste_url_local: str
     ajuste_activo: str
     # Una ruta suya a la que el NAVEGADOR llama directamente desde una pantalla
     # del CRM, si la hay. Vacío = el CRM solo habla con él desde el servidor.
@@ -116,6 +122,14 @@ class Vecino:
     # Orden de shell, desde su repo, que libera lo que su pila Docker necesita y un
     # arranque local suyo puede haber dejado ocupado. Se ignora si falla.
     liberar: str = ""
+    # El contenedor que publica la puerta al EQUIPO y su puerto dentro, cuando no
+    # es el mismo que sirve la API dentro de la red. contecmind no publica su API
+    # a propósito —«Sin `ports:` a propósito: la API se alcanza a través de
+    # `web`», dice su compose—, así que preguntar por el puerto del equipo del
+    # contenedor de la API devolvía nada. Y «nada» aquí no se veía como un fallo:
+    # se veía como una comprobación que no se podía hacer.
+    contenedor_publicado: str = ""
+    puerto_publicado_interno: int = 0
 
     def nombre_proyecto(self) -> str:
         return self.proyecto or self.nombre
@@ -128,6 +142,13 @@ class Vecino:
 
     def url_interna(self) -> str:
         return f"http://{self.alias}:{self.puerto_interno}"
+
+    def puerta_publicada(self) -> tuple[str, int]:
+        """Qué contenedor y qué puerto suyo hay que mirar para la del equipo."""
+        return (
+            self.contenedor_publicado or self.contenedor,
+            self.puerto_publicado_interno or self.puerto_interno,
+        )
 
 
 VECINOS: tuple[Vecino, ...] = (
@@ -142,6 +163,7 @@ VECINOS: tuple[Vecino, ...] = (
         puerto_interno=8000,
         sonda="/livez",
         ajuste_url="CI_BASE_URL",
+        ajuste_url_local="CI_URL_PUBLICA",
         ajuste_activo="CI_ENABLED",
         # La pantalla de explotación del CRM llama a `/api/ask` desde el
         # navegador, con un token corto por usuario. O sea que el origen del
@@ -168,8 +190,13 @@ VECINOS: tuple[Vecino, ...] = (
         contenedor="contecmind-api",
         alias="contecmind",
         puerto_interno=4000,
+        # Su API no se publica: se entra por su nginx, que es quien tiene puerto
+        # en el equipo y reenvía a `api:4000`.
+        contenedor_publicado="contecmind-web",
+        puerto_publicado_interno=8080,
         sonda="/api/v1/openapi.json",
         ajuste_url="DMS_BASE_URL",
+        ajuste_url_local="DMS_URL_PUBLICA",
         ajuste_activo="DMS_ENABLED",
         ruta_token="/api/v1/oauth/token",
         ajuste_cliente="DMS_CLIENT_ID",
@@ -225,12 +252,52 @@ def _correr(
     )
 
 
-def red_de_contecrm() -> str | None:
-    """La red donde viven los contenedores de contecrm. Se MIDE, no se supone.
+MODO_DOCKER, MODO_LOCAL, MODO_APAGADO = "docker", "local", "apagado"
 
-    El nombre depende del nombre del proyecto de compose, que a su vez depende
-    del directorio o de `COMPOSE_PROJECT_NAME`. Escribirlo aquí funcionaría en la
-    máquina de quien lo escribió.
+
+def _proyecto_de_contecrm() -> str:
+    """El nombre del proyecto de compose de contecrm, leído de su compose."""
+    for linea in (RAIZ / "docker-compose.yml").read_text().splitlines():
+        if linea.startswith("name:"):
+            return linea.split(":", 1)[1].strip()
+    return RAIZ.name
+
+
+def _puerto_del_gateway() -> int:
+    """El puerto donde escucha el gateway. Del entorno o del `.env`, no a mano."""
+    crudo = os.environ.get("GATEWAY_PORT")
+    if not crudo:
+        fichero = RAIZ / ".env"
+        if fichero.exists():
+            for linea in fichero.read_text().splitlines():
+                if linea.startswith("GATEWAY_PORT="):
+                    crudo = linea.split("=", 1)[1].strip()
+                    break
+    try:
+        return int(crudo or 0) or 18080
+    except ValueError:
+        return 18080
+
+
+def modo_de_contecrm() -> tuple[str, str | None]:
+    """CÓMO corre contecrm ahora mismo, y en qué red si corre en Docker.
+
+    Se mide, no se supone. Y hay que medirlo porque hay **dos** modos y esto
+    sólo conocía uno: `./setup.sh arrancar` —el camino por defecto, el que usa
+    todo el mundo— deja los catorce servicios como procesos de la máquina, sin
+    un solo contenedor de contecrm y por lo tanto sin red de contecrm.
+
+    Con eso, la única pregunta que se hacía aquí —«¿cuál es la red del
+    contenedor del gateway?»— no tenía respuesta, y de ahí salía el veredicto
+    «contecrm no está levantado» con los catorce servicios en verde. Esa frase
+    no sólo era falsa: mandaba a arrancar lo que ya estaba arrancado y, de
+    paso, **abortaba el arranque de los vecinos**. Así es como el área
+    documental llevaba muerta en el modo por defecto.
+
+    Devuelve el modo y la red:
+      · `docker` → el contenedor del gateway existe; su red es la de contecrm.
+      · `local`  → no hay contenedor pero el puerto del gateway contesta.
+      · `apagado`→ ni una cosa ni la otra. Entonces sí: no está levantado.
     """
     salida = _correr(["docker", "compose", "--profile", "app", "ps", "--format", "json"], cwd=RAIZ)
     contenedor = ""
@@ -242,18 +309,43 @@ def red_de_contecrm() -> str | None:
         if fila.get("Service") == "gateway":
             contenedor = str(fila.get("Name") or "")
             break
-    if not contenedor:
-        return None
-    redes = _correr(
-        [
-            "docker",
-            "inspect",
-            contenedor,
-            "--format",
-            "{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}",
-        ]
-    )
-    return (redes.stdout or "").strip() or None
+    if contenedor:
+        redes = _correr(
+            [
+                "docker",
+                "inspect",
+                contenedor,
+                "--format",
+                "{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}",
+            ]
+        )
+        red = (redes.stdout or "").strip()
+        if red:
+            return MODO_DOCKER, red
+    if _ocupado_en_el_equipo(_puerto_del_gateway(), "127.0.0.1"):
+        return MODO_LOCAL, None
+    return MODO_APAGADO, None
+
+
+def _red_para_los_vecinos(modo: str, red: str | None) -> str:
+    """La red de Docker donde los vecinos se ven ENTRE ELLOS.
+
+    En modo Docker es la de contecrm y no hay nada que decidir. En local,
+    contecrm no tiene red —son procesos de la máquina—, pero los vecinos siguen
+    necesitando una: sus composes la declaran `external` y, sin ella, no
+    levantan. Se crea una propia, con el nombre del proyecto de contecrm
+    delante para que se sepa de quién es y no choque con la de nadie.
+
+    Que contecrm no esté en esa red no es un descuido: en local llega a los
+    vecinos por el puerto que publican en el equipo, que es justo lo que
+    `DMS_URL_PUBLICA` y `CI_URL_PUBLICA` significan.
+    """
+    if modo == MODO_DOCKER and red:
+        return red
+    nombre = f"{_proyecto_de_contecrm()}_vecinos"
+    if _correr(["docker", "network", "inspect", nombre]).returncode != 0:
+        _correr(["docker", "network", "create", nombre])
+    return nombre
 
 
 def _enganchado(contenedor: str, red: str) -> bool:
@@ -280,13 +372,33 @@ def _enganchar(vecino: Vecino, red: str) -> None:
     ok(f"{vecino.nombre}: enganchado a {red} como «{vecino.alias}»")
 
 
-def _alcanzable(vecino: Vecino, red: str) -> bool:
-    """¿Contesta desde DENTRO de la red de contecrm?
+def _alcanzable(vecino: Vecino, modo: str, red: str | None) -> bool:
+    """¿Contesta desde donde contecrm le va a llamar DE VERDAD?
 
-    Se comprueba desde dentro y no desde la máquina: lo que importa es si el
-    gateway lo ve, y un puerto publicado en el host no dice nada de eso. Es
-    justo la diferencia que hizo perder una tarde con contecintelligence.
+    Que son dos sitios distintos según cómo corra contecrm, y comprobar el que
+    no es da un verde que no vale para nada:
+
+      · En Docker, contecrm le llama por el nombre de la red. Se comprueba
+        desde dentro de la red, porque un puerto publicado en el equipo no dice
+        nada de si el gateway lo ve. Es justo la diferencia que hizo perder una
+        tarde con contecintelligence.
+      · En local, contecrm es un proceso de la máquina y le llama por el puerto
+        que el vecino publica. El nombre de la red no existe para él.
     """
+    if modo == MODO_LOCAL:
+        # La que el CRM tiene configurada, no la que nosotros mediríamos: lo que
+        # se quiere saber es si **su** llamada va a llegar. Si no hay ninguna
+        # escrita todavía —durante `levantar`— sirve la medida.
+        from crmcore.config import get_settings
+
+        url = str(
+            getattr(get_settings(), ajuste_de_este_modo(vecino, modo).lower(), "") or ""
+        ) or _url_publicada(vecino)
+        if not url:
+            return False
+        return _contesta(url.rstrip("/") + vecino.sonda)
+    if not red:
+        return False
     salida = _correr(
         [
             "docker",
@@ -304,6 +416,39 @@ def _alcanzable(vecino: Vecino, red: str) -> bool:
         ]
     )
     return salida.returncode == 0
+
+
+def _contesta(url: str) -> bool:
+    """Una llamada de verdad desde el equipo. Un 2xx o un 3xx bastan."""
+    try:
+        import httpx
+
+        return httpx.get(url, timeout=5.0, follow_redirects=True).status_code < 400
+    except Exception:  # noqa: BLE001 — no poder llamar es exactamente «no contesta»
+        return False
+
+
+def ajuste_de_este_modo(vecino: Vecino, modo: str) -> str:
+    """Qué ajuste del `.env` manda la dirección del vecino en este modo."""
+    if modo == MODO_LOCAL and vecino.ajuste_url_local:
+        return vecino.ajuste_url_local
+    return vecino.ajuste_url
+
+
+def direccion_que_toca(vecino: Vecino, modo: str) -> str:
+    """La dirección que el `.env` de contecrm TIENE que tener para este modo.
+
+    No es una preferencia: es la única que resuelve. En Docker, el alias de la
+    red; en local, el puerto que el vecino publica en el equipo —medido con
+    `docker port`, no escrito aquí—.
+
+    Vale la pena decirlo en voz alta porque el síntoma de tenerla mal no se
+    parece a una dirección mal puesta: el vecino está perfecto, contesta a quien
+    le llama bien, y la pantalla del CRM dice que no responde.
+    """
+    if modo == MODO_LOCAL:
+        return _url_publicada(vecino)
+    return vecino.url_interna()
 
 
 def _liberar(vecino: Vecino) -> None:
@@ -463,14 +608,21 @@ def levantar(vecinos: tuple[Vecino, ...]) -> int:
         malo("Docker no está disponible: los vecinos se levantan con Docker")
         return 1
 
-    red = red_de_contecrm()
-    if red is None:
+    modo, red = modo_de_contecrm()
+    if modo == MODO_APAGADO:
         malo(
-            "contecrm no está levantado, así que su red no existe todavía. "
-            "Arranca contecrm primero: los vecinos se enganchan a SU red"
+            "contecrm no está levantado. Arráncalo primero: los vecinos se "
+            "levantan para él y hay que saber cómo le van a hablar"
         )
         return 1
-    info(f"Red de contecrm: {red}")
+    red_vecinos = _red_para_los_vecinos(modo, red)
+    if modo == MODO_DOCKER:
+        info(f"contecrm en Docker; red: {red_vecinos}")
+    else:
+        info(
+            f"contecrm en local (procesos de la máquina); los vecinos se levantan "
+            f"en «{red_vecinos}» y se les llama por el puerto que publican"
+        )
 
     fallos = 0
     for vecino in vecinos:
@@ -486,7 +638,7 @@ def levantar(vecinos: tuple[Vecino, ...]) -> int:
             fallos += 1
             continue
 
-        entorno = {k: (v or red) for k, v in vecino.entorno.items()}
+        entorno = {k: (v or red_vecinos) for k, v in vecino.entorno.items()}
 
         _liberar(vecino)
         choques = _puertos_libres(vecino, entorno)
@@ -514,7 +666,7 @@ def levantar(vecinos: tuple[Vecino, ...]) -> int:
             fallos += 1
             continue
         ok("levantado")
-        _enganchar(vecino, red)
+        _enganchar(vecino, red_vecinos)
 
         for servicio, orden_extra in vecino.despues:
             ejecutada = _correr(
@@ -543,19 +695,44 @@ def levantar(vecinos: tuple[Vecino, ...]) -> int:
         # arriba con la aplicación todavía migrando no sirve para nada, y el
         # siguiente paso —comprobar las credenciales— fallaría por eso.
         for intento in range(60):
-            if _alcanzable(vecino, red):
-                ok(f"responde en {vecino.url_interna()}")
+            if _alcanzable(vecino, modo, red):
+                ok(f"responde en {direccion_que_toca(vecino, modo) or vecino.url_interna()}")
                 break
             time.sleep(2)
             if intento == 29:
                 info("sigue arrancando…")
         else:
             malo(
-                f"no responde en {vecino.url_interna()} después de dos minutos. "
+                f"no responde en {direccion_que_toca(vecino, modo) or vecino.url_interna()} "
+                f"después de dos minutos. "
                 f"Mira: docker compose -f {compose} logs {vecino.contenedor}"
             )
             fallos += 1
+            continue
+
+        # Y que contecrm lo tenga ESCRITO donde toca. Levantarlo bien y que el
+        # CRM mire a otra dirección se ve igual que no haberlo levantado.
+        fallos += _avisar_si_la_direccion_no_toca(vecino, modo)
     return 1 if fallos else 0
+
+
+def _avisar_si_la_direccion_no_toca(vecino: Vecino, modo: str) -> int:
+    from crmcore.config import get_settings
+
+    toca = direccion_que_toca(vecino, modo)
+    if not toca:
+        return 0
+    ajuste = ajuste_de_este_modo(vecino, modo)
+    puesta = str(getattr(get_settings(), ajuste.lower(), "") or "").rstrip("/")
+    if puesta and _contesta(puesta + vecino.sonda):
+        return 0
+    escrita = puesta or "(vacío)"
+    malo(
+        f"{vecino.nombre}: está levantado y contesta, pero el CRM le llama a "
+        f"«{escrita}», donde no contesta nadie. Está publicado en «{toca}». "
+        f"Ponlo en el `.env`: {ajuste}={toca}"
+    )
+    return 1
 
 
 def _origenes_del_front() -> list[str]:
@@ -612,7 +789,8 @@ def _cors_permitido(vecino: Vecino, origen: str) -> bool | None:
 
 def _url_publicada(vecino: Vecino) -> str:
     """Su dirección vista desde el EQUIPO, que es por donde llama el navegador."""
-    salida = _correr(["docker", "port", vecino.contenedor, str(vecino.puerto_interno)])
+    contenedor, puerto_dentro = vecino.puerta_publicada()
+    salida = _correr(["docker", "port", contenedor, str(puerto_dentro)])
     primera = (salida.stdout or "").strip().splitlines()
     if not primera:
         return ""
@@ -698,29 +876,51 @@ def _alcances_que_faltan(vecino: Vecino, respuesta: Any) -> bool | list[str]:
 
 
 def estado(vecinos: tuple[Vecino, ...]) -> int:
-    red = red_de_contecrm()
-    if red is None:
+    modo, red = modo_de_contecrm()
+    if modo == MODO_APAGADO:
         aviso("contecrm no está levantado")
         return 1
+    info(
+        "contecrm corre en Docker"
+        if modo == MODO_DOCKER
+        else "contecrm corre en local (procesos de la máquina)"
+    )
     from crmcore.config import get_settings
 
     s = get_settings()
     peor = 0
     for vecino in vecinos:
         activo = bool(getattr(s, vecino.ajuste_activo.lower(), False))
-        url = str(getattr(s, vecino.ajuste_url.lower(), "") or "")
+        ajuste = ajuste_de_este_modo(vecino, modo)
+        url = str(getattr(s, ajuste.lower(), "") or "")
         if not activo:
             aviso(f"{vecino.nombre}: apagado en la configuración ({vecino.ajuste_activo}=false)")
             peor = 1
             continue
         if not url:
-            malo(f"{vecino.nombre}: encendido y sin dirección ({vecino.ajuste_url} vacío)")
+            malo(f"{vecino.nombre}: encendido y sin dirección ({ajuste} vacío)")
             peor = 1
             continue
-        if _alcanzable(vecino, red):
+        if _alcanzable(vecino, modo, red):
             ok(f"{vecino.nombre}: responde en {url}")
         else:
-            malo(f"{vecino.nombre}: NO responde en {url}")
+            # Y, si la que está escrita no llega pero sabemos cuál sí, decirla.
+            # Son dos averías distintas —«no está levantado» y «le llamas a una
+            # dirección que en este modo no existe»— y se leían igual. La
+            # segunda es la que llevaba meses en el modo por defecto.
+            #
+            # No se comparan las cadenas: `localhost` y `127.0.0.1` son la misma
+            # puerta escrita de dos maneras, y avisar de eso sería ruido. Se
+            # mide: si la escrita contesta, está bien, sea cual sea su forma.
+            toca = direccion_que_toca(vecino, modo)
+            if toca:
+                malo(
+                    f"{vecino.nombre}: el CRM le llama a «{url}» y ahí no "
+                    f"contesta nadie. Está publicado en «{toca}» — ponlo en el "
+                    f"`.env`: {ajuste}={toca}"
+                )
+            else:
+                malo(f"{vecino.nombre}: NO responde en {url}")
             peor = 1
             continue
 
