@@ -50,10 +50,25 @@ export function BarraSuperior({
   sesion,
   alSalir,
   alAbrirPaleta,
+  conPanel = false,
 }: {
   sesion: Sesion | null;
   alSalir: () => void;
   alAbrirPaleta: () => void;
+  /**
+   * Si hay un panel lateral que plegar.
+   *
+   * **Sólo lo hay en configuración.** El árbol vive ahí —es donde se recorre
+   * una lista larga buscando un ajuste— y trabajando no se pinta: la
+   * navegación son las pestañas de arriba. El botón de las tres rayas, en
+   * cambio, se pintaba SIEMPRE, en la esquina de arriba a la izquierda, que es
+   * el sitio donde se busca la navegación principal.
+   *
+   * Medido el 04-11-2026 pulsándolo: en una pantalla de trabajo, `aside` 0→0 y
+   * el ancho del contenido 1440→1440 px. No hacía nada, y uno se queda
+   * dudando si es él. En configuración sí: 1440→1218.
+   */
+  conPanel?: boolean;
 }) {
   const { t } = useTranslation();
   const panel = usePanel();
@@ -190,6 +205,7 @@ export function BarraSuperior({
 
   return (
     <header className="sticky top-0 z-popover flex h-[var(--barra-h)] items-center gap-3 border-b border-ink-dim/60 bg-paper pl-5 pr-6">
+      {conPanel ? (
       <button
         type="button"
         onClick={panel.alternar}
@@ -199,6 +215,7 @@ export function BarraSuperior({
       >
         <Icono nombre="menu" />
       </button>
+      ) : null}
 
       {/* `flex-1` y no sólo `shrink`: la miga tiene que poder **crecer** hasta
           lo que haya libre. Con el buscador puesto a `mx-auto`, todo el hueco

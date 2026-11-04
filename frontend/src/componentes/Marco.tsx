@@ -236,6 +236,10 @@ function Armazon({
           sesion={sesion}
           alSalir={alSalir}
           alAbrirPaleta={alAbrirPaleta}
+          // Hay panel que plegar sólo donde se pinta el árbol, que es la misma
+          // condición de tres líneas más abajo. Lo dice el marco porque es
+          // quien decide si lo monta.
+          conPanel={configurando}
         />
 
         {configurando ? null : (

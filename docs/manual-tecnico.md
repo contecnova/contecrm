@@ -2463,6 +2463,30 @@ consecuencias que conviene tener escritas:
 Lo escrito a mano queda como excepción: las que llevan una frase de ayuda bajo
 el botón porque el rótulo no basta.
 
+#### Las tres rayas no hacían nada en nueve de cada diez pantallas
+
+Lo preguntó quien lo usa: «¿tienen sentido?». No lo tenían.
+
+El panel lateral —el árbol de ajustes— se pinta **sólo en configuración**, y
+está escrito por qué: trabajando estorba, porque lo que hace falta son las ocho
+pantallas de ahora mismo y ésas caben arriba. El botón que lo pliega, en
+cambio, se pintaba siempre, y en la esquina de arriba a la izquierda, que es
+donde se busca la navegación principal.
+
+Medido pulsándolo antes de tocar nada, a 1440 px:
+
+| | `aside` | ancho del contenido | |
+|---|---|---|---|
+| Pantalla de trabajo | 0 → 0 | 1440 → 1440 px | no pasa nada |
+| Configuración | 1 → 1 | 1440 → 1218 px | pliega el árbol |
+
+Un botón que no hace nada es peor que no tenerlo: quien lo pulsa no concluye
+«esto no sirve aquí», concluye que ha hecho mal el clic. Ahora el marco le dice
+a la barra si hay panel (`conPanel={configurando}`, la misma condición con la
+que monta el árbol tres líneas más abajo), y el guardián vigila los dos
+sentidos — porque quitarlo de todas partes también cumpliría «no sale donde no
+sirve», y dejaría sin forma de ganar los 222 px que ocupa el árbol.
+
 #### Dos fuentes de pestañas y ninguna miraba a la otra
 
 En la ficha de un candidato salía «Relacionado · Detalles · Actividad ·
