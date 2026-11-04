@@ -571,6 +571,27 @@ Lo que hay que saber para leerla:
 
 ---
 
+### Cuando algo no se guarda
+
+Si al guardar falta algo o un valor no vale, **el aviso sale en el campo**, en
+rojo y justo debajo de su etiqueta: «Falta este campo», «Tiene que ser un
+número», «No puede pasar de 120 caracteres». Arriba sigue saliendo el aviso
+general, y el **«Detalle técnico»** lleva la respuesta cruda del servidor para
+quien la necesite.
+
+Hasta el 04-11-2026 sólo salía el aviso de arriba —«Los datos enviados no son
+válidos»— y había que adivinar cuál de los campos era.
+
+Dos cosas que conviene saber:
+
+- **Los campos obligatorios van delante** y el resto detrás de «Más campos
+  (N)». Al **editar** no hay obligatorios —se manda sólo lo que cambias—, así
+  que delante van los campos principales del registro y el resto detrás.
+- **Lo que dejes en blanco no borra lo que había.** Guardar con un campo vacío
+  que no has tocado deja el valor que tenía.
+
+---
+
 ### Escribir en un registro
 
 Toda ficha que admite conversación —un caso, una cuenta, una oportunidad, un
@@ -578,6 +599,9 @@ presupuesto, una orden de trabajo— lleva una pestaña **«Comentarios»** al
 final, al lado de «Relacionado» y «Detalles». Ahí se escribe: una nota de lo
 que se ha hablado, una pregunta a un compañero, el resultado de una llamada.
 Con `Intro` se manda.
+
+Cada mensaje se lee como lo que es: **quién lo escribió, cuándo, y qué dijo**.
+Los internos —los que no ve el cliente— van marcados, y los editados también.
 
 Mencionando a alguien con `@` le llega un aviso, y la mención le sale en **«Mis
 menciones»**, en la arroba de la barra de arriba.
@@ -1497,6 +1521,29 @@ producto vuelve a fallar y nadie puede demostrar que es un patrón.
 ---
 
 ## Informes y cuadros de mando (sección 5.1)
+
+### Si los paneles salen en rojo
+
+Las preguntas sobre los datos las resuelve **contecintelligence**, y para eso
+este CRM tiene que estar dado de alta allí como fuente. Mientras no lo esté,
+los cuadros salen con un aviso rojo que dice exactamente eso y dónde se
+arregla: **Analítica → Preguntas publicadas**, botón «Registrar el CRM como
+fuente consultable».
+
+El alta no es inmediata: se encola y la pantalla se queda esperando hasta dos
+minutos. Si falla, **dice por qué y con qué dirección** tiene que alcanzarnos
+contecintelligence —por ejemplo «La fuente no responde (health_check fallo). La
+dirección con la que tiene que alcanzar este CRM es
+`http://host.docker.internal:18080/api/v1`»—. Esa dirección es lo primero que
+mirar: si desde contecintelligence no se llega ahí, el alta no puede
+completarse por mucho que se reintente. La configura `CI_URL_DEL_CRM` en el
+`.env`, y `./setup.sh arrancar` la pone sola en la instalación local.
+
+**Mientras tanto el CRM entero sigue funcionando**: fichas, procesos, casos y
+automatizaciones. Lo único que no se puede es preguntar y pintar cuadros, y la
+propia pantalla lo enumera para que nadie dé por caído lo que no lo está.
+
+---
 
 ### Qué cuesta cada informe
 
