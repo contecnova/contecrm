@@ -360,6 +360,21 @@ arrancar_local() {
   done
   export RUTAS_SERVICIOS="${rutas%,}"
 
+  # Lo que ya estuviera levantado se para antes de lanzar. Sin esto, «arrancar»
+  # sobre una pila viva no arranca nada y lo dice en verde.
+  for s in "${SERVICIOS[@]}"; do
+    liberar_puerto_propio "$s" "$(puerto_de "$s")"
+  done
+  for w in "${WORKERS[@]}"; do
+    local svc_w="${w%%:*}" mod_w="${w##*:}" pidf
+    pidf="$VAR/pid/${svc_w}-${mod_w}.pid"
+    # Los workers no cogen puerto, así que el choque no se ve: lo que pasa es
+    # que quedan DOS procesando la misma cola.
+    if [[ -f "$pidf" ]] && kill -0 "$(cat "$pidf")" 2>/dev/null; then
+      matar_de_verdad "$(cat "$pidf")" >/dev/null && info "worker $svc_w/$mod_w: parado el que ya había"
+    fi
+  done
+
   for s in "${SERVICIOS[@]}"; do
     local puerto
     puerto=$(puerto_de "$s")
@@ -406,6 +421,27 @@ arrancar_local() {
     sleep 3; intentos=$((intentos + 1))
   done
   echo "$salida_estado"
+
+  # Y QUE EL QUE CONTESTA SEA EL QUE ACABO DE LANZAR.
+  #
+  # `estado` pregunta si el puerto contesta, y eso lo cumple igual un proceso
+  # de ayer. Es exactamente lo que daba «✓ los catorce» sobre una pila que no
+  # se había reiniciado. Aquí se compara el pid que escucha con el que se
+  # guardó: es la única diferencia observable entre «arrancado» y «ya estaba».
+  local impostores=0
+  for s in "${SERVICIOS[@]}"; do
+    local pidf="$VAR/pid/$s.pid" escucha
+    [[ -f "$pidf" ]] || continue
+    escucha=$(lsof -ti ":$(puerto_de "$s")" -sTCP:LISTEN 2>/dev/null | head -1 || true)
+    if [[ -n "$escucha" && "$escucha" != "$(cat "$pidf")" ]]; then
+      aviso "$s: contesta el pid $escucha y yo lancé $(cat "$pidf") — no es el mío"
+      impostores=$((impostores + 1))
+    fi
+  done
+  if (( impostores > 0 )); then
+    malo "$impostores servicio(s) los atiende un proceso anterior: el código nuevo NO está corriendo."
+    info "Para la pila entera y vuelve a arrancar:  ./setup.sh parar && ./setup.sh arrancar"
+  fi
   echo
 
   # En Docker lo hace el entrypoint; en local no lo hacía nadie y el usuario del
@@ -511,6 +547,38 @@ arrancar_front() {
 # Diez segundos de cortesía y luego sin contemplaciones: un servicio local que
 # no atiende a SIGTERM en diez segundos está colgado, y esperar más sólo
 # retrasa el arranque.
+# ¿Hay algo escuchando en el puerto de este servicio? Si es NUESTRO, se para.
+#
+# **Esto faltaba y costó dos diagnósticos el 04-11-2026.** `arrancar` sobre una
+# pila ya levantada lanzaba catorce uvicorn que morían en el acto —el puerto
+# estaba cogido—, dejaba los ficheros de pid apuntando a procesos muertos y
+# decía «✓» de los catorce, porque lo que contestaba era la pila vieja. Efecto:
+# cambiabas el código, reiniciabas, y seguía corriendo lo de antes sin un solo
+# error a la vista. Y de regalo, `parar` después tampoco paraba nada, porque
+# iba por esos ficheros de pid.
+#
+# Había un guardia escrito para este caso justo debajo del lanzamiento, y
+# miraba demasiado pronto: `kill -0` a los 0,6 s, cuando uvicorn todavía está
+# importando la aplicación y tarda segundos en morir por el puerto.
+#
+# Si el puerto lo tiene otro —el Postgres de otra cosa, un servicio de otro
+# producto de la casa— NO se mata: se dice y se sigue, que es lo que se puede
+# hacer sin pisar a nadie.
+liberar_puerto_propio() {
+  local s="$1" puerto="$2" pid
+  pid=$(lsof -ti ":$puerto" -sTCP:LISTEN 2>/dev/null | head -1 || true)
+  [[ -z "$pid" ]] && return 0
+  if ps -o command= -p "$pid" 2>/dev/null | grep -q "services\.$s\."; then
+    if matar_de_verdad "$pid"; then
+      info "$s: parado el que ya había (pid $pid)"
+    else
+      aviso "$s: no he podido parar el proceso anterior (pid $pid)"
+    fi
+  else
+    aviso "$s: el puerto $puerto lo tiene otro proceso (pid $pid); no lo toco"
+  fi
+}
+
 matar_de_verdad() {
   local pid="$1" i=0
   kill "$pid" 2>/dev/null || true

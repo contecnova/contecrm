@@ -278,6 +278,31 @@ legítima, se añade a su lista **con el motivo escrito**: las listas de
 excepciones de este repositorio llevan todas su razón al lado, y hay gates que
 comprueban que la lleven.
 
+### Y antes de creerte un verde: mira si has arrancado algo
+
+`./setup.sh arrancar` sobre una pila **ya levantada** no arrancaba nada y decía
+«✓» de los catorce servicios. Los uvicorn nuevos morían en el acto —el puerto
+estaba cogido—, los ficheros de pid se quedaban apuntando a esos muertos, y lo
+que contestaba era la pila de antes. Cambias el código, reinicias, y sigue
+corriendo lo de la víspera sin un solo error a la vista. De regalo, `parar`
+después tampoco paraba nada, porque iba por esos ficheros de pid.
+
+**Había un guardia escrito para este caso y miraba demasiado pronto**: `kill
+-0` a los 0,6 s del lanzamiento, cuando uvicorn todavía está importando la
+aplicación y tarda segundos en morir por el puerto. Es el mismo error que
+vigila la sección de arriba, en la otra dirección: una comprobación que no
+llega a ver lo que dice comprobar.
+
+Ahora `arrancar` para lo que ya hubiera **antes** de lanzar —sólo si es
+nuestro: un puerto en manos de otro producto de la casa se dice y se respeta— y
+al final compara **qué pid escucha con cuál lanzó**. Es la única diferencia
+observable entre «arrancado» y «ya estaba»: que el puerto conteste lo cumple
+igual un proceso de ayer.
+
+El guardián ejecuta la función del `setup.sh` de verdad, contra un proceso que
+escucha, y comprueba las dos mitades — porque «liberar el puerto» se cumpliría
+también matando al vecino.
+
 ### Antes de creerte un rojo: mira qué más hay corriendo
 
 Un rojo no siempre dice algo de lo que has tocado. En esta máquina conviven
