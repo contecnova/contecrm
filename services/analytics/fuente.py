@@ -265,15 +265,26 @@ def registrar_fuente(
         )
     except Exception as exc:  # noqa: BLE001 — el otro sistema es externo
         fila.estado = "error"
-        # Con el DETALLE, no sólo el titular. `ErrorDependencia` lleva dentro
-        # el código HTTP y el cuerpo que contestó el otro sistema, y `str(exc)`
-        # devuelve únicamente el mensaje: así quedaba guardado
-        # «contecintelligence ha rechazado el registro de la fuente» y en
-        # ningún sitio ponía que había contestado 403 ni por qué. Un fallo que
-        # no dice su motivo obliga a reproducirlo para saber qué pasó, y esto
-        # pasa en un worker, de noche y sin nadie mirando.
+        # **El detalle, al registro; a la pantalla, la frase.**
+        #
+        # Esto pegaba el `detalle` detrás del mensaje, y con razón entonces: el
+        # mensaje era un titular —«contecintelligence ha rechazado el registro
+        # de la fuente»— que no decía ni el código ni el motivo, y un fallo
+        # que no dice su motivo obliga a reproducirlo; esto pasa en un worker,
+        # de noche y sin nadie mirando.
+        #
+        # Lo que no se vio es **dónde acaba este texto**: en «Explotación», tal
+        # cual, delante del usuario. Medido el 04-11-2026: la pantalla enseñaba
+        # «… · {'codigo_http': 400, 'cuerpo': '{"detail":"La fuente no
+        # responde (health_check fallo)."}'}», un diccionario de Python con un
+        # JSON dentro.
+        #
+        # Ahora el mensaje ya lleva el código, el motivo del otro lado y la
+        # dirección que hay que comprobar, así que pegar el diccionario no
+        # añade nada y sí estropea la pantalla. El detalle sigue entero en el
+        # registro de abajo, que es de donde lo saca quien depura.
         detalle = getattr(exc, "detalle", None)
-        fila.error = (f"{exc} · {detalle}" if detalle else str(exc))[:1000]
+        fila.error = str(exc)[:1000]
         uow.db.flush()
         logger.warning(
             "analytics.registro_fuente_fallido",
@@ -450,11 +461,44 @@ def _publicar(
         )
     if respuesta.status_code >= 400:
         raise ErrorDependencia(
-            "contecintelligence ha rechazado el registro de la fuente",
+            _porque_lo_rechazo(respuesta, str(cuerpo["config"]["base_url"])),
             error_code="analytics.registro_rechazado",
             detalle={"codigo_http": respuesta.status_code, "cuerpo": respuesta.text[:300]},
         )
     return str((respuesta.json() or {}).get("id") or "")
+
+
+def _porque_lo_rechazo(respuesta: Any, url_del_crm: str) -> str:
+    """Por qué contecintelligence no admitió la fuente, en una frase.
+
+    **Lo que salía en pantalla era esto**, tal cual, al usuario:
+
+        contecintelligence ha rechazado el registro de la fuente ·
+        {'codigo_http': 400, 'cuerpo': '{"detail":"La fuente no responde
+        (health_check fallo)."}'}
+
+    Un diccionario de Python con un JSON dentro. Medido el 04-11-2026 abriendo
+    «Explotación» en la pila local. El motivo de verdad —«la fuente no
+    responde»— estaba ahí dentro, y lo que hace falta para arreglarlo —**con
+    qué dirección tiene que alcanzarnos**— no estaba en ninguna parte.
+
+    El `detalle` sigue llevando el código y el cuerpo crudos: eso es para quien
+    integra, y se lee desde «Detalle técnico». Lo que cambia es la frase.
+    """
+    import json as _json
+
+    try:
+        dicho = str((_json.loads(respuesta.text or "{}") or {}).get("detail") or "").strip()
+    except ValueError:
+        dicho = ""
+    if not dicho:
+        dicho = (respuesta.text or "")[:160].strip() or "no ha dicho por qué"
+    return (
+        f"contecintelligence ha rechazado el registro de la fuente "
+        f"(HTTP {respuesta.status_code}): {dicho} "
+        f"La dirección con la que tiene que alcanzar este CRM es «{url_del_crm}»; "
+        f"si desde contecintelligence no se llega ahí, es lo primero que mirar."
+    )
 
 
 def _clave_de_lectura(tenant_id: UUID) -> str:

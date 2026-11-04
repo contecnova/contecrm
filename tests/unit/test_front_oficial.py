@@ -428,7 +428,31 @@ def test_el_front_es_accesible_por_teclado_y_para_lectores(  # noqa: D103
 #
 #   124 y no 130: quedan 1,7 kB de margen, que es lo que tiene que quedar para
 #   que la siguiente subida vuelva a ser una decisión y no un descuido.
-PRESUPUESTO_KB = 124
+#
+#   04-11-2026 · 124 → 127, medido con la regla del propio gate
+#   -----------------------------------------------------------
+#   El tope estaba **pasado antes de este cambio**: construyendo el commit
+#   anterior en un árbol aparte y sumando como suma el gate salen **124,02 kB
+#   de 124,00**. Veinte bytes, y no se veía porque el `dist/` que había en
+#   disco era de una construcción vieja — el gate mide sobre `dist/`, así que
+#   un `dist/` sin reconstruir le hace decir lo que dijo la última vez.
+#
+#   Lo que añade esta tanda son 1,59 kB: la conversación en las quince fichas,
+#   los errores de validación pegados a su campo y el mapa de acentos. Medido:
+#   124,02 → 125,61.
+#
+#   Antes de subirlo se quitó lo que se podía: la conversación se pintaba con
+#   el armazón de listados y eso arrastraba `Tabla` a la apertura. Una
+#   conversación no es una tabla —son hilos con mensajes—, así que se pinta
+#   como lo que es y la tabla se queda fuera. Lo que no se quita es
+#   `formato`: es el formateador de fechas de la casa y escribir otro al lado
+#   sería peor que 3 kB.
+#
+#   127 deja 1,4 kB de margen sobre lo medido, que es poco a propósito: el
+#   bulto sigue siendo el diccionario de idioma entero —9,9 kB él solo— y la
+#   forma correcta de recuperar sitio sigue siendo partirlo por pantalla, no
+#   ir subiendo el número.
+PRESUPUESTO_KB = 127
 
 # Y un tope para el conjunto, contando lo que se carga al abrir cada pantalla.
 # Sin él, partir el paquete sería la forma de esconder cualquier crecimiento:

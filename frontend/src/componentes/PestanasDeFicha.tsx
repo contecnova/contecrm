@@ -12,9 +12,17 @@
  * productos.
  */
 
+import { Suspense, lazy } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Comentarios } from "@/componentes/Comentarios";
+// **La conversación se carga cuando se abre, no al entrar.** Esta barra viaja
+// en el paquete de apertura —la llevan las quince fichas—, así que importarla
+// arriba metía la conversación y su tabla en lo primero que descarga
+// cualquiera. Medido el 04-11-2026: el paquete pasó de 124 kB comprimidos, que
+// es el tope. Nadie abre una ficha para leer los comentarios antes de verla.
+const Comentarios = lazy(() =>
+  import("@/componentes/Comentarios").then((m) => ({ default: m.Comentarios })),
+);
 import { useSuperficie } from "@/lib/permisos";
 
 export interface Pestana {
@@ -98,7 +106,11 @@ export function PestanasDeFicha({
     <>
       {barra}
       <div className="mt-4">
-        <Comentarios tipo={tipo ?? ""} id={id ?? ""} />
+        {/* Sin `fallback` visible: lo que se carga es un fichero pequeño y un
+            «cargando…» que parpadea molesta más de lo que informa. */}
+        <Suspense fallback={null}>
+          <Comentarios tipo={tipo ?? ""} id={id ?? ""} />
+        </Suspense>
       </div>
     </>
   );

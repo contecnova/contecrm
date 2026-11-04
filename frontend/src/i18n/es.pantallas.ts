@@ -782,6 +782,9 @@ const pantallas = {
   },
   ficha: {
     sinComentarios: "Todavía no ha escrito nadie",
+    interno: "interno",
+    editado: "editado",
+    alguien: "Alguien",
     comentarioEnviado: "Comentario enviado",
     comoEstaba: "Cómo estaba esto en un momento dado",
     sinRastroCompleto:

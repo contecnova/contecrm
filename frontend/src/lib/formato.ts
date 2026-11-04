@@ -191,6 +191,11 @@ const MARCA_DE_TIEMPO = /_at$/;
  * una lista imaginada.
  */
 const CON_TILDE: Record<string, string> = {
+  // `mencion_neutra` es uno de los tipos de lo que se recoge en redes, y el
+  // humanizador lo pintaba «Mencion neutra». El producto escribe «menciones»
+  // con tilde en todas partes menos ahí.
+  mencion: "mención",
+  menciones: "menciones",
   dia: "día",
   dias: "días",
   ano: "año",
