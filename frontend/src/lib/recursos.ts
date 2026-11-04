@@ -219,6 +219,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Entradas sin atribuir",
         listar: "/api/v1/canales-entrada/sin-atribuir",
         servicio: "integration",
+        // Devuelve DOS listas —`interacciones` e `interlocutores_frecuentes`—
+        // y la del listado es la primera: lo que se viene a ver aquí son las
+        // entradas que no se han podido atribuir a nadie. Sin decirlo, la
+        // pantalla no podía adivinarlo y pintaba una fila con las dos dentro.
+        clave_lista: "interacciones",
       },
       {
         nombre: "Agentes: uso",
@@ -246,6 +251,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Migración: progreso",
         listar: "/api/v1/convivencia/progreso",
+        // Devuelve varias listas: el progreso se mide por objeto; los que tienen regla sin medir son el pendiente.
+        clave_lista: "objetos",
         servicio: "integration",
       },
       // Las sagas: lo que cruza servicios y hay que poder deshacer. Se
@@ -281,6 +288,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Transportes",
         listar: "/api/v1/conectores/transportes",
+        // Devuelve varias listas: cuatro catálogos de igual peso: manda el primero y los otros tres salen debajo.
+        clave_lista: "protocolos",
         servicio: "integration",
       },
       // Las aprobaciones del motor de flujos (CRM-00.03.05): la lista entera,
@@ -1088,6 +1097,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Consecución",
         listar: "/api/v1/cuotas/consecucion",
+        // Devuelve varias listas: la consecución se mira cuota a cuota; el ranking es la lectura de encima.
+        clave_lista: "cuotas",
         servicio: "sales",
         permiso: "forecast:read",
       },
@@ -1265,6 +1276,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Vencimientos",
         listar: "/api/v1/planes-preventivos/vencimientos",
+        // Devuelve varias listas: lo que vence; los planes sin lectura de contador son el hueco de datos.
+        clave_lista: "vencimientos",
         servicio: "service",
       },
       { nombre: "Repuestos", listar: "/api/v1/repuestos", servicio: "service" },
@@ -1295,6 +1308,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Aparatos callados",
         listar: "/api/v1/dispositivos/silenciosos",
+        // Devuelve varias listas: los aparatos que llevan sin dar señal; las otras dos son subconjuntos que explican por qué.
+        clave_lista: "callados",
         servicio: "integration",
       },
     ],
@@ -1333,6 +1348,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Vencen pronto",
         listar: "/api/v1/expedientes/vencen",
+        // Devuelve varias listas: el nombre de la pestaña lo dice; lo ya vencido se enseña debajo.
+        clave_lista: "vencen_pronto",
         servicio: "service",
       },
       {
@@ -1367,6 +1384,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Modelos",
         listar: "/api/v1/ia/modelos",
+        // Devuelve varias listas: el listado son los modelos; caducados y sin_modelo son avisos sobre ellos.
+        clave_lista: "modelos",
         servicio: "intelligence",
         permiso: "ia:administrar",
       },
@@ -1771,6 +1790,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Calendario de campañas",
         listar: "/api/v1/campanas/calendario",
+        // Devuelve varias listas: el calendario son las campañas; los solapamientos son el aviso sobre ellas.
+        clave_lista: "campanas",
         periodo: true,
         servicio: "marketing",
         permiso: "campaign:read",
@@ -1995,6 +2016,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Renovación de consentimiento",
         listar: "/api/v1/optin/renovaciones",
+        // Devuelve varias listas: lo que hay que renovar antes de que caduque; lo ya caducado va debajo.
+        clave_lista: "por_caducar",
         servicio: "marketing",
       },
       {

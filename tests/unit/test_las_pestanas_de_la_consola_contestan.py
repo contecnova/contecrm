@@ -80,8 +80,8 @@ MODULOS = RAIZ / "frontend/src/lib/recursos.ts"
 ENTRADA = re.compile(r"\{[^{}]*?\}", re.S)
 
 
-def _pestanas() -> dict[str, list[tuple[str, str]]]:
-    """Servicio → [(nombre de la pestaña, ruta que lista)].
+def _pestanas() -> dict[str, list[tuple[str, str, str]]]:
+    """Servicio → [(nombre, ruta que lista, clave de su lista o cadena vacía)].
 
     Se dejan fuera las que la propia declaración marca como especiales, con su
     motivo escrito allí: las que **exigen un término** de búsqueda —pedidas sin
@@ -119,8 +119,9 @@ def _pestanas() -> dict[str, list[tuple[str, str]]]:
         # a propósito. Se le da un rango, que es lo que hace la pantalla.
         if re.search(r"periodo:\s*true", bloque):
             ruta = f"{ruta}?desde=2020-01-01&hasta=2030-12-31"
+        clave = re.search(r'clave_lista:\s*"([^"]+)"', bloque)
         salida.setdefault(servicio.group(1), []).append(
-            (nombre.group(1) if nombre else listar.group(1), ruta)
+            (nombre.group(1) if nombre else listar.group(1), ruta, clave.group(1) if clave else "")
         )
     return salida
 
@@ -132,6 +133,20 @@ def test_el_recorrido_mira_de_verdad() -> None:
     cuantas = sum(len(v) for v in todas.values())
     assert cuantas >= 100, f"sólo se ven {cuantas} pestañas: {sorted(todas)}"
     assert "party" in todas and "tenancy" in todas, sorted(todas)
+
+
+def _listas_de(respuesta: Any) -> list[str]:
+    """Qué propiedades de la respuesta son listas, con el mismo criterio que la
+    pantalla: un array suelto o `items` ya no son ambiguos."""
+    try:
+        cuerpo = respuesta.json()
+    except ValueError:
+        return []
+    if isinstance(cuerpo, list) or not isinstance(cuerpo, dict):
+        return []
+    if isinstance(cuerpo.get("items"), list):
+        return []
+    return [clave for clave, valor in cuerpo.items() if isinstance(valor, list)]
 
 
 def _cabeceras(tenant_id: UUID) -> dict[str, str]:
@@ -205,7 +220,7 @@ def test_las_pestanas_de_la_consola_abren(
     ultima_buena = "ninguna todavía"
     try:
         with TestClient(importlib.import_module(f"services.{servicio}.main").app) as cli:
-            for nombre, ruta in pestanas:
+            for nombre, ruta, clave_lista in pestanas:
                 # Si la petición REVIENTA —no contesta mal, revienta— también
                 # es una pestaña rota, y hay que saber cuál. Dejar que la
                 # excepción suba daba un rastro que termina en `get_db` y no
@@ -229,6 +244,38 @@ def test_las_pestanas_de_la_consola_abren(
                 if respuesta.status_code != 200:
                     rotas.append(
                         f"«{nombre}» ({ruta}) → {respuesta.status_code}: " f"{respuesta.text[:160]}"
+                    )
+                    continue
+                # Y QUE LO QUE CONTESTA SE PUEDA PINTAR COMO UN LISTADO.
+                #
+                # Contestar 200 no basta. La pantalla saca sus filas sin que
+                # nadie se lo explique: si es un array, ése; si trae `items`,
+                # ése; y si trae **una sola** propiedad que sea un array, ésa.
+                # Con dos no adivina —elegir mal enseñaría la lista
+                # equivocada—, y entonces pinta una fila con el objeto entero:
+                # una columna por propiedad y las filas de verdad apelotonadas
+                # dentro de una celda.
+                #
+                # Medido el 04-11-2026 llamando a las 204 pestañas que se abren
+                # sin identificador: le pasaba a una, «Entradas sin atribuir»,
+                # que devuelve `interacciones` e `interlocutores_frecuentes`.
+                # Cuatro interacciones dentro de una celda. El dato estaba y no
+                # se podía leer.
+                #
+                # Aquí y no contra el contrato: estas rutas devuelven `Any`, así
+                # que el OpenAPI no dice la forma y un gate estático daría verde
+                # sin mirar nada. Se mide sobre la respuesta de verdad.
+                listas = _listas_de(respuesta)
+                if len(listas) > 1 and clave_lista not in listas:
+                    rotas.append(
+                        f"«{nombre}» ({ruta}) devuelve {len(listas)} listas "
+                        f"—{', '.join(listas)}— y "
+                        + (
+                            f'declara `clave_lista: "{clave_lista}"`, que no es ninguna'
+                            if clave_lista
+                            else "no dice cuál de ellas es su listado, así que la "
+                            "pantalla pinta una fila con el objeto entero"
+                        )
                     )
     finally:
         for clave, valor in previo.items():

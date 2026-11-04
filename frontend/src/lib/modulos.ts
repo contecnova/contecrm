@@ -173,6 +173,17 @@ export interface Recurso {
    * en ninguna pantalla que lo llamara: la tabla de frescura decía «nunca
    * cargada» y no ofrecía cargarla.
    */
+  /**
+   * Qué propiedad de la respuesta lleva las filas.
+   *
+   * Sólo hace falta cuando la respuesta trae **más de una lista** y no se
+   * puede adivinar cuál es la del listado. Con una sola, no se declara: se
+   * deduce, que es lo que hacen las otras doscientas y pico pestañas.
+   *
+   * Sin esto, la pantalla pintaba una fila con el objeto entero: tres columnas
+   * con nombre de propiedad y las filas de verdad apelotonadas en una celda.
+   */
+  clave_lista?: string;
   acciones?: Array<{
     ruta: string;
     nombre: string;

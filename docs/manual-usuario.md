@@ -865,6 +865,19 @@ existían y no había forma de llegar a ellas desde ninguna pantalla: eran **50*
 entre ellas comprobar un contenido antes de mandarlo o ver dónde duele si un
 proveedor falla mañana.
 
+### Cuando una pantalla enseña más de una tabla
+
+Algunas pantallas contestan a más de una pregunta a la vez, y entonces verás la
+lista principal arriba —la que puedes filtrar, ordenar y exportar— y debajo las
+demás, cada una con su título.
+
+«Vencen pronto» es el ejemplo claro: arriba lo que está a punto de vencer, que
+es sobre lo que hay que actuar, y debajo lo que ya venció. Son dos listas
+porque son dos cosas distintas, y mezclarlas haría perder de vista la urgente.
+
+Hasta el 04-11-2026 esas pantallas enseñaban **una sola fila** con todo metido
+dentro de una celda. No faltaba el dato: no se podía leer.
+
 ### Exportar un listado
 
 El botón **Exportar** está arriba de cada lista, al lado del selector de vista.

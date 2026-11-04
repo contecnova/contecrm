@@ -450,6 +450,37 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
 }
 
 
+/**
+ * Las listas de la respuesta que NO son el listado principal.
+ *
+ * Vacío en el caso normal —un array suelto, `items`, o una sola propiedad que
+ * sea lista—, que es el de más de doscientas pestañas. Sólo devuelve algo
+ * cuando la respuesta trae varias, que es cuando hay algo que enseñar aparte.
+ */
+export function otrasListas(
+  datos: unknown,
+  clavePrincipal?: string,
+): { clave: string; filas: Record<string, unknown>[] }[] {
+  if (!datos || typeof datos !== "object" || Array.isArray(datos)) return [];
+  const objeto = datos as Record<string, unknown>;
+  if (Array.isArray(objeto.items)) return [];
+  const listas = Object.entries(objeto).filter(([, v]) => Array.isArray(v));
+  if (listas.length < 2) return [];
+  // La principal es la declarada; si no hay declaración, la primera — que es
+  // también la que `comoFilas` no sabría elegir, así que al menos lo de abajo
+  // se enseña entero mientras alguien decide cuál manda.
+  const principal = clavePrincipal || listas[0]?.[0];
+  return listas
+    .filter(([clave]) => clave !== principal)
+    .map(([clave, valor]) => ({
+      clave,
+      filas: (valor as unknown[]).filter(
+        (f): f is Record<string, unknown> => Boolean(f) && typeof f === "object",
+      ),
+    }))
+    .filter((l) => l.filas.length > 0);
+}
+
 function RecursoVista({
   recurso: declarado,
   sesion,
@@ -500,6 +531,21 @@ function RecursoVista({
     };
   }, [declarado, servicioElegido]);
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
+  // Las OTRAS listas que trae la misma respuesta.
+  //
+  // Hay extremos que contestan con varias —«Vencen pronto» trae
+  // `vencen_pronto` y `ya_vencidos`; «Transportes», cuatro catálogos—, y la
+  // pantalla sólo sabía pintar una tabla. Lo que hacía entonces no era
+  // esconderlas: era peor. Pintaba **una fila con el objeto entero**, una
+  // columna por propiedad y las filas de verdad apelotonadas en una celda.
+  //
+  // Medido el 04-11-2026 llamando a las pestañas declaradas: diez caían ahí.
+  // Ahora la principal es el listado —con sus filtros, su orden y su
+  // exportación— y las demás se pintan debajo, cada una con su nombre. No se
+  // pierde ninguna, que es lo que haría declarar sólo una.
+  const [listasExtra, setListasExtra] = useState<
+    { clave: string; filas: Record<string, unknown>[] }[]
+  >([]);
   const [retenidos, setRetenidos] = useState<string[]>([]);
   const [tapados, setTapados] = useState<string[]>([]);
   const [siguiente, setSiguiente] = useState<string | null>(null);
@@ -808,7 +854,8 @@ function RecursoVista({
           : recurso.listar;
         const respuesta = await llamar<unknown>(ruta);
         if (mia !== peticion.current) return;
-        const nuevas = comoFilas(respuesta.datos);
+        const nuevas = comoFilas(respuesta.datos, recurso.clave_lista);
+        setListasExtra(otrasListas(respuesta.datos, recurso.clave_lista));
         // Se ACUMULA al paginar: sustituir haría que «cargar más» pareciera
         // saltar de página, y la lista perdería lo que el usuario ya miraba.
         setFilas((previas) =>
@@ -830,6 +877,9 @@ function RecursoVista({
     },
     [
       recurso.listar,
+      // Una cadena, así que no cambia de identidad en cada pintado: entra sin
+      // el riesgo de la función nueva que dispara una petición por tecla.
+      recurso.clave_lista,
       puedeVer,
       busqueda,
       termino,
@@ -1326,6 +1376,11 @@ function RecursoVista({
               }
             />
           )}
+          {listasExtra.map((lista) => (
+            <div key={lista.clave} className="mt-4">
+              <Tabla filas={lista.filas} titulo={humanizar(lista.clave)} />
+            </div>
+          ))}
           <Retenidos campos={retenidos} enmascarados={tapados} />
           {siguiente ? (
             <button

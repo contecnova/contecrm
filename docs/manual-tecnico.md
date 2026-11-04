@@ -2463,6 +2463,38 @@ consecuencias que conviene tener escritas:
 Lo escrito a mano queda como excepción: las que llevan una frase de ayuda bajo
 el botón porque el rótulo no basta.
 
+#### Una respuesta con varias listas se pinta entera (04-11-2026)
+
+El listado de un módulo saca sus filas sin que nadie se lo explique: si la
+respuesta es un array, ése; si trae `items`, ése; y si trae **una sola**
+propiedad que sea un array —`{partners: […]}`, `{ordenes: […]}`—, ésa. Con dos
+no adivina, y hace bien: elegir mal enseñaría la lista equivocada.
+
+Lo que faltaba por cerrar es **qué pasa entonces**, y lo que pasaba era peor
+que esconder: pintaba una fila con el objeto entero, una columna por propiedad
+y las filas de verdad apelotonadas dentro de una celda. Medido llamando a las
+pestañas declaradas contra un servidor de verdad: **diez caían ahí**. «Entradas
+sin atribuir» salía con tres columnas —«Interacciones», «Interlocutores
+frecuentes», «Cuantas»— y cuatro interacciones dentro de la primera. El dato
+estaba y no se podía leer.
+
+Dos piezas, y ninguna adivina nada:
+
+1. **`clave_lista`** en la pestaña dice cuál de las listas es su listado — el
+   que lleva filtros, orden, paginación y exportación. Se declara **sólo**
+   donde hace falta: las otras doscientas y pico pestañas no lo llevan.
+2. **Las demás listas se pintan debajo**, cada una con su nombre, en su propia
+   tabla. Declarar una sola habría perdido las otras, y varias importan: «Vencen
+   pronto» trae `vencen_pronto` y `ya_vencidos`; «Transportes», cuatro
+   catálogos de igual peso.
+
+**El guardián va contra el servidor, no contra el contrato**, y eso no es una
+preferencia: estas rutas devuelven `Any`, así que el OpenAPI no declara la
+forma y un gate estático daría verde sin haber mirado nada — se escribió
+primero así y pasaba con el caso malo plantado. Vive en
+`test_las_pestanas_de_la_consola_contestan.py`, que ya abría cada pestaña una
+por una: ahora además mira si lo que contesta se puede pintar como un listado.
+
 Y un efecto que sólo se vio al sacarlos a pantalla: **el rótulo de un botón lo
 escribe el `summary` del contrato, y 43 de los 2.452 llevan dentro el código de
 la capacidad** — «Comprobar un contenido antes de mandarlo (CRM-02.04.01.03)».

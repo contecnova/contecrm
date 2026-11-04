@@ -230,10 +230,27 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
  * alternativa era que media consola no enseñara nada y pareciera que esos
  * recursos están vacíos.
  */
-export function comoFilas(datos: unknown): Record<string, unknown>[] {
+export function comoFilas(
+  datos: unknown,
+  claveDeLista?: string,
+): Record<string, unknown>[] {
   if (Array.isArray(datos)) return normalizar(datos);
   if (datos && typeof datos === "object") {
     const objeto = datos as Record<string, unknown>;
+    // Cuando la pantalla dice cuál es su lista, no hay nada que adivinar.
+    //
+    // Lo dice sólo donde hace falta: respuestas con MÁS DE UNA lista dentro.
+    // Sin esto, el camino era el `return [objeto]` de abajo —una fila con el
+    // objeto entero— y eso no es un listado: es el JSON crudo repartido en
+    // celdas. **Medido el 04-11-2026 llamando a las 204 pestañas declaradas:
+    // le pasaba a una**, «Entradas sin atribuir», que devuelve `interacciones`
+    // e `interlocutores_frecuentes`. En pantalla salía UNA fila con tres
+    // columnas —«Interacciones», «Interlocutores frecuentes», «Cuantas»— y las
+    // cuatro interacciones apelotonadas dentro de la primera celda.
+    if (claveDeLista) {
+      const elegida = objeto[claveDeLista];
+      return Array.isArray(elegida) ? normalizar(elegida) : [];
+    }
     for (const clave of ["items", "resultados", "datos"]) {
       if (Array.isArray(objeto[clave])) return normalizar(objeto[clave]);
     }

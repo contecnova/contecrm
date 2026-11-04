@@ -93,8 +93,28 @@ describe("el listado de módulo", () => {
     }
 
     expect(tablas.length, "no se ha encontrado ninguna `<Tabla>` en el listado").toBeGreaterThan(0);
-    for (const tabla of tablas) {
+
+    // LA DEL LISTADO es la que recibe las filas del módulo. Desde el
+    // 04-11-2026 hay más de una `<Tabla>` en esta pantalla: las respuestas que
+    // traen varias listas pintan las secundarias debajo, y ésas **no** son la
+    // pantalla —van dentro de ella, con su tope de alto y su barra—. Exigirles
+    // `ocupaLaPantalla` a todas era exigir que no hubiera secundarias.
+    const delListado = tablas.filter((t) => /filas=\{filas\}/.test(t));
+    expect(
+      delListado.length,
+      "no se encuentra la `<Tabla>` que recibe las filas del módulo",
+    ).toBeGreaterThan(0);
+    for (const tabla of delListado) {
       expect(tabla, "el listado del módulo tiene que pasar `ocupaLaPantalla`").toMatch(
+        /\bocupaLaPantalla\b/,
+      );
+    }
+
+    // Y al revés: ninguna secundaria puede decir que ES la pantalla. Dos
+    // tablas reclamando el alto entero dejan la segunda fuera de vista y la
+    // primera sin barra, que es el fallo que esta prueba vigila al derecho.
+    for (const tabla of tablas.filter((t) => !/filas=\{filas\}/.test(t))) {
+      expect(tabla, "una tabla secundaria no puede pedir `ocupaLaPantalla`").not.toMatch(
         /\bocupaLaPantalla\b/,
       );
     }
