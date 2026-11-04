@@ -33,7 +33,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { BarraDeAplicacion } from "@/componentes/BarraDeAplicacion";
 import { BarraLateral } from "@/componentes/BarraLateral";
@@ -173,6 +173,7 @@ function Armazon({
   // cuando no —la portada, el chat, las menciones— manda la recordada: una
   // portada que cambia de aplicación según desde dónde llegues no deja saber
   // nunca en cuál estás.
+  const navegar = useNavigate();
   const [elegida, setElegida] = useState<Aplicacion>(aplicacionRecordada);
   const delCamino = aplicacionDelCamino(pathname, menu);
   const aplicacion = delCamino ?? elegida;
@@ -259,6 +260,20 @@ function Armazon({
               setElegida(app);
               recordarAplicacion(app);
               setLanzador(false);
+              // Y SE VA A ELLA. Elegir una aplicación y quedarse donde estabas
+              // no se parece a nada: si la pantalla en la que estás pertenece a
+              // otra, `aplicacion` la saca del camino —`delCamino ?? elegida`—
+              // y tu elección **se ignora entera**; el efecto llegaba a verse
+              // sólo desde la portada, el chat o las menciones, que no son de
+              // ninguna. De ahí el «a veces funciona y a veces no», con una
+              // regla que nadie puede adivinar mirando la pantalla.
+              //
+              // Lo dijo quien lo usa el 04-11-2026, y es lo que hace un
+              // iniciador de aplicaciones: te lleva a la aplicación. Se entra
+              // por su primera pestaña, salvo que ya estuvieras dentro.
+              if (aplicacionDelCamino(pathname, menu)?.id === app.id) return;
+              const primera = pestanasDe(app, menu)[0];
+              if (primera) navegar(primera.a);
             }}
             alCerrar={() => setLanzador(false)}
           />
