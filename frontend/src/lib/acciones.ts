@@ -32,6 +32,8 @@ export interface Accion {
   permiso: string | null;
   /** El último tramo: `convertir`, `descartar`, `etapa`… */
   clave: string;
+  /** Frase corta bajo el botón, para lo que no se adivina por el rótulo. */
+  detalle?: string;
 }
 
 const PARAMETRO = /\{[^}]+\}/g;
@@ -132,11 +134,30 @@ export function accionesDeColeccion(
     // Un POST a la colección sin tramo extra es el ALTA, que ya tiene su
     // botón; esto exige el tramo, así que no puede colarse.
     //
-    // Las dos condiciones, que son distintas: `exige_cuerpo` mira el cuerpo y
-    // `exige_datos` los parámetros de la URL. Una operación que necesita
-    // cualquiera de las dos cosas y se llama en seco contesta 422, y un botón
-    // que siempre da 422 es peor que no tener botón.
-    if (operacion.exige_cuerpo || operacion.exige_datos) continue;
+    // **Pedir cuerpo no descalifica: pide formulario.** Antes se descartaban
+    // las dos cosas con el mismo motivo —«un botón que siempre da 422 es peor
+    // que no tener botón»—, que vale para una y no para la otra.
+    //
+    // Medido el 04-11-2026 sobre los trece contratos: de las 98 acciones de
+    // colección que caen en una pantalla de módulo se ofrecían **14**. De las
+    // 84 descartadas, 71 son rutas distintas y **50 no aparecen en ningún
+    // fichero del front**: no las alcanzaba nadie, ni por aquí ni por una
+    // pantalla propia. «A qué proveedor iría este encargo», «Comprobar un
+    // contenido antes de mandarlo», «Qué faltaría si se generase ahora»,
+    // «Dónde duele si un proveedor falla mañana». Las otras 21 sí tienen
+    // pantalla escrita a mano —«Qué pasaría si se publicara el mapa» la tiene
+    // en Territorios— y por eso el número que importa es 50, no 84.
+    //
+    // El formulario no hay que inventarlo: la ficha ya lo hace para las
+    // acciones de un registro, sacando los campos del `requestBody` del
+    // OpenAPI. Son el mismo mecanismo y el mismo componente.
+    //
+    // `exige_datos` SÍ sigue descartando, y por el motivo original: son
+    // parámetros de la URL, el formulario se saca del cuerpo, y una acción así
+    // saldría con el formulario vacío y contestaría 422. Medido: de las 84,
+    // 83 son sólo cuerpo y **una** pide además parámetro. Esa una se queda
+    // fuera a sabiendas, no por descuido.
+    if (operacion.exige_datos) continue;
     if (!puede(operacion.permiso)) continue;
 
     const clave = tramos[tramos.length - 1] ?? "";

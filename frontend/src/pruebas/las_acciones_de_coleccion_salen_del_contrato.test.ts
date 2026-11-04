@@ -82,12 +82,22 @@ const SUPERFICIE = {
 const TODO = () => true;
 
 describe("las acciones de colección se deducen del contrato", () => {
-  it("ofrece la que no pide cuerpo y nada más", () => {
+  it("ofrece las de la colección, pidan o no datos", () => {
     const acciones = accionesDeColeccion(SUPERFICIE, "/api/v1/recurrencias", TODO);
-    expect(acciones.map((a) => a.ruta)).toEqual(["/api/v1/recurrencias/generar"]);
+    // Hasta el 04-11-2026 aquí se esperaba UNA: la que no pide cuerpo. Era la
+    // regla de entonces —«un botón que siempre da 422 es peor que no tener
+    // botón»— y dejaba fuera 50 acciones que no se alcanzaban por ninguna otra
+    // vía. Lo que pide datos no sobra: abre el formulario que la ficha ya sabía
+    // montar desde el `requestBody`. El 422 se evita ahí, no escondiéndolas.
+    expect(acciones.map((a) => a.ruta).sort()).toEqual([
+      "/api/v1/recurrencias/declarar",
+      "/api/v1/recurrencias/generar",
+    ]);
     // El rótulo lo escribe el servicio dueño: dice lo que hace mejor que el
     // último tramo de la ruta.
-    expect(acciones[0]?.nombre).toBe("Crear las recurrentes que tocan");
+    expect(acciones.find((a) => a.ruta.endsWith("/generar"))?.nombre).toBe(
+      "Crear las recurrentes que tocan",
+    );
   });
 
   it("no ofrece lo que esta persona no puede hacer", () => {

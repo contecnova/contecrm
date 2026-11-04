@@ -2418,12 +2418,50 @@ los parámetros de la URL, y es la que separa una acción de un formulario: una
 operación que pide cuerpo y se llama en seco contesta 422, así que su botón
 sería un botón que no funciona nunca.
 
-Las **89 restantes piden cuerpo** y se quedan fuera a propósito: necesitan que
-alguien rellene algo —declarar una regla de reparto, ingerir un evento de un
-proveedor, personalizar una plantilla— y un formulario inventado desde la ruta
-se equivoca de campos. Lo escrito a mano pasa a ser la excepción —las que
-piden cuerpo y aun así tienen sentido como botón porque el cuerpo es fijo—, no
-la norma.
+Las **89 restantes piden cuerpo** y se quedaron fuera: necesitan que alguien
+rellene algo, y un formulario inventado desde la ruta se equivoca de campos.
+
+#### Y esa segunda mitad también hacía falta (04-11-2026)
+
+Lo de arriba resolvió trece de ciento dos y dejó la mayoría sin alcanzar. El
+motivo escrito era bueno —«un botón que siempre da 422 es peor que no tener
+botón»— y la conclusión no: **lo que pide datos no sobra, pide formulario**. Y
+el formulario no había que inventarlo: la ficha lo monta desde el
+`requestBody` del OpenAPI desde el primer día, para las acciones de un
+registro. Eran el mismo mecanismo con dos destinos y sólo uno conectado.
+
+Medido sobre los trece contratos: de las **98** acciones de colección que caen
+en una pantalla de módulo se ofrecían **14**. De las 84 descartadas, 71 rutas
+distintas, y **50 no aparecían en ningún fichero del front** — ni por aquí ni
+por una pantalla escrita a mano. «A qué proveedor iría este encargo»,
+«Comprobar un contenido antes de mandarlo», «Qué faltaría si se generase
+ahora», «Dónde duele si un proveedor falla mañana». Las otras 21 sí tienen
+pantalla propia; por eso el número que importa es 50 y no 84.
+
+Ahora la pantalla de módulo usa **el mismo componente que la ficha**. Tres
+consecuencias que conviene tener escritas:
+
+1. **`exige_datos` sigue descartando**, y por el motivo original: son
+   parámetros de la URL, el formulario se saca del cuerpo, y una acción así
+   saldría con el formulario vacío. Medido: de las 84, **83 son sólo cuerpo y
+   una** pide además parámetro. Esa una se queda fuera a sabiendas.
+2. **Un cuerpo abierto no es un cuerpo vacío.** Hay operaciones cuyo
+   `requestBody` es `{"type": "object"}` sin propiedades, y a propósito: «a qué
+   proveedor iría este encargo» lleva lo del sector (`bultos`, `peso_kg`,
+   `destino_cp`) y «a qué territorio va esta cuenta» lleva los atributos que
+   miren las reglas de cada instalación. Fijarles un modelo sería estrechar lo
+   que está abierto porque tiene que estarlo. Son **10 en toda la API**, 5 de
+   ellas simulaciones que alguien quiere usar. El contrato devuelve para ellas
+   **un campo que es el cuerpo entero** (`cuerpoEntero`), que se edita como
+   pares clave/valor; sin eso el botón mandaba `{}`, es decir, «a qué proveedor
+   iría este encargo» sin encargo.
+3. **Lo que no pide nada sigue costando un clic.** El contrato del servicio se
+   lee por adelantado para saber qué acciones no tienen campos, y ésas se
+   ejecutan al pulsar en vez de abrir un panel con un solo botón que repite el
+   rótulo. Las irreversibles siguen preguntando antes.
+
+Lo escrito a mano queda como excepción: las que llevan una frase de ayuda bajo
+el botón porque el rótulo no basta.
 
 ### 4.6.16 El chat en vivo perdía lo escrito durante el corte
 

@@ -44,7 +44,7 @@ import {
   vistasDe,
   type VistaDeLista,
 } from "@/lib/vistasDeLista";
-import { ErrorApi, llamar } from "@/lib/api";
+import { llamar } from "@/lib/api";
 import { escalar, esIdentificadorTecnico, humanizar } from "@/lib/formato";
 import {
   comoQuery,
@@ -62,7 +62,8 @@ import {
   type CampoEsquema,
   type Proposito,
 } from "@/lib/contrato";
-import { accionesDeColeccion } from "@/lib/acciones";
+import { Acciones } from "@/componentes/Acciones";
+import { accionesDeColeccion, type Accion } from "@/lib/acciones";
 import {
   moduloDe,
   objetoDe,
@@ -448,104 +449,6 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   );
 }
 
-/**
- * Los botones que actúan sobre la colección entera.
- *
- * **Se declaraban a mano, y eso se quedaba corto siempre.** El comentario que
- * las declaraba decía que no se podían deducir. Medido el 29-10-2026: hay 102
- * `POST` colgando de una colección sin ningún parámetro, y la lista a mano
- * tenía **cuatro**. Trece de ellas no piden cuerpo —son «haz ahora el trabajo
- * que toca»— y ninguna tenía botón en ninguna pantalla; entre ellas, «he
- * perdido el portátil», que revoca todos los dispositivos de confianza.
- *
- * Ahora salen del contrato, como las de fila, y lo escrito a mano son las
- * excepciones: las que piden cuerpo y aun así tienen sentido como botón
- * porque el cuerpo es fijo.
- *
- * **Y se dice qué contestó el servidor.** Estas acciones hacen trabajo —traer
- * filas, recalcular— y una que no responde nada deja a quien la pulsa sin saber
- * si pasó algo. Lo que devuelva se resume en una línea.
- */
-function AccionesDeColeccion({
-  acciones,
-  alTerminar,
-}: {
-  acciones: NonNullable<Recurso["acciones"]>;
-  alTerminar: () => void;
-}) {
-  const [enCurso, setEnCurso] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<string | null>(null);
-  const [fallo, setFallo] = useState<string | null>(null);
-
-  async function ejecutar(accion: NonNullable<Recurso["acciones"]>[number]) {
-    setEnCurso(accion.ruta);
-    setFallo(null);
-    setResultado(null);
-    try {
-      const r = await llamar<Record<string, unknown>>(accion.ruta, {
-        metodo: "POST",
-      });
-      setResultado(resumir(r.datos));
-      alTerminar();
-    } catch (e: unknown) {
-      setFallo(e instanceof ErrorApi ? e.titulo : String(e));
-    } finally {
-      setEnCurso(null);
-    }
-  }
-
-  return (
-    <div className="mb-4 flex flex-col gap-1.5">
-      <div className="flex flex-wrap gap-2">
-        {acciones.map((a) => (
-          <button
-            key={a.ruta}
-            type="button"
-            className="btn-secondary"
-            disabled={enCurso !== null}
-            onClick={() => void ejecutar(a)}
-          >
-            {enCurso === a.ruta ? "…" : a.nombre}
-          </button>
-        ))}
-      </div>
-      {acciones
-        .filter((a) => a.detalle)
-        .map((a) => (
-          <p key={a.ruta} className="text-rotulo text-ink-faint">
-            {a.detalle}
-          </p>
-        ))}
-      {resultado ? (
-        <p role="status" className="text-dato text-success">
-          {resultado}
-        </p>
-      ) : null}
-      {fallo ? (
-        <p role="alert" className="text-dato text-danger">
-          {fallo}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-/** Lo que hizo la acción, en una línea legible. Nunca el JSON crudo. */
-function resumir(datos: unknown): string {
-  if (!datos || typeof datos !== "object") return "Hecho.";
-  const d = datos as Record<string, unknown>;
-  const tablas = d.tablas;
-  if (Array.isArray(tablas)) {
-    const partes = tablas.map((t) => {
-      const f = t as Record<string, unknown>;
-      const n = Number(f.aplicadas ?? f.cargadas ?? 0);
-      const mal = f.error || f.motivo;
-      return `${String(f.tabla)}: ${mal ? String(mal) : `${n} filas`}`;
-    });
-    return partes.join(" · ");
-  }
-  return "Hecho.";
-}
 
 function RecursoVista({
   recurso: declarado,
@@ -820,14 +723,21 @@ function RecursoVista({
       superficie,
       recurso.listar,
       (permiso) => puede(sesion, permiso),
-    )
-      .filter((a) => !escritas.has(a.ruta))
-      .map((a) => ({
-        ruta: a.ruta,
-        nombre: a.nombre,
-        permiso: a.permiso ?? undefined,
-      }));
-    return [...aMano, ...descubiertas];
+    ).filter((a) => !escritas.has(a.ruta));
+    // Las escritas a mano se llevan a la misma forma que las deducidas, para
+    // que las pinte un solo componente. Antes eran dos mecanismos: el de la
+    // ficha, que sabe abrir el formulario de una acción, y uno propio de esta
+    // pantalla que sólo sabía pulsar. Por eso aquí no había formularios.
+    const aManoComoAccion: Accion[] = aMano.map((a) => ({
+      ruta: a.ruta,
+      plantilla: a.ruta,
+      metodo: "POST",
+      nombre: a.nombre,
+      permiso: a.permiso ?? null,
+      clave: a.ruta.split("/").pop() ?? "",
+      detalle: a.detalle,
+    }));
+    return [...aManoComoAccion, ...descubiertas];
   }, [superficie, recurso.acciones, recurso.listar, sesion]);
 
   // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una pantalla
@@ -1200,8 +1110,9 @@ function RecursoVista({
       {recurso.resumen?.length ? <Medidas rutas={recurso.resumen} /> : null}
 
       {accionesDeLaColeccion.length ? (
-        <AccionesDeColeccion
+        <Acciones
           acciones={accionesDeLaColeccion}
+          servicio={recurso.servicio}
           alTerminar={() => void cargar()}
         />
       ) : null}

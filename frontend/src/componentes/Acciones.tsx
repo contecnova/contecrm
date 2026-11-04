@@ -30,7 +30,12 @@ import { escalar, humanizar } from "@/lib/formato";
 import { MODULOS, type Recurso } from "@/lib/modulos";
 import { recursosDe } from "@/lib/recursos";
 import { objetoDe, recursoDeReferencia } from "@/lib/referencias";
-import { camposDe, contratoDe, type CampoEsquema } from "@/lib/contrato";
+import {
+  camposDe,
+  contratoDe,
+  cuerpoDeLosValores,
+  type CampoEsquema,
+} from "@/lib/contrato";
 import { type Accion } from "@/lib/acciones";
 
 /**
@@ -169,16 +174,49 @@ export function Acciones({
     };
   }, [abierta, servicio]);
 
+  // Y los campos de TODAS, por adelantado, para saber cuáles no piden nada.
+  //
+  // Sin esto, una acción que no necesita ningún dato costaba dos clics: abrir y
+  // confirmar en un panel con un solo botón que repite el rótulo del que acabas
+  // de pulsar. En la ficha se tolera porque quien abre es el menú de la barra;
+  // en un listado, donde el botón está a la vista, es un paso de más en todas.
+  // El contrato ya está en caché —lo pide la ficha al entrar—, así que esto no
+  // añade una llamada.
+  const [camposPorRuta, setCamposPorRuta] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (controlada || !servicio || acciones.length === 0) return;
+    let vivo = true;
+    void contratoDe(servicio).then((documento) => {
+      if (!vivo) return;
+      const cuenta: Record<string, number> = {};
+      for (const a of acciones) {
+        cuenta[a.ruta] = camposDe(documento, a.plantilla, "post").length;
+      }
+      setCamposPorRuta(cuenta);
+    });
+    return () => {
+      vivo = false;
+    };
+    // `acciones` se recalcula en cada render de quien llama; lo que importa es
+    // qué rutas hay, y eso se resume en la lista de rutas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlada, servicio, acciones.map((a) => a.ruta).join("|")]);
+
   if (acciones.length === 0) return null;
 
-  async function ejecutar(valores: Record<string, unknown>) {
-    if (!abierta) return;
+  async function ejecutar(
+    valores: Record<string, unknown>,
+    accion: Accion | null = abierta,
+  ) {
+    if (!accion) return;
     setEnviando(true);
     setFallo(null);
     try {
-      const r = await llamar<unknown>(abierta.ruta, {
+      const r = await llamar<unknown>(accion.ruta, {
         metodo: "POST",
-        cuerpo: valores,
+        // El cuerpo lo arma el contrato: hay operaciones cuyo único campo ES
+        // el cuerpo, y meterlo dentro de una llave las rompería.
+        cuerpo: cuerpoDeLosValores(campos ?? [], valores),
       });
       setResultado(r.datos ?? { hecho: true });
       setAbierta(null);
@@ -203,11 +241,16 @@ export function Acciones({
           <button
             key={a.ruta}
             type="button"
+            disabled={enviando}
             onClick={() => {
-              setAbierta(a);
               setConfirmada(false);
               setResultado(null);
               setFallo(null);
+              if (camposPorRuta[a.ruta] === 0 && !IRREVERSIBLES.test(a.clave)) {
+                void ejecutar({}, a);
+                return;
+              }
+              setAbierta(a);
             }}
             className={
               abierta?.ruta === a.ruta ? "btn-primary" : "btn-secondary"
@@ -217,6 +260,20 @@ export function Acciones({
           </button>
         ))}
       </div>
+
+      {/* La frase de ayuda de las que la llevan. Es para lo que no se adivina
+          por el rótulo: «Cargar ahora» no dice de dónde trae las filas. */}
+      {!controlada && acciones.some((a) => a.detalle) ? (
+        <div className="mt-1.5 flex flex-col gap-1">
+          {acciones
+            .filter((a) => a.detalle)
+            .map((a) => (
+              <p key={a.ruta} className="text-rotulo text-ink-faint">
+                {a.detalle}
+              </p>
+            ))}
+        </div>
+      ) : null}
 
       {resultado ? (
         <div className="card mt-3 border-success/40 p-3" role="status">

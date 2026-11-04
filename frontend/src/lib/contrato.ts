@@ -62,6 +62,21 @@ export interface CampoEsquema {
    * tres identificadores que nadie puede leer ni escribir.
    */
   referencia: string;
+  /**
+   * Este campo **es el cuerpo entero**, no una propiedad dentro de él.
+   *
+   * Hay operaciones cuyo cuerpo es un objeto abierto a propósito: «a qué
+   * proveedor iría este encargo» lleva lo propio del sector (`bultos`,
+   * `peso_kg`, `destino_cp`) y «a qué territorio va esta cuenta» lleva los
+   * atributos que miren las reglas de cada instalación. Fijarles un modelo
+   * sería estrechar algo que está abierto porque tiene que estarlo.
+   *
+   * Sin esto, esas operaciones salían con **cero campos**, y un botón sin
+   * formulario mandaba `{}`: «a qué proveedor iría este encargo» sin encargo.
+   * Medido el 04-11-2026: son 10 en toda la API, 5 de ellas simulaciones que
+   * alguien quiere poder usar.
+   */
+  cuerpoEntero?: boolean;
 }
 
 interface Esquema {
@@ -225,6 +240,27 @@ export function camposDe(documento: Documento, ruta: string, metodo: string): Ca
   const esquema = resolver(documento, bruto);
   const propiedades = esquema.properties ?? {};
   const obligatorios = new Set(esquema.required ?? []);
+  // Un objeto que no declara propiedades es un cuerpo abierto, no un cuerpo
+  // vacío. Se pide como un campo, y quien lo reciba sabe que ese valor ES el
+  // cuerpo. Devolver `[]` aquí es lo que hacía que la acción se ejecutara sin
+  // datos sin que nadie pudiera dárselos.
+  if (esquema.type === "object" && Object.keys(propiedades).length === 0) {
+    return [
+      {
+        nombre: "datos",
+        tipo: "objeto",
+        obligatorio: true,
+        titulo: humanizar(esquema.title ?? "datos"),
+        descripcion: esquema.description ?? "",
+        opciones: [],
+        maximo: null,
+        formato: "",
+        subcampos: [],
+        referencia: "",
+        cuerpoEntero: true,
+      },
+    ];
+  }
   return Object.entries(propiedades).map(([nombre, prop]) => {
     const p = resolver(documento, prop);
     const elemento = p.items ? resolver(documento, p.items) : undefined;
@@ -244,6 +280,25 @@ export function camposDe(documento: Documento, ruta: string, metodo: string): Ca
       referencia: p.referencia ?? "",
     };
   });
+}
+
+/**
+ * El cuerpo que se manda, a partir de lo que el formulario recogió.
+ *
+ * Normalmente son los mismos valores. La excepción es la operación de cuerpo
+ * abierto, donde el único campo **es** el cuerpo: mandar `{datos: {...}}` ahí
+ * metería el encargo dentro de una llave que el servidor no espera.
+ *
+ * Vive aquí y no en quien llama porque son tres pantallas las que mandan
+ * formularios del contrato, y la regla tiene que ser la misma en las tres.
+ */
+export function cuerpoDeLosValores(
+  campos: CampoEsquema[],
+  valores: Record<string, unknown>,
+): unknown {
+  const entero = campos.find((c) => c.cuerpoEntero);
+  if (campos.length === 1 && entero) return valores[entero.nombre] ?? {};
+  return valores;
 }
 
 /** Las columnas de una línea, sacadas del esquema de sus elementos. */

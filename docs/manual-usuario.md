@@ -843,6 +843,28 @@ formulario de alta se abre justo debajo, sobre la propia lista.
 
 ---
 
+### Los botones de arriba de una lista
+
+Encima de cada lista, al lado de **Nuevo**, salen las cosas que se hacen sobre
+la lista entera y no sobre una ficha concreta: simular un cambio antes de
+publicarlo, comprobar algo sin guardarlo, lanzar un recálculo, declarar una
+regla.
+
+- **No están escritos uno a uno**: la pantalla pregunta al sistema qué admite
+  esa lista y ofrece lo que haya. Si mañana se añade algo, aparece solo.
+- **Algunos piden datos antes.** «A qué proveedor iría este encargo» necesita
+  que le digas el encargo. Al pulsarlo se abre un formulario corto; el que no
+  necesita nada se hace al primer clic.
+- **Sólo ves lo que tu perfil puede hacer.** Un botón que luego dice que no
+  tienes permiso es peor que no tenerlo.
+- **Lo que no se deshace pregunta antes**, y después te dice qué contestó el
+  sistema. Una acción que no responde nada deja sin saber si pasó algo.
+
+Hasta el 04-11-2026 aquí sólo salían las que no pedían ningún dato. El resto
+existían y no había forma de llegar a ellas desde ninguna pantalla: eran **50**,
+entre ellas comprobar un contenido antes de mandarlo o ver dónde duele si un
+proveedor falla mañana.
+
 ### Exportar un listado
 
 El botón **Exportar** está arriba de cada lista, al lado del selector de vista.
