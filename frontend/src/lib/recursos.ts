@@ -1517,6 +1517,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Consultas",
+        // **Por aquí abre el módulo.** Abría por «Informes programados», que
+        // lista qué informe sale solo y a quién: en una instalación que no ha
+        // programado ninguno está vacía, así que «Informes» recibía con «Aquí
+        // no hay nada todavía». Cazado el 04-11-2026 por el barrido, después
+        // de arreglar el mismo caso en «Operación» — el mismo fallo en dos
+        // módulos, y el primero sólo lo vi recorriendo a mano.
+        //
+        // «Consultas» son las preguntas publicadas sobre los datos, que es de
+        // lo que va el módulo y está poblado desde el primer día.
+        principal: true,
         listar: "/api/v1/analitica/consultas",
         servicio: "analytics",
       },
@@ -1593,7 +1603,6 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // quedarse.
       {
         nombre: "Informes programados",
-        principal: true,
         listar: "/api/v1/informes/programaciones",
         servicio: "analytics",
         permiso: "informe:read",
