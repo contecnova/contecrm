@@ -19,6 +19,7 @@
  * que esto no vuelva a quedarse atrás.
  */
 
+import { comoRotulo } from "@/lib/formato";
 import type { Operacion, Superficie } from "@/lib/superficie";
 
 export interface Accion {
@@ -78,7 +79,7 @@ export function accionesDe(
       // El resumen lo escribe el servicio dueño: «Convertir un lead en
       // oportunidad». Inventar aquí un rótulo a partir de la ruta daría
       // «Convertir» a secas y perdería la mitad de lo que dice.
-      nombre: operacion.resumen || clave,
+      nombre: comoRotulo(operacion.resumen) || clave,
       permiso: operacion.permiso,
       clave,
     });
@@ -167,7 +168,7 @@ export function accionesDeColeccion(
       metodo: operacion.metodo,
       // El rótulo lo escribe el servicio dueño: «He perdido el portátil» dice
       // lo que hace mejor que «revocar-todos».
-      nombre: operacion.resumen || clave,
+      nombre: comoRotulo(operacion.resumen) || clave,
       permiso: operacion.permiso,
       clave,
     });
@@ -245,7 +246,7 @@ export function subColeccionesDe(
         clave,
         ruta: operacion.ruta.replace(PARAMETRO, id),
         plantilla: operacion.ruta,
-        nombre: operacion.resumen || clave,
+        nombre: comoRotulo(operacion.resumen) || clave,
         alta: null,
         acciones: [],
         borrable: false,
@@ -265,7 +266,7 @@ export function subColeccionesDe(
     const metodo = operacion.metodo.toUpperCase();
 
     if (tramos.length === base.length + 2 && metodo === "POST" && puede(operacion.permiso)) {
-      panel.alta = { plantilla: operacion.ruta, nombre: operacion.resumen || clave };
+      panel.alta = { plantilla: operacion.ruta, nombre: comoRotulo(operacion.resumen) || clave };
       continue;
     }
     // Sobre un hijo: `/X/{id}/Y/{hijo}` y `/X/{id}/Y/{hijo}/accion`.
@@ -281,7 +282,7 @@ export function subColeccionesDe(
       panel.acciones.push({
         plantilla: operacion.ruta,
         metodo,
-        nombre: operacion.resumen || (tramos[base.length + 3] ?? ""),
+        nombre: comoRotulo(operacion.resumen) || (tramos[base.length + 3] ?? ""),
         clave: tramos[base.length + 3] ?? "",
       });
     }

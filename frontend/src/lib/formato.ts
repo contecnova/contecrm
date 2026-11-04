@@ -491,6 +491,28 @@ function enCastellano(palabra: string): string {
 }
 
 /**
+ * El resumen de una operación, listo para ser el rótulo de un botón.
+ *
+ * Los resúmenes del contrato llevan a veces el código de la capacidad que los
+ * respalda —«Comprobar un contenido antes de mandarlo (CRM-02.04.01.03)»—. Ahí
+ * está bien: quien integra lo lee en el OpenAPI y la trazabilidad lo cita. En
+ * un botón no: a quien comprueba un contenido, `CRM-02.04.01.03` no le dice
+ * nada y le ocupa media mitad del rótulo.
+ *
+ * Se quita aquí y no en los servicios por eso mismo: el código tiene que
+ * seguir en el contrato. **Medido el 04-11-2026: 43 de 2.452 resúmenes lo
+ * llevan**, y se vieron al salir por primera vez como botones.
+ *
+ * Admite el código solo y la lista —«(CRM-00.01.05.01, .02)»—, que es como se
+ * escriben los que respaldan más de una.
+ */
+export function comoRotulo(resumen: string | null | undefined): string {
+  return String(resumen ?? "")
+    .replace(/\s*\(\s*CRM-[\d.]+(?:\s*,\s*(?:CRM-)?[\d.]+)*\s*\)/g, "")
+    .trim();
+}
+
+/**
  * El nombre del campo, escrito como se lee: `sector_codigo` → «Sector código».
  *
  * Sirve también para los **valores**: `esperando_cliente` → «Esperando

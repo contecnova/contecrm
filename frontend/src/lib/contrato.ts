@@ -15,7 +15,7 @@ import { llamar } from "@/lib/api";
 // Una sola `humanizar` en todo el front. Había dos, idénticas, en
 // `formato.ts` y aquí: la de allí aprendió a escribir en castellano y la
 // de aquí se quedó poniendo «Sector codigo» en los rótulos de formulario.
-import { humanizar } from "@/lib/formato";
+import { comoRotulo, humanizar } from "@/lib/formato";
 
 export interface CampoEsquema {
   nombre: string;
@@ -483,7 +483,8 @@ export function propositoDe(
   const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[metodo] as
     | { summary?: string; description?: string }
     | undefined;
-  const resumen = operacion?.summary ?? "";
+  // Sin el código de la capacidad: en el contrato sirve, en pantalla no.
+  const resumen = comoRotulo(operacion?.summary);
   const detalle = (operacion?.description ?? "").split("\n\n")[0] ?? "";
   return {
     resumen: yaLoDiceElRotulo(resumen, rotulo) ? "" : resumen,

@@ -2463,6 +2463,14 @@ consecuencias que conviene tener escritas:
 Lo escrito a mano queda como excepción: las que llevan una frase de ayuda bajo
 el botón porque el rótulo no basta.
 
+Y un efecto que sólo se vio al sacarlos a pantalla: **el rótulo de un botón lo
+escribe el `summary` del contrato, y 43 de los 2.452 llevan dentro el código de
+la capacidad** — «Comprobar un contenido antes de mandarlo (CRM-02.04.01.03)».
+En el OpenAPI está bien, que es donde lo lee quien integra y donde lo cita la
+trazabilidad; en un botón es media mitad del rótulo diciendo algo que a quien
+comprueba un contenido no le dice nada. Se quita **al rotular** (`comoRotulo`),
+no en los servicios, justo para que siga estando en el contrato.
+
 ### 4.6.16 El chat en vivo perdía lo escrito durante el corte
 
 `CRM-06.02.02.07` promete «entrega en vivo por SSE, **con reconexión y
