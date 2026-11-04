@@ -132,7 +132,14 @@ export function MenuDeAcciones({
               role="menu"
               aria-label={etiqueta ?? t("acciones.mas")}
               className={cn(
-                "absolute z-popover mt-1 min-w-56 rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3",
+                // El tope de ancho no es cosmética: abrir hacia un lado
+                // resuelve el borde de ese lado y deja el contrario. Un
+                // «Aprobar documentos pendientes de firma» en una ventana
+                // estrecha se saldría por la izquierda exactamente igual que
+                // antes se salía por la derecha. Con tope, el nombre largo
+                // parte en dos líneas y el panel sigue dentro.
+                "absolute z-popover mt-1 min-w-56 max-w-[min(20rem,calc(100vw-2rem))]",
+                "rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3",
                 haciaLaIzquierda ? "right-0" : "left-0",
               )}
             >

@@ -162,6 +162,12 @@ export function BarraDeAplicacion({
             opciones={enMas}
             etiqueta={t("app.masPestanas")}
             clase="flex h-full items-center gap-1 whitespace-nowrap px-3 text-titulo text-ink-muted hover:text-ink"
+            // Hacia la izquierda: este botón vive pegado al borde derecho de
+            // la barra, así que abriendo por defecto el panel se sale de la
+            // pantalla y las pestañas salen cortadas —«Proveedores», «Aprobar
+            // doc…»—. Lo dijo quien lo usa el 04-11-2026. El prop ya existía
+            // y lo documentaba para este caso: faltaba pasarlo.
+            haciaLaIzquierda
           />
         </div>
       ) : null}
