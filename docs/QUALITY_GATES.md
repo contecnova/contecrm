@@ -278,6 +278,38 @@ legítima, se añade a su lista **con el motivo escrito**: las listas de
 excepciones de este repositorio llevan todas su razón al lado, y hay gates que
 comprueban que la lleven.
 
+### Antes de creerte un rojo: mira qué más hay corriendo
+
+Un rojo no siempre dice algo de lo que has tocado. En esta máquina conviven
+varias soluciones de la casa, y la suite de otra ocupándola entera es
+suficiente para teñir ésta: pruebas que se pasan de su plazo, servidores de
+pruebas que no llegan a arrancar en el tiempo que se les da.
+
+**Medido el 04-11-2026.** Un pase completo salió con un gate en rojo y con
+`pruebas-con-bd` tardando 746 s en vez de los 241 s que tarda corriendo sola
+—3,1×—. La prueba acusada pasa suelta en 4,5 s. La causa estaba fuera: otra
+sesión corriendo 107 ficheros de prueba de otro repositorio, con cuatro
+procesos al 94 % de CPU.
+
+El preflight ya sabía mirar la carga, pero **lo hacía después de dar el rojo**,
+así que justo en el caso en que hace falta no se decía. Ahora, cuando hay rojos
+y la máquina está llena, lo dice debajo de ellos — sin taparlos: un rojo sigue
+siendo un rojo y sigue devolviendo 1. Lo que se añade es el dato que decide si
+creérselo.
+
+Y el umbral: era «carga por encima de los núcleos», que sólo veía la
+sobresuscripción. Con 9,98 de carga sobre 10 núcleos no saltaba, y a esa carga
+ya no queda nada libre para los seis gates que este pase quiere abrir a la vez.
+Está en el 80 % de los núcleos.
+
+Lo mismo por el otro lado: el gate `pantallas` se declaraba `exclusivo` «para
+no competir con los otros cinco», y `exclusivo` **sólo excluye a otros gates
+exclusivos**. Corría al lado de `front` —dos `vite build`, `tsc`, `eslint` y
+785 pruebas— y se le agotaban los 180 s que esperaba a su servidor, cuando
+corriendo solo construye y pasa sus 40 pruebas en 11,9 s. El plazo está en
+420 s, que no esconde un cuelgue de verdad: lo retrasa hasta después de haber
+descartado la prisa.
+
 ---
 
 ## Por qué no hay CI

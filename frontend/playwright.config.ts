@@ -57,6 +57,22 @@ export default defineConfig({
       "npx vite preview --outDir dist-pantallas --port 4178 --strictPort --host 127.0.0.1",
     url: "http://127.0.0.1:4178/",
     reuseExistingServer: false,
-    timeout: 180_000,
+    // **Siete minutos, no tres.** Este arranque es `vite build` + `vite
+    // preview`, y dentro del preflight corre a la vez que el gate `front`, que
+    // hace OTRAS DOS construcciones, más `tsc`, `eslint` y 785 pruebas de
+    // navegador simulado. El comentario de arriba dice que esto es exclusivo
+    // para no competir, y **no es verdad**: `exclusivo` sólo excluye a otros
+    // gates exclusivos, y `front` no lo es.
+    //
+    // Medido el 04-11-2026: corriendo solo, construye y pasa sus 40 pruebas en
+    // 11,9 s; dentro del pase completo se agotaron los 180 s esperando a que
+    // el servidor contestara. Con eso el gate sale rojo sin que nadie haya
+    // tocado una pantalla, y un rojo que depende de lo ocupada que esté la
+    // máquina enseña a desconfiar del rojo — que es justo lo que este fichero
+    // dice unas líneas más arriba que no puede pasar.
+    //
+    // Siete minutos no esconden un cuelgue de verdad: si el servidor no
+    // arranca, sigue saliendo rojo, sólo que después de descartar la prisa.
+    timeout: 420_000,
   },
 });

@@ -319,6 +319,15 @@ GATES: list[Gate] = [
         # Un gate que falla según lo ocupada que esté la máquina es peor que no
         # tenerlo: enseña a desconfiar del rojo, y entonces el rojo de verdad
         # tampoco se mira.
+        #
+        # **Y esto NO lo deja solo, que es lo que el párrafo de arriba daba por
+        # hecho.** `exclusivo` sólo excluye a otros gates exclusivos; los que no
+        # lo son —`front` entre ellos, con sus dos `vite build`, su `tsc`, su
+        # `eslint` y sus 785 pruebas— siguen corriendo al lado. Medido el
+        # 04-11-2026: corriendo solo construye y pasa sus 40 pruebas en 11,9 s,
+        # y dentro del pase completo se agotaron los 180 s que su `webServer`
+        # esperaba. El plazo está ahora en 420 s en `playwright.config.ts`, con
+        # el porqué escrito allí.
         exclusivo=True,
     ),
     Gate(
@@ -856,21 +865,47 @@ def main() -> int:
         # falsa sensación de cobertura, que es peor que no tener el gate.
         print(f"\nNo comprobado: {', '.join(omitidos)}")
 
+    carga = _carga()
+    nivel, presupuesto_reloj, presupuesto_cpu = _presupuesto(tiers)
+    nucleos = os.cpu_count() or 4
+    # Cuándo la máquina estaba demasiado llena para creerse nada de esto.
+    #
+    # Era `carga > núcleos`, o sea que sólo contaba la sobresuscripción. **No
+    # basta, y se midió el 04-11-2026**: con la carga en 9,98 sobre 10 núcleos
+    # —otra sesión de la casa corriendo su propia suite con cuatro procesos al
+    # 94 %— este aviso no saltó, `pruebas-con-bd` tardó 746 s en vez de los
+    # 241 s que tarda sola (3,1×) y una prueba salió roja que pasa suelta en
+    # 4,5 s. A carga igual que los núcleos no queda nada libre: los gates del
+    # preflight, que piden hasta seis a la vez, se reparten las sobras.
+    #
+    # El 0,8 no es un número redondo elegido a gusto: es dónde empieza a no
+    # haber núcleos para lo que este pase quiere abrir a la vez.
+    apretada = carga >= nucleos * 0.8
+
     if fallos:
         print(f"\n{len(fallos)} gate(s) en rojo:\n")
         for gate, salida in fallos:
             print(f"── {gate.nombre} " + "─" * (60 - len(gate.nombre)))
             print(salida[-3000:] or "(sin salida)")
             print()
+        # Y CON QUÉ MÁQUINA, que es lo que faltaba decir justo aquí.
+        #
+        # La carga sólo se miraba DESPUÉS de este `return`, así que un rojo
+        # causado por una máquina llena —que es el rojo que más fácil sale— se
+        # reportaba como un rojo a secas. No se tapa: un rojo es un rojo y
+        # sigue devolviendo 1. Lo que se añade es el dato que decide si
+        # creérselo, y que si no está se tarda media hora en encontrar.
+        if apretada:
+            print(
+                f"AVISO: la máquina estaba a una carga de {carga:.1f} con "
+                f"{nucleos} núcleos mientras esto corría.\n"
+                "Con la máquina llena salen rojos que no dependen de lo que "
+                "hayas tocado: pruebas que se pasan de su plazo, servidores "
+                "que no llegan a arrancar.\nMira qué más hay corriendo "
+                "—`ps -Ao pcpu,pid,command -r | head`— y repítelo libre antes "
+                "de ponerte a arreglar lo de arriba."
+            )
         return 1
-
-    carga = _carga()
-    nivel, presupuesto_reloj, presupuesto_cpu = _presupuesto(tiers)
-    # Por encima de sus núcleos la máquina está peleándose consigo misma, y el
-    # CPU medido deja de ser el trabajo del preflight: ver la nota de los
-    # presupuestos, con los pases que lo miden. `_carga()` mira las tres medias
-    # —no sólo la del minuto— porque un nivel completo dura diez.
-    apretada = carga > (os.cpu_count() or 4)
     if cpu > presupuesto_cpu and apretada:
         print(
             f"\nTodo en verde. {cpu:.0f}s de CPU, más de los "
