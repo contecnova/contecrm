@@ -571,6 +571,28 @@ Lo que hay que saber para leerla:
 
 ---
 
+### Dar de alta donde el registro lleva un código
+
+Casi todo se da de alta con el botón **«Nuevo»** del listado. Hay cosas que
+además **llevan un código que lo eliges tú** —un riesgo, un control, una regla
+de segregación, una política de acceso—: el formulario te pide ese código el
+primero, y con él se guarda.
+
+Dos consecuencias que conviene conocer:
+
+- **El código identifica el registro.** Dar de alta con un código que ya
+  existe no crea otro: actualiza el que hay. Es a propósito —así se puede
+  reescribir un control sin duplicarlo— y conviene saberlo antes de reutilizar
+  un código.
+- **Algunas de estas altas piden volver a verificar tu identidad.** Cambiar
+  roles, permisos o políticas de acceso lo exige: la pantalla te lo dice y te
+  manda a identificarte otra vez. No es un error.
+
+Hasta el 04-11-2026 esas cuatro no se podían dar de alta desde el producto,
+aunque el sistema las admitía.
+
+---
+
 ### Cuando algo no se guarda
 
 Si al guardar falta algo o un valor no vale, **el aviso sale en el campo**, en

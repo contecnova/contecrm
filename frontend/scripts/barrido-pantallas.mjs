@@ -163,6 +163,9 @@ const crudas = [];
 const letraFuera = [];
 let textosMirados = 0;
 const dobleVacio = [];
+// Módulos que entran por una pestaña vacía: no es un vacío de más, es la
+// pestaña de entrada mal elegida.
+const abrePorVacia = [];
 const monoEnFrases = [];
 // `CRM_SOLO=/procesos,/m/cuentas` recorta el barrido a lo que se nombre. Son
 // quince minutos enteros, y perseguir un fallo en una pantalla concreta con
@@ -282,6 +285,27 @@ for (const camino of lista) {
   }
 
   /**
+   * Un módulo que ABRE por una pestaña vacía.
+   *
+   * No es lo mismo que una pantalla con un vacío: aquí lo que falla es la
+   * **elección de por dónde entra**. «Operación» abría por «Cola de
+   * fallidos» —los eventos que agotaron sus reintentos—, que en una
+   * instalación sana está vacía, así que recibía siempre con «Aquí no hay
+   * nada todavía». Medido el 04-11-2026: de los 25 módulos era el único.
+   *
+   * La intención era buena —lo roto primero— y el efecto el contrario: una
+   * pantalla que siempre sale vacía enseña a no mirarla, y el día que haya
+   * algo tampoco se mira.
+   *
+   * Se mira sólo en `/m/<ruta>` sin pestaña elegida, que es por donde entra
+   * quien pulsa el módulo en el menú. Entrar a una pestaña concreta y que
+   * esté vacía es correcto: eso es que no hay nada de eso.
+   */
+  if (/^\/m\/[a-z-]+$/.test(camino) && vaciosGrandes > 0) {
+    abrePorVacia.push(`${camino}\n     entra por una pestaña sin nada que enseñar`);
+  }
+
+  /**
    * Una frase en monoespaciada.
    *
    * La letra de máquina es para lo que se lee carácter a carácter: un
@@ -389,18 +413,20 @@ console.log(
 console.log(`CON EL DATO EN CRUDO: ${crudas.length}`);
 console.log(`CON LETRA FUERA DE LA ESCALA: ${letraFuera.length} (de ${textosMirados} textos mirados)`);
 console.log(`CON VARIOS VACÍOS DE CAJA GRANDE: ${dobleVacio.length}`);
+console.log(`MÓDULOS QUE ABREN POR UNA PESTAÑA VACÍA: ${abrePorVacia.length}`);
 console.log(`CON UNA FRASE EN LETRA DE MÁQUINA: ${monoEnFrases.length}`);
 if (
   rotas.length ||
   crudas.length ||
   letraFuera.length ||
   dobleVacio.length ||
+  abrePorVacia.length ||
   monoEnFrases.length
 ) {
   process.exitCode = 1;
 }
 console.log(
-  [...rotas, ...crudas, ...letraFuera, ...dobleVacio, ...monoEnFrases]
+  [...rotas, ...crudas, ...letraFuera, ...dobleVacio, ...abrePorVacia, ...monoEnFrases]
     .map((r) => "  " + r)
     .join("\n"),
 );

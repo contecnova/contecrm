@@ -54,6 +54,7 @@ import {
 } from "@/lib/filtros";
 import {
   admite,
+  altaPorClave,
   camposDe,
   contratoDe,
   fichaDe,
@@ -74,6 +75,44 @@ import { comoFilas } from "@/paginas/Consola";
 import { useSuperficie, useVisibilidad } from "@/lib/permisos";
 import { CabeceraDeLista } from "@/componentes/CabeceraDeLista";
 import { colorDeModulo, iconoDeGrupo } from "@/lib/navegacion";
+
+/**
+ * Los campos del alta por clave: los del cuerpo, con la clave delante.
+ *
+ * La clave viaja en la URL y **por eso no suele estar en el esquema del
+ * cuerpo**, así que hay que añadirla o el formulario no puede decir a qué
+ * código se da de alta.
+ *
+ * **Pero a veces sí está**: `PUT /politicas-acceso/{nombre}` tiene además un
+ * `nombre` en el cuerpo. Añadirla sin mirar dejaba dos campos con el mismo
+ * `id` en el DOM —dos `#campo-nombre`—, que rompe la etiqueta y el
+ * `aria-describedby` y hace que el segundo sea inalcanzable con teclado.
+ * Cazado al dar de alta una política el 04-11-2026.
+ *
+ * Cuando ya está, se usa el del cuerpo y sólo se marca obligatorio: sin
+ * valor no se puede construir la URL.
+ */
+function camposConLaClave(delCuerpo: CampoEsquema[], clave: string): CampoEsquema[] {
+  const existente = delCuerpo.find((c) => c.nombre === clave);
+  if (existente) {
+    return delCuerpo.map((c) => (c.nombre === clave ? { ...c, obligatorio: true } : c));
+  }
+  return [
+    {
+      nombre: clave,
+      titulo: humanizar(clave),
+      tipo: "texto",
+      obligatorio: true,
+      descripcion: "",
+      opciones: [],
+      maximo: null,
+      formato: "",
+      subcampos: [],
+      referencia: "",
+    } satisfies CampoEsquema,
+    ...delCuerpo,
+  ];
+}
 
 export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
@@ -604,6 +643,14 @@ function RecursoVista({
     recurso.crear ?? null,
   );
   /**
+   * El campo que va en la URL cuando el alta es un `PUT` por clave.
+   *
+   * Vacío en el caso normal —un `POST` a la colección—. Cuando lo hay, la
+   * ruta es una plantilla (`…/riesgos/{codigo}`), el valor sale del
+   * formulario y el método es `PUT`.
+   */
+  const [claveDeAlta, setClaveDeAlta] = useState("");
+  /**
    * Con qué campo se abre un registro.
    *
    * Vacío cuando no hay ficha. `id` en el caso normal, pero no siempre: hay
@@ -907,11 +954,30 @@ function RecursoVista({
       );
       // El alta: la declarada si la hay, y si no la de la propia ruta que
       // lista, que es donde la pone el servidor salvo excepción.
-      const alta =
-        recurso.crear ??
-        (admite(documento, recurso.listar, "post") ? recurso.listar : null);
+      // El alta: la declarada si la hay, y si no la de la propia ruta que
+      // lista, que es donde la pone el servidor salvo excepción.
+      //
+      // **Y si no hay `POST`, el `PUT` por clave.** Hay colecciones que se
+      // escriben con `PUT /coleccion/{codigo}` —riesgos, controles, reglas de
+      // segregación—: sin esto salían sin botón de alta aunque el servidor
+      // las admitiera, y la que lo declaraba a mano salía con botón y un
+      // formulario VACÍO, porque no hay `POST` del que sacar los campos.
+      const declarada = recurso.crear ?? null;
+      const porPost = admite(documento, recurso.listar, "post") ? recurso.listar : null;
+      const porClave =
+        declarada?.includes("{") || (!declarada && !porPost)
+          ? altaPorClave(documento, recurso.listar)
+          : null;
+      const alta = porClave?.plantilla ?? declarada ?? porPost;
       setRutaDeAlta(alta);
-      setCampos(alta ? camposDe(documento, alta, "post") : null);
+      setClaveDeAlta(porClave?.clave ?? "");
+      setCampos(
+        alta
+          ? porClave
+            ? camposConLaClave(camposDe(documento, alta, "put"), porClave.clave)
+            : camposDe(documento, alta, "post")
+          : null,
+      );
       // La ficha: basta con que el contrato tenga la operación de un registro.
       // Se enlaza aunque solo se pueda leer, porque casi todo lo que se hace
       // con un registro —acciones, líneas, adjuntos, la conversación— cuelga de
@@ -971,7 +1037,27 @@ function RecursoVista({
   async function crear(valores: Record<string, unknown>) {
     setEnviando(true);
     try {
-      await llamar(rutaDeAlta!, { metodo: "POST", cuerpo: valores });
+      // Con clave, el alta es un `PUT` a la ruta con el código puesto, y el
+      // código **no viaja en el cuerpo**: el servidor lo lee de la URL y
+      // mandarlo dos veces es pedirle que decida cuál vale.
+      const { ruta, cuerpo, metodo } = claveDeAlta
+        ? {
+            ruta: rutaDeAlta!.replace(
+              `{${claveDeAlta}}`,
+              encodeURIComponent(String(valores[claveDeAlta] ?? "")),
+            ),
+            // La clave se quita del cuerpo **sólo si el cuerpo no la pide**.
+            // Quitarla siempre dejaba un 422 en las rutas que la declaran en
+            // los dos sitios, como `politicas-acceso/{nombre}`.
+            cuerpo: (campos ?? []).some((c) => c.nombre === claveDeAlta)
+              ? valores
+              : Object.fromEntries(
+                  Object.entries(valores).filter(([k]) => k !== claveDeAlta),
+                ),
+            metodo: "PUT",
+          }
+        : { ruta: rutaDeAlta!, cuerpo: valores, metodo: "POST" };
+      await llamar(ruta, { metodo, cuerpo });
       setCreando(false);
       await cargar();
     } catch (error) {

@@ -80,7 +80,7 @@ interface Esquema {
   $ref?: string;
 }
 
-interface Documento {
+export interface Documento {
   paths?: Record<string, Record<string, unknown>>;
   components?: { schemas?: Record<string, Esquema> };
 }
@@ -185,6 +185,37 @@ export function fichaDe(documento: Documento, listar: string): string | null {
  * enseñarlo: un formulario vacío presentado como «este recurso no pide nada»
  * haría crear registros incompletos sin que nadie lo notara.
  */
+/**
+ * El alta de una colección cuando el servidor la hace con `PUT` por clave.
+ *
+ * **Hay recursos que no se crean con un `POST` a la colección**: se escriben
+ * con `PUT /coleccion/{codigo}`, que es un alta-o-actualización. El
+ * descubrimiento sólo miraba el `POST`, así que esas pestañas salían sin
+ * botón de «Nuevo» aunque el servidor las admitiera — y la que lo declaraba a
+ * mano (`crear: "…/politicas-acceso/{nombre}"`) salía con botón y **un
+ * formulario vacío**, porque no hay `POST` del que sacar los campos.
+ *
+ * Medido el 04-11-2026 recorriendo administrar: son cuatro —riesgos,
+ * controles, reglas de segregación y políticas de acceso—. Un módulo de
+ * gobierno en el que no se puede dar de alta un riesgo.
+ *
+ * Devuelve la plantilla y el nombre del parámetro, o `null` si no hay tal
+ * cosa: lo que no se encuentra no se inventa.
+ */
+export function altaPorClave(
+  documento: Documento,
+  listar: string,
+): { plantilla: string; clave: string } | null {
+  const base = listar.split("?")[0]?.replace(/\/$/, "") ?? "";
+  for (const [plantilla, ops] of Object.entries(documento.paths ?? {})) {
+    if (!(ops as Record<string, unknown>)?.put) continue;
+    const m = /^(.*)\/\{([^/}]+)\}$/.exec(plantilla);
+    if (!m || m[1] !== base) continue;
+    return { plantilla, clave: m[2]! };
+  }
+  return null;
+}
+
 export function camposDe(documento: Documento, ruta: string, metodo: string): CampoEsquema[] {
   const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[
     metodo.toLowerCase()

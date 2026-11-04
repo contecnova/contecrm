@@ -510,6 +510,21 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Proveedores de servicio",
+        // **Por aquí abre el módulo.** Abría por «Cola de fallidos», que es
+        // la lista de eventos que agotaron sus reintentos: en una instalación
+        // sana está VACÍA, así que «Operación» te recibía siempre con «Aquí no
+        // hay nada todavía». Medido el 04-11-2026 recorriendo administrar: de
+        // los 25 módulos era el único que abría por una pestaña sin filas.
+        //
+        // La intención era buena —lo roto primero— y el efecto el contrario:
+        // una pantalla que siempre sale vacía enseña a no mirarla, y el día
+        // que haya algo tampoco se mira.
+        //
+        // «Proveedores configurados» es el registro del que cuelga el resto
+        // del módulo y está poblado en cualquier instalación configurada. No
+        // se eligió «Catálogo de eventos», que tiene 120 filas: es
+        // documentación para quien integra, no la operación de nadie.
+        principal: true,
         listar: "/api/v1/proveedores-servicio",
         servicio: "integration",
         permiso: "integracion:read",
@@ -529,7 +544,6 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // algo va mal es lo que no salió, no lo que salió bien hace un mes.
       {
         nombre: "Cola de fallidos",
-        principal: true,
         listar: "/api/v1/eventos/fallidos",
         servicio: "eventing",
       },
