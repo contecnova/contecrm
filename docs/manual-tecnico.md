@@ -2463,6 +2463,17 @@ consecuencias que conviene tener escritas:
 Lo escrito a mano queda como excepción: las que llevan una frase de ayuda bajo
 el botón porque el rótulo no basta.
 
+#### El buscador iba encajado en la barra
+
+«Queda muy encajado»: la barra medía 48 px y el buscador 40, así que le
+quedaban **4 px de aire arriba y 4 abajo** siendo la caja más grande de la
+barra. A 52 px son seis y seis.
+
+El guardián fija la **relación** y no el número —aire ≥ 6 px—, y pone también
+el tope por arriba: «que respire» se cumpliría con una barra de 80 px, y esta
+barra está fija en todas las pantallas, así que cada píxel suyo es un píxel
+menos de listado.
+
 #### Las tres rayas no hacían nada en nueve de cada diez pantallas
 
 Lo preguntó quien lo usa: «¿tienen sentido?». No lo tenían.

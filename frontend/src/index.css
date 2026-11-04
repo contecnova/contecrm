@@ -234,7 +234,15 @@
   --panel-w: 222px;
   --panel-w-plegado: 46px;
   --panel-plegar: 1280px;
-  --barra-h: 48px;
+  /* El alto de la barra de arriba.
+     48 px dejaban el buscador —que mide 40— con **4 px de aire arriba y 4
+     abajo**, y se veía encajado: lo dijo quien lo usa, «queda muy encajado,
+     un par de puntos más de margen arriba y uno más abajo». Medido antes de
+     tocarlo: barra 48, buscador 40 de alto empezando en el píxel 4.
+     Con 52 son 6 arriba y 5 abajo —el píxel que falta se lo lleva el borde
+     inferior—, que es justo lo pedido. Más no: esta barra se queda fija en
+     todas las pantallas, y cada píxel suyo es un píxel menos de listado. */
+  --barra-h: 52px;
 
   /* ── Densidad ────────────────────────────────────────────────────────
      Cuánto cabe en pantalla. Lo elige cada persona y viaja en su perfil, no
