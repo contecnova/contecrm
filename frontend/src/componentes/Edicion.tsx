@@ -198,6 +198,7 @@ export function FormularioDeEdicion({
       {campos ? (
         campos.length ? (
           <Formulario
+          fallo={fallo}
             recurso={recurso}
             campos={campos}
             valores={valores}

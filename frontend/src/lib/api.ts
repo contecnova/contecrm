@@ -35,6 +35,17 @@ export class ErrorApi extends Error {
      * pasó y dónde mirar, y sustituirla por un texto genérico del front tira
      * justo lo que ayuda. */
     readonly explicacion: string = "",
+    /**
+     * Qué campo no vale y por qué, cuando el servidor lo dice.
+     *
+     * **Se perdía.** La API contesta un 422 con `errors: [{campo, mensaje}]`
+     * —«definicion: Field required»— y este constructor se quedaba sólo con
+     * el título, «Los datos enviados no son válidos». Así que el formulario
+     * enseñaba esa frase y escondía lo único accionable detrás de «Detalle
+     * técnico»: quien da de alta un segmento ve que no vale y no sabe qué
+     * campo. Medido el 03-11-2026 creando uno.
+     */
+    readonly campos: { campo: string; mensaje: string }[] = [],
   ) {
     super(titulo || `Error ${estado}`);
     this.name = "ErrorApi";
@@ -268,7 +279,28 @@ function problema(estado: number, cuerpo: unknown): ErrorApi {
     String(p.title ?? p.detail ?? ""),
     p.detalle ?? p.detail ?? null,
     String(p.detail ?? ""),
+    camposDelError(p.errors),
   );
+}
+
+/**
+ * Los campos que el servidor señala, limpios de lo que no se lee.
+ *
+ * El `campo` viene como lo nombra el validador —`query.desde`, `body.nombre`,
+ * `definicion`— y lo que el formulario conoce es el nombre a secas. Se queda
+ * el último tramo, que es el del campo.
+ */
+function camposDelError(crudo: unknown): { campo: string; mensaje: string }[] {
+  if (!Array.isArray(crudo)) return [];
+  const salida: { campo: string; mensaje: string }[] = [];
+  for (const fila of crudo) {
+    if (!fila || typeof fila !== "object") continue;
+    const f = fila as Record<string, unknown>;
+    const campo = String(f.campo ?? f.loc ?? "").split(".").pop() ?? "";
+    const mensaje = String(f.mensaje ?? f.msg ?? f.motivo ?? "");
+    if (campo && mensaje) salida.push({ campo, mensaje });
+  }
+  return salida;
 }
 
 /**

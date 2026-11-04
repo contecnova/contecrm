@@ -166,6 +166,7 @@ function Panel({
               <>
                 {campos ? (
                   <Formulario
+          fallo={fallo}
                     campos={campos}
                     enviando={enviando}
                     textoEnviar={panel.alta.nombre}

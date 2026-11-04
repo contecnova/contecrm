@@ -280,6 +280,7 @@ export function Acciones({
                 </button>
               ) : (
                 <Formulario
+          fallo={fallo}
                   campos={campos}
                   enviando={enviando}
                   textoEnviar={abierta.nombre}

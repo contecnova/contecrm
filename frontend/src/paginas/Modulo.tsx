@@ -1007,6 +1007,7 @@ function RecursoVista({
     creando && campos ? (
       <div className="mb-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
         <Formulario
+          fallo={fallo}
           recurso={recurso}
           campos={campos}
           enviando={enviando}

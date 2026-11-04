@@ -133,6 +133,11 @@ const PREFIJOS_TECNICOS = /^(quota|cuota|flag|attr|meta|config|param)_/;
  * las pone el modelo base.
  */
 const DE_SISTEMA: Record<string, string> = {
+  // Convive con `tamano` en la misma lista, y quitarle el `_at` dejaba las
+  // dos columnas llamadas «Tamaño» — una con el número y otra con una fecha.
+  // Visto en la pantalla de Segmentos el 03-11-2026. Es la excepción que la
+  // regla de abajo ya preveía, puesta donde se pone: aquí, con su nombre.
+  tamano_at: "Calculado",
   created_at: "Creado",
   updated_at: "Modificado",
   deleted_at: "Borrado",
@@ -152,10 +157,16 @@ const DE_SISTEMA: Record<string, string> = {
  * exactamente lo que se quiere decir —«Vence», «Inicio», «Completada»—. El
  * dato que hay debajo ya es una fecha, así que no se pierde nada.
  *
- * **Lo que sí se pierde, y se dice:** en la única lista donde conviven
- * `tamano` y `tamano_at` los dos rótulos pasan a ser «Tamaño». Es un caso en
- * 106 columnas declaradas, y el remedio —dejar «Tamano at» en todas las
- * demás— cuesta más de lo que arregla.
+ * **Lo que se pierde cuando colisiona** se arregla en `DE_SISTEMA`, no aquí:
+ * `tamano` y `tamano_at` acababan los dos como «Tamaño», y en la lista de
+ * Segmentos salían dos columnas con el mismo rótulo, una con el número y otra
+ * con una fecha. Se vio mirando la pantalla el 03-11-2026 — llevaba
+ * documentado como «un caso en 106 columnas» y dado por aceptable, y de
+ * aceptable no tenía nada: dos columnas que se llaman igual obligan a leer
+ * los datos para saber cuál es cuál.
+ *
+ * Que no vuelva a pasar lo vigila `ninguna_lista_repite_un_rotulo`, que mira
+ * las columnas declaradas de los 25 módulos y no una sola lista.
  */
 const MARCA_DE_TIEMPO = /_at$/;
 

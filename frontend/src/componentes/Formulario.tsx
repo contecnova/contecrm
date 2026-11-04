@@ -42,7 +42,7 @@ import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
-import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
 import { humanizar, importe, nombreDelRegistro } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
@@ -69,6 +69,15 @@ export interface Props {
    */
   recurso?: Recurso | null;
   valores?: Record<string, unknown>;
+  /**
+   * Lo que falló al guardar, si falló.
+   *
+   * Lo tiene la pantalla —es quien llama a la API— y se lo pasa al
+   * formulario, que es quien sabe dónde va cada campo. Sin esto, un 422 que
+   * dice exactamente qué campo falta acaba como un aviso genérico encima del
+   * formulario, y quien lo lee tiene que adivinar cuál de veintinueve es.
+   */
+  fallo?: unknown;
   enviando?: boolean;
   textoEnviar: string;
   alEnviar: (valores: Record<string, unknown>) => void;
@@ -81,8 +90,17 @@ export function Formulario({
   textoEnviar,
   alEnviar,
   recurso,
+  fallo,
 }: Props) {
   const { t } = useTranslation();
+  /** Qué dijo el servidor de cada campo, por su nombre. */
+  const fallosPorCampo = useMemo(() => {
+    const mapa = new Map<string, string>();
+    if (fallo instanceof ErrorApi) {
+      for (const f of fallo.campos) if (!mapa.has(f.campo)) mapa.set(f.campo, f.mensaje);
+    }
+    return mapa;
+  }, [fallo]);
   const [estado, setEstado] = useState<Record<string, unknown>>(valores);
   const [verOpcionales, setVerOpcionales] = useState(false);
 
@@ -164,6 +182,7 @@ export function Formulario({
             valor={estado[campo.nombre]}
             alCambiar={cambiar(campo.nombre)}
             propio={recurso}
+            fallo={fallosPorCampo.get(campo.nombre)}
           />
         ))}
       </div>
@@ -195,6 +214,7 @@ export function Formulario({
                   valor={estado[campo.nombre]}
                   alCambiar={cambiar(campo.nombre)}
                   propio={recurso}
+                  fallo={fallosPorCampo.get(campo.nombre)}
                 />
               ))}
             </div>
@@ -218,15 +238,19 @@ function Campo({
   valor,
   alCambiar,
   propio,
+  fallo,
 }: {
   campo: CampoEsquema;
   valor: unknown;
   alCambiar: (valor: unknown) => void;
   /** El recurso desde el que se edita, para resolver las auto-referencias. */
   propio?: Recurso | null;
+  /** Lo que el servidor dice de ESTE campo, si ha dicho algo. */
+  fallo?: string;
 }) {
   const id = `campo-${campo.nombre}`;
   const ayuda = campo.descripcion ? `${id}-ayuda` : undefined;
+  const idFallo = fallo ? `${id}-fallo` : undefined;
   const referencia = recursoDeReferencia(
     campo.nombre,
     campo.referencia,
@@ -234,9 +258,12 @@ function Campo({
   );
   const comun = {
     id,
-    "aria-describedby": ayuda,
+    // Los dos: la ayuda dice qué poner y el fallo qué pasó. Quedarse con uno
+    // deja a quien no ve la pantalla sin una de las dos.
+    "aria-describedby": [ayuda, idFallo].filter(Boolean).join(" ") || undefined,
+    "aria-invalid": fallo ? true : undefined,
     required: campo.obligatorio,
-    className: "input-base",
+    className: cn("input-base", fallo && "border-danger"),
   };
 
   return (
@@ -262,6 +289,18 @@ function Campo({
       {campo.descripcion && campo.tipo !== "booleano" ? (
         <p id={ayuda} className="mb-1 text-rotulo text-ink-faint">
           {campo.descripcion}
+        </p>
+      ) : null}
+
+      {/* Lo que el servidor dice de este campo, PEGADO al campo. Antes se
+          perdía: la respuesta trae `errors: [{campo, mensaje}]` y el cliente
+          se quedaba sólo con el título —«Los datos enviados no son
+          válidos»—, así que la pantalla decía que algo estaba mal y no cuál.
+          Medido el 03-11-2026 dando de alta un segmento: faltaba
+          «definicion» y en pantalla no salía esa palabra por ningún lado. */}
+      {fallo ? (
+        <p id={idFallo} className="mb-1 text-rotulo text-danger" role="alert">
+          {fallo}
         </p>
       ) : null}
 

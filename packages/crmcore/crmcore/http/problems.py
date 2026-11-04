@@ -65,6 +65,72 @@ async def manejar_error_dominio(request: Request, exc: CrmError) -> JSONResponse
     return _respuesta(problema, exc.status_code, cabeceras)
 
 
+# Lo que dice Pydantic, en el idioma del producto.
+#
+# **El envoltorio iba en castellano y el detalle no.** La respuesta trae
+# `detail: "Los datos enviados no son válidos"` y, dentro, `errors[].mensaje`
+# con el texto crudo del validador: «Field required». Medido el 03-11-2026
+# dando de alta un segmento: la pantalla acabó enseñando «Field required» a
+# quien no ha escrito una línea de inglés.
+#
+# Se traduce por el `type`, que es lo estable —`missing`, `string_too_short`—,
+# y no por el texto, que cambia entre versiones de Pydantic. Lo que no esté
+# aquí se devuelve tal cual: un mensaje en inglés se entiende a medias, y
+# ninguno no se entiende nada.
+_EN_CASTELLANO: dict[str, str] = {
+    "missing": "Falta este campo",
+    "string_type": "Tiene que ser texto",
+    "int_type": "Tiene que ser un número entero",
+    "int_parsing": "Tiene que ser un número entero",
+    "float_type": "Tiene que ser un número",
+    "float_parsing": "Tiene que ser un número",
+    "decimal_parsing": "Tiene que ser un número",
+    "bool_type": "Tiene que ser sí o no",
+    "bool_parsing": "Tiene que ser sí o no",
+    "uuid_parsing": "No es un identificador válido",
+    "uuid_type": "No es un identificador válido",
+    "datetime_parsing": "No es una fecha válida",
+    "datetime_type": "No es una fecha válida",
+    "date_parsing": "No es una fecha válida",
+    "date_type": "No es una fecha válida",
+    "list_type": "Tiene que ser una lista",
+    "dict_type": "Tiene que ser un objeto",
+    "json_invalid": "No es un JSON válido",
+    "enum": "No es uno de los valores admitidos",
+    "literal_error": "No es uno de los valores admitidos",
+    "value_error": "El valor no vale",
+    "url_parsing": "No es una dirección válida",
+    "extra_forbidden": "Este campo no se admite aquí",
+}
+
+
+def _en_castellano(error: dict[str, Any]) -> str:
+    """El mensaje de un error de validación, en castellano cuando se conoce.
+
+    Los que llevan un límite lo dicen: «de 3 caracteres como poco» ayuda y
+    «String should have at least 3 characters» no, porque además está en otro
+    idioma.
+    """
+    tipo = str(error.get("type", ""))
+    contexto = error.get("ctx") or {}
+    limites = {
+        "string_too_short": "Tiene que tener {min_length} caracteres como poco",
+        "string_too_long": "No puede pasar de {max_length} caracteres",
+        "greater_than": "Tiene que ser mayor que {gt}",
+        "greater_than_equal": "No puede ser menor que {ge}",
+        "less_than": "Tiene que ser menor que {lt}",
+        "less_than_equal": "No puede pasar de {le}",
+        "too_short": "Hacen falta {min_length} como poco",
+        "too_long": "No puede pasar de {max_length}",
+    }
+    if tipo in limites:
+        try:
+            return limites[tipo].format(**contexto)
+        except (KeyError, IndexError):  # pragma: no cover — un ctx sin el límite
+            pass
+    return _EN_CASTELLANO.get(tipo) or str(error.get("msg", ""))
+
+
 async def manejar_validacion(request: Request, exc: RequestValidationError) -> JSONResponse:
     """422 con el detalle por campo.
 
@@ -75,7 +141,7 @@ async def manejar_validacion(request: Request, exc: RequestValidationError) -> J
         {
             "campo": ".".join(str(p) for p in e.get("loc", ()) if p != "body"),
             "motivo": e.get("type", ""),
-            "mensaje": e.get("msg", ""),
+            "mensaje": _en_castellano(e),
         }
         for e in exc.errors()
     ]
