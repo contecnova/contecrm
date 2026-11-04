@@ -71,9 +71,21 @@ export function PestanasDeFicha({
   const conConversacion =
     Boolean(tipo && id) &&
     Boolean(superficie?.objetos?.comentarios?.includes(tipo ?? ""));
-  const todas = conConversacion
-    ? [...pestanas, { clave: CLAVE_CONVERSACION, nombre: t("ficha.comentarios") }]
-    : pestanas;
+  // Y sólo si no la trae ya quien llama.
+  //
+  // Hay fichas que la declaran por su cuenta —`Ficha.tsx` la saca de lo que el
+  // registro puede tener— y este componente la añadía encima: la pestaña salía
+  // **dos veces, con el mismo rótulo, una al lado de la otra**. Lo vio quien lo
+  // usa el 04-11-2026 en un candidato. Dos entradas iguales no se distinguen
+  // más que pulsándolas, que es justo lo que un rótulo viene a evitar.
+  //
+  // Se compara por CLAVE y no por rótulo: el rótulo es traducible y dos claves
+  // distintas pueden acabar llamándose igual en un idioma y no en otro.
+  const yaEsta = pestanas.some((p) => p.clave === CLAVE_CONVERSACION);
+  const todas =
+    conConversacion && !yaEsta
+      ? [...pestanas, { clave: CLAVE_CONVERSACION, nombre: t("ficha.comentarios") }]
+      : pestanas;
   const barra = (
     <nav
       aria-label={etiqueta}

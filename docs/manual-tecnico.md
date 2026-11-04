@@ -2463,6 +2463,23 @@ consecuencias que conviene tener escritas:
 Lo escrito a mano queda como excepción: las que llevan una frase de ayuda bajo
 el botón porque el rótulo no basta.
 
+#### Dos fuentes de pestañas y ninguna miraba a la otra
+
+En la ficha de un candidato salía «Relacionado · Detalles · Actividad ·
+**Comentarios · Comentarios**». Dos entradas con el mismo rótulo, una al lado
+de la otra, que no se distinguen más que pulsándolas.
+
+`Ficha.tsx` arma sus pestañas con lo que el registro puede tener —y la
+conversación es una— y `PestanasDeFicha` añade la conversación por su cuenta
+cuando la superficie dice que ese objeto admite comentarios. Las dos tenían
+razón; lo que faltaba era que la segunda mirase si ya estaba. Se compara por
+**clave** y no por rótulo: el rótulo se traduce, y dos claves distintas pueden
+llamarse igual en un idioma y no en otro.
+
+El guardián vigila los dos sentidos, porque «no repetir» se cumpliría también
+no ofreciéndola nunca: con la pestaña declarada por quien llama hay **una**, y
+sin declarar sigue habiendo **una**.
+
 #### El segundo factor se podía poner y no quitar (04-11-2026)
 
 `mfa_activo` se ponía a cierto en **un** sitio y no volvía a falso en ninguno.
