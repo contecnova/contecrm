@@ -256,6 +256,12 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "logout": "cerrar la propia sesión solo exige tenerla",
         "iniciar_mfa": "el usuario configura su propio segundo factor",
         "activar_mfa": "ídem",
+        # Y quitarlo, por lo mismo: es el segundo factor de quien llama, no el
+        # de otro. Lo que lo protege no es un permiso —todo el mundo tiene el
+        # suyo— sino haberse verificado hace poco: lleva
+        # `exige_reverificacion("cambio_mfa")`, que es lo que impide que una
+        # sesión robada desarme la cuenta.
+        "desactivar_mfa": "el usuario quita su propio segundo factor",
         "cerrar_sesion": "cierra una sesión propia; la comprobación va dentro",
         "responder": "la asignación de la tarea ES el permiso; se comprueba dentro",
         "delegar": "ídem: solo puede delegar quien la tiene asignada",

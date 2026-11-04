@@ -7,7 +7,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.config import get_settings
-from crmcore.errors import NoAutenticado, NoEncontrado
+from crmcore.errors import NoAutenticado, NoEncontrado, Prohibido
 from crmcore.http.deps import (
     AutenticadoDep,
     DbDep,
@@ -503,7 +503,75 @@ def activar_mfa(datos: ActivarMfa, db: DbDep, principal: AutenticadoDep) -> Any:
     if not svc.verificar_totp(usuario.mfa_secreto, datos.codigo):
         raise NoAutenticado("El código no es válido", error_code="auth.mfa_invalida")
     usuario.mfa_activo = True
-    return {"mfa_activo": True}
+
+    # ACTIVARLO **ES** DEMOSTRARLO, y la sesión tiene que enterarse.
+    #
+    # Quien acaba de teclear un código válido de su autenticador ha probado el
+    # segundo factor ahora mismo; no anotarlo dejaba un callejón sin salida que
+    # se vio al probarlo entero el 04-11-2026: activas el factor y, acto
+    # seguido, quitarlo contesta «esta operación exige volver a verificar tu
+    # identidad» — y no hay desde dónde verificarse. Había que salir, volver a
+    # entrar con el código y entonces sí.
+    #
+    # El token se vuelve a emitir por lo mismo que en `/factores/comprobar`: la
+    # marca del factor fuerte viaja dentro del token, que es lo único que llega
+    # a los demás servicios. Sin esto, la sesión queda elevada dentro de
+    # `identity` y en ningún otro sitio.
+    token = ""
+    sesion = db.get(Sesion, principal.sesion_id) if principal.sesion_id else None
+    if sesion is not None:
+        from services.identity import factores as _factores
+
+        _factores.anotar_factor(db, sesion, "totp")
+        db.flush()
+        if principal.tenant_id is not None:
+            token = svc.emitir_token_acceso(
+                db,
+                usuario=usuario,
+                tenant_id=principal.tenant_id,
+                sesion_id=sesion.id,
+                actor_real_id=principal.actor_real_id,
+            )
+    return {"mfa_activo": True, "access_token": token, "usar_este_token": bool(token)}
+
+
+@router_auth.post(
+    "/mfa/desactivar",
+    response_model=dict,
+    summary="Quitar el segundo factor de esta cuenta",
+    description=(
+        "Exige haberse verificado hace poco, que es lo que impide que una "
+        "sesión robada desarme la cuenta.\n\n"
+        "**Esto faltaba del todo.** `mfa_activo` se ponía a cierto en un sitio "
+        "y no se quitaba en ninguno: quien lo activaba no podía volver atrás "
+        "ni cambiar de autenticador, y perder el móvil dejaba la cuenta "
+        "inalcanzable. La tabla de operaciones sensibles ya declaraba "
+        "`cambio_mfa` —«Desactivar o reconfigurar el segundo factor»—, o sea "
+        "que el guardia estaba escrito y la puerta no existía."
+    ),
+    dependencies=[exige_reverificacion("cambio_mfa")],
+)
+def desactivar_mfa(db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.runtime import settings as rt
+
+    usuario = db.get(Usuario, principal.id)
+    if usuario is None:
+        raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
+    # Si el tenant lo exige, quitarlo dejaría a esta persona sin poder entrar:
+    # el acceso pediría un código y no habría con qué generarlo. Se dice, en vez
+    # de dejar que lo descubra en el siguiente inicio de sesión.
+    if bool(rt.efectivo("mfa_obligatoria", db)):
+        raise Prohibido(
+            "Esta empresa exige doble factor: no se puede quitar. Para cambiar "
+            "de autenticador, vuelve a configurarlo desde cero.",
+            error_code="auth.mfa_obligatoria",
+        )
+    usuario.mfa_activo = False
+    usuario.mfa_secreto = None
+    # Lista vacía y no `None`: la columna no admite nulos —lleva su
+    # `server_default` a `'[]'`— y ponerle `None` revienta al volcar.
+    usuario.mfa_recuperacion = []
+    return {"mfa_activo": False}
 
 
 # ── Usuarios ──────────────────────────────────────────────────────────────

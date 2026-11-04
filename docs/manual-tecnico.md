@@ -2463,6 +2463,59 @@ consecuencias que conviene tener escritas:
 Lo escrito a mano queda como excepción: las que llevan una frase de ayuda bajo
 el botón porque el rótulo no basta.
 
+#### El segundo factor se podía poner y no quitar (04-11-2026)
+
+`mfa_activo` se ponía a cierto en **un** sitio y no volvía a falso en ninguno.
+Consecuencias, las tres medidas el mismo día:
+
+1. **Ninguna pantalla daba de alta el segundo factor.** `POST
+   /auth/mfa/iniciar` y `/mfa/activar` existían desde el principio y no los
+   llamaba nadie, así que no había forma de configurarlo. Lo preguntó quien lo
+   usa: «en ningún momento se ha dado de alta el doble factor, por lo menos
+   ¿cómo lo doy de alta?».
+2. **Activarlo era irreversible.** Perder el autenticador dejaba la cuenta
+   inalcanzable con la contraseña correcta delante. La tabla de operaciones
+   sensibles ya declaraba `cambio_mfa` —«Desactivar o reconfigurar el segundo
+   factor»—: el guardia estaba escrito y la puerta no existía.
+3. **La elevación de sesión no llegaba al navegador.** Las rutas que elevan
+   —`/factores/comprobar`, y ahora `/mfa/activar`— devuelven un token nuevo
+   porque la marca de «factor fuerte reciente» viaja dentro del token. Quien usa
+   la API lo recoge; el navegador no podía, porque su sesión es una cookie que
+   pone el gateway y el proxy devolvía el cuerpo sin tocarla. O sea que elevar
+   la sesión servía dentro de `identity` y en ninguna otra parte.
+
+Lo que hay ahora:
+
+- `POST /auth/mfa/desactivar`, con `exige_reverificacion("cambio_mfa")` y
+  negándose cuando el tenant exige MFA —quitarlo ahí dejaría a esa persona sin
+  poder entrar, y eso se dice antes en vez de descubrirlo al día siguiente—.
+- **Activar cuenta como demostrar.** Quien teclea un código válido de su
+  autenticador ha probado el factor ahora mismo: `/mfa/activar` lo anota en la
+  sesión y reemite el token. Sin esto quedaba un callejón sin salida: activas
+  y, acto seguido, quitarlo contesta «vuelve a verificarte» sin que haya desde
+  dónde.
+- **El gateway refresca la cookie** cuando el servicio contesta
+  `usar_este_token`. Genérico, sin lista de rutas: lo decide quien ha elevado.
+- La tarjeta en **Puesto de trabajo**, que es la pantalla del acceso propio.
+
+Y el rescate, para la cuenta que ya se quedó fuera:
+`python scripts/cuenta_de_arranque.py --quitar-factor`. No da ningún poder
+nuevo —quien lo ejecuta ya tiene el `.env`, o sea la contraseña— y es lo que
+hace verdad otra vez la regla de que el fichero manda en cada arranque.
+
+#### El sembrador no entra por una puerta sin vuelta
+
+`sembrar_configuracion.py` perdía siete altas en cada pasada —tres políticas de
+acceso y cuatro claves de API— porque esas operaciones exigen reverificación y
+él entraba sólo con contraseña. Salían en el informe como «rechazadas por
+diseño», que era verdad y dejaba esas pantallas vacías en toda instalación
+sembrada.
+
+Ahora se da de alta un TOTP, siembra y lo quita, dejando la cuenta como estaba.
+Dos precauciones escritas en su sitio: **comprueba que la salida existe antes
+de entrar** —si el despliegue no publica `/mfa/desactivar`, no activa nada y lo
+dice— y **no toca el factor de quien ya lo tenía**.
+
 #### Una respuesta con varias listas se pinta entera (04-11-2026)
 
 El listado de un módulo saca sus filas sin que nadie se lo explique: si la

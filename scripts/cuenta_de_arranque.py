@@ -115,7 +115,9 @@ def _preguntar_el_tenant(slug: str) -> UUID | None:
     return None
 
 
-def _cuenta(tenant_id: UUID, email: str, contrasena: str, nombre: str) -> str:
+def _cuenta(
+    tenant_id: UUID, email: str, contrasena: str, nombre: str, *, quitar_factor: bool = False
+) -> str:
     """Crea o reajusta la cuenta. Devuelve qué se ha hecho."""
     _cambiar_a("identity")
     from crmcore.db.uow import unidad_de_trabajo
@@ -151,6 +153,29 @@ def _cuenta(tenant_id: UUID, email: str, contrasena: str, nombre: str) -> str:
         usuario.nombre = nombre
         usuario.es_plataforma = True
 
+        # EL SEGUNDO FACTOR, SÓLO SI SE PIDE.
+        #
+        # No va con lo de arriba —la contraseña se reajusta en cada arranque—
+        # porque no es el mismo caso: un operador puede haber puesto un segundo
+        # factor a propósito en la cuenta más poderosa del sistema, y quitárselo
+        # en cada arranque sería desarmarla sin que nadie lo pida.
+        #
+        # Existe porque sin esto la cuenta se puede perder del todo. El producto
+        # activa el MFA en un sitio y **no lo desactiva en ninguno**: quien
+        # pierde el autenticador se queda fuera para siempre, y la promesa de
+        # que «el `.env` manda en cada arranque» deja de ser verdad justo en la
+        # cuenta donde más importa. Pasó el 04-11-2026 sembrando: el sembrador
+        # se dio de alta un TOTP para poder crear las políticas de acceso y
+        # dejó la cuenta de plataforma pidiendo un código que nadie tenía.
+        #
+        # No da ningún poder nuevo: quien ejecuta esto ya tiene el `.env`, o
+        # sea la contraseña. Lo que hace es que el fichero vuelva a mandar.
+        if quitar_factor and usuario.mfa_activo:
+            usuario.mfa_activo = False
+            usuario.mfa_secreto = None
+            usuario.mfa_recuperacion = None
+            hecho = f"{hecho} (segundo factor retirado)"
+
         membresia = uow.db.execute(
             select(Membresia).where(
                 Membresia.usuario_id == usuario.id, Membresia.tenant_id == tenant_id
@@ -177,6 +202,15 @@ def main() -> int:
     # escribir en los dos esquemas sería un rol que se salta el aislamiento.
     parser.add_argument("--parte", default="todo", choices=("todo", "tenant", "cuenta"))
     parser.add_argument("--tenant-id", default="", help="para la parte «cuenta»")
+    parser.add_argument(
+        "--quitar-factor",
+        action="store_true",
+        help=(
+            "retira el segundo factor de esta cuenta. Para cuando se ha perdido "
+            "el autenticador: el producto lo activa y no lo desactiva en "
+            "ninguna parte, así que sin esto la cuenta se queda fuera"
+        ),
+    )
     cfg = parser.parse_args()
 
     from crmcore.config import get_settings
@@ -230,7 +264,9 @@ def main() -> int:
             return 1
         tenant_id = encontrado
 
-    hecho = _cuenta(tenant_id, email, contrasena, ajustes.superadmin_nombre)
+    hecho = _cuenta(
+        tenant_id, email, contrasena, ajustes.superadmin_nombre, quitar_factor=cfg.quitar_factor
+    )
     print(
         f"Cuenta de plataforma {hecho}: {email} · empresa «{ajustes.superadmin_tenant}» · "
         "entra con esos tres datos en la pantalla de acceso."

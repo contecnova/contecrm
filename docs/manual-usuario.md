@@ -865,6 +865,29 @@ existían y no había forma de llegar a ellas desde ninguna pantalla: eran **50*
 entre ellas comprobar un contenido antes de mandarlo o ver dónde duele si un
 proveedor falla mañana.
 
+### Poner y quitar tu segundo factor
+
+Está en **Puesto de trabajo**, que es la pantalla de tu propio acceso —no en
+«Seguridad», que es la vista de quien administra la empresa—.
+
+1. Pulsa **Activar el segundo factor**. Sale un código largo: apúntalo en tu
+   autenticador (Google Authenticator, 1Password, el que uses) o abre el enlace
+   desde el móvil, que lo mete solo.
+2. **Guarda los códigos de recuperación.** Se enseñan una sola vez. Con uno de
+   ellos entras el día que pierdas el móvil.
+3. Escribe el número de seis cifras que te dé el autenticador y confirma. A
+   partir de ahí, al entrar se te pedirá ese número además de la contraseña.
+
+Para quitarlo o cambiar de autenticador, el mismo sitio: **Quitar el segundo
+factor**. Hace falta haberte verificado hace poco —si acabas de activarlo o de
+entrar con tu código, vale—; si no, el sistema te lo dirá y basta con volver a
+entrar con el código. Si tu empresa exige segundo factor, no se puede quitar: te
+lo dice en vez de dejarte sin poder entrar.
+
+Hasta el 04-11-2026 esto **no se podía hacer desde ninguna pantalla**: el
+sistema sabía activarlo por API y nadie lo llamaba, y quitarlo no existía en
+absoluto — quien lo activaba se quedaba sin vuelta atrás.
+
 ### Cuando una pantalla enseña más de una tabla
 
 Algunas pantallas contestan a más de una pregunta a la vez, y entonces verás la

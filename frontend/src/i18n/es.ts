@@ -796,5 +796,22 @@ export default {
     horas: "{{horas}} h sin sincronizar",
     sinMedir:
       "{{cuantas}} conexiones no se han medido: no cuentan como buenas.",
+    factor: {
+      titulo: "Tu segundo factor",
+      sinSaber: "No se ha podido comprobar si tienes segundo factor.",
+      puesto:
+        "Tienes segundo factor. Al entrar se te pedirá el código de tu autenticador.",
+      sinPoner:
+        "Tu cuenta entra sólo con la contraseña. Un segundo factor es lo que impide que una contraseña filtrada sirva de algo.",
+      activar: "Activar el segundo factor",
+      quitar: "Quitar el segundo factor",
+      comoSeApunta:
+        "Apunta este código en tu autenticador (Google Authenticator, 1Password, el que uses) y escribe después el número de seis cifras que te dé.",
+      abrirEnElAutenticador: "Abrirlo directamente en el autenticador",
+      recuperacion:
+        "Códigos de recuperación: guárdalos ahora, no se vuelven a enseñar",
+      elCodigo: "El código de seis cifras",
+      confirmar: "Confirmar",
+    },
   },
 };

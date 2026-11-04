@@ -33,6 +33,29 @@ from typing import Any
 TIEMPO_ESPERA = 30
 
 
+def _codigo_totp(secreto: str, momento: float | None = None) -> str:
+    """El código de seis dígitos de ese secreto, ahora.
+
+    A mano y con la biblioteca estándar, como todo este fichero: es el RFC 6238
+    con los valores de serie —SHA-1, 30 s, 6 dígitos—, que son los que usa el
+    producto. Meter una dependencia aquí obligaría a instalarla antes de poder
+    sembrar, y este script corre antes que nada.
+    """
+    import base64
+    import hashlib
+    import hmac as _hmac
+    import struct
+    import time as _time
+
+    relleno = "=" * (-len(secreto) % 8)
+    clave = base64.b32decode(secreto.upper() + relleno)
+    contador = int((momento if momento is not None else _time.time()) // 30)
+    digest = _hmac.new(clave, struct.pack(">Q", contador), hashlib.sha1).digest()
+    desplazamiento = digest[-1] & 0x0F
+    numero = struct.unpack(">I", digest[desplazamiento : desplazamiento + 4])[0] & 0x7FFFFFFF
+    return str(numero % 1_000_000).zfill(6)
+
+
 class Api:
     """Cliente mínimo. Sin dependencias: este script corre antes que nada."""
 
@@ -70,6 +93,9 @@ class Api:
             return 0, {"detail": str(e.reason)}
 
     def entrar(self, email: str, contrasena: str, tenant: str) -> None:
+        # Se guardan para poder volver a entrar: la ventana del factor fuerte
+        # dura minutos y este sembrado dura más.
+        self.email, self.contrasena, self.tenant = email, contrasena, tenant
         estado, cuerpo = self._llamar(
             "POST",
             "/api/v1/auth/login",
@@ -92,6 +118,117 @@ class Api:
         # es exactamente el agente sin identidad que esto venía a arreglar.
         usuario = (yo or {}).get("usuario") or {}
         self.principal_id = str(usuario.get("id") or "") if estado == 200 else ""
+
+    def factor_fuerte(self) -> bool:
+        """Deja esta sesión con un factor fuerte reciente. Por el flujo real.
+
+        **Por qué hace falta.** Hay operaciones que el producto protege pidiendo
+        volver a verificar la identidad —cambiar permisos, crear una credencial
+        de máquina— y mira *cuándo* fue el último factor fuerte, no si hay MFA
+        configurada. El sembrador entraba sólo con contraseña, así que se
+        chocaba con eso y **siete altas se perdían en cada pasada**: tres
+        políticas de acceso y cuatro claves de API, entre ellas la del ERP y la
+        del portal de cliente. Salían en el informe como «rechazadas por
+        diseño», que era verdad y dejaba la pantalla de políticas vacía en toda
+        instalación sembrada.
+
+        No se toca el producto ni se salta la puerta: se pasa por ella. Se da de
+        alta un TOTP —que es lo que el producto considera factor fuerte—, se
+        activa y se vuelve a entrar con su código, que es exactamente lo que
+        hace una persona.
+
+        **Rehace el secreto de MFA de este usuario.** Es un usuario de siembra en
+        una instalación que no es de producción —el script se niega a correr
+        allí—, pero conviene saberlo: quien tuviera su autenticador configurado
+        tendrá que volver a escanearlo.
+        """
+        estado, yo = self._llamar("GET", "/api/v1/auth/me")
+        tenia = bool(((yo or {}).get("usuario") or {}).get("mfa_activo")) if estado == 200 else True
+
+        # ¿EXISTE LA SALIDA? Antes de entrar.
+        #
+        # Activar el segundo factor sin poder quitarlo deja la cuenta pidiendo
+        # un código que sólo existió dentro de este proceso. Pasó el
+        # 04-11-2026: la ruta de desactivar se escribió y el servicio seguía
+        # corriendo con el código anterior, así que al acabar contestó 404 y la
+        # cuenta de plataforma se quedó fuera. Dos veces.
+        #
+        # Se comprueba sin efectos: sin factor fuerte reciente, la ruta
+        # contesta 401 «stepup.requerido» si existe, y 404 si no.
+        if not tenia:
+            estado_salida, _ = self._llamar("POST", "/api/v1/auth/mfa/desactivar")
+            if estado_salida == 404:
+                self.fallos.append(
+                    "POST /api/v1/auth/mfa/desactivar → 404: este despliegue no "
+                    "sabe quitar el segundo factor, así que NO se activa. Se "
+                    "pierden las políticas de acceso y las claves de API, que "
+                    "exigen reverificación. Actualiza «identity» y repite"
+                )
+                return False
+
+        estado, cuerpo = self._llamar("POST", "/api/v1/auth/mfa/iniciar")
+        secreto = str((cuerpo or {}).get("secreto") or "") if estado == 200 else ""
+        if not secreto:
+            self.fallos.append(
+                f"POST /api/v1/auth/mfa/iniciar → {estado} {_motivo(cuerpo)} "
+                "(sin factor fuerte se pierden las políticas de acceso y las claves de API)"
+            )
+            return False
+        estado, cuerpo = self._llamar(
+            "POST", "/api/v1/auth/mfa/activar", {"codigo": _codigo_totp(secreto)}
+        )
+        if estado != 200:
+            self.fallos.append(f"POST /api/v1/auth/mfa/activar → {estado} {_motivo(cuerpo)}")
+            return False
+        self._secreto_totp = secreto
+        # Lo tenía antes? Si no, al acabar se quita: dejar la cuenta pidiendo un
+        # código que sólo existió dentro de este proceso la deja inalcanzable.
+        # Pasó el 04-11-2026 con la cuenta de plataforma, y hubo que rescatarla
+        # con `scripts/cuenta_de_arranque.py --quitar-factor`.
+        self._tenia_factor = tenia
+        return self._entrar_con_factor()
+
+    def soltar_factor(self) -> None:
+        """Devuelve el segundo factor al estado en que estaba.
+
+        Sólo si lo puso este sembrado. Si la cuenta ya tenía MFA, no se toca:
+        quitárselo sería desarmar algo que alguien puso a propósito.
+        """
+        if getattr(self, "_tenia_factor", True) or not getattr(self, "_secreto_totp", ""):
+            return
+        estado, cuerpo = self._llamar("POST", "/api/v1/auth/mfa/desactivar")
+        if estado == 401 and _codigo_de(cuerpo) == "stepup.requerido":
+            if self._entrar_con_factor():
+                estado, cuerpo = self._llamar("POST", "/api/v1/auth/mfa/desactivar")
+        if estado not in (200, 204):
+            self.fallos.append(
+                f"POST /api/v1/auth/mfa/desactivar → {estado} {_motivo(cuerpo)} — "
+                "LA CUENTA SE QUEDA PIDIENDO UN CÓDIGO que no tiene nadie. "
+                "Rescátala con: python scripts/cuenta_de_arranque.py --quitar-factor"
+            )
+            return
+        self._secreto_totp = ""
+
+    def _entrar_con_factor(self) -> bool:
+        """Vuelve a entrar con el código, que es lo que marca el factor fuerte."""
+        secreto = getattr(self, "_secreto_totp", "")
+        if not secreto:
+            return False
+        estado, cuerpo = self._llamar(
+            "POST",
+            "/api/v1/auth/login",
+            {
+                "email": self.email,
+                "contrasena": self.contrasena,
+                "tenant": self.tenant,
+                "codigo_mfa": _codigo_totp(secreto),
+            },
+        )
+        if estado != 200:
+            self.fallos.append(f"POST /api/v1/auth/login (con factor) → {estado} {_motivo(cuerpo)}")
+            return False
+        self.token = cuerpo.get("access_token") or cuerpo.get("token") or self.token
+        return True
 
     def como(self, email: str, contrasena: str, tenant: str) -> "Api":
         """Otra sesión, con los contadores compartidos.
@@ -237,6 +374,13 @@ class Api:
 
     def crear(self, ruta: str, cuerpo: dict, *, metodo: str = "POST") -> dict | None:
         estado, respuesta = self._llamar(metodo, ruta, cuerpo)
+        # La ventana del factor fuerte dura minutos y este sembrado dura más,
+        # así que caduca a media pasada. Se renueva y se repite UNA vez: por el
+        # código del error, no por una lista de rutas sensibles —esa lista la
+        # tiene el producto y repetirla aquí se quedaría vieja—.
+        if estado == 401 and _codigo_de(respuesta) == "stepup.requerido":
+            if self._entrar_con_factor():
+                estado, respuesta = self._llamar(metodo, ruta, cuerpo)
         if estado in (200, 201, 204):
             self.cuenta["creados"] += 1
             return respuesta if isinstance(respuesta, dict) else {}
@@ -353,6 +497,13 @@ def _es_duplicado(respuesta: Any) -> bool:
         return False
     codigo = str(respuesta.get("error_code") or "")
     return any(senal in codigo for senal in SENALES_DE_DUPLICADO)
+
+
+def _codigo_de(respuesta: Any) -> str:
+    """El `error_code` del problema, que es lo que el producto sí declara."""
+    if isinstance(respuesta, dict):
+        return str(respuesta.get("error_code") or "")
+    return ""
 
 
 def _motivo(respuesta: Any) -> str:
@@ -5649,6 +5800,10 @@ def main() -> int:
 
     api = Api(cfg.base)
     api.entrar(cfg.email, cfg.contrasena, cfg.tenant)
+    # Con el factor fuerte puesto: sin él, el producto rechaza —con razón— las
+    # políticas de acceso y las claves de API, y esas pantallas se quedaban
+    # vacías en toda instalación sembrada sin que el informe lo llamara fallo.
+    api.factor_fuerte()
 
     aprobador = api.como(cfg.aprobador, cfg.contrasena, cfg.tenant) if cfg.aprobador else None
 
@@ -5662,6 +5817,12 @@ def main() -> int:
         else:
             PARTES[nombre](api)
         print(f"  {nombre:16} {api.cuenta['creados'] - antes:4} registros")
+
+    # Y la cuenta se devuelve como estaba. Va aquí y no en un `finally` a
+    # propósito: si el sembrado revienta a medias, el factor se queda puesto y
+    # el fallo lo dice — mejor eso que quitarlo en silencio mientras se está
+    # mirando por qué ha reventado.
+    api.soltar_factor()
 
     print(f"\nCreados {api.cuenta['creados']}, ya existían {api.cuenta['saltados']}.")
 

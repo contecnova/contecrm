@@ -481,3 +481,108 @@ def test_un_invitado_externo_caduca_y_lleva_motivo(
         json={"email": "otro@externo.example", "motivo": "", "permisos": ["account:read"]},
     )
     assert sin_motivo.status_code == 422, sin_motivo.text
+
+
+# ── Quitar el segundo factor: la puerta que no existía ────────────────────
+#
+# `mfa_activo` se ponía a cierto en UN sitio y no volvía a falso en ninguno.
+# Quien lo activaba no podía cambiar de autenticador ni volver atrás, y perder
+# el móvil dejaba la cuenta inalcanzable — con la contraseña correcta delante.
+# La tabla de operaciones sensibles ya declaraba `cambio_mfa` («Desactivar o
+# reconfigurar el segundo factor»): el guardia estaba escrito y la puerta no.
+#
+# Se descubrió de la peor manera el 04-11-2026: el sembrador activó un TOTP
+# para poder crear las políticas de acceso y dejó la cuenta de plataforma
+# pidiendo un código que sólo existió dentro de aquel proceso.
+
+
+def _usuario_con_factor(db: Any) -> Any:
+    """Un usuario con el segundo factor puesto."""
+    from services.identity import servicio as svc
+    from services.identity.modelos import Usuario
+
+    # `Usuario` NO lleva `tenant_id`: es la excepción del sistema, porque una
+    # misma persona puede trabajar en varias empresas. La pertenencia va en
+    # `Membresia`, y para esto no hace falta.
+    usuario = Usuario(
+        email=f"con-factor-{uuid4().hex[:8]}@ejemplo.com",
+        nombre="Con Factor",
+        hash_contrasena=svc.hashear_contrasena("una-contrasena-larga-2026"),
+        activo=True,
+        mfa_activo=True,
+        mfa_secreto=svc.generar_secreto_totp(),
+    )
+    db.add(usuario)
+    db.flush()
+    return usuario
+
+
+def test_sin_factor_reciente_no_se_puede_quitar_el_segundo_factor(
+    cliente_identidad: Any, tenant_id: UUID, db: Any
+) -> None:
+    """Lo que impide que una sesión robada desarme la cuenta."""
+    from crmcore.http.deps import H_USER
+
+    usuario = _usuario_con_factor(db)
+    respuesta = cliente_identidad.post(
+        "/api/v1/auth/mfa/desactivar",
+        headers=_cabeceras(tenant_id, factor_hace_minutos=None, **{H_USER: str(usuario.id)}),
+    )
+    assert respuesta.status_code == 401, respuesta.text
+    assert respuesta.json().get("error_code") == "stepup.requerido"
+    db.refresh(usuario)
+    assert usuario.mfa_activo is True
+
+
+def test_con_el_factor_reciente_se_quita_y_se_borra_el_secreto(
+    cliente_identidad: Any, tenant_id: UUID, db: Any
+) -> None:
+    from crmcore.http.deps import H_USER
+
+    usuario = _usuario_con_factor(db)
+    respuesta = cliente_identidad.post(
+        "/api/v1/auth/mfa/desactivar",
+        headers=_cabeceras(tenant_id, factor_hace_minutos=0, **{H_USER: str(usuario.id)}),
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    # Se vacía el objeto para que vuelva a leerse: el arnés ata todas las
+    # sesiones a una, así que el del caso puede ser el mismo que tocó la ruta
+    # y comprobar sus atributos sin más no probaría nada.
+    db.expire(usuario)
+    assert usuario.mfa_activo is False
+    # AQUÍ NO SE AFIRMA NADA SOBRE EL SECRETO NI SOBRE LOS CÓDIGOS, y conviene
+    # dejar escrito por qué en vez de poner dos líneas que tranquilicen.
+    #
+    # La ruta los borra —y tiene que hacerlo: un código de recuperación vivo es
+    # una llave de pleno derecho—. Pero en este arnés **ninguna de las dos
+    # columnas se puede observar**: la del secreto va cifrada en reposo
+    # (`info={"secreto": True}`) y se lee como `None` pase lo que pase, y la de
+    # los códigos vuelve vacía aunque se siembre. Se intentó de tres formas
+    # —`refresh`, `expire` y un `SELECT` a pelo— y en las tres, **plantando el
+    # fallo de no borrarlos, la afirmación seguía en verde**.
+    #
+    # Una comprobación incapaz de fallar es peor que no tenerla, porque además
+    # tranquiliza. Lo que sí queda fijado es lo que se puede ver: que el factor
+    # queda desactivado, que sin verificación reciente no se puede, y que con
+    # MFA obligatoria se dice que no.
+
+
+def test_si_la_empresa_lo_exige_no_se_puede_quitar(
+    cliente_identidad: Any, tenant_id: UUID, db: Any, monkeypatch: Any
+) -> None:
+    """Quitarlo ahí dejaría a esta persona sin poder entrar: se dice antes."""
+    from crmcore.http.deps import H_USER
+    from crmcore.runtime import settings as rt
+
+    usuario = _usuario_con_factor(db)
+    monkeypatch.setattr(
+        rt, "efectivo", lambda clave, *a, **k: True if clave == "mfa_obligatoria" else None
+    )
+    respuesta = cliente_identidad.post(
+        "/api/v1/auth/mfa/desactivar",
+        headers=_cabeceras(tenant_id, factor_hace_minutos=0, **{H_USER: str(usuario.id)}),
+    )
+    assert respuesta.status_code == 403, respuesta.text
+    assert respuesta.json().get("error_code") == "auth.mfa_obligatoria"
+    db.refresh(usuario)
+    assert usuario.mfa_activo is True

@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 from services.gateway import anomalias, empuje, operatividad, proxy
+from services.gateway import sesion as sesion_gw
 from services.gateway import superficie_api as superficie
 from services.gateway.sesion import crear_router_sesion
 
@@ -1440,7 +1441,7 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
 
     # La respuesta del servicio se devuelve tal cual, incluidos su código y sus
     # cabeceras de contrato: el gateway no reinterpreta lo que dice el servicio.
-    return Response(
+    devuelta = Response(
         content=respuesta.content,
         status_code=respuesta.status_code,
         headers={
@@ -1450,6 +1451,51 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
         },
         media_type=respuesta.headers.get("content-type"),
     )
+    _refrescar_la_cookie_si_la_sesion_ha_subido(request, respuesta, devuelta)
+    return devuelta
+
+
+def _refrescar_la_cookie_si_la_sesion_ha_subido(
+    request: Request, del_servicio: httpx.Response, devuelta: Response
+) -> None:
+    """Si el servicio ha emitido un token nuevo, el navegador se queda con él.
+
+    **Por qué hace falta.** Hay operaciones que ELEVAN la sesión: superar un
+    segundo factor en `/factores/comprobar`, activar el autenticador en
+    `/auth/mfa/activar`. La marca de «factor fuerte reciente» viaja dentro del
+    token —es lo único que llega a los demás servicios—, así que esas rutas
+    devuelven un token nuevo y dicen `usar_este_token`.
+
+    Quien usa la API lo recoge. **El navegador no podía**: su sesión es una
+    cookie que pone el gateway al entrar y al renovar, y este proxy devolvía el
+    cuerpo tal cual sin tocarla. O sea que elevar la sesión servía dentro de
+    `identity` y en ninguna otra parte — exactamente lo que el comentario de
+    `/factores/comprobar` dice que no puede pasar, pero para el navegador.
+
+    Se vio el 04-11-2026 probando el alta del segundo factor por pantalla:
+    activas el autenticador tecleando su código y, acto seguido, quitarlo
+    contesta «esta operación exige volver a verificar tu identidad». No había
+    desde dónde verificarse.
+
+    Es genérico: no hay lista de rutas. Lo decide el servicio diciendo
+    `usar_este_token`, que es quien sabe si ha elevado algo.
+    """
+    if devuelta.status_code >= 400 or not request.cookies.get(get_settings().sesion_cookie_nombre):
+        # Sin cookie, quien llama es un cliente de API y ya recoge el token del
+        # cuerpo. Poner una cookie ahí sería darle una sesión que no pidió.
+        return
+    tipo = del_servicio.headers.get("content-type", "")
+    if "application/json" not in tipo:
+        return
+    try:
+        cuerpo = del_servicio.json()
+    except ValueError:
+        return
+    if not isinstance(cuerpo, dict) or not cuerpo.get("usar_este_token"):
+        return
+    token = str(cuerpo.get("access_token") or "")
+    if token:
+        sesion_gw.poner_cookie(devuelta, token, segundos=get_settings().access_token_minutos * 60)
 
 
 # **El proxy no puede declarar lo que no conoce** (CRM-00.02.04.01).
