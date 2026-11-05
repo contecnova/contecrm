@@ -308,6 +308,8 @@ export function Grafica({
                       className="fill-ink-faint"
                       style={{ fontSize: LETRA_GRAFICA }}
                     >
+                      {/* Igual que en el embudo: cortado, pero legible. */}
+                      {c.length > 12 ? <title>{c}</title> : null}
                       {c.length > 12 ? `${c.slice(0, 11)}…` : c}
                     </text>
                   ) : null,
@@ -652,6 +654,12 @@ function Embudo({
               className="fill-ink-muted"
               style={{ fontSize: LETRA_GRAFICA }}
             >
+              {/* El nombre entero, para cuando no cabe. En SVG el tooltip es
+                  un `<title>` dentro del propio elemento, y además lo lee
+                  quien no ve la gráfica. Sin esto, «Pendiente de
+                  adjudicación» salía como «Pendiente d…» y no había forma de
+                  saber de qué etapa hablaba. */}
+              {c.length > CABEN ? <title>{c}</title> : null}
               {c.length > CABEN ? `${c.slice(0, CABEN - 1)}…` : c}
             </text>
             <rect

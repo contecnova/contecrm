@@ -167,6 +167,18 @@ const dobleVacio = [];
 // pestaña de entrada mal elegida.
 const abrePorVacia = [];
 const monoEnFrases = [];
+// Tres familias que salieron el 04-11-2026 abriendo pantallas a mano, ninguna
+// de ellas cazada por nada de lo que había. Van aquí porque el sitio donde se
+// encuentran es éste: abriendo la pantalla de verdad y mirando lo que pinta.
+//
+//   · rótulos repetidos en la misma barra —«Comentarios · Comentarios» en la
+//     ficha de un candidato—, que no se distinguen más que pulsándolos;
+//   · texto cortado sin forma de leerlo entero;
+//   · celdas con un objeto o una lista dentro, que es el JSON repartido en
+//     columnas: pasaba en diez pestañas que devuelven más de una lista.
+const rotulosRepetidos = [];
+const textoCortado = [];
+const celdasConJson = [];
 // `CRM_SOLO=/procesos,/m/cuentas` recorta el barrido a lo que se nombre. Son
 // quince minutos enteros, y perseguir un fallo en una pantalla concreta con
 // eso convierte cada intento en una espera. No cambia nada de lo que mide.
@@ -191,6 +203,105 @@ for (const camino of lista) {
     .catch(() => p.goto(APP + camino, { waitUntil: "domcontentloaded" }).catch(() => {}));
   await p.waitForTimeout(1200);
   const txt = (await p.locator("main").innerText().catch(() => "")).replace(/\s+/g, " ");
+
+  // ── Rótulos repetidos en una misma barra ─────────────────────────────
+  for (const repe of await p.evaluate(() => {
+    const malas = [];
+    for (const barra of document.querySelectorAll("nav, [role='tablist']")) {
+      const rotulos = [...barra.querySelectorAll("button, a")]
+        .filter((x) => x.offsetParent !== null)
+        .map((x) => x.textContent.trim())
+        .filter((t) => t.length > 1 && t.length < 40);
+      const vistos = new Set();
+      for (const r of rotulos) {
+        if (vistos.has(r)) malas.push(`${barra.getAttribute("aria-label") || "barra"}: «${r}»`);
+        vistos.add(r);
+      }
+    }
+    return malas;
+  }).catch(() => [])) {
+    rotulosRepetidos.push(`${camino} → dos entradas iguales en ${repe}`);
+  }
+
+  // ── DATO cortado y sin forma de leerlo ───────────────────────────────
+  //
+  // Cortar está bien cuando no cabe; lo que no vale es cortar un DATO y no
+  // dejar ninguna vía de leerlo entero —ni `title` ni `aria-label`—, como el
+  // menú «Más» saliéndose de la pantalla.
+  //
+  // **Sólo dentro de `main`, y sólo textos largos.** La primera versión
+  // miraba también la cabecera y daba 162 avisos de los que la mayoría eran
+  // el rótulo del selector de cliente y el marcador de posición del buscador,
+  // repetidos en las 62 pantallas: recortar un marcador de posición no es un
+  // fallo, y un aviso que sale 62 veces por lo mismo entierra los que sí.
+  // Lo que queda es lo que de verdad no se puede leer: «Repaso de incidencias
+  // abiertas — Tecnologías…» en el calendario.
+  for (const corte of await p.evaluate(() => {
+    const malos = [];
+    for (const el of document.querySelectorAll("main *")) {
+      if (el.children.length || !el.textContent.trim()) continue;
+      if (el.closest("input, textarea, [role='presentation']")) continue;
+      // Lo que sólo existe para quien no ve la pantalla está recortado a
+      // propósito —`sr-only` lo deja en un píxel— y siempre daría «cortado».
+      if (el.clientWidth <= 2 || el.clientHeight <= 2) continue;
+      // Y lo que se puede desplazar se lee entero desplazándolo: el detalle
+      // técnico de un error va en un `<pre>` con barra a propósito, y marcarlo
+      // como ilegible sería acusar a algo que está bien resuelto.
+      const estilo = getComputedStyle(el);
+      if (estilo.overflowX === "auto" || estilo.overflowX === "scroll") continue;
+      // **En SVG, `scrollWidth` no quiere decir esto.** Un `<text>` de una
+      // gráfica daba 205 contra 162 de `clientWidth` y no estaba cortado: el
+      // texto medía 144 px y cabía de sobra. Son cajas distintas, no un
+      // recorte. Lo que sí corta en una gráfica lo hace el componente a mano
+      // y deja «…», y eso se mira aparte, justo debajo.
+      if (el.ownerSVGElement || el.tagName === "svg") continue;
+      const texto = el.textContent.trim();
+      if (texto.length < 22) continue;
+      if (el.scrollWidth - el.clientWidth <= 8) continue;
+      if (el.title || el.getAttribute("aria-label")) continue;
+      malos.push(texto.slice(0, 44));
+      if (malos.length > 3) break;
+    }
+    return malos;
+  }).catch(() => [])) {
+    textoCortado.push(`${camino} → cortado y sin leer entero: «${corte}»`);
+  }
+
+  // ── Y el recorte PROPIO de una gráfica ───────────────────────────────
+  //
+  // En SVG no hay `overflow` que valga: el rótulo lo corta el componente y
+  // deja puntos suspensivos. Cortado está bien —un eje no da para más— pero
+  // sin el nombre entero en algún sitio, «Pendiente d…» no dice de qué etapa
+  // habla. En SVG ese sitio es un `<title>` dentro del propio elemento, que
+  // además lo lee quien no ve la gráfica.
+  for (const corte of await p.evaluate(() => {
+    const malos = [];
+    for (const t of document.querySelectorAll("svg text")) {
+      if (!t.textContent.trim().endsWith("…")) continue;
+      if (t.querySelector("title")) continue;
+      malos.push(t.textContent.trim().slice(0, 40));
+      if (malos.length > 2) break;
+    }
+    return malos;
+  }).catch(() => [])) {
+    textoCortado.push(`${camino} → rótulo de gráfica cortado y sin nombre entero: «${corte}»`);
+  }
+
+  // ── Celdas con un objeto o una lista dentro ──────────────────────────
+  for (const celda of await p.evaluate(() => {
+    const malas = [];
+    for (const td of document.querySelectorAll("main table tbody td")) {
+      const t = td.textContent.trim();
+      // La marca es el JSON asomando: llaves o corchetes con comillas dentro.
+      if (/^[[{].*["':].*[\]}]$/.test(t) || /^\{"\w+"/.test(t)) {
+        malas.push(t.slice(0, 50));
+        if (malas.length > 2) break;
+      }
+    }
+    return malas;
+  }).catch(() => [])) {
+    celdasConJson.push(`${camino} → una celda con JSON dentro: «${celda}»`);
+  }
   /**
    * Una pantalla MUERTA es la que no llega a pintarse, y eso se reconoce por
    * la marca y no por el texto: el texto cambia con cada fallo nuevo.
@@ -415,18 +526,34 @@ console.log(`CON LETRA FUERA DE LA ESCALA: ${letraFuera.length} (de ${textosMira
 console.log(`CON VARIOS VACÍOS DE CAJA GRANDE: ${dobleVacio.length}`);
 console.log(`MÓDULOS QUE ABREN POR UNA PESTAÑA VACÍA: ${abrePorVacia.length}`);
 console.log(`CON UNA FRASE EN LETRA DE MÁQUINA: ${monoEnFrases.length}`);
+console.log(`CON DOS ENTRADAS IGUALES EN UNA BARRA: ${rotulosRepetidos.length}`);
+console.log(`CON TEXTO CORTADO Y SIN FORMA DE LEERLO: ${textoCortado.length}`);
+console.log(`CON UNA CELDA QUE ENSEÑA JSON: ${celdasConJson.length}`);
 if (
   rotas.length ||
   crudas.length ||
   letraFuera.length ||
   dobleVacio.length ||
   abrePorVacia.length ||
-  monoEnFrases.length
+  monoEnFrases.length ||
+  rotulosRepetidos.length ||
+  textoCortado.length ||
+  celdasConJson.length
 ) {
   process.exitCode = 1;
 }
 console.log(
-  [...rotas, ...crudas, ...letraFuera, ...dobleVacio, ...abrePorVacia, ...monoEnFrases]
+  [
+    ...rotas,
+    ...crudas,
+    ...letraFuera,
+    ...dobleVacio,
+    ...abrePorVacia,
+    ...monoEnFrases,
+    ...rotulosRepetidos,
+    ...textoCortado,
+    ...celdasConJson,
+  ]
     .map((r) => "  " + r)
     .join("\n"),
 );

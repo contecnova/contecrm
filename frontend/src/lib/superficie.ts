@@ -132,6 +132,26 @@ export function areasDeAdministracion(superficie: Superficie): Area[] {
     area.operaciones.push(operacion);
     porRecurso.set(recurso, area);
   }
+  // ── Y EL QUE SE REPITE, CON SU APELLIDO ──────────────────────────────
+  //
+  // El nombre sale de la etiqueta del contrato, y hay etiquetas que usan los
+  // doce servicios: «papelera», «ajustes». Agrupar está bien —son doce áreas
+  // distintas, cada una con sus cuatro operaciones— pero en pantalla salían
+  // **doce entradas llamadas igual**, imposibles de distinguir sin pulsarlas
+  // una a una. Medido el 04-11-2026 en `/administracion`: doce «papelera 4» y
+  // dos «ajustes 2» seguidas.
+  //
+  // Se apellidan **sólo las que chocan**: poner el servicio a todas haría más
+  // largo y más ruidoso lo que ya se distinguía solo.
+  const cuantas = new Map<string, number>();
+  for (const area of porRecurso.values()) {
+    cuantas.set(area.nombre, (cuantas.get(area.nombre) ?? 0) + 1);
+  }
+  for (const area of porRecurso.values()) {
+    if ((cuantas.get(area.nombre) ?? 0) > 1) {
+      area.nombre = `${area.nombre} · ${area.recurso}`;
+    }
+  }
   return [...porRecurso.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 }
 

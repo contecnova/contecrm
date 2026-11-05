@@ -442,7 +442,13 @@ function Enlace({
           <span className="sr-only">{t("calendario.soloVence")}</span>
         </>
       ) : null}
-      <span className="truncate">{a.asunto}</span>
+      {/* Con `title`: el asunto se corta —y tiene que cortarse, una celda de
+          calendario no da para más— pero cortado y sin forma de leerlo entero
+          deja «Repaso de incidencias abiertas — Tecnologías…» sin decir de qué
+          cliente es, que es justo lo que se mira. */}
+      <span className="truncate" title={a.asunto}>
+        {a.asunto}
+      </span>
     </Link>
   );
 }

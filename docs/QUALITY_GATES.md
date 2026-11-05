@@ -372,6 +372,40 @@ a salir en rojo.
 
 ## El barrido de pantallas (no es un gate, y por eso hay que acordarse)
 
+### Lo que mira ahora, y por qué cada cosa
+
+Hasta el 04-11-2026 miraba cinco familias: pantallas que no montan, dato en
+crudo, letra fuera de la escala, vacíos repetidos y frases en letra de máquina.
+Ese día, **quien lo usa encontró a ojo cuatro cosas que ninguna de las cinco
+veía**: una pestaña repetida, un menú que se salía de la pantalla, un botón que
+no hacía nada y un buscador encajado. El barrido aprendió tres de ellas:
+
+- **Dos entradas iguales en una barra.** Encontró doce áreas llamadas
+  «papelera» en `/administracion`, imposibles de distinguir sin pulsarlas.
+- **Dato cortado y sin forma de leerlo entero.** Sólo dentro de `main` y sólo
+  textos largos: la primera versión daba 162 avisos, casi todos el rótulo del
+  selector de cliente y el marcador de posición del buscador repetidos en las
+  62 pantallas, y un aviso que sale 62 veces por lo mismo entierra los que sí.
+- **Celdas que enseñan JSON**, que es el síntoma de una respuesta con varias
+  listas pintada como una fila.
+
+Tres afinados que costaron medida y conviene no deshacer:
+
+1. **Lo que se puede desplazar se lee entero desplazándolo.** El detalle
+   técnico de un error va en un `<pre>` con barra a propósito.
+2. **Lo oculto para lectores de pantalla está recortado a propósito**, y
+   siempre daría «cortado».
+3. **En SVG, `scrollWidth` no quiere decir eso.** Un rótulo de gráfica daba 205
+   contra 162 de `clientWidth` y no estaba cortado: el texto medía 144 px y
+   cabía de sobra. Son cajas distintas. Lo que sí corta en una gráfica lo hace
+   el componente a mano dejando «…», y eso se mira aparte: tiene que llevar el
+   nombre entero en un `<title>`.
+
+**Y el contador de textos mirados es parte de la medida.** Una pasada dio 2.874
+contra 5.764 de la siguiente: la mitad de las pantallas se midieron a medio
+pintar, y una pantalla a medio pintar sale verde con el mismo verde que una que
+está bien.
+
     ./setup.sh arrancar
     node frontend/scripts/barrido-pantallas.mjs
 

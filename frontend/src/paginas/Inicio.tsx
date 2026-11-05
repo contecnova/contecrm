@@ -299,9 +299,14 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
                       key={o.id}
                       className="flex items-center justify-between gap-3 py-1"
                     >
+                      {/* Con `title`: el nombre se corta —la caja es
+                          estrecha a propósito, es un resumen— y cortado sin
+                          forma de leerlo entero deja «Pendiente de
+                          adjudicación…» sin decir de qué va. */}
                       <Link
                         to={`/m/oportunidades/oportunidad/${o.id}`}
                         className="min-w-0 truncate text-dato text-accent hover:underline"
+                        title={o.nombre}
                       >
                         {o.nombre}
                       </Link>
@@ -409,6 +414,7 @@ function FilaActividad({
       <Link
         to={`/m/actividades/actividad/${actividad.id}`}
         className="min-w-0 truncate text-dato text-accent hover:underline"
+        title={actividad.asunto}
       >
         {actividad.asunto}
       </Link>
