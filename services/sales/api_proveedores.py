@@ -24,11 +24,10 @@ from datetime import date
 from typing import Any
 
 from crmcore import fechas
+from crmcore import proveedores_comercial as pcom
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-
-from services.sales import proveedores_comercial as pcom
 
 router_proveedores = APIRouter(
     prefix="/proveedores-comerciales", tags=["proveedores: contrato y alcance"]

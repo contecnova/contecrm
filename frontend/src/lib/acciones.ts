@@ -88,6 +88,32 @@ export function accionesDe(
 }
 
 /**
+ * Las acciones de una cuenta, y las de proveedor cuando lo es.
+ *
+ * Un proveedor es una cuenta con rol, y su ficha es la de la cuenta: pedía sólo
+ * las acciones de `/accounts`, así que homologar, marcar el rol, la evaluación
+ * con las entregas y la baja con lo comprometido —todo `/proveedores/{id}/…`—
+ * no salían en ninguna parte. Visto el 05-11-2026. Las que la pestaña de
+ * proveedores oculta se ocultan aquí también.
+ */
+export function accionesDeLaCuenta(
+  superficie: Superficie | null,
+  id: string,
+  puede: (permiso: string | null) => boolean,
+  { esProveedor, ocultas }: { esProveedor: boolean; ocultas: readonly string[] },
+): Accion[] {
+  const ocultar = new Set(ocultas);
+  return [
+    ...accionesDe(superficie, "/api/v1/accounts", id, puede),
+    ...(esProveedor
+      ? accionesDe(superficie, "/api/v1/proveedores", id, puede).filter(
+          (a) => !ocultar.has(a.plantilla),
+        )
+      : []),
+  ];
+}
+
+/**
  * Lo que se puede hacer con un registro **que no tiene ficha**.
  *
  * Una ficha es algo que se lee: sin `GET /coleccion/{id}` no la hay, y todo lo

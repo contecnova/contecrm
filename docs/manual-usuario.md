@@ -2133,6 +2133,29 @@ tiene ese dato. No se puede soltar nada en ella, porque eso escribiría el guion
 como si fuera un valor. Vaciar un campo se hace en la ficha, con el campo
 delante.
 
+### Comprar a un proveedor, de la petición a la evaluación
+
+En *Proveedores* están las pestañas de compras. El recorrido normal:
+
+1. **Peticiones de oferta → Nuevo.** Categoría (la que decide la homologación),
+   a qué proveedores se pide, fecha límite, cantidad y, si hay, la oportunidad que
+   la motiva y para cuándo hace falta.
+2. **En la ficha de la petición**, *Anotar lo que ha contestado un proveedor*
+   por cada respuesta. *Quién ha contestado, y sobre todo quién no* dice a quién
+   llamar; *Comparar…* enseña todas las opciones con su motivo de descarte —no
+   homologado, papeles vencidos, llega tarde— y cuál se elegiría.
+3. **En la respuesta elegida**, *Adjudicar a este proveedor*. Si tiene capacidad
+   declarada para el periodo se descuenta, y si no cabe se niega salvo que lo
+   fuerces diciendo por qué. Queda fijada la fecha comprometida.
+4. **Cuando entrega**, *Anotar que se entregó, y lo que costó*; y si algo falla,
+   *Anotar una incidencia*. Con eso, en la ficha del proveedor, *Cómo va este
+   proveedor…* da el porcentaje en plazo, las incidencias y el desvío de coste.
+
+*Capacidad*, *Rappels*, *Contratos de proveedor* y *Alcance* se rellenan una vez
+por proveedor y periodo, y cada ficha contesta su pregunta: cuánto queda, qué se
+recuperará con lo comprado, qué hay que hacer con el contrato mirando lo
+comprometido, y si puede servir un caso concreto.
+
 ### Añadir y editar, en general
 
 Casi todas las pantallas que enseñan una lista permiten **dar de alta** y

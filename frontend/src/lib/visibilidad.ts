@@ -471,6 +471,48 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "party:read",
       "o": "proveedor",
       "s": "party"
+    },
+    {
+      "r": "/api/v1/compras/peticiones",
+      "p": "party:read",
+      "o": "peticion_oferta",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/compras/respuestas",
+      "p": "party:read",
+      "o": "respuesta_oferta",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/compras/capacidades",
+      "p": "party:read",
+      "o": "capacidad_proveedor",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/compras/reservas",
+      "p": "party:read",
+      "o": "reserva_capacidad",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/compras/rappels",
+      "p": "party:read",
+      "o": "acuerdo_rappel",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/compras/contratos",
+      "p": "party:read",
+      "o": "contrato_proveedor",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/compras/alcances",
+      "p": "party:read",
+      "o": "alcance_proveedor",
+      "s": "party"
     }
   ],
   "actividades": [

@@ -13265,13 +13265,16 @@ día de la entrega nadie sepa quién tenía que ir. Si además es el único homo
 para lo suyo, la baja **deja un hueco desde el primer día**, y eso hay que decirlo
 antes porque homologar a otro lleva semanas.
 
-**Qué de esto está hecho y qué no (05-11-2026).** La homologación por categoría,
-los papeles con vigencia y los contactos por función se guardan y se ven. El
-**riesgo de dependencia**, la **evaluación con hechos** y **si se puede dar de
-baja** son cálculos correctos que reciben los datos de quien pregunta: en la lista
-de proveedores salen como acciones, pero piden escribir las entregas, las
-incidencias o los compromisos a mano. Constan como en curso hasta que lean lo
-guardado.
+**Con hechos guardados, no tecleados (05-11-2026).** El riesgo de dependencia, la
+evaluación y la baja eran cálculos a los que había que escribirles los datos. Ahora
+los leen del módulo de compras: el **riesgo** sale de lo adjudicado a cada
+proveedor y de quién más está homologado hoy para lo mismo (*Proveedores → Dónde
+duele…, con lo comprado de verdad*); la **evaluación**, de las entregas anotadas
+contra la fecha comprometida, sus incidencias y el desvío entre coste ofertado y
+final (*ficha del proveedor → Cómo va este proveedor, con las entregas…*); y la
+**baja**, de lo adjudicado y sin entregar. El umbral de concentración es un
+ajuste (`RIESGO_CONCENTRACION_PCT`). Las calculadoras de antes siguen en la API
+para quien integre con sus propios datos, y en la pantalla están ocultas.
 
 ## El contrato del proveedor y lo que sostiene (`CRM-09.01.01.07`, `CRM-09.01.01.08`, `CRM-09.01.01.09`)
 
@@ -13313,9 +13316,10 @@ puede preguntar al revés —qué es lo máximo que se puede prometer con este p
 detrás—, que es más barato que descubrirlo en la revisión legal y mucho más que
 descubrirlo en la primera incidencia.
 
-**Hecho y no hecho (05-11-2026).** El contrato del proveedor y su alcance son
-cálculos que reciben la vigencia, las condiciones y el alcance de quien pregunta:
-no hay contratos ni alcances de proveedor guardados, y constan como en curso.
+**Guardados (05-11-2026).** El contrato del proveedor y su alcance se registran en
+*Proveedores → Contratos de proveedor* y *Alcance*. El estado del contrato mira lo
+adjudicado y sin entregar con ese proveedor —no la fecha sola—, y «puede servir»
+contesta con el alcance declarado y dice por qué no.
 
 ## Lo que nos cuesta: tarifas, margen y comparación (`CRM-09.02.01.01`, `CRM-09.02.01.02`, `CRM-09.02.01.03`, `CRM-09.02.01.04`, `CRM-09.02.01.05`)
 
@@ -13391,10 +13395,14 @@ El **margen mínimo** que decide si hace falta aprobación es el del tenant
 la oportunidad y en la calculadora de coste. Hasta el 05-11-2026 la calculadora
 usaba un 15 escrito en el código y la oferta, el 20 del ajuste.
 
-**Comparar proveedores y pedir oferta todavía no**: son cálculos correctos sobre
-los datos que les da quien pregunta, pero no hay ofertas de proveedor ni
-peticiones guardadas, así que no hay pantalla que los alimente. Constan como en
-curso.
+**Pedir oferta y comparar (05-11-2026).** En *Proveedores → Peticiones de oferta*
+se pide a varios proveedores a la vez, ligada a la oportunidad, con fecha límite y
+para cuándo hace falta; en su ficha se anota lo que contesta cada uno —sólo a
+quien se le pidió—, se ve **quién no ha contestado**, se **compara** con la
+homologación de cada uno para esa categoría, sus papeles y la fecha que puede
+cumplir, y se **reparte** la cantidad según una regla declarada. La respuesta
+elegida se **adjudica** —sólo a un homologado— y entonces compromete su capacidad
+y fija la fecha contra la que se medirá la entrega.
 
 ## Capacidad, plazo, reparto y coste real (`CRM-09.02.01.06`, `CRM-09.02.01.07`, `CRM-09.02.01.08`, `CRM-09.02.01.09`, `CRM-09.02.01.10`)
 
@@ -13422,12 +13430,14 @@ como se llega a depender de un proveedor sin que nadie lo haya decidido. Si no
 cabe entero se dice **cuánto falta**, en vez de repartir lo que hay y dejar el
 resto sin asignar sin avisar.
 
-**Lo que de esto todavía no está (05-11-2026).** La capacidad comprometida, el
-plazo que decide la fecha, el reparto y el rappel son cálculos correctos que
-reciben los datos de quien pregunta: no hay capacidad contratada por proveedor y
-periodo, ni plazos, ni tramos de rappel guardados. Constan como en curso, y la
-pantalla *Coste y capacidad* es una calculadora en la que esos datos se escriben
-a mano. El coste real contra el ofertado (`.10`) sí sale de los encargos.
+**Con datos (05-11-2026).** La capacidad contratada por proveedor y periodo se
+declara en *Proveedores → Capacidad*, y lo comprometido son sus reservas —firmes
+al adjudicar, o en oferta—; «cuánto queda» lo descuenta solo. El plazo de cada
+respuesta decide la fecha prometible, sumándole los días propios del ajuste
+`COMPRAS_DIAS_PROPIOS_ENTREGA`. Los tramos de **rappel** se declaran por
+proveedor y periodo, y la compra acumulada es lo adjudicado en ese periodo al
+coste final cuando consta. La pantalla *Coste y capacidad* sigue siendo una
+calculadora para probar números a mano.
 
 **El rappel estimado no es dinero.** Depende de llegar al tramo, y si el año se
 tuerce no se llega: se marca como estimado hasta que el periodo se cierra. Y se

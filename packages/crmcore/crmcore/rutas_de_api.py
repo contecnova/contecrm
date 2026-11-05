@@ -243,6 +243,10 @@ PREFIJOS: dict[str, str] = {
     # El proveedor es una cuenta con rol (CRM-09.01.01.01); esto es lo que se
     # le añade encima: homologación, papeles y contactos.
     "proveedores": "party",
+    # Compras al proveedor: peticiones de oferta, respuestas, capacidad, rappel,
+    # contrato y alcance. Viven junto al proveedor y su homologación, que es lo
+    # que la comparación y el riesgo necesitan leer a la vez.
+    "compras": "party",
     "oportunidades": "sales",
     # Coste, tarifas de proveedor y capacidad (CRM-09.02.01).
     "coste": "sales",

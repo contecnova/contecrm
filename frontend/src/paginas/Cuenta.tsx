@@ -62,7 +62,11 @@ import { listar, listarPagina } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
-import { accionesDe, subColeccionesDe, type Accion } from "@/lib/acciones";
+import {
+  accionesDeLaCuenta,
+  subColeccionesDe,
+  type Accion,
+} from "@/lib/acciones";
 import { escalar, humanizar, importe } from "@/lib/formato";
 import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
 import { useSuperficie } from "@/lib/permisos";
@@ -379,7 +383,15 @@ export function Cuenta() {
   // Fusionar duplicados, verificar un identificador, geocodificar, dar de alta
   // en el equipo de cuenta… todo lo que el servidor admite hacer con un
   // cliente, sin escribir un botón por acción.
-  const acciones = accionesDe(superficie, "/api/v1/accounts", id, tiene);
+  // Y las de proveedor, cuando lo es (ver `accionesDeLaCuenta`).
+  const moduloProveedores = moduloDe("proveedores");
+  const recursoProveedor = moduloProveedores
+    ? recursoDe(moduloProveedores, "proveedor")
+    : undefined;
+  const acciones = accionesDeLaCuenta(superficie, id, tiene, {
+    esProveedor: Boolean(vista?.cuenta?.roles?.includes("proveedor")),
+    ocultas: recursoProveedor?.acciones_ocultas ?? [],
+  });
   const paneles = subColeccionesDe(superficie, "/api/v1/accounts", id, tiene);
   // Lo que cuelga de la cuenta **por ser proveedora**: homologaciones por
   // categoría, documentos con vigencia, sus contactos. Sale de la superficie

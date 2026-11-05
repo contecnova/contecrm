@@ -735,6 +735,18 @@ from services.party.actividades_extra import (  # noqa: E402,F401
 # Cola de excepciones de calidad (CRM-01.01.04.08).
 from services.party.cola_duplicados import CandidatoDuplicado  # noqa: E402,F401
 
+# Compras al proveedor: peticiones de oferta, respuestas, capacidad, rappel,
+# contrato y alcance (CRM-09.02.01.04 a .09, CRM-09.01.01.04, .05, .07, .09, .10).
+from services.party.compras import (  # noqa: E402,F401
+    AcuerdoRappel,
+    AlcanceProveedor,
+    CapacidadProveedor,
+    ContratoProveedor,
+    PeticionOferta,
+    ReservaCapacidad,
+    RespuestaOferta,
+)
+
 # Plan de cuenta, financiero replicado, mapa de influencia y cambio de empresa
 # (CRM-01.01.01.11, .12 · CRM-01.01.02.03, .07).
 from services.party.cuenta_360 import (  # noqa: E402,F401

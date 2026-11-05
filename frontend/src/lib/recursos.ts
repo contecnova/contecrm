@@ -863,6 +863,18 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         objeto: "proveedor",
         listar: "/api/v1/proveedores",
         servicio: "party",
+        // Las dos calculadoras de antes, que pedían teclear los hechos: el
+        // riesgo y la evaluación ahora se calculan con lo comprado y lo
+        // entregado de verdad —«Dónde duele…, con lo comprado de verdad» en
+        // esta lista y «Cómo va este proveedor, con las entregas…» en su
+        // ficha—. Siguen en la API para quien integre con sus propios datos.
+        acciones_ocultas: [
+          "/api/v1/proveedores/riesgo",
+          "/api/v1/proveedores/evaluacion",
+          // Y en la ficha, la baja que pedía teclear los compromisos: la
+          // cubre «Si se puede dar de baja, con lo que tiene adjudicado…».
+          "/api/v1/proveedores/{cuenta_id}/puede-darse-de-baja",
+        ],
         columnas: [
           "nombre",
           "estado",
@@ -886,6 +898,66 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
           campo: "cuenta_id",
         },
         columnas: ["estado", "proveedor", "documento", "valido_hasta", "dias"],
+        permiso: "party:read",
+      },
+      // Compras al proveedor (CRM-09.02.01.04 a .09, CRM-09.01.01.04, .05,
+      // .07, .09, .10): los hechos que los cálculos de coste y de proveedor
+      // necesitaban, guardados donde nacen. Cada pestaña abre su ficha y sus
+      // acciones salen del contrato.
+      {
+        nombre: "Peticiones de oferta",
+        objeto: "peticion_oferta",
+        listar: "/api/v1/compras/peticiones",
+        servicio: "party",
+        columnas: ["descripcion", "categoria", "cantidad", "fecha_limite", "estado"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Respuestas de proveedor",
+        objeto: "respuesta_oferta",
+        listar: "/api/v1/compras/respuestas",
+        servicio: "party",
+        columnas: ["proveedor_id", "coste_unitario", "plazo_dias", "estado", "fecha_comprometida", "entregada_el"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Capacidad",
+        objeto: "capacidad_proveedor",
+        listar: "/api/v1/compras/capacidades",
+        servicio: "party",
+        columnas: ["proveedor_id", "categoria", "desde", "hasta", "contratada", "unidad"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Reservas de capacidad",
+        objeto: "reserva_capacidad",
+        listar: "/api/v1/compras/reservas",
+        servicio: "party",
+        columnas: ["capacidad_id", "cantidad", "firme", "forzada", "motivo"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Rappels",
+        objeto: "acuerdo_rappel",
+        listar: "/api/v1/compras/rappels",
+        servicio: "party",
+        columnas: ["proveedor_id", "desde", "hasta", "cerrado"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Contratos de proveedor",
+        objeto: "contrato_proveedor",
+        listar: "/api/v1/compras/contratos",
+        servicio: "party",
+        columnas: ["proveedor_id", "numero", "vigente_hasta", "renovacion_automatica", "dias_preaviso"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Alcance",
+        objeto: "alcance_proveedor",
+        listar: "/api/v1/compras/alcances",
+        servicio: "party",
+        columnas: ["proveedor_id", "alcance"],
         permiso: "party:read",
       },
     ],

@@ -463,7 +463,7 @@ def politica_descuento(presupuesto_id: UUID, db: DbDep, principal: AutenticadoDe
     ),
 )
 def costes_al_dia(presupuesto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    from services.sales import coste as cst
+    from crmcore import costes as cst
 
     fila = db.get(pre.Presupuesto, presupuesto_id)
     if fila is None or fila.tenant_id != principal.tenant_id:

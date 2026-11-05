@@ -16,9 +16,8 @@ from uuid import uuid4
 
 import pytest
 from crmcore import coste_real as cr
+from crmcore import costes as cst
 from crmcore.errors import Conflicto, ErrorValidacion
-
-from services.sales import coste as cst
 
 HOY = date(2026, 9, 23)
 

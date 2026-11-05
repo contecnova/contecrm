@@ -670,9 +670,8 @@ def listar_lineas(oportunidad_id: UUID, db: DbDep) -> Any:
     ),
 )
 def margen_de_la_oportunidad(oportunidad_id: UUID, db: DbDep) -> Any:
+    from crmcore import costes as cst
     from crmcore.runtime.settings import efectivo
-
-    from services.sales import coste as cst
 
     svc.exigir_oportunidad(db, oportunidad_id)
     lineas = (

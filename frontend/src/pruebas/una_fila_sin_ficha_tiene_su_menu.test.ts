@@ -64,3 +64,35 @@ describe("una fila sin ficha tiene su menú", () => {
     expect(operacionesDeRegistro(SUPERFICIE, "/api/v1/nada", todo)).toBeNull();
   });
 });
+
+// La ficha de un proveedor es la de su cuenta, y pedía sólo las acciones de
+// `/accounts`: homologar, la evaluación medida y la baja con lo comprometido no
+// salían en ninguna parte (05-11-2026).
+describe("la ficha de un proveedor", () => {
+  const SUP = {
+    operaciones: [
+      op("POST", "/api/v1/accounts/{cuenta_id}/fusionar", "Fusionar esta cuenta con otra"),
+      op("POST", "/api/v1/proveedores/{cuenta_id}/evaluacion-medida", "Cómo va este proveedor"),
+      op("POST", "/api/v1/proveedores/{cuenta_id}/puede-darse-de-baja", "La calculadora de antes"),
+    ],
+  } as unknown as Superficie;
+
+  it("lleva las de proveedor cuando lo es, sin las que se ocultan", async () => {
+    const { accionesDeLaCuenta } = await import("@/lib/acciones");
+    const nombres = accionesDeLaCuenta(SUP, "c-1", todo, {
+      esProveedor: true,
+      ocultas: ["/api/v1/proveedores/{cuenta_id}/puede-darse-de-baja"],
+    }).map((a) => a.nombre);
+    expect(nombres).toContain("Fusionar esta cuenta con otra");
+    expect(nombres).toContain("Cómo va este proveedor");
+    expect(nombres).not.toContain("La calculadora de antes");
+  });
+
+  it("y un cliente no las lleva", async () => {
+    const { accionesDeLaCuenta } = await import("@/lib/acciones");
+    const nombres = accionesDeLaCuenta(SUP, "c-1", todo, { esProveedor: false, ocultas: [] }).map(
+      (a) => a.nombre,
+    );
+    expect(nombres).toEqual(["Fusionar esta cuenta con otra"]);
+  });
+});

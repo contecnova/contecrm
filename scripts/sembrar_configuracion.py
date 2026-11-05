@@ -2815,6 +2815,122 @@ def sembrar_proveedores(api: Api) -> None:
 # ── Catálogo de producto y circuito de venta ──────────────────────────────
 
 
+def sembrar_compras(api: Api) -> None:
+    """Compras a los proveedores sembrados: lo que mide a cada uno.
+
+    Sin esto las pestañas de compras salen vacías y los cálculos —comparar,
+    riesgo, evaluación, rappel, contrato— no tienen nada que leer. Se siembra un
+    recorrido entero, para que cada pantalla tenga lo suyo: una petición a los
+    tres con una respuesta que falta, la adjudicación al homologado, su entrega
+    tarde y más cara con una incidencia, y la capacidad, el contrato, el alcance
+    y el rappel de cada uno.
+
+    Se puede pasar dos veces: cada alta mira antes si ya está, y la adjudicación
+    sólo se hace sobre una respuesta que sigue libre.
+    """
+    proveedores = [p for p in api.listar("/api/v1/proveedores", 10) if p.get("id")][:3]
+    if len(proveedores) < 2:
+        return
+    categorias = ("quimica", "mecanizado", "logistica")
+    for i, proveedor in enumerate(proveedores):
+        pid = str(proveedor["id"])
+        api.crear(
+            "/api/v1/compras/capacidades",
+            {
+                "proveedor_id": pid,
+                "categoria": categorias[i],
+                "desde": _f(-30),
+                "hasta": _f(150),
+                "contratada": str(200 + 100 * i),
+                "unidad": "ud",
+            },
+            unico_por="categoria",
+        )
+        api.crear(
+            "/api/v1/compras/contratos",
+            {
+                "proveedor_id": pid,
+                "numero": f"CP-2026-{i + 1:03d}",
+                "vigente_desde": _f(-300),
+                # Uno vence pronto con renovación automática: es el caso que la
+                # pantalla del contrato existe para enseñar.
+                "vigente_hasta": _f(25 if i == 0 else 200),
+                "renovacion_automatica": i == 0,
+                "dias_preaviso": 30,
+            },
+            unico_por="numero",
+        )
+        api.crear(
+            "/api/v1/compras/alcances",
+            {
+                "proveedor_id": pid,
+                "alcance": {
+                    "categoria": [categorias[i]],
+                    "geografia": ["barcelona", "tarragona"] if i == 0 else ["madrid"],
+                },
+            },
+        )
+        if not any(
+            str(r.get("proveedor_id")) == pid for r in api.listar("/api/v1/compras/rappels", 50)
+        ):
+            api.crear(
+                "/api/v1/compras/rappels",
+                {
+                    "proveedor_id": pid,
+                    "desde": _f(-60),
+                    "hasta": _f(300),
+                    "tramos": [{"desde": 5000, "pct": 1}, {"desde": 20000, "pct": 3}],
+                },
+            )
+
+    peticion = api.crear(
+        "/api/v1/compras/peticiones",
+        {
+            "categoria": "quimica",
+            "proveedores": [str(p["id"]) for p in proveedores],
+            "fecha_limite": _f(10),
+            "fecha_necesaria": _f(20),
+            "descripcion": "Reactivo de limpieza para la línea de pintura",
+            "cantidad": "40",
+            "unidad": "ud",
+        },
+        unico_por="descripcion",
+    )
+    if not peticion or not peticion.get("id"):
+        return
+    pid = str(peticion["id"])
+    # Contestan dos de tres: el que falta es lo que la pantalla tiene que decir.
+    # Sólo los que no han contestado todavía: en la segunda pasada la petición
+    # ya está adjudicada y el servidor rechaza —con razón— respuestas nuevas.
+    ya = {
+        str(r.get("proveedor_id"))
+        for r in api.listar(f"/api/v1/compras/peticiones/{pid}/respuestas", 10)
+    }
+    for proveedor, coste, plazo in zip(proveedores[:2], ("118.50", "96.00"), (6, 4), strict=False):
+        if str(proveedor["id"]) in ya:
+            continue
+        api.crear(
+            f"/api/v1/compras/peticiones/{pid}/respuestas",
+            {"proveedor_id": str(proveedor["id"]), "coste_unitario": coste, "plazo_dias": plazo},
+        )
+    respuestas = api.listar(f"/api/v1/compras/peticiones/{pid}/respuestas", 10)
+    elegida = next(
+        (r for r in respuestas if str(r.get("proveedor_id")) == str(proveedores[0]["id"])),
+        None,
+    )
+    if elegida and elegida.get("estado") == "recibida":
+        rid = str(elegida["id"])
+        api.crear(f"/api/v1/compras/respuestas/{rid}/adjudicar", {})
+        api.crear(
+            f"/api/v1/compras/respuestas/{rid}/entrega",
+            {"entregada_el": _f(30), "coste_final": "124.00"},
+        )
+        api.crear(
+            f"/api/v1/compras/respuestas/{rid}/incidencia",
+            {"gravedad": "media", "descripcion": "Dos bidones con la etiqueta equivocada"},
+        )
+
+
 def sembrar_catalogo(api: Api) -> None:
     """Lo que se vende y a qué precio.
 
@@ -5825,6 +5941,7 @@ PARTES: dict[str, Any] = {
     "canal": sembrar_canal,
     "campo": sembrar_campo,
     "proveedores": sembrar_proveedores,
+    "compras": sembrar_compras,
     "catalogo": sembrar_catalogo,
     "cotizacion": sembrar_cotizacion,
     "prevision": sembrar_prevision,

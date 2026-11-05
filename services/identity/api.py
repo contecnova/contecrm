@@ -713,7 +713,15 @@ def baja_usuario(usuario_id: UUID, uow: UowDep, principal: AutenticadoDep) -> No
 router_roles = APIRouter(prefix="/roles", tags=["roles y permisos"])
 
 
-@router_roles.get("", response_model=PaginaDeListado, summary="Roles del tenant")
+# Con `user:read`, el mismo que pide su pestaña y su ficha. No exigía ninguno:
+# cualquiera con sesión leía qué permisos lleva cada rol, que es el mapa de
+# quién puede qué. Decidido el 05-11-2026.
+@router_roles.get(
+    "",
+    response_model=PaginaDeListado,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Roles del tenant",
+)
 def listar_roles(
     request: Request,
     db: DbDep,

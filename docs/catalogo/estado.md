@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**778 capacidades**: 🔧 14 en-curso · ✅ 764 hecho
+**778 capacidades**: 🔧 3 en-curso · ✅ 775 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1286,7 +1286,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 9 — Proveedores, coste y capacidad
 
-20 capacidades · 🔧 11 · ✅ 9
+20 capacidades · ✅ 20
 
 ### 9.1 Maestro y gobierno del proveedor
 
@@ -1297,13 +1297,13 @@ puede decir que algo está hecho si no lo está.
 | `CRM-09.01.01.01` | El proveedor es una cuenta con rol, no un maestro aparte: misma ficha, misma deduplicación, mismos permisos y los mismos informes | C | 2 | party | ✅ | — |
 | `CRM-09.01.01.02` | Homologación por categoría: requisitos, estado y caducidad, con lo que caduca bloqueando por sí solo | C | 2 | party | ✅ | — |
 | `CRM-09.01.01.03` | Documentación obligatoria con vigencia (seguro, certificados, solvencia) y aviso antes de que venza, no después | C | 2 | party | ✅ | — |
-| `CRM-09.01.01.04` | Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay | A | 4 | party | 🔧 | — |
-| `CRM-09.01.01.05` | Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas | A | 4 | party | 🔧 | — |
+| `CRM-09.01.01.04` | Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay | A | 4 | party | ✅ | — |
+| `CRM-09.01.01.05` | Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas | A | 4 | party | ✅ | — |
 | `CRM-09.01.01.06` | Contactos del proveedor por función: comercial, técnico, facturación y escalado, con a quién se llama cuando algo falla | C | 2 | party | ✅ | — |
-| `CRM-09.01.01.07` | Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido | C | 2 | sales | 🔧 | — |
+| `CRM-09.01.01.07` | Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido | C | 2 | sales | ✅ | — |
 | `CRM-09.01.01.08` | Acuerdo de servicio del proveedor y su relación con el que prometemos al cliente: no se puede prometer lo que no sostiene nadie | A | 3 | service | ✅ | — |
-| `CRM-09.01.01.09` | Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto | C | 2 | sales | 🔧 | — |
-| `CRM-09.01.01.10` | Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja | A | 2 | party | 🔧 | — |
+| `CRM-09.01.01.09` | Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto | C | 2 | sales | ✅ | — |
+| `CRM-09.01.01.10` | Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja | A | 2 | party | ✅ | — |
 
 ### 9.2 Coste, tarifas y capacidad
 
@@ -1314,10 +1314,10 @@ puede decir que algo está hecho si no lo está.
 | `CRM-09.02.01.01` | Tarifa de coste del proveedor sobre el mismo motor de precios: vigencia, volumen, moneda y escalados, sin un motor paralelo | C | 2 | sales | ✅ | contecflow-PSA:app/services/rate_card_service.py |
 | `CRM-09.02.01.02` | Coste en la oportunidad y en la oferta, con el margen calculado y no tecleado | C | 2 | sales | ✅ | — |
 | `CRM-09.02.01.03` | El coste se congela al ofertar: un cambio de tarifa posterior avisa y no reescribe la oferta que alguien ya aprobó | C | 2 | sales | ✅ | — |
-| `CRM-09.02.01.04` | Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio | A | 2 | sales | 🔧 | — |
-| `CRM-09.02.01.05` | Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó | A | 2 | sales | 🔧 | — |
-| `CRM-09.02.01.06` | Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible | A | 2 | sales | 🔧 | — |
-| `CRM-09.02.01.07` | Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés | C | 2 | sales | 🔧 | — |
-| `CRM-09.02.01.08` | Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado | A | 4 | sales | 🔧 | — |
-| `CRM-09.02.01.09` | Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad | A | 4 | sales | 🔧 | — |
+| `CRM-09.02.01.04` | Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio | A | 2 | sales | ✅ | — |
+| `CRM-09.02.01.05` | Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó | A | 2 | sales | ✅ | — |
+| `CRM-09.02.01.06` | Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible | A | 2 | sales | ✅ | — |
+| `CRM-09.02.01.07` | Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés | C | 2 | sales | ✅ | — |
+| `CRM-09.02.01.08` | Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado | A | 4 | sales | ✅ | — |
+| `CRM-09.02.01.09` | Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad | A | 4 | sales | ✅ | — |
 | `CRM-09.02.01.10` | Coste real frente a coste ofertado, medido, y dónde se fue la diferencia | A | 4 | analytics | ✅ | — |

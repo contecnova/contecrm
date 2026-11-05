@@ -12,12 +12,11 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import costes as cst
 from crmcore import fechas
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-
-from services.sales import coste as cst
 
 router_coste = APIRouter(prefix="/coste", tags=["coste y capacidad"])
 

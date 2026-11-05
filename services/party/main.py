@@ -13,6 +13,7 @@ from services.party import (
 from services.party.api import ROUTERS
 from services.party.api_actividades_extra import ROUTERS_ACTIVIDADES_EXTRA
 from services.party.api_calidad import ROUTERS_CALIDAD
+from services.party.api_compras import ROUTERS_COMPRAS
 from services.party.api_embebido import router_embebido
 from services.party.api_proveedores import ROUTERS_PROVEEDORES
 from services.party.consumidores import (
@@ -118,6 +119,7 @@ app = crear_servicio(
         *ROUTERS_ACTIVIDADES_EXTRA,
         *ROUTERS_CALIDAD,
         *ROUTERS_PROVEEDORES,
+        *ROUTERS_COMPRAS,
         router_embebido,
     ],
     al_arrancar=_al_arrancar,

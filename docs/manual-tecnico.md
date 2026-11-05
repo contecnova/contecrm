@@ -2747,6 +2747,35 @@ Dos defectos más salieron al abrirlas:
   nombre propio que la fila no trae es su `clave`: el enlace caía al `id` y
   daba 404.
 
+#### Compras al proveedor: los cálculos con datos (05-11-2026)
+
+Once capacidades de coste y de proveedor eran funciones puras a las que quien
+llamaba les daba los hechos. Se pasaron a «en curso» por eso, y se cerraron
+construyendo los datos:
+
+- **Dónde:** `services/party/compras.py` (modelos y lógica) y
+  `services/party/api_compras.py` (rutas bajo `/api/v1/compras`, prefijo
+  enrutado a `party` en `crmcore.rutas_de_api`). En `party` porque el proveedor,
+  su homologación y sus papeles viven ahí, y la comparación los lee a la vez que
+  las respuestas.
+- **Siete tablas** (migración `party/20261105_1023_compras_al_proveedor`):
+  `peticiones_oferta`, `respuestas_oferta` (con adjudicación, entrega, coste final
+  e incidencias), `capacidades_proveedor`, `reservas_capacidad`,
+  `acuerdos_rappel`, `contratos_proveedor` y `alcances_proveedor`.
+- **Los cálculos no se reescribieron**: `sales/coste.py` y
+  `sales/proveedores_comercial.py` se movieron a `crmcore.costes` y
+  `crmcore.proveedores_comercial` —son puros— y los usan ventas y party.
+- **Pantallas**: siete pestañas genéricas en *Proveedores*, con
+  `montar_listado` + `montar_ficha`; las acciones salen del contrato. La ficha
+  del proveedor (que es la de cuenta) ahora añade las acciones de
+  `/proveedores/{id}/…` cuando la cuenta tiene ese rol (`accionesDeLaCuenta`).
+- **Ajustes nuevos**: `COMPRAS_DIAS_PROPIOS_ENTREGA` y
+  `RIESGO_CONCENTRACION_PCT`, que eran un 2 y un 40 escritos en los cálculos.
+- **Sembrador**: `--parte compras`, que se puede repetir sin duplicar.
+
+Pruebas: `test_compras_al_proveedor.py`, de punta a punta por HTTP y validada
+plantando el fallo (homologación ignorada, rappel al coste ofertado).
+
 #### Capacidades sin pantalla: medir antes de citar (05-11-2026)
 
 El guardián de pantallas cuenta **citas**, no alcance, así que bajar su tope

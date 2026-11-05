@@ -44,6 +44,14 @@ class AjustesParty(Settings):
     # proveedor. 30 días es lo habitual para poder renegociar; un contrato con
     # preaviso de 90 necesita más.
     proveedor_dias_preaviso: int = Field(30, ge=1, le=365)
+    # Días nuestros que se suman al plazo del proveedor para prometer una fecha
+    # al cliente: coordinar, preparar y entregar. Prometer sólo los suyos es
+    # prometer un plazo que existiría si nosotros no hiciéramos nada. Era un 2
+    # escrito en el cálculo.
+    compras_dias_propios_entrega: int = Field(2, ge=0, le=60)
+    # Porcentaje de lo comprado a partir del cual depender de un proveedor sin
+    # alternativa homologada es un riesgo. Era un 40 escrito en el cálculo.
+    riesgo_concentracion_pct: float = Field(40.0, ge=1.0, le=100.0)
 
     # Cuántos descartes seguidos hacen sospechar de una regla de duplicados.
     # Por debajo de cinco, un par de descartes legítimos ya la acusan.
@@ -201,6 +209,22 @@ registrar_claves(
             minimo=1,
             maximo=3650,
             campo_settings="mdm_dias_frescura",
+        ),
+        ClaveAjuste(
+            clave="compras_dias_propios_entrega",
+            tipo="int",
+            descripcion="Días propios que se suman al plazo del proveedor al prometer una fecha",
+            minimo=0,
+            maximo=60,
+            campo_settings="compras_dias_propios_entrega",
+        ),
+        ClaveAjuste(
+            clave="riesgo_concentracion_pct",
+            tipo="float",
+            descripcion="Porcentaje de compra a partir del cual depender de un proveedor es un riesgo",
+            minimo=1.0,
+            maximo=100.0,
+            campo_settings="riesgo_concentracion_pct",
         ),
         ClaveAjuste(
             clave="proveedor_dias_preaviso",

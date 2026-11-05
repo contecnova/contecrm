@@ -14,13 +14,13 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore import proveedores_comercial as pcom
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
 from crmcore.fechas import hoy
 
 from services.party import proveedores as prv
 from services.party.modelos import Cuenta
-from services.sales import proveedores_comercial as pcom
 from services.service import proveedores_sla as psla
 
 # ANCLADO AL DÍA DE HOY, no a una fecha escrita.

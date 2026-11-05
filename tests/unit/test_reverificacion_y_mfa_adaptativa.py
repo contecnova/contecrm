@@ -622,3 +622,20 @@ def test_la_ficha_no_se_queda_con_la_ruta_de_licencias(
     r = cliente_identidad.get("/api/v1/usuarios/licencias", headers=_cabeceras(tenant_id))
     assert r.status_code == 200, r.text
     assert "activos" in r.json()
+
+
+def test_los_roles_no_los_lista_cualquiera(
+    cliente_identidad: Any, tenant_id: UUID, db: Any
+) -> None:
+    """Sin `user:read` no se lee qué permisos lleva cada rol: es el mapa de quién
+    puede qué. El listado no exigía ningún permiso hasta el 05-11-2026."""
+    from crmcore.http.deps import H_PERMISOS
+
+    sin = cliente_identidad.get(
+        "/api/v1/roles", headers=_cabeceras(tenant_id, **{H_PERMISOS: "account:read"})
+    )
+    assert sin.status_code == 403, sin.text
+    con = cliente_identidad.get(
+        "/api/v1/roles", headers=_cabeceras(tenant_id, **{H_PERMISOS: "user:read"})
+    )
+    assert con.status_code == 200, con.text
