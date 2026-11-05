@@ -275,7 +275,11 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "identity"
     },
     {
-      "r": "/api/v1/claves-api",
+      "r": "/api/v1/claves-api?revocada_at__vacio=true",
+      "s": "identity"
+    },
+    {
+      "r": "/api/v1/claves-api?revocada_at__no_vacio=true",
       "s": "identity"
     },
     {
