@@ -48,6 +48,9 @@ import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { accionesDe, type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
 import { escalar, fecha, humanizar, importe as comoImporte } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
@@ -245,6 +248,10 @@ export function Oportunidad() {
   const modulo = moduloDe("oportunidades");
   const recurso = modulo ? recursoDe(modulo, "oportunidad") : undefined;
   const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
+  // Las acciones del contrato sobre la oportunidad —entre ellas «Qué hacer ahora», con IA— en el menú, igual que en la ficha del cliente. Mover de etapa no: tiene su control arriba.
+  const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const acciones = accionesDe(superficie, "/api/v1/opportunities", id ?? "", tiene).filter((a) => !["/api/v1/opportunities/{oportunidad_id}/etapa"].includes(a.plantilla));
   // Las mismas dos pestañas que las demás fichas. «Relacionado» es lo que
   // esta pantalla ya enseñaba —las líneas, quién decide, el plan— y
   // «Detalles» son sus campos, que hasta hoy sólo se leían entrando a editar.
@@ -488,6 +495,12 @@ export function Oportunidad() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              extra={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+                destructiva: esIrreversible(a),
+              }))}
             />
           ) : null
         }
@@ -501,6 +514,21 @@ export function Oportunidad() {
           alCancelar={() => setConfirmando(false)}
         />
       ) : null}
+
+
+      <Acciones
+
+        acciones={acciones}
+
+        servicio="sales"
+
+        abierta={accionAbierta}
+
+        alCambiarAbierta={setAccionAbierta}
+
+        alTerminar={() => cargar()}
+
+      />
 
       {editando && recurso ? (
         <FormularioDeEdicion

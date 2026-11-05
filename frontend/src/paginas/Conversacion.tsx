@@ -33,11 +33,24 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
+import { Acciones } from "@/componentes/Acciones";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { moduloDe } from "@/lib/modulos";
 import { ErrorApi, llamar } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
+import { accionesDe } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
+
+/**
+ * Lo que tiene control propio en esta pantalla y no se repite en las acciones
+ * del contrato: responder, cambiar de canal y escalar a una persona.
+ */
+const CON_CONTROL_PROPIO = new Set([
+  "/api/v1/conversaciones/{conversacion_id}/responder",
+  "/api/v1/conversaciones/{conversacion_id}/transferir",
+  "/api/v1/conversaciones/{conversacion_id}/escalar-a-humano",
+]);
 
 /** Los canales que admite el servidor. Mandar uno que no está da 422. */
 const CANALES = [
@@ -76,6 +89,15 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const { id = "" } = useParams();
   const modulo = moduloDe("conversaciones");
+  // Las demás acciones del contrato —resumirla, leer qué quiere el cliente y
+  // traducirle, con IA— como botones: aquí no hay menú de registro.
+  const { superficie, tiene } = useSuperficie();
+  const acciones = accionesDe(
+    superficie,
+    "/api/v1/conversaciones",
+    id,
+    tiene,
+  ).filter((a) => !CON_CONTROL_PROPIO.has(a.plantilla));
   const [conversacion, setConversacion] = useState<Conversacion | null>(null);
   const [hilo, setHilo] = useState<Mensaje[] | null>(null);
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
@@ -219,6 +241,8 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
           ))}
         </ol>
       )}
+
+      <Acciones acciones={acciones} servicio="service" alTerminar={cargar} />
 
       {puedeEscribir ? (
         <Responder enviando={enviando} alEnviar={accion} />

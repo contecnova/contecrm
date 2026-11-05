@@ -1741,6 +1741,27 @@ Además: lo que se transcribe de una llamada **no es un acta** —el reconocimie
 confunde nombres y cifras—, y grabar exige haber avisado. Si algo se propone a
 partir de una transcripción poco fiable, no se propone.
 
+### Pedírselo desde la ficha
+
+En el menú **Más** de cada registro:
+
+- **Cuenta → Resumir esta cuenta con IA**: puntos clave y riesgos, cada riesgo
+  con el dato en que se apoya. Los datos usados salen debajo para comprobarlo.
+- **Contacto → Redactar con IA un correo**: dices qué tiene que conseguir y sale
+  un borrador en el idioma del contacto. Si el contacto no tiene idioma, elige
+  tú uno.
+- **Oportunidad → Qué hacer ahora con esta oportunidad**: pasos con su porqué
+  (días sin contacto, presupuesto sin reunión de cierre, nadie que firme).
+- **Caso → Resumir este caso** y **Sugerir una respuesta**, con los artículos de
+  la base de conocimiento que la sostienen. Si no hay ninguno, te lo dice.
+- **Conversación** (botones encima de la respuesta): resumirla al cerrarla o al
+  pasarla, **qué quiere el cliente y cómo está** —con las frases en que se
+  basa— y **traducir su último mensaje**.
+
+Nada de esto se guarda ni se manda solo: es un borrador para ti. Necesitas el
+permiso de usar la IA, y lo que no puedes ver en el registro tampoco se le pasa
+al modelo.
+
 ### Hace falta un modelo conectado, y se elige a conciencia
 
 Nada de esto funciona hasta que tu instalación declara **a qué modelo llamar**.

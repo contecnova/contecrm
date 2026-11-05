@@ -1419,6 +1419,63 @@ montar_listado(
 )
 
 
+@router_oportunidades.post(
+    "/{oportunidad_id}/proximos-pasos-ia",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Qué hacer ahora con esta oportunidad, y por qué",
+    description=(
+        "Sale de señales del propio negocio —etapa, días en ella, días sin "
+        "actividad, si hay presupuesto abierto y si consta quién decide—, que reúne "
+        "este servicio con lo que guarda. Lo que no sabe no lo pone: con menos "
+        "señales de las necesarias no se recomienda nada, porque sería el orden por "
+        "defecto del producto con otro nombre."
+    ),
+)
+def proximos_pasos_ia(oportunidad_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore import ia_ficha
+    from sqlalchemy import exists, select
+
+    from services.sales.ingresos import RolCompra
+    from services.sales.modelos import Etapa, Oportunidad
+    from services.sales.presupuestos import Presupuesto
+
+    principal.exigir("opportunity:read")
+    oportunidad = db.get(Oportunidad, oportunidad_id)
+    if oportunidad is None or oportunidad.deleted_at is not None:
+        raise NoEncontrado("Esa oportunidad no existe", error_code="oportunidad.no_encontrada")
+    ahora = datetime.now(timezone.utc)
+    etapa = db.get(Etapa, oportunidad.etapa_id)
+    senales: dict[str, Any] = {
+        "etapa": etapa.nombre if etapa else None,
+        "dias_en_etapa": (ahora - oportunidad.etapa_desde).days
+        if oportunidad.etapa_desde
+        else None,
+        # Sin actividad apuntada no se sabe cuánto lleva sin contacto: no es cero.
+        "dias_sin_contacto": (
+            (ahora - oportunidad.ultima_actividad_at).days
+            if oportunidad.ultima_actividad_at
+            else None
+        ),
+        "presupuesto_abierto": db.execute(
+            select(
+                exists().where(
+                    Presupuesto.oportunidad_id == oportunidad_id,
+                    Presupuesto.deleted_at.is_(None),
+                    Presupuesto.estado.in_(("en_aprobacion", "aprobado", "enviado")),
+                )
+            )
+        ).scalar(),
+        "patrocinador_identificado": db.execute(
+            select(
+                exists().where(
+                    RolCompra.oportunidad_id == oportunidad_id, RolCompra.rol == "decisor"
+                )
+            )
+        ).scalar(),
+    }
+    return ia_ficha.pedir("/api/v1/ia/asistencia/proximos-pasos", {"senales": senales}, principal)
+
+
 ROUTERS = [
     router_leads,
     router_pipelines,

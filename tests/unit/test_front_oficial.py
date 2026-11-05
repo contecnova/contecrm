@@ -609,7 +609,18 @@ PRESUPUESTO_KB = 127
 PRESUPUESTO_TOTAL_KB = 330
 
 # Lo que pesa una pantalla diferida, comprimida. Mediana medida: 1,94 kB.
-PRESUPUESTO_POR_PANTALLA_KB = 12
+#
+# 05-11-2026 · 12 → 13, medido. `Modulo` pasó de 9,14 kB (30-10) a 12,06 sin
+# ninguna dependencia nueva: es el listado genérico de los 24 módulos, y lo
+# que le ha hecho crecer son sus propias funciones —el menú de cada fila, el
+# aviso de qué hace un borrado, los formularios de alta y edición—. Antes de
+# subirlo se miró qué podía cargarse al pulsar: los filtros están siempre a la
+# vista por diseño y la exportación es un botón de la barra, y diferirlos haría
+# saltar la barra al abrir. Lo que sí se hizo en el mismo cambio fue sacar
+# `Consola` de la apertura, que bajó lo que se descarga al abrir de 127,07 a
+# 121,93 kB. 13 sigue saltando con cualquier librería de peso, que es para lo
+# que está este tope.
+PRESUPUESTO_POR_PANTALLA_KB = 13
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:

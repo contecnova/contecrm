@@ -49,6 +49,9 @@ NO_SON_UMBRALES = {0, 1, -1, 2, 100, 10, 1000, 60, 24, 3600, 1024}
 
 # ── Lo que no es decisión de nadie ────────────────────────────────────────
 DE_ESTANDAR = {
+    "packages/crmcore/crmcore/datos/copia_sandbox.py::PARAMETROS_POSTGRES": (
+        "los parámetros que admite una sentencia en el protocolo de Postgres; no se afina"
+    ),
     "services/service/campo.py::RADIO_TIERRA_M": "el radio de la Tierra no lo decide un cliente",
     "packages/crmcore/crmcore/security/cifrado.py::NONCE_BYTES": (
         "lo fija AES-GCM; cambiarlo rompe el cifrado, no lo afina"

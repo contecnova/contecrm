@@ -245,6 +245,10 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // calidad del dato con sus duplicados y su fusión, los derechos del
   // interesado y la papelera con restauración en cascada.
   "cuentas": [
+    // La IA desde la ficha: resumir la cuenta y redactar un correo a un contacto.
+    "CRM-01.01.05.05",
+    "CRM-05.02.02.01",
+    "CRM-05.02.02.02",
     // La segmentación completa de la cuenta, que es la que se vende: sector
     // con su esquema (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC y ciclo
     // de vida. Llegaban cuatro de las seis: la clasificación ABC y «es una
@@ -329,6 +333,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // producto, las metodologías de venta, la cola priorizada del comercial y
   // la papelera.
   "oportunidades": [
+    // «Qué hacer ahora con esta oportunidad», con las señales del negocio.
+    "CRM-03.01.02.04",
     // La probabilidad de la etapa y la puesta a mano, las dos a la vez: saber
     // cuál manda es lo que separa una previsión creída de una inventada.
     // `probabilidad_manual` estaba en la tabla y no salía por la API.
@@ -501,6 +507,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // agentes disponibles con su capacidad, las encuestas de satisfacción y la
   // papelera.
   "casos": [
+    // Resumir el caso y sugerir respuesta con los artículos en que se apoya.
+    "CRM-04.02.02.05",
     "CRM-04.01.01.01",
     "CRM-04.01.01.02",
     "CRM-04.01.01.05",
@@ -515,6 +523,10 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // Los canales de servicio y las macros con sus acciones compuestas.
   "omnicanal": [
+    // En la conversación: resumirla, qué quiere el cliente y traducirle.
+    "CRM-04.02.02.06",
+    "CRM-04.02.02.07",
+    "CRM-05.02.02.06",
     "CRM-04.02.02.04",
   ],
   // Los artículos con sus versiones y su flujo de aprobación, los accesos al

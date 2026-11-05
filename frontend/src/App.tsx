@@ -6,7 +6,6 @@ import { FronteraDeRuta } from "@/componentes/Frontera";
 import { cargarTextosDePantallas } from "@/i18n";
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
-import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Casos } from "@/paginas/Casos";
 import { ConsolaAgente } from "@/paginas/Consola.agente";
@@ -49,6 +48,13 @@ function pantalla<M, P>(cargar: () => Promise<M>, elegir: (modulo: M) => Compone
   });
 }
 
+// «Administración» va diferida: se importaba de forma estática y arrastraba
+// `Tabla` —4,5 kB— a lo que se baja al abrir, que es justo lo que el
+// presupuesto del paquete dice que no se baja sin necesitarlo (05-11-2026).
+const Consola = pantalla(
+  () => import("@/paginas/Consola"),
+  (m) => m.Consola,
+);
 const Portal = pantalla(
   () => import("@/paginas/Portal"),
   (m) => m.Portal,

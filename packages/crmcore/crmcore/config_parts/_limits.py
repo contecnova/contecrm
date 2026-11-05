@@ -130,6 +130,9 @@ class _LimitsSettings(BaseSettings):
     # con sólo el reloj, una función que espera no gasta y se la deja; con sólo
     # el combustible, una máquina lenta corta lo que en otra cabe.
     extensiones_tiempo_ms: int = Field(2_000, ge=10, le=60_000)
+    # Cada cuánto avanza el reloj que corta por tiempo: la resolución del corte.
+    # Más fino corta más justo y despierta más a menudo un hilo del proceso.
+    extensiones_reloj_ms: int = Field(10, ge=1, le=1_000)
     extensiones_memoria_mb: int = Field(64, ge=8, le=1_024)
     # El combustible va en instrucciones: medido el 05-11-2026, unos 8.000
     # millones por segundo en un M-series. Con 2.000 millones se cortaba a los
@@ -146,6 +149,12 @@ class _LimitsSettings(BaseSettings):
     # segundo de ejecución (en la moneda en que se factura). 0 = no se atribuye.
     extensiones_ejecuciones_dias: int = Field(30, ge=1, le=3_650)
     extensiones_coste_por_segundo: float = Field(0.0, ge=0.0, le=1_000_000.0)
+    # La IA desde la ficha. Cuántos mensajes de una conversación se le pasan
+    # para resumirla —los últimos; el resumen dice de cuántos salió y cuántos
+    # había— y cuántos artículos de la base de conocimiento para sugerir una
+    # respuesta a un caso.
+    ia_mensajes_para_resumen: int = Field(60, ge=1, le=2_000)
+    ia_articulos_por_sugerencia: int = Field(5, ge=1, le=50)
     # Dígitos mínimos para dar un teléfono por marcable.
     telefono_minimo_digitos: int = Field(7, ge=1, le=30)
     # Antelación del aviso de caducidad de un activo de marketing y de un
@@ -353,6 +362,11 @@ class _LimitsSettings(BaseSettings):
     # búsqueda parece rota sin que nada falle. Va por tenant porque un cliente
     # portugués no busca igual que uno español.
     busqueda_idioma: str = "spanish"
+    # El idioma cuando ni el usuario ni su tenant han dicho el suyo. Estaba como
+    # un «es» escrito en la traducción de la interfaz, y la IA no tenía ninguno:
+    # un tenant dado de alta antes de que el alta propagara su idioma no podía
+    # generar nada («no se ha declarado el idioma»). Medido el 05-11-2026.
+    idioma_defecto: str = "es"
     # Resultados por consulta. Más de una pantalla no se mira, y pedir mil
     # obliga a Postgres a ordenar mil por relevancia para tirar novecientos.
     busqueda_max_resultados: int = Field(20, ge=1, le=200)

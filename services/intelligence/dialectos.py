@@ -129,6 +129,7 @@ def peticion(
     herramientas: list[dict[str, Any]] | None = None,
     max_tokens: int,
     campo_opt_out: str = "",
+    opt_out_contrato: str = "",
 ) -> dict[str, Any]:
     """El cuerpo de la petición, en el idioma de la familia.
 
@@ -223,12 +224,21 @@ def peticion(
 
     if opt_out:
         campo = campo_opt_out or _CAMPO_OPT_OUT.get(formato) or ""
+        if not campo and opt_out_contrato.strip():
+            # La garantía es del CONTRATO, no de la petición: hay proveedores
+            # —la API de pago de Gemini— que no tienen un campo para pedirlo
+            # porque no entrenan con lo de ningún cliente de pago. Vale sólo si
+            # el proveedor lo declara con la referencia del acuerdo escrita, que
+            # queda apuntada en cada llamada. Sin campo y sin contrato, se para.
+            logger.info("ia.opt_out_por_contrato", formato=formato, contrato=opt_out_contrato[:200])
+            return cuerpo
         if not campo:
             raise ErrorDependencia(
                 "Este proveedor dice admitir opt-out de entrenamiento pero no "
                 "declara en qué campo se pide, y su familia no tiene uno "
-                "estándar. Se para aquí: mandar la petición sin el campo sería "
-                "dar por buena una garantía que no viaja.",
+                "estándar, ni la referencia del contrato que lo garantiza "
+                "(`config.opt_out_contrato`). Se para aquí: mandar la petición "
+                "así sería dar por buena una garantía que no consta.",
                 error_code="ia.opt_out_sin_campo",
                 detalle={"formato": formato},
             )

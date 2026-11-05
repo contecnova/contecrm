@@ -10620,6 +10620,26 @@ sin eso se sabe lo que cuesta la IA y no lo que vale. Lo descartado **no se
 conserva**: es un texto sobre un cliente que nadie ha validado, y esos textos
 acaban leyéndose como si fueran datos.
 
+### La IA desde la ficha (`CRM-01.01.05.05`, `CRM-03.01.02.04`, `CRM-04.02.02.05`, `CRM-04.02.02.06`, `CRM-04.02.02.07`)
+
+Todo lo anterior se pide **desde el registro**, no tecleando lo que el CRM ya
+sabe: resumir una cuenta o un caso, redactar un correo a un contacto, qué hacer
+ahora con una oportunidad, sugerir la respuesta a un caso con los artículos en
+que se apoya, y en una conversación resumirla, leer qué quiere el cliente y
+traducir su último mensaje.
+
+- **Los hechos los reúne el dueño del registro**, leídos **con los permisos de
+  quien pulsa**: lo que esa persona no ve, el modelo tampoco.
+- **Las plantillas vienen de serie** y la primera vez se guardan como versión 1
+  del tenant: desde ahí son suyas y se cambian con su motivo.
+- **Un resumen lo lee la empresa** y va en su idioma; **lo que se escribe al
+  cliente** va en el del cliente, y si no consta, hay que decirlo.
+- **Sin contexto no se llama al modelo.** Se comprobó con uno de verdad: con la
+  conversación filtrada entera devolvió un resumen inventado de principio a fin.
+  Ahora, si no queda nada que pueda leer, no se le pregunta.
+- **Lo que no se sabe no se pone**: los próximos pasos salen de señales del
+  negocio y, con menos de las necesarias, no se recomienda nada.
+
 ### Respuesta con citación y consulta en lenguaje natural (`CRM-05.02.02.03`, `CRM-05.02.02.04`)
 
 Una respuesta sobre los datos del cliente **sin decir de dónde sale** no vale:

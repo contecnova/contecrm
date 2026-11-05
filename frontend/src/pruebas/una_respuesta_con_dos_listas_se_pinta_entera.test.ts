@@ -23,7 +23,7 @@
 import { describe, expect, it } from "vitest";
 
 import { otrasListas } from "@/paginas/Modulo";
-import { comoFilas } from "@/paginas/Consola";
+import { comoFilas } from "@/lib/filas";
 import { MODULOS } from "@/lib/modulos";
 import { recursosDe } from "@/lib/recursos";
 

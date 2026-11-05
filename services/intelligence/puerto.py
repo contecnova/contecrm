@@ -78,6 +78,7 @@ def _llamar(
         herramientas=herramientas,
         max_tokens=int(config.get("max_tokens") or ajustes().ia_max_tokens_respuesta),
         campo_opt_out=str(config.get("campo_opt_out") or ""),
+        opt_out_contrato=str(config.get("opt_out_contrato") or ""),
     )
     url = ficha.base_url.rstrip("/") + dialectos.ruta_de(
         formato, modelo=modelo, declarada=str(config.get("ruta") or "")

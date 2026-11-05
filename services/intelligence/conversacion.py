@@ -209,14 +209,38 @@ def resumir(
     filtrado = guardias.filtrar_contexto(
         uow.db,
         uow.tenant_id,
+        # Con su permiso declarado: sin él el guardarraíl los descarta TODOS
+        # —«ante la duda no se enseña»— y al modelo le llegaba una transcripción
+        # vacía. Son datos de soporte, así que el de leer casos, comprobado
+        # contra quien pide el resumen; quien llama puede declarar otro.
         fragmentos=[
-            {"texto": str(m.get("texto") or ""), "origen": str(m.get("autor") or "")}
+            {
+                "texto": str(m.get("texto") or ""),
+                "origen": str(m.get("autor") or m.get("quien") or ""),
+                "permiso": str(m.get("permiso") or "case:read"),
+                "sensibilidad": str(m.get("sensibilidad") or "interno"),
+            }
             for m in mensajes
         ],
         principal=principal,
     )
     usados = filtrado.get("fragmentos") or []
     totales = int(mensajes_totales if mensajes_totales is not None else len(mensajes))
+    if not [u for u in usados if str(u.get("texto") or "").strip()]:
+        # NO se llama al modelo. Medido el 05-11-2026: con todos los mensajes
+        # quitados se le mandaba una transcripción vacía y devolvía un resumen
+        # entero —canal, envío, cámaras de seguridad— de una conversación que
+        # no había visto. Un resumen inventado es peor que ninguno: el agente
+        # siguiente se lo cree.
+        return {
+            "generado": False,
+            "porque": (
+                "No ha quedado ningún mensaje que se pueda mandar al modelo: un "
+                "resumen sin la conversación sería inventado."
+            ),
+            "quitados_por_permisos": filtrado.get("quitados") or [],
+            "mensajes_totales": totales,
+        }
 
     inicio = _ahora()
     try:

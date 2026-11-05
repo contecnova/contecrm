@@ -38,6 +38,9 @@ import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { accionesDe, type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
 import { fecha, fechaHora } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -151,6 +154,10 @@ export function Caso() {
   const modulo = moduloDe("casos");
   const recurso = modulo ? recursoDe(modulo, "caso") : undefined;
   const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
+  // Las acciones del contrato sobre el caso —resumirlo y sugerir respuesta con IA, entre otras— en el menú, igual que en la ficha del cliente.
+  const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const acciones = accionesDe(superficie, "/api/v1/casos", id ?? "", tiene);
   // Las mismas dos pestañas que las demás fichas. «Relacionado» es todo lo
   // que esta pantalla ya enseñaba —con qué tiene que ver, el reloj, de qué
   // cuelga, cómo acabó— y «Detalles» son sus campos, que hasta hoy sólo se
@@ -249,6 +256,12 @@ export function Caso() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              extra={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+                destructiva: esIrreversible(a),
+              }))}
             />
           ) : null
         }
@@ -262,6 +275,18 @@ export function Caso() {
           alCancelar={() => setConfirmando(false)}
         />
       ) : null}
+
+      <Acciones
+        acciones={acciones}
+
+        servicio="service"
+
+        abierta={accionAbierta}
+
+        alCambiarAbierta={setAccionAbierta}
+
+        alTerminar={() => cargar()}
+      />
 
       {editando && recurso ? (
         <FormularioDeEdicion

@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**304 ajustes** en total, de los cuales **92** son editables en caliente por tenant.
+**308 ajustes** en total, de los cuales **92** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -187,6 +187,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `SANDBOX_COPIA_LOTE` | — | `500` | 1–10000 | Filas por inserción al copiar un tenant a su sandbox (CRM-07.02.01.02). Una tabla ancha lo baja sola para no pasar del tope de parámetros de Postgres; esto es el máximo, no lo que siempre se usa. |
 | `EXTENSIONES_MOTOR_RUTA` | — | *(vacío)* |  | El código del tenant (CRM-00.04.02.01). Corre en QuickJS compilado a WebAssembly y lo ejecuta wasmtime; estos son los topes de CADA ejecución, y los pone el sandbox, no el código: cortar a los dos segundos es que no pueda tardar más, pedírselo es que se porte bien. Dónde está el motor. Vacío:… |
 | `EXTENSIONES_TIEMPO_MS` | — | `2000` | 10–60000 | Reloj, memoria y combustible —instrucciones de WebAssembly—. Los tres: con sólo el reloj, una función que espera no gasta y se la deja; con sólo el combustible, una máquina lenta corta lo que en otra cabe. |
+| `EXTENSIONES_RELOJ_MS` | — | `10` | 1–1000 | Cada cuánto avanza el reloj que corta por tiempo: la resolución del corte. Más fino corta más justo y despierta más a menudo un hilo del proceso. |
 | `EXTENSIONES_MEMORIA_MB` | — | `64` | 8–1024 |  |
 | `EXTENSIONES_COMBUSTIBLE` | — | `10000000000` | ≥ 1000000 | El combustible va en instrucciones: medido el 05-11-2026, unos 8.000 millones por segundo en un M-series. Con 2.000 millones se cortaba a los 240 ms y el tope de reloj no llegaba a mirar nada. |
 | `EXTENSIONES_ENTRADA_KB` | — | `64` | 1–10240 | Lo que entra, lo que sale y lo que se apunta de cada ejecución. |
@@ -195,6 +196,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `EXTENSIONES_ACCIONES_MAX` | — | `20` | 0–1000 | Cuántos cambios puede devolver una ejecución para que la plataforma los haga en su nombre. La función no escribe: pide, y se hace con sus permisos. |
 | `EXTENSIONES_EJECUCIONES_DIAS` | — | `30` | 1–3650 | Días que se guardan las ejecuciones, y el coste que se atribuye por segundo de ejecución (en la moneda en que se factura). 0 = no se atribuye. |
 | `EXTENSIONES_COSTE_POR_SEGUNDO` | — | `0.0` | 0.0–1000000.0 |  |
+| `IA_MENSAJES_PARA_RESUMEN` | — | `60` | 1–2000 | La IA desde la ficha. Cuántos mensajes de una conversación se le pasan para resumirla —los últimos; el resumen dice de cuántos salió y cuántos había— y cuántos artículos de la base de conocimiento para sugerir una respuesta a un caso. |
+| `IA_ARTICULOS_POR_SUGERENCIA` | — | `5` | 1–50 |  |
 | `TELEFONO_MINIMO_DIGITOS` | — | `7` | 1–30 | Dígitos mínimos para dar un teléfono por marcable. |
 | `ACTIVO_DIAS_PREAVISO` | — | `30` | 1–365 | Antelación del aviso de caducidad de un activo de marketing y de un acuerdo comercial con proveedor. |
 | `ACUERDO_DIAS_PREAVISO` | — | `30` | 1–365 |  |
@@ -260,6 +263,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CACHE_TTL_MAX_S` | — | `3600` | 1–604800 | Tope duro. Una entrada con un TTL enorme mantiene ocupada la memoria de lo ya invalidado por una purga, que no borra: hace inalcanzable. |
 | `CACHE_TTL_GENERACION_S` | — | `5` | 0–300 | Segundos que cada proceso recuerda la generación de un tenant sin volver a preguntarla. Durante esa ventana una réplica puede seguir sirviendo lo purgado: es el precio explícito de no pagar un viaje de red por lectura. |
 | `BUSQUEDA_IDIOMA` | 🔥 `busqueda_idioma` | `spanish` |  | Configuración de texto de Postgres, que decide cómo se derivan las palabras. Con la equivocada, «facturas» no encuentra «factura» y la búsqueda parece rota sin que nada falle. Va por tenant porque un cliente portugués no busca igual que uno español. |
+| `IDIOMA_DEFECTO` | — | `es` |  | El idioma cuando ni el usuario ni su tenant han dicho el suyo. Estaba como un «es» escrito en la traducción de la interfaz, y la IA no tenía ninguno: un tenant dado de alta antes de que el alta propagara su idioma no podía generar nada («no se ha declarado el idioma»). Medido el 05-11-2026. |
 | `BUSQUEDA_MAX_RESULTADOS` | 🔥 `busqueda_max_resultados` | `20` | 1–200 | Resultados por consulta. Más de una pantalla no se mira, y pedir mil obliga a Postgres a ordenar mil por relevancia para tirar novecientos. |
 | `TRANSICIONES_PROHIBIDAS` | 🔥 `transiciones_prohibidas` |  |  | Transiciones que este tenant QUITA de las que el código admite. Solo quita: añadir un estado que el código no conoce dejaría el registro en un limbo que ningún `if` sabe manejar. {"oportunidad": {"perdida": ["abierta"]}} significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:… |
 | `AUTOMATIZACION_MAX_VUELTAS` | — | `200` | 1–10000 | Vueltas máximas de un `para_cada`. Una automatización que recorre una colección no puede colgar la petición que la disparó: guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y el usuario vería un formulario congelado sin saber por qué. Cuando se corta se DICE en la… |

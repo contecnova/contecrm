@@ -2832,7 +2832,7 @@ Ahora:
   unas 8.000 millones por segundo en un M-series), memoria
   (`EXTENSIONES_MEMORIA_MB`), reloj (`EXTENSIONES_TIEMPO_MS`), entrada, salida y
   líneas de log. **El reloj** va por épocas: un único hilo avanza la época del
-  motor cada 10 ms y cada ejecución pide que la corten pasadas las suyas —si
+  motor cada `EXTENSIONES_RELOJ_MS` (10 ms de serie) y cada ejecución pide que la corten pasadas las suyas —si
   cada una avanzara la época al pasarse, cortaría a las demás—. Los errores de
   sintaxis y ejecución salen con la línea del código del tenant, no la del
   envoltorio.
@@ -2864,6 +2864,53 @@ Ahora:
 Lo que **no** hace: no hay llamadas salientes desde una extensión (no se le da
 red), ni librerías de fuera, ni ejecución disparada por una automatización o
 un evento; se ejecuta desde su ficha y desde sus endpoints.
+
+#### La IA desde la ficha (05-11-2026)
+
+Las capacidades de `intelligence` (`/ia/generar`, `/ia/asistencia/*`,
+`/ia/conversacion/*`) recibían los hechos de quien llamaba, así que ninguna
+ficha podía pedirlas. Ahora cada servicio dueño del registro tiene la acción en
+SU ruta —y por eso sale sola en el menú de la ficha— y reúne los hechos:
+
+| Ruta | Servicio | Pide a intelligence |
+|---|---|---|
+| `POST /accounts/{id}/resumen-ia` | party (lee `/accounts/{id}/360`) | `/ia/asistencia/resumen-cuenta` |
+| `POST /contacts/{id}/redactar-correo` | party | `/ia/generar` `redactar_correo` |
+| `POST /opportunities/{id}/proximos-pasos-ia` | sales (señales propias) | `/ia/asistencia/proximos-pasos` |
+| `POST /casos/{id}/resumen-ia` | service | `/ia/generar` `resumen_caso` |
+| `POST /casos/{id}/respuesta-sugerida` | service (artículos internos) | `/ia/asistencia/respuesta-soporte` |
+| `POST /conversaciones/{id}/resumen-ia` · `/intencion` · `/traducir` | service | `/ia/conversacion/resumen` · `/senal` · `/ia/generar` `traducir` |
+
+`crmcore.ia_ficha` lee y pide **con la identidad de quien pulsa** (permisos y
+roles por `invocar`): la lectura pasa por la máscara de campos y los
+guardarraíles de `intelligence` comprueban sus permisos. Todas exigen `ia:usar`.
+Los errores del otro lado vuelven con su estado.
+
+Lo que salió al probarlo con Gemini, y está corregido:
+
+- **Plantillas de serie** (`services/intelligence/plantillas_de_serie.py`): un
+  tenant no tenía ninguna. La primera vez se guardan como su versión 1 con
+  idioma vacío, para que sigan el del usuario o tenant en cada llamada.
+- **Idioma**: un resumen sin idioma usa el de quien lo lee y, si no hay, el
+  ajuste nuevo `IDIOMA_DEFECTO` (que sustituye un `"es"` escrito en i18n). La
+  redacción y la traducción siguen exigiéndolo.
+- **Los hechos como contexto, con su permiso**: el resumen de cuenta los mandaba
+  sólo como datos de plantilla y el mínimo de contexto no le dejaba llamar
+  nunca; y un fragmento sin `permiso` lo descarta el guardarraíl.
+- **El resumen de conversación inventaba**: mandaba los mensajes sin permiso,
+  se quitaban todos y se llamaba al modelo con la transcripción vacía. Ahora
+  declaran `case:read` (o el que traigan) y sin mensajes no se llama. Tres
+  pruebas pasaban por ese camino con un principal sin `case:read`; corregidas.
+- **Opt-out por contrato**: Gemini no tiene campo de petición para «no
+  entrenes». `config.opt_out_contrato` en el proveedor —la referencia del
+  acuerdo— hace válida la garantía sin campo; sin campo ni contrato, se para.
+- La IA de la conversación sale en `Conversacion.tsx` como botones; la de
+  oportunidad y caso, en el menú de sus fichas propias, que hasta hoy no
+  enseñaban ninguna acción del contrato. Ajustes nuevos:
+  `IA_MENSAJES_PARA_RESUMEN`, `IA_ARTICULOS_POR_SUGERENCIA`.
+- Paquete del front: `Consola` ya no va en la apertura (127,07 → 121,93 kB) y
+  el tope por pantalla pasa de 12 a 13 kB por el crecimiento de `Modulo`,
+  medido y explicado en `test_front_oficial.py`.
 
 #### Sandboxes: la copia de un tenant a su entorno de pruebas (05-11-2026)
 

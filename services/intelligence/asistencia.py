@@ -176,10 +176,27 @@ def resumen_de_cuenta(
             error_code="asistencia.sin_hechos",
         )
 
+    import json
+
+    # Los hechos van también como CONTEXTO, no sólo como datos de la plantilla:
+    # un resumen exige un mínimo de contexto y, sin él, `generar` no llamaba al
+    # modelo nunca —«no hay contexto suficiente»— por muchos hechos que hubiera.
     salida = generacion.generar(
         uow,
         plantilla="resumen_cuenta",
         datos=hechos,
+        contexto=[
+            {
+                "texto": json.dumps(hechos, ensure_ascii=False, default=str),
+                "fuente": "cuenta",
+                "id": str(cuenta_id),
+                # Sin permiso declarado el guardarraíl lo descarta («ante la
+                # duda no se enseña»): es el de leer la cuenta, y se comprueba
+                # contra quien pide el resumen.
+                "permiso": "account:read",
+                "sensibilidad": "interno",
+            }
+        ],
         objeto="cuenta",
         objeto_id=cuenta_id,
         principal=principal,

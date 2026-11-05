@@ -1003,7 +1003,10 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 # 05-11-2026, décima: 98 → 93. El código del tenant con ejecución de verdad:
 # extensiones, endpoints propios y firmantes en «Procesos y orquestación».
-TOPE_SIN_PANTALLA = 93
+#
+# 05-11-2026, undécima: 93 → 85. La IA desde la ficha: cuenta, contacto,
+# oportunidad, caso y conversación, verificada con un modelo de verdad.
+TOPE_SIN_PANTALLA = 85
 
 
 def _es_pantalla(p: Path) -> bool:

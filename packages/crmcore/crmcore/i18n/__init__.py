@@ -203,10 +203,11 @@ def resolver(db: Any = None) -> Localizacion:
     `.env`, que es lo que permite llamarla desde un worker o un script sin abrir
     una conexión solo para leer cinco cadenas.
     """
+    from crmcore.config import get_settings
     from crmcore.runtime import settings as rt
 
     return Localizacion(
-        idioma=str(rt.efectivo("idioma", db, default="es") or "es"),
+        idioma=str(rt.efectivo("idioma", db) or get_settings().idioma_defecto),
         zona=str(rt.efectivo("zona_horaria", db, default="UTC") or "UTC"),
         formato_fecha=str(
             rt.efectivo("formato_fecha", db, default=FORMATO_FECHA_POR_DEFECTO)

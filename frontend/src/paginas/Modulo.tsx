@@ -84,7 +84,7 @@ import {
 } from "@/lib/modulos";
 import { pestanaPrincipal, recursosDe } from "@/lib/recursos";
 import { puede, type Sesion } from "@/lib/sesion";
-import { comoFilas } from "@/paginas/Consola";
+import { comoFilas } from "@/lib/filas";
 import { useSuperficie, useVisibilidad } from "@/lib/permisos";
 import { CabeceraDeLista } from "@/componentes/CabeceraDeLista";
 import { colorDeModulo, iconoDeGrupo } from "@/lib/navegacion";

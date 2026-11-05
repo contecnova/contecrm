@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -377,6 +378,63 @@ def borrar_cuenta(cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> None
 )
 def vista_360(cuenta_id: UUID, db: DbDep) -> Any:
     return svc.vista_360(db, cuenta_id)
+
+
+def _hechos_de_la_360(vista: dict[str, Any]) -> dict[str, Any]:
+    """Lo que el modelo necesita de la 360, sin lo que no aporta a un resumen."""
+    cuenta = vista.get("cuenta") or {}
+    contactos = vista.get("contactos") or []
+    linea = vista.get("timeline") or []
+    return {
+        "nombre": cuenta.get("nombre"),
+        "estado": cuenta.get("estado"),
+        "roles": cuenta.get("roles"),
+        "sector": cuenta.get("sector"),
+        "calidad_del_dato": cuenta.get("calidad"),
+        "contactos": [
+            {k: c.get(k) for k in ("nombre_completo", "cargo", "rol", "principal") if k in c}
+            for c in contactos[:10]
+        ],
+        "contactos_en_total": len(contactos),
+        "ultimas_interacciones": [
+            {k: e.get(k) for k in ("tipo", "fecha", "titulo", "resumen") if k in e}
+            for e in linea[:15]
+        ],
+        "metricas": vista.get("metricas"),
+    }
+
+
+@router_cuentas.post(
+    "/{cuenta_id}/resumen-ia",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Resumir esta cuenta con IA: puntos clave y riesgos",
+    description=(
+        "Reúne lo que el CRM sabe de la cuenta —su 360, leída con tus permisos, así "
+        "que lo que tú no ves tampoco lo ve el modelo— y pide el resumen. Los hechos "
+        "vuelven aparte del texto, para comprobarlo en vez de creérselo. Lo generado "
+        "queda **propuesto**, no se guarda en la cuenta."
+    ),
+)
+def resumen_ia_de_cuenta(cuenta_id: UUID, principal: AutenticadoDep) -> Any:
+    from crmcore import ia_ficha
+
+    vista = ia_ficha.leer(f"/api/v1/accounts/{cuenta_id}/360", principal)
+    return ia_ficha.pedir(
+        "/api/v1/ia/asistencia/resumen-cuenta",
+        {"cuenta_id": str(cuenta_id), "hechos": _hechos_de_la_360(vista)},
+        principal,
+    )
+
+
+class RedactarCorreoIn(BaseModel):
+    proposito: str = Field(
+        ..., min_length=3, max_length=1000, description="Qué tiene que conseguir el correo"
+    )
+    idioma: str = Field(
+        "",
+        max_length=10,
+        description="Vacío: el del contacto. Si el contacto no tiene, hay que decirlo",
+    )
 
 
 @router_cuentas.get(
@@ -2061,3 +2119,48 @@ admite_parametros_abiertos(
 admite_parametros_abiertos(
     listar_solicitudes, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )
+
+
+@router_contactos.post(
+    "/{contacto_id}/redactar-correo",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Redactar con IA un correo a este contacto",
+    description=(
+        "Con el propósito que digas y lo que el CRM sabe del contacto, leído con tus "
+        "permisos. En **su** idioma: si el contacto no tiene uno, hay que decirlo, "
+        "porque adivinarlo es escribirle en castellano a un cliente francés. Queda "
+        "como borrador: no se manda a nadie."
+    ),
+)
+def redactar_correo(contacto_id: UUID, datos: RedactarCorreoIn, principal: AutenticadoDep) -> Any:
+    from crmcore import ia_ficha
+
+    contacto = dict(ia_ficha.leer(f"/api/v1/contacts/{contacto_id}", principal))
+    hechos = {
+        k: contacto.get(k)
+        for k in ("nombre", "apellidos", "nombre_completo", "cargo", "idioma", "estado")
+        if contacto.get(k) not in (None, "")
+    }
+    return ia_ficha.pedir(
+        "/api/v1/ia/generar",
+        {
+            "plantilla": "redactar_correo",
+            "datos": {
+                "destinatario": contacto.get("nombre_completo") or contacto.get("nombre") or "",
+                "proposito": datos.proposito,
+            },
+            "contexto": [
+                {
+                    "texto": json.dumps(hechos, ensure_ascii=False, default=str),
+                    "fuente": "contacto",
+                    "id": str(contacto_id),
+                    "permiso": "contact:read",
+                    "sensibilidad": "interno",
+                }
+            ],
+            "objeto": "contacto",
+            "objeto_id": str(contacto_id),
+            "idioma": datos.idioma or str(contacto.get("idioma") or ""),
+        },
+        principal,
+    )

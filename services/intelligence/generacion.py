@@ -267,6 +267,33 @@ def _render(plantilla: PlantillaPrompt, datos: dict[str, Any]) -> tuple[str, lis
     return texto, faltan
 
 
+def _de_serie(uow: UnidadDeTrabajo, clave: str) -> PlantillaPrompt | None:
+    """La de serie, guardada como versión 1 del tenant la primera vez que la pide.
+
+    Ver `plantillas_de_serie`: un tenant nuevo no tenía ninguna y todo lo que la
+    IA hace desde una ficha contestaba «No hay plantilla». Se guarda y no se usa
+    en caliente para que conste con qué texto se pidió cada cosa.
+    """
+    from services.intelligence.plantillas_de_serie import de_serie
+
+    base = de_serie(clave)
+    if base is None:
+        return None
+    fila, _ = guardar_plantilla(
+        uow,
+        clave=clave,
+        cuerpo=base["cuerpo"],
+        tarea=base["tarea"],
+        sistema=base["sistema"],
+        nombre=base["nombre"],
+        # Vacío a propósito: así sigue el idioma del tenant o del usuario en
+        # cada llamada, en vez de quedarse con el que tuviera el día que se pidió.
+        idioma_defecto="",
+        motivo_version="De serie: la primera vez que este tenant la ha pedido.",
+    )
+    return fila
+
+
 def generar(
     uow: UnidadDeTrabajo,
     *,
@@ -290,7 +317,7 @@ def generar(
     Sin contexto suficiente **no se llama al modelo**: redactaría igual, y lo que
     sale es plausible y vacío. Cuesta dinero y engaña, que es la peor combinación.
     """
-    ficha = _vigente(uow.db, uow.tenant_id, plantilla)
+    ficha = _vigente(uow.db, uow.tenant_id, plantilla) or _de_serie(uow, plantilla)
     if ficha is None:
         raise NoEncontrado(
             f"No hay plantilla «{plantilla}»", error_code="generacion.plantilla_no_encontrada"
@@ -331,6 +358,15 @@ def generar(
 
     elegido = enrutador.exigir_disponible(uow.db, uow.tenant_id, uso=_uso_de(ficha.tarea))
     idioma_final = idioma or ficha.idioma_defecto
+    if not idioma_final and ficha.tarea == "resumen":
+        # Un resumen lo LEE la gente de la empresa, no el cliente: va en su idioma
+        # —el del usuario o el del tenant, y si no `IDIOMA_DEFECTO`—. Lo que se le
+        # escribe al cliente o se traduce sigue exigiendo que se diga: adivinarlo
+        # es contestar en castellano a un cliente francés.
+        from crmcore.config import get_settings
+        from crmcore.runtime import settings as rt
+
+        idioma_final = str(rt.efectivo("idioma", uow.db) or get_settings().idioma_defecto)
     if not idioma_final:
         # Adivinarlo es cómo se contesta en castellano a un cliente francés.
         return {

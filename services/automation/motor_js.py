@@ -18,7 +18,7 @@ JavaScript enlazado en el proceso, porque es la pieza que aísla código ajeno:
 El reloj necesita un detalle: wasmtime corta por «épocas» del motor, y el motor
 es uno para todas las ejecuciones. Si cada ejecución avanzara la época al
 pasarse de tiempo, cortaría también a las demás que estuvieran corriendo. Por
-eso hay UN reloj que la avanza cada `TICK_S`, y cada ejecución pide que la
+eso hay UN reloj que la avanza cada `EXTENSIONES_RELOJ_MS`, y cada ejecución pide que la
 corten pasadas sus N épocas.
 
 La función del tenant es `function main(entrada) { ... }`, y puede ser `async`.
@@ -45,9 +45,6 @@ from crmcore.logging import get_logger
 logger = get_logger(__name__)
 
 CANDADO = Path(__file__).with_name("motor_js.lock.json")
-# Cada cuánto avanza la época del motor. Es la resolución del corte por reloj:
-# una función con 2 s de tope se corta entre 2,00 y 2,01 s.
-TICK_S = 0.01
 
 _cargado: tuple[Any, Any] | None = None
 _cerrojo = threading.Lock()
@@ -139,12 +136,21 @@ def _cargar() -> tuple[Any, Any]:
         return _cargado
 
 
+def _tick_s() -> float:
+    """Cada cuánto avanza la época: la resolución del corte por reloj
+    (`EXTENSIONES_RELOJ_MS`). Con 10 ms, un tope de 2 s corta entre 2,00 y 2,01."""
+    from crmcore.config import get_settings
+
+    return get_settings().extensiones_reloj_ms / 1000
+
+
 def _arrancar_reloj(motor: Any) -> None:
     global _reloj
+    tick = _tick_s()
 
     def _latir() -> None:
         while True:
-            time.sleep(TICK_S)
+            time.sleep(tick)
             motor.increment_epoch()
 
     _reloj = threading.Thread(target=_latir, name="reloj-extensiones", daemon=True)
@@ -229,7 +235,7 @@ def ejecutar(codigo: str, entrada: Any, limites: Limites | None = None) -> dict[
     almacen = Store(motor)
     almacen.set_fuel(limites.combustible)
     almacen.set_limits(memory_size=limites.memoria_mb * 1024 * 1024)
-    almacen.set_epoch_deadline(max(1, int(limites.tiempo_ms / 1000 / TICK_S)))
+    almacen.set_epoch_deadline(max(1, int(limites.tiempo_ms / 1000 / _tick_s())))
 
     carpeta = tempfile.mkdtemp(prefix="ext-")
     try:

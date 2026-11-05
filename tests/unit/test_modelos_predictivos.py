@@ -440,6 +440,48 @@ def test_un_ambito_inventado_se_rechaza(uow: UnidadDeTrabajo) -> None:
 # ── Resumen de conversación (CRM-04.02.02.06) ─────────────────────────────
 
 
+def _quien_resume() -> Principal:
+    """Quien resume una conversación de soporte puede leer casos.
+
+    Estas pruebas daban sólo `ia:usar`. Los mensajes no declaraban permiso, el
+    guardarraíl los quitaba todos y el resumidor de mentira contestaba igual:
+    pasaban con una transcripción VACÍA, que es justo el camino por el que un
+    modelo de verdad inventó una conversación entera (medido el 05-11-2026).
+    """
+    return Principal(id=uuid4(), permisos=frozenset({"ia:usar", "case:read"}))
+
+
+def test_sin_poder_leer_la_conversacion_no_se_llama_al_modelo(
+    uow: UnidadDeTrabajo, puertos_de_mentira: dict[str, Any]
+) -> None:
+    """Todo quitado por permisos: no se resume. Con la transcripción vacía, un
+    modelo de verdad devolvió un resumen inventado de principio a fin."""
+    _proveedor(uow)
+    puertos_de_mentira.clear()
+    salida = conv.resumir(
+        uow,
+        conversacion_id=uuid4(),
+        mensajes=[{"autor": "cliente", "texto": "Me han cobrado dos veces."}],
+        principal=Principal(id=uuid4(), permisos=frozenset({"ia:usar"})),
+    )
+    assert salida["generado"] is False
+    assert salida["quitados_por_permisos"]
+    assert "mensajes" not in puertos_de_mentira, "se llamó al modelo sin conversación"
+
+
+def test_lo_que_se_resume_llega_al_modelo(
+    uow: UnidadDeTrabajo, puertos_de_mentira: dict[str, Any]
+) -> None:
+    _proveedor(uow)
+    conv.resumir(
+        uow,
+        conversacion_id=uuid4(),
+        mensajes=[{"autor": "cliente", "texto": "Me han cobrado dos veces."}],
+        principal=_quien_resume(),
+    )
+    assert [m["texto"] for m in puertos_de_mentira["mensajes"]] == ["Me han cobrado dos veces."]
+
+
 def test_el_resumen_se_pide_al_dueno_del_caso_y_no_se_escribe(uow: UnidadDeTrabajo) -> None:
     """El caso vive en el servicio de soporte. Que el comando salga no significa
     que el caso ya lo tenga, y decir «hecho» aquí sería mentir."""
@@ -452,7 +494,7 @@ def test_el_resumen_se_pide_al_dueno_del_caso_y_no_se_escribe(uow: UnidadDeTraba
             {"autor": "cliente", "texto": "Me han cobrado dos veces."},
             {"autor": "agente", "texto": "Lo revisamos."},
         ],
-        principal=Principal(id=uuid4(), permisos=frozenset({"ia:usar"})),
+        principal=_quien_resume(),
     )
     assert salida["estado"] == "pedido"
     assert salida["pendientes"]
@@ -478,7 +520,7 @@ def test_los_resumenes_se_pueden_LEER_con_sus_pendientes(uow: UnidadDeTrabajo) -
         conversacion_id=conversacion,
         mensajes=[{"autor": "cliente", "texto": "Me han cobrado dos veces."}],
         mensajes_totales=40,
-        principal=Principal(id=uuid4(), permisos=frozenset({"ia:usar"})),
+        principal=_quien_resume(),
     )
 
     historial = conv.resumenes_de(uow.db, uow.tenant_id, conversacion_id=conversacion)
@@ -507,7 +549,7 @@ def test_un_resumen_parcial_se_marca_como_parcial(uow: UnidadDeTrabajo) -> None:
         conversacion_id=uuid4(),
         mensajes=[{"autor": "cliente", "texto": "Hola"}],
         mensajes_totales=40,
-        principal=Principal(id=uuid4(), permisos=frozenset({"ia:usar"})),
+        principal=_quien_resume(),
     )
     assert salida["parcial"] is True
     assert salida["aviso"]
