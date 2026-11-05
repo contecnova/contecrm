@@ -10,9 +10,9 @@
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 54 | 0 | 0 |
 | 2 — Marketing | 54 | 54 | 0 | 0 |
 | 3 — Ventas (SFA) | 66 | 66 | 0 | 0 |
-| 4 — Servicio y atención al cliente | 62 | 62 | 0 | 0 |
+| 4 — Servicio y atención al cliente | 62 | 61 | 1 | 0 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
-| 6 — Productividad y colaboración | 58 | 58 | 0 | 0 |
+| 6 — Productividad y colaboración | 58 | 56 | 2 | 0 |
 | 7 — Administración, ALM y gobierno | 108 | 108 | 0 | 0 |
 | 8 — Requisitos no funcionales | 12 | 12 | 0 | 0 |
 | 9 — Proveedores, coste y capacidad | 20 | 20 | 0 | 0 |
@@ -21,8 +21,8 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 311 | 311 |
-| A — Avanzado | 423 | 423 |
+| C — Core | 311 | 310 |
+| A — Avanzado | 423 | 421 |
 | D — Diferencial | 44 | 44 |
 
 ## Por fase
@@ -31,11 +31,11 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 180 | 180 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 182 | 182 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 216 | 216 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 52 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 216 | 215 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 51 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 65 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 50 |
-| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 33 |
+| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 32 |
 
 ## Reutilización
 

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**778 capacidades**: ✅ 778 hecho
+**778 capacidades**: 🔧 3 en-curso · ✅ 775 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -767,7 +767,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 62
+62 capacidades · 🔧 1 · ✅ 61
 
 ### 4.1 Gestión de casos
 
@@ -861,7 +861,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-04.04.01.01` | Órdenes de trabajo con líneas, materiales, tiempos y firma del cliente | D | 6 | service | ✅ | contecflow-PSA:app/services/imputation_service.py + timesheet_service.py |
 | `CRM-04.04.01.02` | Programación y optimización de rutas por competencia, zona y disponibilidad | D | 6 | service | ✅ | contecflow-PSA:app/services/resource_analytics.py + skill_service.py |
-| `CRM-04.04.01.03` | App móvil con modo offline y sincronización diferida | A | 6 | service | ✅ | — |
+| `CRM-04.04.01.03` | App móvil con modo offline y sincronización diferida | A | 6 | service | 🔧 | — |
 | `CRM-04.04.01.04` | Gestión de repuestos, stock en furgoneta y consumos | D | 6 | service | ✅ | contecpos:services/inventario |
 | `CRM-04.04.01.05` | Mantenimiento preventivo planificado y recurrente | D | 6 | service | ✅ | — |
 | `CRM-04.04.01.06` | Partes de trabajo, fotos, checklists y evidencias | D | 6 | service | ✅ | — |
@@ -988,7 +988,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-58 capacidades · ✅ 58
+58 capacidades · 🔧 2 · ✅ 56
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -997,7 +997,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-06.01.01.01` | Sincronización bidireccional de correo y calendario (Microsoft 365, Google) | C | 2 | integration | ✅ | contecmind:app/services/microsoft_drive.py + drive.py; contecflow-PSA:app/services/m365_service.py |
-| `CRM-06.01.01.02` | Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo | A | 2 | integration | ✅ | contecmind:extension/ (complemento de navegador) |
+| `CRM-06.01.01.02` | Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo | A | 2 | integration | 🔧 | contecmind:extension/ (complemento de navegador) |
 | `CRM-06.01.01.03` | Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat | A | 2 | integration | ✅ | contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py |
 | `CRM-06.01.01.04` | Registro automático de reuniones y de asistentes | A | 2 | integration | ✅ | — |
 | `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | ✅ | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
@@ -1056,7 +1056,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-06.02.01.01` | Menciones, comentarios y hilos sobre registros | A | 1 | core | ✅ | contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/ |
 | `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | ✅ | contecmind:app/services/notifications.py + app/models/notification.py |
-| `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ✅ | contecmind:app/services/push.py (web push) |
+| `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | 🔧 | contecmind:app/services/push.py (web push) |
 | `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ✅ | — |
 | `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ✅ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |
 | `CRM-06.02.01.07` | Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio | A | 2 | core | ✅ | — |

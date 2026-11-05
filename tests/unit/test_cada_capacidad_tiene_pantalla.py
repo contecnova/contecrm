@@ -939,7 +939,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   repartiria reuniones cada vez que alguien la mira— y se dice que el turno
 #   se ha consumido, porque si no alguien pulsa tres veces para «ver» y se
 #   salta a dos del equipo.
-TOPE_SIN_PANTALLA = 204
+#
+# 05-11-2026: 204 → 200. **Y no porque haya pantallas nuevas**, que es lo que
+# este histórico suele contar: porque tres capacidades DEJARON de constar como
+# hechas. Decían «Aplicaciones móviles iOS y Android», «App móvil con modo
+# offline» y «Complemento en Outlook/Gmail», y lo hecho de las tres es sólo el
+# lado del servidor —sincronización, conflictos, el panel que llamaría el
+# complemento—: no hay ni aplicación ni complemento. Estaban marcadas `hecho`
+# y eso era decir que existen. La cuarta es de las acciones de dos tramos que
+# hoy se hicieron alcanzables. Bajar el tope por quitar lo que no era verdad
+# también cuenta: el número dice cuántas cosas que constan como hechas no se
+# ven, y ahora constan menos cosas falsas.
+TOPE_SIN_PANTALLA = 200
 
 
 def _es_pantalla(p: Path) -> bool:

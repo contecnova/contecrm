@@ -1868,9 +1868,15 @@ lo hace igual con todas: lo que cambia es configuración, no un módulo por casa
 - **Y si algo deja de llegar, se ve.** El panel de conexiones dice qué lleva sin
   sincronizar, desde cuándo y por qué; lo que no se ha medido no cuenta como bueno.
 
-También hay complemento para el cliente de correo (ver y registrar sin salir de
-él), chat corporativo conectado, documentos generados desde plantillas y firma
-electrónica desde cualquier registro.
+También hay chat corporativo conectado —avisos y consultas desde Teams o Slack—,
+documentos generados desde plantillas y firma electrónica desde cualquier
+registro.
+
+**Lo que todavía no hay**, para que nadie lo busque: complemento para Outlook o
+Gmail, ni aplicación de móvil para iOS o Android. El CRM ya sirve lo que esas
+piezas necesitarían —el contexto de quién te escribe, la sincronización que no
+pierde lo que anotaste sin cobertura—, pero las aplicaciones en sí no existen.
+Desde el móvil se entra por el navegador.
 
 ---
 
