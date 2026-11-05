@@ -144,8 +144,16 @@ def efectivo(clave: str, db: Session | None = None, *, default: Any = None) -> A
 
     decl = CLAVES.get(clave)
     s = get_settings()
-    por_defecto = default
-    if por_defecto is None and decl and decl.campo_settings:
+    # **El `.env` manda sobre el defecto de quien llama.** Era al revés: el
+    # `default` de la llamada se usaba antes que el campo de Settings, así que
+    # cambiar `MARGEN_MINIMO_PCT` en el fichero no hacía nada si alguien había
+    # escrito `default=20` al pedirlo. Medido el 05-11-2026: seis llamadas en
+    # cuatro ficheros —margen mínimo, descuento libre, guardar el contenido de
+    # un canal, evidencia de fondos y los dos dominios de envío— tenían su
+    # ajuste del fichero anulado así. El `default` queda para lo que no tiene
+    # campo en Settings.
+    por_defecto = None
+    if decl and decl.campo_settings:
         por_defecto = getattr(s, decl.campo_settings, None)
         for proveedor in _ajustes_servicio:
             if por_defecto is not None:
@@ -158,6 +166,8 @@ def efectivo(clave: str, db: Session | None = None, *, default: Any = None) -> A
                 por_defecto = getattr(proveedor(), decl.campo_settings, None)
             except Exception:  # noqa: BLE001 — leer un default nunca debe romper la petición
                 por_defecto = None
+    if por_defecto is None:
+        por_defecto = default
 
     if db is None:
         return por_defecto

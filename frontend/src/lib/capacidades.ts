@@ -323,6 +323,14 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // «Registrar una revisión estructurada de la oportunidad», con el aviso de
     // cuántas revisiones tienen resultado antes de sacar conclusiones. Verificado pulsando el 05-11-2026.
     "CRM-03.01.02.06",
+    // El coste del proveedor, de punta a punta, verificado el 05-11-2026: la
+    // tarifa de coste se da de alta en «Listas de precio» con su sentido y su
+    // proveedor; la oportunidad copia precio y coste del catálogo y enseña su
+    // margen —con las líneas sin coste dichas—; y la oferta congela el coste y
+    // avisa si hoy es otro, sin reescribirse.
+    "CRM-09.02.01.01",
+    "CRM-09.02.01.02",
+    "CRM-09.02.01.03",
   ],
   // El lead con su ciclo de vida, la captura multicanal con sus canales y
   // recepciones, el enrutamiento por reglas, los motivos de descarte

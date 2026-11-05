@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -600,11 +601,36 @@ def crear_linea(
     oportunidad = svc._oportunidad(db, oportunidad_id)
     svc._exigir_editable(db, oportunidad)
 
+    valores = datos.model_dump()
+    # Lo que la descripción de esta ruta promete y no se hacía: con un producto,
+    # el precio y el coste salen del catálogo —el mismo motor que la oferta,
+    # con la cuenta y la moneda de la oportunidad— y se COPIAN. Lo que venga en
+    # la petición manda: un precio pactado a mano no se pisa. Sin esto, una
+    # línea con producto y sin precio quedaba a cero y sin coste, y la
+    # oportunidad no tenía margen que enseñar (CRM-09.02.01.02).
+    if datos.producto_id is not None:
+        from services.sales import catalogo as cat
+
+        calculo = cat.calcular_precio(
+            db,
+            principal.tenant_id,
+            producto_id=datos.producto_id,
+            cantidad=datos.cantidad,
+            cuenta_id=oportunidad.cuenta_id,
+            moneda=oportunidad.moneda,
+        )
+        if "precio_unitario" not in datos.model_fields_set:
+            valores["precio_unitario"] = Decimal(calculo["precio"])
+        if "coste_unitario" not in datos.model_fields_set and calculo["coste"] is not None:
+            valores["coste_unitario"] = Decimal(calculo["coste"])
+
     linea = LineaOportunidad(
         tenant_id=principal.tenant_id,
         oportunidad_id=oportunidad_id,
-        total=svc.calcular_linea(datos.cantidad, datos.precio_unitario, datos.descuento_pct),
-        **datos.model_dump(),
+        total=svc.calcular_linea(
+            valores["cantidad"], valores["precio_unitario"], valores["descuento_pct"]
+        ),
+        **valores,
     )
     db.add(linea)
     db.flush()
@@ -628,6 +654,51 @@ def listar_lineas(oportunidad_id: UUID, db: DbDep) -> Any:
         )
         .scalars()
         .all()
+    )
+
+
+@router_oportunidades.get(
+    "/{oportunidad_id}/margen",
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="A qué margen sale la oportunidad, y qué líneas no se pueden medir",
+    description=(
+        "Con las líneas guardadas y el mismo cálculo que la oferta "
+        "(CRM-09.02.01.02): el margen conocido, las líneas sin coste —que no "
+        "cuentan como cero— y las que se venden por debajo de coste, que el "
+        "total tapa. El mínimo es el del tenant, el mismo que usa la política de "
+        "descuento."
+    ),
+)
+def margen_de_la_oportunidad(oportunidad_id: UUID, db: DbDep) -> Any:
+    from crmcore.runtime.settings import efectivo
+
+    from services.sales import coste as cst
+
+    svc.exigir_oportunidad(db, oportunidad_id)
+    lineas = (
+        db.execute(
+            select(LineaOportunidad)
+            .where(LineaOportunidad.oportunidad_id == oportunidad_id)
+            .order_by(LineaOportunidad.orden)
+        )
+        .scalars()
+        .all()
+    )
+    return cst.margen_de_oferta(
+        lineas=[
+            {
+                "referencia": linea.descripcion,
+                # El precio al que se vende de verdad, con su descuento: el que
+                # da el total de la línea.
+                "precio_venta": (
+                    Decimal(linea.total) / Decimal(linea.cantidad) if linea.cantidad else 0
+                ),
+                "coste": linea.coste_unitario,
+                "cantidad": linea.cantidad,
+            }
+            for linea in lineas
+        ],
+        margen_minimo_pct=Decimal(str(efectivo("margen_minimo_pct", db))),
     )
 
 

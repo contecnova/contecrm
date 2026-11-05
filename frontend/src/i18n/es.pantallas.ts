@@ -384,6 +384,11 @@ const pantallas = {
       "{{cuantos}} no se han podido comparar, así que este resultado no cubre el entorno entero.",
   },
   presupuesto: {
+    costeCambiado: "El coste ha cambiado desde que se ofertó.",
+    costeLinea: "{{referencia}}: {{antes}} al ofertar, {{hoy}} hoy",
+    costeIgual: "El coste sigue siendo el de cuando se ofertó.",
+    costeSinComparar:
+      "{{cuantas}} líneas no se pueden comparar: no tienen coste o no son de catálogo.",
     version: "versión {{version}}",
     necesitaAprobacion: "Esto no se puede mandar sin que alguien lo apruebe:",
     umbrales: "umbral de descuento {{umbral}} % · margen mínimo {{minimo}} %",
@@ -1068,6 +1073,10 @@ const pantallas = {
     bloqueada: "Bloqueada",
     ponderado: "{{valor}} ponderado al {{pct}} %",
     lineas: "Qué se vende",
+    margen: "Margen conocido: {{pct}} %",
+    margenSinCoste:
+      "Ninguna línea tiene coste: no se puede hablar de margen, y no es un cero.",
+    margenIncompleto: "Sin contar {{cuales}}, que no tienen coste: el margen real no se sabe.",
     sinLineas: "Todavía no tiene líneas",
     porUnidad: "{{cantidad}} × {{precio}}",
     metricas: "Lo que esto vale",

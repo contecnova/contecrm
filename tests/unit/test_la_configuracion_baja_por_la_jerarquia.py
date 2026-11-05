@@ -214,6 +214,17 @@ def test_sin_sesion_se_contesta_con_el_del_fichero_crm_00_01_04_01() -> None:
     assert rt.efectivo(CLAVE) == "compacta"
 
 
+def test_el_fichero_manda_sobre_el_defecto_de_quien_llama_crm_00_01_04_01() -> None:
+    """Con `default=` en la llamada, el valor del `.env` no se leía nunca: seis
+    ajustes —el margen mínimo entre ellos— se cambiaban en el fichero y no
+    pasaba nada. El defecto de la llamada es el último recurso, no el primero."""
+    from crmcore.runtime import settings as rt
+
+    assert rt.efectivo(CLAVE, default="otra") == "compacta"
+    # Y para lo que no tiene campo en Settings, el defecto sigue sirviendo.
+    assert rt.efectivo("no-declarado-en-ninguna-parte", default=7) == 7
+
+
 def test_un_ajuste_que_no_existe_no_se_inventa_crm_00_01_04_01() -> None:
     """Devolver un valor plausible para una clave que nadie declaró es cómo un
     error de escritura se convierte en una configuración silenciosa: la clave

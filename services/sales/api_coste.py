@@ -24,7 +24,10 @@ router_coste = APIRouter(prefix="/coste", tags=["coste y capacidad"])
 
 class MargenIn(BaseModel):
     lineas: list[dict[str, Any]] = Field(default_factory=list)
-    margen_minimo_pct: Decimal = cst.MARGEN_MINIMO_PCT
+    # Vacío: el del tenant, el mismo que usa la política de descuento de la
+    # oferta. Hasta el 05-11-2026 era un 15 escrito en el código mientras la
+    # oferta exigía el 20 del ajuste, y las dos pantallas se contradecían.
+    margen_minimo_pct: Decimal | None = None
 
 
 class CongelarIn(BaseModel):
@@ -115,8 +118,13 @@ def tarifa(
         "forma elegante de mentir en una hoja de aprobación."
     ),
 )
-def margen(cuerpo: MargenIn, principal: AutenticadoDep) -> Any:
-    return cst.margen_de_oferta(lineas=cuerpo.lineas, margen_minimo_pct=cuerpo.margen_minimo_pct)
+def margen(cuerpo: MargenIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.runtime.settings import efectivo
+
+    minimo = cuerpo.margen_minimo_pct
+    if minimo is None:
+        minimo = Decimal(str(efectivo("margen_minimo_pct", db)))
+    return cst.margen_de_oferta(lineas=cuerpo.lineas, margen_minimo_pct=minimo)
 
 
 @router_coste.post(

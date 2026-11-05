@@ -47,7 +47,8 @@ def test_una_oferta_con_costes_incompletos_no_tiene_margen_aproximado() -> None:
         lineas=[
             {"referencia": "L1", "precio_venta": 100, "coste": 50, "cantidad": 1},
             {"referencia": "L2", "precio_venta": 200, "coste": None, "cantidad": 1},
-        ]
+        ],
+        margen_minimo_pct=Decimal(20),
     )
     assert salida["completo"] is False
     assert salida["lineas_sin_coste"] == ["L2"]
@@ -56,7 +57,10 @@ def test_una_oferta_con_costes_incompletos_no_tiene_margen_aproximado() -> None:
 
 def test_un_margen_bajo_pide_aprobacion() -> None:
     salida = cst.margen_de_oferta(
-        lineas=[{"referencia": "L1", "precio_venta": 100, "coste": 95, "cantidad": 1}]
+        lineas=[{"referencia": "L1", "precio_venta": 100, "coste": 95, "cantidad": 1}],
+        # El mínimo lo pone quien llama —en producto, el ajuste del tenant—:
+        # el 15 escrito en el módulo se quitó el 05-11-2026.
+        margen_minimo_pct=Decimal(20),
     )
     assert salida["necesita_aprobacion"] is True
 

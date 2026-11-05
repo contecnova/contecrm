@@ -111,6 +111,20 @@ interface Documento {
   condiciones: string;
 }
 
+/** Si el coste ha cambiado desde que se ofertó. */
+interface CostesAlDia {
+  hay_cambios: boolean;
+  cambios: {
+    referencia: string;
+    coste_en_la_oferta: string;
+    coste_hoy: string;
+    peor: boolean;
+  }[];
+  que_hacer: string;
+  comparadas: number;
+  no_comparables: string[];
+}
+
 export function Presupuesto() {
   const { t } = useTranslation();
   const { id = "" } = useParams();
@@ -118,6 +132,7 @@ export function Presupuesto() {
   const [politica, setPolitica] = useState<Politica | null>(null);
   const [cambios, setCambios] = useState<Cambios | null>(null);
   const [documento, setDocumento] = useState<Documento | null>(null);
+  const [costes, setCostes] = useState<CostesAlDia | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -152,6 +167,9 @@ export function Presupuesto() {
     llamar<Cambios>(`/api/v1/presupuestos/${id}/cambios`, { signal })
       .then((r) => setCambios(r.datos))
       .catch(salvoCancelacion(() => setCambios(null)));
+    llamar<CostesAlDia>(`/api/v1/presupuestos/${id}/costes-al-dia`, { signal })
+      .then((r) => setCostes(r.datos))
+      .catch(salvoCancelacion(() => setCostes(null)));
     return () => control.abort();
   }, [id]);
 
@@ -303,6 +321,39 @@ export function Presupuesto() {
                 {presupuesto.margen_pct === null ? (
                   <p className="mt-1 text-rotulo text-ink-faint">
                     {t("presupuesto.porqueSinMargen")}
+                  </p>
+                ) : null}
+                {/* El coste se congeló al ofertar. Si hoy es otro, se avisa al
+                    lado del margen —que es el que ya no es el aprobado— y la
+                    oferta no se toca: reescribirla mandaría al cliente unos
+                    números que nadie aprobó (CRM-09.02.01.03). */}
+                {costes?.hay_cambios ? (
+                  <div className="mt-2" data-testid="costes-al-dia">
+                    <p className="text-dato text-warning">
+                      {costes.que_hacer || t("presupuesto.costeCambiado")}
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {costes.cambios.map((c) => (
+                        <li key={c.referencia} className="font-mono text-rotulo text-ink-muted">
+                          {t("presupuesto.costeLinea", {
+                            referencia: c.referencia,
+                            antes: importe(c.coste_en_la_oferta, presupuesto.moneda),
+                            hoy: importe(c.coste_hoy, presupuesto.moneda),
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : costes && costes.comparadas > 0 ? (
+                  <p className="mt-1 text-rotulo text-ink-faint" data-testid="costes-al-dia">
+                    {t("presupuesto.costeIgual")}
+                  </p>
+                ) : null}
+                {costes?.no_comparables.length ? (
+                  <p className="mt-1 text-rotulo text-ink-faint">
+                    {t("presupuesto.costeSinComparar", {
+                      cuantas: costes.no_comparables.length,
+                    })}
                   </p>
                 ) : null}
                 {presupuesto.valido_hasta ? (

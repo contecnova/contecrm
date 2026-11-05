@@ -13359,6 +13359,31 @@ a ojo. Y al recogerlas se dice **quién no ha contestado**: si tres de cinco no
 responden, la comparación no es entre cinco opciones, y decidir sin saberlo es
 creer que se ha comparado el mercado.
 
+**Qué está hecho y qué no (05-11-2026).** Hecho y en pantalla:
+
+- **La tarifa de coste** se da de alta en *Oportunidades → Listas de precio*
+  eligiendo *Sentido: coste* y su proveedor. Una tarifa de coste sin proveedor,
+  o una de venta con proveedor, se rechazan diciendo por qué. Hasta ese día el
+  motor sabía calcular costes de tarifas que el alta no dejaba crear.
+- **La oportunidad copia del catálogo** el precio y el coste de cada línea que
+  lleva producto —lo que se escriba a mano manda— y enseña su **margen
+  conocido** junto a las líneas, con las que no tienen coste nombradas y las que
+  se venden por debajo de coste avisadas. La ruta decía que copiaba y no lo
+  hacía: una línea con producto y sin precio quedaba a cero.
+- **La oferta congela el coste** en cada línea y, si hoy es otro, lo dice al lado
+  del margen —línea a línea, con el coste de entonces y el de hoy— sin tocar la
+  oferta (`GET /presupuestos/{id}/costes-al-dia`).
+
+El **margen mínimo** que decide si hace falta aprobación es el del tenant
+(`MARGEN_MINIMO_PCT`, ajustable desde Administración), el mismo en la oferta, en
+la oportunidad y en la calculadora de coste. Hasta el 05-11-2026 la calculadora
+usaba un 15 escrito en el código y la oferta, el 20 del ajuste.
+
+**Comparar proveedores y pedir oferta todavía no**: son cálculos correctos sobre
+los datos que les da quien pregunta, pero no hay ofertas de proveedor ni
+peticiones guardadas, así que no hay pantalla que los alimente. Constan como en
+curso.
+
 ## Capacidad, plazo, reparto y coste real (`CRM-09.02.01.06`, `CRM-09.02.01.07`, `CRM-09.02.01.08`, `CRM-09.02.01.09`, `CRM-09.02.01.10`)
 
 **La capacidad descuenta lo ya comprometido.** Una cuota que solo mira lo
@@ -13384,6 +13409,13 @@ la oferta, y cada uno lo hace de una manera: normalmente con el de siempre, que 
 como se llega a depender de un proveedor sin que nadie lo haya decidido. Si no
 cabe entero se dice **cuánto falta**, en vez de repartir lo que hay y dejar el
 resto sin asignar sin avisar.
+
+**Lo que de esto todavía no está (05-11-2026).** La capacidad comprometida, el
+plazo que decide la fecha, el reparto y el rappel son cálculos correctos que
+reciben los datos de quien pregunta: no hay capacidad contratada por proveedor y
+periodo, ni plazos, ni tramos de rappel guardados. Constan como en curso, y la
+pantalla *Coste y capacidad* es una calculadora en la que esos datos se escriben
+a mano. El coste real contra el ofertado (`.10`) sí sale de los encargos.
 
 **El rappel estimado no es dinero.** Depende de llegar al tramo, y si el año se
 tuerce no se llega: se marca como estimado hasta que el periodo se cierra. Y se

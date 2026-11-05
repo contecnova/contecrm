@@ -49,11 +49,6 @@ SENTIDOS = ("venta", "coste")
 # una manera — normalmente con el de siempre.
 REPARTOS = ("menor_coste", "mas_capacidad_libre", "por_acuerdo", "menor_plazo")
 
-# Por debajo de qué margen se pide aprobación. Es un valor por defecto del
-# módulo; el tope real sale de la política de descuentos del tenant, que ya
-# existe.
-MARGEN_MINIMO_PCT = Decimal("15")
-
 
 def _hoy(db: Any = None) -> date:
     """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
@@ -108,9 +103,7 @@ def margen_de_linea(
     }
 
 
-def margen_de_oferta(
-    *, lineas: list[dict[str, Any]], margen_minimo_pct: Decimal = MARGEN_MINIMO_PCT
-) -> dict[str, Any]:
+def margen_de_oferta(*, lineas: list[dict[str, Any]], margen_minimo_pct: Decimal) -> dict[str, Any]:
     """El margen de la oferta entera, diciendo **qué líneas no se pueden medir**.
 
     Una oferta en la que faltan costes no tiene «un margen aproximado»: tiene un

@@ -40,6 +40,7 @@ vi.mock("react-i18next", () => ({
 let presupuesto: Record<string, unknown>;
 let politica: Record<string, unknown>;
 let cambios: Record<string, unknown>;
+let costes: Record<string, unknown>;
 
 vi.mock("@/lib/api", async () => {
   const real = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
@@ -48,6 +49,7 @@ vi.mock("@/lib/api", async () => {
     llamar: vi.fn(async (ruta: string) => {
       if (ruta.includes("/politica-descuento")) return { datos: politica };
       if (ruta.includes("/cambios")) return { datos: cambios };
+      if (ruta.includes("/costes-al-dia")) return { datos: costes };
       if (ruta.includes("/documento"))
         return {
           datos: {
@@ -120,6 +122,7 @@ beforeEach(() => {
       { linea: "Soporte", cambio: "quitada", total: "200.00" },
     ],
   };
+  costes = { hay_cambios: false, cambios: [], que_hacer: "", comparadas: 1, no_comparables: [] };
   vi.clearAllMocks();
 });
 
@@ -204,5 +207,30 @@ describe("el documento", () => {
         'presupuesto.conQueSale:{"plantilla":"oferta-estandar","marca":"Contecnova","idioma":"es"}',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+// El coste se congela al ofertar; si hoy es otro se avisa al lado del margen y
+// la oferta no se toca (CRM-09.02.01.03). La ruta y el aviso no existían: el
+// cálculo estaba escrito y nadie lo pedía.
+describe("el coste congelado", () => {
+  it("si ha subido desde que se ofertó, lo dice línea a línea junto al margen", async () => {
+    costes = {
+      hay_cambios: true,
+      cambios: [{ referencia: "SEN-1", coste_en_la_oferta: "700", coste_hoy: "800", peor: true }],
+      que_hacer: "1 líneas cuestan más que cuando se ofertó.",
+      comparadas: 1,
+      no_comparables: ["Portes"],
+    };
+    montar();
+    const aviso = await screen.findByTestId("costes-al-dia");
+    expect(aviso.textContent).toContain("cuestan más que cuando se ofertó");
+    expect(aviso.textContent).toContain("SEN-1");
+    expect(screen.getByText(/presupuesto\.costeSinComparar/)).toBeInTheDocument();
+  });
+
+  it("si no ha cambiado lo dice, en vez de callar", async () => {
+    montar();
+    expect((await screen.findByTestId("costes-al-dia")).textContent).toContain("presupuesto.costeIgual");
   });
 });

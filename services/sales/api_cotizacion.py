@@ -214,6 +214,17 @@ class CrearLista(BaseModel):
             "evita que el precio dependa del orden de inserción en la base"
         ),
     )
+    # Una tarifa de coste es una lista con el sentido cambiado y su proveedor
+    # (CRM-09.02.01.01). El modelo y el motor lo sabían; el alta no lo admitía,
+    # así que el motor calculaba costes de tarifas que no se podían crear.
+    sentido: str = Field(
+        "venta",
+        pattern="^(venta|coste)$",
+        description="`venta`, lo que cobramos; `coste`, lo que nos cobra un proveedor",
+    )
+    proveedor_id: UUID | None = Field(
+        None, description="Obligatorio en una tarifa de coste, y prohibido en una de venta"
+    )
 
 
 @router_precios.post(
@@ -223,6 +234,17 @@ class CrearLista(BaseModel):
     summary="Crear una lista de precios",
 )
 def crear_lista(datos: CrearLista, db: DbDep, principal: AutenticadoDep) -> Any:
+    # Una tarifa de coste sin proveedor se aplicaría a todos, y una de venta con
+    # proveedor no la encontraría nunca el motor: las dos se rechazan diciendo
+    # por qué, en vez de guardarse y no hacer lo que se pensaba.
+    if (datos.sentido == "coste") != (datos.proveedor_id is not None):
+        from crmcore.errors import ErrorValidacion
+
+        raise ErrorValidacion(
+            "Una tarifa de coste lleva su proveedor, y una lista de venta no lleva ninguno.",
+            error_code="lista_precio.proveedor_y_sentido",
+            detalle={"sentido": datos.sentido},
+        )
     fila = cat.ListaPrecio(tenant_id=principal.tenant_id, **datos.model_dump())
     db.add(fila)
     db.flush()
@@ -426,6 +448,61 @@ def politica_descuento(presupuesto_id: UUID, db: DbDep, principal: AutenticadoDe
 
         raise NoEncontrado("El presupuesto no existe", error_code="presupuesto.no_encontrado")
     return pre.politica_de_descuento(db, principal.tenant_id, fila)
+
+
+@router_pre.get(
+    "/{presupuesto_id}/costes-al-dia",
+    dependencies=[Depends(exige_permiso("quote:read"))],
+    summary="Si el coste ha cambiado desde que se ofertó",
+    description=(
+        "El coste se congela en cada línea al ofertar (CRM-09.02.01.03). Esto lo "
+        "compara con el de hoy y **avisa sin reescribir**: reescribir mandaría al "
+        "cliente unos números que nadie aprobó. Las líneas que no se pueden "
+        "comparar —sin coste congelado o sin producto— se cuentan aparte, porque "
+        "callarlas haría pasar «no se sabe» por «no ha cambiado»."
+    ),
+)
+def costes_al_dia(presupuesto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.sales import coste as cst
+
+    fila = db.get(pre.Presupuesto, presupuesto_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        from crmcore.errors import NoEncontrado
+
+        raise NoEncontrado("El presupuesto no existe", error_code="presupuesto.no_encontrado")
+    lineas = (
+        db.execute(
+            select(pre.LineaPresupuesto)
+            .where(pre.LineaPresupuesto.presupuesto_id == fila.id)
+            .order_by(pre.LineaPresupuesto.orden)
+        )
+        .scalars()
+        .all()
+    )
+    congeladas: list[dict[str, Any]] = []
+    hoy: dict[str, Decimal] = {}
+    no_comparables: list[str] = []
+    for linea in lineas:
+        referencia = linea.sku or linea.descripcion or str(linea.id)
+        if linea.coste_unitario is None or linea.producto_id is None:
+            no_comparables.append(referencia)
+            continue
+        actual = cat.calcular_precio(
+            db,
+            principal.tenant_id,
+            producto_id=linea.producto_id,
+            cantidad=Decimal(linea.cantidad),
+            moneda=fila.moneda,
+        )["coste"]
+        if actual is None:
+            no_comparables.append(referencia)
+            continue
+        congeladas.append({"referencia": referencia, "coste_congelado": linea.coste_unitario})
+        hoy[referencia] = Decimal(actual)
+    salida = cst.revisar_costes_congelados(lineas_congeladas=congeladas, costes_hoy=hoy)
+    salida["comparadas"] = len(congeladas)
+    salida["no_comparables"] = no_comparables
+    return salida
 
 
 @router_pre.post(

@@ -49,7 +49,7 @@ import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
-import { fecha, humanizar, importe as comoImporte } from "@/lib/formato";
+import { escalar, fecha, humanizar, importe as comoImporte } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 
@@ -89,6 +89,17 @@ interface Linea {
   total: string;
   /** `tipo_ingreso` en el servidor. Se llamaba `tipo` aquí y nadie lo mandaba. */
   tipo_ingreso?: string;
+}
+
+/** A qué margen sale, calculado por el servidor con las líneas guardadas. */
+interface MargenDeLineas {
+  completo: boolean;
+  lineas_sin_coste: string[];
+  lineas_en_perdidas: { referencia: string }[];
+  margen_pct: string;
+  necesita_aprobacion: boolean;
+  porque: string;
+  aviso_lineas_en_perdidas: string;
 }
 
 interface Metricas {
@@ -206,6 +217,7 @@ export function Oportunidad() {
   const [op, setOp] = useState<Oportunidad | null>(null);
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [metricas, setMetricas] = useState<Metricas | null>(null);
+  const [margen, setMargen] = useState<MargenDeLineas | null>(null);
   const [reparto, setReparto] = useState<Reparto | null>(null);
   const [grupo, setGrupo] = useState<GrupoDeCompra | null>(null);
   const [deslizamientos, setDeslizamientos] = useState<CambioDePrevision[]>([]);
@@ -260,6 +272,13 @@ export function Oportunidad() {
         // las líneas de verdad. Sin líneas no se pregunta: contestaría ceros y
         // un ARR de cero se lee como «no factura», no como «no hay líneas».
         if (suyas.length > 0) {
+          // El margen, del servidor y con el mínimo del tenant: calcularlo aquí
+          // sería lógica de negocio en el front (CRM-09.02.01.02).
+          void llamar<MargenDeLineas>(`/api/v1/opportunities/${id}/margen`, {
+            signal: control.signal,
+          })
+            .then((m) => setMargen(m.datos))
+            .catch(() => undefined);
           void llamar<Metricas>("/api/v1/ingresos/metricas", {
             metodo: "POST",
             cuerpo: { lineas: suyas },
@@ -529,7 +548,12 @@ export function Oportunidad() {
       <div className="mt-4">
         {editando || pestana === "relacionado" ? (
           <div className="grid gap-4 lg:grid-cols-2">
-            <LasLineas lineas={lineas} metricas={metricas} moneda={op.moneda} />
+            <LasLineas
+              lineas={lineas}
+              metricas={metricas}
+              margen={margen}
+              moneda={op.moneda}
+            />
             <QuienDecide grupo={grupo} />
             <QuienSeLoLleva reparto={reparto} />
             <LoQueSeHaMovido cambios={deslizamientos} />
@@ -559,10 +583,12 @@ export function Oportunidad() {
 function LasLineas({
   lineas,
   metricas,
+  margen,
   moneda,
 }: {
   lineas: Linea[];
   metricas: Metricas | null;
+  margen: MargenDeLineas | null;
   moneda: string;
 }) {
   const { t } = useTranslation();
@@ -597,6 +623,32 @@ function LasLineas({
           ))}
         </ul>
       )}
+
+      {/* El margen, con lo que no se sabe dicho: las líneas sin coste no
+          cuentan como cero, y una línea que pierde dinero se nombra aunque el
+          total salga sano. */}
+      {margen ? (
+        <div className="mt-3 border-t border-ink-dim/30 pt-2" data-testid="margen-oportunidad">
+          <p className="text-dato text-ink">
+            {margen.lineas_sin_coste.length === lineas.length
+              ? t("oportunidad.margenSinCoste")
+              : t("oportunidad.margen", { pct: escalar(margen.margen_pct) })}
+          </p>
+          {margen.lineas_sin_coste.length && margen.lineas_sin_coste.length < lineas.length ? (
+            <p className="text-rotulo text-ink-faint">
+              {t("oportunidad.margenIncompleto", {
+                cuales: margen.lineas_sin_coste.join(", "),
+              })}
+            </p>
+          ) : null}
+          {margen.aviso_lineas_en_perdidas ? (
+            <p className="text-rotulo text-danger">{margen.aviso_lineas_en_perdidas}</p>
+          ) : null}
+          {margen.necesita_aprobacion ? (
+            <p className="text-rotulo text-warning">{margen.porque}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       {metricas ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">

@@ -121,8 +121,13 @@ def test_las_renovaciones_no_son_crecimiento(cliente: Any, cabeceras: dict[str, 
 # ── Margen por línea (CRM-09.02.01) ───────────────────────────────────────
 
 
-def test_una_linea_en_perdidas_no_la_tapa_el_total(cliente: Any, cabeceras: dict[str, str]) -> None:
-    """El total sale sano y dentro hay un producto que pierde dinero por unidad."""
+def test_una_linea_en_perdidas_no_la_tapa_el_total(
+    cliente: Any, cabeceras: dict[str, str], db: Any
+) -> None:
+    """El total sale sano y dentro hay un producto que pierde dinero por unidad.
+
+    Con `db`: el margen mínimo sale del ajuste del tenant desde el 05-11-2026
+    —era un 15 escrito en el código—, y para leerlo la ruta abre sesión."""
     r = cliente.post(
         "/api/v1/coste/margen",
         headers=cabeceras,
@@ -144,7 +149,7 @@ def test_una_linea_en_perdidas_no_la_tapa_el_total(cliente: Any, cabeceras: dict
 
 
 def test_sin_lineas_en_perdidas_no_se_avisa_de_nada(
-    cliente: Any, cabeceras: dict[str, str]
+    cliente: Any, cabeceras: dict[str, str], db: Any
 ) -> None:
     """Un aviso que sale siempre deja de leerse."""
     r = cliente.post(

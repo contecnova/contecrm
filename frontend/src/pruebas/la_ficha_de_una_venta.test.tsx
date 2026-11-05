@@ -103,6 +103,16 @@ vi.mock("@/lib/api", async () => {
             },
           ],
         };
+      else if (ruta === "/api/v1/opportunities/o-1/margen")
+        datos = {
+          completo: true,
+          lineas_sin_coste: [],
+          lineas_en_perdidas: [{ referencia: "Soporte" }],
+          margen_pct: "34.50",
+          necesita_aprobacion: false,
+          porque: "",
+          aviso_lineas_en_perdidas: "1 línea(s) se venden por debajo de coste.",
+        };
       else if (ruta === "/api/v1/ingresos/metricas")
         datos = {
           arr: "10000.00",
@@ -193,6 +203,17 @@ describe("la ficha de una venta", () => {
     // Y lo que NO cuenta como ARR, dicho: sin eso el número se cita en un
     // comité como si fuera todo lo que entra.
     expect(screen.getByText(/oportunidad.noCuentaComoArr.*implantacion/)).toBeTruthy();
+  });
+
+  it("el margen lo pide al servidor y dice lo que no sabe", async () => {
+    // CRM-09.02.01.02. Calcularlo aquí sería lógica de negocio en el front, y
+    // el mínimo que decide la aprobación es el del tenant.
+    await montar();
+    const caja = await screen.findByTestId("margen-oportunidad");
+    expect(pedidas).toContain("/api/v1/opportunities/o-1/margen");
+    expect(caja.textContent).toContain("oportunidad.margen");
+    expect(caja.textContent).toContain("34,5");
+    expect(caja.textContent).toContain("por debajo de coste");
   });
 
   it("dice quién decide y, sobre todo, quién falta", async () => {

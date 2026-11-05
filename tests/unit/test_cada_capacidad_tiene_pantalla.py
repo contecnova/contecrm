@@ -982,7 +982,13 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # de oportunidades, migración entre regiones y actividades polimórficas. La
 # pantalla de coste NO cuenta para la familia 09.02: es una calculadora aparte,
 # y la capacidad pide el coste dentro de la oportunidad y de la oferta.
-TOPE_SIN_PANTALLA = 112
+#
+# 05-11-2026, sexta: 112 → 103. La familia del coste de proveedor (CRM-09.02.01):
+# tres hechas de verdad y con pantalla —la tarifa de coste se puede crear, la
+# oportunidad copia coste y enseña su margen, la oferta avisa si el coste
+# cambió— y seis que dejan de constar como hechas: eran cálculos sobre datos
+# que daba el que llamaba, sin nada guardado detrás.
+TOPE_SIN_PANTALLA = 103
 
 
 def _es_pantalla(p: Path) -> bool:
