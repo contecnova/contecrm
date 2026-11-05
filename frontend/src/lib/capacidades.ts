@@ -275,10 +275,12 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-09.01.01.01",
     "CRM-09.01.01.02",
     "CRM-09.01.01.03",
-    // «Cómo va este proveedor, con hechos» y «Dónde duele si un proveedor falla
-    // mañana», en la lista de proveedores. Verificado pulsando el 05-11-2026.
-    "CRM-09.01.01.04",
-    "CRM-09.01.01.05",
+    // CRM-09.01.01.04 y .05 NO se declaran, aunque la lista tenga «Cómo va este
+    // proveedor, con hechos» y «Dónde duele si un proveedor falla mañana»: los
+    // dos piden que alguien teclee las entregas, las incidencias y la
+    // concentración. Una evaluación con hechos medidos no es una calculadora a
+    // la que se le escriben los hechos. Se citaron el 05-11-2026 por el botón y
+    // se retiraron el mismo día al leer qué pedía.
   ],
   // El modelo común de actividad —tareas, eventos, llamadas, notas y
   // visitas—, sus plantillas y secuencias por tipo de proceso, y las

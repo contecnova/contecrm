@@ -13265,6 +13265,14 @@ día de la entrega nadie sepa quién tenía que ir. Si además es el único homo
 para lo suyo, la baja **deja un hueco desde el primer día**, y eso hay que decirlo
 antes porque homologar a otro lleva semanas.
 
+**Qué de esto está hecho y qué no (05-11-2026).** La homologación por categoría,
+los papeles con vigencia y los contactos por función se guardan y se ven. El
+**riesgo de dependencia**, la **evaluación con hechos** y **si se puede dar de
+baja** son cálculos correctos que reciben los datos de quien pregunta: en la lista
+de proveedores salen como acciones, pero piden escribir las entregas, las
+incidencias o los compromisos a mano. Constan como en curso hasta que lean lo
+guardado.
+
 ## El contrato del proveedor y lo que sostiene (`CRM-09.01.01.07`, `CRM-09.01.01.08`, `CRM-09.01.01.09`)
 
 Estas tres viven en ventas y en servicio, no en el maestro, porque deciden **qué se
@@ -13304,6 +13312,10 @@ lo tenga bien, es que no lo ha dicho, y firmarlo así es firmar sin saber. Y se
 puede preguntar al revés —qué es lo máximo que se puede prometer con este proveedor
 detrás—, que es más barato que descubrirlo en la revisión legal y mucho más que
 descubrirlo en la primera incidencia.
+
+**Hecho y no hecho (05-11-2026).** El contrato del proveedor y su alcance son
+cálculos que reciben la vigencia, las condiciones y el alcance de quien pregunta:
+no hay contratos ni alcances de proveedor guardados, y constan como en curso.
 
 ## Lo que nos cuesta: tarifas, margen y comparación (`CRM-09.02.01.01`, `CRM-09.02.01.02`, `CRM-09.02.01.03`, `CRM-09.02.01.04`, `CRM-09.02.01.05`)
 

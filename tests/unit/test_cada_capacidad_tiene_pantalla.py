@@ -988,7 +988,13 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # oportunidad copia coste y enseña su margen, la oferta avisa si el coste
 # cambió— y seis que dejan de constar como hechas: eran cálculos sobre datos
 # que daba el que llamaba, sin nada guardado detrás.
-TOPE_SIN_PANTALLA = 103
+#
+# 05-11-2026, séptima: 103 → 100. Cinco de la familia del proveedor
+# (CRM-09.01.01.04, .05, .07, .09, .10) dejan de constar como hechas: son
+# cálculos a los que se les escriben los datos. Dos de ellas se habían citado
+# esa misma mañana por tener botón en la lista de proveedores; al leer qué
+# pedía el botón —las entregas y las incidencias, tecleadas— se retiraron.
+TOPE_SIN_PANTALLA = 100
 
 
 def _es_pantalla(p: Path) -> bool:
