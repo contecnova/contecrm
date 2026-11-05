@@ -123,7 +123,11 @@ class RevisionOportunidad(Base, TimestampMixin):
     oportunidad_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     revisada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     respuestas: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     # Lo que se dijo en la revisión, para poder compararlo con lo que pasó.
     probabilidad_declarada: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -132,7 +136,9 @@ class RevisionOportunidad(Base, TimestampMixin):
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     resultado: Mapped[str] = mapped_column(String(20), nullable=False, default="")
-    notas: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notas: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     __table_args__ = (Index("ix_revisiones_op", "tenant_id", "oportunidad_id"),)
 

@@ -2266,6 +2266,37 @@ Si tu empresa trabaja con entorno de pruebas y producción:
 - Y las automatizaciones **llegan apagadas** al entorno nuevo: encender por error
   una campaña en producción al promocionar es de los errores caros.
 
+### Un entorno de pruebas con tus datos: los sandboxes
+
+En **Empresas → Sandboxes** se crea un entorno de pruebas que es una copia de tu
+empresa. Sirve para probar una migración, formar a alguien o reproducir un
+problema sin tocar lo de verdad.
+
+1. **Crear**: le das un nombre, el propósito (desarrollo, pruebas, formación,
+   migración o soporte) y qué porcentaje de tus clientes quieres copiar. El
+   propósito decide cuándo caduca. Por defecto los datos se **anonimizan**; si no
+   quieres anonimizar, tienes que escribir por qué, y queda escrito con tu nombre.
+2. **Copiar los datos**: la copia no empieza sola, porque tarda y conviene
+   revisar antes el plan. Al pedirla, el sandbox pasa a *copiando* y al terminar
+   a *listo* o *con avisos*.
+3. **Mirar el resultado**: la ficha del sandbox dice, servicio a servicio,
+   cuántas filas se copiaron, qué no se copió y por qué, y si algo falló.
+
+Qué encontrarás dentro:
+
+- Los nombres, correos, teléfonos, asuntos y textos de tus clientes salen
+  **cambiados** por otros que no se pueden deshacer. El mismo dato original da
+  siempre el mismo sustituto, así que lo que estaba relacionado sigue
+  relacionado.
+- Los importes y números que son confidenciales salen **vacíos** o a cero: un
+  número inventado parecería de verdad.
+- Las claves de API, las credenciales de conexiones y los secretos de webhook
+  **no se copian nunca**: desde un sandbox dispararían contra producción.
+- Los comentarios, los adjuntos y el buscador **empiezan vacíos**.
+- Las personas de tu equipo entran en el sandbox con su usuario de siempre.
+
+Con **Apagar** el sandbox deja de dejar entrar, con el motivo que escribas.
+
 ---
 
 ## Tus derechos y los de tus clientes (sección 7.3)

@@ -152,7 +152,9 @@ class HiloComunidad(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     titulo: Mapped[str] = mapped_column(String(300), nullable=False)
-    cuerpo: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    cuerpo: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # Quién abrió el hilo desde el portal.
     autor_contacto_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), nullable=True, info={"referencia": "contacto"}
@@ -181,7 +183,7 @@ class RespuestaComunidad(Base):
     hilo_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("hilos_comunidad.id", ondelete="CASCADE"), nullable=False
     )
-    cuerpo: Mapped[str] = mapped_column(Text, nullable=False)
+    cuerpo: Mapped[str] = mapped_column(Text, nullable=False, info={"anonimizar_en_copias": True})
     autor_contacto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     autor_usuario_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     # Respuesta del fabricante. Se marca porque en un foro de soporte la

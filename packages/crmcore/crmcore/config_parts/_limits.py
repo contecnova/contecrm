@@ -115,6 +115,10 @@ class _LimitsSettings(BaseSettings):
     # Coste máximo de una consulta a la superficie, y días que vive un sandbox.
     superficie_coste_maximo: int = Field(50, ge=1, le=100_000)
     sandbox_dias: int = Field(30, ge=1, le=3650)
+    # Filas por inserción al copiar un tenant a su sandbox (CRM-07.02.01.02).
+    # Una tabla ancha lo baja sola para no pasar del tope de parámetros de
+    # Postgres; esto es el máximo, no lo que siempre se usa.
+    sandbox_copia_lote: int = Field(500, ge=1, le=10_000)
     # Dígitos mínimos para dar un teléfono por marcable.
     telefono_minimo_digitos: int = Field(7, ge=1, le=30)
     # Antelación del aviso de caducidad de un activo de marketing y de un

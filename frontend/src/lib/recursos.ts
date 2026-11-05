@@ -132,6 +132,23 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "tenancy",
         permiso: "tenant:read",
       },
+      {
+        // Entornos de pruebas con la copia de los datos (CRM-07.02.01.02): se
+        // crean, se copian —anonimizado, y por cuenta si es parcial— y se
+        // apagan desde su ficha, que dice lo que contestó cada servicio.
+        nombre: "Sandboxes",
+        objeto: "sandbox",
+        listar: "/api/v1/sandboxes",
+        crear: "/api/v1/sandboxes",
+        servicio: "tenancy",
+        // Las dos calculadoras de antes, que pedían teclear los hechos: el plan
+        // lo calcula «Nuevo» al crear, y qué hay que refrescar o apagar lo dice
+        // «Qué sandboxes hay que refrescar o apagar» con los guardados. Siguen
+        // en la API para quien gestione sus entornos fuera.
+        acciones_ocultas: ["/api/v1/sandboxes/plan", "/api/v1/sandboxes/caducados"],
+        columnas: ["nombre", "proposito", "porcentaje", "anonimiza", "estado", "caduca_el"],
+        permiso: "tenancy:read",
+      },
     ],
   "contrato": [
       { nombre: "Servicios", listar: "/api/v1/servicios", servicio: "gateway" },

@@ -14211,8 +14211,14 @@ filtraciones de un CRM no salen de producción: salen de una copia.
   mismo valor falso dentro del entorno, y distinto entre entornos. Sin lo primero,
   el entorno no sirve para probar nada que cruce datos; sin lo segundo, cruzando
   dos entornos se podría deshacer la anonimización.
-- **Una columna sin regla se vacía**, no se copia: el silencio por defecto tiene
-  que ser el seguro.
+- **Qué se anonimiza sale del modelo**, no de quien pide la copia: cada columna
+  declara si es personal, especial o confidencial, o si se anonimiza sólo en las
+  copias (un nombre de contacto tiene que verse en la aplicación y no en una
+  copia). Lo que no lleva ninguna marca **se copia tal cual**, y por eso marcar
+  la columna es parte de añadirla. Al anonimizar filas sueltas con reglas
+  (`POST /sandboxes/anonimizar`), en cambio, una columna sin regla se vacía.
+- **Lo que no es texto no se inventa**: un importe confidencial sale vacío o a
+  cero, porque un número inventado parecería de verdad.
 - **Hay cosas que no se copian nunca**: tokens, claves de API y secretos de
   webhook. Un token válido en pruebas es una puerta abierta a producción.
 - **Se recomienda copia parcial**, y no por espacio: con el 5 % de los clientes se
@@ -14220,6 +14226,10 @@ filtraciones de un CRM no salen de producción: salen de una copia.
 - **Y un sandbox caduca.** El que se creó para una migración hace año y medio sigue
   ahí con los datos de entonces, sin actualizaciones y sin que nadie recuerde quién
   tiene acceso.
+- **Las referencias siguen cuadrando** entre módulos: una oportunidad copiada
+  apunta a la copia de su cuenta. Lo que no se traduce son los identificadores
+  escritos dentro de textos o documentos JSON, y lo que no se copia son los
+  comentarios, los adjuntos y el índice del buscador.
 
 ## Las pantallas que faltaban del front oficial (`CRM-07.04.03.23`, `CRM-07.04.03.24`, `CRM-07.04.03.27`, `CRM-07.04.03.29`, `CRM-07.04.03.31`, `CRM-07.04.03.32`, `CRM-07.04.03.33`, `CRM-00.01.07.06`)
 

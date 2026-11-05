@@ -17,6 +17,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.datos.estados import Maquina, registrar_maquina
 from crmcore.datos.estados import comprobar as comprobar_estado
+from crmcore.db.session import escribir_como
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.logging import get_logger
@@ -145,44 +146,51 @@ def crear_tenant(
     # sujeto, y sin id el consumidor no sabría de qué tenant habla.
     uow.db.flush()
 
-    # Las cuotas que vende el plan, puestas como ajustes del tenant. **Sin esto
-    # el plan no acota nada**: lo que corta de verdad (`crmcore.cuotas.tope`) lee
-    # los ajustes, y los ajustes no sabían del plan — así que un plan con 5.000
-    # correos al mes dejaba pasar cincuenta mil. Medido: la única función que
-    # miraba el plan sólo la usaban dos pantallas, y ninguna cortaba nada.
-    #
-    # Se materializan en vez de que cada lector consulte el plan: el plan vive en
-    # el esquema de tenancy y los trece servicios no lo leen —ni deben—, mientras
-    # que los ajustes ya se replican a todos.
-    aplicar_cuotas_del_plan(uow.db, tenant.id, plan_codigo=plan)
+    # Lo que sigue son filas DEL TENANT NUEVO —cuotas, localización, el primer
+    # apunte de su cadena— escritas desde la sesión de quien lo pide: la
+    # plataforma, o el tenant del que cuelga un sandbox. `escribir_como` las
+    # escribe como suyas (guard del ORM, RLS y contexto) y lo devuelve todo al
+    # salir. Ver su docstring: sin esto el alta fallaba en cuanto el RLS miraba.
+    with escribir_como(uow.db, tenant.id):
+        # Las cuotas que vende el plan, puestas como ajustes del tenant. **Sin esto
+        # el plan no acota nada**: lo que corta de verdad (`crmcore.cuotas.tope`) lee
+        # los ajustes, y los ajustes no sabían del plan — así que un plan con 5.000
+        # correos al mes dejaba pasar cincuenta mil. Medido: la única función que
+        # miraba el plan sólo la usaban dos pantallas, y ninguna cortaba nada.
+        #
+        # Se materializan en vez de que cada lector consulte el plan: el plan vive en
+        # el esquema de tenancy y los trece servicios no lo leen —ni deben—, mientras
+        # que los ajustes ya se replican a todos.
+        aplicar_cuotas_del_plan(uow.db, tenant.id, plan_codigo=plan)
 
-    # LA LOCALIZACIÓN, TAMBIÉN AL CREAR. `propagar_localizacion` existía y la
-    # llamaba **sólo la ruta de editar**: un tenant recién dado de alta tenía su
-    # zona horaria en la ficha y no en los ajustes, que es de donde se lee, así
-    # que `rt.efectivo("zona_horaria")` caía a UTC hasta que alguien abriera el
-    # perfil y guardara.
-    #
-    # Entre medias, «hoy» era el día de UTC. De madrugada en Madrid eso es ayer,
-    # y entonces un presupuesto caduca un día antes, una compartición deja de dar
-    # acceso un día antes y una pertenencia a un equipo también. Medido el
-    # 07-10-2026 a la 01:24: doce pruebas de vigencia en rojo, todas por esto.
-    #
-    # Es el arreglo de ayer al que le faltaba una vía: se tapó la de editar y la
-    # de crear se quedó abierta, que es por donde pasan TODOS los tenants.
-    propagar_localizacion(
-        uow.db,
-        tenant,
-        {"zona_horaria": zona_horaria, "idioma": idioma, "moneda": moneda},
-    )
+        # LA LOCALIZACIÓN, TAMBIÉN AL CREAR. `propagar_localizacion` existía y la
+        # llamaba **sólo la ruta de editar**: un tenant recién dado de alta tenía su
+        # zona horaria en la ficha y no en los ajustes, que es de donde se lee, así
+        # que `rt.efectivo("zona_horaria")` caía a UTC hasta que alguien abriera el
+        # perfil y guardara.
+        #
+        # Entre medias, «hoy» era el día de UTC. De madrugada en Madrid eso es ayer,
+        # y entonces un presupuesto caduca un día antes, una compartición deja de dar
+        # acceso un día antes y una pertenencia a un equipo también. Medido el
+        # 07-10-2026 a la 01:24: doce pruebas de vigencia en rojo, todas por esto.
+        #
+        # Es el arreglo de ayer al que le faltaba una vía: se tapó la de editar y la
+        # de crear se quedó abierta, que es por donde pasan TODOS los tenants.
+        propagar_localizacion(
+            uow.db,
+            tenant,
+            {"zona_horaria": zona_horaria, "idioma": idioma, "moneda": moneda},
+        )
 
-    registrar(
-        uow.db,
-        accion="tenant.provisionado",
-        objeto="tenant",
-        objeto_id=tenant.id,
-        datos={"slug": slug, "plan": plan, "region": region},
-        tenant_id=tenant.id,
-    )
+        registrar(
+            uow.db,
+            accion="tenant.provisionado",
+            objeto="tenant",
+            objeto_id=tenant.id,
+            datos={"slug": slug, "plan": plan, "region": region},
+            tenant_id=tenant.id,
+        )
+
     uow.emitir(
         "tenant.provisioned",
         subject=("tenant", tenant.id),

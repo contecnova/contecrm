@@ -77,7 +77,11 @@ class SolicitudAprobacion(Base, TimestampMixin):
     titulo: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     # Lo que hace falta para decidir sin abrir otra pantalla (CRM-00.03.05.13).
     contexto: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     solicitante_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
@@ -180,7 +184,9 @@ class DecisionAprobacion(Base):
     # justo lo que no se puede perder (CRM-00.03.05.08).
     decidio_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     decision: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": DECISIONES})
-    comentario: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    comentario: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # ui | correo | movil | api | automatica
     via: Mapped[str] = mapped_column(String(20), nullable=False, default="ui")
     decidida_at: Mapped[datetime] = mapped_column(

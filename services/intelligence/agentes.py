@@ -255,7 +255,11 @@ class EjecucionAgente(Base):
     agente_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     objetivo: Mapped[str] = mapped_column(Text, nullable=False, default="")
     contexto: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     estado: Mapped[str] = mapped_column(String(30), nullable=False, default="planificando")
     lanzada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)

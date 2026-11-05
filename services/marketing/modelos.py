@@ -71,10 +71,14 @@ class PerfilMarketing(Base, TimestampMixin):
     telefono: Mapped[str | None] = mapped_column(
         String(40), nullable=True, info={"sensibilidad": "personal"}
     )
-    nombre: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    nombre: Mapped[str | None] = mapped_column(
+        String(300), nullable=True, info={"anonimizar_en_copias": True}
+    )
     pais: Mapped[str | None] = mapped_column(String(2), nullable=True)
     sector: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    cargo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    cargo: Mapped[str | None] = mapped_column(
+        String(150), nullable=True, info={"anonimizar_en_copias": True}
+    )
     origen: Mapped[str | None] = mapped_column(String(60), nullable=True)
     estado: Mapped[str | None] = mapped_column(String(40), nullable=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
@@ -219,7 +223,9 @@ class Supresion(Base, TimestampMixin):
     )
     # baja | rebote_duro | queja | manual | lista_negra
     motivo: Mapped[str] = mapped_column(String(30), nullable=False, default="baja")
-    detalle: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detalle: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     contacto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     # Ámbito: global o solo para un tipo de comunicación. La baja selectiva
     # —«no quiero la newsletter pero sí los avisos de servicio»— es lo que evita

@@ -101,7 +101,9 @@ class Visita(Base, TimestampMixin, SoftDeleteMixin):
 
     entrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     salida_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    notas: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notas: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     __table_args__ = (Index("ix_visitas_usuario", "tenant_id", "usuario_id", "entrada_at"),)
 
@@ -115,8 +117,12 @@ class Recurrencia(Base, TimestampMixin, SoftDeleteMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     # La plantilla del apunte que se repite.
     tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="tarea")
-    asunto: Mapped[str] = mapped_column(String(300), nullable=False)
-    cuerpo: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    asunto: Mapped[str] = mapped_column(
+        String(300), nullable=False, info={"anonimizar_en_copias": True}
+    )
+    cuerpo: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     objeto: Mapped[str | None] = mapped_column(String(60), nullable=True)
     objeto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)

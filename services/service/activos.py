@@ -107,7 +107,9 @@ class ActivoInstalado(Base, TimestampMixin, SoftDeleteMixin):
     producto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
 
-    ubicacion: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    ubicacion: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     latitud: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
     longitud: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
 

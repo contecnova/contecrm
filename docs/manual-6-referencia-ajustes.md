@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**289 ajustes** en total, de los cuales **91** son editables en caliente por tenant.
+**293 ajustes** en total, de los cuales **91** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -179,8 +179,12 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `ANOMALIA_FACTOR` | — | `3.0` | 1.0–1000.0 | Cuántas veces por encima de lo normal cuenta como anomalía de tráfico, y cuántos minutos se frena a quien la provoca. |
 | `ANOMALIA_MINUTOS_FRENO` | — | `5` | 1–1440 |  |
 | `CLAVES_TTL_CACHE_S` | — | `30.0` | 0.0–3600.0 | Cuánto se cachean las claves de API en el gateway. |
+| `CLAVES_LLAMADAS_LOTE` | — | `100` | 1–10000 | El registro de llamadas de cada clave (CRM-00.02.04.06). El gateway las apunta en memoria y las manda a `identity` por lotes: una llamada de red por petición la pagaría el integrador en cada respuesta. Se manda al llenarse el lote o al pasar el intervalo, lo que llegue antes. |
+| `CLAVES_LLAMADAS_INTERVALO_S` | — | `5.0` | 0.5–3600.0 |  |
+| `CLAVES_LLAMADAS_DIAS` | — | `35` | 1–3650 | Cuántos días se guardan. Un mes cubre el panel del mes y la pregunta de «qué pasó la semana pasada»; más es un registro de acceso, que es otra cosa. |
 | `SUPERFICIE_COSTE_MAXIMO` | — | `50` | 1–100000 | Coste máximo de una consulta a la superficie, y días que vive un sandbox. |
 | `SANDBOX_DIAS` | — | `30` | 1–3650 |  |
+| `SANDBOX_COPIA_LOTE` | — | `500` | 1–10000 | Filas por inserción al copiar un tenant a su sandbox (CRM-07.02.01.02). Una tabla ancha lo baja sola para no pasar del tope de parámetros de Postgres; esto es el máximo, no lo que siempre se usa. |
 | `TELEFONO_MINIMO_DIGITOS` | — | `7` | 1–30 | Dígitos mínimos para dar un teléfono por marcable. |
 | `ACTIVO_DIAS_PREAVISO` | — | `30` | 1–365 | Antelación del aviso de caducidad de un activo de marketing y de un acuerdo comercial con proveedor. |
 | `ACUERDO_DIAS_PREAVISO` | — | `30` | 1–365 |  |

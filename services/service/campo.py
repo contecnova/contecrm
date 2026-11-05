@@ -153,7 +153,9 @@ class OrdenTrabajo(Base, TimestampMixin, SoftDeleteMixin):
     # correctivo | preventivo | instalacion | retirada | inspeccion
     tipo: Mapped[str] = mapped_column(String(30), nullable=False, default="correctivo")
     titulo: Mapped[str] = mapped_column(String(300), nullable=False)
-    descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    descripcion: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     caso_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     activo_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
@@ -195,7 +197,9 @@ class OrdenTrabajo(Base, TimestampMixin, SoftDeleteMixin):
     # Firma del cliente. Se guarda **qué** firmó —el parte y su huella—, no solo
     # que firmó: una conformidad que no dice sobre qué no sirve para nada si
     # después se discute lo que se hizo.
-    firmado_por: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    firmado_por: Mapped[str] = mapped_column(
+        String(200), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     firma_documento_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     firma_huella: Mapped[str | None] = mapped_column(String(64), nullable=True)
     firmado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -255,7 +259,9 @@ class ParteTrabajo(Base, TimestampMixin):
     orden_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("ordenes_trabajo.id", ondelete="CASCADE"), nullable=False
     )
-    resumen: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    resumen: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     diagnostico: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # Cada ítem: {clave, texto, obligatorio, resultado: ok|ko|na, nota}
     checklist: Mapped[list[Any]] = mapped_column(

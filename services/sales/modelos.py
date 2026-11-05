@@ -49,14 +49,18 @@ class Lead(EntidadBase, SoftDeleteMixin, MetadatosMixin):
         String(200), nullable=True, info={"sensibilidad": "personal"}
     )
     empresa: Mapped[str | None] = mapped_column(String(300), nullable=True)
-    cargo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    cargo: Mapped[str | None] = mapped_column(
+        String(150), nullable=True, info={"anonimizar_en_copias": True}
+    )
     email: Mapped[str | None] = mapped_column(
         String(320), nullable=True, index=True, info={"sensibilidad": "personal"}
     )
     telefono: Mapped[str | None] = mapped_column(
         String(40), nullable=True, info={"sensibilidad": "personal"}
     )
-    web: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    web: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, info={"anonimizar_en_copias": True}
+    )
     pais: Mapped[str | None] = mapped_column(String(2), nullable=True)
 
     # nuevo | contactado | cualificado | convertido | descartado | reciclado
@@ -66,7 +70,9 @@ class Lead(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # nuestro perfil» llevan a acciones distintas, y en texto libre no se puede
     # agrupar.
     motivo_descarte: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    nota_descarte: Mapped[str | None] = mapped_column(Text, nullable=True)
+    nota_descarte: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Fecha a partir de la cual el lead descartado vuelve a la cola: un «ahora no
     # tenemos presupuesto» no es un no para siempre.
     reciclar_at: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -212,8 +218,12 @@ class Oportunidad(EntidadBase, SoftDeleteMixin, MetadatosMixin):
 
     __tablename__ = "oportunidades"
 
-    nombre: Mapped[str] = mapped_column(String(300), nullable=False)
-    descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    nombre: Mapped[str] = mapped_column(
+        String(300), nullable=False, info={"anonimizar_en_copias": True}
+    )
+    descripcion: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Código legible y correlativo, del tipo OPP-2026-00123. Lo pide todo el
     # mundo: es lo que se dice por teléfono y lo que se escribe en un correo.
     codigo: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -255,7 +265,9 @@ class Oportunidad(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # abierta | ganada | perdida | cancelada
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="abierta", index=True)
     motivo_perdida: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    nota_perdida: Mapped[str | None] = mapped_column(Text, nullable=True)
+    nota_perdida: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     competidor_ganador: Mapped[str | None] = mapped_column(String(150), nullable=True)
     # Bloqueo tras el cierre (CRM-03.01.01.14): una oportunidad cerrada no se
     # edita, porque sus números ya están en un informe que alguien ha mirado.
@@ -551,7 +563,9 @@ class LineaInstantanea(Base):
         nullable=False,
     )
     oportunidad_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    nombre: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    nombre: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     categoria: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     etapa_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     owner_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)

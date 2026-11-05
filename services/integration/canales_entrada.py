@@ -123,8 +123,12 @@ class Interaccion(Base):
     id_externo: Mapped[str] = mapped_column(String(300), nullable=False)
     direccion: Mapped[str] = mapped_column(String(10), nullable=False, default="entrante")
     interlocutor: Mapped[str] = mapped_column(String(320), nullable=False, default="")
-    asunto: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    contenido: Mapped[str | None] = mapped_column(Text, nullable=True)
+    asunto: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
+    contenido: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Huella del contenido aunque no se guarde el contenido: permite detectar el
     # duplicado que llega con otro identificador —reenvíos, copias— sin conservar
     # el texto.

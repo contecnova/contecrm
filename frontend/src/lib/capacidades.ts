@@ -57,6 +57,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // la localización del tenant y su consumo contra el límite. Todo cuelga de
   // la ficha del tenant, que se abre porque la fila lleva `objeto`.
   "tenants": [
+    // Sandboxes: se crean, se copian anonimizados y se apagan desde su ficha.
+    "CRM-07.02.01.02",
     "CRM-00.01.03.01",
     "CRM-00.01.03.04",
     "CRM-00.01.03.08",

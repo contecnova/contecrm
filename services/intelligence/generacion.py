@@ -148,7 +148,9 @@ class Propuesta(Base, TimestampMixin):
     tarea: Mapped[str] = mapped_column(String(30), nullable=False)
     objeto: Mapped[str] = mapped_column(String(60), nullable=False, default="")
     objeto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    texto: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    texto: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     idioma: Mapped[str] = mapped_column(String(10), nullable=False, default="")
     plantilla: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     version_plantilla: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -160,7 +162,9 @@ class Propuesta(Base, TimestampMixin):
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     # Lo que quedó después de que una persona lo tocara. Guardarlo es lo que
     # permite saber si el modelo acierta o si siempre hay que reescribirlo.
-    texto_final: Mapped[str | None] = mapped_column(Text, nullable=True)
+    texto_final: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     decidida_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     decidida_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

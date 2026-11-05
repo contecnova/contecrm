@@ -196,7 +196,9 @@ class CertificacionPartner(Base, TimestampMixin):
     nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     # Quién la tiene. Una certificación es de una persona, no de una empresa: si
     # esa persona se va, el partner deja de cumplir aunque el logotipo siga.
-    persona: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    persona: Mapped[str] = mapped_column(
+        String(200), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     obtenida_el: Mapped[date] = mapped_column(Date, nullable=False)
     caduca_el: Mapped[date | None] = mapped_column(Date, nullable=True)
     evidencia_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -226,7 +228,9 @@ class AccesoPartner(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(
         String(320), nullable=False, info={"sensibilidad": "personal"}
     )
-    nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    nombre: Mapped[str] = mapped_column(
+        String(200), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # admin: además da de alta a sus compañeros. Dos niveles y no tres: en el
     # canal no existe el equivalente al «técnico que solo ve lo suyo», porque el
     # registro de oportunidad es de la empresa, no de quien lo escribió.
@@ -297,7 +301,9 @@ class RegistroOportunidad(Base, TimestampMixin, SoftDeleteMixin):
     importe_estimado: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
     moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
     cierre_estimado: Mapped[date | None] = mapped_column(Date, nullable=True)
-    descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    descripcion: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     protegido_hasta: Mapped[date | None] = mapped_column(Date, nullable=True)

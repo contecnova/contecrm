@@ -159,13 +159,17 @@ class Conversacion(Base, TimestampMixin, SoftDeleteMixin):
     )
     # Identidad de quien escribe cuando todavía no es un contacto conocido: el
     # correo, el teléfono o el identificador del visitante del chat.
-    identidad_externa: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    identidad_externa: Mapped[str] = mapped_column(
+        String(320), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     # Canal por el que está **ahora**. Cambia al transferir, y el historial de
     # canales vive en los mensajes: así una transferencia no borra por dónde
     # empezó la conversación, que es lo que el cliente recuerda.
     canal_actual: Mapped[str] = mapped_column(String(20), nullable=False, default="correo")
-    asunto: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    asunto: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # abierta | esperando | cerrada
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="abierta")
     # Quién está atendiendo la conversación.
@@ -202,9 +206,15 @@ class Mensaje(Base):
     )
     canal: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": CANALES})
     direccion: Mapped[str] = mapped_column(String(10), nullable=False, default=ENTRANTE)
-    remitente: Mapped[str] = mapped_column(String(320), nullable=False, default="")
-    asunto: Mapped[str | None] = mapped_column(String(300), nullable=True)
-    cuerpo: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    remitente: Mapped[str] = mapped_column(
+        String(320), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
+    asunto: Mapped[str | None] = mapped_column(
+        String(300), nullable=True, info={"anonimizar_en_copias": True}
+    )
+    cuerpo: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # Identificador del mensaje en el sistema de origen (`Message-ID` en correo,
     # el id del proveedor en mensajería). Es lo que impide procesar dos veces el
     # mismo mensaje cuando la pasarela reintenta.
@@ -215,7 +225,11 @@ class Mensaje(Base):
     interno: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     autor_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     adjuntos: Mapped[list[Any]] = mapped_column(
-        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("clock_timestamp()"), nullable=False

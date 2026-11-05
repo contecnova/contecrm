@@ -47,14 +47,20 @@ class Cuenta(EntidadBase, SoftDeleteMixin, MetadatosMixin):
 
     __tablename__ = "cuentas"
 
-    nombre: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
+    nombre: Mapped[str] = mapped_column(
+        String(300), nullable=False, index=True, info={"anonimizar_en_copias": True}
+    )
     # Nombre comercial cuando difiere del legal. No es un capricho: la factura
     # lleva uno y el comercial conoce el otro, y buscar por el que no es acaba
     # en «este cliente no está» y en una ficha duplicada.
-    nombre_comercial: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    nombre_comercial: Mapped[str | None] = mapped_column(
+        String(300), nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Clave canónica para detectar duplicados: nombre normalizado sin forma
     # jurídica. Se indexa porque es la primera criba de la deduplicación.
-    clave_canonica: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
+    clave_canonica: Mapped[str] = mapped_column(
+        String(300), nullable=False, index=True, info={"anonimizar_en_copias": True}
+    )
 
     # cliente | prospecto | partner | proveedor | competidor | otro
     roles: Mapped[list[Any]] = mapped_column(
@@ -94,7 +100,9 @@ class Cuenta(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     clasificacion_abc: Mapped[str | None] = mapped_column(String(1), nullable=True)
 
     # ── Contacto y web ────────────────────────────────────────────────────
-    web: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    web: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, info={"anonimizar_en_copias": True}
+    )
     telefono: Mapped[str | None] = mapped_column(
         String(40), nullable=True, info={"sensibilidad": "personal"}
     )
@@ -165,7 +173,9 @@ class IdentificadorFiscal(Base, TimestampMixin):
     # válido»: uno es falta de información y el otro es un dato malo.
     verificado: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     verificado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    verificacion_detalle: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verificacion_detalle: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "pais", "valor_normalizado", name="uq_fiscal_valor"),
@@ -267,7 +277,9 @@ class RelacionCuenta(Base, TimestampMixin):
     # de deducirse: no toda relación es simétrica y adivinar la inversa produce
     # etiquetas absurdas en la ficha del otro lado.
     tipo_inverso: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    notas: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notas: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     desde: Mapped[date | None] = mapped_column(Date, nullable=True)
     hasta: Mapped[date | None] = mapped_column(Date, nullable=True)
 
@@ -318,17 +330,25 @@ class Contacto(EntidadBase, SoftDeleteMixin, MetadatosMixin):
 
     __tablename__ = "contactos"
 
-    nombre: Mapped[str] = mapped_column(String(150), nullable=False)
+    nombre: Mapped[str] = mapped_column(
+        String(150), nullable=False, info={"anonimizar_en_copias": True}
+    )
     apellidos: Mapped[str | None] = mapped_column(
         String(200), nullable=True, info={"sensibilidad": "personal"}
     )
     # Nombre completo calculado, para buscar y para mostrar sin recomponerlo en
     # cada consulta. Se mantiene al escribir.
-    nombre_completo: Mapped[str] = mapped_column(String(350), nullable=False, index=True)
-    clave_canonica: Mapped[str] = mapped_column(String(350), nullable=False, index=True)
+    nombre_completo: Mapped[str] = mapped_column(
+        String(350), nullable=False, index=True, info={"anonimizar_en_copias": True}
+    )
+    clave_canonica: Mapped[str] = mapped_column(
+        String(350), nullable=False, index=True, info={"anonimizar_en_copias": True}
+    )
 
     tratamiento: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    cargo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    cargo: Mapped[str | None] = mapped_column(
+        String(150), nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Cuándo se anonimizó por una solicitud de supresión (CRM-07.03.01.03). Es
     # distinto de borrar: la fila sigue, sin lo que identifica a la persona,
     # porque las referencias desde oportunidades y facturas tienen que seguir
@@ -414,7 +434,9 @@ class RelacionContactoCuenta(Base, TimestampMixin):
         PgUUID(as_uuid=True), ForeignKey("cuentas.id", ondelete="CASCADE"), nullable=False
     )
     rol: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    cargo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    cargo: Mapped[str | None] = mapped_column(
+        String(150), nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Contacto principal de esa cuenta. Solo puede haber uno vivo, y lo garantiza
     # un índice único parcial en vez de la disciplina de quien escribe.
     principal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -498,8 +520,12 @@ class Actividad(EntidadBase, SoftDeleteMixin):
 
     # tarea | llamada | reunion | nota | visita | email
     tipo: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    asunto: Mapped[str] = mapped_column(String(300), nullable=False)
-    cuerpo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    asunto: Mapped[str] = mapped_column(
+        String(300), nullable=False, info={"anonimizar_en_copias": True}
+    )
+    cuerpo: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
 
     # ── Relación polimórfica ──────────────────────────────────────────────
     objeto: Mapped[str | None] = mapped_column(String(60), nullable=True)
@@ -557,7 +583,11 @@ class Actividad(EntidadBase, SoftDeleteMixin):
     # visita. En JSONB porque son distintos por tipo y una columna por cada uno
     # deja la tabla llena de nulos.
     detalles: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     resultado: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
@@ -642,7 +672,9 @@ class SolicitudDerechos(Base, TimestampMixin, SoftDeleteMixin):
     )
     vence_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     resuelta_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    resolucion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolucion: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Evidencia de la respuesta: qué se entregó o qué se borró, y cuándo.
     evidencia: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")

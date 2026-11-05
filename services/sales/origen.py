@@ -92,7 +92,9 @@ class Toque(Base, SoftDeleteMixin):
     medio: Mapped[str | None] = mapped_column(String(120), nullable=True)
     campana: Mapped[str | None] = mapped_column(String(200), nullable=True)
     termino: Mapped[str | None] = mapped_column(String(300), nullable=True)
-    contenido: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    contenido: Mapped[str | None] = mapped_column(
+        String(300), nullable=True, info={"anonimizar_en_copias": True}
+    )
 
     campana_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     referrer: Mapped[str | None] = mapped_column(Text, nullable=True)

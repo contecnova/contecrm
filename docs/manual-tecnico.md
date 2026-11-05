@@ -2807,6 +2807,73 @@ construyendo los datos:
 Pruebas: `test_compras_al_proveedor.py`, de punta a punta por HTTP y validada
 plantando el fallo (homologación ignorada, rappel al coste ofertado).
 
+#### Sandboxes: la copia de un tenant a su entorno de pruebas (05-11-2026)
+
+`CRM-07.02.01.02` tenía el plan de copia y la anonimización como cálculos
+sueltos y ninguna copia. Ahora un sandbox es **un tenant hijo** con su fila en
+`tenancy.sandboxes` (propósito, porcentaje, si anonimiza, quién lo pidió,
+caducidad y el resultado de la copia), y la copia la hace cada servicio sobre
+su esquema:
+
+- **Orquesta `tenancy`** (`services/tenancy/sandboxes.py::copiar`, en segundo
+  plano tras `POST /sandboxes/{id}/copiar`): pregunta a identity por los
+  usuarios del tenant —son globales y no se traducen— y llama a la ruta interna
+  firmada `POST /api/v1/{servicio}/sandbox/copiar` de los trece servicios
+  (`crmcore/http/sandbox_router.py`, montada en todos por la factoría). Guarda
+  por servicio lo copiado, lo que no se copió y por qué, y lo que falló; un
+  servicio que no contesta sale con su nombre y el sandbox queda `con_avisos`.
+- **El motor es `crmcore/datos/copia_sandbox.py`**. Todo lo que decide es
+  determinista, y por eso cuadra sin que los servicios se hablen: el
+  identificador nuevo es `uuid5(semilla del sandbox, original)`, así que una
+  oportunidad de `sales` sigue apuntando a la copia de su cuenta de `party`; la
+  muestra parcial es por cuenta (hash de su id) y se lleva lo que tiene
+  `cuenta_id`; lo que no cuelga de una cuenta —catálogo, configuración— se copia
+  entero. Cada tabla va en su punto de guardado: una que falla se cuenta y las
+  demás siguen. Inserta por lotes de `SANDBOX_COPIA_LOTE`, recortado en tablas
+  anchas para no pasar el tope de 65.535 parámetros de Postgres.
+- **No se traduce** lo que apunta a algo global: una clave ajena a una tabla
+  sin `tenant_id` (usuarios, manifiestos de conector) sigue apuntando al mismo.
+  Sale de las claves del modelo, no de una lista.
+- **No se copia** una tabla con alguna columna `info={"secreto": True}`: claves
+  de API, credenciales, secretos de webhook. Sale en el resultado con su motivo.
+- **Se anonimiza** lo que el modelo declara: sensibilidad `personal`,
+  `especial` o `confidencial`, **y** la marca nueva
+  `info={"anonimizar_en_copias": True}`, que es sólo para copias y no cambia lo
+  que cada rol ve en la aplicación (la máscara por rol lee la sensibilidad).
+  Lleva la marca lo que identifica a alguien en los registros de clientes:
+  nombres, cargos, webs, asuntos, cuerpos, descripciones, notas, comentarios,
+  claves canónicas y huellas de identidad (85 columnas). El sustituto respeta
+  el tipo (`crmcore/seguridad/anonimizar.py::_sustituto`): seudónimo en texto,
+  recortado al largo de la columna; otro UUID estable en identificadores; y lo
+  demás —importes, números, JSON— se suprime: nulo si se admite, el neutro del
+  tipo si no.
+
+Lo que la copia **no** hace, dicho:
+
+- Los identificadores escritos **dentro de un JSON** no se traducen.
+- Las tablas comunes de `crmcore` —comentarios, adjuntos, notificaciones, el
+  índice de búsqueda, la auditoría— no se copian: el motor toma los modelos de
+  `services.<servicio>`. El buscador del sandbox empieza vacío.
+- Una columna de texto que identifica a alguien y **no** tiene marca pasa en
+  claro. Al añadir una a un registro de clientes, ponerle
+  `anonimizar_en_copias` (o su sensibilidad) es parte del cambio.
+- La resolución de identidad no casa en el sandbox: sus huellas van
+  anonimizadas.
+
+**El alta de un tenant desde la sesión de otro.** Al construirlo salió un fallo
+que no era del sandbox: provisionar escribe filas **del tenant nuevo** (cuotas,
+localización, el primer apunte de su cadena) desde la sesión de quien lo pide.
+En la sesión de un tenant, el guard del ORM añadía `tenant_id = el_que_pide` a
+la consulta del último apunte y dos apuntes tomaban la secuencia 1 (409 en
+`ix_auditoria_tenant_secuencia`). Y **con un rol sin privilegios, el alta de
+tenants desde la plataforma también fallaba**: el GUC del RLS se queda con el
+tenant del administrador y el `WITH CHECK` rechazaba la fila de `auditoria` del
+nuevo. La pila local no lo enseñaba porque conecta como superusuario. Lo
+resuelve `crmcore.db.session.escribir_como(db, tenant_id)`: cambia el tenant de
+la sesión, el GUC y el contexto mientras se escribe lo del nuevo, y lo devuelve
+todo al salir. Prueba con el rol de aplicación en
+`tests/integration/test_rls_aislamiento.py`.
+
 #### Capacidades sin pantalla: medir antes de citar (05-11-2026)
 
 El guardián de pantallas cuenta **citas**, no alcance, así que bajar su tope

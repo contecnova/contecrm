@@ -8,9 +8,12 @@ una comprobación previa.
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
-from crmcore.http.deps import AutenticadoDep, exige_permiso
-from fastapi import APIRouter, Depends
+from crmcore.errors import Conflicto, NoEncontrado
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha, montar_listado
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from pydantic import BaseModel, Field
 
 from services.tenancy import sandboxes as sbx
@@ -145,3 +148,102 @@ def caducados(cuerpo: CaducadosIn, principal: AutenticadoDep) -> Any:
 
 
 ROUTERS_SANDBOXES = [router_sandboxes]
+
+
+# ── Sandboxes de verdad (CRM-07.02.01.02) ─────────────────────────────────
+
+
+class CrearSandbox(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=120)
+    proposito: str = Field(
+        ..., description="desarrollo · pruebas · formacion · migracion · soporte"
+    )
+    porcentaje: int = Field(
+        5,
+        ge=1,
+        le=100,
+        description="De las cuentas: con el 5 % se prueba igual y hay menos que proteger",
+    )
+    anonimizar: bool = True
+    motivo_sin_anonimizar: str = Field(
+        "", description="Obligatorio si no se anonimiza: queda escrito con tu nombre"
+    )
+
+
+@router_sandboxes.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("tenancy:write"))],
+    summary="Crear un sandbox de este tenant",
+    description=(
+        "Un tenant hijo con su caducidad según el propósito. La copia de datos no "
+        "empieza sola: se pide con «Copiar los datos», porque tarda y porque "
+        "conviene revisar antes el plan."
+    ),
+)
+def crear_sandbox(datos: CrearSandbox, uow: UowDep, principal: AutenticadoDep) -> Any:
+    return sbx.crear_sandbox(uow, **datos.model_dump(), pedido_por=principal.id)
+
+
+@router_sandboxes.post(
+    "/caducidad",
+    dependencies=[Depends(exige_permiso("tenancy:read"))],
+    summary="Qué sandboxes hay que refrescar o apagar",
+)
+def caducidad(db: DbDep, principal: AutenticadoDep) -> Any:
+    return sbx.caducidad(db, principal.tenant_id)
+
+
+@router_sandboxes.post(
+    "/{sandbox_id}/copiar",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(exige_permiso("tenancy:write"))],
+    summary="Copiar los datos al sandbox",
+    description=(
+        "Pide a cada servicio su parte de la copia y contesta en el acto: la "
+        "copia sigue en segundo plano y su ficha dice cómo va y qué contestó cada "
+        "servicio. Lo que lleva secretos no se copia nunca."
+    ),
+)
+def copiar(sandbox_id: UUID, tareas: BackgroundTasks, db: DbDep, principal: AutenticadoDep) -> Any:
+    fila = db.get(sbx.Sandbox, sandbox_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Ese sandbox no existe", error_code="sandbox.no_encontrado")
+    if fila.estado in ("copiando", "apagado"):
+        raise Conflicto(f"El sandbox está {fila.estado}.", error_code="sandbox.no_se_puede_copiar")
+    tareas.add_task(sbx.copiar, fila.id, principal.tenant_id)
+    return {"id": str(fila.id), "estado": "copiando"}
+
+
+class Apagar(BaseModel):
+    motivo: str = Field(..., min_length=1)
+
+
+@router_sandboxes.post(
+    "/{sandbox_id}/apagar",
+    dependencies=[Depends(exige_permiso("tenancy:write"))],
+    summary="Apagar el sandbox",
+)
+def apagar(sandbox_id: UUID, datos: Apagar, uow: UowDep) -> Any:
+    fila = sbx.apagar(uow, sandbox_id, motivo=datos.motivo)
+    return {"id": str(fila.id), "estado": fila.estado}
+
+
+montar_listado(
+    router_sandboxes,
+    modelo=sbx.Sandbox,
+    objeto="sandbox",
+    permiso="tenancy:read",
+    permiso_escribir="tenancy:write",
+    nombre="Sandboxes",
+    ficha=False,
+)
+montar_ficha(
+    router_sandboxes,
+    modelo=sbx.Sandbox,
+    objeto="sandbox",
+    permiso_leer="tenancy:read",
+    permiso_escribir="tenancy:write",
+    nombre="Sandboxes",
+    editable=frozenset({"nombre"}),
+)

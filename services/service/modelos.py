@@ -131,8 +131,12 @@ class Caso(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # que se dice por teléfono. Sin él, la referencia acaba siendo un UUID que
     # nadie transcribe bien.
     codigo: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    asunto: Mapped[str] = mapped_column(String(300), nullable=False)
-    descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    asunto: Mapped[str] = mapped_column(
+        String(300), nullable=False, info={"anonimizar_en_copias": True}
+    )
+    descripcion: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
 
     tipo: Mapped[str] = mapped_column(String(40), nullable=False, default="incidencia")
     categoria_id: Mapped[UUID | None] = mapped_column(
@@ -205,7 +209,9 @@ class Caso(EntidadBase, SoftDeleteMixin, MetadatosMixin):
 
     # ── Cierre (CRM-04.01.01.09, .10) ─────────────────────────────────────
     motivo_cierre: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    resolucion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolucion: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Cerrado por el agente pero pendiente de que el cliente lo dé por bueno.
     validacion_cliente: Mapped[str | None] = mapped_column(String(20), nullable=True)
     reaperturas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -235,7 +241,11 @@ class EventoCaso(Base):
     )
     tipo: Mapped[str] = mapped_column(String(40), nullable=False)
     detalle: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

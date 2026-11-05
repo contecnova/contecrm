@@ -720,6 +720,13 @@ def crear_servicio(
 
         app.include_router(crear_router_volumen(nombre), prefix=s.api_prefix)
 
+        # Y su parte de la copia a un sandbox. También aquí y no en cada
+        # `main.py`: un servicio que no la montara dejaría el sandbox sin sus
+        # datos, y la copia diría «hecho» sobre lo que sí respondió.
+        from crmcore.http.sandbox_router import crear_router_sandbox
+
+        app.include_router(crear_router_sandbox(nombre), prefix=s.api_prefix)
+
         # Y el rastro completo de los agregados que lo tengan encendido. Estaba
         # entero y apagado: la tabla de hechos se creaba en dos servicios y
         # nadie declaraba ningún agregado, así que estaba siempre vacía — y un

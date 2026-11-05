@@ -285,6 +285,56 @@ def sesion(tenant_id: UUID | None = None, *, sistema: bool = False) -> Iterator[
         db.close()
 
 
+@contextmanager
+def escribir_como(db: Session, tenant_id: UUID) -> Iterator[None]:
+    """Escribe lo de dentro como `tenant_id`, en la misma transacción.
+
+    Para la única operación que tiene que escribir filas de un tenant desde la
+    sesión de otro: **provisionar**. El alta de un tenant le pone sus cuotas, su
+    localización y el primer apunte de su cadena de auditoría, y quien la pide
+    no es ese tenant —todavía no existía—: es la plataforma, o el tenant del que
+    cuelga un sandbox.
+
+    Cambia las tres cosas que deciden de quién es una escritura, y las devuelve
+    al salir:
+
+    - el tenant de la sesión, que es el que usa el guard del ORM para filtrar
+      cada consulta. Sin esto, la consulta del último apunte de la cadena del
+      tenant nuevo salía con `tenant_id = nuevo AND tenant_id = el_que_pide`, no
+      veía nada, y dos apuntes tomaban la misma secuencia;
+    - el GUC del RLS, ligado a la transacción. Sin esto el `WITH CHECK` de la
+      política rechaza las filas del tenant nuevo. Medido el 05-11-2026 con un
+      rol sin privilegios: el alta de tenants desde la plataforma fallaba en
+      `auditoria`, y la pila local no lo enseñaba porque conecta como
+      superusuario;
+    - el contexto, que es de donde la auditoría y los ajustes sacan el tenant.
+
+    No sustituye a `sistema=True`: lo de dentro sigue confinado a UN tenant, el
+    que se nombra, y el RLS sigue mirando.
+    """
+    from crmcore.tenancy.context import con_contexto
+
+    anterior = db.info.get("tenant_id")
+    s = get_settings()
+    conexion = db.connection()
+
+    def _fijar(valor: Any) -> None:
+        if s.rls_enabled:
+            conexion.execute(
+                text("SELECT set_config(:clave, :valor, true)"),
+                {"clave": GUC_TENANT, "valor": str(valor) if valor else ""},
+            )
+
+    db.info["tenant_id"] = tenant_id
+    _fijar(tenant_id)
+    try:
+        with con_contexto(tenant_id=tenant_id, origen="provisionado"):
+            yield
+    finally:
+        db.info["tenant_id"] = anterior
+        _fijar(anterior)
+
+
 def reset_engine() -> None:
     """Tira el engine y el sessionmaker. Solo para pruebas que cambian la URL."""
     global _engine, _sessionmaker

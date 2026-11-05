@@ -133,7 +133,9 @@ class ElementoSincronizado(Base):
     # reenvía el evento cada vez que alguien lo toca.
     externo_id: Mapped[str] = mapped_column(String(300), nullable=False)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="correo")
-    asunto: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    asunto: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     ocurrido_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # registrado | saltado_privado | saltado_sin_relacion | conflicto | error
     resultado: Mapped[str] = mapped_column(String(30), nullable=False, default="registrado")

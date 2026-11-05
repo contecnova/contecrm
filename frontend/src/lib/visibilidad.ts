@@ -94,6 +94,12 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "r": "/api/v1/residencia/transferencias",
       "p": "tenant:read",
       "s": "tenancy"
+    },
+    {
+      "r": "/api/v1/sandboxes",
+      "p": "tenancy:read",
+      "o": "sandbox",
+      "s": "tenancy"
     }
   ],
   "contrato": [],

@@ -120,10 +120,14 @@ class Senal(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     # Huella normalizada del valor: minúsculas, sin espacios, sin prefijos.
-    huella: Mapped[str] = mapped_column(String(64), nullable=False)
+    huella: Mapped[str] = mapped_column(
+        String(64), nullable=False, info={"anonimizar_en_copias": True}
+    )
     # Últimos caracteres, para poder enseñar de qué señal se habla sin exponerla
     # entera. «Termina en 4321» es suficiente para que una persona la reconozca.
-    pista: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    pista: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     contacto_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), nullable=True, index=True
     )

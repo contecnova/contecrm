@@ -125,7 +125,9 @@ class Presupuesto(EntidadBase, SoftDeleteMixin):
     aprobacion_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     motivo_aprobacion: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
-    notas: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notas: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     condiciones: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     __table_args__ = (

@@ -275,3 +275,232 @@ def caducados(*, sandboxes: list[dict[str, Any]], hoy: date | None = None) -> di
             )
         ),
     }
+
+
+# ── Sandboxes de verdad: guardados y con su copia (CRM-07.02.01.02) ─────────
+#
+# Todo lo de arriba eran comprobaciones previas sin nada guardado: se podía
+# preparar un plan de copia y no había sandbox, ni copia, ni caducidad que mirar.
+# Lo de aquí los guarda y hace la copia pidiéndosela a cada servicio
+# (`crmcore.datos.copia_sandbox`).
+
+from crmcore.db.base import Base, TimestampMixin  # noqa: E402
+from crmcore.db.uow import UnidadDeTrabajo  # noqa: E402
+from crmcore.ids import nuevo_id  # noqa: E402
+from sqlalchemy import Boolean, Date, Integer, String, Text, select, text  # noqa: E402
+from sqlalchemy.dialects.postgresql import JSONB  # noqa: E402
+from sqlalchemy.dialects.postgresql import UUID as PgUUID  # noqa: E402
+from sqlalchemy.orm import Mapped, Session, mapped_column  # noqa: E402
+
+ESTADOS_SANDBOX = ("preparado", "copiando", "listo", "con_avisos", "fallido", "apagado")
+
+
+class Sandbox(Base, TimestampMixin):
+    """Un entorno de pruebas de un tenant: otro tenant, hijo suyo, con su copia."""
+
+    __tablename__ = "sandboxes"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    tenant_sandbox_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    nombre: Mapped[str] = mapped_column(String(120), nullable=False)
+    proposito: Mapped[str] = mapped_column(String(20), nullable=False)
+    porcentaje: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    anonimiza: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    motivo_sin_anonimizar: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    pedido_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    caduca_el: Mapped[date] = mapped_column(Date, nullable=False)
+    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="preparado")
+    # Lo que contestó cada servicio: qué copió, qué no y por qué, qué falló.
+    resultado: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+
+
+def crear_sandbox(
+    uow: UnidadDeTrabajo,
+    *,
+    nombre: str,
+    proposito: str,
+    porcentaje: int = 5,
+    anonimizar: bool = True,
+    motivo_sin_anonimizar: str = "",
+    pedido_por: UUID | None = None,
+) -> dict[str, str]:
+    """Da de alta el sandbox: el plan de siempre y un tenant hijo donde copiar.
+
+    El tenant hijo y la fila del sandbox van en la transacción de la petición:
+    si una falla, no queda un tenant huérfano que nadie sabe de quién es. Que
+    el alta escriba las filas del hijo desde la sesión del origen lo resuelve
+    `crear_tenant` con `escribir_como`.
+    """
+    from services.tenancy import servicio as svc
+    from services.tenancy.modelos import Tenant
+
+    plan = plan_de_copia(
+        proposito=proposito,
+        porcentaje=porcentaje,
+        anonimizar=anonimizar,
+        motivo_sin_anonimizar=motivo_sin_anonimizar,
+        pedido_por=pedido_por,
+    )
+    origen = uow.db.get(Tenant, uow.tenant_id)
+    if origen is None:
+        raise ErrorValidacion("El tenant de origen no existe", error_code="sandbox.sin_origen")
+    # El FINAL del identificador, que es aleatorio. El principio de un UUID7 es
+    # la hora: con él, dos sandboxes del mismo tenant en unas cuatro horas
+    # sacaban el mismo slug y el segundo contestaba «ya existe».
+    sufijo = nuevo_id().hex[-6:]
+    hijo = svc.crear_tenant(
+        uow,
+        slug=f"{origen.slug[:40]}-sbx-{sufijo}",
+        nombre=f"{origen.nombre} · {nombre}"[:200],
+        tenant_padre_id=origen.id,
+    )
+    fila = Sandbox(
+        tenant_id=origen.id,
+        tenant_sandbox_id=hijo.id,
+        nombre=nombre,
+        proposito=proposito,
+        porcentaje=porcentaje,
+        anonimiza=anonimizar,
+        motivo_sin_anonimizar=motivo_sin_anonimizar,
+        pedido_por=pedido_por,
+        caduca_el=_hoy(uow.db) + timedelta(days=int(plan["caduca_en_dias"])),
+    )
+    uow.db.add(fila)
+    uow.db.flush()
+    return {"id": str(fila.id), "tenant_sandbox_id": str(hijo.id), "estado": fila.estado}
+
+
+def _usuarios_del_tenant(tenant_id: UUID) -> list[str]:
+    """Los usuarios son globales: sus identificadores no se traducen al copiar."""
+    from crmcore.http.interno import invocar
+
+    salida: list[str] = []
+    cursor = ""
+    while True:
+        respuesta = invocar(
+            metodo="GET",
+            ruta="/api/v1/usuarios",
+            parametros={"limite": 200, **({"cursor": cursor} if cursor else {})},
+            tenant_id=tenant_id,
+            principal_id=tenant_id,
+            permisos=["user:read"],
+        )
+        datos = respuesta.get("datos") or {}
+        salida.extend(str(u["id"]) for u in datos.get("items", []) if u.get("id"))
+        cursor = str(datos.get("siguiente") or "")
+        if not cursor:
+            return salida
+
+
+def copiar(sandbox_id: UUID, tenant_id: UUID) -> None:
+    """Pide a cada servicio su parte de la copia y guarda lo que contesta.
+
+    Corre después de contestar al que lo pidió —la copia tarda—, así que abre su
+    propia sesión y deja el resultado en el sandbox, que es lo que la ficha
+    enseña. Un servicio que no contesta se dice por su nombre: un «listo»
+    calculado sobre los que sí contestaron sería un sandbox a medias que parece
+    entero.
+    """
+    import httpx
+    from crmcore.config import get_settings
+    from crmcore.db.session import sesion
+    from crmcore.http.interno import cabeceras_firmadas
+    from crmcore.rutas_de_api import cargar_destinos
+
+    with sesion(sistema=True) as db:
+        fila = db.get(Sandbox, sandbox_id)
+        if fila is None or fila.tenant_id != tenant_id:
+            return
+        fila.estado = "copiando"
+        db.commit()
+        cuerpo = {
+            "origen": str(fila.tenant_id),
+            "destino": str(fila.tenant_sandbox_id),
+            "semilla": str(fila.id),
+            "porcentaje": fila.porcentaje,
+            "anonimizar": fila.anonimiza,
+        }
+
+    try:
+        cuerpo["conservar"] = _usuarios_del_tenant(tenant_id)
+        sin_usuarios = ""
+    except Exception as exc:  # noqa: BLE001 — se dice y se sigue con la copia
+        cuerpo["conservar"] = []
+        sin_usuarios = f"No se ha podido preguntar a identity por los usuarios: {exc}"[:300]
+
+    por_servicio: dict[str, Any] = {}
+    sin_respuesta: dict[str, str] = {}
+    destinos = cargar_destinos(get_settings().rutas_servicios)
+    for nombre, destino in sorted(destinos.items()):
+        if nombre == "gateway":
+            continue
+        try:
+            respuesta = httpx.post(
+                f"{destino.url_base}/api/v1/{nombre}/sandbox/copiar",
+                json=cuerpo,
+                headers=cabeceras_firmadas(),
+                timeout=600.0,
+            )
+            if respuesta.status_code == 200:
+                por_servicio[nombre] = respuesta.json()
+            else:
+                sin_respuesta[nombre] = f"contestó {respuesta.status_code}"
+        except httpx.HTTPError as exc:
+            sin_respuesta[nombre] = f"no responde: {str(exc)[:120]}"
+
+    fallidas = sum(len(r.get("fallidas") or []) for r in por_servicio.values())
+    with sesion(sistema=True) as db:
+        fila = db.get(Sandbox, sandbox_id)
+        if fila is None:
+            return
+        fila.resultado = {
+            "filas": sum(int(r.get("filas") or 0) for r in por_servicio.values()),
+            "por_servicio": por_servicio,
+            "sin_respuesta": sin_respuesta,
+            "usuarios": sin_usuarios or "conservados",
+        }
+        fila.estado = (
+            "fallido"
+            if not por_servicio
+            else "con_avisos"
+            if sin_respuesta or fallidas or sin_usuarios
+            else "listo"
+        )
+        db.commit()
+
+
+def apagar(uow: UnidadDeTrabajo, sandbox_id: UUID, *, motivo: str) -> Sandbox:
+    """Lo suspende: el tenant sandbox deja de dejar entrar, y queda dicho por qué."""
+    from services.tenancy import servicio as svc
+
+    fila = uow.db.get(Sandbox, sandbox_id)
+    if fila is None or fila.tenant_id != uow.tenant_id:
+        from crmcore.errors import NoEncontrado
+
+        raise NoEncontrado("Ese sandbox no existe", error_code="sandbox.no_encontrado")
+    svc.cambiar_estado(uow, fila.tenant_sandbox_id, nuevo="suspendido", motivo=motivo)
+    fila.estado = "apagado"
+    uow.db.flush()
+    return fila
+
+
+def caducidad(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Qué sandboxes hay que refrescar o apagar, con los guardados."""
+    filas = db.execute(
+        select(Sandbox).where(Sandbox.tenant_id == tenant_id, Sandbox.estado != "apagado")
+    ).scalars()
+    return caducados(
+        sandboxes=[
+            {
+                "nombre": f.nombre,
+                "proposito": f.proposito,
+                "creado": f.created_at.date() if f.created_at else _hoy(db),
+                "con_datos_reales": not f.anonimiza,
+            }
+            for f in filas
+        ],
+        hoy=_hoy(db),
+    )

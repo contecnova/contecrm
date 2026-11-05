@@ -135,7 +135,9 @@ class RecepcionCaptura(Base):
     lead_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     # creado | descartado_trampa | descartado_incompleto | descartado_tope
     resultado: Mapped[str] = mapped_column(String(30), nullable=False)
-    detalle: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    detalle: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # Lo que llegó, para poder recuperar un lead descartado por error. NO se
     # guarda indefinidamente: la retención lo purga como cualquier otro dato
     # personal, y por eso lleva su propia clase de dato.

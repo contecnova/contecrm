@@ -183,7 +183,9 @@ class ValoracionArticulo(Base):
     articulo_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     util: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    comentario: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Identidad de quien vota: contacto, usuario o huella del visitante.
     votante: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     canal: Mapped[str] = mapped_column(String(20), nullable=False, default="portal")

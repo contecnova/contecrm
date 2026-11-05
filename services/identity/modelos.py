@@ -167,7 +167,9 @@ class Sesion(Base):
     ip: Mapped[str | None] = mapped_column(
         String(64), nullable=True, info={"sensibilidad": "personal"}
     )
-    user_agent: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(
+        String(400), nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Huella del dispositivo, para detectar que un refresco se usa desde otro
     # sitio distinto al que lo obtuvo.
     dispositivo: Mapped[str | None] = mapped_column(String(120), nullable=True)

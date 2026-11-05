@@ -72,8 +72,12 @@ class CandidatoDuplicado(Base, TimestampMixin):
     # mismo trabajo dentro.
     a_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     b_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    a_nombre: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    b_nombre: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    a_nombre: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
+    b_nombre: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     probabilidad: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     # Qué ha coincidido: `nif`, `dominio`, `nombre`, `email`. Es lo que permite
     # decidir sin abrir las dos fichas.
@@ -85,7 +89,9 @@ class CandidatoDuplicado(Base, TimestampMixin):
     )
     decidido_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     decidido_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    nota: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
+    nota: Mapped[str] = mapped_column(
+        String(1000), nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "objeto", "a_id", "b_id", name="uq_candidato_duplicado"),

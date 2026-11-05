@@ -275,7 +275,9 @@ class Rebote(Base, SoftDeleteMixin):
     # duro | blando | queja
     tipo: Mapped[str] = mapped_column(String(10), nullable=False)
     codigo: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    detalle: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detalle: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     campana_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     proveedor: Mapped[str | None] = mapped_column(String(60), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

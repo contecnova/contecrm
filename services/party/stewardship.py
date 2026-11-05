@@ -106,7 +106,9 @@ class ExcepcionCalidad(Base, TimestampMixin):
     # Qué regla la abrió. Sin esto no se puede saber que una regla está generando
     # ruido, y una regla que genera ruido vacía la cola de credibilidad.
     regla: Mapped[str] = mapped_column(String(120), nullable=False, default="")
-    detalle: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    detalle: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # 1 = hay que mirarlo hoy; 3 = cuando se pueda. Tres niveles y no cinco:
     # con cinco, todo acaba en el del medio.
     prioridad: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
@@ -117,7 +119,9 @@ class ExcepcionCalidad(Base, TimestampMixin):
     cierre: Mapped[str] = mapped_column(
         String(30), nullable=False, default="", info={"opciones": CIERRES}
     )
-    nota_de_cierre: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    nota_de_cierre: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     cerrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cerrada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     datos: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

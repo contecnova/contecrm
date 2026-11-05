@@ -135,7 +135,9 @@ class Devolucion(Base, TimestampMixin, SoftDeleteMixin):
     motivo: Mapped[str] = mapped_column(
         String(80), nullable=False, default="", info={"opciones": MOTIVOS_SUSPENSION}
     )
-    descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    descripcion: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # Sin `index=True`: el índice compuesto de abajo ya cubre la consulta real
     # —los abiertos por orden de llegada— y los dos se llamarían igual.
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="solicitada")
@@ -222,7 +224,9 @@ class Resolucion(Base, TimestampMixin):
     estado_abono: Mapped[str | None] = mapped_column(String(20), nullable=True)
     referencia_externa: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     motivo_rechazo_externo: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    nota: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    nota: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     __table_args__ = (Index("ix_resoluciones_postventa", "tenant_id", "devolucion_id"),)
 
@@ -252,8 +256,12 @@ class Expediente(Base, TimestampMixin, SoftDeleteMixin):
     via: Mapped[str] = mapped_column(String(60), nullable=False, default="")
     organismo: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     referencia_externa: Mapped[str] = mapped_column(String(120), nullable=False, default="")
-    asunto: Mapped[str] = mapped_column(String(300), nullable=False)
-    descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    asunto: Mapped[str] = mapped_column(
+        String(300), nullable=False, info={"anonimizar_en_copias": True}
+    )
+    descripcion: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     # Cuándo entró de verdad, que no es cuándo se grabó. Se guardan las dos: la
     # diferencia entre ellas es el tiempo que la reclamación estuvo en un cajón,
@@ -280,7 +288,9 @@ class Expediente(Base, TimestampMixin, SoftDeleteMixin):
 
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="abierto", index=True)
     respondido_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    respuesta: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    respuesta: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     respuesta_documento_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     resultado: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     hitos: Mapped[list[Any]] = mapped_column(

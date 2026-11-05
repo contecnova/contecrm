@@ -211,6 +211,54 @@ def test_el_guc_no_se_hereda_entre_transacciones(
     _como_sistema(db)
 
 
+def test_dar_de_alta_un_tenant_desde_otro_pasa_el_rls(db_con_rls: Any, monkeypatch: Any) -> None:
+    """Provisionar escribe filas del tenant nuevo desde la sesión de otro.
+
+    Lo hacen el alta de la plataforma y el sandbox de un tenant. Con el GUC del
+    que lo pide, el `WITH CHECK` rechazaba las filas del nuevo: medido el
+    05-11-2026, el alta de tenants fallaba en `auditoria` con el rol de
+    aplicación, y la pila local no lo enseñaba porque conecta como superusuario.
+    """
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.tenancy.context import con_contexto
+
+    from services.tenancy import servicio as svc
+
+    monkeypatch.setattr(get_settings(), "rls_enabled", True)
+    db = db_con_rls
+    quien_pide = uuid4()
+    db.add(Tenant(id=quien_pide, slug=f"pide-{quien_pide.hex[:8]}", nombre="Quien pide"))
+    db.commit()
+    db.info["tenant_id"] = quien_pide
+    _como_app(db, quien_pide)
+    with con_contexto(tenant_id=quien_pide):
+        nuevo = svc.crear_tenant(
+            UnidadDeTrabajo(db=db, tenant_id=quien_pide),
+            slug=f"nuevo-{quien_pide.hex[:8]}",
+            nombre="Nuevo",
+        )
+        db.flush()
+    apuntes = db.execute(
+        sa.text("SELECT count(*) FROM auditoria WHERE tenant_id = :t"), {"t": nuevo.id}
+    ).scalar()
+    # Visto como sistema: con el GUC de vuelta en quien pide, el RLS las oculta.
+    assert apuntes == 0
+    # …y eso es lo que tiene que pasar: al salir, la sesión vuelve a ser suya.
+    assert db.execute(
+        sa.text("SELECT current_setting('app.current_tenant', true)")
+    ).scalar() == str(quien_pide)
+    assert db.info["tenant_id"] == quien_pide
+    _como_sistema(db)
+    apuntes = db.execute(
+        sa.text("SELECT count(*) FROM auditoria WHERE tenant_id = :t"), {"t": nuevo.id}
+    ).scalar()
+    assert apuntes >= 2, "el alta no dejó su cadena de auditoría"
+    db.rollback()
+
+
 def test_fuera_de_desarrollo_no_se_arranca_con_un_rol_que_se_salta_la_red(db: Any) -> None:
     """Las políticas aíslan —lo prueban las de arriba— si el rol es el correcto.
 

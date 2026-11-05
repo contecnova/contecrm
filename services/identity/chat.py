@@ -148,7 +148,9 @@ class MensajeChat(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
     )
     autor_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    cuerpo: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    cuerpo: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # El hilo: un mensaje que responde a otro. Sin hilos, una conversación con
     # dos temas a la vez es ilegible, y con hilos de verdad —no «citas»— cada
     # tema se sigue por separado.
@@ -161,7 +163,9 @@ class MensajeChat(Base, TimestampMixin, SoftDeleteMixin):
     versiones: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     editado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     menciones: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
-    adjuntos: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    adjuntos: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, info={"anonimizar_en_copias": True}
+    )
 
     __table_args__ = (
         Index("ix_chat_mensaje_conversacion", "tenant_id", "conversacion_id", "created_at"),

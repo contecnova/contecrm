@@ -38,6 +38,17 @@ logger = get_logger(__name__)
 # inservible y no protege a nadie.
 SENSIBLES = frozenset({"personal", "especial", "confidencial"})
 
+# La otra marca que se anonimiza: `info={"anonimizar_en_copias": True}`. Es para
+# lo que identifica a alguien en una copia pero TIENE que verse en la
+# aplicación: el nombre de un contacto, el asunto de un caso, la descripción
+# que escribió el cliente. Marcarlo `personal` lo anonimizaría también, pero la
+# máscara por rol (`crmcore.authz.proyeccion`) lee la misma sensibilidad, y con
+# la política de serie un comercial vería los nombres de sus contactos
+# enmascarados. Medido el 05-11-2026 en la primera copia a un sandbox: 193 de
+# 193 nombres de contacto y 1.500 de 1.500 descripciones de caso pasaban en
+# claro a un entorno pedido como anonimizado.
+SOLO_EN_COPIAS = "anonimizar_en_copias"
+
 # Cómo se sustituye cada tipo de dato. La forma se conserva —un correo sigue
 # pareciendo un correo— porque un entorno donde los correos son «xxx» no sirve
 # para probar el envío de correos, que es justo lo que se prueba ahí.
@@ -98,6 +109,7 @@ def campos_sensibles(modelo: type) -> list[str]:
         columna.name
         for columna in tabla.columns
         if str((columna.info or {}).get("sensibilidad", "")) in SENSIBLES
+        or (columna.info or {}).get(SOLO_EN_COPIAS)
     ]
 
 
@@ -114,11 +126,68 @@ def anonimizar_fila(
     objetivo = campos if campos is not None else campos_sensibles(modelo)
     if not objetivo:
         return dict(fila)
+    tabla = getattr(modelo, "__table__", None)
     salida = dict(fila)
     for campo in objetivo:
         if campo in salida:
-            salida[campo] = seudonimo(salida[campo], sal=sal, forma=forma_de(campo))
+            columna = tabla.c.get(campo) if tabla is not None else None
+            salida[campo] = _sustituto(salida[campo], columna, campo=campo, sal=sal)
     return salida
+
+
+def _sustituto(valor: Any, columna: Any, *, campo: str, sal: str) -> Any:
+    """El sustituto, del tipo de la columna.
+
+    El seudónimo es texto, y escribirlo en una columna numérica revienta la
+    copia: medido el 05-11-2026 en la primera copia a un sandbox, «anon-…» en
+    `cuentas.empleados` y en tres importes de `estados_financieros`, y con
+    `cuentas` caían detrás todas las tablas que apuntan a ella.
+
+    - Texto: el seudónimo de siempre, con su forma.
+    - Identificador: otro identificador, estable con la misma sal, para que las
+      referencias al mismo valor sigan cuadrando entre ellas.
+    - Lo demás —un importe, un número de empleados, el trazo de una firma— no
+      tiene un sustituto que no sea inventarse un dato: se **suprime**. Nulo si
+      la columna lo admite y, si no, el neutro de su tipo. Un importe de cero es
+      visiblemente falso; uno inventado parecería de verdad.
+    """
+    import uuid
+    from decimal import Decimal
+
+    if valor is None or columna is None:
+        return seudonimo(valor, sal=sal, forma=forma_de(campo))
+    try:
+        tipo = columna.type.python_type
+    except NotImplementedError:
+        tipo = None
+    if tipo is str:
+        sustituto = seudonimo(valor, sal=sal, forma=forma_de(campo))
+        # El seudónimo puede ser más largo que el original: una columna corta lo
+        # rechazaría y con ella la copia de toda la tabla.
+        largo = getattr(columna.type, "length", None)
+        return sustituto[:largo] if largo and isinstance(sustituto, str) else sustituto
+    if tipo is uuid.UUID:
+        return uuid.uuid5(uuid.NAMESPACE_OID, f"anon:{sal}:{valor}")
+    if columna.nullable:
+        return None
+    neutros: dict[Any, Any] = {
+        int: 0,
+        float: 0.0,
+        Decimal: Decimal(0),
+        bool: False,
+        dict: {},
+        list: [],
+    }
+    if tipo in neutros:
+        return neutros[tipo]
+    from crmcore.errors import ErrorInterno
+
+    # Sin sustituto ni forma de suprimirlo: se para la copia de esa tabla y se
+    # dice cuál. Dejar el valor real sería justo lo que esto existe para evitar.
+    raise ErrorInterno(
+        f"No se sabe anonimizar «{campo}» ({tipo}): ni es texto ni admite nulo",
+        error_code="anonimizar.sin_sustituto",
+    )
 
 
 def sal_de_entorno(nombre_entorno: str, secreto: str) -> str:

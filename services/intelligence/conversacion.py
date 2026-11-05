@@ -104,7 +104,9 @@ class ResumenConversacion(Base):
     momento: Mapped[str] = mapped_column(
         String(20), nullable=False, default="cierre", info={"opciones": MOMENTOS}
     )
-    texto: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    texto: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # Lo que el modelo dice que quedó pendiente. Va aparte del resumen porque es
     # lo que el siguiente agente lee primero, y porque es lo que más se inventa:
     # así se puede revisar sin leer todo.

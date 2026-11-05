@@ -285,6 +285,9 @@ from services.tenancy.residencia import (  # noqa: E402,F401
     Subprocesador,
     TransferenciaInternacional,
 )
+
+# Los sandboxes guardados, con su copia (CRM-07.02.01.02).
+from services.tenancy.sandboxes import Sandbox  # noqa: E402,F401
 from services.tenancy.suite import (  # noqa: E402
     AplicacionSuite,
     HerramientaConectada,

@@ -150,7 +150,9 @@ class Encuesta(Base, TimestampMixin, SoftDeleteMixin):
     enviada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     respondida_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     puntuacion: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    comentario: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     # Token de un solo uso con el que se responde sin iniciar sesión. Hasheado:
     # quien lea la tabla no puede contestar por el cliente.
     hash_token: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})

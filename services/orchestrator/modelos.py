@@ -176,7 +176,9 @@ class TareaHumana(Base, TimestampMixin):
     )
     paso: Mapped[str] = mapped_column(String(120), nullable=False)
     titulo: Mapped[str] = mapped_column(String(300), nullable=False)
-    descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    descripcion: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
 
     # A quién le toca. Asignación a una persona o a un rol; con rol, la coge
     # quien esté disponible, que es lo que evita que una baja detenga el proceso.
@@ -192,7 +194,9 @@ class TareaHumana(Base, TimestampMixin):
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     respuesta: Mapped[str | None] = mapped_column(String(60), nullable=True)
-    comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    comentario: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"anonimizar_en_copias": True}
+    )
     datos: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )

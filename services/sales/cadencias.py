@@ -263,7 +263,11 @@ class EvaluacionMetodologia(Base, TimestampMixin):
     oportunidad_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     # Qué criterios están cubiertos: `{"presupuesto": {"valor": "...", "por": ...}}`.
     respuestas: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     puntuacion: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
     actualizada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

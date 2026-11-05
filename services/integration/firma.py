@@ -267,7 +267,9 @@ class Firmante(Base, TimestampMixin):
         PgUUID(as_uuid=True), ForeignKey("sobres_firma.id", ondelete="CASCADE"), nullable=False
     )
     orden: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    nombre: Mapped[str] = mapped_column(String(200), nullable=False)
+    nombre: Mapped[str] = mapped_column(
+        String(200), nullable=False, info={"anonimizar_en_copias": True}
+    )
     email: Mapped[str] = mapped_column(
         String(320), nullable=False, info={"sensibilidad": "personal"}
     )

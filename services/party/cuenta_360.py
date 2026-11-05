@@ -192,7 +192,9 @@ class CambioDeEmpresa(Base, TimestampMixin):
         PgUUID(as_uuid=True), nullable=True, info={"referencia": "cuenta"}
     )
     indicio: Mapped[str] = mapped_column(String(40), nullable=False, default="")
-    detalle: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    detalle: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     # detectado | confirmado | descartado
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="detectado")
     contacto_nuevo_id: Mapped[UUID | None] = mapped_column(

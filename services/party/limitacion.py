@@ -105,7 +105,9 @@ class LimitacionTratamiento(Base, TimestampMixin):
     motivo: Mapped[str] = mapped_column(
         String(40), nullable=False, default="otro", info={"opciones": MOTIVOS}
     )
-    detalle: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    detalle: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", info={"anonimizar_en_copias": True}
+    )
     solicitud_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
