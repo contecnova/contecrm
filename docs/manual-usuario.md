@@ -70,9 +70,10 @@ cincuenta y nueve rótulos. Ahora ves las de tu aplicación y ya está.
 
 **Cambiar de aplicación, o ver qué hay.** Pulsa el nombre de la aplicación
 —«Ventas ▾»— y se abre el **lanzador**: las cuatro aplicaciones, cuántas
-pantallas tiene cada una, y debajo la lista completa de todas. Desde ahí se va
-a cualquier sitio directamente, sin pasar por la aplicación. contecrm recuerda
-en cuál estabas.
+pantallas tiene cada una, y debajo la lista completa de todas. **Pulsar una
+aplicación te lleva a ella**, a su primera pantalla, estés donde estés; y desde
+la lista de abajo se va a cualquier pantalla directamente. contecrm recuerda en
+cuál estabas.
 
 **Inicio y Puesto son pestaña de todas**, porque no son de un dominio: son por
 donde se empieza el día. Las aprobaciones también, por lo mismo — se aprueba un
@@ -81,7 +82,9 @@ descuento, un contrato y un gasto desde el mismo sitio.
 **La configuración está detrás del engranaje**, arriba a la derecha. Es otra
 puerta a propósito: lo que se ajusta de tarde en tarde no tiene por qué estar
 compitiendo por sitio con lo que usas cada día. Ahí sí hay un árbol a la
-izquierda, porque ahí lo que se hace es recorrer una lista larga buscando un
+izquierda —y el botón de las tres rayas, arriba, para plegarlo cuando quieras
+más sitio; trabajando no sale, porque no hay nada que plegar—, porque ahí lo
+que se hace es recorrer una lista larga buscando un
 ajuste. El mismo botón te devuelve al trabajo.
 
 > El engranaje **sólo sale si tienes algo que configurar**. Si no lo ves, no es
