@@ -950,7 +950,15 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # hoy se hicieron alcanzables. Bajar el tope por quitar lo que no era verdad
 # también cuenta: el número dice cuántas cosas que constan como hechas no se
 # ven, y ahora constan menos cosas falsas.
-TOPE_SIN_PANTALLA = 200
+#
+# 05-11-2026, otra vez: 200 → 194. Seis que SÍ tenían pantalla y nadie lo
+# había anotado: verificadas a mano en «Procesos y orquestación» —condiciones,
+# promoción entre entornos, plantillas de automatización y de flujo, migración
+# de lo que está en vuelo y aprobación automática—. Tres de ellas no se
+# alcanzaban hasta hoy porque la regla de acciones excluía las de dos tramos;
+# las otras tres se alcanzaban y no estaban citadas. Este número cuenta CITAS,
+# no alcance, y por eso hay que pulsar antes de citar.
+TOPE_SIN_PANTALLA = 194
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -86,6 +86,21 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // La definición lleva su versión y su estado —borrador, publicado,
     // archivado—, y la instancia termina con la versión con la que empezó.
     "CRM-00.03.05.05",
+    // Comprobadas a mano el 05-11-2026, pulsándolas en esta pantalla:
+    // las condiciones y los campos vigilados de una automatización (.03.04);
+    // «Llevar una automatización de pruebas a producción», que pide desde,
+    // hacia y probada en seco (.03.08); «Instalar una plantilla de
+    // automatizaciones por industria» (.03.09); «Copiar una plantilla de
+    // flujo para modificarla» (.05.15); «Qué pasaría con lo que está en vuelo
+    // al publicar otra versión» (.02.13); y el campo «Automática» de una
+    // aprobación (.05.11). Las tres de plantillas y migración no se
+    // alcanzaban hasta hoy: la regla de acciones excluía las de dos tramos.
+    "CRM-00.03.03.04",
+    "CRM-00.03.03.08",
+    "CRM-00.03.03.09",
+    "CRM-00.03.05.15",
+    "CRM-00.03.02.13",
+    "CRM-00.03.05.11",
     "CRM-00.02.01.12",
     "CRM-00.02.02.01",
     "CRM-00.03.01.07",
