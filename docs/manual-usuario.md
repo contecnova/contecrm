@@ -2133,6 +2133,18 @@ tiene ese dato. No se puede soltar nada en ella, porque eso escribiría el guion
 como si fuera un valor. Vaciar un campo se hace en la ficha, con el campo
 delante.
 
+### Qué ha hecho una clave de API
+
+En *Usuarios y permisos → Claves de API*, el menú de cada fila tiene **Qué ha
+hecho esta clave este mes, y qué ha fallado**: cuántas llamadas lleva, cuánto le
+queda de la cuota y los últimos errores. Los errores vienen **separados por
+culpa**: los 4xx son de la integración —una petición que no cuadra—, los 5xx
+nuestros; si hay de los segundos, no hace falta revisar la integración.
+
+Una clave puede tener **cuota mensual** (al crearla, o con *Cambiar la cuota
+mensual*). Al gastarla, la integración recibe «cuota agotada» —no «clave no
+válida»— hasta el día 1 o hasta que se amplíe.
+
 ### Comprar a un proveedor, de la petición a la evaluación
 
 En *Proveedores* están las pestañas de compras. El recorrido normal:

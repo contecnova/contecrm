@@ -195,6 +195,12 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // «Dar acceso temporal a alguien de fuera», en la lista de usuarios, con
     // motivo y caducidad obligatorios. Verificado pulsando el 05-11-2026.
     "CRM-06.02.01.06",
+    // El portal del integrador: cada clave de API tiene en su fila «Qué ha hecho
+    // esta clave este mes» —sus llamadas, lo que queda de cuota y los últimos
+    // errores separados por culpa— y «Cambiar la cuota mensual». Las llamadas
+    // las apunta el gateway. Verificado el 05-11-2026 con una clave real: tres
+    // llamadas, el 404 y el 403 contados como del integrador.
+    "CRM-00.02.04.06",
   ],
   // El modelo canónico de intercambio, los conflictos de sincronización, el
   // catálogo de eventos publicado, la cola de fallidos con su reenvío y el

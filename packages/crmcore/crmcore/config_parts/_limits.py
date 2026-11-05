@@ -103,6 +103,15 @@ class _LimitsSettings(BaseSettings):
     anomalia_minutos_freno: int = Field(5, ge=1, le=1_440)
     # Cuánto se cachean las claves de API en el gateway.
     claves_ttl_cache_s: float = Field(30.0, ge=0.0, le=3600.0)
+    # El registro de llamadas de cada clave (CRM-00.02.04.06). El gateway las
+    # apunta en memoria y las manda a `identity` por lotes: una llamada de red
+    # por petición la pagaría el integrador en cada respuesta. Se manda al
+    # llenarse el lote o al pasar el intervalo, lo que llegue antes.
+    claves_llamadas_lote: int = Field(100, ge=1, le=10_000)
+    claves_llamadas_intervalo_s: float = Field(5.0, ge=0.5, le=3600.0)
+    # Cuántos días se guardan. Un mes cubre el panel del mes y la pregunta de
+    # «qué pasó la semana pasada»; más es un registro de acceso, que es otra cosa.
+    claves_llamadas_dias: int = Field(35, ge=1, le=3650)
     # Coste máximo de una consulta a la superficie, y días que vive un sandbox.
     superficie_coste_maximo: int = Field(50, ge=1, le=100_000)
     sandbox_dias: int = Field(30, ge=1, le=3650)

@@ -253,6 +253,35 @@ class ClaveApi(Base, TimestampMixin):
     revocada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ultimo_uso_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     creada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Llamadas al mes que puede hacer (CRM-00.02.04.06). Vacío: sin cuota. Al
+    # llegar, la clave contesta 429 con `cuota_agotada` hasta el mes siguiente,
+    # que no es lo mismo que el límite por segundo: éste se pasa esperando y
+    # aquél ampliando la cuota.
+    cuota_mes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class LlamadaClaveApi(Base):
+    """Una llamada hecha con una clave de API, tal como la vio el gateway.
+
+    Es lo que convierte el portal del integrador en algo útil a las tres de la
+    mañana: qué ruta, qué contestamos y cuándo. Lo apunta el gateway en memoria y
+    lo manda por lotes; aquí se guarda, se cuenta contra la cuota y se purga
+    pasado `CLAVES_LLAMADAS_DIAS`.
+    """
+
+    __tablename__ = "llamadas_clave_api"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    clave_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    cuando: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    metodo: Mapped[str] = mapped_column(String(10), nullable=False)
+    ruta: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[int] = mapped_column(Integer, nullable=False)
+    duracion_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    request_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+
+    __table_args__ = (Index("ix_llamadas_clave_cuando", "clave_id", "cuando"),)
 
 
 class ProveedorIdentidad(Base, TimestampMixin, SoftDeleteMixin):

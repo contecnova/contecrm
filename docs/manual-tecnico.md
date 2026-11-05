@@ -2747,6 +2747,37 @@ Dos defectos más salieron al abrirlas:
   nombre propio que la fila no trae es su `clave`: el enlace caía al `id` y
   daba 404.
 
+#### El portal del integrador, con sus llamadas (05-11-2026)
+
+`CRM-00.02.04.06` tenía el cálculo del panel y ningún dato: recibía las llamadas
+de quien preguntaba. Ahora:
+
+- **El gateway apunta** cada petición hecha con clave de API (ruta, método,
+  estado, duración, `X-Request-Id`) en memoria (`services/gateway/llamadas.py`)
+  y las manda a identity **por lotes**: al llegar a `CLAVES_LLAMADAS_LOTE`, y
+  cada `CLAVES_LLAMADAS_INTERVALO_S` aunque no haya más tráfico —una tarea que
+  arranca con el gateway—, y al pararlo, lo que quede. Si identity no contesta,
+  el lote se pierde **y se registra** (`gateway.llamadas_no_guardadas`, con el
+  total perdido desde el arranque): reintentar sin fin haría crecer la memoria
+  del gateway justo cuando el sistema ya va mal.
+- **Identity las guarda** en `llamadas_clave_api` (ruta interna firmada
+  `POST /claves-api/llamadas`) y purga lo anterior a `CLAVES_LLAMADAS_DIAS`.
+- **Cuota mensual por clave** (`cuota_mes`, opcional): al validar la clave se
+  cuentan sus llamadas del mes UTC y, gastada, contesta **429 `cuota_agotada`**
+  con `Retry-After` hasta el día 1. El gateway lo devuelve tal cual, con el
+  formato de error de la casa; no lo convierte en 401, que haría revisar una
+  clave que está bien. La validación se cachea `CLAVES_TTL_CACHE_S`, así que la
+  cuota puede pasarse en lo que dura esa caché, nunca más.
+- **Pantalla**: en *Claves de API*, cada fila tiene *Qué ha hecho esta clave
+  este mes…* (`POST /claves-api/{id}/panel`) y *Cambiar la cuota mensual*.
+- El cálculo del panel se movió a `crmcore.portal_desarrollador`; el gateway lo
+  sigue ofreciendo para quien trae sus propias llamadas.
+
+Pruebas: `test_portal_del_integrador.py` (lote y purga, panel separado por
+culpa, 429 de cuota, el 429 no llega como 401, lotes por tamaño y vaciado sin
+tráfico), validadas plantando cada fallo. Al escribirla salió que la purga no
+veía las filas del propio lote —la sesión de sistema no vuelca sola—: corregido.
+
 #### Compras al proveedor: los cálculos con datos (05-11-2026)
 
 Once capacidades de coste y de proveedor eran funciones puras a las que quien

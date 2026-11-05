@@ -139,6 +139,9 @@ class CrearClaveApi(BaseModel):
     rol: str = "integracion"
     dias: int | None = Field(None, ge=0, le=3650, description="0 = sin caducidad (desaconsejado)")
     ips_permitidas: list[str] = Field(default_factory=list)
+    cuota_mes: int | None = Field(
+        None, ge=1, description="Llamadas al mes. Vacío: sin cuota; al llegar contesta 429"
+    )
 
 
 class ClaveApiCreada(BaseModel):
@@ -158,6 +161,7 @@ class ClaveApiOut(BaseModel):
     expira_at: datetime | None = None
     revocada_at: datetime | None = None
     ultimo_uso_at: datetime | None = None
+    cuota_mes: int | None = None
 
     model_config = {"from_attributes": True}
 

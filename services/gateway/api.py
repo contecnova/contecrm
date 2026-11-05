@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -42,6 +43,7 @@ router_proxy = APIRouter(tags=["gateway"])
 # Cliente HTTP reutilizado: crear uno por petición desperdicia el pool de
 # conexiones y añade un handshake TLS a cada llamada interna.
 _cliente: httpx.AsyncClient | None = None
+_vaciado: Any = None
 _destinos: dict[str, rutas.Destino] = {}
 
 
@@ -58,6 +60,12 @@ async def arrancar() -> None:
         follow_redirects=False,
     )
     logger.info("gateway.destinos", servicios=sorted(_destinos))
+    global _vaciado
+    from services.gateway import llamadas
+
+    _vaciado = asyncio.get_running_loop().create_task(
+        llamadas.vaciar_cada_intervalo(cliente_y_destino)
+    )
 
 
 def cliente_y_destino(servicio: str) -> tuple[Any, str]:
@@ -72,6 +80,16 @@ def cliente_y_destino(servicio: str) -> tuple[Any, str]:
 
 
 async def parar() -> None:
+    from services.gateway import llamadas
+
+    if _vaciado is not None:
+        _vaciado.cancel()
+    # Lo que quede apuntado se manda antes de cerrar: un reinicio no puede
+    # llevarse las últimas llamadas de cada integración.
+    lote = llamadas.tomar_pendientes()
+    cliente, url = cliente_y_destino("identity")
+    if lote and cliente is not None and url:
+        await llamadas.enviar(cliente, url, lote)
     if _cliente is not None:
         await _cliente.aclose()
 

@@ -994,7 +994,10 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # cálculos a los que se les escriben los datos. Dos de ellas se habían citado
 # esa misma mañana por tener botón en la lista de proveedores; al leer qué
 # pedía el botón —las entregas y las incidencias, tecleadas— se retiraron.
-TOPE_SIN_PANTALLA = 100
+#
+# 05-11-2026, octava: 100 → 99. El portal del integrador, con sus llamadas
+# guardadas por el gateway y su cuota, en la fila de cada clave de API.
+TOPE_SIN_PANTALLA = 99
 
 
 def _es_pantalla(p: Path) -> bool:

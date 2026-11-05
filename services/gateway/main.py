@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from crmcore.config import get_settings
-from crmcore.errors import NoAutenticado
+from crmcore.errors import CuotaAgotada, NoAutenticado
+from crmcore.http.problems import manejar_error_dominio
 from crmcore.service import crear_servicio
 
-from services.gateway import api, claves
+from services.gateway import api, claves, llamadas
 from services.gateway.api import ROUTERS, ROUTERS_SIN_PREFIJO, arrancar, parar
 
 app = crear_servicio(
@@ -48,21 +50,44 @@ async def resolver_clave_api(request: Any, siguiente: Any) -> Any:
     devuelve un cuerpo distinto al del resto de la API.
     """
     credencial = request.headers.get("authorization", "")
+    principal = None
+    cliente = url = None
     if credencial.lower().startswith("bearer "):
         secreto = credencial[7:].strip()
         if claves.es_clave(secreto):
             cliente, url = api.cliente_y_destino("identity")
             if cliente is not None and url:
                 try:
-                    request.state.principal_precalculado = await claves.principal_de_clave(
+                    principal = await claves.principal_de_clave(
                         cliente,
                         secreto,
                         ip=ip_de(request),
                         url_identity=url,
                     )
+                    request.state.principal_precalculado = principal
                 except NoAutenticado:
                     pass
-    return await siguiente(request)
+                except CuotaAgotada as exc:
+                    # La única respuesta que da el middleware: con la cuota
+                    # gastada no hay ruta que deba contestar otra cosa. Con el
+                    # mismo formato de error que el resto de la API.
+                    return await manejar_error_dominio(request, exc)
+    inicio = time.monotonic()
+    respuesta = await siguiente(request)
+    # Cada llamada hecha con clave se apunta para el portal del integrador.
+    if principal is not None and cliente is not None and url:
+        lote = llamadas.apuntar(
+            clave_id=str(principal.id),
+            tenant_id=str(principal.tenant_id),
+            metodo=request.method,
+            ruta=request.url.path,
+            status=respuesta.status_code,
+            duracion_ms=int((time.monotonic() - inicio) * 1000),
+            request_id=respuesta.headers.get("x-request-id", ""),
+        )
+        if lote:
+            llamadas.despachar(cliente, url, lote)
+    return respuesta
 
 
 def ip_de(request: Any) -> str:

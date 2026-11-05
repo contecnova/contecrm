@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import UUID
 
@@ -950,6 +950,7 @@ def crear_clave(datos: CrearClaveApi, db: DbDep, principal: AutenticadoDep) -> A
         dias=datos.dias,
         ips_permitidas=datos.ips_permitidas,
         creada_por=principal.id,
+        cuota_mes=datos.cuota_mes,
     )
     db.flush()
     return ClaveApiCreada(
@@ -992,6 +993,128 @@ def listar_claves(
         modelo_salida=ClaveApiOut,
         contar=contar,
     )
+
+
+class LlamadaApuntada(BaseModel):
+    clave_id: UUID
+    tenant_id: UUID
+    cuando: datetime
+    metodo: str = Field(..., max_length=10)
+    ruta: str = Field(..., max_length=500)
+    status: int
+    duracion_ms: int = 0
+    request_id: str = Field("", max_length=64)
+
+
+class LoteDeLlamadas(BaseModel):
+    llamadas: list[LlamadaApuntada] = Field(default_factory=list, max_length=10_000)
+
+
+@router_claves.post(
+    "/llamadas",
+    dependencies=[Depends(exige_firma_interna)],
+    include_in_schema=False,
+    summary="Recibir las llamadas que el gateway apuntó (interno)",
+)
+def recibir_llamadas(lote: LoteDeLlamadas) -> Any:
+    """Guarda lo que el gateway apuntó y purga lo que ya no se guarda.
+
+    Sesión de sistema: un lote trae llamadas de varios tenants, y quien lo manda
+    es el gateway, no una persona. Va detrás de la firma interna y fuera del
+    contrato público, como `/validar`.
+    """
+    from crmcore.config import get_settings
+    from crmcore.db.session import sesion
+    from sqlalchemy import delete
+
+    from services.identity.modelos import LlamadaClaveApi
+
+    limite = datetime.now(timezone.utc) - timedelta(days=get_settings().claves_llamadas_dias)
+    with sesion(sistema=True) as db:
+        for llamada in lote.llamadas:
+            db.add(LlamadaClaveApi(**llamada.model_dump()))
+        # Antes de purgar: esta sesión no vuelca sola, y sin esto el borrado
+        # no veía las filas del propio lote —una vieja que llegara tarde se
+        # quedaba para siempre—.
+        db.flush()
+        purgadas = db.execute(
+            delete(LlamadaClaveApi).where(LlamadaClaveApi.cuando < limite)
+        ).rowcount
+        db.commit()
+    return {"guardadas": len(lote.llamadas), "purgadas": int(purgadas or 0)}
+
+
+@router_claves.post(
+    "/{clave_id}/panel",
+    dependencies=[Depends(exige_permiso("apikey:read"))],
+    summary="Qué ha hecho esta clave este mes, y qué ha fallado",
+    description=(
+        "Las llamadas que el gateway apuntó con esta clave en el mes en curso: "
+        "cuántas, cuánto queda de la cuota y los últimos errores, **separados por "
+        "culpa** —los 4xx son de quien integra, los 5xx nuestros—. Lo que se "
+        "guarda son los últimos `CLAVES_LLAMADAS_DIAS` días."
+    ),
+)
+def panel_de_la_clave(clave_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.portal_desarrollador import panel_de_integrador
+
+    from services.identity.modelos import LlamadaClaveApi
+
+    clave = db.get(ClaveApi, clave_id)
+    if clave is None or clave.tenant_id != principal.tenant_id:
+        raise NoEncontrado("La clave no existe", error_code="clave_api.no_encontrada")
+    ahora = datetime.now(timezone.utc)
+    desde = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    filas = db.execute(
+        select(LlamadaClaveApi)
+        .where(LlamadaClaveApi.clave_id == clave.id, LlamadaClaveApi.cuando >= desde)
+        .order_by(LlamadaClaveApi.cuando.desc())
+    ).scalars()
+    salida = panel_de_integrador(
+        clave=clave.nombre,
+        llamadas=[
+            {
+                "cuando": f.cuando.isoformat(),
+                "ruta": f"{f.metodo} {f.ruta}",
+                "status": f.status,
+                "detalle": f.request_id,
+            }
+            for f in filas
+        ],
+        cuota_mes=int(clave.cuota_mes or 0),
+        scopes=list(clave.scopes or []),
+    )
+    salida["desde"] = desde.isoformat()
+    salida["sin_cuota"] = not clave.cuota_mes
+    return salida
+
+
+class CambiarCuota(BaseModel):
+    cuota_mes: int | None = Field(None, ge=1, description="Vacío: sin cuota")
+
+
+@router_claves.post(
+    "/{clave_id}/cuota",
+    dependencies=[Depends(exige_permiso("apikey:write"))],
+    summary="Cambiar la cuota mensual de la clave",
+)
+def cambiar_cuota(clave_id: UUID, datos: CambiarCuota, db: DbDep, principal: AutenticadoDep) -> Any:
+    clave = db.get(ClaveApi, clave_id)
+    if clave is None or clave.tenant_id != principal.tenant_id:
+        raise NoEncontrado("La clave no existe", error_code="clave_api.no_encontrada")
+    clave.cuota_mes = datos.cuota_mes
+    db.flush()
+    from crmcore.audit import registrar
+
+    registrar(
+        db,
+        accion="clave_api.cuota_cambiada",
+        objeto="clave_api",
+        objeto_id=clave.id,
+        datos={"cuota_mes": datos.cuota_mes},
+        tenant_id=principal.tenant_id,
+    )
+    return {"id": str(clave.id), "cuota_mes": clave.cuota_mes}
 
 
 @router_claves.delete(

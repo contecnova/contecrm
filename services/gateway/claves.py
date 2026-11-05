@@ -92,6 +92,18 @@ async def principal_de_clave(
             error_code="auth.clave_incomprobable",
         ) from exc
 
+    if respuesta.status_code == 429:
+        # La cuota del mes, gastada. No es un 401 —la clave es buena— ni un
+        # límite por segundo: se pasa ampliando la cuota o esperando al mes
+        # siguiente, y el integrador tiene que poder distinguirlo.
+        from crmcore.errors import CuotaAgotada
+
+        problema: dict[str, Any] = respuesta.json()
+        raise CuotaAgotada(
+            str(problema.get("detail") or "La clave ha gastado su cuota del mes"),
+            reintentar_en_s=int(respuesta.headers.get("retry-after") or 3600),
+            error_code="clave_api.cuota_agotada",
+        )
     if respuesta.status_code != 200:
         # El mismo error para clave inexistente, revocada, caducada o con la IP
         # fuera de su lista: distinguirlos diría a quien prueba en qué acertó.

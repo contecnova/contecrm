@@ -646,6 +646,7 @@ def crear_clave_api(
     dias: int | None = None,
     ips_permitidas: list[str] | None = None,
     creada_por: UUID | None = None,
+    cuota_mes: int | None = None,
 ) -> tuple[ClaveApi, str]:
     """Crea una clave y devuelve (fila, secreto en claro). El secreto no se
     vuelve a poder leer."""
@@ -676,6 +677,7 @@ def crear_clave_api(
         scopes=scopes,
         rol=rol,
         ips_permitidas=ips_permitidas or [],
+        cuota_mes=cuota_mes,
         expira_at=(datetime.now(timezone.utc) + timedelta(days=dias)) if dias > 0 else None,
         creada_por=creada_por,
     )
@@ -721,8 +723,56 @@ def validar_clave_api(db: Session, secreto: str, *, ip: str = "") -> ClaveApi:
     from crmcore.authz.credenciales import comprobar
 
     comprobar(ip, list(clave.ips_permitidas or []), credencial=clave.prefijo)
+    if clave.cuota_mes:
+        exigir_cuota_de_clave(db, clave)
     clave.ultimo_uso_at = datetime.now(timezone.utc)
     return clave
+
+
+def _inicio_de_mes_utc(ahora: datetime) -> datetime:
+    return ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def llamadas_del_mes(db: Session, clave: ClaveApi) -> int:
+    """Llamadas de la clave en el mes en curso. El mes es el UTC: el corte cae a
+    la misma hora para todos los integradores, que es lo que se espera de una
+    cuota de API, y no depende de la zona del tenant."""
+    from sqlalchemy import func
+
+    from services.identity.modelos import LlamadaClaveApi
+
+    return int(
+        db.execute(
+            select(func.count())
+            .select_from(LlamadaClaveApi)
+            .where(
+                LlamadaClaveApi.clave_id == clave.id,
+                LlamadaClaveApi.cuando >= _inicio_de_mes_utc(datetime.now(timezone.utc)),
+            )
+        ).scalar_one()
+    )
+
+
+def exigir_cuota_de_clave(db: Session, clave: ClaveApi) -> None:
+    """Corta con 429 cuando la clave ha gastado su cuota del mes.
+
+    Se mira al validarla, y el gateway guarda la validación unos segundos: la
+    cuota puede pasarse en lo que dura esa caché, nunca más. Contar en cada
+    petición costaría una consulta por llamada.
+    """
+    from crmcore.errors import CuotaAgotada
+
+    usadas = llamadas_del_mes(db, clave)
+    if usadas >= int(clave.cuota_mes or 0):
+        ahora = datetime.now(timezone.utc)
+        siguiente = (_inicio_de_mes_utc(ahora) + timedelta(days=32)).replace(day=1)
+        raise CuotaAgotada(
+            f"La clave «{clave.nombre}» ha hecho {usadas} llamadas este mes y su cuota "
+            f"es {clave.cuota_mes}. Vuelve a funcionar el día 1 o ampliando la cuota.",
+            reintentar_en_s=int((siguiente - ahora).total_seconds()),
+            error_code="clave_api.cuota_agotada",
+            detalle={"cuota_mes": clave.cuota_mes, "usadas": usadas},
+        )
 
 
 # ── Alta de usuarios ──────────────────────────────────────────────────────
