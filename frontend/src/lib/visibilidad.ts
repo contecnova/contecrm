@@ -831,12 +831,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "intelligence"
     },
     {
-      "r": "/api/v1/ia/extraidos",
-      "p": "ia:usar",
-      "o": "campo_extraido",
-      "s": "intelligence"
-    },
-    {
       "r": "/api/v1/ia/modelos",
       "p": "ia:administrar",
       "s": "intelligence"

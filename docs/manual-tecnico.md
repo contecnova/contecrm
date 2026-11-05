@@ -2871,7 +2871,7 @@ un evento; se ejecuta desde su ficha y desde sus endpoints.
 de quien pide y manda a `/ia/extraer` el texto pegado, los campos que se buscan
 —los de `comandos.CAMPOS_CONTACTO` salvo `campos` y preferencias: tratamiento,
 cargo, departamento, teléfonos, otro correo, idioma— y sus valores actuales. Lo
-extraído queda **pendiente** en «IA → Datos propuestos por la IA»
+extraído queda **pendiente** en «IA → Campos extraídos»
 (`/ia/extraidos`), cada uno con su cita y su confianza. Aceptar emite un
 **comando** `actualizar` que aplica el servicio dueño.
 

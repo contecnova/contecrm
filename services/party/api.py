@@ -2194,7 +2194,7 @@ class ExtraerDeTextoIn(BaseModel):
         "Pega una firma o un correo: se proponen cargo, departamento, teléfonos, otro "
         "correo e idioma, cada uno con la frase de la que sale y al lado del valor "
         "que tiene ahora. **No se escribe nada**: cada propuesta se acepta o se "
-        "rechaza en «Datos propuestos por la IA», y al aceptarla el cambio lo aplica "
+        "rechaza en «Campos extraídos», y al aceptarla el cambio lo aplica "
         "este servicio con su normalización."
     ),
 )

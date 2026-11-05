@@ -1548,17 +1548,6 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "intelligence",
         permiso: "ia:administrar",
       },
-      // Lo que la IA ha sacado de un texto y espera que una persona lo acepte o
-      // lo rechace (CRM-05.02.02.05). Aceptar pide el cambio al servicio dueño
-      // del registro, que lo aplica con sus reglas.
-      {
-        nombre: "Datos propuestos por la IA",
-        objeto: "campo_extraido",
-        listar: "/api/v1/ia/extraidos",
-        servicio: "intelligence",
-        columnas: ["objeto", "campo", "valor", "valor_actual", "confianza", "cita"],
-        permiso: "ia:usar",
-      },
       {
         nombre: "Modelos",
         listar: "/api/v1/ia/modelos",

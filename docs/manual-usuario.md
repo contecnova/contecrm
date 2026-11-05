@@ -1766,7 +1766,7 @@ al modelo.
 
 En un **contacto**, *Más → Sacar con IA los datos de este contacto de un texto*:
 pega una firma o un correo y la IA propone cargo, departamento, teléfonos, otro
-correo e idioma. No cambia nada todavía: en **IA → Datos propuestos por la IA**
+correo e idioma. No cambia nada todavía: en **IA → Campos extraídos**
 ves cada propuesta con la frase de la que sale y el valor que hay ahora, y la
 aceptas o la rechazas. Al aceptar, el contacto se actualiza con las mismas
 reglas que si lo editaras tú. El nombre y el correo principal no se tocan así.
