@@ -91,10 +91,14 @@ def sugerir_respuesta(
         objeto="caso",
         objeto_id=caso_id,
     )
-    citados = salida.get("fuentes") or []
+    # `rag.responder` devuelve `respuesta` y `citas`. Aquí se leían `texto` y
+    # `fuentes`, que no existen: la sugerencia salía SIEMPRE vacía, contestara
+    # lo que contestara el modelo. Medido el 05-11-2026 con el índice de verdad.
+    citados = salida.get("citas") or []
+    texto = str(salida.get("respuesta") or "")
     return {
-        "hay_sugerencia": bool(salida.get("texto")) and bool(citados),
-        "texto": salida.get("texto", ""),
+        "hay_sugerencia": bool(salida.get("respondida")) and bool(texto) and bool(citados),
+        "texto": texto,
         # Los artículos van aparte del texto a propósito: muchas veces lo que el
         # agente necesita no es el párrafo, es el enlace que puede leer y juzgar.
         "articulos": citados,
@@ -133,15 +137,19 @@ def conversar(
         objeto="conversacion",
         objeto_id=conversacion_id,
     )
+    # `respuesta` y `citas`, que es lo que devuelve `rag.responder`: se leían
+    # `texto` y `fuentes`, el asistente contestaba siempre vacío y nunca
+    # proponía ninguna acción (el mismo fallo que la sugerencia de respuesta).
+    texto = str(respuesta.get("respuesta") or "")
     propuestas = []
     for accion in acciones_posibles or []:
         nombre = str(accion.get("nombre") or "")
-        if nombre and nombre.lower() in (respuesta.get("texto") or "").lower():
+        if nombre and nombre.lower() in texto.lower():
             propuestas.append(accion)
 
     return {
-        "texto": respuesta.get("texto", ""),
-        "fuentes": respuesta.get("fuentes") or [],
+        "texto": texto,
+        "fuentes": respuesta.get("citas") or [],
         "acciones_propuestas": propuestas,
         # Dicho explícitamente: nadie tiene que deducir del JSON que esto no ha
         # tocado nada.

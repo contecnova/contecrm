@@ -53,6 +53,17 @@ class AjustesIntelligence(Settings):
     # pide: resumir cuatro palabras es inventarse el resto.
     ia_minimo_contexto: int = Field(120, ge=1, le=10_000)
 
+    # ── El índice de conocimiento (CRM-04.03.01.04, CRM-05.02.02.03) ──────
+    # Dimensiones de los vectores que se piden al proveedor. Más da algo más de
+    # precisión y ocupa más; cambiarlo obliga a reindexar, porque sólo se
+    # comparan vectores del mismo modelo y tamaño.
+    ia_dimensiones_vector: int = Field(768, ge=64, le=4_096)
+    # Hasta cuántos caracteres de cada artículo o caso entran en su vector. Lo
+    # que pasa de ahí no se encuentra, y el fragmento lo dice («recortado»).
+    ia_caracteres_por_fragmento: int = Field(6_000, ge=200, le=100_000)
+    # Cuántos resultados devuelve una búsqueda antes de filtrarlos.
+    ia_resultados_indice: int = Field(10, ge=1, le=200)
+
     # ── Cuánta confianza basta ────────────────────────────────────────────
     # Para dar por buena una extracción de campos de un texto.
     ia_confianza_extraccion: float = Field(0.5, ge=0.0, le=1.0)

@@ -1762,6 +1762,18 @@ Nada de esto se guarda ni se manda solo: es un borrador para ti. Necesitas el
 permiso de usar la IA, y lo que no puedes ver en el registro tampoco se le pasa
 al modelo.
 
+### Lo que ya pasó y cómo se arregló
+
+- En un **caso**, *Más → Casos resueltos y artículos parecidos* busca por lo que
+  significa el problema, no por palabras exactas. Cada sugerencia trae su cita
+  para abrirla; lo poco parecido no se enseña, y un caso parecido que sigue
+  abierto tampoco: no es una solución, es otro con el mismo problema.
+- En **Conocimiento**, *Preguntar a la base de conocimiento* contesta sólo con
+  lo que dicen los artículos, citándolos. Si ninguno lo trata, no contesta.
+- Los artículos que se publican y los casos que se cierran con su resolución
+  entran solos. *Indexar para la IA* recoge lo de antes; lo que no ha cambiado
+  no se vuelve a procesar.
+
 ### Hace falta un modelo conectado, y se elige a conciencia
 
 Nada de esto funciona hasta que tu instalación declara **a qué modelo llamar**.

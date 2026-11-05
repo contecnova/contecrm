@@ -1006,7 +1006,10 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 # 05-11-2026, undécima: 93 → 85. La IA desde la ficha: cuenta, contacto,
 # oportunidad, caso y conversación, verificada con un modelo de verdad.
-TOPE_SIN_PANTALLA = 85
+#
+# 05-11-2026, duodécima: 85 → 83. El índice de conocimiento con pgvector:
+# casos parecidos en el caso y preguntas a la base de conocimiento con cita.
+TOPE_SIN_PANTALLA = 83
 
 
 def _es_pantalla(p: Path) -> bool:

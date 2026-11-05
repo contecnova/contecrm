@@ -10640,6 +10640,15 @@ traducir su último mensaje.
 - **Lo que no se sabe no se pone**: los próximos pasos salen de señales del
   negocio y, con menos de las necesarias, no se recomienda nada.
 
+### El índice de conocimiento (`CRM-04.03.01.04`, `CRM-05.02.02.03`)
+
+Para encontrar lo parecido por **significado** hace falta un índice de vectores,
+y vive en la misma base que el resto: así el aislamiento entre clientes que
+protege cada tabla protege también lo que la IA puede recuperar. Se llena con lo
+que se publica y con los casos que se cierran **con su resolución escrita** —un
+caso cerrado sin resolución no enseña cómo se arregló nada—, y una búsqueda sólo
+devuelve lo que quien pregunta podría abrir.
+
 ### Respuesta con citación y consulta en lenguaje natural (`CRM-05.02.02.03`, `CRM-05.02.02.04`)
 
 Una respuesta sobre los datos del cliente **sin decir de dónde sale** no vale:

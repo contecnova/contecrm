@@ -507,6 +507,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // agentes disponibles con su capacidad, las encuestas de satisfacción y la
   // papelera.
   "casos": [
+    // Casos resueltos y artículos parecidos, por significado, con su cita.
+    "CRM-04.03.01.04",
     // Resumir el caso y sugerir respuesta con los artículos en que se apoya.
     "CRM-04.02.02.05",
     "CRM-04.01.01.01",
@@ -532,6 +534,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // Los artículos con sus versiones y su flujo de aprobación, los accesos al
   // portal de autoservicio y los hilos de la comunidad.
   "conocimiento": [
+    // Preguntar a la base de conocimiento: contesta sólo con los artículos, citándolos.
+    "CRM-05.02.02.03",
     "CRM-04.03.01.01",
     "CRM-04.03.02.01",
     "CRM-04.03.02.04",

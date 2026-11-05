@@ -93,7 +93,11 @@ x-servicio: &servicio
 services:
   # ── Infraestructura ──────────────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
+    # Con pgvector: los vectores del índice de conocimiento de intelligence
+    # (CRM-04.03.01.04, CRM-05.02.02.03) viven en Postgres para que el RLS por
+    # tenant los aísle igual que al resto, sin un segundo almacén que aislar a
+    # mano. Imagen oficial de pgvector, fijada por huella.
+    image: pgvector/pgvector:0.8.6-pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     restart: unless-stopped
     environment:
       POSTGRES_USER: contecrm

@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from crmcore.http.deps import AutenticadoDep, exige_permiso
+from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
@@ -489,22 +489,55 @@ def aprovechamiento(cuerpo: UsoDeSugerenciasIn, principal: AutenticadoDep) -> An
         "que salió**, para que se pueda mirar."
     ),
 )
-def sugerir(caso_id: UUID, cuerpo: SugerirIn, principal: AutenticadoDep) -> Any:
+def sugerir(caso_id: UUID, cuerpo: SugerirIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.intelligence import indice
+
     # El contexto se compone AQUÍ y no llega compuesto. Dejar que lo componga
     # quien llama convierte «qué datos personales salen» en una decisión de cada
     # pantalla, y basta con que una la tome mal.
     recorte = sem.contexto_para_el_modelo(
         caso=cuerpo.caso, incluir_datos_personales=cuerpo.incluir_datos_personales
     )
+    # Sin resultados dados, se BUSCAN en el índice de conocimiento con el
+    # recorte. Antes esta ruta sólo filtraba lo que le mandaran, y no había nada
+    # que buscara: ninguna pantalla podía pedírselo.
+    from crmcore.errors import Conflicto, NoEncontrado
+
+    resultados = list(cuerpo.resultados)
+    buscado = False
+    sin_buscar = ""
+    if not resultados:
+        texto = " ".join(str(v) for v in (recorte["contexto"] or {}).values() if v)
+        if texto.strip():
+            try:
+                resultados = indice.buscar(
+                    db, principal.tenant_id, texto=texto, excluir=str(caso_id)
+                )
+                buscado = True
+            except (NoEncontrado, Conflicto) as exc:
+                # Sin proveedor de vectores no se puede buscar. Se dice, y se
+                # devuelve lo demás —qué se habría mandado—: callarlo haría leer
+                # «nada parecido» donde lo que hay es «no se ha podido mirar».
+                sin_buscar = str(exc)
+    # Los permisos que hacen falta, resueltos con `principal.tiene`, que entiende
+    # los comodines. Con la lista literal, quien tiene `*:*` —o `case:*`— no
+    # «tenía» `case:read` y se le descartaba todo por «sin permiso» (medido el
+    # 05-11-2026 con el índice de verdad: cuatro de cuatro descartados).
+    pedidos = {str(r.get("permiso")) for r in resultados if r.get("permiso")}
     salida = sem.buscar(
-        resultados=cuerpo.resultados,
+        resultados=resultados,
         contexto_del_caso=recorte["contexto"],
-        permisos_del_agente=set(principal.permisos),
+        permisos_del_agente={p for p in pedidos if principal.tiene(p)},
     )
     return {
         **sem.sugerir_para(caso_id=caso_id, sugerencias=salida["sugerencias"]),
         **salida,
         "lo_que_se_manda": recorte,
+        # Si se buscó en el índice o se filtró lo que llegó: con el índice vacío,
+        # «ninguna sugerencia» es que no hay nada indexado, no que no haya nada
+        # parecido.
+        "buscado_en_el_indice": buscado,
+        "por_que_no_se_busco": sin_buscar,
     }
 
 

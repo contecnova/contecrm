@@ -46,6 +46,9 @@ psql -v ON_ERROR_STOP=1 --username "$ADMIN" --dbname "$DB" <<SQL
 -- (CRM-01.01.04.02), que se usará en la fase 1 y conviene tener ya.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- Los vectores del índice de conocimiento (intelligence). Crear una extensión
+-- exige superusuario, que el rol de aplicación no es: por eso va aquí.
+CREATE EXTENSION IF NOT EXISTS vector;
 SQL
 
 for SVC in $SERVICIOS; do

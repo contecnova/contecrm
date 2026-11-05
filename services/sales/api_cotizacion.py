@@ -499,10 +499,13 @@ def costes_al_dia(presupuesto_id: UUID, db: DbDep, principal: AutenticadoDep) ->
             continue
         congeladas.append({"referencia": referencia, "coste_congelado": linea.coste_unitario})
         hoy[referencia] = Decimal(actual)
-    salida = cst.revisar_costes_congelados(lineas_congeladas=congeladas, costes_hoy=hoy)
-    salida["comparadas"] = len(congeladas)
-    salida["no_comparables"] = no_comparables
-    return salida
+    # Un literal con la delegación dentro, y no «asignar, añadir y devolver»: así
+    # lo sigue el resolutor de contratos y la pantalla que lo lee queda vigilada.
+    return {
+        **cst.revisar_costes_congelados(lineas_congeladas=congeladas, costes_hoy=hoy),
+        "comparadas": len(congeladas),
+        "no_comparables": no_comparables,
+    }
 
 
 @router_pre.post(

@@ -15,12 +15,13 @@ está homologado, comprometer por encima de la capacidad sin decir por qué.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore.fechas import hoy
 from starlette.testclient import TestClient
 
 from tests.unit.test_reverificacion_y_mfa_adaptativa import _cabeceras
@@ -56,7 +57,7 @@ def _proveedor(cli: Any, cab: dict[str, str], nombre: str, *, homologar: str = "
         h = cli.post(
             f"/api/v1/proveedores/{cuenta}/homologacion",
             headers=cab,
-            json={"categoria": homologar, "valida_hasta": str(date.today() + timedelta(days=365))},
+            json={"categoria": homologar, "valida_hasta": str(hoy() + timedelta(days=365))},
         )
         assert h.status_code in (200, 201), h.text
     return str(cuenta)
@@ -74,7 +75,7 @@ def test_de_la_peticion_a_la_evaluacion_con_hechos(party: Any, tenant_id: UUID) 
         json={
             "categoria": "ensayos",
             "proveedores": [bueno, barato, callado],
-            "fecha_limite": str(date.today() + timedelta(days=7)),
+            "fecha_limite": str(hoy() + timedelta(days=7)),
             "descripcion": "Ensayo de vibración",
             "cantidad": "10",
             "oportunidad_id": str(uuid4()),
@@ -132,8 +133,8 @@ def test_de_la_peticion_a_la_evaluacion_con_hechos(party: Any, tenant_id: UUID) 
         json={
             "proveedor_id": bueno,
             "categoria": "ensayos",
-            "desde": str(date.today() - timedelta(days=1)),
-            "hasta": str(date.today() + timedelta(days=90)),
+            "desde": str(hoy() - timedelta(days=1)),
+            "hasta": str(hoy() + timedelta(days=90)),
             "contratada": "12",
         },
     ).json()["id"]
@@ -155,7 +156,7 @@ def test_de_la_peticion_a_la_evaluacion_con_hechos(party: Any, tenant_id: UUID) 
     contrato = cli.post(
         "/api/v1/compras/contratos",
         headers=cab,
-        json={"proveedor_id": bueno, "vigente_hasta": str(date.today() + timedelta(days=2))},
+        json={"proveedor_id": bueno, "vigente_hasta": str(hoy() + timedelta(days=2))},
     ).json()["id"]
     estado = cli.post(f"/api/v1/compras/contratos/{contrato}/estado", headers=cab)
     assert estado.status_code == 200, estado.text
@@ -169,7 +170,7 @@ def test_de_la_peticion_a_la_evaluacion_con_hechos(party: Any, tenant_id: UUID) 
     entrega = cli.post(
         f"/api/v1/compras/respuestas/{r_bueno}/entrega",
         headers=cab,
-        json={"entregada_el": str(date.today() + timedelta(days=60)), "coste_final": "130"},
+        json={"entregada_el": str(hoy() + timedelta(days=60)), "coste_final": "130"},
     )
     assert entrega.status_code == 200, entrega.text
     cli.post(
@@ -189,8 +190,8 @@ def test_de_la_peticion_a_la_evaluacion_con_hechos(party: Any, tenant_id: UUID) 
         headers=cab,
         json={
             "proveedor_id": bueno,
-            "desde": str(date.today() - timedelta(days=30)),
-            "hasta": str(date.today() + timedelta(days=30)),
+            "desde": str(hoy() - timedelta(days=30)),
+            "hasta": str(hoy() + timedelta(days=30)),
             "tramos": [{"desde": 1000, "pct": 2}],
         },
     ).json()["id"]
@@ -242,7 +243,7 @@ def test_lo_de_compras_de_un_tenant_no_lo_ve_otro(party: Any, tenant_id: UUID) -
         json={
             "categoria": "ensayos",
             "proveedores": [proveedor],
-            "fecha_limite": str(date.today() + timedelta(days=3)),
+            "fecha_limite": str(hoy() + timedelta(days=3)),
         },
     ).json()["id"]
     ajeno = _cabeceras(uuid4())

@@ -24,6 +24,7 @@ from sqlalchemy import select
 
 router_ia_casos = APIRouter(prefix="/casos", tags=["casos"])
 router_ia_conversaciones = APIRouter(prefix="/conversaciones", tags=["omnicanal"])
+router_ia_conocimiento = APIRouter(prefix="/conocimiento", tags=["conocimiento"])
 
 
 def _fragmento(texto: str, *, fuente: str, id_: Any, permiso: str) -> dict[str, Any]:
@@ -88,9 +89,7 @@ def resumen_ia_de_caso(caso_id: UUID, principal: AutenticadoDep) -> Any:
         "contestar, no se inventa: lo dice. La respuesta no se manda sola."
     ),
 )
-def respuesta_sugerida(caso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    from services.service import conocimiento
-
+def respuesta_sugerida(caso_id: UUID, principal: AutenticadoDep) -> Any:
     caso = _caso(caso_id, principal)
     pregunta = "\n".join(str(caso.get(k) or "") for k in ("asunto", "descripcion")).strip()
     if not pregunta:
@@ -98,29 +97,56 @@ def respuesta_sugerida(caso_id: UUID, db: DbDep, principal: AutenticadoDep) -> A
             "El caso no tiene asunto ni descripción: no hay qué contestar.",
             error_code="ia.caso_sin_texto",
         )
-    from crmcore.config import get_settings
-
-    articulos = conocimiento.buscar(
-        db,
-        principal.tenant_id,
-        texto=str(caso.get("asunto") or ""),
-        audiencia="interno",
-        limite=get_settings().ia_articulos_por_sugerencia,
-    )
-    fragmentos = [
-        _fragmento(
-            f"{a.get('titulo') or ''}\n\n{a.get('resumen') or ''}",
-            fuente=f"articulo:{a.get('clave') or a.get('articulo_id')}",
-            id_=a.get("articulo_id"),
-            permiso="case:read",
-        )
-        for a in articulos
-    ]
+    # Los artículos, del índice de conocimiento y por significado: antes se
+    # buscaban por la frase entera del asunto con un LIKE, y casi nunca casaba.
     return ia_ficha.pedir(
         "/api/v1/ia/asistencia/respuesta-soporte",
-        {"caso_id": str(caso_id), "pregunta": pregunta, "fragmentos": fragmentos},
+        {
+            "caso_id": str(caso_id),
+            "pregunta": pregunta,
+            "fragmentos": _articulos_parecidos(pregunta, principal),
+        },
         principal,
     )
+
+
+def _articulos_parecidos(texto: str, principal: Any) -> list[dict[str, Any]]:
+    from crmcore.config import get_settings
+
+    encontrados = ia_ficha.pedir(
+        "/api/v1/ia/indice/buscar",
+        {
+            "texto": texto,
+            "fuentes": ["articulo"],
+            "tope": get_settings().ia_articulos_por_sugerencia,
+        },
+        principal,
+    )
+    return [
+        {
+            "texto": f"{a.get('titulo') or ''}\n\n{a.get('texto') or ''}",
+            "fuente": f"articulo:{a.get('titulo') or a.get('referencia')}",
+            "id": a.get("referencia"),
+            "permiso": a.get("permiso") or "knowledge:read",
+            "sensibilidad": "interno",
+        }
+        for a in (encontrados or {}).get("items", [])
+    ]
+
+
+@router_ia_casos.post(
+    "/{caso_id}/parecidos",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Casos resueltos y artículos parecidos a este, por significado",
+    description=(
+        "Busca en el índice de conocimiento con el problema del caso —asunto, "
+        "descripción, producto, categoría; no el nombre de quien lo tiene— y enseña "
+        "sólo lo que trae cita y está resuelto, con en qué se parece."
+    ),
+)
+def parecidos(caso_id: UUID, principal: AutenticadoDep) -> Any:
+    caso = _caso(caso_id, principal)
+    return ia_ficha.pedir(f"/api/v1/sugerencias-caso/{caso_id}", {"caso": caso}, principal)
 
 
 # ── Conversaciones ────────────────────────────────────────────────────────
@@ -270,4 +296,104 @@ def traducir_conversacion(
     )
 
 
-ROUTERS_IA = [router_ia_casos, router_ia_conversaciones]
+class PreguntaIn(BaseModel):
+    pregunta: str = Field(..., min_length=3, max_length=2_000)
+
+
+@router_ia_conocimiento.post(
+    "/articulos/preguntar",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Preguntar a la base de conocimiento, con la fuente de cada respuesta",
+    description=(
+        "Busca los artículos que hablan de lo que preguntas y contesta sólo con "
+        "ellos, citándolos. Si ninguno lo trata, no contesta: una respuesta sin "
+        "fuente es una opinión del modelo."
+    ),
+)
+def preguntar(datos: PreguntaIn, principal: AutenticadoDep) -> Any:
+    fragmentos = _articulos_parecidos(datos.pregunta, principal)
+    if not fragmentos:
+        return {
+            "texto": "",
+            "fuentes": [],
+            "porque": "Ningún artículo de la base de conocimiento trata esto, o no hay "
+            "ninguno indexado todavía.",
+        }
+    return ia_ficha.pedir(
+        "/api/v1/ia/preguntar",
+        {"pregunta": datos.pregunta, "fragmentos": fragmentos, "objeto": "conocimiento"},
+        principal,
+    )
+
+
+@router_ia_conocimiento.post(
+    "/articulos/indexar-ia",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Indexar para la IA los artículos publicados y los casos resueltos",
+    description=(
+        "Lo que ya existía antes de tener índice, o lo que no entró por un fallo. Lo "
+        "nuevo entra solo al publicarse o al cerrarse. Lo que no ha cambiado no se "
+        "vuelve a calcular ni se paga."
+    ),
+)
+def indexar_todo(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.service.conocimiento import Articulo, VersionArticulo
+    from services.service.modelos import Caso
+
+    articulos = db.execute(
+        select(Articulo, VersionArticulo)
+        .join(
+            VersionArticulo,
+            (VersionArticulo.articulo_id == Articulo.id)
+            & (VersionArticulo.version == Articulo.version_publicada),
+        )
+        .where(Articulo.estado == "publicado")
+    ).all()
+    casos = (
+        db.execute(
+            select(Caso).where(
+                Caso.estado == "cerrado", Caso.resolucion.is_not(None), Caso.deleted_at.is_(None)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    pendientes = [
+        ("articulo", str(a.id), v.titulo, "\n\n".join(x for x in (v.resumen, v.cuerpo) if x))
+        for a, v in articulos
+    ] + [
+        (
+            "caso_resuelto",
+            str(c.id),
+            c.asunto or "",
+            f"{c.descripcion or ''}\n\nResolución: {c.resolucion}",
+        )
+        for c in casos
+        if (c.resolucion or "").strip()
+    ]
+    indexados = sin_cambios = 0
+    fallidos: list[dict[str, str]] = []
+    for fuente, referencia, titulo, texto in pendientes:
+        try:
+            r = ia_ficha.pedir(
+                "/api/v1/ia/indice/indexar",
+                {"fuente": fuente, "referencia": referencia, "titulo": titulo, "texto": texto},
+                principal,
+            )
+        except Exception as exc:  # noqa: BLE001 — se cuenta y se sigue con el siguiente
+            fallidos.append({"referencia": referencia, "error": str(exc)[:200]})
+            continue
+        if r.get("indexado"):
+            indexados += 1
+        else:
+            sin_cambios += 1
+    return {
+        "articulos": len(articulos),
+        "casos_resueltos": sum(1 for p in pendientes if p[0] == "caso_resuelto"),
+        "indexados": indexados,
+        "sin_cambios": sin_cambios,
+        "fallidos": fallidos,
+    }
+
+
+ROUTERS_IA = [router_ia_casos, router_ia_conversaciones, router_ia_conocimiento]

@@ -86,7 +86,7 @@ def cabeceras(tenant_id: UUID) -> dict[str, str]:
 
 
 def test_el_caso_sale_sin_el_nombre_de_quien_lo_tiene(
-    cliente: Any, cabeceras: dict[str, str]
+    db: Any, cliente: Any, cabeceras: dict[str, str]
 ) -> None:
     """El recorte lo hace el servidor, y se puede mirar qué salió.
 
@@ -124,7 +124,7 @@ def test_el_caso_sale_sin_el_nombre_de_quien_lo_tiene(
 
 
 def test_los_datos_personales_salen_solo_si_alguien_lo_pide(
-    cliente: Any, cabeceras: dict[str, str]
+    db: Any, cliente: Any, cabeceras: dict[str, str]
 ) -> None:
     caso_id = uuid4()
     cuerpo = {

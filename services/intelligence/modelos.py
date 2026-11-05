@@ -50,6 +50,7 @@ from services.intelligence.extraccion import CampoExtraido  # noqa: F401
 from services.intelligence.generacion import PlantillaPrompt, Propuesta  # noqa: F401
 from services.intelligence.gobierno import MedicionDeriva, ModeloML  # noqa: F401
 from services.intelligence.guardias import BloqueoIA, ReglaGuardia  # noqa: F401
+from services.intelligence.indice import FragmentoIndice  # noqa: F401
 from services.intelligence.prediccion import Prediccion  # noqa: F401
 from services.intelligence.salud import SaludCuenta  # noqa: F401
 from services.intelligence.uso import LlamadaIA  # noqa: F401
@@ -62,6 +63,7 @@ __all__ = [
     "CampoExtraido",
     "ClaveTenant",
     "EjecucionAgente",
+    "FragmentoIndice",
     "GastoIA",
     "LlamadaIA",
     "MedicionDeriva",

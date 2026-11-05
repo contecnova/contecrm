@@ -289,3 +289,36 @@ def test_la_conversacion_se_resume_se_lee_y_se_traduce_desde_su_ficha(
             f"/api/v1/conversaciones/{vacia.id}/resumen-ia", headers=_cab(tenant_id), json={}
         )
         assert r.status_code == 422 and r.json()["error_code"] == "ia.conversacion_vacia"
+
+
+def test_la_respuesta_sugerida_y_el_asistente_devuelven_lo_que_contesta_el_modelo(
+    uow: UnidadDeTrabajo,  # noqa: F811
+    puerto_de_mentira: dict[str, Any],  # noqa: F811
+) -> None:
+    """Leían `texto` y `fuentes` de `rag.responder`, que devuelve `respuesta` y
+    `citas`: la sugerencia salía siempre vacía y el asistente nunca proponía
+    nada. Sólo había prueba del caso «sin artículos», que vacío es lo correcto."""
+    from tests.unit.test_ia_generativa import _fragmento
+
+    _proveedor(uow)
+    quien = _principal("account:read", "case:read", "knowledge:read")
+    sugerida = asis.sugerir_respuesta(
+        uow,
+        caso_id=uuid4(),
+        pregunta="¿Cuándo vence el contrato?",
+        fragmentos=[_fragmento()],
+        principal=quien,
+    )
+    assert sugerida["hay_sugerencia"] is True
+    assert "marzo" in sugerida["texto"] and sugerida["articulos"]
+
+    asistente = asis.conversar(
+        uow,
+        conversacion_id=uuid4(),
+        pregunta="¿Cuándo vence el contrato?",
+        fragmentos=[_fragmento()],
+        acciones_posibles=[{"nombre": "marzo", "ruta": "/api/v1/x"}],
+        principal=quien,
+    )
+    assert "marzo" in asistente["texto"] and asistente["fuentes"]
+    assert asistente["acciones_propuestas"] == [{"nombre": "marzo", "ruta": "/api/v1/x"}]

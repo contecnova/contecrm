@@ -20,6 +20,67 @@ from crmcore.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _proveedor_y_config(proveedor: str) -> tuple[Any, dict[str, Any]]:
+    """La ficha del proveedor y su configuración, con la credencial puesta."""
+    # `sesion(sistema=True)`: `sesion_admin` no existe, así que esta llamada
+    # reventaba con ImportError en cuanto se usaba un proveedor de IA.
+    from crmcore.db.session import sesion
+    from sqlalchemy import select
+
+    from services.intelligence.ajustes import credencial_de
+    from services.intelligence.enrutador import ProveedorIA
+
+    with sesion(sistema=True) as db:
+        ficha = (
+            db.execute(select(ProveedorIA).where(ProveedorIA.clave == proveedor)).scalars().first()
+        )
+    if ficha is None:
+        raise ErrorDependencia(
+            f"El proveedor «{proveedor}» ya no está configurado",
+            error_code="ia.proveedor_desaparecido",
+        )
+
+    config = dict(ficha.config or {})
+    # La credencial, del `.env` y no de la ficha. Un secreto guardado en la
+    # base de datos viaja con cada copia, cada volcado, cada clonado a una demo
+    # y cada exportación de salida del tenant. Lo que la ficha declara es QUÉ
+    # cabecera lleva; el valor lo pone el despliegue.
+    if not config.get("credencial"):
+        config["credencial"] = credencial_de(ficha.clave)
+    return ficha, config
+
+
+def _enviar(
+    url: str,
+    cuerpo: dict[str, Any],
+    cabeceras: dict[str, str],
+    config: dict[str, Any],
+    proveedor: str,
+) -> dict[str, Any]:
+    """Manda la petición y devuelve el JSON, o lanza con lo que dijo el proveedor."""
+    from crmcore.red import cliente_seguro
+
+    with cliente_seguro(timeout=float(config.get("timeout_s") or 60)) as cli:
+        respuesta = cli.post(url, json=cuerpo, headers=cabeceras)
+    if respuesta.status_code >= 400:
+        # **Lo que dijo el proveedor, no sólo que dijo que no.** Con el código
+        # HTTP a secas, «400» manda a revisar la credencial cuando lo que falla
+        # es un modelo que no existe, un parámetro que esa familia no admite o
+        # una cuota agotada — y cada una se arregla en un sitio distinto. Se
+        # recorta porque es un mensaje de error, no una respuesta: lo que
+        # interesa es la primera frase.
+        raise ErrorDependencia(
+            "El proveedor de IA ha rechazado la petición",
+            error_code="ia.peticion_rechazada",
+            detalle={
+                "codigo_http": respuesta.status_code,
+                "proveedor": proveedor,
+                "dijo": respuesta.text[:500],
+            },
+        )
+    return dict(respuesta.json())
+
+
 def _llamar(
     *,
     proveedor: str,
@@ -41,33 +102,10 @@ def _llamar(
     `dialectos` y esto sólo decide a quién se llama y qué se hace con lo que
     vuelve.
     """
-    # `sesion(sistema=True)`: `sesion_admin` no existe, así que esta llamada
-    # reventaba con ImportError en cuanto se usaba un proveedor de IA.
-    from crmcore.db.session import sesion
-    from crmcore.red import cliente_seguro
-    from sqlalchemy import select
-
     from services.intelligence import dialectos
-    from services.intelligence.ajustes import ajustes, credencial_de
-    from services.intelligence.enrutador import ProveedorIA
+    from services.intelligence.ajustes import ajustes
 
-    with sesion(sistema=True) as db:
-        ficha = (
-            db.execute(select(ProveedorIA).where(ProveedorIA.clave == proveedor)).scalars().first()
-        )
-    if ficha is None:
-        raise ErrorDependencia(
-            f"El proveedor «{proveedor}» ya no está configurado",
-            error_code="ia.proveedor_desaparecido",
-        )
-
-    config = dict(ficha.config or {})
-    # La credencial, del `.env` y no de la ficha. Un secreto guardado en la
-    # base de datos viaja con cada copia, cada volcado, cada clonado a una demo
-    # y cada exportación de salida del tenant. Lo que la ficha declara es QUÉ
-    # cabecera lleva; el valor lo pone el despliegue.
-    if not config.get("credencial"):
-        config["credencial"] = credencial_de(ficha.clave)
+    ficha, config = _proveedor_y_config(proveedor)
     formato = dialectos.exigir_dialecto(ficha.formato)
     cuerpo = dialectos.peticion(
         formato=formato,
@@ -85,31 +123,44 @@ def _llamar(
     )
     cabeceras = dialectos.cabeceras_de(formato, config)
 
-    with cliente_seguro(timeout=float(config.get("timeout_s") or 60)) as cli:
-        respuesta = cli.post(url, json=cuerpo, headers=cabeceras)
-    if respuesta.status_code >= 400:
-        # **Lo que dijo el proveedor, no sólo que dijo que no.** Con el código
-        # HTTP a secas, «400» manda a revisar la credencial cuando lo que falla
-        # es un modelo que no existe, un parámetro que esa familia no admite o
-        # una cuota agotada — y cada una se arregla en un sitio distinto. Se
-        # recorta porque es un mensaje de error, no una respuesta: lo que
-        # interesa es la primera frase.
-        raise ErrorDependencia(
-            "El proveedor de IA ha rechazado la petición",
-            error_code="ia.peticion_rechazada",
-            detalle={
-                "codigo_http": respuesta.status_code,
-                "proveedor": proveedor,
-                "dijo": respuesta.text[:500],
-            },
-        )
-    salida = dialectos.respuesta(formato=formato, datos=respuesta.json(), modelo_pedido=modelo)
+    datos = _enviar(url, cuerpo, cabeceras, config, proveedor)
+    salida = dialectos.respuesta(formato=formato, datos=datos, modelo_pedido=modelo)
     avisos = dialectos.avisos_de(
         formato, formato_json=formato_json, herramientas=bool(herramientas)
     )
     if avisos:
         salida["avisos"] = avisos
     return salida
+
+
+def _incrustar(
+    *, proveedor: str, modelo: str, textos: list[str], dimensiones: int
+) -> list[list[float]]:
+    """Los vectores de varios textos, en su orden (índice de conocimiento)."""
+    from services.intelligence import dialectos
+
+    ficha, config = _proveedor_y_config(proveedor)
+    formato = dialectos.exigir_dialecto(ficha.formato)
+    url = ficha.base_url.rstrip("/") + dialectos.ruta_de_incrustar(
+        formato, modelo=modelo, declarada=str(config.get("ruta_incrustar") or "")
+    )
+    datos = _enviar(
+        url,
+        dialectos.peticion_incrustar(
+            formato=formato, modelo=modelo, textos=textos, dimensiones=dimensiones
+        ),
+        dialectos.cabeceras_de(formato, config),
+        config,
+        proveedor,
+    )
+    vectores = dialectos.respuesta_incrustar(formato=formato, datos=datos)
+    if len(vectores) != len(textos) or any(not v for v in vectores):
+        raise ErrorDependencia(
+            "El proveedor no ha devuelto un vector por texto",
+            error_code="ia.incrustacion_incompleta",
+            detalle={"pedidos": len(textos), "devueltos": len(vectores)},
+        )
+    return vectores
 
 
 def _generar(
@@ -552,7 +603,7 @@ def _repartir_argumentos(
 
 def conectar() -> None:
     """Registra los puertos en sus módulos."""
-    from services.intelligence import agentes, conversacion, extraccion, generacion, rag
+    from services.intelligence import agentes, conversacion, extraccion, generacion, indice, rag
 
     generacion.registrar_generador(_generar)
     rag.registrar_respondedor(_responder)
@@ -563,4 +614,5 @@ def conectar() -> None:
     agentes.registrar_planificador(_planificar)
     agentes.registrar_continuador(_siguiente_paso)
     agentes.registrar_invocador(_invocar_herramienta)
+    indice.registrar_incrustador(_incrustar)
     logger.info("intelligence.puertos_conectados")

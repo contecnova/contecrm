@@ -11,7 +11,9 @@ from services.intelligence import (
     ajustes,  # noqa: F401 — registra los ajustes de este servicio al arrancar
 )
 from services.intelligence.api import ROUTERS
+from services.intelligence.api_indice import ROUTERS_INDICE
 from services.intelligence.api_modelos import ROUTERS_MODELOS
+from services.intelligence.indice import consumir_cerrado, consumir_publicado
 
 _relevo: object | None = None
 _tarea_relevo: object | None = None
@@ -101,7 +103,13 @@ app = crear_servicio(
         "se escribe, lo que responde cita sus fuentes, y cada llamada queda "
         "registrada con su coste y su resultado."
     ),
-    routers=[*ROUTERS, *ROUTERS_MODELOS],
+    routers=[*ROUTERS, *ROUTERS_MODELOS, *ROUTERS_INDICE],
+    # El índice de conocimiento se llena solo: cada artículo que se publica y
+    # cada caso que se cierra con su resolución entran en él.
+    consumidores=[
+        ("knowledge.published", consumir_publicado, "intelligence-indice-articulos"),
+        ("case.closed", consumir_cerrado, "intelligence-indice-casos"),
+    ],
     al_arrancar=_al_arrancar,
     al_parar=_al_parar,
 )

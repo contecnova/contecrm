@@ -78,3 +78,6 @@ webauthn==2.5.0
 # paquete `quickjs`, que no publica desde 2023: es la pieza que aísla código
 # ajeno, y tiene que estar mantenida.
 wasmtime==50.0.1
+
+# El tipo de columna de los vectores del índice de conocimiento (pgvector).
+pgvector==0.5.1

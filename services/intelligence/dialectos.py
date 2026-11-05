@@ -375,3 +375,54 @@ def _json_o_vacio(texto: Any) -> dict[str, Any]:
         logger.warning("ia.argumentos_ilegibles")
         return {}
     return dict(datos) if isinstance(datos, dict) else {}
+
+
+# ── Incrustaciones (vectores) ─────────────────────────────────────────────
+#
+# Para el índice de conocimiento (CRM-04.03.01.04, CRM-05.02.02.03). Las dos
+# familias que las tienen; Anthropic no ofrece incrustaciones y lo dice.
+
+_RUTA_INCRUSTAR = {
+    "openai_chat": "/embeddings",
+    "gemini_generate": "/v1beta/models/{modelo}:batchEmbedContents",
+}
+
+
+def ruta_de_incrustar(formato: str, *, modelo: str, declarada: str = "") -> str:
+    exigir_dialecto(formato)
+    plantilla = declarada or _RUTA_INCRUSTAR.get(formato) or ""
+    if not plantilla:
+        raise ErrorValidacion(
+            f"La familia «{formato}» no ofrece incrustaciones: el índice necesita un "
+            "proveedor que las tenga, declarado para el uso «embeddings».",
+            error_code="ia.sin_incrustaciones",
+        )
+    return plantilla.replace("{modelo}", modelo or "")
+
+
+def peticion_incrustar(
+    *, formato: str, modelo: str, textos: list[str], dimensiones: int
+) -> dict[str, Any]:
+    """El cuerpo para pedir los vectores de varios textos de una vez."""
+    exigir_dialecto(formato)
+    if formato == "gemini_generate":
+        return {
+            "requests": [
+                {
+                    "model": f"models/{modelo}",
+                    "content": {"parts": [{"text": t}]},
+                    "outputDimensionality": dimensiones,
+                }
+                for t in textos
+            ]
+        }
+    return {"model": modelo, "input": textos, "dimensions": dimensiones}
+
+
+def respuesta_incrustar(*, formato: str, datos: dict[str, Any]) -> list[list[float]]:
+    """Los vectores, en el orden de los textos."""
+    exigir_dialecto(formato)
+    if formato == "gemini_generate":
+        return [list(e.get("values") or []) for e in (datos.get("embeddings") or [])]
+    filas = sorted(datos.get("data") or [], key=lambda d: int(d.get("index") or 0))
+    return [list(f.get("embedding") or []) for f in filas]

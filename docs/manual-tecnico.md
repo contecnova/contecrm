@@ -2865,6 +2865,48 @@ Lo que **no** hace: no hay llamadas salientes desde una extensión (no se le da
 red), ni librerías de fuera, ni ejecución disparada por una automatización o
 un evento; se ejecuta desde su ficha y desde sus endpoints.
 
+#### El índice de conocimiento, con pgvector (05-11-2026)
+
+`CRM-04.03.01.04` (casos parecidos) y `CRM-05.02.02.03` (respuesta con cita)
+filtraban resultados que «llegaban ya buscados»: no había índice. Decidido por
+el usuario: **pgvector en Postgres**, porque los vectores van en una tabla con
+`tenant_id` y el RLS los aísla igual que al resto.
+
+- **Infraestructura.** `docker-compose.yml` usa `pgvector/pgvector:0.8.6-pg16`
+  fijada por huella; `deploy/crear-bases.sh` crea la extensión `vector` (exige
+  superusuario); la migración de intelligence la crea con `IF NOT EXISTS` para
+  la pila local y el `conftest` de pruebas también (el `pgserver` embebido trae
+  pgvector 0.6). Librería `pgvector==0.5.1`.
+- **Tabla** `indice_conocimiento` (`services/intelligence/indice.py`): fuente
+  (`articulo`, `caso_resuelto`), referencia, título, texto (recortado a
+  `IA_CARACTERES_POR_FRAGMENTO`, y lo dice), permiso de la fuente, huella del
+  texto, modelo y vector sin dimensión fija. Sólo se comparan vectores del mismo
+  modelo; si el texto y el modelo no cambian, no se recalcula ni se paga.
+- **Vectores** del proveedor que el enrutador elija para el uso `embeddings`
+  (`dialectos.peticion_incrustar`: Gemini `batchEmbedContents` y OpenAI
+  `/embeddings`), con `IA_DIMENSIONES_VECTOR`.
+- **Se llena solo** con `knowledge.published` y `case.closed` (consumidores de
+  intelligence: leen el texto del servicio de soporte por su ruta) y, para lo
+  anterior o lo que falló, con *Indexar para la IA* en la base de conocimiento
+  (`POST /conocimiento/articulos/indexar-ia`, que empuja a `/ia/indice/indexar`).
+  En la pila local sin Redis el bus no reparte: ahí sólo entra reindexando.
+- **Consultas**: `POST /ia/indice/buscar` (recorta a lo que quien pregunta puede
+  ver), `GET /ia/indice` (qué hay), `POST /sugerencias-caso/{id}` busca solo si no
+  le dan resultados, `POST /casos/{id}/parecidos`, y
+  `POST /conocimiento/articulos/preguntar` (busca y contesta con cita).
+
+Lo que salió al probarlo con Gemini, corregido:
+
+- El filtro de sugerencias comparaba el permiso **como texto** con la lista del
+  agente: quien tenía `*:*` o `case:*` lo veía todo «sin permiso». Ahora se
+  resuelve con `principal.tiene`.
+- `sugerir_respuesta` y `conversar` leían `texto` y `fuentes` de
+  `rag.responder`, que devuelve `respuesta` y `citas`: la sugerencia y el
+  asistente salían **siempre vacíos**. Sólo había prueba del caso sin artículos.
+- La sugerencia de respuesta buscaba artículos con un `LIKE` de la frase entera
+  del asunto; ahora usa el índice, y declara los artículos con
+  `knowledge:read` (antes `case:read`).
+
 #### La IA desde la ficha (05-11-2026)
 
 Las capacidades de `intelligence` (`/ia/generar`, `/ia/asistencia/*`,

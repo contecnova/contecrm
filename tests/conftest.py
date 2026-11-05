@@ -258,6 +258,11 @@ def _esquema(postgres_uri: str) -> Iterator[str]:
     engine = get_engine()
     with engine.connect() as conn:
         conn.execute(sa.text(f'CREATE SCHEMA IF NOT EXISTS "{esquema}"'))
+        # `vector` SÍ: el índice de conocimiento de intelligence guarda sus
+        # vectores con él, y el `pgserver` embebido lo trae (0.6 medido). Sin
+        # esto `create_all` revienta en `indice_conocimiento` y no se crea
+        # ninguna tabla.
+        conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.commit()
     # `pgcrypto` NO se crea aquí a propósito: el Postgres embebido de `pgserver`
     # no lo trae, y el código no lo necesita — los identificadores los genera
