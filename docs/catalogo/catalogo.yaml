@@ -777,6 +777,10 @@ modulos:
               - {id: CRM-03.01.01.12, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa)", t: "Antigüedad por etapa, estancamiento y alertas de inactividad"}
               - {id: CRM-03.01.01.13, c: A, fase: 2, svc: sales, estado: hecho, t: "Historial de cambios de importe y fecha (slippage tracking)"}
               - {id: CRM-03.01.01.14, c: A, fase: 1, svc: sales, estado: hecho, t: "Bloqueo de edición tras cierre y proceso de reapertura auditado", visto: "2026-10-27 Una oportunidad cerrada se bloquea y se ve cuantas veces se ha reabierto, en la propia ficha"}
+              - {id: CRM-03.01.01.15, c: A, fase: 2, svc: sales, estado: hecho, t: "Lecciones aprendidas de cada cierre: expediente comparado con las ganadas del mismo embudo, post-mortem obligatorio en las perdidas con borrador de la IA, firmado y congelado, y lo que se repite", visto: "2026-11-05 Recorrido en el navegador: Ventas > Lecciones aprendidas, 457 lecciones, 42 firmadas; la ficha ensena las senales con su numero (149 dias en Cualificacion frente a 20 en las ganadas), quien decidia con nombre y postura, presupuestos, competencia y actividad. Pruebas con defectos plantados: la fecha de la actividad, el filtro de party por objeto, la fecha de cierre y el nombre del decisor"}
+              - {id: CRM-03.01.01.16, c: A, fase: 2, svc: sales, estado: pendiente, t: "Consejos de las lecciones en las oportunidades abiertas: las del mismo cliente y las parecidas por significado, ganadas y perdidas, como «haz esto / no hagas esto» con la lección citada"}
+              - {id: CRM-03.01.01.17, c: A, fase: 2, svc: sales, estado: pendiente, t: "Avisos de las lecciones en los momentos clave de una oportunidad: al crearla, al cambiar de etapa, al mandar el presupuesto y al descontar"}
+              - {id: CRM-03.01.01.18, c: B, fase: 2, svc: sales, estado: pendiente, t: "Resumen semanal de lecciones para quien dirige el equipo: lo firmado, lo pendiente y lo que se repite"}
           - id: CRM-03.01.02
             nombre: Metodologías de venta
             capacidades:
@@ -1262,6 +1266,7 @@ modulos:
               - {id: CRM-07.04.03.32, visto: '2026-10-26 Pintada: lo que queda de verdad con un proveedor y el aviso de que si se ganan todas las ofertas abiertas no cabe. Esa conversacion es mejor tenerla antes de mandar la cuarta oferta que en la semana de la entrega', c: A, fase: 2, svc: front, estado: hecho, cubre: "9.2", t: "Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer"}
 
               - {id: CRM-07.04.03.33, visto: '2026-10-26 Pintada: abre por el capitulo de la pantalla en la que estas y no por el indice —mandar al indice es mandar a buscar, y quien esta atascado no busca: se rinde y escribe a soporte—, y desde una pantalla sin capitulo propio sigue llevando al manual en vez de dejar un hueco', c: A, fase: 1, svc: front, estado: hecho, cubre: "7.5", t: "Ayuda en producto: el manual de usuario accesible desde la pantalla en la que estás, no en otro sitio"}
+              - {id: CRM-07.04.03.34, c: A, fase: 2, svc: front, estado: hecho, cubre: "3.1", t: "Lecciones aprendidas: módulo de Ventas con la lista, lo que se repite dibujado encima y la ficha con el expediente y el post-mortem", visto: "2026-11-05 Pintada con los datos reales: la lista es la de los demas modulos —vistas, filtrar, columnas, exportar— y la ficha la de la oportunidad. La primera version era una pagina a mano con su propio ancho y sus pestanas, y lo vio quien lo usa"}
 
           - id: CRM-07.04.04
             nombre: Calidad del front

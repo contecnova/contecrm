@@ -268,7 +268,11 @@ export function camposDe(documento: Documento, ruta: string, metodo: string): Ca
       nombre,
       tipo: tipoDe(p, elemento, nombre),
       obligatorio: obligatorios.has(nombre),
-      titulo: humanizar(p.title ?? nombre),
+      // «Contacto», no «Contacto ID»: el campo se rellena eligiendo a alguien
+      // por su nombre, y el identificador no lo ve nunca quien lo rellena.
+      titulo: nombre.endsWith("_id")
+        ? humanizar(p.title ?? nombre).replace(/\s+ID$/, "")
+        : humanizar(p.title ?? nombre),
       descripcion: p.description ?? "",
       // Las opciones salen del propio campo o de los elementos de la lista: en
       // un array de enum, el `enum` está en `items`, y mirándolo solo en el

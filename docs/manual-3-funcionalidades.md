@@ -614,6 +614,53 @@ El historial de cambios de etapa guarda el **importe y la fecha de cierre en el
 momento de cada cambio**: sin eso no se puede medir el deslizamiento, que es el
 dato que explica por qué el trimestre no salió como se dijo.
 
+### Lecciones aprendidas (`CRM-03.01.01.15`, `CRM-07.04.03.34`)
+
+Cada oportunidad que se cierra —ganada o perdida— deja una **lección**. En las
+perdidas es **obligatoria**: hasta que alguien la firma, la oportunidad sale
+como «post-mortem obligatorio sin firmar».
+
+Lo que hace útil una lección no es el texto: es **el expediente** que la
+acompaña, calculado de lo que el CRM ya guarda y **comparado con las ganadas
+del mismo embudo**:
+
+- el recorrido por etapas con los días en cada una, y los de las ganadas al lado
+  («149 días en Cualificación; las ganadas, 20»);
+- cuántas veces se movió la fecha prevista, se retrasó o cambió el importe;
+- los presupuestos con su descuento y su margen, frente al descuento mediano de
+  las ganadas;
+- la competencia, con quién ganó;
+- **quién decidía, por su nombre, con su cargo y su postura**, y el porqué de la
+  postura cuando está en contra;
+- la actividad: cuántas, de qué tipo y cuántos días pasaron sin contacto antes
+  de cerrar.
+
+De ahí salen las **señales**: lo que se apartó de las ganadas, con su número.
+Una comparación con menos ganadas de las configuradas
+(`lecciones_minimo_comparables`, 5 por defecto) **no se hace**, y se dice:
+comparar con dos ventas es una anécdota.
+
+**El post-mortem** son tres preguntas —qué pasó, qué señal temprana no vimos,
+qué haríamos distinto— y los factores. La IA puede proponerlo con el expediente
+delante; quien llevaba la venta lo corrige y lo firma. **Al firmar, el
+expediente se congela**: lo que se aprendió es lo que se sabía entonces, no lo
+que diga el CRM dentro de un año. Una lección firmada no se edita.
+
+**Lo que se repite** está encima de la lista: qué factores pesan en las perdidas
+y en las ganadas, y en qué etapa se pierde. Sale **sólo de las firmadas**: una
+perdida sin firmar no cuenta, porque su lección no la ha escrito nadie.
+
+Las oportunidades que se cerraron antes de que existieran las lecciones reciben
+la suya **sin obligar** (acción «Crear la lección de las oportunidades que se
+cerraron antes»): llenar de golpe la lista de deberes con cierres de hace meses
+que nadie recuerda no enseñaría nada.
+
+**Pendiente**, y dicho para que no se dé por hecho: que las lecciones firmadas
+lleguen a las oportunidades abiertas —consejos de las parecidas
+(`CRM-03.01.01.16`), avisos en los momentos clave (`CRM-03.01.01.17`) y el
+resumen semanal (`CRM-03.01.01.18`)—. Hoy una lección se lee en su ficha y en
+la de su oportunidad, y en ningún sitio más.
+
 ### Derechos del interesado
 
 Las solicitudes (CRM-07.03.01.03) se registran con su **plazo legal calculado al

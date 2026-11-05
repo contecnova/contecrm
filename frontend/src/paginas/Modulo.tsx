@@ -12,7 +12,15 @@
  * así que un campo nuevo en el servicio aparece aquí sin tocar nada.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 
@@ -50,7 +58,16 @@ import {
   esIdentificadorTecnico,
   humanizar,
   nombreDelRegistro,
+  rotuloDeOpcion,
 } from "@/lib/formato";
+
+// Diferida: sólo la pide un módulo con desgloses en sus medidas, y la pantalla
+// de módulo es de las que más se abren.
+const Grafica = lazy(() =>
+  import("@/componentes/graficas/Grafica").then((m) => ({
+    default: m.Grafica,
+  })),
+);
 import {
   comoQuery,
   leerFiltros,
@@ -105,10 +122,15 @@ import { colorDeModulo, iconoDeGrupo } from "@/lib/navegacion";
  * Cuando ya está, se usa el del cuerpo y sólo se marca obligatorio: sin
  * valor no se puede construir la URL.
  */
-function camposConLaClave(delCuerpo: CampoEsquema[], clave: string): CampoEsquema[] {
+function camposConLaClave(
+  delCuerpo: CampoEsquema[],
+  clave: string,
+): CampoEsquema[] {
   const existente = delCuerpo.find((c) => c.nombre === clave);
   if (existente) {
-    return delCuerpo.map((c) => (c.nombre === clave ? { ...c, obligatorio: true } : c));
+    return delCuerpo.map((c) =>
+      c.nombre === clave ? { ...c, obligatorio: true } : c,
+    );
   }
   return [
     {
@@ -461,7 +483,6 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   );
 }
 
-
 /**
  * Las listas de la respuesta que NO son el listado principal.
  *
@@ -487,7 +508,8 @@ export function otrasListas(
     .map(([clave, valor]) => ({
       clave,
       filas: (valor as unknown[]).filter(
-        (f): f is Record<string, unknown> => Boolean(f) && typeof f === "object",
+        (f): f is Record<string, unknown> =>
+          Boolean(f) && typeof f === "object",
       ),
     }))
     .filter((l) => l.filas.length > 0);
@@ -645,7 +667,10 @@ function RecursoVista({
   // abajo: sin acercarlo, pulsar «Editar» no parecería hacer nada.
   useEffect(() => {
     if (accionDeFila || edicionDeFila) {
-      panelDeFila.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      panelDeFila.current?.scrollIntoView?.({
+        block: "nearest",
+        behavior: "smooth",
+      });
     }
   }, [accionDeFila, edicionDeFila]);
   /**
@@ -827,7 +852,13 @@ function RecursoVista({
       detalle: a.detalle,
     }));
     return [...aManoComoAccion, ...descubiertas];
-  }, [superficie, recurso.acciones, recurso.acciones_ocultas, recurso.listar, sesion]);
+  }, [
+    superficie,
+    recurso.acciones,
+    recurso.acciones_ocultas,
+    recurso.listar,
+    sesion,
+  ]);
 
   // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una pantalla
   // vacía es peor que no tener enlace, porque parece que algo se ha roto.
@@ -861,7 +892,9 @@ function RecursoVista({
   const deLaFila = useMemo(
     () =>
       sinFicha
-        ? operacionesDeRegistro(superficie, recurso.listar, (p) => puede(sesion, p))
+        ? operacionesDeRegistro(superficie, recurso.listar, (p) =>
+            puede(sesion, p),
+          )
         : null,
     [sinFicha, superficie, recurso.listar, sesion],
   );
@@ -876,7 +909,9 @@ function RecursoVista({
     const nombre =
       nombreDelRegistro(fila) ||
       Object.entries(fila)
-        .filter(([c, v]) => typeof v === "string" && v && !esIdentificadorTecnico(c))
+        .filter(
+          ([c, v]) => typeof v === "string" && v && !esIdentificadorTecnico(c),
+        )
         .slice(0, 2)
         .map(([, v]) => String(v))
         .join(" · ") ||
@@ -889,7 +924,11 @@ function RecursoVista({
     };
     const opciones: OpcionDeMenu[] = deLaFila.acciones.map((op) => {
       const accion = comoAccionDeFila(op, clave);
-      return { clave: accion.plantilla, nombre: accion.nombre, alElegir: elegir(accion) };
+      return {
+        clave: accion.plantilla,
+        nombre: accion.nombre,
+        alElegir: elegir(accion),
+      };
     });
     const editar = deLaFila.editar;
     if (editar) {
@@ -1036,7 +1075,9 @@ function RecursoVista({
       // las admitiera, y la que lo declaraba a mano salía con botón y un
       // formulario VACÍO, porque no hay `POST` del que sacar los campos.
       const declarada = recurso.crear ?? null;
-      const porPost = admite(documento, recurso.listar, "post") ? recurso.listar : null;
+      const porPost = admite(documento, recurso.listar, "post")
+        ? recurso.listar
+        : null;
       const porClave =
         declarada?.includes("{") || (!declarada && !porPost)
           ? altaPorClave(documento, recurso.listar)
@@ -1641,44 +1682,96 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
       !/^-?\d/.test(valor),
   );
 
+  // Los desgloses —`{categoría: número}`— se dibujan, cada uno en su tarjeta:
+  // «qué factor pesa más», «en qué etapa se pierde». Hasta el 05-11-2026 se
+  // descartaban sin decir nada, porque no eran ni una cifra ni un texto, y la
+  // medida enseñaba dos números de los siete que traía.
+  const desgloses = util.filter(([, valor]) => esDesglose(valor)) as [
+    string,
+    Record<string, number>,
+  ][];
+
   // **Sin nada que enseñar, no se enseña.** Un recuadro con marco y vacío se
   // lee como un dato que falta; y aquí es peor, porque no es un dato que
   // falte: es que esa respuesta no tenía nada que contar.
-  if (cifras.length === 0 && textos.length === 0 && !explicacion) return null;
+  if (
+    cifras.length === 0 &&
+    textos.length === 0 &&
+    !explicacion &&
+    desgloses.length === 0
+  )
+    return null;
 
   return (
-    <section className="card p-3">
-      {cifras.length > 0 ? (
-        <dl className="flex flex-wrap gap-x-4 gap-y-1">
-          {cifras.slice(0, 6).map(([clave, valor]) => (
-            <div key={clave}>
-              <dt className="text-rotulo text-ink-faint">{humanizar(clave)}</dt>
-              <dd
-                className={`text-titulo font-medium ${sinMedir ? "text-ink-muted" : "text-ink"}`}
+    <>
+      <section className="card p-3">
+        {cifras.length > 0 ? (
+          <dl className="flex flex-wrap gap-x-4 gap-y-1">
+            {cifras.slice(0, 6).map(([clave, valor]) => (
+              <div key={clave}>
+                <dt className="text-rotulo text-ink-faint">
+                  {humanizar(clave)}
+                </dt>
+                <dd
+                  className={`text-titulo font-medium ${sinMedir ? "text-ink-muted" : "text-ink"}`}
+                >
+                  {escalar(valor, clave)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        {cifras.length === 0 && textos.length > 0 ? (
+          <dl className="space-y-0.5">
+            {textos.slice(0, 8).map(([clave, valor]) => (
+              <div
+                key={clave}
+                className="flex flex-wrap items-baseline gap-x-2"
               >
-                {escalar(valor, clave)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
-      {cifras.length === 0 && textos.length > 0 ? (
-        <dl className="space-y-0.5">
-          {textos.slice(0, 8).map(([clave, valor]) => (
-            <div key={clave} className="flex flex-wrap items-baseline gap-x-2">
-              <dt className="text-dato text-ink">{humanizar(clave)}</dt>
-              <dd className="text-rotulo text-ink-faint">{String(valor)}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
-      {explicacion ? (
-        <p
-          className={`mt-1 text-rotulo ${sinMedir ? "text-warning" : "text-ink-faint"}`}
-        >
-          {explicacion}
-        </p>
-      ) : null}
-    </section>
+                <dt className="text-dato text-ink">{humanizar(clave)}</dt>
+                <dd className="text-rotulo text-ink-faint">{String(valor)}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        {explicacion ? (
+          <p
+            className={`mt-1 text-rotulo ${sinMedir ? "text-warning" : "text-ink-faint"}`}
+          >
+            {explicacion}
+          </p>
+        ) : null}
+      </section>
+      {desgloses.map(([clave, valores]) => (
+        <Suspense key={clave} fallback={null}>
+          <Grafica
+            forma="embudo"
+            titulo={humanizar(clave)}
+            datos={{
+              // Las ocho que más pesan: con más, las barras dejan de leerse y
+              // la cola es justo lo que no decide nada.
+              filas: Object.entries(valores)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8)
+                .map(([k, v]) => ({
+                  // Un código —`plazo`, `sin_decisor`— se escribe como texto; un
+                  // nombre que ya lo es —«Análisis técnico»— se deja como viene.
+                  categoria: /^[a-z0-9_]+$/.test(k) ? rotuloDeOpcion(k) : k,
+                  valor: v,
+                })),
+              ejeX: "categoria",
+              series: [{ clave: "valor", rotulo: humanizar(clave) }],
+            }}
+          />
+        </Suspense>
+      ))}
+    </>
   );
+}
+
+/** Un objeto plano de números: algo que se dibuja como barras. */
+function esDesglose(valor: unknown): boolean {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const valores = Object.values(valor);
+  return valores.length > 0 && valores.every((v) => typeof v === "number");
 }

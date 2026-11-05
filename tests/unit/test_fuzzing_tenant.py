@@ -152,6 +152,8 @@ ALIAS_POR_SERVICIO = {
     # del módulo de encargos.
     ("identity", "rol_id"): "roltenant",
     ("integration", "proveedor_servicio_id"): "proveedor",
+    # La lección aprendida: la ruta dice «la lección»; el modelo, de qué es.
+    ("sales", "leccion_id"): "leccionoportunidad",
 }
 
 ALIAS_MODELO = {

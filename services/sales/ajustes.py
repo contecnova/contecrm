@@ -86,6 +86,14 @@ class AjustesSales(Settings):
     # perdido en la conciliación.
     erp_espera_confirmacion_horas: int = Field(24, ge=1, le=720)
 
+    # ── Lecciones aprendidas ──────────────────────────────────────────────
+    # Cuántas oportunidades ganadas del mismo embudo hacen falta para comparar
+    # una perdida con ellas («aquí tardó el doble que las ganadas»). Con menos,
+    # la comparación no dice nada y se calla en vez de inventar una referencia.
+    lecciones_minimo_comparables: int = Field(5, ge=1, le=1_000)
+    # Hasta cuántas actividades de la oportunidad se traen al expediente.
+    lecciones_actividades_max: int = Field(200, ge=1, le=5_000)
+
 
 registrar_claves(
     [

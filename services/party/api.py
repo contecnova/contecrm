@@ -1078,6 +1078,11 @@ def listar_actividades(
     # de otro cliente creyendo que era la suya.
     cuenta_id: UUID | None = Query(None),
     contacto_id: UUID | None = Query(None),
+    # Lo que cuelga de un registro concreto —una oportunidad, un caso—: la
+    # relación es polimórfica y sin esto no se podía preguntar por la actividad
+    # de una oportunidad (lo necesita su expediente de cierre).
+    objeto: str = Query("", max_length=60),
+    objeto_id: UUID | None = Query(None),
     mias: bool = Query(False, description="Solo las asignadas a quien pregunta"),
     vencidas: bool = Query(False),
     limite: int = Query(50, ge=1, le=200),
@@ -1089,6 +1094,10 @@ def listar_actividades(
         consulta = consulta.where(Actividad.cuenta_id == cuenta_id)
     if contacto_id is not None:
         consulta = consulta.where(Actividad.contacto_id == contacto_id)
+    if objeto:
+        consulta = consulta.where(Actividad.objeto == objeto)
+    if objeto_id is not None:
+        consulta = consulta.where(Actividad.objeto_id == objeto_id)
     if estado:
         consulta = consulta.where(Actividad.estado == estado)
     if tipo:

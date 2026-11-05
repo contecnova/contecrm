@@ -34,6 +34,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -44,7 +45,7 @@ import { Icono } from "@/componentes/Icono";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
-import { humanizar, importe, nombreDelRegistro } from "@/lib/formato";
+import { importe, nombreDelRegistro, rotuloDeOpcion } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
 import { recursoDeReferencia } from "@/lib/referencias";
 import { cn } from "@/lib/utiles";
@@ -97,7 +98,8 @@ export function Formulario({
   const fallosPorCampo = useMemo(() => {
     const mapa = new Map<string, string>();
     if (fallo instanceof ErrorApi) {
-      for (const f of fallo.campos) if (!mapa.has(f.campo)) mapa.set(f.campo, f.mensaje);
+      for (const f of fallo.campos)
+        if (!mapa.has(f.campo)) mapa.set(f.campo, f.mensaje);
     }
     return mapa;
   }, [fallo]);
@@ -125,12 +127,18 @@ export function Formulario({
   const { obligatorios, opcionales } = useMemo(() => {
     const exigidos = campos.filter((c) => c.obligatorio);
     if (exigidos.length > 0) {
-      return { obligatorios: exigidos, opcionales: campos.filter((c) => !c.obligatorio) };
+      return {
+        obligatorios: exigidos,
+        opcionales: campos.filter((c) => !c.obligatorio),
+      };
     }
     const preferidas = new Set(recurso?.columnas ?? []);
     const delante = campos.filter((c) => preferidas.has(c.nombre));
     if (delante.length === 0) return { obligatorios: campos, opcionales: [] };
-    return { obligatorios: delante, opcionales: campos.filter((c) => !preferidas.has(c.nombre)) };
+    return {
+      obligatorios: delante,
+      opcionales: campos.filter((c) => !preferidas.has(c.nombre)),
+    };
   }, [campos, recurso]);
 
   function enviar(evento: FormEvent) {
@@ -329,8 +337,10 @@ function Campo({
         >
           <option value="">—</option>
           {campo.opciones.map((o) => (
+            // El valor viaja tal cual; lo que se lee es el texto: «Descuento
+            // tardío», no «descuento_tardio».
             <option key={o} value={o}>
-              {o}
+              {rotuloDeOpcion(o)}
             </option>
           ))}
         </select>
@@ -424,34 +434,85 @@ function Opciones({
   alCambiar: (v: unknown) => void;
   ayuda?: string;
 }) {
+  // Un desplegable con casillas, no un muro de casillas a la vista: con doce
+  // opciones el formulario se llenaba de algo que casi nunca se toca. Cerrado
+  // dice lo elegido; abierto, se marca y se desmarca sin que se cierre.
+  const { t } = useTranslation();
   const puestos = Array.isArray(valor) ? valor.map(String) : [];
+  const [abierto, setAbierto] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
+  const disparador = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!abierto) return;
+    function alPulsar(e: MouseEvent) {
+      if (!caja.current?.contains(e.target as Node)) setAbierto(false);
+    }
+    function alTeclear(e: globalThis.KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setAbierto(false);
+      disparador.current?.focus();
+    }
+    document.addEventListener("mousedown", alPulsar);
+    document.addEventListener("keydown", alTeclear);
+    return () => {
+      document.removeEventListener("mousedown", alPulsar);
+      document.removeEventListener("keydown", alTeclear);
+    };
+  }, [abierto]);
+
+  const resumen = puestos.map((o) => rotuloDeOpcion(o)).join(", ");
   return (
-    <fieldset
-      aria-describedby={ayuda}
-      className="mt-1 flex flex-wrap gap-x-4 gap-y-1.5"
-    >
-      <legend className="sr-only">{campo.titulo}</legend>
-      {campo.opciones.map((opcion) => (
-        <label
-          key={opcion}
-          className="inline-flex items-center gap-1.5 text-titulin text-ink"
+    <div className="relative" ref={caja}>
+      <button
+        ref={disparador}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={abierto}
+        aria-describedby={ayuda}
+        aria-label={campo.titulo}
+        onClick={() => setAbierto((v) => !v)}
+        className="input-base flex items-center justify-between gap-2 text-left"
+      >
+        <span
+          className={cn("truncate", resumen ? "text-ink" : "text-ink-faint")}
         >
-          <input
-            type="checkbox"
-            checked={puestos.includes(opcion)}
-            onChange={(e) =>
-              alCambiar(
-                e.target.checked
-                  ? [...puestos, opcion]
-                  : puestos.filter((p) => p !== opcion),
-              )
-            }
-            className="h-4 w-4 rounded border-ink-dim accent-accent"
-          />
-          {opcion}
-        </label>
-      ))}
-    </fieldset>
+          {resumen || t("formulario.elegirVarios")}
+        </span>
+        <Icono nombre={abierto ? "expand_less" : "expand_more"} tamano="sm" />
+      </button>
+      {abierto ? (
+        <ul
+          role="listbox"
+          aria-multiselectable="true"
+          aria-label={campo.titulo}
+          className="absolute left-0 right-0 z-popover mt-1 max-h-64 overflow-y-auto rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3"
+        >
+          {campo.opciones.map((opcion) => {
+            const marcada = puestos.includes(opcion);
+            return (
+              <li key={opcion} role="option" aria-selected={marcada}>
+                <label className="flex cursor-pointer items-center gap-2 rounded px-3 py-1.5 text-dato text-ink hover:bg-paper-light">
+                  <input
+                    type="checkbox"
+                    checked={marcada}
+                    onChange={(e) =>
+                      alCambiar(
+                        e.target.checked
+                          ? [...puestos, opcion]
+                          : puestos.filter((p) => p !== opcion),
+                      )
+                    }
+                    className="h-4 w-4 rounded border-ink-dim accent-accent"
+                  />
+                  {rotuloDeOpcion(opcion)}
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -642,7 +703,7 @@ function Lineas({
                       <option value="">—</option>
                       {c.opciones.map((o) => (
                         <option key={o} value={o}>
-                          {humanizar(o)}
+                          {rotuloDeOpcion(o)}
                         </option>
                       ))}
                     </select>
@@ -815,7 +876,13 @@ function Pares({
 }
 
 /**
- * Elegir un registro de otro recurso, buscándolo por su nombre.
+ * Elegir un registro de otro recurso: un desplegable con buscador.
+ *
+ * Cerrado es un campo más del formulario, con el nombre de lo elegido; abierto,
+ * una capa con el buscador arriba y las opciones debajo, con el mismo aspecto
+ * que el selector de vistas de las listas. Hasta el 05-11-2026 era un buscador
+ * con la lista siempre abierta debajo, cuarenta filas ocupando el formulario
+ * aunque no se fuera a tocar el campo: lo vio quien lo usa y tenía razón.
  *
  * Trae las primeras doscientas filas y filtra en el navegador. No es una
  * búsqueda en el servidor y conviene decirlo: en una tabla de cien mil clientes
@@ -845,6 +912,18 @@ function Referencia({
   );
   const [busqueda, setBusqueda] = useState("");
   const [fallo, setFallo] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+  const [activa, setActiva] = useState(0);
+  const caja = useRef<HTMLDivElement>(null);
+  const disparador = useRef<HTMLButtonElement>(null);
+  const buscador = useRef<HTMLInputElement>(null);
+  const lista = `${id}-opciones`;
+
+  // Al abrir, el foco va al buscador: se abre para buscar. Con un efecto y no
+  // con `autoFocus`, que también lo pondría al montar la página.
+  useEffect(() => {
+    if (abierto) buscador.current?.focus();
+  }, [abierto]);
 
   useEffect(() => {
     const control = new AbortController();
@@ -854,10 +933,54 @@ function Referencia({
     return () => control.abort();
   }, [recurso.listar]);
 
+  useEffect(() => {
+    if (!abierto) return;
+    function alPulsar(e: MouseEvent) {
+      if (!caja.current?.contains(e.target as Node)) setAbierto(false);
+    }
+    document.addEventListener("mousedown", alPulsar);
+    return () => document.removeEventListener("mousedown", alPulsar);
+  }, [abierto]);
+
   const elegido = opciones?.find((o) => String(o.id) === String(valor ?? ""));
-  const filtradas = (opciones ?? []).filter((o) =>
-    nombreDelRegistro(o).toLowerCase().includes(busqueda.trim().toLowerCase()),
-  );
+  const filtradas = (opciones ?? [])
+    .filter((o) =>
+      nombreDelRegistro(o)
+        .toLowerCase()
+        .includes(busqueda.trim().toLowerCase()),
+    )
+    .slice(0, 50);
+
+  function cerrar() {
+    setAbierto(false);
+    setBusqueda("");
+    // El foco vuelve al campo: si se queda en el aire, quien va con teclado
+    // tiene que recorrer el formulario entero para volver aquí.
+    disparador.current?.focus();
+  }
+
+  function elegir(o: Record<string, unknown>) {
+    alCambiar(String(o.id));
+    cerrar();
+  }
+
+  function alTeclear(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiva((i) => Math.min(i + 1, filtradas.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiva((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      // Enter elige; no envía el formulario a medias.
+      e.preventDefault();
+      const o = filtradas[activa];
+      if (o) elegir(o);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cerrar();
+    }
+  }
 
   if (fallo) {
     // Si el listado no se puede leer, se deja escribir el identificador en vez
@@ -875,73 +998,134 @@ function Referencia({
     );
   }
 
+  const rotulo = elegido
+    ? nombreDelRegistro(elegido) || String(elegido.id)
+    : valor
+      ? // Elegido pero fuera de los doscientos primeros: se dice, y no se
+        // enseña el campo como vacío.
+        t("formulario.registroFueraDeLista")
+      : "";
+
   return (
-    <div>
-      {elegido ? (
-        <p className="mt-1 flex items-center gap-2">
-          <span className="chip-dato chip-dato--si">
-            {nombreDelRegistro(elegido)}
+    <div className="relative" ref={caja}>
+      <div className="relative">
+        <button
+          ref={disparador}
+          id={id}
+          type="button"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={abierto}
+          aria-controls={lista}
+          aria-describedby={ayuda}
+          onClick={() => {
+            setActiva(0);
+            setAbierto((v) => !v);
+          }}
+          className="input-base flex items-center justify-between gap-2 pr-16 text-left"
+        >
+          <span
+            className={cn("truncate", rotulo ? "text-ink" : "text-ink-faint")}
+          >
+            {opciones === null && !rotulo
+              ? t("app.cargando")
+              : rotulo ||
+                t("formulario.elegirRegistro", { recurso: recurso.nombre })}
           </span>
+        </button>
+        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint">
+          <Icono nombre={abierto ? "expand_less" : "expand_more"} tamano="sm" />
+        </span>
+        {valor && !campo.obligatorio ? (
           <button
             type="button"
             onClick={() => alCambiar("")}
-            className="btn-link"
+            aria-label={t("formulario.quitarEleccion", { campo: campo.titulo })}
+            className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-faint hover:text-ink"
           >
-            {t("formulario.cambiar")}
+            <Icono nombre="close" tamano="sm" />
           </button>
-        </p>
-      ) : (
-        <>
+        ) : null}
+      </div>
+      {/* El valor real, para que el formulario lo siga exigiendo cuando es
+          obligatorio: el botón de arriba no es el campo. */}
+      <input
+        type="hidden"
+        value={String(valor ?? "")}
+        required={campo.obligatorio}
+        readOnly
+      />
+      {abierto ? (
+        <div className="absolute left-0 right-0 z-popover mt-1 rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3">
           <input
-            id={id}
-            aria-describedby={ayuda}
+            ref={buscador}
             value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder={t("formulario.buscarRegistro", {
-              recurso: recurso.nombre.toLowerCase(),
-            })}
-            className="input-base"
+            onChange={(e) => {
+              setBusqueda(e.target.value);
+              setActiva(0);
+            }}
+            onKeyDown={alTeclear}
+            placeholder={t("formulario.buscarEnLista")}
+            aria-label={t("formulario.buscarEnLista")}
+            aria-controls={lista}
+            aria-activedescendant={
+              filtradas[activa] ? `${lista}-${activa}` : undefined
+            }
+            className="input-base mb-1"
             autoComplete="off"
           />
-          {/* El valor real, para que el formulario lo siga exigiendo cuando es
-              obligatorio: el buscador de arriba no es el campo. */}
-          <input
-            type="hidden"
-            value={String(valor ?? "")}
-            required={campo.obligatorio}
-            readOnly
-          />
-          {opciones === null ? (
-            <p className="mt-1 text-rotulo text-ink-faint">
-              {t("app.cargando")}
-            </p>
-          ) : (
-            <ul className="mt-1 max-h-44 overflow-y-auto rounded-lg border border-ink-dim/60">
-              {filtradas.slice(0, 40).map((o) => (
-                <li key={String(o.id)}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      alCambiar(String(o.id));
-                      setBusqueda("");
+          <ul
+            id={lista}
+            role="listbox"
+            aria-label={campo.titulo}
+            className="max-h-64 overflow-y-auto"
+          >
+            {opciones === null ? (
+              <li className="px-3 py-1.5 text-rotulo text-ink-faint">
+                {t("app.cargando")}
+              </li>
+            ) : filtradas.length === 0 ? (
+              <li className="px-3 py-1.5 text-rotulo text-ink-faint">
+                {t("formulario.sinCoincidencias")}
+              </li>
+            ) : (
+              filtradas.map((o, i) => {
+                const marcada = String(o.id) === String(valor ?? "");
+                return (
+                  <li
+                    key={String(o.id)}
+                    id={`${lista}-${i}`}
+                    role="option"
+                    aria-selected={marcada}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActiva(i)}
+                    onClick={() => elegir(o)}
+                    // El teclado va por el buscador (flechas e Intro, con
+                    // `aria-activedescendant`); esto cubre a quien llegue a
+                    // la opción por otro camino, como un lector de pantalla.
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        elegir(o);
+                      }
                     }}
-                    className="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-dato text-ink hover:bg-paper-light"
+                    className={cn(
+                      "cursor-pointer truncate rounded px-3 py-1.5 text-dato",
+                      marcada
+                        ? "bg-accent/10 font-semibold text-accent"
+                        : i === activa
+                          ? "bg-paper-light text-ink"
+                          : "text-ink",
+                    )}
                   >
-                    <span className="truncate">
-                      {nombreDelRegistro(o) || String(o.id)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {filtradas.length === 0 ? (
-                <li className="px-2.5 py-2 text-rotulo text-ink-faint">
-                  {t("formulario.sinCoincidencias")}
-                </li>
-              ) : null}
-            </ul>
-          )}
-        </>
-      )}
+                    {nombreDelRegistro(o) || String(o.id)}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

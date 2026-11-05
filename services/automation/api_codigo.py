@@ -471,16 +471,6 @@ def ejecuciones(extension_id: UUID, db: DbDep, limite: int = 50) -> Any:
 # ── Los endpoints propios, servidos ───────────────────────────────────────
 
 
-@router_propios.api_route(
-    "/{ruta:path}",
-    methods=list(ct.METODOS_ENDPOINT),
-    summary="Un endpoint propio del tenant",
-    description=(
-        "Ejecuta la extensión del endpoint con `{metodo, ruta, consulta, cuerpo}`. "
-        "Si devuelve `{estado, cuerpo}`, se contesta eso; si no, 200 con lo que "
-        "devuelva. El permiso lo declara cada endpoint y se comprueba al resolverlo."
-    ),
-)
 async def invocar_endpoint_propio(
     ruta: str, request: Request, db: DbDep, principal: AutenticadoDep
 ) -> Any:
@@ -529,6 +519,24 @@ async def invocar_endpoint_propio(
             estado = 200
         return JSONResponse(status_code=estado, content=resultado.get("cuerpo"))
     return resultado
+
+
+# Una ruta por método, y no una con todos: con una sola, FastAPI publica el
+# mismo `operationId` para los cinco métodos y un cliente generado del
+# contrato choca consigo mismo. Lo avisaba en cada arranque y no lo leía nadie.
+for _metodo in ct.METODOS_ENDPOINT:
+    router_propios.add_api_route(
+        "/{ruta:path}",
+        invocar_endpoint_propio,
+        methods=[_metodo],
+        operation_id=f"invocar_endpoint_propio_{_metodo.lower()}",
+        summary="Un endpoint propio del tenant",
+        description=(
+            "Ejecuta la extensión del endpoint con `{metodo, ruta, consulta, cuerpo}`. "
+            "Si devuelve `{estado, cuerpo}`, se contesta eso; si no, 200 con lo que "
+            "devuelva. El permiso lo declara cada endpoint y se comprueba al resolverlo."
+        ),
+    )
 
 
 ROUTERS_CODIGO = [router_codigo, router_propios]

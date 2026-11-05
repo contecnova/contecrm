@@ -72,7 +72,11 @@ export default {
     // Estaba escrito en el código, en castellano y sin pasar por aquí: una
     // frase suelta que ninguna traducción alcanzaba.
     sinLineas: "Todavía no hay ninguna línea.",
-    buscarRegistro: "Busca un {{recurso}} por su nombre",
+    elegirRegistro: "Elegir en {{recurso}}…",
+    buscarEnLista: "Buscar por nombre",
+    elegirVarios: "Elegir uno o varios…",
+    registroFueraDeLista: "Elegido (no está entre los primeros 200)",
+    quitarEleccion: "Quitar lo elegido en {{campo}}",
     sinCoincidencias: "Nada coincide",
     cambiar: "Cambiar",
     identificadorAMano: "Pega aquí el identificador",

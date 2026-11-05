@@ -27,6 +27,11 @@ const RAIZ = join(__dirname, "..", "..", "src");
 
 /** Rutas que abren un registro y no ofrecen edición, y por qué. */
 const SIN_EDICION_PORQUE: Record<string, string> = {
+  Leccion:
+    "Una lección no se edita campo a campo: se escribe en su post-mortem y se " +
+    "firma, y al firmarla se congela con el expediente de ese momento. El " +
+    "contrato de `/lecciones/{id}` no declara `PATCH` a propósito: una lección " +
+    "firmada que se pudiera retocar después dejaría de ser lo que se aprendió.",
   Conversacion:
     "El contrato de `/conversaciones/{id}` no declara `PATCH`: una conversación " +
     "no se edita campo a campo, se responde, se transfiere o se escala a una " +

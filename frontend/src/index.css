@@ -834,6 +834,16 @@
   .chip-dato--no {
     @apply text-ink-faint line-through opacity-70;
   }
+  /* Un dato que pide atención —«149 días en Cualificación» cuando las ganadas
+     tardan 20— y uno que es malo de por sí —«Perdida», «en contra»—. Sólo
+     existían «sí» y «no», y «no» TACHA: se usó para marcar lo grave y la
+     ficha de una lección enseñaba «Perdida» tachada, que se lee al revés. */
+  .chip-dato--aviso {
+    @apply bg-warning/10 text-warning border-warning/40;
+  }
+  .chip-dato--mal {
+    @apply bg-danger/10 text-danger border-danger/40;
+  }
 
   /* ── Tab nav — Material 3 segmented chips ─────────────────────────── */
   .tab-button {

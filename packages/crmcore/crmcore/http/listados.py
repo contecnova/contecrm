@@ -599,6 +599,14 @@ NO_EDITABLES = frozenset(
         "deleted_at",
         "deleted_by",
         "version",
+        # Quién y desde dónde creó o tocó el registro: los pone la base en cada
+        # escritura. Estaban fuera de esta lista y el PATCH de diez fichas
+        # —oportunidades, contactos, casos…— dejaba reescribir quién creó un
+        # registro. Medido el 05-11-2026 desde el formulario de edición.
+        "created_by",
+        "updated_by",
+        "created_origen",
+        "updated_origen",
         # Enlaces que pone el sistema, no una persona. Ofrecerlos en el
         # formulario es pedir que alguien teclee un identificador de treinta y
         # seis caracteres para «arreglar» algo que se arregla desde la acción
@@ -650,6 +658,21 @@ NO_EDITABLES = frozenset(
         "destino_id",
     }
 )
+
+
+def _ya_montada(router: Any, ruta: str, metodo: str) -> bool:
+    """Si el router ya atiende `metodo` en `ruta` con una escrita a mano.
+
+    Las automáticas de `montar_listado` no cuentan: ésas se retiran antes, y la
+    de `montar_ficha` es la que se está decidiendo si se monta.
+    """
+    completa = f"{getattr(router, 'prefix', '')}{ruta}"
+    return any(
+        getattr(r, "path", "") == completa
+        and metodo in (getattr(r, "methods", None) or set())
+        and not getattr(r, "ficha_automatica", False)
+        for r in router.routes
+    )
 
 
 def _con_parametro(funcion: Any, parametro: str, cuerpo: type | None = None) -> Any:
@@ -743,6 +766,12 @@ def montar_ficha(
         nombre_campo: columna
         for nombre_campo, columna in columnas.items()
         if nombre_campo not in NO_EDITABLES
+        # Lo que calcula el sistema lo dice la propia columna, no una lista
+        # aquí: quien añade un campo calculado lo marca donde lo declara.
+        and not (getattr(columna, "columns", None) and columna.columns[0].info.get("calculado"))
+        # Un resumen criptográfico no se teclea: escribirlo es cambiar el
+        # secreto sin pasar por la operación que lo rota.
+        and not nombre_campo.endswith("_hash")
         and (editable is None or nombre_campo in editable)
         # Las claves ajenas al dueño del registro no se cambian por aquí: mover
         # un contacto de cuenta tiene consecuencias —visibilidad, territorio,
@@ -855,20 +884,28 @@ def montar_ficha(
     # como el texto «Parche» —un nombre local que no puede resolver— y el
     # servicio no arrancaba.
     editar.__name__ = f"editar_{objeto.replace('-', '_').replace('.', '_')}"
-    router.patch(
-        ruta_registro,
-        response_model=dict,
-        dependencies=[Depends(exige_permiso(permiso_escribir))],
-        summary=f"Editar {nombre.lower()}",
-        description=(
-            "Se cambia **solo lo que se envía**. Lo que no aparece en el cuerpo "
-            "se queda como está, que es distinto de mandarlo vacío.\n\n"
-            "**Manda `If-Match` con el ETag que te dio la lectura.** Si alguien ha "
-            "cambiado el registro entre medias, contesta 409 en vez de pisarlo: dos "
-            "personas con la misma ficha abierta y sin esto, la segunda en guardar "
-            "borra lo de la primera y ninguna se entera."
-        ),
-    )(_con_parametro(editar, parametro, Parche))
+    # **La escrita a mano manda, también aquí.** Si el recurso ya tiene su
+    # PATCH, éste no se registra. Registrarlo no era inofensivo: FastAPI
+    # atiende con el primero que casa —el escrito a mano, con su bloqueo y su
+    # política— pero el contrato publica el último, así que el formulario se
+    # construía con este esquema y ofrecía campos que el servidor descartaba
+    # al guardar. Medido el 05-11-2026 en la oportunidad: 22 campos en el
+    # formulario —el estado, «bloqueada», quién la creó— y 10 que se guardaban.
+    if not _ya_montada(router, ruta_registro, "PATCH"):
+        router.patch(
+            ruta_registro,
+            response_model=dict,
+            dependencies=[Depends(exige_permiso(permiso_escribir))],
+            summary=f"Editar {nombre.lower()}",
+            description=(
+                "Se cambia **solo lo que se envía**. Lo que no aparece en el cuerpo "
+                "se queda como está, que es distinto de mandarlo vacío.\n\n"
+                "**Manda `If-Match` con el ETag que te dio la lectura.** Si alguien ha "
+                "cambiado el registro entre medias, contesta 409 en vez de pisarlo: dos "
+                "personas con la misma ficha abierta y sin esto, la segunda en guardar "
+                "borra lo de la primera y ninguna se entera."
+            ),
+        )(_con_parametro(editar, parametro, Parche))
 
     if tiene_borrado:
         # Se declara qué modelo hay detrás de este nombre de objeto: la entrada
@@ -916,19 +953,21 @@ def montar_ficha(
             )
 
         borrar.__name__ = f"borrar_{objeto.replace('-', '_').replace('.', '_')}"
-        router.delete(
-            ruta_registro,
-            status_code=204,
-            dependencies=[Depends(exige_permiso(permiso_borrar or permiso_escribir))],
-            summary=f"Borrar {nombre.lower()}",
-            description=(
-                "Borrado **lógico**: el registro va a la papelera, deja de "
-                "listarse y se puede restaurar desde ahí. Lo que se borra por "
-                "error se descubre siempre más tarde que el borrado.\n\n"
-                "Si hay registros que lo usan **no se borra**: responde 409 "
-                "diciendo qué depende y cuántos. Para eso está archivar."
-            ),
-        )(_con_parametro(borrar, parametro))
+        # Lo mismo con el borrado: si el recurso tiene el suyo, ése manda.
+        if not _ya_montada(router, ruta_registro, "DELETE"):
+            router.delete(
+                ruta_registro,
+                status_code=204,
+                dependencies=[Depends(exige_permiso(permiso_borrar or permiso_escribir))],
+                summary=f"Borrar {nombre.lower()}",
+                description=(
+                    "Borrado **lógico**: el registro va a la papelera, deja de "
+                    "listarse y se puede restaurar desde ahí. Lo que se borra por "
+                    "error se descubre siempre más tarde que el borrado.\n\n"
+                    "Si hay registros que lo usan **no se borra**: responde 409 "
+                    "diciendo qué depende y cuántos. Para eso está archivar."
+                ),
+            )(_con_parametro(borrar, parametro))
 
     # Archivar: retirar sin borrar. Se monta cuando el modelo tiene con qué
     # marcarse como retirado, y es la salida de lo que no se puede borrar

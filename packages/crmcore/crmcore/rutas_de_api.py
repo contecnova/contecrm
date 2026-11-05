@@ -73,6 +73,8 @@ PREFIJOS: dict[str, str] = {
     "party-admin": "party",
     "leads": "sales",
     "opportunities": "sales",
+    # Las lecciones aprendidas de las oportunidades cerradas.
+    "lecciones": "sales",
     "pipelines": "sales",
     "pipeline": "sales",
     "lead-routing": "sales",

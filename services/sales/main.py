@@ -15,6 +15,7 @@ from services.sales.api_coste import ROUTERS_COSTE
 from services.sales.api_cotizacion import ROUTERS_COTIZACION
 from services.sales.api_embebido import router_embebido
 from services.sales.api_ingresos import ROUTERS_INGRESOS
+from services.sales.api_lecciones import ROUTERS_LECCIONES
 from services.sales.api_partners import ROUTERS_PARTNERS
 from services.sales.api_proveedores import ROUTERS_PROVEEDORES
 from services.sales.api_territorios import ROUTERS_TERRITORIOS
@@ -58,6 +59,7 @@ app = crear_servicio(
         *ROUTERS_PARTNERS,
         *ROUTERS_COMISIONES,
         *ROUTERS_PROVEEDORES,
+        *ROUTERS_LECCIONES,
         router_embebido,
     ],
     al_arrancar=_al_arrancar,

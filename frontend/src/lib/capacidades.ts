@@ -394,6 +394,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // Los territorios con su jerarquía, las categorías y periodos de forecast
   // con su cierre, las cuotas y su consecución, el ingreso previsto y el
   // resumen del pipeline con las oportunidades estancadas.
+  // Las lecciones aprendidas: el expediente de cada cierre comparado con las
+  // ganadas del mismo embudo, el post-mortem firmado y lo que se repite.
+  "lecciones": [
+    "CRM-03.01.01.15",
+  ],
   "prevision": [
     // El cierre del objetivo de un periodo, con su historial de reaperturas.
     "CRM-03.02.02.08",

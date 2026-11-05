@@ -1373,6 +1373,28 @@ abre. Ahora dentro está:
 Una venta que ha cambiado tres veces de fecha no es la misma que una que nunca
 se movió, aunque hoy tengan el mismo importe y la misma etapa.
 
+### Por qué se perdió (o se ganó): las lecciones aprendidas
+
+Dónde: **Ventas › Lecciones aprendidas**. Y dentro de cualquier oportunidad
+cerrada, el panel **«Por qué se perdió»** (o «se ganó»), con el botón para abrir
+su lección.
+
+1. Arriba ves **lo que se repite**: los factores que más pesan en las perdidas y
+   en las ganadas, y en qué etapa se pierde. Cada gráfica tiene «Ver como
+   tabla».
+2. Debajo, la lista. Es como la de oportunidades: **Filtrar** (por resultado,
+   estado o motivo), buscar, elegir columnas y exportar. Para ver lo que te toca
+   firmar, filtra por estado «pendiente».
+3. Al abrir una lección ves **en qué se apartó de las ganadas**, con el número,
+   y debajo todo lo que pasó: etapas y días, presupuestos y descuentos, quién
+   decidía y con qué postura, la competencia y la actividad.
+4. **Si es tuya y está sin firmar**: pulsa **«Proponer con IA»** para tener un
+   borrador hecho con el expediente, corrígelo y pulsa **«Firmar la lección»**.
+   En una perdida, «Qué pasó» y «Qué haríamos distinto» son obligatorios.
+
+Una lección firmada **no se cambia**: es lo que se sabía al firmarla. Si algo
+estaba mal, se dice en la siguiente.
+
 **Lo que ves por tu territorio.** Además de lo tuyo y de lo que te compartan, ves
 las cuentas de los territorios que trabajas — como responsable o como miembro. Dos
 cosas que conviene saber: si te acaban de añadir a un territorio, lo verás en

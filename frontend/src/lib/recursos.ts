@@ -1047,6 +1047,20 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         permiso: "activity:read",
       },
     ],
+  "lecciones": [
+      {
+        nombre: "Lecciones aprendidas",
+        principal: true,
+        objeto: "leccion",
+        listar: "/api/v1/lecciones",
+        servicio: "sales",
+        permiso: "opportunity:read",
+        columnas: ["titulo", "resultado", "motivo", "estado", "factores", "importe", "cerrada_el"],
+        // Lo que se repite en las firmadas, encima de la lista: los factores
+        // que más pesan, la etapa en la que se pierde y lo que queda por firmar.
+        resumen: ["/api/v1/lecciones/patrones"],
+      },
+  ],
   "oportunidades": [
       {
         nombre: "Ofertas",

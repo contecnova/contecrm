@@ -554,6 +554,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "party"
     }
   ],
+  "lecciones": [
+    {
+      "r": "/api/v1/lecciones",
+      "p": "opportunity:read",
+      "o": "leccion",
+      "s": "sales"
+    }
+  ],
   "oportunidades": [
     {
       "r": "/api/v1/presupuestos",

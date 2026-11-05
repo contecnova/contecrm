@@ -279,14 +279,19 @@ class Oportunidad(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     business_unit_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
     # ── Seguimiento (CRM-03.01.01.12) ─────────────────────────────────────
+    # Los tres los pone el sistema —mover de etapa, registrar actividad,
+    # convertir un lead— y por eso van marcados `calculado`: la ficha no los
+    # ofrece para editar. Salían en el formulario con la fecha en bruto.
     etapa_desde: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False, info={"calculado": True}
     )
     ultima_actividad_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
+        DateTime(timezone=True), nullable=True, info={"calculado": True}
     )
     # De dónde vino, si vino de un lead.
-    lead_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    lead_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"calculado": True}
+    )
 
     __table_args__ = (
         Index("ix_oportunidades_tenant_estado", "tenant_id", "estado", "fecha_cierre"),
@@ -751,6 +756,9 @@ from services.sales.ingresos import (  # noqa: E402,F401
     RelacionOportunidad,
     RolCompra,
 )
+
+# Lo que enseñó cada oportunidad cerrada (lecciones aprendidas, 05-11-2026).
+from services.sales.lecciones import LeccionOportunidad  # noqa: E402,F401
 from services.sales.partners import (  # noqa: E402,F401
     AccesoPartner,
     AcuerdoCanal,

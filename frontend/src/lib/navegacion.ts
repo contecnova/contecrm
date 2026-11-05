@@ -416,6 +416,7 @@ const COLOR_POR_MODULO: Record<string, string> = {
   leads: "#F88962", // Candidatos, naranja
   oportunidades: "#FCB95B", // amarillo
   prevision: "#5CA5A5",
+  lecciones: "#E57F8A", // rosa: lo que se aprende de lo que salió mal
   canal: "#56AADF",
   actividades: "#6BBF59",
   casos: "#F2CF5B", // ámbar

@@ -34,7 +34,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   BotonesDeRegistro,
@@ -56,6 +56,7 @@ import { listar } from "@/lib/listados";
 import { escalar, fecha, humanizar, importe as comoImporte } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+import { cn } from "@/lib/utiles";
 
 interface Oportunidad {
   id: string;
@@ -516,6 +517,10 @@ export function Oportunidad() {
         />
       ) : null}
 
+
+      {op && (op.estado === "perdida" || op.estado === "ganada") ? (
+        <PorQueSeCerro id={op.id} estado={op.estado} />
+      ) : null}
 
       <AsistenteIA
 
@@ -1091,6 +1096,82 @@ function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
       {plan.aviso ? (
         <p className="mt-1 text-rotulo text-ink-faint">{plan.aviso}</p>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * Por qué se cerró así, en la propia oportunidad: las señales del expediente y
+ * su lección. Si el post-mortem obligatorio está sin firmar, se dice aquí, que
+ * es donde lo ve quien la llevaba.
+ */
+function PorQueSeCerro({ id, estado }: { id: string; estado: string }) {
+  const { t } = useTranslation();
+  const [datos, setDatos] = useState<{
+    senales: { factor: string; texto: string }[];
+    leccion: { id: string; estado: string; obligatoria: boolean } | null;
+  } | null>(null);
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<NonNullable<typeof datos>>(`/api/v1/opportunities/${id}/expediente`, {
+      signal: control.signal,
+    })
+      .then((r) => setDatos(r.datos))
+      .catch(salvoCancelacion(() => setDatos(null)));
+    return () => control.abort();
+  }, [id]);
+  if (!datos) return null;
+  const pendiente = datos.leccion?.estado === "pendiente" && datos.leccion.obligatoria;
+  // Con la forma de los demás paneles de la ficha —rótulo de sección, filas
+  // separadas, el factor como etiqueta—, no con un encabezado propio.
+  return (
+    <section
+      className={cn("card mb-4 p-4", pendiente && "border-warning/50")}
+      aria-label={t("oportunidad.porQue.titulo")}
+    >
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="section-label">
+          {t(
+            estado === "perdida"
+              ? "oportunidad.porQue.perdida"
+              : "oportunidad.porQue.ganada",
+          )}
+        </h2>
+        {datos.leccion ? (
+          <Link
+            to={`/m/lecciones/leccion/${datos.leccion.id}`}
+            className={pendiente ? "btn-primary" : "btn-secondary"}
+          >
+            {t(
+              pendiente
+                ? "oportunidad.porQue.firmar"
+                : "oportunidad.porQue.verLeccion",
+            )}
+          </Link>
+        ) : null}
+      </div>
+      {pendiente ? (
+        <p className="text-rotulo text-warning">
+          {t("oportunidad.porQue.pendiente")}
+        </p>
+      ) : null}
+      {datos.senales.length ? (
+        <ul className="divide-y divide-ink-dim/30">
+          {datos.senales.map((s, i) => (
+            <li
+              key={i}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
+              <span className="chip-dato">{humanizar(s.factor)}</span>
+              <span className="text-dato text-ink">{s.texto}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-dato text-ink-muted">
+          {t("oportunidad.porQue.sinSenales")}
+        </p>
+      )}
     </section>
   );
 }

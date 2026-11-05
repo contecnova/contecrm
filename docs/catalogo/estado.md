@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**778 capacidades**: 🔧 3 en-curso · ✅ 775 hecho
+**783 capacidades**: 🔧 3 en-curso · ✅ 777 hecho · ⬜ 3 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -649,7 +649,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-66 capacidades · ✅ 66
+70 capacidades · ✅ 67 · ⬜ 3
 
 ### 3.1 Pipeline y oportunidades
 
@@ -671,6 +671,10 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.01.12` | Antigüedad por etapa, estancamiento y alertas de inactividad | C | 1 | sales | ✅ | contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa) |
 | `CRM-03.01.01.13` | Historial de cambios de importe y fecha (slippage tracking) | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.14` | Bloqueo de edición tras cierre y proceso de reapertura auditado | A | 1 | sales | ✅ | — |
+| `CRM-03.01.01.15` | Lecciones aprendidas de cada cierre: expediente comparado con las ganadas del mismo embudo, post-mortem obligatorio en las perdidas con borrador de la IA, firmado y congelado, y lo que se repite | A | 2 | sales | ✅ | — |
+| `CRM-03.01.01.16` | Consejos de las lecciones en las oportunidades abiertas: las del mismo cliente y las parecidas por significado, ganadas y perdidas, como «haz esto / no hagas esto» con la lección citada | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.01.17` | Avisos de las lecciones en los momentos clave de una oportunidad: al crearla, al cambiar de etapa, al mandar el presupuesto y al descontar | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.01.18` | Resumen semanal de lecciones para quien dirige el equipo: lo firmado, lo pendiente y lo que se repite | B | 2 | sales | ⬜ | — |
 
 #### CRM-03.01.02 · Metodologías de venta
 
@@ -1079,7 +1083,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-108 capacidades · ✅ 108
+109 capacidades · ✅ 109
 
 ### 7.1 Administración funcional
 
@@ -1208,6 +1212,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.31` | Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.32` | Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.33` | Ayuda en producto: el manual de usuario accesible desde la pantalla en la que estás, no en otro sitio | A | 1 | front | ✅ | — |
+| `CRM-07.04.03.34` | Lecciones aprendidas: módulo de Ventas con la lista, lo que se repite dibujado encima y la ficha con el expediente y el post-mortem | A | 2 | front | ✅ | — |
 
 #### CRM-07.04.04 · Calidad del front
 

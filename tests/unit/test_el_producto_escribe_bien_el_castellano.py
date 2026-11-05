@@ -78,6 +78,7 @@ AMBIGUAS = {
     "mando": "el sustantivo, no «mandó»",
     "publica": "también es el verbo",
     "salto": "el sustantivo, no «saltó»",
+    "retraso": "`veces_que_se_retraso` es el verbo, pero «el retraso» es el sustantivo",
 }
 
 

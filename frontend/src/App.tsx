@@ -123,6 +123,10 @@ const Cuadros = pantalla(
   () => import("@/paginas/Cuadros"),
   (m) => m.Cuadros,
 );
+const Leccion = pantalla(
+  () => import("@/paginas/Leccion"),
+  (m) => m.Leccion,
+);
 const Coste = pantalla(
   () => import("@/paginas/Coste"),
   (m) => m.Coste,
@@ -379,6 +383,7 @@ export function App() {
               —`/ingresos/…`, `/forecast/…`—, que la ficha genérica no
               descubre porque busca por prefijo común. */}
           <Route path="/m/oportunidades/oportunidad/:id" element={<Oportunidad />} />
+          <Route path="/m/lecciones/leccion/:id" element={<Leccion />} />
           {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
               —ajustes, fotos, desglose, deslizamiento— se dirigen por su
               clave, y pasarles el identificador las deja en 404. */}

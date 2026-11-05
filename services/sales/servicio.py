@@ -630,6 +630,12 @@ def _cerrar(uow: UnidadDeTrabajo, oportunidad: Oportunidad, *, ganada: bool, mot
     # concluir» para siempre, con el archivo lleno de revisiones.
     anotar_resultado(uow, oportunidad.id, ganada=ganada)
 
+    # La lección: pendiente desde ya, y obligatoria si se ha perdido. Sin ella,
+    # lo que enseñó esta oportunidad se queda en la cabeza de quien la llevaba.
+    from services.sales import lecciones
+
+    lecciones.al_cerrar(uow, oportunidad, ganada=ganada)
+
     uow.emitir(
         "opportunity.won" if ganada else "opportunity.lost",
         subject=("oportunidad", oportunidad.id),

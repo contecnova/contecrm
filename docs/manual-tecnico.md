@@ -609,6 +609,37 @@ porque volverían a cerrar la puerta.
 
 ---
 
+### Lecciones aprendidas por dentro
+
+`services/sales/lecciones.py` (modelo, expediente, señales, firma y patrones) y
+`services/sales/api_lecciones.py` (rutas). Tabla `sales.lecciones_oportunidad`,
+una fila por oportunidad cerrada.
+
+- **Nace** en `_cerrar` (`servicio.py`) con `al_cerrar`: obligatoria en las
+  perdidas. Las cerradas antes se crean con `POST /lecciones/crear-de-las-cerradas`,
+  sin obligar; se puede pedir más de una vez.
+- **El expediente** se calcula al pedirlo (`GET /opportunities/{id}/expediente`
+  o la ficha `GET /lecciones/{id}`). La actividad y los nombres de los decisores
+  se piden a party **con la identidad de quien mira** (`ia_ficha.leer`): un
+  decisor que esa persona no puede ver sale sin nombre, no con uno inventado. La
+  fecha de una actividad es su `inicio_at`, después `fin_at`, `completada_at`,
+  `vence_at` y `created_at`: party no guarda «realizada».
+- **Al firmar** (`POST /lecciones/{id}/firmar`) el expediente se guarda en
+  `hechos` y la ficha enseña ése desde entonces. La firma queda en la cadena de
+  auditoría y emite `opportunity.lesson.signed`.
+- **La propuesta de la IA** (`POST /lecciones/{id}/proponer`) usa la plantilla
+  `leccion_oportunidad` de intelligence con el expediente como contexto, y no
+  firma nada. Exige `ia:usar`.
+- **Patrones** (`GET /lecciones/patrones`): desgloses planos que el front dibuja
+  como cualquier medida de un módulo —ver «El front oficial»—.
+- **Ajustes**: `lecciones_minimo_comparables` (5) y
+  `lecciones_actividades_max` (200), en Admin › Ajustes.
+- **Datos de demostración**: `scripts/sembrar_configuracion.py --parte
+  lecciones`. Firma 42 con textos que empiezan por «Demostración:».
+
+En el front es el módulo `lecciones` (`recursos.ts`), con su ficha a medida en
+`/m/lecciones/leccion/:id` (`paginas/Leccion.tsx`).
+
 ### El front oficial
 
 React, Vite, TypeScript y Tailwind, **el mismo sistema de diseño que contecmind**
@@ -783,6 +814,30 @@ esté dentro del árbol caído sí escuche la ruta.
 
 Gate: `frontend/src/pruebas/el_error_no_se_queda_pegado.test.tsx`, validado
 plantando la clave no reactiva.
+
+
+**Piezas comunes que cambiaron el 05-11-2026**, y que valen para todas las
+pantallas:
+
+- **Elegir es un desplegable.** En `componentes/Formulario.tsx`, `Referencia`
+  (un registro de otro recurso) es un campo cerrado con el nombre de lo elegido,
+  una capa con buscador al abrir, teclado (flechas, Intro, Escape) y una × para
+  quitarlo si no es obligatorio. `Opciones` (lista múltiple) es lo mismo con
+  casillas dentro. Antes eran una lista siempre abierta y un muro de casillas.
+  Las opciones se leen con `rotuloDeOpcion` («Descuento tardío», y las siglas
+  como vienen). Lo vigila `pruebas/elegir_es_un_desplegable.test.tsx`.
+- **Las medidas de un módulo dibujan sus desgloses.** `Medidas` (en
+  `paginas/Modulo.tsx`) pinta como barras horizontales, con `Grafica`, cualquier
+  campo `{categoría: número}` de una ruta de `resumen`. Antes se descartaban sin
+  avisar. Para que una medida nueva salga dibujada basta con devolverla plana.
+- **`escalar`** separa las listas con «, » y escribe los códigos `snake_case`
+  como texto; una palabra suelta no se toca, porque puede ser un nombre.
+- **`nombreDelRegistro`** prefiere `nombre_completo` a `nombre`.
+- **Insignias de dato**: además de `chip-dato--si` y `chip-dato--no` (que
+  tacha: significa «no»), `chip-dato--aviso` y `chip-dato--mal` para lo que pide
+  atención y lo que es malo de por sí.
+- Los rótulos de los campos que son referencias pierden el «ID»: «Contacto», no
+  «Contacto ID».
 
 ## 2. Cómo se despliega
 
@@ -1189,6 +1244,29 @@ borrado en cascada, hecho a mano y sin enterarse.
 La salida es **archivar**: `POST {ficha}/archivar`, que monta `montar_ficha`
 cuando el modelo tiene `activo`, `activa` o `estado`. Deja de ofrecerse de aquí
 en adelante y no toca lo que ya pasó.
+
+**Qué ofrece el PATCH genérico, y qué no** (05-11-2026). `montar_ficha` saca
+los campos editables del modelo, menos tres familias:
+
+- las de `NO_EDITABLES`: identidad, tenant, fechas de alta y baja y, desde esta
+  fecha, **la auditoría** —`created_by`, `updated_by`, `created_origen`,
+  `updated_origen`—, que el PATCH de diez fichas dejaba reescribir;
+- las columnas marcadas `info={"calculado": True}`, que pone el sistema y no
+  una persona (en la oportunidad: `etapa_desde`, `ultima_actividad_at`,
+  `lead_id`). Un campo calculado nuevo se marca donde se declara;
+- cualquier `*_hash`: un resumen criptográfico no se teclea.
+
+Y **si el recurso ya tiene su PATCH o su DELETE escrito a mano, el genérico no
+se registra.** Antes se registraban los dos: FastAPI atendía con el primero —el
+escrito a mano, con su bloqueo y su política—, pero el contrato publicaba el
+último, así que el formulario de edición ofrecía 22 campos de la oportunidad y
+el servidor guardaba 10. Medido en la oportunidad, que era la única así.
+
+**Medido y pendiente**: unos setenta campos más que mantiene el sistema siguen
+saliendo editables en los PATCH genéricos —el `total` de pedidos y
+presupuestos, los vencimientos de SLA de un caso, `ultima_ejecucion_at`…—.
+Clasificarlos pide mirar quién escribe cada uno; los que lo escribe una persona
+(`vence_at`, `inicio_at`) tienen que seguir siendo editables.
 
 **Dónde aparece el borrado.** `montar_ficha` registra el borrado cuando el
 modelo tiene borrado lógico, así que la regla «donde se puede editar se puede

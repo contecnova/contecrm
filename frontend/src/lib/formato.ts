@@ -191,6 +191,12 @@ const MARCA_DE_TIEMPO = /_at$/;
  * una lista imaginada.
  */
 const CON_TILDE: Record<string, string> = {
+  tardio: "tardío",
+  leccion: "lección",
+  hariamos: "haríamos",
+  movio: "movió",
+  multiple: "múltiple",
+  tenian: "tenían",
   // `mencion_neutra` es uno de los tipos de lo que se recoge en redes, y el
   // humanizador lo pintaba «Mencion neutra». El producto escribe «menciones»
   // con tilde en todas partes menos ahí.
@@ -561,6 +567,26 @@ export function humanizar(campo: string | null | undefined): string {
   return [inicio, ...palabras.slice(1)].join(" ");
 }
 
+/**
+ * El texto de una opción de lista: `descuento_tardio` → «Descuento tardío».
+ *
+ * No es `humanizar`, que es para nombres de campo: aquél quita prefijos
+ * técnicos y pasa todo a minúsculas, y una opción como `EUR` o `B2B` salía
+ * «Eur». Las siglas se quedan como vienen.
+ */
+export function rotuloDeOpcion(valor: string): string {
+  if (!valor || valor === valor.toUpperCase()) return valor;
+  const palabras = valor
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((p) => enCastellano(p.toLowerCase()));
+  const primera = palabras[0] ?? "";
+  return [
+    primera.charAt(0).toUpperCase() + primera.slice(1),
+    ...palabras.slice(1),
+  ].join(" ");
+}
+
 /** ¿Hay algo que enseñar? Una lista vacía y un objeto vacío no lo son. */
 export function tieneDato(valor: unknown): boolean {
   if (valor === null || valor === undefined || valor === "") return false;
@@ -569,7 +595,11 @@ export function tieneDato(valor: unknown): boolean {
   return true;
 }
 
+/** Un código de opción: `descuento_tardio`, `en_curso`. */
+const CODIGO_DE_OPCION = /^[a-z][a-z0-9]*(_[a-z0-9]+)+$/;
+
 /** Un número, una fecha o un texto, escritos en castellano. */
+
 export function escalar(valor: unknown, campo = "", moneda = ""): string {
   // **Sin dato es una raya, nunca la palabra «null».** `String(null)` da
   // «null», y eso llegaba a la pantalla a través de `trozos`: la pestaña
@@ -590,7 +620,27 @@ export function escalar(valor: unknown, campo = "", moneda = ""): string {
         : DINERO.format(n)
       : NUMERO.format(n);
   if (typeof valor === "number") return comoDinero(valor);
+  // Una lista, separada como se escribe —«Precio, Descuento tardío»— y no
+  // como la pinta `String()`: «precio,descuento_tardio».
+  if (Array.isArray(valor)) {
+    if (!valor.length) return "—";
+    // Si todos son códigos —`competidor`, `decisor_en_contra`—, se escriben
+    // todos como texto: tratar sólo los que llevan guion bajo dejaba
+    // «competidor, Decisor en contra» en la misma línea.
+    const codigos = valor.every(
+      (v) => typeof v === "string" && /^[a-z0-9_]+$/.test(v),
+    );
+    return valor
+      .map((v) =>
+        codigos ? rotuloDeOpcion(String(v)) : escalar(v, campo, moneda),
+      )
+      .join(", ");
+  }
   const texto = String(valor);
+  // Un código de opción —`descuento_tardio`, `en_curso`— se lee como texto.
+  // Sólo con guion bajo: una palabra suelta puede ser un nombre o un
+  // identificador corto, y cambiarle la mayúscula lo falsearía.
+  if (CODIGO_DE_OPCION.test(texto)) return rotuloDeOpcion(texto);
   // Los decimales llegan como cadena desde la API (`Numeric` en JSON es texto
   // para no perder precisión), así que hay que reconocerlos aquí.
   if (/^-?\d+(\.\d+)?$/.test(texto) && texto.length < 18) {
@@ -715,8 +765,11 @@ export function esIdentificadorTecnico(campo: string): boolean {
  * cuál era.
  */
 const CAMPOS_DE_NOMBRE = [
-  "nombre",
+  // El completo antes que el nombre: quien trae los dos es una persona, y su
+  // `nombre` es sólo el de pila. El selector de contactos ofrecía «Paco»,
+  // «Ana», «Silvia»… y dos Silvias que no había forma de distinguir.
   "nombre_completo",
+  "nombre",
   "asunto",
   "titulo",
   "razon_social",

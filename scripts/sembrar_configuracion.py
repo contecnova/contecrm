@@ -5928,6 +5928,197 @@ def sembrar_las_que_siguen_vacias(api: Api) -> None:
         print(f"    · {motivo}")
 
 
+# Lo que se cuenta en cada lección de demostración, por el motivo con el que se
+# cerró. Coherente con el motivo: una perdida «por precio» que contara que no
+# había decisor enseñaría la pantalla diciendo cosas que no casan con su cabecera.
+# Empieza siempre por «Demostración:», para que nadie la lea como una de verdad.
+_LECCION_PERDIDA: dict[str, tuple[str, str, str, list[str]]] = {
+    "precio": (
+        "El cliente comparó por precio unitario y llegamos con el descuento en la "
+        "última semana, cuando ya tenía la otra oferta aprobada internamente.",
+        "En la primera reunión pidió una horquilla de precio y no la dimos.",
+        "Dar la horquilla en la primera reunión y defender el valor antes del "
+        "descuento; si hay que bajar, hacerlo una vez y pronto.",
+        ["precio", "descuento_tardio"],
+    ),
+    "competencia": (
+        "El competidor llevaba dos años dentro y el decisor estaba con él. Nosotros "
+        "trabajamos con el técnico, que estaba a favor, pero no firmaba.",
+        "El decisor no vino a la demo y nadie preguntó por qué.",
+        "Pedir la reunión con quien firma antes de la demo y preguntar qué le "
+        "falta al proveedor actual.",
+        ["competidor", "decisor_en_contra"],
+    ),
+    "sin_presupuesto": (
+        "El proyecto era del área técnica y finanzas no lo tenía en el presupuesto "
+        "del año. Se aplazó al siguiente ejercicio.",
+        "Nadie preguntó de qué partida salía el dinero hasta la propuesta.",
+        "Confirmar la partida y quién la aprueba en la cualificación, antes de "
+        "preparar la propuesta.",
+        ["sin_presupuesto_cliente"],
+    ),
+    "sin_decision": (
+        "La oportunidad se quedó parada en negociación sin que nadie decidiera. "
+        "Cambió el interlocutor y el nuevo no conocía el proyecto.",
+        "Tres semanas sin respuesta antes del cambio de interlocutor.",
+        "Tener más de un contacto en la cuenta y fijar fecha de decisión en cada " "reunión.",
+        ["sin_decisor", "seguimiento_flojo"],
+    ),
+    "plazo": (
+        "El cliente necesitaba arrancar en seis semanas y nuestro plan pedía doce. "
+        "Eligió a quien podía empezar antes aunque fuera más caro.",
+        "La fecha de arranque salió en la primera llamada y no se tuvo en cuenta.",
+        "Ofrecer un arranque por fases que cubra la fecha que importa al cliente.",
+        ["plazo", "producto_no_encaja"],
+    ),
+}
+_LECCION_GANADA = (
+    "Se ganó porque el decisor vio el caso de un cliente parecido y el técnico "
+    "defendió la propuesta por dentro.",
+    "El técnico pidió una prueba con sus datos en la segunda reunión.",
+    "",
+    ["relacion", "propuesta_de_valor"],
+)
+_COMPETIDORES_DEMO = ("Sistemas Norte", "Grupo Iberdatos", "Quadra Software")
+
+
+def sembrar_lecciones(api: Api) -> None:
+    """Lecciones aprendidas con el expediente lleno: el porqué de cada cierre.
+
+    Lo medido el 05-11-2026 en la empresa de la plataforma: 296 perdidas y 160
+    ganadas con recorrido, presupuesto y motivo, pero **ni un competidor, ni un
+    decisor, ni una actividad colgada de la oportunidad**. Así el expediente
+    sólo podía decir cuánto tardó, y las pantallas parecían a medias.
+
+    Se crea la lección de cada cerrada, y a una parte —las primeras por
+    identificador, para que dos pasadas cojan las mismas— se le pone lo que
+    falta y se firma con un texto que casa con su motivo. Se puede pasar dos
+    veces: el competidor repetido es un duplicado, el rol se actualiza, la
+    actividad sólo se crea si la oportunidad no tiene ninguna y sólo se firma
+    lo que sigue pendiente.
+    """
+    estado, cuerpo = api._llamar("POST", "/api/v1/lecciones/crear-de-las-cerradas")
+    if estado != 200:
+        api.fallos.append(
+            f"POST /api/v1/lecciones/crear-de-las-cerradas → {estado} {_motivo(cuerpo)}"
+        )
+        return
+    perdidas = sorted(
+        api.listar("/api/v1/opportunities?estado=perdida", 200), key=lambda o: o["id"]
+    )
+    ganadas = sorted(api.listar("/api/v1/opportunities?estado=ganada", 200), key=lambda o: o["id"])
+    elegidas = [(o, False) for o in perdidas[:30]] + [(o, True) for o in ganadas[:12]]
+    for i, (op, ganada) in enumerate(elegidas):
+        oid = str(op["id"])
+        motivo = str(op.get("motivo_perdida") or "")
+        cuenta_id = op.get("cuenta_id")
+        contactos = api.listar(f"/api/v1/contacts?cuenta_id={cuenta_id}", 5) if cuenta_id else []
+        # La competencia: la que ganó en las perdidas por precio o competencia,
+        # y la que se quedó fuera en las ganadas.
+        if ganada or motivo in ("precio", "competencia"):
+            api.crear(
+                f"/api/v1/opportunities/{oid}/competidores",
+                {
+                    "nombre": _COMPETIDORES_DEMO[i % len(_COMPETIDORES_DEMO)],
+                    "fortalezas": "Ya trabaja con el cliente" if not ganada else "Precio más bajo",
+                    "debilidades": "Implantación larga"
+                    if not ganada
+                    else "Sin referencias en el sector",
+                    "ganador": not ganada,
+                },
+            )
+        # Los decisores. Sin decisor en las que se perdieron por no decidir:
+        # es justo lo que la lección tiene que poder ver que faltaba.
+        roles: list[tuple[str, int, str]] = []
+        if ganada:
+            roles = [("decisor", 1, ""), ("prescriptor", 2, "")]
+        elif motivo == "competencia":
+            roles = [("decisor", -1, "Prefiere al proveedor que ya tiene"), ("prescriptor", 1, "")]
+        elif motivo != "sin_decision":
+            roles = [("decisor", 0, ""), ("usuario", 1, "")]
+        for (rol, postura, porque), contacto in zip(roles, contactos, strict=False):
+            api.crear(
+                "/api/v1/ingresos/rol-compra",
+                {
+                    "oportunidad_id": oid,
+                    "contacto_id": contacto["id"],
+                    "rol": rol,
+                    "postura": postura,
+                    "motivo": porque,
+                },
+            )
+        _actividad_de_la_oportunidad(api, op, contactos, flojo=motivo in ("sin_decision", "plazo"))
+        # La lección se pide por su oportunidad y no de la lista: la lista va
+        # por páginas, y con 457 la primera dejaba fuera a casi todas.
+        estado, expediente = api._llamar("GET", f"/api/v1/opportunities/{oid}/expediente")
+        leccion = (expediente or {}).get("leccion") if estado == 200 else None
+        if estado != 200:
+            api.fallos.append(f"GET expediente {oid} → {estado} {_motivo(expediente)}")
+        if not leccion or leccion.get("estado") != "pendiente":
+            continue
+        que_paso, senal, distinto, factores = (
+            _LECCION_GANADA if ganada else _LECCION_PERDIDA.get(motivo, _LECCION_PERDIDA["precio"])
+        )
+        api.crear(
+            f"/api/v1/lecciones/{leccion['id']}/firmar",
+            {
+                "que_paso": f"Demostración: {que_paso}",
+                "senal_temprana": senal,
+                "que_hariamos_distinto": distinto,
+                "factores": factores,
+            },
+        )
+
+
+def _actividad_de_la_oportunidad(api: Api, op: dict, contactos: list[dict], *, flojo: bool) -> None:
+    """Llamada, demo y propuesta, en las fechas en que estuvo abierta.
+
+    Con fecha de cuando pasó —el inicio— y completadas: una actividad pasada y
+    pendiente saldría en la agenda de alguien como atrasada. Si se dejó de
+    seguir, la última queda tres semanas antes del cierre.
+    """
+    oid = str(op["id"])
+    ya = api.listar(f"/api/v1/activities?objeto=oportunidad&objeto_id={oid}", 1)
+    if ya:
+        return
+    try:
+        desde = date.fromisoformat(str(op.get("created_at"))[:10])
+        hasta = date.fromisoformat(str(op.get("fecha_cierre_real"))[:10])
+    except ValueError:
+        return
+    if hasta <= desde:
+        return
+    fin = hasta - timedelta(days=21 if flojo else 3)
+    if fin <= desde:
+        fin = desde
+    paso = max(1, (fin - desde).days // 3)
+    contacto_id = contactos[0]["id"] if contactos else None
+    for n, (tipo, asunto) in enumerate(
+        (
+            ("llamada", "Primera llamada: qué necesitan y para cuándo"),
+            ("reunion", "Demo con el equipo técnico"),
+            ("email", "Envío de la propuesta"),
+            ("reunion", "Revisión de la propuesta"),
+        )
+    ):
+        dia = min(fin, desde + timedelta(days=paso * n))
+        creada = api.crear(
+            "/api/v1/activities",
+            {
+                "tipo": tipo,
+                "asunto": asunto,
+                "objeto": "oportunidad",
+                "objeto_id": oid,
+                "cuenta_id": op.get("cuenta_id"),
+                "contacto_id": contacto_id,
+                "inicio_at": f"{dia.isoformat()}T10:00:00+00:00",
+                "fin_at": f"{dia.isoformat()}T11:00:00+00:00",
+            },
+        )
+        if creada and creada.get("id"):
+            api.crear(f"/api/v1/activities/{creada['id']}/completar", {"resultado": "hecha"})
+
+
 PARTES: dict[str, Any] = {
     "identidad": sembrar_identidad,
     "metadatos": sembrar_metadatos,
@@ -5961,6 +6152,7 @@ PARTES: dict[str, Any] = {
     "la_operacion_del_dia": sembrar_la_operacion_del_dia,
     "el_campo_y_la_prevision": sembrar_el_campo_y_la_prevision,
     "el_acceso_y_la_ia_aplicada": sembrar_el_acceso_y_la_ia_aplicada,
+    "lecciones": sembrar_lecciones,
 }
 
 

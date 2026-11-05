@@ -327,6 +327,18 @@ export const MODULOS: Modulo[] = [
     grupo: "Ventas",
   },
 {
+    // Por qué se pierden y se ganan las oportunidades (pedido el 05-11-2026).
+    // Un módulo como los demás —lista con vistas, filtros, columnas y
+    // exportación, y su ficha— y no una pantalla suelta: la primera versión
+    // era una página a mano con su propio ancho, sus tarjetas y sus pestañas,
+    // y no se parecía a nada del resto.
+    ruta: "lecciones",
+    titulo: "Lecciones aprendidas",
+    seccion: "3.1",
+    capacidad: "CRM-07.04.03.34",
+    grupo: "Ventas",
+  },
+{
     ruta: "campo",
     titulo: "Servicio de campo",
     seccion: "4.4",
