@@ -1743,24 +1743,26 @@ partir de una transcripción poco fiable, no se propone.
 
 ### Pedírselo desde la ficha
 
-En el menú **Más** de cada registro:
+Cada ficha que tiene algo que pedirle a la IA lo enseña **arriba, en la banda
+«Con IA»**, entre la cabecera y las pestañas —no hace falta abrir «Más»—:
 
-- **Cuenta → Resumir esta cuenta con IA**: puntos clave y riesgos, cada riesgo
-  con el dato en que se apoya. Los datos usados salen debajo para comprobarlo.
-- **Contacto → Redactar con IA un correo**: dices qué tiene que conseguir y sale
-  un borrador en el idioma del contacto. Si el contacto no tiene idioma, elige
-  tú uno.
-- **Oportunidad → Qué hacer ahora con esta oportunidad**: pasos con su porqué
-  (días sin contacto, presupuesto sin reunión de cierre, nadie que firme).
-- **Caso → Resumir este caso** y **Sugerir una respuesta**, con los artículos de
-  la base de conocimiento que la sostienen. Si no hay ninguno, te lo dice.
-- **Conversación** (botones encima de la respuesta): resumirla al cerrarla o al
-  pasarla, **qué quiere el cliente y cómo está** —con las frases en que se
-  basa— y **traducir su último mensaje**.
+- **Cuenta**: resumir la cuenta, con puntos clave y riesgos y el dato en que se
+  apoya cada uno.
+- **Contacto**: redactar un correo en su idioma, y sacar sus datos de una firma
+  o un correo pegados (se aceptan en **IA → Campos extraídos**).
+- **Oportunidad**: qué hacer ahora, con el porqué de cada paso.
+- **Caso**: casos resueltos y artículos parecidos, resumir el caso y sugerir una
+  respuesta con los artículos que la sostienen.
+- **Conversación**: qué quiere el cliente y cómo está, resumirla y traducir su
+  último mensaje.
 
 Nada de esto se guarda ni se manda solo: es un borrador para ti. Necesitas el
 permiso de usar la IA, y lo que no puedes ver en el registro tampoco se le pasa
 al modelo.
+
+**Y en el menú de la izquierda**, dos entradas que antes sólo estaban dentro de
+otra pantalla: *Automatización → Extensiones y código propio* y *Usuarios y
+empresa → Entornos de pruebas (sandboxes)*.
 
 ### Rellenar un contacto desde una firma
 

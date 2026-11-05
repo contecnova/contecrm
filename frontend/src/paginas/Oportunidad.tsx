@@ -49,6 +49,7 @@ import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
@@ -495,7 +496,7 @@ export function Oportunidad() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
-              extra={acciones.map((a) => ({
+              extra={acciones.filter((a) => !esDeIA(a)).map((a) => ({
                 clave: a.ruta,
                 nombre: a.nombre,
                 alElegir: () => setAccionAbierta(a),
@@ -514,6 +515,21 @@ export function Oportunidad() {
           alCancelar={() => setConfirmando(false)}
         />
       ) : null}
+
+
+      <AsistenteIA
+
+
+        acciones={acciones}
+
+
+        abierta={accionAbierta}
+
+
+        alElegir={setAccionAbierta}
+
+
+      />
 
 
       <Acciones

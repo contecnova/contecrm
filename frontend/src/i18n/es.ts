@@ -134,6 +134,8 @@ export default {
     // procesos en curso son las instancias en ejecución, que están en
     // «Procesos y orquestación»—. Medido el 03-11-2026.
     procesos: "Editor de procesos",
+    extensiones: "Extensiones y código propio",
+    sandboxes: "Entornos de pruebas (sandboxes)",
     aprobacionesDoc: "Aprobar documentos",
     explotacion: "Preguntas publicadas",
     cuadros: "Paneles",
@@ -574,6 +576,11 @@ export default {
     faltanAprobadores:
       "Este flujo toma los aprobadores de la propia solicitud, así que hay que decir quiénes son.",
     pedir: "Pedir la aprobación",
+  },
+  // El panel de IA de cada ficha: lo que estaba escondido en «Más».
+  asistenteIA: {
+    titulo: "Con IA",
+    detalle: "Lo que propone es un borrador: no se guarda ni se manda sin ti.",
   },
   ficha: {
     // La ruta de etapas de una ficha. Para quien no la ve: una lista

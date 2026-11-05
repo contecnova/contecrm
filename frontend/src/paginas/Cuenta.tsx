@@ -60,6 +60,7 @@ import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar, listarPagina } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import {
@@ -487,7 +488,7 @@ export function Cuenta() {
               borrado={borrado}
                 alEditar={() => setEditando(true)}
                 alBorrar={() => setConfirmando(true)}
-                extra={acciones.map((a) => ({
+                extra={acciones.filter((a) => !esDeIA(a)).map((a) => ({
                   clave: a.ruta,
                   nombre: a.nombre,
                   alElegir: () => setAccionAbierta(a),
@@ -526,6 +527,16 @@ export function Cuenta() {
           alCancelar={() => setEditando(false)}
         />
       ) : null}
+
+      <AsistenteIA
+
+        acciones={acciones}
+
+        abierta={accionAbierta}
+
+        alElegir={setAccionAbierta}
+
+      />
 
       <Acciones
         acciones={acciones}

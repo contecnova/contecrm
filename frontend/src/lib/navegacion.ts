@@ -255,6 +255,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
 
   // ── Automatización ──────────────────────────────────────────────────────
   { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read"  },
+  // El código del tenant (CRM-00.04.02): estaba sólo dentro de «Procesos», en
+  // el selector de vistas, y quien abría la herramienta no lo encontraba.
+  { area: "automatizacion", a: "/m/procesos?r=Extensiones", clave: "nav.extensiones", icono: "code_blocks", permiso: "automatizacion:read" },
   // La única excepción de ámbito del producto: vive en Automatización, que es
   // de administrar, y es trabajo diario de cualquier responsable. Aprobar un
   // descuento no es configurar nada, y esconderlo detrás de «Administrar» es
@@ -271,6 +274,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // esto. `user:read` porque es lo que exigen sus extremos.
   { area: "usuarios", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
   { area: "usuarios", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read"  },
+  // Los entornos de pruebas con la copia de los datos (CRM-07.02.01.02), que
+  // sólo se alcanzaban desde el selector de vistas de «Empresas».
+  { area: "usuarios", a: "/m/tenants?r=Sandboxes", clave: "nav.sandboxes", icono: "science", permiso: "tenancy:read" },
   // Quién entra en cada herramienta de la casa y qué falta por aplicar. Va con
   // las personas y no con la automatización, que es donde estaba: lo que se
   // mira aquí son accesos, no un motor. Y el rótulo decía «Suite» a secas,

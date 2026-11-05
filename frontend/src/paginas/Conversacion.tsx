@@ -34,12 +34,13 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { Acciones } from "@/componentes/Acciones";
+import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { moduloDe } from "@/lib/modulos";
 import { ErrorApi, llamar } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
-import { accionesDe } from "@/lib/acciones";
+import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 
 /**
@@ -92,6 +93,7 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
   // Las demás acciones del contrato —resumirla, leer qué quiere el cliente y
   // traducirle, con IA— como botones: aquí no hay menú de registro.
   const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
   const acciones = accionesDe(
     superficie,
     "/api/v1/conversaciones",
@@ -242,7 +244,24 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
         </ol>
       )}
 
-      <Acciones acciones={acciones} servicio="service" alTerminar={cargar} />
+      {/* La IA, en su panel; lo demás del contrato, como botones. */}
+      <AsistenteIA
+        acciones={acciones}
+        abierta={accionAbierta}
+        alElegir={setAccionAbierta}
+      />
+      <Acciones
+        acciones={acciones.filter(esDeIA)}
+        servicio="service"
+        abierta={accionAbierta}
+        alCambiarAbierta={setAccionAbierta}
+        alTerminar={cargar}
+      />
+      <Acciones
+        acciones={acciones.filter((a) => !esDeIA(a))}
+        servicio="service"
+        alTerminar={cargar}
+      />
 
       {puedeEscribir ? (
         <Responder enviando={enviando} alEnviar={accion} />

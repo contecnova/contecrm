@@ -27,6 +27,7 @@ import {
 } from "@/componentes/Edicion";
 import { nombreDelRegistro } from "@/lib/formato";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
@@ -293,7 +294,7 @@ export function Ficha() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
-              extra={acciones.map((a) => ({
+              extra={acciones.filter((a) => !esDeIA(a)).map((a) => ({
                 clave: a.ruta,
                 nombre: a.nombre,
                 alElegir: () => setAccionAbierta(a),
@@ -308,13 +309,20 @@ export function Ficha() {
           que la ofrece, y no dentro de una pestaña: la acción es sobre el
           registro, no sobre lo que se esté mirando de él. */}
       {!editando ? (
-        <Acciones
-          acciones={acciones}
-          servicio={recurso?.servicio ?? ""}
-          abierta={accionAbierta}
-          alCambiarAbierta={setAccionAbierta}
-          alTerminar={cargar}
-        />
+        <>
+          <AsistenteIA
+            acciones={acciones}
+            abierta={accionAbierta}
+            alElegir={setAccionAbierta}
+          />
+          <Acciones
+            acciones={acciones}
+            servicio={recurso?.servicio ?? ""}
+            abierta={accionAbierta}
+            alCambiarAbierta={setAccionAbierta}
+            alTerminar={cargar}
+          />
+        </>
       ) : null}
 
       {confirmando ? (
