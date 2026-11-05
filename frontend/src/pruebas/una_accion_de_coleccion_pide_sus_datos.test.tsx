@@ -123,6 +123,19 @@ const SUPERFICIE = {
       exige_datos: false,
     },
     {
+      // Dos tramos sin parámetro: sigue siendo una acción de la colección.
+      // Estaban fuera «porque es otra cosa dentro de otra cosa», y eso
+      // describe la ruta, no lo que hace: medido el 05-11-2026, doce acciones
+      // así no las alcanzaba ninguna pantalla, y tres eran capacidades del
+      // catálogo declaradas hechas.
+      metodo: "POST",
+      ruta: "/api/v1/proveedores-servicio/plantillas/clonar",
+      resumen: "Copiar una plantilla para modificarla",
+      permiso: null,
+      exige_cuerpo: false,
+      exige_datos: false,
+    },
+    {
       metodo: "POST",
       ruta: "/api/v1/proveedores-servicio/informe",
       resumen: "Informe con parámetros en la URL",
@@ -151,7 +164,9 @@ describe("las acciones de una colección", () => {
     // Y la que no: sus datos van en la URL, el formulario sale del cuerpo, y
     // ofrecerla sería el 422 de siempre.
     expect(rutas).not.toContain("/api/v1/proveedores-servicio/informe");
-    expect(acciones).toHaveLength(3);
+    // La de dos tramos SÍ, que es lo que faltaba.
+    expect(rutas).toContain("/api/v1/proveedores-servicio/plantillas/clonar");
+    expect(acciones).toHaveLength(4);
   });
 
   it("al pulsar la que pide datos se abre su formulario y lo escrito viaja en el cuerpo", async () => {

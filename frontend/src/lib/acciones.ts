@@ -128,9 +128,22 @@ export function accionesDeColeccion(
     }
     PARAMETRO.lastIndex = 0;
     const tramos = operacion.ruta.split("/");
-    // Justo un tramo más que la colección: `/recurrencias` + `/generar`. Con
-    // dos —`/sagas/plantillas/clonar`— ya es otra cosa dentro de otra cosa.
-    if (tramos.length !== base.length + 1) continue;
+    // Uno o DOS tramos más que la colección.
+    //
+    // Era sólo uno, con este motivo: «con dos —`/sagas/plantillas/clonar`— ya
+    // es otra cosa dentro de otra cosa». Suena razonable y **lo midió nadie**.
+    // Medido el 05-11-2026 sobre los trece contratos: hay **12 acciones de dos
+    // tramos sin parámetro que no alcanza ninguna pantalla**, y tres de ellas
+    // son capacidades del catálogo declaradas hechas —instalar una plantilla
+    // de automatizaciones, clonar una plantilla de flujo y simular qué pasa
+    // con lo que está en vuelo al publicar—. «Otra cosa dentro de otra cosa»
+    // describe la ruta, no lo que hace: todas actúan sobre la colección de la
+    // pestaña, igual que las de un tramo.
+    //
+    // Lo que sigue excluido es lo que lleva PARÁMETRO: eso cuelga de un
+    // registro y su sitio es la ficha, donde hay identificador.
+    const extra = tramos.length - base.length;
+    if (extra !== 1 && extra !== 2) continue;
     if (tramos.slice(0, base.length).join("/") !== rutaBase) continue;
     // Un POST a la colección sin tramo extra es el ALTA, que ya tiene su
     // botón; esto exige el tramo, así que no puede colarse.
