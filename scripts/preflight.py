@@ -481,11 +481,29 @@ GATES: list[Gate] = [
 # completo y por lo mismo: este nivel corre en cada push, así que su ruido
 # medido es bajo. Si vuelve a saltar, mirar primero el coste POR PRUEBA de
 # `aislamiento`: por encima de 300 ms sí sería grasa.
+#
+# **05-11-2026, el COMPLETO: 660 → 760 s de CPU.** Saltó a 670 s —un 1,5 %
+# por encima— con los 22 gates en verde y la máquina quieta (carga 4 sobre 10
+# núcleos, por debajo del umbral de «llena»). Antes de tocar el número se miró
+# lo que pide el párrafo de arriba, el coste POR PRUEBA, medido con cada suite
+# corriendo SOLA —los tiempos por gate del informe son de reloj con seis a la
+# vez y no valen para esto—:
+#
+#     pruebas-con-bd   81,8 ms por prueba   (78 el 29-10)
+#     pruebas-sin-bd   60,5 ms por prueba   (58,7 el 29-10)
+#
+# Plano. Lo que ha crecido es el número: 4.398 pruebas el 29-10 y **4.588**
+# hoy, de las que una parte larga son los guardianes de los defectos de estos
+# días. 760 es ~1,13× sobre lo medido, el mismo margen apretado del nivel push.
+# Si vuelve a saltar: el coste por prueba con base por encima de 85 ms sí
+# sería grasa. Y el reloj de referencia, 360 → 400: midió 384 s. Ése no tumba
+# nada —pasarse de reloj sólo avisa—, pero una referencia por debajo de lo
+# medido avisa siempre, y un aviso que sale siempre deja de leerse.
 PRESUPUESTOS: dict[str, tuple[float, float]] = {
     # nivel: (reloj de referencia, tope de CPU)
     "rapido": (35.0, 40.0),
     "push": (120.0, 280.0),
-    "completo": (360.0, 660.0),
+    "completo": (400.0, 760.0),
 }
 
 
