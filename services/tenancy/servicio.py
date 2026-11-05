@@ -223,41 +223,45 @@ def cambiar_estado(
 
     # El motor comprueba la transición, exige el motivo donde toca y aplica las
     # restricciones que haya puesto el tenant.
-    comprobar_estado("tenant", desde=tenant.estado, hasta=nuevo, motivo=motivo, db=uow.db)
+    # Lo que cambia —el estado, el inventario de la baja, el apunte— es del
+    # tenant cambiado, y quien lo cambia suele ser otro: la plataforma, o el
+    # tenant del que cuelga un sandbox. Se escribe como suyo (`escribir_como`).
+    with escribir_como(uow.db, tenant.id):
+        comprobar_estado("tenant", desde=tenant.estado, hasta=nuevo, motivo=motivo, db=uow.db)
 
-    anterior = tenant.estado
-    tenant.estado = nuevo
-    tenant.motivo_estado = motivo.strip() or None
-    ahora = datetime.now(timezone.utc)
-    if nuevo == "suspendido":
-        tenant.suspendido_at = ahora
-    elif nuevo == "en_baja":
-        tenant.baja_solicitada_at = ahora
-        # Se pide ya el inventario del corpus documental a todos los servicios
-        # (RT-5): la ventana de recuperación da treinta días para que contesten,
-        # y el certificado de destrucción se compone con sus respuestas. Pedirlo
-        # en el momento de destruir no daría tiempo a nadie.
-        from crmcore.documental.inventario import solicitar_inventario
+        anterior = tenant.estado
+        tenant.estado = nuevo
+        tenant.motivo_estado = motivo.strip() or None
+        ahora = datetime.now(timezone.utc)
+        if nuevo == "suspendido":
+            tenant.suspendido_at = ahora
+        elif nuevo == "en_baja":
+            tenant.baja_solicitada_at = ahora
+            # Se pide ya el inventario del corpus documental a todos los servicios
+            # (RT-5): la ventana de recuperación da treinta días para que contesten,
+            # y el certificado de destrucción se compone con sus respuestas. Pedirlo
+            # en el momento de destruir no daría tiempo a nadie.
+            from crmcore.documental.inventario import solicitar_inventario
 
-        solicitar_inventario(uow.db, tenant_id=tenant.id, motivo="baja")
-        # Ventana de recuperación antes de que los datos sean destruibles. Una
-        # baja instantánea convierte un error administrativo en una pérdida
-        # irreversible.
-        tenant.datos_borrables_at = ahora + timedelta(days=30)
-    elif nuevo == "activo":
-        tenant.suspendido_at = None
-        tenant.baja_solicitada_at = None
-        tenant.datos_borrables_at = None
+            solicitar_inventario(uow.db, tenant_id=tenant.id, motivo="baja")
+            # Ventana de recuperación antes de que los datos sean destruibles. Una
+            # baja instantánea convierte un error administrativo en una pérdida
+            # irreversible.
+            tenant.datos_borrables_at = ahora + timedelta(days=30)
+        elif nuevo == "activo":
+            tenant.suspendido_at = None
+            tenant.baja_solicitada_at = None
+            tenant.datos_borrables_at = None
 
-    registrar(
-        uow.db,
-        accion="tenant.estado_cambiado",
-        objeto="tenant",
-        objeto_id=tenant.id,
-        datos={"desde": anterior, "hasta": nuevo},
-        motivo=motivo or None,
-        tenant_id=tenant.id,
-    )
+        registrar(
+            uow.db,
+            accion="tenant.estado_cambiado",
+            objeto="tenant",
+            objeto_id=tenant.id,
+            datos={"desde": anterior, "hasta": nuevo},
+            motivo=motivo or None,
+            tenant_id=tenant.id,
+        )
     if nuevo == "suspendido":
         uow.emitir(
             "tenant.suspended",
@@ -289,7 +293,6 @@ def propagar_localizacion(db: Session, tenant: Tenant, cambios: dict[str, Any]) 
     respetar.
     """
     from crmcore.runtime import settings as rt
-    from crmcore.tenancy.context import con_contexto, contexto_actual
 
     def _fijar() -> None:
         for campo, clave in (
@@ -308,10 +311,12 @@ def propagar_localizacion(db: Session, tenant: Tenant, cambios: dict[str, Any]) 
     # después lanza, con lo que quien llama cree que no se ha aplicado nada
     # mientras las filas ya están puestas. Es la misma trampa que ya mordió una
     # vez con `aplicar_cuotas_del_plan`.
-    if contexto_actual().tenant_id == tenant.id:
-        _fijar()
-        return
-    with con_contexto(tenant_id=tenant.id, origen="provisionado"):
+    #
+    # Y con `escribir_como`, no sólo con el contexto: el contexto dice de quién
+    # es el apunte, pero el guard del ORM y el RLS siguen mirando el tenant de
+    # la sesión. Con el rol de aplicación, editar un tenant desde la plataforma
+    # fallaba por RLS (medido el 05-11-2026).
+    with escribir_como(db, tenant.id):
         _fijar()
 
 
@@ -475,7 +480,6 @@ def aplicar_cuotas_del_plan(
     mismo plan: el ajuste del tenant manda sobre el plan, y aquí se respeta ese
     orden en vez de confiar en que nadie vuelva a pulsar el botón.
     """
-    from crmcore.tenancy.context import con_contexto, contexto_actual
 
     plan = db.execute(select(Plan).where(Plan.codigo == plan_codigo)).scalar_one_or_none()
     if plan is None:
@@ -489,9 +493,9 @@ def aplicar_cuotas_del_plan(
     # nada: medido, salían cero cuotas aplicadas con las filas ya en la base.
     #
     # Y el apunte queda donde tiene que quedar: en el tenant cuyo tope cambia.
-    if contexto_actual().tenant_id == tenant_id:
-        return _aplicar_cuotas(db, plan, tenant_id, por)
-    with con_contexto(tenant_id=tenant_id, origen="provisionado"):
+    # Con `escribir_como` y no sólo el contexto, por lo mismo que la
+    # localización: el guard y el RLS miran la sesión, no el contexto.
+    with escribir_como(db, tenant_id):
         return _aplicar_cuotas(db, plan, tenant_id, por)
 
 

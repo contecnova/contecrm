@@ -241,6 +241,15 @@ def test_dar_de_alta_un_tenant_desde_otro_pasa_el_rls(db_con_rls: Any, monkeypat
             nombre="Nuevo",
         )
         db.flush()
+        # Y cambiarle el estado, que es lo que hace «Apagar» un sandbox y la
+        # plataforma al suspender: también fallaba por RLS en `auditoria`.
+        svc.cambiar_estado(
+            UnidadDeTrabajo(db=db, tenant_id=quien_pide),
+            nuevo.id,
+            nuevo="suspendido",
+            motivo="Prueba de RLS",
+        )
+        db.flush()
     apuntes = db.execute(
         sa.text("SELECT count(*) FROM auditoria WHERE tenant_id = :t"), {"t": nuevo.id}
     ).scalar()
@@ -255,7 +264,7 @@ def test_dar_de_alta_un_tenant_desde_otro_pasa_el_rls(db_con_rls: Any, monkeypat
     apuntes = db.execute(
         sa.text("SELECT count(*) FROM auditoria WHERE tenant_id = :t"), {"t": nuevo.id}
     ).scalar()
-    assert apuntes >= 2, "el alta no dejó su cadena de auditoría"
+    assert apuntes >= 3, "el alta y el cambio de estado no dejaron su cadena de auditoría"
     db.rollback()
 
 

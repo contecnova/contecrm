@@ -2874,6 +2874,13 @@ la sesión, el GUC y el contexto mientras se escribe lo del nuevo, y lo devuelve
 todo al salir. Prueba con el rol de aplicación en
 `tests/integration/test_rls_aislamiento.py`.
 
+La misma familia, cerrada en el mismo cambio: **todo lo de tenancy que escribe
+para otro tenant** pasa por `escribir_como` —cambiar su estado (suspender,
+reactivar, dar de baja; «Apagar» un sandbox también daba 409), propagar su
+localización al editarlo, aplicarle las cuotas del plan y declarar su
+aislamiento—. Antes, la localización y las cuotas cambiaban sólo el contexto,
+que dice de quién es el apunte pero no lo que miran el guard y el RLS.
+
 #### Capacidades sin pantalla: medir antes de citar (05-11-2026)
 
 El guardián de pantallas cuenta **citas**, no alcance, así que bajar su tope

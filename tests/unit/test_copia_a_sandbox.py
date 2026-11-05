@@ -227,5 +227,14 @@ def test_un_sandbox_se_crea_como_tenant_hijo_y_caduca(
             ficha = cli.get(f"/api/v1/sandboxes/{alta.json()['id']}", headers=cab).json()
             assert ficha["estado"] == "preparado"
             assert ficha["caduca_el"]
+            # Apagarlo suspende el tenant hijo desde la sesión del origen: daba
+            # 409 en la secuencia de la auditoría, como el alta.
+            apagado = cli.post(
+                f"/api/v1/sandboxes/{alta.json()['id']}/apagar",
+                headers=cab,
+                json={"motivo": "Ya no hace falta"},
+            )
+            assert apagado.status_code == 200, apagado.text
+            assert apagado.json()["estado"] == "apagado"
     finally:
         get_settings.cache_clear()

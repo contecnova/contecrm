@@ -328,7 +328,9 @@ def escribir_como(db: Session, tenant_id: UUID) -> Iterator[None]:
     db.info["tenant_id"] = tenant_id
     _fijar(tenant_id)
     try:
-        with con_contexto(tenant_id=tenant_id, origen="provisionado"):
+        # Sólo el tenant: el origen y el actor siguen siendo los de quien lo
+        # hace, que es lo que el apunte tiene que decir.
+        with con_contexto(tenant_id=tenant_id):
             yield
     finally:
         db.info["tenant_id"] = anterior

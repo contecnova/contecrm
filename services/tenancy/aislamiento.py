@@ -41,6 +41,7 @@ from uuid import UUID
 
 from crmcore.audit.chain import registrar
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
+from crmcore.db.session import escribir_como
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -220,56 +221,62 @@ def declarar(
             error_code="aislamiento.cliente_sin_marcar",
         )
 
-    fila = (
-        uow.db.execute(select(AislamientoTenant).where(AislamientoTenant.tenant_id == tenant_id))
-        .scalars()
-        .first()
-    )
-    if fila is None:
-        fila = AislamientoTenant(tenant_id=tenant_id)
-        uow.db.add(fila)
-    fila.modalidad = modalidad
-    fila.instancia = instancia
-    fila.base = base
-    fila.esquema = esquema
-    fila.pool_computo = pool_computo
-    fila.infraestructura_del_cliente = infraestructura_del_cliente
-    fila.notas = notas or fila.notas
-    # Cambiar la declaración invalida la comprobación anterior: seguía diciendo
-    # que sí sobre una declaración que ya no es la misma.
-    fila.comprobado_at = None
-    fila.comprobado_ok = None
-    fila.comprobado_detalle = "Declaración cambiada: hay que volver a comprobar."
-    uow.db.flush()
+    # Fila, ajuste y apunte son DEL TENANT DECLARADO, y quien declara es la
+    # plataforma: se escriben como suyos (ver `escribir_como`). Con el GUC de la
+    # plataforma, el RLS los rechazaba con el rol de aplicación.
+    with escribir_como(uow.db, tenant_id):
+        fila = (
+            uow.db.execute(
+                select(AislamientoTenant).where(AislamientoTenant.tenant_id == tenant_id)
+            )
+            .scalars()
+            .first()
+        )
+        if fila is None:
+            fila = AislamientoTenant(tenant_id=tenant_id)
+            uow.db.add(fila)
+        fila.modalidad = modalidad
+        fila.instancia = instancia
+        fila.base = base
+        fila.esquema = esquema
+        fila.pool_computo = pool_computo
+        fila.infraestructura_del_cliente = infraestructura_del_cliente
+        fila.notas = notas or fila.notas
+        # Cambiar la declaración invalida la comprobación anterior: seguía diciendo
+        # que sí sobre una declaración que ya no es la misma.
+        fila.comprobado_at = None
+        fila.comprobado_ok = None
+        fila.comprobado_detalle = "Declaración cambiada: hay que volver a comprobar."
+        uow.db.flush()
 
-    # Y el pool se REPLICA a los demás servicios (CRM-00.01.01.06).
-    #
-    # El dato manda aquí, en `aislamiento_tenants`, que es de este servicio. El
-    # barrido de tareas corre dentro de CADA servicio y no puede leer este
-    # esquema para preguntar a qué pool va un tenant, así que el valor viaja
-    # por el camino que ya llega a los catorce: los ajustes en caliente.
-    #
-    # Sin esto, `pool_computo` era un campo que se guardaba, salía por la API y
-    # no lo miraba nadie: se podía vender cómputo dedicado, declararlo, verlo
-    # en la pantalla, y el trabajo pesado de ese cliente seguía cayendo en los
-    # mismos workers que el de todos los demás.
-    from crmcore.runtime import settings as rt
+        # Y el pool se REPLICA a los demás servicios (CRM-00.01.01.06).
+        #
+        # El dato manda aquí, en `aislamiento_tenants`, que es de este servicio. El
+        # barrido de tareas corre dentro de CADA servicio y no puede leer este
+        # esquema para preguntar a qué pool va un tenant, así que el valor viaja
+        # por el camino que ya llega a los catorce: los ajustes en caliente.
+        #
+        # Sin esto, `pool_computo` era un campo que se guardaba, salía por la API y
+        # no lo miraba nadie: se podía vender cómputo dedicado, declararlo, verlo
+        # en la pantalla, y el trabajo pesado de ese cliente seguía cayendo en los
+        # mismos workers que el de todos los demás.
+        from crmcore.runtime import settings as rt
 
-    rt.fijar(
-        uow.db,
-        "pool_computo",
-        pool_computo,
-        ambito="tenant",
-        ambito_id=str(tenant_id),
-    )
-    registrar(
-        uow.db,
-        accion="aislamiento.declarado",
-        objeto="tenant",
-        objeto_id=tenant_id,
-        datos={"modalidad": modalidad, "base": base, "esquema": esquema},
-        tenant_id=tenant_id,
-    )
+        rt.fijar(
+            uow.db,
+            "pool_computo",
+            pool_computo,
+            ambito="tenant",
+            ambito_id=str(tenant_id),
+        )
+        registrar(
+            uow.db,
+            accion="aislamiento.declarado",
+            objeto="tenant",
+            objeto_id=tenant_id,
+            datos={"modalidad": modalidad, "base": base, "esquema": esquema},
+            tenant_id=tenant_id,
+        )
     return fila
 
 
