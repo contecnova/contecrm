@@ -2345,6 +2345,9 @@ puede listar una extensión, ni instalarla, ni saber cuáles tiene un tenant.
 `POST /extensiones/observabilidad` calcula estadísticas **sobre las ejecuciones
 que le mandas tú**. Son calculadoras correctas que no están enchufadas a nada,
 y por eso ninguna de las siete puede tener pantalla: no hay nada que enseñar.
+*(Cerrado el 05-11-2026 para cinco de las siete: ver «El código del tenant,
+ejecutado de verdad». Los hooks y las extensiones asíncronas, `.02` y `.03`,
+siguen siendo del núcleo y se declaran en código.)*
 
 ### 4.6.14 Un proceso parado: verlo y sacarlo
 
@@ -2806,6 +2809,61 @@ construyendo los datos:
 
 Pruebas: `test_compras_al_proveedor.py`, de punta a punta por HTTP y validada
 plantando el fallo (homologación ignorada, rappel al coste ofertado).
+
+#### El código del tenant, ejecutado de verdad (05-11-2026)
+
+`CRM-00.04.02.01`, `.04`, `.05`, `.06` y `.07` eran calculadoras sin ejecución.
+Ahora:
+
+- **Motor** (`services/automation/motor_js.py`). JavaScript en QuickJS
+  (quickjs-ng) compilado a WASI por su proyecto y ejecutado por **wasmtime**
+  (`wasmtime==50.0.1`). Se eligió frente al paquete `quickjs` de PyPI, que no
+  publica desde 2023, porque es la pieza que aísla código ajeno. El binario no
+  va en el repositorio (1,5 MB; el gancho corta en 512 KB): está fijado en
+  `services/automation/motor_js.lock.json` (versión, URL, SHA-256), lo trae
+  `scripts/traer_motor_js.py` —lo llaman `setup.sh` y la etapa de construcción
+  de la imagen, que lo deja en `/opt/motor`— y se comprueba la huella al
+  cargarlo: si no cuadra, `extension.motor_no_disponible` y no se ejecuta nada.
+  `GET /extensiones/motor` dice si está listo y con qué topes.
+- **Aislamiento.** WASI sin directorios abiertos, sin entorno y sin red. El
+  envoltorio le quita `std` y `os` antes de su código, recoge `console.*`
+  aparte y escribe una línea de resultado. Topes por ejecución, todos en
+  ajustes: combustible (`EXTENSIONES_COMBUSTIBLE`, instrucciones de WebAssembly;
+  unas 8.000 millones por segundo en un M-series), memoria
+  (`EXTENSIONES_MEMORIA_MB`), reloj (`EXTENSIONES_TIEMPO_MS`), entrada, salida y
+  líneas de log. **El reloj** va por épocas: un único hilo avanza la época del
+  motor cada 10 ms y cada ejecución pide que la corten pasadas las suyas —si
+  cada una avanzara la época al pasarse, cortaría a las demás—. Los errores de
+  sintaxis y ejecución salen con la línea del código del tenant, no la del
+  envoltorio.
+- **Datos** (`services/automation/codigo_tenant.py`, cinco tablas):
+  `extensiones` (clave única por tenant, origen, permisos, versión activa),
+  `versiones_extension` (inmutables: código, huella, versión de motor, firma,
+  estado y revisión), `firmantes_extension` (clave pública Ed25519),
+  `ejecuciones_extension` (tiempo, combustible, si se cortó y por qué, error,
+  logs, entrada, acciones, coste; se purga a `EXTENSIONES_EJECUCIONES_DIAS`) y
+  `endpoints_propios`.
+- **Acciones.** La función devuelve `{acciones: [{metodo, ruta, cuerpo}]}` y se
+  hacen con `crmcore.http.interno.invocar` con los permisos de la extensión,
+  hasta `EXTENSIONES_ACCIONES_MAX`, nunca sobre `/api/v1/extensiones` ni
+  `/api/v1/propios`. En `/probar` se enseñan y no se hacen.
+- **Cuota** `cuota_extensiones_mes` con `crmcore.cuotas.exigir`, y el medidor
+  `extensiones` en el panel de consumo. Coste atribuido:
+  `EXTENSIONES_COSTE_POR_SEGUNDO`.
+- **Firma.** Ed25519 sobre la huella SHA-256 (en hexadecimal) del código, con
+  la clave pública de un firmante activo del tenant. Una de tercero queda
+  `pendiente_revision` y sólo se activa tras la revisión de alguien distinto de
+  quien la publicó.
+- **Endpoints propios.** `"propios": "automation"` en `crmcore/rutas_de_api.py`;
+  la ruta `/{ruta:path}` de `api_codigo.py` resuelve el endpoint por método y
+  ruta, exige el permiso que declara y ejecuta en un hilo. Un fallo se
+  **contesta** (502 `extension.fallo`), no se lanza: lanzarlo deshacía la
+  transacción y con ella el apunte de la ejecución fallida. Exenta del gate de
+  permiso en el decorador, con motivo, porque el permiso es por endpoint.
+
+Lo que **no** hace: no hay llamadas salientes desde una extensión (no se le da
+red), ni librerías de fuera, ni ejecución disparada por una automatización o
+un evento; se ejecuta desde su ficha y desde sus endpoints.
 
 #### Sandboxes: la copia de un tenant a su entorno de pruebas (05-11-2026)
 

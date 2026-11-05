@@ -119,6 +119,33 @@ class _LimitsSettings(BaseSettings):
     # Una tabla ancha lo baja sola para no pasar del tope de parámetros de
     # Postgres; esto es el máximo, no lo que siempre se usa.
     sandbox_copia_lote: int = Field(500, ge=1, le=10_000)
+    # El código del tenant (CRM-00.04.02.01). Corre en QuickJS compilado a
+    # WebAssembly y lo ejecuta wasmtime; estos son los topes de CADA ejecución,
+    # y los pone el sandbox, no el código: cortar a los dos segundos es que no
+    # pueda tardar más, pedírselo es que se porte bien.
+    # Dónde está el motor. Vacío: `var/motor/qjs-wasi.wasm` del proyecto; la
+    # imagen lo deja en `/opt/motor`. Lo trae `scripts/traer_motor_js.py`.
+    extensiones_motor_ruta: str = ""
+    # Reloj, memoria y combustible —instrucciones de WebAssembly—. Los tres:
+    # con sólo el reloj, una función que espera no gasta y se la deja; con sólo
+    # el combustible, una máquina lenta corta lo que en otra cabe.
+    extensiones_tiempo_ms: int = Field(2_000, ge=10, le=60_000)
+    extensiones_memoria_mb: int = Field(64, ge=8, le=1_024)
+    # El combustible va en instrucciones: medido el 05-11-2026, unos 8.000
+    # millones por segundo en un M-series. Con 2.000 millones se cortaba a los
+    # 240 ms y el tope de reloj no llegaba a mirar nada.
+    extensiones_combustible: int = Field(10_000_000_000, ge=1_000_000, le=10**13)
+    # Lo que entra, lo que sale y lo que se apunta de cada ejecución.
+    extensiones_entrada_kb: int = Field(64, ge=1, le=10_240)
+    extensiones_salida_kb: int = Field(256, ge=1, le=10_240)
+    extensiones_logs_max: int = Field(50, ge=0, le=10_000)
+    # Cuántos cambios puede devolver una ejecución para que la plataforma los
+    # haga en su nombre. La función no escribe: pide, y se hace con sus permisos.
+    extensiones_acciones_max: int = Field(20, ge=0, le=1_000)
+    # Días que se guardan las ejecuciones, y el coste que se atribuye por
+    # segundo de ejecución (en la moneda en que se factura). 0 = no se atribuye.
+    extensiones_ejecuciones_dias: int = Field(30, ge=1, le=3_650)
+    extensiones_coste_por_segundo: float = Field(0.0, ge=0.0, le=1_000_000.0)
     # Dígitos mínimos para dar un teléfono por marcable.
     telefono_minimo_digitos: int = Field(7, ge=1, le=30)
     # Antelación del aviso de caducidad de un activo de marketing y de un
@@ -442,6 +469,7 @@ class _LimitsSettings(BaseSettings):
     cuota_correos_mes: int = Field(0, ge=0, le=100_000_000)
     cuota_sms_mes: int = Field(0, ge=0, le=100_000_000)
     cuota_workflows_mes: int = Field(0, ge=0, le=100_000_000)
+    cuota_extensiones_mes: int = Field(0, ge=0, le=1_000_000_000)
     cuota_registros: int = Field(0, ge=0, le=1_000_000_000)
 
     # Cuántos registros se guardan en el historial de «visto hace poco» de cada

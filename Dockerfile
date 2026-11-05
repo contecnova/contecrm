@@ -44,6 +44,13 @@ RUN python -m venv /opt/venv \
 COPY packages/ ./packages/
 RUN /opt/venv/bin/pip install ./packages/crmcore
 
+# El motor del código del tenant (CRM-00.04.02.01): QuickJS compilado a
+# WebAssembly por su proyecto, fijado con su huella en el candado. Se trae aquí,
+# donde hay red, y el script se niega a dejarlo si la huella no cuadra.
+COPY services/automation/motor_js.lock.json ./services/automation/motor_js.lock.json
+COPY scripts/traer_motor_js.py ./scripts/traer_motor_js.py
+RUN /opt/venv/bin/python scripts/traer_motor_js.py /opt/motor/qjs-wasi.wasm
+
 # ── Imagen final ──────────────────────────────────────────────────────────
 FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea AS servicio
 
@@ -60,6 +67,8 @@ RUN apt-get update \
  && useradd --create-home --uid 10001 crm
 
 COPY --from=build /opt/venv /opt/venv
+COPY --from=build /opt/motor /opt/motor
+ENV EXTENSIONES_MOTOR_RUTA=/opt/motor/qjs-wasi.wasm
 
 WORKDIR /app
 COPY --chown=crm:crm packages/ ./packages/

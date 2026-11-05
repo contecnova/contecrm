@@ -714,3 +714,48 @@ def test_las_tres_listas_de_cuenta_se_piden_por_la_ruta(
         r = personas.get(ruta, headers=cabeceras)
         assert r.status_code == 200, f"{ruta}: {r.text}"
         assert "items" in r.json(), f"{ruta} no devuelve un listado paginado"
+
+
+@pytest.mark.db
+def test_el_ensayo_de_desinstalar_se_pide_por_la_ruta(
+    db: Any, modelo: Any, tenant_id: UUID
+) -> None:
+    """La sección «Quitar» de un módulo instalado lee el ensayo de la ruta.
+
+    Sólo lo probaba la función por dentro: si la ruta dejara de mandar un campo
+    —el número de lo que se quitaría, qué pasa con los datos, quién depende de
+    este módulo—, la pantalla se quedaba vacía y nadie se enteraba.
+    """
+    cab = _cabeceras(tenant_id)
+    manifiesto = {
+        "formato": 1,
+        "clave": "ensayo",
+        "nombre": "Ensayo",
+        "version": "1.0.0",
+        "descripcion": "Para probar el ensayo de quitarlo",
+        "contenido": {"objetos": [{"clave": "cosa", "gobierno": "fijo", "etiqueta": "Cosa"}]},
+    }
+    alta = modelo.post(
+        "/api/v1/metadata/modulos/instalar",
+        headers=cab,
+        json={"manifiesto": manifiesto, "aplicar": True},
+    )
+    assert alta.status_code == 200, alta.text
+    ensayo = modelo.post(
+        "/api/v1/metadata/modulos/ensayo/desinstalar",
+        headers=cab,
+        json={"aplicar": False, "borrar_datos": False},
+    )
+    assert ensayo.status_code == 200, ensayo.text
+    datos = ensayo.json()
+    for campo in (
+        "quitaria",
+        "registros_por_objeto",
+        "no_se_han_podido_contar",
+        "modificados_por_el_cliente",
+        "modulos_que_dependen",
+        "se_puede_desinstalar",
+        "que_pasa_con_los_datos",
+    ):
+        assert campo in datos, campo
+    assert datos["se_puede_desinstalar"] is True and datos["quitaria"] >= 1

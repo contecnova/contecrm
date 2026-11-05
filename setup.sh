@@ -128,6 +128,10 @@ instalar() {
   $PIP -q install -e packages/crmcore
   ok "Dependencias instaladas"
 
+  # El motor de las extensiones del tenant: fijado con su huella, no va en el
+  # repositorio. Si ya está y cuadra, no descarga nada.
+  .venv/bin/python scripts/traer_motor_js.py >/dev/null && ok "Motor de extensiones listo"
+
   if [[ ! -f .env ]]; then
     cp .env.example .env
     # Secretos de desarrollo generados al azar. Nunca valores fijos: un secreto

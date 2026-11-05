@@ -130,6 +130,10 @@ NO_FILA_POR_SERVICIO: dict[tuple[str, str], str] = {
 }
 
 ALIAS_POR_SERVICIO = {
+    # Los endpoints propios del tenant (CRM-00.04.02.04): el modelo es
+    # `EndpointPropio`, y «endpoint» a secas es también el de los webhooks.
+    ("automation", "endpoint_id"): "endpointpropio",
+    ("automation", "firmante_id"): "firmanteextension",
     ("identity", "conversacion_id"): "conversacionchat",
     ("identity", "mensaje_id"): "mensajechat",
     # `objeto_id` significa dos cosas distintas y por eso va aquí y no en el

@@ -185,6 +185,51 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/automatizaciones",
         servicio: "automation",
       },
+      // El código del tenant (CRM-00.04.02.01, .05, .06, .07): funciones en
+      // JavaScript que corren aisladas en WebAssembly. Desde la ficha se publica
+      // una versión, se prueba, se activa, se vuelve atrás y se ve cómo va.
+      {
+        nombre: "Extensiones",
+        objeto: "extension",
+        listar: "/api/v1/extensiones",
+        crear: "/api/v1/extensiones",
+        servicio: "automation",
+        columnas: ["clave", "nombre", "origen", "version_activa", "updated_at"],
+        // Las calculadoras de antes, que pedían teclear las ejecuciones, la
+        // firma o el consumo: ahora salen de lo guardado en la ficha de cada
+        // extensión. Siguen en la API para quien integre con sus propios datos.
+        acciones_ocultas: [
+          "/api/v1/extensiones/limites",
+          "/api/v1/extensiones/capacidades",
+          "/api/v1/extensiones/versiones",
+          "/api/v1/extensiones/firma",
+          "/api/v1/extensiones/ejecucion",
+          "/api/v1/extensiones/observabilidad",
+          // Y las altas de las otras dos pestañas, que salían aquí por colgar
+          // de la misma ruta: cada una ya tiene su «Nuevo» en la suya.
+          "/api/v1/extensiones/firmantes",
+          "/api/v1/extensiones/endpoints",
+        ],
+      },
+      // Rutas del tenant servidas por el gateway en /api/v1/propios/… que
+      // ejecutan una extensión (CRM-00.04.02.04).
+      {
+        nombre: "Endpoints propios",
+        objeto: "endpoint_propio",
+        listar: "/api/v1/extensiones/endpoints",
+        crear: "/api/v1/extensiones/endpoints",
+        servicio: "automation",
+        columnas: ["metodo", "ruta", "permiso", "activo"],
+      },
+      // De quién se aceptan extensiones firmadas, con su clave pública.
+      {
+        nombre: "Firmantes de confianza",
+        objeto: "firmante_extension",
+        listar: "/api/v1/extensiones/firmantes",
+        crear: "/api/v1/extensiones/firmantes",
+        servicio: "automation",
+        columnas: ["nombre", "huella_clave", "activo"],
+      },
       {
         nombre: "Integraciones",
         objeto: "conexion",

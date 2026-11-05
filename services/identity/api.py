@@ -698,16 +698,6 @@ def listar_usuarios(
     )
 
 
-@router_usuarios.delete(
-    "/{usuario_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(exige_permiso("user:write"))],
-    summary="Dar de baja a un usuario del tenant",
-)
-def baja_usuario(usuario_id: UUID, uow: UowDep, principal: AutenticadoDep) -> None:
-    svc.desactivar_usuario(uow, usuario_id, principal.tenant_id)
-
-
 # ── Roles ─────────────────────────────────────────────────────────────────
 
 router_roles = APIRouter(prefix="/roles", tags=["roles y permisos"])
@@ -1561,6 +1551,16 @@ def obtener_usuario(usuario_id: UUID, db: DbDep, principal: AutenticadoDep) -> A
     if usuario is None:
         raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
     return usuario
+
+
+@router_usuarios.delete(
+    "/{usuario_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("user:write"))],
+    summary="Dar de baja a un usuario del tenant",
+)
+def baja_usuario(usuario_id: UUID, uow: UowDep, principal: AutenticadoDep) -> None:
+    svc.desactivar_usuario(uow, usuario_id, principal.tenant_id)
 
 
 # ── Alcance de una persona, entre servicios ───────────────────────────────

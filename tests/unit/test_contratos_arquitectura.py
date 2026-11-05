@@ -273,6 +273,11 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         # crear un contacto no podría mandar una composición que solo crea
         # contactos.
         "compuesto": "cada operación comprueba su permiso al despacharse",
+        # Los endpoints que define el tenant (CRM-00.04.02.04): el permiso lo
+        # elige el tenant para cada uno, se guarda con el endpoint y se exige al
+        # resolverlo (`principal.exigir(fila.permiso)`). Uno fijo en el decorador
+        # obligaría a todos a pedir el mismo. Probado en `test_codigo_del_tenant.py`.
+        "invocar_endpoint_propio": "el permiso lo declara cada endpoint y se exige al resolverlo",
         # Recuperar el acceso: quien las llama **no ha entrado**, que es todo el
         # problema. Lo que autoriza es el enlace de un solo uso, hasheado y con
         # caducidad, y lo que impide abusar de ellas es que la respuesta sea la

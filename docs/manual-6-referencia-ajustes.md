@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**293 ajustes** en total, de los cuales **91** son editables en caliente por tenant.
+**304 ajustes** en total, de los cuales **92** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -185,6 +185,16 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `SUPERFICIE_COSTE_MAXIMO` | — | `50` | 1–100000 | Coste máximo de una consulta a la superficie, y días que vive un sandbox. |
 | `SANDBOX_DIAS` | — | `30` | 1–3650 |  |
 | `SANDBOX_COPIA_LOTE` | — | `500` | 1–10000 | Filas por inserción al copiar un tenant a su sandbox (CRM-07.02.01.02). Una tabla ancha lo baja sola para no pasar del tope de parámetros de Postgres; esto es el máximo, no lo que siempre se usa. |
+| `EXTENSIONES_MOTOR_RUTA` | — | *(vacío)* |  | El código del tenant (CRM-00.04.02.01). Corre en QuickJS compilado a WebAssembly y lo ejecuta wasmtime; estos son los topes de CADA ejecución, y los pone el sandbox, no el código: cortar a los dos segundos es que no pueda tardar más, pedírselo es que se porte bien. Dónde está el motor. Vacío:… |
+| `EXTENSIONES_TIEMPO_MS` | — | `2000` | 10–60000 | Reloj, memoria y combustible —instrucciones de WebAssembly—. Los tres: con sólo el reloj, una función que espera no gasta y se la deja; con sólo el combustible, una máquina lenta corta lo que en otra cabe. |
+| `EXTENSIONES_MEMORIA_MB` | — | `64` | 8–1024 |  |
+| `EXTENSIONES_COMBUSTIBLE` | — | `10000000000` | ≥ 1000000 | El combustible va en instrucciones: medido el 05-11-2026, unos 8.000 millones por segundo en un M-series. Con 2.000 millones se cortaba a los 240 ms y el tope de reloj no llegaba a mirar nada. |
+| `EXTENSIONES_ENTRADA_KB` | — | `64` | 1–10240 | Lo que entra, lo que sale y lo que se apunta de cada ejecución. |
+| `EXTENSIONES_SALIDA_KB` | — | `256` | 1–10240 |  |
+| `EXTENSIONES_LOGS_MAX` | — | `50` | 0–10000 |  |
+| `EXTENSIONES_ACCIONES_MAX` | — | `20` | 0–1000 | Cuántos cambios puede devolver una ejecución para que la plataforma los haga en su nombre. La función no escribe: pide, y se hace con sus permisos. |
+| `EXTENSIONES_EJECUCIONES_DIAS` | — | `30` | 1–3650 | Días que se guardan las ejecuciones, y el coste que se atribuye por segundo de ejecución (en la moneda en que se factura). 0 = no se atribuye. |
+| `EXTENSIONES_COSTE_POR_SEGUNDO` | — | `0.0` | 0.0–1000000.0 |  |
 | `TELEFONO_MINIMO_DIGITOS` | — | `7` | 1–30 | Dígitos mínimos para dar un teléfono por marcable. |
 | `ACTIVO_DIAS_PREAVISO` | — | `30` | 1–365 | Antelación del aviso de caducidad de un activo de marketing y de un acuerdo comercial con proveedor. |
 | `ACUERDO_DIAS_PREAVISO` | — | `30` | 1–365 |  |
@@ -273,6 +283,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CUOTA_CORREOS_MES` | 🔥 `cuota_correos_mes` | `0` | 0–100000000 | Todas abren por omisión: **0 es sin límite**, y es el valor por defecto a propósito. Un despliegue que no ha configurado cuotas no puede quedarse sin poder trabajar porque a alguien se le olvidara declararlas, y un fallo al declarar una ruta tiene que dejar pasar de más, nunca cortar de menos.… |
 | `CUOTA_SMS_MES` | 🔥 `cuota_sms_mes` | `0` | 0–100000000 |  |
 | `CUOTA_WORKFLOWS_MES` | 🔥 `cuota_workflows_mes` | `0` | 0–100000000 |  |
+| `CUOTA_EXTENSIONES_MES` | 🔥 `cuota_extensiones_mes` | `0` | 0–1000000000 |  |
 | `CUOTA_REGISTROS` | 🔥 `cuota_registros` | `0` | 0–1000000000 |  |
 | `VISTOS_POR_PERSONA` | — | `50` | 1–1000 | Cuántos registros se guardan en el historial de «visto hace poco» de cada persona. Operativo y no de negocio: es el tamaño de un historial de navegación, no una decisión de nadie sobre su CRM. Sin tope, la tabla guarda cada registro que cada persona abrió alguna vez y sacar los diez últimos… |
 

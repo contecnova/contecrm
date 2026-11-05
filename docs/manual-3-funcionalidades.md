@@ -12228,9 +12228,12 @@ límite de tasa, la misma auditoría, la misma comprobación de permisos y el mi
 presupuesto de error. Un camino que no pasa por donde pasan los demás es un camino
 donde los controles se ponen otra vez, peor y más tarde.
 
-Viven bajo `/api/v1/x/` y no pueden pisar una ruta del producto: dejar que un
-tenant declare `/api/v1/accounts` haría que el día que se publique la nuestra, una
-de las dos deje de funcionar.
+Viven bajo `/api/v1/propios/` y no pueden pisar una ruta del producto: dejar que
+un tenant declare `/api/v1/accounts` haría que el día que se publique la nuestra,
+una de las dos deje de funcionar. Cada uno ejecuta la versión activa de una
+extensión con lo que llega —método, ruta, consulta y cuerpo— y contesta lo que
+ella devuelve; si ella falla, contesta 502 y la ejecución queda apuntada con su
+error. El permiso que exige lo elige el tenant para cada endpoint.
 
 ### SDK y componentes embebibles (`CRM-00.02.03.04`, `CRM-00.02.03.05`)
 
@@ -12652,10 +12655,13 @@ pantallas que trae hechas. Nada más.
 
 ## Código del tenant: sandbox, versiones y firma (`CRM-00.04.02.01`, `CRM-00.04.02.05`, `CRM-00.04.02.06`, `CRM-00.04.02.07`)
 
-Las cuatro comprobaciones —límites, capacidades, versión y firma— y la
-observabilidad se piden por ruta. Estaban escritas y no las alcanzaba nada: el
-producto tenía todo lo que hace aceptable ejecutar código ajeno, sin forma de
-usarlo.
+El tenant escribe funciones en JavaScript que el CRM ejecuta **aislado**: en
+QuickJS compilado a WebAssembly, que ejecuta wasmtime, sin ficheros, sin red y
+sin nada del sistema. Se dan de alta, se publican por versiones, se prueban, se
+activan, se vuelven atrás y se observan desde **Procesos y orquestación →
+Extensiones**. Hasta el 05-11-2026 esto eran comprobaciones sueltas sobre lo que
+mandara quien preguntaba, sin ninguna ejecución; siguen en la API para quien
+integre con sus propios datos.
 
 Dejar que un cliente ejecute su código dentro del CRM es la diferencia entre un
 producto configurable y uno programable, y también la forma más rápida de que una
@@ -12676,10 +12682,18 @@ problema suyo**, es un problema de todos los que comparten ese worker.
 - **Una versión nueva no reemplaza a la anterior: convive.** Desplegar pisando
   deja sin sitio a lo que está ejecutándose en ese momento, y volver atrás exige
   tener la anterior entera y viva, no un diff que alguien aplique con prisa.
-- **Las dependencias van fijadas.** Una extensión que declara «la última
-  versión» de una librería funciona hasta que esa librería publique un cambio, y
-  entonces falla en producción sin que nadie haya tocado nada: el peor tipo de
-  fallo, porque no hay ningún cambio que revisar.
+- **Lo que se fija es el motor.** Una extensión es un fichero de JavaScript sin
+  librerías de fuera, y el motor que la ejecuta está fijado por versión y por
+  huella: si cambiara, no se ejecuta nada. Cada versión guarda con qué motor se
+  publicó. Una extensión que dependiera de «la última versión» de algo fallaría
+  el día que ese algo cambiase, sin ningún cambio propio que revisar.
+- **La función no escribe: pide.** Devuelve las acciones que quiere hacer y el
+  CRM las hace con los permisos que la extensión declaró —nunca más que los de
+  quien la dio de alta—, hasta un máximo por ejecución, y nunca sobre el propio
+  código del tenant: una extensión que publica o activa extensiones es un bucle
+  que ningún tope de una ejecución sola ve.
+- **Cuenta para la cuota.** Las ejecuciones del mes tienen su tope por tenant,
+  como los correos o los procesos.
 - **El coste se atribuye a quien lo gasta.** Sin eso, el tiempo de cómputo de un
   cliente lo paga el despliegue entero y nadie sabe de quién es la factura — que
   es justo la conversación que hay que poder tener con el cliente que se pasa, y

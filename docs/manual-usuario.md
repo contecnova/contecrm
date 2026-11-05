@@ -384,6 +384,51 @@ medias en producción.
 
 ---
 
+### Código propio: extensiones y endpoints
+
+Cuando una regla no basta —un descuento por tramos que cambia cada trimestre,
+un cálculo que viene de vuestro ERP—, en **Procesos y orquestación →
+Extensiones** se escribe una función en JavaScript. Corre aislada: no ve
+ficheros, ni la red, ni los datos de nadie más, y si tarda o gasta demasiado se
+corta.
+
+1. **Nuevo**: una clave (`descuento-por-volumen`), un nombre y, si la función
+   tiene que crear o cambiar registros, con qué permisos — nunca más de los
+   tuyos.
+2. **Publicar una versión nueva del código** (en la ficha, panel *Versiones*):
+   el código define `function main(entrada) { … }` y devuelve lo que quieras.
+   Publicar **no** la pone en marcha: la anterior sigue funcionando.
+3. **Probar la extensión con una entrada**: la ejecuta con los datos que le
+   des y enseña lo que devuelve, sus `console.log` y lo que tardó. Si la
+   función pide crear o cambiar registros, en la prueba **se enseñan y no se
+   hacen**.
+4. **Activar una versión**: desde ese momento se ejecuta ésa. Si algo va mal,
+   **Volver a la versión anterior** —con el motivo— activa la anterior entera.
+5. **Cómo va esta extensión**: cuántas veces se ha ejecutado, cuántas fallaron,
+   cuántas se cortaron por tardar o gastar demasiado, las más lentas y lo que
+   cuestan. En el panel *Las últimas ejecuciones* está cada una con su error.
+
+Si la función tiene que cambiar datos, no los cambia ella: devuelve
+`{acciones: [{metodo: "POST", ruta: "/api/v1/activities", cuerpo: {…}}]}` y el
+CRM las hace con los permisos de la extensión.
+
+**Endpoints propios.** En la pestaña del mismo nombre, un método y una ruta —por
+ejemplo `POST precios/descuento`— hacen que el CRM conteste en
+`/api/v1/propios/precios/descuento` con lo que devuelva la extensión. Se entra
+con las mismas credenciales que el resto de la API y se puede exigir un permiso.
+Si la extensión devuelve `{estado: 201, cuerpo: {…}}`, se contesta eso.
+
+**Extensiones de otros.** Si una extensión viene de un proveedor, se da de alta
+con origen *tercero*. Antes, en **Firmantes de confianza**, se pone la clave
+pública del proveedor. Cada versión llega firmada; si la firma no corresponde
+al código, no se acepta. Y no se puede activar hasta que la revise **otra
+persona** que no sea quien la publicó, con una nota de qué ha mirado.
+
+Hay un número de ejecuciones al mes por empresa; si se acaba, el CRM lo dice
+con ese nombre y en qué ajuste se sube.
+
+---
+
 ## Campos, listas y pantallas a tu medida (sección 0.4)
 
 Casi todo lo que ves se puede adaptar sin programar: añadir un campo, cambiar el

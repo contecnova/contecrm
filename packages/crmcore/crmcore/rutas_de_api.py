@@ -56,6 +56,9 @@ PREFIJOS: dict[str, str] = {
     # El código que escribe el propio tenant: sandbox, versiones, firma y
     # observabilidad (CRM-00.04.02).
     "extensiones": "automation",
+    # Los endpoints que define cada tenant (CRM-00.04.02.04): los sirve la
+    # extensión que los ejecuta, que vive en automation.
+    "propios": "automation",
     "integraciones": "integration",
     "webhooks": "eventing",
     "eventos": "eventing",

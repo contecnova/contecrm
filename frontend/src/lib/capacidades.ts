@@ -103,6 +103,14 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // conectores instalables, los trabajos largos y el progreso de convivencia
   // con el CRM heredado.
   "procesos": [
+    // El código del tenant: «Extensiones» (alta, versiones que no se pisan,
+    // probar, activar y volver atrás, ejecuciones y cómo va), «Endpoints
+    // propios» y «Firmantes de confianza» para las de terceros.
+    "CRM-00.04.02.01",
+    "CRM-00.04.02.04",
+    "CRM-00.04.02.05",
+    "CRM-00.04.02.06",
+    "CRM-00.04.02.07",
     // La automatización, en los campos de su propio registro: cuándo se
     // dispara y sobre qué campos vigilados (.02), qué hace —lista cerrada de
     // nueve acciones, ninguna que ejecute código (.03)— y si corre al momento,

@@ -297,6 +297,14 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="cuota_workflows_mes",
         ),
         _c(
+            "cuota_extensiones_mes",
+            "int",
+            "Ejecuciones de código propio que puede lanzar un tenant al mes (0 = sin límite)",
+            minimo=0,
+            maximo=1_000_000_000,
+            campo_settings="cuota_extensiones_mes",
+        ),
+        _c(
             "cuota_registros",
             "int",
             "Registros que puede guardar un tenant en este módulo (0 = sin límite)",

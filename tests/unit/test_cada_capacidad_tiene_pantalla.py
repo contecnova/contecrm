@@ -1000,7 +1000,10 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 # 05-11-2026, novena: 99 → 98. Los sandboxes de un tenant, con la copia de
 # verdad: se crean, se copian anonimizados y se apagan desde «Empresas».
-TOPE_SIN_PANTALLA = 98
+#
+# 05-11-2026, décima: 98 → 93. El código del tenant con ejecución de verdad:
+# extensiones, endpoints propios y firmantes en «Procesos y orquestación».
+TOPE_SIN_PANTALLA = 93
 
 
 def _es_pantalla(p: Path) -> bool:

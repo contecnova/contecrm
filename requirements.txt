@@ -70,3 +70,11 @@ aio-pika==10.0.1
 # así que ponerla detrás de un paso de instalación extra sería dejar la mejor
 # fuera por comodidad.
 webauthn==2.5.0
+
+# El motor del código del tenant (CRM-00.04.02.01): ejecuta WebAssembly con tope
+# de combustible, de memoria y de reloj, sin red ni ficheros. Lo que ejecuta es
+# QuickJS compilado a WASI por su proyecto, fijado con su huella en
+# `services/automation/motor_js.lock.json`. Se eligió wasmtime frente al
+# paquete `quickjs`, que no publica desde 2023: es la pieza que aísla código
+# ajeno, y tiene que estar mantenida.
+wasmtime==50.0.1

@@ -137,3 +137,12 @@ class EjecucionAutomatizacion(Base):
 # borrado es lógico y cada servicio guarda la suya en su esquema, que es lo que
 # impide que uno lea las tablas de otro.
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
+
+# El código del tenant, con datos (CRM-00.04.02.01, .04, .05, .06, .07).
+from services.automation.codigo_tenant import (  # noqa: E402,F401
+    EjecucionExtension,
+    EndpointPropio,
+    Extension,
+    FirmanteExtension,
+    VersionExtension,
+)
