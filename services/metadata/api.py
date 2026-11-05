@@ -1757,3 +1757,20 @@ montar_ficha(
     ruta="/objetos",
     parametro="objeto_id",
 )
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo. Medido el 05-11-2026: de las
+# pestañas que admiten alta, treinta no admitían ningún cambio.
+# Sólo lo que no cambia la forma de los datos: el rótulo, la explicación y si
+# está en uso. Origen, destino, tipo, cardinalidad o qué pasa al borrar, con
+# registros dentro, son una migración y no un formulario.
+montar_ficha(
+    router,
+    modelo=rel.RelacionDefinida,
+    objeto="relacion",
+    permiso_leer="metadata:read",
+    permiso_escribir="metadata:write",
+    nombre="Relaciones",
+    ruta="/relaciones",
+    editable=frozenset({"etiqueta", "descripcion", "activa"}),
+)

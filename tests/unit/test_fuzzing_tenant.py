@@ -142,6 +142,12 @@ ALIAS_POR_SERVICIO = {
     # junto a las demás integraciones —el listado los acota por `clase`—, así
     # que el parámetro no puede apuntar a un modelo que no existe.
     ("integration", "perfil_suite_id"): "conexion",
+    # Las fichas de rol y de proveedor de servicio (05-11-2026): la ruta dice
+    # «el rol» y «el proveedor de servicio»; los modelos, `RolTenant` —el rol
+    # propio del tenant, frente a los de fábrica— y `Proveedor` a secas dentro
+    # del módulo de encargos.
+    ("identity", "rol_id"): "roltenant",
+    ("integration", "proveedor_servicio_id"): "proveedor",
 }
 
 ALIAS_MODELO = {

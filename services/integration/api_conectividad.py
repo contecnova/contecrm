@@ -12,7 +12,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -696,3 +696,29 @@ montar_listado(
 
 
 ROUTERS_CONECTIVIDAD = [router, router_mcp, router_canales, router_fed, router_conv]
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+montar_ficha(
+    router_fed,
+    modelo=fed.VistaFederada,
+    objeto="vista_federada",
+    permiso_leer="integracion:read",
+    permiso_escribir="integracion:write",
+    nombre="Vistas federadas",
+    ruta="/vistas",
+)
+
+montar_ficha(
+    router_fed,
+    modelo=fed.Embebido,
+    objeto="embebido",
+    permiso_leer="integracion:read",
+    permiso_escribir="integracion:write",
+    nombre="Sitios donde se embebe",
+    ruta="/embebidos",
+)

@@ -207,6 +207,50 @@ def leer(
     return alm.leer(db, principal.tenant_id, tabla=tabla, limite=limite)
 
 
+class CambiarTabla(BaseModel):
+    nombre: str | None = Field(None, max_length=200)
+    frecuencia_min: int | None = Field(None, ge=1)
+    activa: bool | None = None
+
+
+@router.patch(
+    "/tablas/{tabla}",
+    dependencies=[Depends(exige_permiso("informe:write"))],
+    summary="Cambiar una tabla del almacén",
+    description=(
+        "El nombre, cada cuánto se carga y si sigue activa. Las columnas y la "
+        "estrategia no: definen lo que ya está cargado, y cambiarlas encima de "
+        "filas viejas dejaría la tabla con dos formas. Eso es declarar otra.\n\n"
+        "Por su clave, igual que se lee: `/tablas/{tabla}` ya es la ruta de esta "
+        "tabla, y una segunda por identificador con la misma forma no la "
+        "alcanzaría nadie."
+    ),
+)
+def cambiar_tabla(tabla: str, datos: CambiarTabla, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import NoEncontrado
+    from sqlalchemy import select
+
+    fila = db.execute(
+        select(TablaAnalitica).where(
+            TablaAnalitica.tenant_id == principal.tenant_id,
+            TablaAnalitica.clave == tabla,
+            TablaAnalitica.deleted_at.is_(None),
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        raise NoEncontrado("Esa tabla no está declarada", error_code="almacen.tabla_no_encontrada")
+    for campo, valor in datos.model_dump(exclude_unset=True).items():
+        if valor is not None:
+            setattr(fila, campo, valor)
+    db.flush()
+    return {
+        "clave": fila.clave,
+        "nombre": fila.nombre,
+        "frecuencia_min": fila.frecuencia_min,
+        "activa": fila.activa,
+    }
+
+
 @router.post(
     "/destinos",
     status_code=status.HTTP_201_CREATED,

@@ -254,7 +254,15 @@ export function Ficha() {
 
   if (!modulo) return <Vacio compacto />;
 
-  const nombre = fila ? nombreDelRegistro(fila) : "";
+  // **Hay lecturas que devuelven lo que el registro CONTIENE, no el registro.**
+  // `GET /colas/{clave}` es lo que espera en esa cola —una lista de casos—, y
+  // la ficha la pintaba como «0 · Caso ID: … +4», un campo por posición. Una
+  // lista se enseña como tabla; y sin el registro delante no hay con qué
+  // rellenar «Editar», así que no se ofrece: esos campos se editan en línea
+  // desde el listado, que sí los tiene.
+  const contenido = Array.isArray(fila) ? (fila as Record<string, unknown>[]) : null;
+  const registro = contenido ? null : fila;
+  const nombre = registro ? nombreDelRegistro(registro) : contenido ? (id ?? "") : "";
 
   return (
     <>
@@ -273,12 +281,14 @@ export function Ficha() {
         recurso={recurso}
         tipo={tipo}
         nombre={nombre || recurso?.nombre || modulo.titulo}
-        fila={fila}
+        // Con la lista delante no hay registro que resumir, pero tampoco se está
+        // cargando: `null` aquí pinta «Cargando…» para siempre.
+        fila={registro ?? (contenido ? {} : null)}
         volverA={{ a: `/m/${rutaDelModulo}`, titulo: modulo.titulo, id }}
         acciones={
           fila && !editando ? (
             <BotonesDeRegistro
-              puedeEditar={puedeEditar}
+              puedeEditar={puedeEditar && !contenido}
               puedeBorrar={puedeBorrar}
               borrado={borrado}
               alEditar={() => setEditando(true)}
@@ -353,7 +363,9 @@ export function Ficha() {
           />
         ) : (
           <>
-            {activa === "detalles" ? (
+            {activa === "detalles" && contenido ? (
+              <Tabla filas={contenido} titulo={nombre} />
+            ) : activa === "detalles" ? (
               <DetallesDelRegistro
                 fila={fila}
                 retenidos={retenidos}

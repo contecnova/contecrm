@@ -2705,6 +2705,48 @@ pestañas: sólo «Ajustes» respondía así —los 91 umbrales salían como una
 91 columnas—; las otras siete respuestas de un solo objeto son resúmenes y
 siguen pintándose como una fila.
 
+#### Lo que se da de alta se puede cambiar (05-11-2026)
+
+Cruzando las pestañas con los contratos: **treinta** admitían alta y ninguna
+forma de cambio. Un producto no se podía renombrar ni retirar, una cola no
+podía cambiar de miembros, un rol no podía cambiar de permisos.
+
+- **Diecisiete eran un hueco y se cerraron.** Catorce con `montar_ficha`
+  (productos, niveles de partner, planes preventivos, categorías de caso, roles,
+  reglas de compartición, vistas federadas, sitios embebidos, delegaciones de
+  firma, modelo canónico, dispositivos, proveedores de servicio y de firma,
+  relaciones entre objetos). Ninguno tiene borrado lógico, así que reciben ver y
+  editar y no borrar: retirar es desmarcar `activo`, que no deja referencias
+  colgando. Donde un campo lo pone el sistema —la última lectura de un
+  dispositivo, el resultado de probar un proveedor de firma, la última
+  ejecución de un plan— queda fuera de `editable`, y en una relación sólo se
+  edita lo que no cambia la forma de los datos. **Colas y tablas del almacén**
+  llevan un `PATCH` por clave escrito a mano, porque su `GET /{clave}` ya
+  existía y es la ruta por la que se abren.
+- **Trece lo son a propósito**, y cada una lo dice en la tabla de excepciones de
+  (`test_lo_que_se_crea_se_puede_cambiar.py`): históricos (movimientos de
+  almacén, transferencias internacionales, consultas, mediciones), versiones
+  publicadas (definiciones de proceso, SLA, plantillas de IA, modelos) y lo que
+  se reescribe declarándolo otra vez por clave (residencia, guardarraíles,
+  perfiles de industria).
+
+Dos defectos más salieron al abrirlas:
+
+- **Una ruta tapada por otra con la misma forma.** La ficha genérica de tablas
+  del almacén (`/tablas/{tabla_analitica_id}`) nunca habría contestado: ya
+  existía `/tablas/{tabla}`, que lee por clave. Lo vigila ahora
+  `test_una_ruta_con_nombre_no_queda_tapada.py`, que pide **cada operación del
+  contrato** con un identificador de ejemplo y comprueba que la contesta su
+  propia ruta. Pregunta a la aplicación con su propio emparejamiento: desde
+  FastAPI 0.139 cada router incluido va envuelto, y recorrer las rutas a mano
+  daba cero miradas y verde.
+- **Una lectura que es una lista.** `GET /colas/{clave}` devuelve lo que espera
+  en la cola. La ficha lo pintaba campo a campo por posición; ahora una lista se
+  enseña como tabla y la ficha no ofrece «Editar», que no tendría con qué
+  rellenarse (la cola se edita en línea desde su lista). Y un parámetro con
+  nombre propio que la fila no trae es su `clave`: el enlace caía al `id` y
+  daba 404.
+
 Pruebas: `una_fila_sin_ficha_tiene_su_menu.test.ts` y dos casos nuevos en
 `una_respuesta_con_dos_listas_se_pinta_entera.test.ts`, validadas plantando el
 fallo (sin la rama del `PUT`, sin el filtro de permiso, sin codificar la clave,

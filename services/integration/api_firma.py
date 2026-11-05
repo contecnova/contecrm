@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -575,3 +575,33 @@ montar_listado(
 
 
 ROUTERS_FIRMA = [router]
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+# El resultado de la prueba de conexión lo escribe la prueba: poder ponerlo a
+# mano dejaría marcar como probado un proveedor que nunca contestó.
+montar_ficha(
+    router,
+    modelo=fir.ProveedorFirma,
+    objeto="proveedor_firma",
+    permiso_leer="firma:read",
+    permiso_escribir="firma:write",
+    nombre="Proveedores de firma",
+    ruta="/proveedores",
+    editable=frozenset(
+        {
+            "nombre",
+            "conexion_id",
+            "niveles",
+            "identificaciones",
+            "mapa_estados",
+            "coste_sobre",
+            "activo",
+            "solo_en_curso",
+        }
+    ),
+)

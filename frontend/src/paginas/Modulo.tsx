@@ -845,7 +845,10 @@ function RecursoVista({
       }
     : campoFicha
       ? (fila: Record<string, unknown>) => {
-          const clave = fila[campoFicha] ?? fila.id;
+          // Un parámetro con nombre propio que la fila no trae es su clave:
+          // `/almacen/tablas/{tabla}` se lee por la clave de la tabla, y caer al
+          // `id` —como hacía— daba un 404 al pulsar cualquier fila.
+          const clave = fila[campoFicha] ?? fila.clave ?? fila.id;
           return typeof clave === "string"
             ? `/m/${ruta}/${objetoDe(recurso)}/${encodeURIComponent(clave)}`
             : null;

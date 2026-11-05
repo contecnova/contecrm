@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso
+from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso, montar_ficha
 from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -601,4 +601,19 @@ admite_parametros_abiertos(
 )
 admite_parametros_abiertos(
     listar, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+montar_ficha(
+    router_proveedores,
+    modelo=enc.Proveedor,
+    objeto="proveedor_servicio",
+    permiso_leer="integracion:read",
+    permiso_escribir="integracion:write",
+    nombre="Proveedores de servicio",
 )

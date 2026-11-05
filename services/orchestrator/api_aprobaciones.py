@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -477,3 +477,23 @@ montar_listado(
 
 
 ROUTERS_APROBACIONES = [router, router_analitica]
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+# De una delegación se cambia el plazo, el motivo y si sigue en pie. Quién
+# delega y en quién no: eso es otra delegación, y cambiarlo aquí reescribiría
+# a quién se atribuyen las decisiones ya tomadas.
+montar_ficha(
+    router,
+    modelo=apr.Delegacion,
+    objeto="delegacion",
+    permiso_leer="aprobacion:read",
+    permiso_escribir="aprobacion:write",
+    nombre="Delegaciones de firma",
+    ruta="/delegaciones",
+    editable=frozenset({"hasta", "motivo", "activa"}),
+)

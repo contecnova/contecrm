@@ -240,6 +240,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Vistas federadas",
+        objeto: "vista_federada",
         listar: "/api/v1/federacion/vistas",
         servicio: "integration",
       },
@@ -329,6 +330,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // qué algo que antes salía solo ahora se queda parado.
       {
         nombre: "Delegaciones de firma",
+        objeto: "delegacion",
         listar: "/api/v1/aprobaciones/delegaciones",
         servicio: "orchestrator",
         permiso: "aprobacion:read",
@@ -363,6 +365,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Relaciones",
+        objeto: "relacion_entre_objetos",
         listar: "/api/v1/metadata/relaciones",
         servicio: "metadata",
       },
@@ -460,6 +463,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Roles",
+        objeto: "rol",
         listar: "/api/v1/roles",
         servicio: "identity",
         permiso: "user:read",
@@ -514,6 +518,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // acceso concedido que nadie audita.
       {
         nombre: "Reglas de compartición",
+        objeto: "regla_comparticion",
         listar: "/api/v1/sharing-rules",
         crear: "/api/v1/sharing-rules",
         servicio: "identity",
@@ -531,6 +536,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "operacion": [
       {
         nombre: "Modelo canónico",
+        objeto: "objeto_canonico",
         listar: "/api/v1/modelo-canonico/objetos",
         servicio: "integration",
         permiso: "integracion:read",
@@ -558,6 +564,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // se eligió «Catálogo de eventos», que tiene 120 filas: es
         // documentación para quien integra, no la operación de nadie.
         principal: true,
+        objeto: "proveedor_servicio",
         listar: "/api/v1/proveedores-servicio",
         servicio: "integration",
         permiso: "integracion:read",
@@ -703,6 +710,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Proveedores de firma",
+        objeto: "proveedor_firma",
         listar: "/api/v1/firma/proveedores",
         crear: "/api/v1/firma/proveedores",
         servicio: "integration",
@@ -1326,6 +1334,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Dispositivos",
+        objeto: "dispositivo_iot",
         listar: "/api/v1/dispositivos",
         servicio: "integration",
       },
@@ -1624,6 +1633,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // se nombran, no se cuentan: lo que se revisa es si alguno sobra.
       {
         nombre: "Sitios donde se embebe",
+        objeto: "embebido",
         listar: "/api/v1/federacion/embebidos",
         servicio: "integration",
         permiso: "integracion:read",
@@ -1929,7 +1939,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/sla",
         servicio: "service",
       },
-      { nombre: "Colas", listar: "/api/v1/colas", servicio: "service" },
+      { nombre: "Colas", objeto: "cola", listar: "/api/v1/colas", servicio: "service" },
       {
         nombre: "Escalado",
         listar: "/api/v1/escalado/reglas",

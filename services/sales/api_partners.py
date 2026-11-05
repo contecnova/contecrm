@@ -736,3 +736,18 @@ montar_ficha(
     permiso_escribir="partner:write",
     nombre="Registros de oportunidad",
 )
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+montar_ficha(
+    router_niveles,
+    modelo=prt.NivelPartner,
+    objeto="nivel_partner",
+    permiso_leer="partner:read",
+    permiso_escribir="partner:write",
+    nombre="Niveles del programa",
+)

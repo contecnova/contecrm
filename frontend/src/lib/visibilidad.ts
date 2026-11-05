@@ -158,6 +158,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/federacion/vistas",
+      "o": "vista_federada",
       "s": "integration"
     },
     {
@@ -199,6 +200,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/aprobaciones/delegaciones",
       "p": "aprobacion:read",
+      "o": "delegacion",
       "s": "orchestrator"
     },
     {
@@ -215,6 +217,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/metadata/relaciones",
+      "o": "relacion_entre_objetos",
       "s": "metadata"
     },
     {
@@ -267,6 +270,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/roles",
       "p": "user:read",
+      "o": "rol",
       "s": "identity"
     },
     {
@@ -291,6 +295,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/sharing-rules",
       "p": "sharing:read",
+      "o": "regla_comparticion",
       "s": "identity"
     },
     {
@@ -302,6 +307,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/modelo-canonico/objetos",
       "p": "integracion:read",
+      "o": "objeto_canonico",
       "s": "integration"
     },
     {
@@ -312,6 +318,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/proveedores-servicio",
       "p": "integracion:read",
+      "o": "proveedor_servicio",
       "s": "integration"
     },
     {
@@ -387,6 +394,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/firma/proveedores",
       "p": "integracion:read",
+      "o": "proveedor_firma",
       "s": "integration"
     },
     {
@@ -721,6 +729,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/dispositivos",
+      "o": "dispositivo_iot",
       "s": "integration"
     },
     {
@@ -864,6 +873,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/federacion/embebidos",
       "p": "integracion:read",
+      "o": "embebido",
       "s": "integration"
     },
     {
@@ -1015,6 +1025,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/sla",
+      "o": "cola",
       "s": "service"
     },
     {

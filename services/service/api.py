@@ -846,3 +846,18 @@ montar_ficha(
 admite_parametros_abiertos(
     listar, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+montar_ficha(
+    router_taxonomia,
+    modelo=CategoriaCaso,
+    objeto="categoria_caso",
+    permiso_leer="case:read",
+    permiso_escribir="case:write",
+    nombre="Categorías de caso",
+)

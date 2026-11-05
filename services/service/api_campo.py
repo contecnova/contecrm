@@ -911,3 +911,34 @@ montar_ficha(
     nombre="Técnicos de campo",
     parametro="tecnico_id",
 )
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+# La última ejecución y el último contador los apunta la orden de trabajo al
+# cerrarse; ponerlos a mano movería la próxima fecha sin que nada se hiciera.
+montar_ficha(
+    router_planes,
+    modelo=campo.PlanPreventivo,
+    objeto="plan_preventivo",
+    permiso_leer="case:read",
+    permiso_escribir="case:write",
+    nombre="Planes preventivos",
+    editable=frozenset(
+        {
+            "nombre",
+            "activo_id",
+            "cada_dias",
+            "cada_contador",
+            "duracion_min",
+            "competencias",
+            "checklist",
+            "antelacion_dias",
+            "proxima_fecha",
+            "activo",
+        }
+    ),
+)

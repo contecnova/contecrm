@@ -15,7 +15,7 @@ from crmcore.http.deps import (
     exige_firma_interna,
     exige_permiso,
 )
-from crmcore.http.listados import aplicar_filtros_de_la_url
+from crmcore.http.listados import aplicar_filtros_de_la_url, montar_ficha
 from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
@@ -1547,4 +1547,33 @@ admite_parametros_abiertos(
 admite_parametros_abiertos(
     listar_reglas_comparticion,
     "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna",
+)
+
+# ── Corregir lo dado de alta ──────────────────────────────────────────────
+# Se podía crear y no había forma de cambiarlo: una errata, un plazo mal
+# puesto o retirarlo obligaban a crear otro al lado. Medido el 05-11-2026: de
+# las pestañas que admiten alta, treinta no admitían ningún cambio, y de ellas
+# éstas eran un hueco y no una decisión. Se monta al final del módulo para que
+# `/{id}` quede detrás de las rutas con nombre propio de la misma colección.
+from crmcore.authz.comparticion import ReglaComparticion  # noqa: E402
+
+# Los permisos de un rol se recalculan en cada consulta —no hay caché—, y
+# llegan a la sesión de cada persona cuando renueva su token, igual que al crear
+# el rol.
+montar_ficha(
+    router_roles,
+    modelo=RolTenant,
+    objeto="rol",
+    permiso_leer="user:read",
+    permiso_escribir="role:write",
+    nombre="Roles",
+)
+
+montar_ficha(
+    router_comparticion,
+    modelo=ReglaComparticion,
+    objeto="regla_comparticion",
+    permiso_leer="sharing:read",
+    permiso_escribir="sharing:write",
+    nombre="Reglas de compartición",
 )

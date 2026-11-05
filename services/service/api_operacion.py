@@ -63,6 +63,60 @@ def crear_cola(datos: CrearCola, uow: UowDep, principal: AutenticadoDep) -> Any:
     return {"id": str(fila.id), "clave": fila.clave}
 
 
+class CambiarCola(BaseModel):
+    nombre: str | None = Field(None, max_length=200)
+    descripcion: str | None = None
+    miembros: list[UUID] | None = None
+    canales: list[str] | None = None
+    competencias: list[str] | None = None
+    nivel: int | None = Field(None, ge=1, le=9)
+
+
+@router_colas.patch(
+    "/{clave}",
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Cambiar una cola de trabajo",
+    description=(
+        "Quién coge de ella, por qué canales entra y con qué competencias. Se "
+        "cambia **solo lo que se envía**.\n\n"
+        "Por su clave y no por su identificador, igual que se abre: la cola se "
+        "lee por `/colas/{clave}`, y editarla por otra llave obligaría a la "
+        "pantalla a saber dos nombres de lo mismo. La clave no se cambia: los "
+        "casos y las reglas de asignación apuntan a ella."
+    ),
+)
+def cambiar_cola(clave: str, datos: CambiarCola, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import NoEncontrado
+    from sqlalchemy import select
+
+    fila = db.execute(
+        select(ColaCasos).where(
+            ColaCasos.tenant_id == principal.tenant_id,
+            ColaCasos.clave == clave,
+            ColaCasos.deleted_at.is_(None),
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        raise NoEncontrado("Esa cola no existe", error_code="cola.no_encontrada")
+    for campo, valor in datos.model_dump(exclude_unset=True).items():
+        # Un nulo explícito no vacía la cola: los campos de una cola no tienen
+        # «sin valor», y vaciar los miembros se pide mandando la lista vacía.
+        if valor is None:
+            continue
+        setattr(fila, campo, [str(m) for m in valor] if campo == "miembros" else valor)
+    db.flush()
+    return {
+        "id": str(fila.id),
+        "clave": fila.clave,
+        "nombre": fila.nombre,
+        "descripcion": fila.descripcion,
+        "miembros": fila.miembros,
+        "canales": fila.canales,
+        "competencias": fila.competencias,
+        "nivel": fila.nivel,
+    }
+
+
 @router_colas.get(
     "/{clave}",
     dependencies=[Depends(exige_permiso("case:read"))],

@@ -2152,6 +2152,15 @@ una sesión*, *Levantar una supresión*, *Editar*. Al elegirlo, el formulario sa
 encima de la lista y dice sobre qué fila vas a actuar —«Sobre “Cuadro de mando
 de dirección”»—, para que con cincuenta parecidas no haya duda.
 
+**Lo que das de alta lo puedes corregir.** Productos, roles, reglas de
+compartición, colas, niveles del programa de partners, planes preventivos,
+categorías de caso, proveedores, dispositivos y el resto de catálogos se abren
+y tienen **Editar**. Para retirar uno, desmarca *Activo*: no se borra, porque
+lo que se hizo con él antes lo sigue nombrando. Hay cosas que no se editan a
+propósito: los históricos (movimientos de almacén, transferencias), las
+versiones publicadas (un SLA, una definición de proceso: se publica otra) y lo
+que se declara por clave (residencia, guardarraíles: se declara de nuevo).
+
 Hasta el 27-10-2026 la ficha de un cliente no tenía ninguna de las dos cosas —la
 edición vivía dentro de la ficha genérica y la de cliente se quedó sin ella—,
 así que un cliente no se podía cambiar desde ningún punto de su propia ficha
