@@ -1535,6 +1535,19 @@ const pantallas = {
     sinPantallas: "Este módulo no declara ninguna pantalla",
     sinPantallasPorque:
       "El front oficial sólo pinta lo que el módulo declara. Sin superficie declarada, sus objetos se ven por el módulo genérico.",
+    quitar: "¿Qué pierdo si lo quito?",
+    verQuePasaria: "Ver qué pasaría al quitarlo",
+    quitaria: "Se quitarían {{cuantos}} elementos del módulo",
+    registros: "Registros por objeto: {{cuales}}",
+    sinContar:
+      "No se han podido contar los registros de {{cuales}}: no es que sean cero, es que no se sabe",
+    ajustadosSePierden: "Lo que el cliente ajustó y se perdería: {{cuales}}",
+    dependen:
+      "No se puede quitar: {{cuales}} depende de este módulo. Quita antes ese, o déjalo.",
+    borrarDatos: "Borrar también los registros de sus objetos",
+    borrarDatosAviso:
+      "Sin marcar, los registros se conservan y quedan sin pantalla que los enseñe. Marcado, se borran.",
+    quitarDeVerdad: "Quitar el módulo",
   },
   suite: {
     organigrama:

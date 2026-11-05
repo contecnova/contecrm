@@ -335,8 +335,27 @@ def validar_manifiesto(manifiesto: dict[str, Any]) -> list[str]:
             detalle={"conocidas": list(SECCIONES)},
         )
 
+    # Una sección fuera de `contenido` no es un descuido de formato: se ignora
+    # entera y el módulo se instala **vacío**, con su nombre, su versión y su
+    # huella, como si estuviera completo. Pasó el 05-11-2026 con el módulo de
+    # homologaciones: la ficha decía «un objeto, tres campos» —leía la raíz— y
+    # no se había instalado nada, así que ni se medía su uso ni se podía quitar.
+    fuera = sorted(set(manifiesto) & set(SECCIONES))
+    if fuera:
+        raise ErrorValidacion(
+            f"{', '.join(fuera)} va dentro de «contenido», no en la raíz del "
+            "manifiesto. Así se habría instalado un módulo vacío.",
+            error_code="metadata.seccion_fuera_de_contenido",
+            detalle={"fuera_de_sitio": fuera},
+        )
     avisos: list[str] = []
     contenido = manifiesto.get("contenido") or {}
+    if not any(contenido.values()):
+        raise ErrorValidacion(
+            "El módulo no trae nada: ni objetos, ni plantillas, ni pantallas. "
+            "Instalarlo dejaría un nombre en la lista y ningún efecto.",
+            error_code="metadata.modulo_vacio",
+        )
     for seccion, elementos in contenido.items():
         for elemento in elementos or []:
             if not isinstance(elemento, dict) or not elemento.get("clave"):
@@ -1162,7 +1181,10 @@ def instalado(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any] | None
     if fila is None:
         return None
     manifiesto = dict(fila.manifiesto or {})
-    objetos = list(manifiesto.get("objetos") or [])
+    # De `contenido`, que es donde los pone el formato y de donde los instala
+    # `instalar`. Leía la raíz, y por eso la ficha anunciaba objetos que no se
+    # habían instalado.
+    objetos = list((manifiesto.get("contenido") or {}).get("objetos") or [])
     return {
         # Lo que el módulo DECLARA, y no sólo que está puesto
         # (CRM-00.04.04.01, .03, .05, .08). Estaba guardado entero y la ficha

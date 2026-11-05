@@ -2747,6 +2747,24 @@ Dos defectos más salieron al abrirlas:
   nombre propio que la fila no trae es su `clave`: el enlace caía al `id` y
   daba 404.
 
+#### Capacidades sin pantalla: medir antes de citar (05-11-2026)
+
+El guardián de pantallas cuenta **citas**, no alcance, así que bajar su tope
+exige pulsar antes. De 194 se pasó a 122 en tres pasos, contados aparte en su
+histórico: 41 que no son pantalla —gates, protocolos, aislamiento, relevos
+internos y API para otros frontends— llevan ahora su motivo en el catálogo
+(`sin_pantalla_porque`); 29 que sí la tenían se citaron tras recorrerlas en el
+navegador; y dos que no la tenían ahora sí (quitar un módulo, en su ficha). Al
+quitar las 41 del recuento, el suelo de cordura del guardián bajó de 700 a 600
+capacidades miradas, con el motivo escrito al lado.
+
+Recorriendo salió un defecto de formato: `validar_manifiesto` aceptaba
+secciones en la raíz del manifiesto y `instalar` sólo lee `contenido`, así que
+el módulo se instalaba vacío; la ficha leía la raíz. Ahora las dos leen
+`contenido` y la validación rechaza las secciones fuera de sitio
+(`metadata.seccion_fuera_de_contenido`) y el módulo vacío
+(`metadata.modulo_vacio`).
+
 Pruebas: `una_fila_sin_ficha_tiene_su_menu.test.ts` y dos casos nuevos en
 `una_respuesta_con_dos_listas_se_pinta_entera.test.ts`, validadas plantando el
 fallo (sin la rama del `PUT`, sin el filtro de permiso, sin codificar la clave,

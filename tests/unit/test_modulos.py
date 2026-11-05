@@ -86,6 +86,24 @@ def test_una_seccion_desconocida_se_rechaza() -> None:
     assert e.value.error_code == "metadata.seccion_desconocida"
 
 
+def test_una_seccion_fuera_de_contenido_se_rechaza() -> None:
+    """Fuera de `contenido` se ignoraba entera y el módulo se instalaba vacío,
+    con su nombre y su versión, como si estuviera completo. Pasó el 05-11-2026
+    con el módulo de homologaciones del sembrador."""
+    manifiesto = _simple()
+    manifiesto["objetos"] = manifiesto["contenido"].pop("objetos")
+    with pytest.raises(ErrorValidacion) as e:
+        mod.validar_manifiesto(manifiesto)
+    assert e.value.error_code == "metadata.seccion_fuera_de_contenido"
+
+
+def test_un_modulo_que_no_trae_nada_no_se_instala() -> None:
+    """Dejaría un nombre en la lista y ningún efecto."""
+    with pytest.raises(ErrorValidacion) as e:
+        mod.validar_manifiesto(_simple(contenido={}))
+    assert e.value.error_code == "metadata.modulo_vacio"
+
+
 def test_una_clave_de_modulo_rara_no_pasa() -> None:
     """Va prefijando todo lo que trae y acaba en nombres de tabla y de API."""
     with pytest.raises(ErrorValidacion) as e:
@@ -155,6 +173,20 @@ def test_instalar_de_verdad_deja_sus_elementos(
     db.flush()
     assert salida["creados"] == 4
     assert mod.instalados(db, tenant_id)[0]["clave"] == "demo"
+
+
+@pytest.mark.db
+def test_la_ficha_anuncia_lo_que_se_instalo(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """La ficha y la instalación leen del mismo sitio: la ficha anunciaba
+    «un objeto, tres campos» de un módulo que no había instalado nada."""
+    mod.instalar(uow, _simple(), aplicar=True)
+    db.flush()
+    ficha = mod.instalado(db, tenant_id, "demo")
+    assert ficha is not None
+    assert ficha["objetos"] == ["cosa"]
+    assert mod.telemetria(db, tenant_id, "demo")["elementos"] == 4
 
 
 @pytest.mark.db

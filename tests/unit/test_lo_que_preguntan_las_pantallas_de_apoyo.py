@@ -598,13 +598,19 @@ MANIFIESTO = {
     "nombre": "Homologaciones por mercado",
     "version": "1.0.0",
     "descripcion": "Seguimiento de homologación de pieza por país.",
-    "objetos": [
-        {
-            "nombre": "homologacion_mercado",
-            "etiqueta": "Homologación por mercado",
-            "campos": [{"nombre": "mercado", "tipo": "texto", "etiqueta": "Mercado"}],
-        }
-    ],
+    # En `contenido`, como manda el formato. Este manifiesto tenía `objetos` en
+    # la raíz —se copió al sembrador— y la validación lo aceptaba instalando un
+    # módulo vacío; ahora se rechaza (`test_modulos.py`).
+    "contenido": {
+        "objetos": [
+            {
+                "clave": "homologacion_mercado",
+                "gobierno": "fijo",
+                "etiqueta": "Homologación por mercado",
+                "campos": [{"nombre": "mercado", "tipo": "texto", "etiqueta": "Mercado"}],
+            }
+        ]
+    },
 }
 
 

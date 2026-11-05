@@ -1,7 +1,9 @@
 /**
  * Un módulo vertical instalado, con todo lo suyo (CRM-00.04.04.01,
  * CRM-00.04.04.03, CRM-00.04.04.04, CRM-00.04.04.05, CRM-00.04.04.07,
- * CRM-00.04.04.08, CRM-00.04.04.10).
+ * CRM-00.04.04.08, CRM-00.04.04.10), y quitarlo con el ensayo delante
+ * (CRM-00.04.04.02, CRM-00.04.04.09). Instalar y actualizar son acciones de la
+ * lista «Módulos instalados», que es donde se elige qué módulo.
  *
  * **La familia entera estaba publicada y sin puerta.** El servidor contesta si
  * el módulo sigue siendo el del catálogo, qué partes usa el cliente de verdad,
@@ -23,18 +25,16 @@
  *   · **¿qué pierdo si lo quito?** Lo que se borra y lo que se queda, antes de
  *     tocar el botón y no después.
  *
- * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.04.04.02`
- * —instalar, actualizar y desinstalar— y `CRM-00.04.04.09` —desinstalar
- * diciendo qué pasa con los datos—, porque las dos son acciones y aquí no hay
- * botón que las dispare; `CRM-00.04.04.06` —los conectores que vienen dentro
- * de un módulo—, porque aquí se ve el módulo y no sus conectores; y
+ * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.04.04.06`
+ * —los conectores que vienen dentro de un módulo—, porque aquí se ve el
+ * módulo y no sus conectores; y
  * `CRM-00.04.04.11` —el módulo de ejemplo documentado—, que es un entregable
  * del repositorio y no una pantalla.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -290,6 +290,140 @@ export function ModuloInstalado() {
           </ul>
         )}
       </section>
+
+      {/* 4. ¿Qué pierdo si lo quito? Antes de tocar el botón, no después. */}
+      {modulo.estado === "instalado" ? <Quitar clave={clave} /> : null}
     </div>
+  );
+}
+
+interface Ensayo {
+  quitaria: number;
+  registros_por_objeto: Record<string, number>;
+  no_se_han_podido_contar: string[];
+  modificados_por_el_cliente: string[];
+  modulos_que_dependen: string[];
+  se_puede_desinstalar: boolean;
+  que_pasa_con_los_datos: string;
+}
+
+/**
+ * Quitar el módulo, con el ensayo delante.
+ *
+ * La ruta existía —`POST /modulos/{clave}/desinstalar`, que sin `aplicar`
+ * sólo cuenta— y la cabecera de esta pantalla prometía «lo que se borra y lo
+ * que se queda, antes de tocar el botón», pero no había ni lo uno ni el botón.
+ * Visto el 05-11-2026.
+ *
+ * El ensayo se pide otra vez al cambiar «borrar los registros», porque lo que
+ * dice que pasa con los datos depende de eso. Y el botón no se ofrece si otro
+ * módulo depende de este: el servidor lo rechazaría, y un botón que siempre
+ * contesta que no es peor que la frase que dice por qué.
+ */
+function Quitar({ clave }: { clave: string }) {
+  const { t } = useTranslation();
+  const navegar = useNavigate();
+  const [borrarDatos, setBorrarDatos] = useState(false);
+  const [ensayo, setEnsayo] = useState<Ensayo | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  async function pedir(aplicar: boolean, borrar = borrarDatos) {
+    setEnviando(true);
+    setFallo(null);
+    try {
+      const r = await llamar<Ensayo>(
+        `/api/v1/metadata/modulos/${encodeURIComponent(clave)}/desinstalar`,
+        { metodo: "POST", cuerpo: { aplicar, borrar_datos: borrar } },
+      );
+      if (aplicar) {
+        navegar(`/m/modelo?r=${encodeURIComponent("Módulos instalados")}`);
+        return;
+      }
+      setEnsayo(r.datos);
+    } catch (error) {
+      setFallo(error);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const registros = Object.entries(ensayo?.registros_por_objeto ?? {});
+
+  return (
+    <section className="card p-4" data-testid="modulo-quitar">
+      <h2 className="section-label mb-1">{t("modulo.quitar")}</h2>
+      {fallo ? <Fallo error={fallo} /> : null}
+      {!ensayo ? (
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={enviando}
+          onClick={() => void pedir(false)}
+        >
+          {t("modulo.verQuePasaria")}
+        </button>
+      ) : (
+        // Anunciado: el ensayo llega al pulsar, y sin esto quien usa un lector
+        // de pantalla no se entera de que ya está la respuesta.
+        <div className="flex flex-col gap-1.5" role="status">
+          <p className="text-titulo text-ink">
+            {t("modulo.quitaria", { cuantos: ensayo.quitaria })}
+          </p>
+          {registros.length ? (
+            <p className="text-rotulo text-ink-muted">
+              {t("modulo.registros", {
+                cuales: registros.map(([o, n]) => `${o} ${n}`).join(", "),
+              })}
+            </p>
+          ) : null}
+          {ensayo.no_se_han_podido_contar.length ? (
+            <p className="text-rotulo text-warning">
+              {t("modulo.sinContar", {
+                cuales: ensayo.no_se_han_podido_contar.join(", "),
+              })}
+            </p>
+          ) : null}
+          {ensayo.modificados_por_el_cliente.length ? (
+            <p className="text-rotulo text-warning">
+              {t("modulo.ajustadosSePierden", {
+                cuales: ensayo.modificados_por_el_cliente.slice(0, 8).join(", "),
+              })}
+            </p>
+          ) : null}
+          <p className="text-rotulo text-ink">{ensayo.que_pasa_con_los_datos}</p>
+          {ensayo.se_puede_desinstalar ? (
+            <>
+              <label className="mt-1 flex items-center gap-2 text-dato text-ink">
+                <input
+                  type="checkbox"
+                  checked={borrarDatos}
+                  onChange={(e) => {
+                    setBorrarDatos(e.target.checked);
+                    void pedir(false, e.target.checked);
+                  }}
+                />
+                {t("modulo.borrarDatos")}
+              </label>
+              <p className="text-rotulo text-ink-faint">{t("modulo.borrarDatosAviso")}</p>
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className="btn-danger"
+                  disabled={enviando}
+                  onClick={() => void pedir(true)}
+                >
+                  {t("modulo.quitarDeVerdad")}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-rotulo text-danger">
+              {t("modulo.dependen", { cuales: ensayo.modulos_que_dependen.join(", ") })}
+            </p>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

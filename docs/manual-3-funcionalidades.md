@@ -7788,6 +7788,22 @@ telemetría avisa **antes** de enseñar la lista de lo que no se usa cuando el
 módulo lleva pocos días puesto: concluir que algo sobra a los dos días es
 concluir sobre nada, y la lista invita a hacerlo.
 
+Y una cuarta, al final: **¿qué pierdo si lo quito?** «Ver qué pasaría al
+quitarlo» hace el ensayo sin tocar nada —cuántos elementos se irían, cuántos
+registros hay por objeto, qué ajustó el cliente y se perdería, y qué pasa con
+los datos—; luego se elige si borrar también los registros (por defecto **se
+conservan**) y se quita. Si otro módulo depende de éste, no se ofrece quitarlo
+y se dice cuál. Cuando los registros no se han podido contar se dice así —«no
+es que sean cero, es que no se sabe»—: hoy no se pueden contar, porque los
+guarda el servicio dueño de cada objeto y nadie se lo pregunta todavía.
+
+**El manifiesto pone sus secciones dentro de `contenido`.** Hasta el
+05-11-2026 un manifiesto con `objetos` en la raíz se aceptaba y se instalaba
+**vacío** —con su nombre y su versión, como si estuviera completo—, mientras la
+ficha leía la raíz y anunciaba «un objeto, tres campos». Así estaba el módulo
+de homologaciones de la demostración. Ahora se rechaza, igual que un módulo
+que no trae nada.
+
 ### Instalar es una decisión (`CRM-00.04.04.02`)
 
 **Simular es el valor por defecto.** Instalar un módulo es un cambio de modelo de

@@ -34,6 +34,18 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-05.02.03.02",
     "CRM-05.02.03.03",
     "CRM-05.02.03.04",
+    // Verificadas pulsando el 05-11-2026: «Predicciones» lleva «Forecast predictivo
+    // al lado del humano» y la columna «Factores» que explica cada puntuación;
+    // «Modelos» da de alta la versión entrenada con lo del tenant; y en «Agentes
+    // autónomos» se declaran los agentes concretos —calificar leads, contestar
+    // soporte— porque son configuración, con sus herramientas y su punto de parada.
+    "CRM-03.02.01.06",
+    "CRM-05.02.01.01",
+    "CRM-05.02.01.06",
+    "CRM-05.02.03.06",
+    // Las exposiciones MCP: qué agente se expone, con «Publicar una herramienta».
+    // Verificado pulsando el 05-11-2026.
+    "CRM-00.03.04.11",
   ],
 
   // El alta por API y el autoservicio (`POST /tenants`), el cambio de estado
@@ -57,6 +69,17 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-00.01.05.01",
     "CRM-00.01.05.02",
     "CRM-00.01.05.03",
+    // La salida de un cliente: la ficha del tenant ofrece «Exportar los datos del
+    // tenant» y «Destruir los datos del tenant y emitir el certificado».
+    // Verificado pulsando el 05-11-2026.
+    "CRM-00.01.03.05",
+    "CRM-08.02.01.05",
+    // Calendarios laborales con su país y «Añadir un festivo» en la ficha; la pausa
+    // del reloj no tiene pantalla propia porque ocurre sola al pasar el caso a un
+    // estado de espera, y se acumula en el caso. Y los tipos de cambio con fecha, que
+    // son los que usa la previsión en otra moneda. Verificado pulsando el 05-11-2026.
+    "CRM-04.01.02.04",
+    "CRM-03.02.01.07",
   ],
   // La superficie publicada entera —cada operación con su método, su ruta y
   // el permiso que exige— y la salud de cada servicio enrutado, que es el
@@ -115,6 +138,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-00.03.04.10",
     "CRM-00.03.05.09",
     "CRM-00.03.05.10",
+    // Las sagas, con compensar hacia atrás el paso que falló: el order-to-cash
+    // corre como una de ellas. Verificado pulsando el 05-11-2026.
+    "CRM-03.03.02.12",
   ],
   // Los objetos propios del tenant y el grafo de relaciones con sus tipos.
   "modelo": [
@@ -132,6 +158,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-00.04.01.12",
     "CRM-00.04.01.01",
     "CRM-00.04.01.03",
+    // Los vocabularios de negocio: cada lista dice si sigue con los valores de
+    // fábrica o ya es de la empresa. Verificado pulsando el 05-11-2026.
+    "CRM-07.01.01.03",
   ],
   // Proveedores de identidad por tenant, credenciales de máquina con ámbito y
   // caducidad, sesiones revocables, dispositivos de confianza, roles y las
@@ -143,6 +172,13 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-00.05.01.20",
     "CRM-00.05.02.01",
     "CRM-00.05.02.17",
+    // Usuarios con su ficha, las licencias encima de la lista y «Dar de baja a un
+    // usuario», que pregunta a quién pasan sus registros. La ficha no abría hasta
+    // el 05-11-2026: le faltaba su GET. Verificado pulsando después.
+    "CRM-07.01.01.02",
+    // «Dar acceso temporal a alguien de fuera», en la lista de usuarios, con
+    // motivo y caducidad obligatorios. Verificado pulsando el 05-11-2026.
+    "CRM-06.02.01.06",
   ],
   // El modelo canónico de intercambio, los conflictos de sincronización, el
   // catálogo de eventos publicado, la cola de fallidos con su reenvío y el
@@ -201,6 +237,16 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-01.01.02.06",
     "CRM-01.01.04.08",
     "CRM-00.06.02.04",
+    // Los derechos del interesado, verificados pulsando el 05-11-2026: la lista
+    // va por vencimiento con los días restantes, y la ficha de cada solicitud
+    // ofrece acceso, rectificación, supresión con bloqueos legales, portabilidad,
+    // oposición y «Bloquear el tratamiento sin borrar nada».
+    "CRM-02.04.02.04",
+    "CRM-02.04.02.05",
+    "CRM-07.03.01.03",
+    // Las visitas: «Registrar la llegada» con latitud, longitud y si fue fuera de
+    // sitio. Verificado pulsando el 05-11-2026.
+    "CRM-01.02.01.08",
   ],
   // El proveedor como cuenta con rol, su homologación por categoría y la
   // documentación obligatoria con vigencia que avisa de lo que caduca.
@@ -208,6 +254,10 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-09.01.01.01",
     "CRM-09.01.01.02",
     "CRM-09.01.01.03",
+    // «Cómo va este proveedor, con hechos» y «Dónde duele si un proveedor falla
+    // mañana», en la lista de proveedores. Verificado pulsando el 05-11-2026.
+    "CRM-09.01.01.04",
+    "CRM-09.01.01.05",
   ],
   // El modelo común de actividad —tareas, eventos, llamadas, notas y
   // visitas—, sus plantillas y secuencias por tipo de proceso, y las
@@ -279,6 +329,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-03.02.02.01",
     "CRM-03.02.02.04",
     "CRM-03.02.02.06",
+    // El ingreso previsto por periodo —cuándo entra el dinero, no cuándo se
+    // firma— y los territorios con sus asignaciones, que deciden la visibilidad.
+    // Verificado pulsando el 05-11-2026.
+    "CRM-03.01.01.07",
+    "CRM-00.05.02.07",
   ],
   // El registro de partners con sus niveles y certificaciones, el portal de
   // partner con el registro de oportunidades, los fondos de marketing con sus
@@ -288,6 +343,13 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-03.04.01.01",
     "CRM-03.04.01.02",
     "CRM-03.04.01.04",
+    // El canal: el portal del partner acotado por el compartimento del token, el
+    // acuerdo de precio de canal y si un precio lo puede dar solo, el rendimiento
+    // del canal y el plan de negocio conjunto en la ficha del partner.
+    // Verificado pulsando el 05-11-2026.
+    "CRM-03.04.01.03",
+    "CRM-03.04.01.05",
+    "CRM-03.04.01.06",
   ],
   // Las órdenes de trabajo, los activos instalados con sus garantías, los
   // técnicos, los planes preventivos con sus vencimientos, los repuestos y su
@@ -348,6 +410,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-02.01.02.04",
     "CRM-02.01.02.05",
     "CRM-02.01.02.06",
+    // La biblioteca de activos con su vigencia («Si este activo se puede usar
+    // para esto y hoy») y su flujo de aprobación por pasos, también para campañas.
+    // Verificado pulsando el 05-11-2026.
+    "CRM-02.04.01.01",
+    "CRM-02.04.01.02",
   ],
   // La jerarquía de campañas con su presupuesto, las reglas de presión y
   // frecuencia de contacto, los rebotes duros y blandos, y la papelera.
@@ -359,6 +426,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-02.02.02.03",
     "CRM-02.02.02.07",
     "CRM-02.02.02.08",
+    // El calendario de campañas, que avisa de solapamientos por audiencia y canal
+    // y no sólo por fechas. Verificado pulsando el 05-11-2026.
+    "CRM-02.02.01.03",
   ],
   // El caso con su taxonomía y su ciclo, las colas con su asignación, las
   // reglas de escalado, los SLA con sus relojes, los entitlements, los
@@ -387,6 +457,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-04.03.01.01",
     "CRM-04.03.02.01",
     "CRM-04.03.02.04",
+    // Los accesos al portal: identidades de fuera, aparte de las de empleados,
+    // con su nivel y sus secciones, y la ficha que las quita o abre un caso en
+    // su nombre. Verificado pulsando el 05-11-2026.
+    "CRM-00.05.01.10",
+    "CRM-04.03.02.05",
   ],
   // Los canales de marketing, las landings y formularios alojados, y los
   // dominios de envío con su entregabilidad.

@@ -958,7 +958,24 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # alcanzaban hasta hoy porque la regla de acciones excluía las de dos tramos;
 # las otras tres se alcanzaban y no estaban citadas. Este número cuenta CITAS,
 # no alcance, y por eso hay que pulsar antes de citar.
-TOPE_SIN_PANTALLA = 194
+#
+# 05-11-2026, tercera: 194 → 141. Dos cosas distintas, contadas aparte:
+#   · 41 que no son pantalla y no lo eran: gates, pruebas, protocolos, cabeceras,
+#     aislamiento de caché y de ficheros, relevos internos y las API pensadas
+#     para que las consuma otro frontend. Cada una lleva en el catálogo su
+#     motivo escrito, y donde el motivo decía «se ve en tal sitio» sin haberlo
+#     comprobado, se quitó la frase o la capacidad pasó a verificación.
+#   · 12 que SÍ tenían pantalla, verificadas pulsando: predicciones con sus
+#     factores y el forecast junto al humano, modelos, agentes, derechos del
+#     interesado con todas sus acciones, accesos al portal, exportar y destruir
+#     un tenant, y usuarios —cuya ficha no abría hasta hoy—.
+#
+# 05-11-2026, cuarta: 141 → 122. Diecisiete que tenían pantalla, verificadas
+# pulsando una a una —calendarios y tipos de cambio, MCP, calendario de
+# campañas, activos y su aprobación, ingreso previsto, territorios, visitas,
+# vocabularios, sagas, invitados externos, proveedores, canal—, y dos que no la
+# tenían y ahora sí: quitar un módulo con el ensayo delante, en su ficha.
+TOPE_SIN_PANTALLA = 122
 
 
 def _es_pantalla(p: Path) -> bool:
@@ -1068,7 +1085,11 @@ def test_el_recorrido_mira_de_verdad() -> None:
     saldría cero y el gate pasaría en verde sin haber abierto un fichero. Ya
     pasó con el de las pruebas y por eso está escrito aquí también.
     """
-    assert len(_capacidades_hechas()) > 700, len(_capacidades_hechas())
+    # Suelo contra medir el vacío, no un objetivo: si el catálogo dejara de
+    # leerse, saldría cero. Era 700 y bajó a 600 el 05-11-2026 porque 41
+    # capacidades pasaron a constar con su motivo de no ser pantalla y dejan de
+    # contar aquí —quedaron 670—; el suelo sigue muy por encima de cero.
+    assert len(_capacidades_hechas()) > 600, len(_capacidades_hechas())
     assert len(_ids_del_front()) > 50, sorted(_ids_del_front())
     assert (FRONT / "lib" / "modulos.ts").exists()
 

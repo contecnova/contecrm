@@ -4397,17 +4397,22 @@ def sembrar_la_operacion_del_dia(api: Api) -> None:
                 "nombre": "Homologaciones por mercado",
                 "version": "1.0.0",
                 "descripcion": "Añade el seguimiento de homologación de pieza por país.",
-                "objetos": [
-                    {
-                        "nombre": "homologacion_mercado",
-                        "etiqueta": "Homologación por mercado",
-                        "campos": [
-                            {"nombre": "mercado", "tipo": "texto", "etiqueta": "Mercado"},
-                            {"nombre": "norma", "tipo": "texto", "etiqueta": "Norma"},
-                            {"nombre": "vence_at", "tipo": "fecha", "etiqueta": "Vence"},
-                        ],
-                    }
-                ],
+                # Las secciones van dentro de `contenido`. En la raíz se instalaba
+                # un módulo vacío que parecía completo (05-11-2026).
+                "contenido": {
+                    "objetos": [
+                        {
+                            "clave": "homologacion_mercado",
+                            "gobierno": "fijo",
+                            "etiqueta": "Homologación por mercado",
+                            "campos": [
+                                {"nombre": "mercado", "tipo": "texto", "etiqueta": "Mercado"},
+                                {"nombre": "norma", "tipo": "texto", "etiqueta": "Norma"},
+                                {"nombre": "vence_at", "tipo": "fecha", "etiqueta": "Vence"},
+                            ],
+                        }
+                    ],
+                },
             },
             "aplicar": True,
         },
