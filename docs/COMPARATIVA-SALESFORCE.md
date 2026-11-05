@@ -162,9 +162,24 @@ piezas que hacen al CRM más competitivo:
 | contecintelligence | Preguntar en lenguaje natural sobre los datos del CRM | Es el equivalente a Einstein/Tableau Pulse y ya está enganchado |
 | contecintelligence | Cuadros generados desde la pregunta, no desde un constructor | Baja el coste de que dirección se haga su propio informe |
 
-**Pendiente real:** contecmind no construye su imagen (`pillow>=13` contra
-`fastembed` que exige `pillow<13`), así que la mitad documental está degradada
-en esta instalación. Es su repositorio y hay que resolverlo allí.
+**Pendiente real, y conviene entender por qué lo es.** contecmind no construye
+su imagen, y no es un descuido: su `requirements.txt` fija `pillow>=13.0.0,<14`
+**para cerrar 24 CVEs**, y `fastembed 0.8.x` sólo admite `pillow<13.0` cuando
+se construye con Python 3.12 — su restricción lleva el marcador
+`python_version < "3.13"`. Es una decisión de seguridad contra una restricción
+de una dependencia suya, y se resuelve de dos maneras, las dos en su
+repositorio:
+
+1. construir sobre **Python 3.13**, donde `fastembed` deja de acotar `pillow`;
+2. o bajar `pillow` y asumir las CVEs, que es justo lo que ellos descartaron.
+
+**No es nuestra decisión** y no se toma desde aquí. Mientras tanto, en esta
+instalación la mitad documental está degradada: «Aprobaciones de documentos»
+abre diciendo exactamente eso y la dirección a la que llamó, en vez de salir
+vacía. Lo que no depende de contecmind sí funciona —comprobado el 05-11-2026—:
+«Archivos», con todos los documentos del CRM y el registro del que cuelga cada
+uno, y «Pendiente de firma», que distingue «no hay nada en curso» de «todo
+firmado».
 
 ## Qué haría yo, por orden
 
