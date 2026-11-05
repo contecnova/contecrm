@@ -462,7 +462,20 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Claves de API",
-        listar: "/api/v1/claves-api",
+        // LAS VIVAS. La emisión ROTA la anterior que se llame igual —y hace
+        // bien—, así que la tabla acumula el historial de revocadas: medido el
+        // 05-11-2026, **128 filas de las que 115 estaban revocadas**, con las
+        // trece que valen enterradas entre ellas. No es basura ni un fallo de
+        // seguridad: es el rastro, y por eso no se borra. Lo que no puede es
+        // tapar lo que está en uso.
+        listar: "/api/v1/claves-api?revocada_at__vacio=true",
+        servicio: "identity",
+      },
+      {
+        // Y el rastro, a un clic. Quitarlo de la vista no es esconderlo: aquí
+        // se mira cuándo se revocó cada una y qué la sustituyó.
+        nombre: "Claves revocadas",
+        listar: "/api/v1/claves-api?revocada_at__no_vacio=true",
         servicio: "identity",
       },
       // Las sesiones abiertas, y **cuáles son suplantaciones y por qué**

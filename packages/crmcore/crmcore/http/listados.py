@@ -257,6 +257,23 @@ def aplicar_filtros_de_la_url(
             # No llevan valor. Se ignora lo que venga en vez de intentar
             # convertirlo: `?cerrada_at__vacio=1` y `...=true` quieren decir lo
             # mismo, y rechazar uno de los dos sería una trampa de sintaxis.
+            #
+            # **Salvo si pone que NO.** `?revocada_at__vacio=false` se lee como
+            # «las que no están vacías» y devolvía justo las contrarias, sin
+            # decir nada: una respuesta tranquila con el conjunto equivocado.
+            # Medido el 05-11-2026 contra las claves de API: `=true` y `=false`
+            # daban las mismas trece. El operador contrario existe y se nombra.
+            if valor.strip().lower() in ("false", "0", "no"):
+                raise ErrorValidacion(
+                    f"«{crudo}» no lleva valor: siempre filtra por "
+                    f"{'vacío' if operador == 'vacio' else 'no vacío'}. "
+                    f"Para lo contrario, usa «{nombre}__"
+                    f"{'no_vacio' if operador == 'vacio' else 'vacio'}».",
+                    error_code="listado.filtro_sin_valor",
+                    detalle={
+                        "operador_contrario": f"{nombre}__{'no_vacio' if operador == 'vacio' else 'vacio'}"
+                    },
+                )
             atado: Any = None
         elif operador in ("en", "no_en"):
             # Lista por comas. Cada elemento se ata al tipo de la columna por
