@@ -91,6 +91,35 @@ class Manejador:
 MANEJADORES: dict[str, Manejador] = {}
 
 
+def origen_de_cambio(origen: str) -> str:
+    """Lo que va en `updated_origen` de un registro cambiado por un comando.
+
+    Es una CATEGORÍA —api, ui, automatización, ia_extraccion— en una columna de
+    32. Se escribía `automatizacion:<id del origen>`, 51 caracteres: todo cambio
+    por comando que traía su origen reventaba con «value too long» y no se
+    aplicaba. Medido el 05-11-2026 al aceptar un dato extraído por la IA; lo
+    mismo les pasaba a las reglas que actualizan cuentas, leads y oportunidades.
+    El identificador del origen sigue en el comando y en su registro.
+    """
+    return (origen or "automatizacion")[:32]
+
+
+def aplicar_cambios(fila: Any, datos: dict[str, Any]) -> None:
+    """Aplica los campos de un comando a la fila, **fusionando** `campos`.
+
+    `campos` son los campos personalizados del registro, en un JSON. Asignarlo
+    entero con lo que trae el comando borraba los demás: una regla —o aceptar un
+    valor extraído por la IA— que tocaba UN campo personalizado dejaba la cuenta
+    sin los otros. Medido el 05-11-2026 en party y sales, que hacían
+    `setattr(fila, "campos", …)` a pelo.
+    """
+    for campo, valor in datos.items():
+        if campo == "campos" and isinstance(valor, dict):
+            fila.campos = {**(getattr(fila, "campos", None) or {}), **valor}
+        else:
+            setattr(fila, campo, valor)
+
+
 def registrar_manejador(manejador: Manejador) -> Manejador:
     """Declara quién atiende un comando. Lo hace el servicio dueño del objeto."""
     MANEJADORES[f"{manejador.objeto}.{manejador.accion}"] = manejador

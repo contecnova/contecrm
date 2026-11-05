@@ -1009,7 +1009,10 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 # 05-11-2026, duodécima: 85 → 83. El índice de conocimiento con pgvector:
 # casos parecidos en el caso y preguntas a la base de conocimiento con cita.
-TOPE_SIN_PANTALLA = 83
+#
+# 05-11-2026, decimotercera: 83 → 82. La extracción desde el contacto, con
+# las propuestas que se aceptan una a una y llegan a la ficha.
+TOPE_SIN_PANTALLA = 82
 
 
 def _es_pantalla(p: Path) -> bool:

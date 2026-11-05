@@ -2164,3 +2164,56 @@ def redactar_correo(contacto_id: UUID, datos: RedactarCorreoIn, principal: Auten
         },
         principal,
     )
+
+
+# Lo que se le pide a la IA que busque en un texto para un contacto: los campos
+# que su comando de actualización acepta (`comandos.CAMPOS_CONTACTO`), con qué
+# son. El nombre y el correo principal no, por lo mismo que allí.
+_EXTRAIBLES_CONTACTO = (
+    ("tratamiento", "Tratamiento: Sr., Sra., Dr., Dra."),
+    ("cargo", "Puesto o cargo en la empresa"),
+    ("departamento", "Departamento o área"),
+    ("telefono", "Teléfono fijo, con prefijo si aparece"),
+    ("movil", "Teléfono móvil"),
+    ("email_secundario", "Otro correo electrónico distinto del principal"),
+    ("idioma", "Idioma en que escribe, como código: es, en, fr, ca, pt, de"),
+)
+
+
+class ExtraerDeTextoIn(BaseModel):
+    texto: str = Field(
+        ..., min_length=10, max_length=20_000, description="Una firma, un correo, una nota"
+    )
+
+
+@router_contactos.post(
+    "/{contacto_id}/extraer-de-texto",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Sacar con IA los datos de este contacto de un texto",
+    description=(
+        "Pega una firma o un correo: se proponen cargo, departamento, teléfonos, otro "
+        "correo e idioma, cada uno con la frase de la que sale y al lado del valor "
+        "que tiene ahora. **No se escribe nada**: cada propuesta se acepta o se "
+        "rechaza en «Datos propuestos por la IA», y al aceptarla el cambio lo aplica "
+        "este servicio con su normalización."
+    ),
+)
+def extraer_de_texto(contacto_id: UUID, datos: ExtraerDeTextoIn, principal: AutenticadoDep) -> Any:
+    from crmcore import ia_ficha
+
+    contacto = dict(ia_ficha.leer(f"/api/v1/contacts/{contacto_id}", principal))
+    return ia_ficha.pedir(
+        "/api/v1/ia/extraer",
+        {
+            "texto": datos.texto,
+            "campos": [
+                {"clave": clave, "tipo": "texto", "descripcion": descripcion}
+                for clave, descripcion in _EXTRAIBLES_CONTACTO
+            ],
+            "objeto": "contacto",
+            "objeto_id": str(contacto_id),
+            "valores_actuales": {clave: contacto.get(clave) for clave, _ in _EXTRAIBLES_CONTACTO},
+            "origen": "texto_pegado",
+        },
+        principal,
+    )

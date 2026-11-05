@@ -322,3 +322,108 @@ def test_la_respuesta_sugerida_y_el_asistente_devuelven_lo_que_contesta_el_model
     )
     assert "marzo" in asistente["texto"] and asistente["fuentes"]
     assert asistente["acciones_propuestas"] == [{"nombre": "marzo", "ruta": "/api/v1/x"}]
+
+
+def test_aceptar_un_dato_extraido_cambia_el_contacto_sin_borrar_lo_demas(
+    db: Any, tenant_id: UUID
+) -> None:
+    """De aceptar la propuesta a la ficha, en un proceso: el comando que sale y
+    el manejador de party que lo aplica.
+
+    Dos defectos que nada veía: aceptar mandaba TODO dentro de `campos` —un
+    `cargo` acababa como campo personalizado—, y el manejador asignaba `campos`
+    entero, con lo que tocar uno borraba los demás. Y no había manejador de
+    contacto: aceptar un dato de un contacto no hacía nada.
+    """
+    import asyncio
+    from decimal import Decimal
+
+    from crmcore.bus.comandos import despachar
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    import services.party.comandos  # noqa: F401 — registra los manejadores
+    from services.intelligence import extraccion as ext
+    from services.party.modelos import Contacto
+
+    contacto = Contacto(
+        tenant_id=tenant_id,
+        nombre="Laura",
+        apellidos="Méndez",
+        nombre_completo="Laura Méndez",
+        clave_canonica="laura mendez",
+        campos={"planta": "Bilbao"},
+    )
+    db.add(contacto)
+    db.flush()
+
+    def _propuesta(campo: str, valor: str) -> Any:
+        fila = ext.CampoExtraido(
+            tenant_id=tenant_id,
+            objeto="contacto",
+            objeto_id=contacto.id,
+            campo=campo,
+            tipo="texto",
+            valor=valor,
+            confianza=Decimal("0.95"),
+            cita=valor,
+            estado="pendiente",
+            convertible=True,
+        )
+        db.add(fila)
+        db.flush()
+        return fila
+
+    trabajo = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    for campo, valor in (("movil", "612 345 678"), ("campos.turno", "mañana")):
+        ext.decidir(trabajo, _propuesta(campo, valor).id, aceptar=True)
+    salidos = [p["data"] for p in trabajo._pendientes]
+    assert {"movil": "612 345 678"} in [d["datos"] for d in salidos]
+    assert {"campos": {"turno": "mañana"}} in [d["datos"] for d in salidos]
+    # Tal como sale de la tabla de salida: con su tipo, que es lo que el
+    # despachador mira para saber que es un comando.
+    for pendiente in trabajo._pendientes:
+        mensaje = {"tipo": pendiente["tipo"], "data": pendiente["data"]}
+        assert asyncio.run(despachar(db, mensaje)) is True
+    db.refresh(contacto)
+    assert contacto.movil and contacto.movil.startswith("+34")
+    # El que ya estaba sigue: se fusiona, no se pisa.
+    assert contacto.campos == {"planta": "Bilbao", "turno": "mañana"}
+    # Y queda dicho de dónde vino el cambio, en la medida de la columna: con
+    # «automatizacion:<id>» no cabía y el cambio no se aplicaba.
+    assert contacto.updated_origen == "ia_extraccion"
+
+
+def test_una_regla_que_cambia_una_cuenta_tambien_se_aplica(db: Any, tenant_id: UUID) -> None:
+    """La misma familia en la cuenta: con su origen escrito no cabía en la
+    columna y el cambio reventaba; y un campo personalizado borraba los demás."""
+    import asyncio
+    from uuid import uuid4 as nuevo
+
+    from crmcore.bus.comandos import despachar
+
+    import services.party.comandos  # noqa: F401
+    from services.party.modelos import Cuenta
+
+    cuenta = Cuenta(
+        tenant_id=tenant_id, nombre="Norte", clave_canonica="norte", campos={"planta": "Bilbao"}
+    )
+    db.add(cuenta)
+    db.flush()
+    mensaje = {
+        "tipo": "comando.cuenta.actualizar",
+        "data": {
+            "objeto": "cuenta",
+            "accion": "actualizar",
+            "registro_id": str(cuenta.id),
+            "datos": {"tier": "oro", "campos": {"turno": "noche"}},
+            "origen": "automatizacion",
+            "origen_id": str(nuevo()),
+        },
+    }
+    from crmcore.tenancy.context import con_contexto
+
+    with con_contexto(tenant_id=tenant_id):
+        assert asyncio.run(despachar(db, mensaje)) is True
+    db.refresh(cuenta)
+    assert cuenta.tier == "oro"
+    assert cuenta.campos == {"planta": "Bilbao", "turno": "noche"}

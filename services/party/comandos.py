@@ -33,6 +33,24 @@ CAMPOS_ACTIVIDAD = frozenset(
 # En una cuenta, solo lo que es clasificación. Nada de identidad —nombre, NIF—
 # ni de propiedad: eso lo cambia una persona, con su auditoría y su motivo.
 CAMPOS_CUENTA = frozenset({"ciclo_vida", "clasificacion_abc", "tier", "sector_codigo", "campos"})
+# Lo que se puede cambiar de un contacto por comando: lo que sale de una firma o
+# de un correo y una persona ha aceptado (la extracción con IA, una regla).
+# NO el nombre ni el correo principal: son su identidad, de ellos sale la clave
+# canónica y la detección de duplicados, y cambiarlos tiene su propio camino.
+CAMPOS_CONTACTO = frozenset(
+    {
+        "tratamiento",
+        "cargo",
+        "departamento",
+        "telefono",
+        "movil",
+        "email_secundario",
+        "idioma",
+        "canal_preferido",
+        "horario_preferido",
+        "campos",
+    }
+)
 
 
 def _crear_actividad(
@@ -92,17 +110,65 @@ def _actualizar_cuenta(
         return
 
     anterior = cuenta.a_dict()
-    for campo, valor in datos.items():
-        setattr(cuenta, campo, valor)
+    from crmcore.bus.comandos import aplicar_cambios, origen_de_cambio
+
+    aplicar_cambios(cuenta, datos)
     # El historial de campo distingue quién lo cambió: sin `origen`, un dato
     # modificado por una regla parece modificado por la última persona que tocó
     # la ficha, y la conversación con el cliente se atasca ahí.
-    cuenta.updated_origen = f"automatizacion:{origen_id}" if origen_id else "automatizacion"
+    cuenta.updated_origen = origen_de_cambio(origen)
     registrar_cambios(
         db, objeto="cuenta", objeto_id=cuenta.id, anterior=anterior, nuevo=cuenta.a_dict()
     )
     db.flush()
     _ = contexto_actual()
+
+
+def _actualizar_contacto(
+    db: Session,
+    *,
+    registro_id: Any = None,
+    datos: dict[str, Any],
+    origen: str,
+    origen_id: str | None = None,
+) -> None:
+    """Cambia un contacto por comando, con la MISMA normalización que la ficha.
+
+    Un teléfono que entra por aquí sin normalizar no lo encuentra la búsqueda
+    por teléfono ni la detección de duplicados, que comparan la forma normal.
+    """
+    from crmcore.audit.chain import registrar_cambios
+    from crmcore.bus.comandos import aplicar_cambios, origen_de_cambio
+
+    from services.party import normalizacion as norm
+    from services.party.modelos import Contacto
+
+    if not registro_id or not datos:
+        return
+    contacto = db.get(Contacto, UUID(str(registro_id)))
+    if contacto is None or contacto.deleted_at is not None:
+        logger.info("party.comando_sobre_registro_ausente", registro=str(registro_id))
+        return
+    cambios = dict(datos)
+    for campo in ("telefono", "movil"):
+        if campo in cambios:
+            cambios[campo] = norm.normalizar_telefono(cambios[campo]) or None
+    if "email_secundario" in cambios:
+        cambios["email_secundario"] = norm.normalizar_email(cambios["email_secundario"]) or None
+    anterior = contacto.a_dict()
+    aplicar_cambios(contacto, cambios)
+    contacto.updated_origen = origen_de_cambio(origen)
+    registrar_cambios(
+        db,
+        objeto="contacto",
+        objeto_id=contacto.id,
+        anterior=anterior,
+        nuevo=contacto.a_dict(),
+        # El del contacto, no el del contexto: un comando puede ejecutarse sin
+        # contexto de petición, y el historial no puede quedarse sin dueño.
+        tenant_id=contacto.tenant_id,
+    )
+    db.flush()
 
 
 registrar_manejador(
@@ -119,5 +185,14 @@ registrar_manejador(
         accion="actualizar",
         ejecutar=_actualizar_cuenta,
         campos_permitidos=CAMPOS_CUENTA,
+    )
+)
+
+registrar_manejador(
+    Manejador(
+        objeto="contacto",
+        accion="actualizar",
+        ejecutar=_actualizar_contacto,
+        campos_permitidos=CAMPOS_CONTACTO,
     )
 )

@@ -1762,6 +1762,15 @@ Nada de esto se guarda ni se manda solo: es un borrador para ti. Necesitas el
 permiso de usar la IA, y lo que no puedes ver en el registro tampoco se le pasa
 al modelo.
 
+### Rellenar un contacto desde una firma
+
+En un **contacto**, *Más → Sacar con IA los datos de este contacto de un texto*:
+pega una firma o un correo y la IA propone cargo, departamento, teléfonos, otro
+correo e idioma. No cambia nada todavía: en **IA → Datos propuestos por la IA**
+ves cada propuesta con la frase de la que sale y el valor que hay ahora, y la
+aceptas o la rechazas. Al aceptar, el contacto se actualiza con las mismas
+reglas que si lo editaras tú. El nombre y el correo principal no se tocan así.
+
 ### Lo que ya pasó y cómo se arregló
 
 - En un **caso**, *Más → Casos resueltos y artículos parecidos* busca por lo que

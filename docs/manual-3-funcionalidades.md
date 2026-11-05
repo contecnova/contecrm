@@ -10703,6 +10703,13 @@ la propuesta se marca como no convertible en vez de guardar basura con buena car
 Y aceptar **pide** el cambio al servicio dueño por comando: escribir desde aquí
 saltaría el metamodelo y las reglas de negocio para la IA y para nadie más.
 
+
+Desde el **contacto** se pide sobre un texto pegado —una firma, un correo— y se
+buscan sólo los campos que el contacto deja cambiar así; el nombre y el correo
+principal no, porque de ellos sale su identidad y la detección de duplicados.
+Lo propuesto se decide uno a uno, y lo aceptado lo aplica el servicio del
+contacto con sus reglas de siempre.
+
 ### Trazabilidad y coste (`CRM-05.02.02.08`)
 
 Cuando alguien pregunte «¿por qué el CRM escribió esto?» —a veces con un abogado

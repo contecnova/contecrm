@@ -87,9 +87,10 @@ def _actualizar(modelo: type, objeto: str) -> Any:
         if fila is None or getattr(fila, "deleted_at", None) is not None:
             return
         anterior = fila.a_dict()
-        for campo, valor in datos.items():
-            setattr(fila, campo, valor)
-        fila.updated_origen = f"automatizacion:{origen_id}" if origen_id else "automatizacion"
+        from crmcore.bus.comandos import aplicar_cambios, origen_de_cambio
+
+        aplicar_cambios(fila, datos)
+        fila.updated_origen = origen_de_cambio(origen)
         registrar_cambios(
             db, objeto=objeto, objeto_id=fila.id, anterior=anterior, nuevo=fila.a_dict()
         )

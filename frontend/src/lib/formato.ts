@@ -225,6 +225,7 @@ const CON_TILDE: Record<string, string> = {
   senales: "señales",
   calculos: "cálculos",
   canonico: "canónico",
+  canonica: "canónica",
   desvio: "desvío",
   evaluacion: "evaluación",
   formacion: "formación",

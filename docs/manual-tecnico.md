@@ -2865,6 +2865,34 @@ Lo que **no** hace: no hay llamadas salientes desde una extensión (no se le da
 red), ni librerías de fuera, ni ejecución disparada por una automatización o
 un evento; se ejecuta desde su ficha y desde sus endpoints.
 
+#### Extraer los datos de un contacto de un texto, hasta la ficha (05-11-2026)
+
+`POST /contacts/{id}/extraer-de-texto` (party) lee el contacto con los permisos
+de quien pide y manda a `/ia/extraer` el texto pegado, los campos que se buscan
+—los de `comandos.CAMPOS_CONTACTO` salvo `campos` y preferencias: tratamiento,
+cargo, departamento, teléfonos, otro correo, idioma— y sus valores actuales. Lo
+extraído queda **pendiente** en «IA → Datos propuestos por la IA»
+(`/ia/extraidos`), cada uno con su cita y su confianza. Aceptar emite un
+**comando** `actualizar` que aplica el servicio dueño.
+
+Al seguir ese camino hasta la ficha salió la familia de comandos rota:
+
+- **No había manejador de contacto** en party: aceptar un dato de un contacto
+  no hacía nada. Ahora `_actualizar_contacto`, con la misma normalización que la
+  ficha (teléfonos a E.164, correo) y sin nombre ni correo principal, que son la
+  identidad y la clave canónica.
+- **Aceptar mandaba todo dentro de `campos`**: un `cargo` acababa como campo
+  personalizado. Ahora un campo propio va como tal y uno personalizado se nombra
+  `campos.<clave>`.
+- **`campos` se asignaba entero**: tocar uno borraba los demás, en party y en
+  sales. `crmcore.bus.comandos.aplicar_cambios` los fusiona.
+- **`updated_origen` es `VARCHAR(32)` y se escribía
+  `automatizacion:<id>` (51)**: todo cambio por comando con origen reventaba —
+  también las reglas que actualizan cuentas, leads y oportunidades—. Ahora va la
+  categoría del origen (`origen_de_cambio`), y el identificador sigue en el
+  comando. Probado de la propuesta a la ficha en un proceso
+  (`test_ia_desde_la_ficha.py`).
+
 #### El índice de conocimiento, con pgvector (05-11-2026)
 
 `CRM-04.03.01.04` (casos parecidos) y `CRM-05.02.02.03` (respuesta con cita)

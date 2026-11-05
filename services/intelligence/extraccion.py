@@ -403,7 +403,15 @@ def decidir(
                 objeto=fila.objeto,
                 tenant_id=uow.tenant_id,
                 registro_id=fila.objeto_id,
-                datos={"campos": {fila.campo: convertido}},
+                # Un campo propio del registro va como tal; uno personalizado
+                # —`campos.<clave>`— va dentro de `campos`, que el dueño fusiona.
+                # Antes TODO iba dentro de `campos`: un `tier` acababa como campo
+                # personalizado y no en su columna.
+                datos=(
+                    {"campos": {fila.campo.split(".", 1)[1]: convertido}}
+                    if fila.campo.startswith("campos.")
+                    else {fila.campo: convertido}
+                ),
                 origen="ia_extraccion",
                 origen_id=str(fila.id),
             ),

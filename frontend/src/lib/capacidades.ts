@@ -24,6 +24,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // (CRM-05.02.02.08) NO está declarada: su extremo cuelga de un registro y su
   // sitio es la ficha, que todavía no lo pinta.
   "ia": [
+    // Sacar los datos de un contacto de un texto, y aceptarlos o rechazarlos uno a uno.
+    "CRM-05.02.02.05",
     "CRM-05.02.01.04",
     "CRM-05.02.01.05",
     "CRM-05.02.01.07",
