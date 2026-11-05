@@ -150,7 +150,7 @@ export function Caso() {
   // registro tienen que escribirlo por la misma ruta y el mismo contrato.
   const modulo = moduloDe("casos");
   const recurso = modulo ? recursoDe(modulo, "caso") : undefined;
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
   // Las mismas dos pestañas que las demás fichas. «Relacionado» es todo lo
   // que esta pantalla ya enseñaba —con qué tiene que ver, el reloj, de qué
   // cuelga, cómo acabó— y «Detalles» son sus campos, que hasta hoy sólo se
@@ -246,6 +246,7 @@ export function Caso() {
             <BotonesDeRegistro
               puedeEditar={puedeEditar}
               puedeBorrar={puedeBorrar}
+              borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
             />
@@ -255,6 +256,7 @@ export function Caso() {
 
       {confirmando ? (
         <ConfirmarBorrado
+          borrado={borrado}
           enviando={borrando}
           alBorrar={() => void borrar()}
           alCancelar={() => setConfirmando(false)}

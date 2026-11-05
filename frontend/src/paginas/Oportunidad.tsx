@@ -232,7 +232,7 @@ export function Oportunidad() {
    */
   const modulo = moduloDe("oportunidades");
   const recurso = modulo ? recursoDe(modulo, "oportunidad") : undefined;
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
   // Las mismas dos pestañas que las demás fichas. «Relacionado» es lo que
   // esta pantalla ya enseñaba —las líneas, quién decide, el plan— y
   // «Detalles» son sus campos, que hasta hoy sólo se leían entrando a editar.
@@ -466,6 +466,7 @@ export function Oportunidad() {
             <BotonesDeRegistro
               puedeEditar={puedeEditar}
               puedeBorrar={puedeBorrar}
+              borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
             />
@@ -475,6 +476,7 @@ export function Oportunidad() {
 
       {confirmando ? (
         <ConfirmarBorrado
+          borrado={borrado}
           enviando={borrando}
           alBorrar={() => void borrar()}
           alCancelar={() => setConfirmando(false)}

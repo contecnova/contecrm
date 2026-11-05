@@ -37,6 +37,8 @@ import {
   type CampoEsquema,
 } from "@/lib/contrato";
 import { type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
+import { operacionDe } from "@/lib/superficie";
 
 /**
  * Acciones que no se pueden deshacer y se preguntan antes.
@@ -58,6 +60,7 @@ const IRREVERSIBLES =
  */
 function Resultado({ datos }: { datos: unknown }) {
   const { t } = useTranslation();
+  const { superficie } = useSuperficie();
   if (!datos || typeof datos !== "object") return null;
   const pares = Object.entries(datos as Record<string, unknown>).filter(
     ([, v]) => v !== null && v !== undefined && v !== "",
@@ -75,7 +78,12 @@ function Resultado({ datos }: { datos: unknown }) {
           modulo &&
           objeto &&
           typeof valor === "string" &&
-          UUID_SUELTO.test(valor);
+          UUID_SUELTO.test(valor) &&
+          // Y sólo si ese registro se puede LEER: un `producto_id` enlazaba a
+          // una ficha que contestaba 404 porque no hay `GET /productos/{id}`.
+          Boolean(
+            operacionDe(superficie, "GET", `${recurso.listar.split("?")[0]}/${valor}`),
+          );
         return (
           <div
             key={clave}
@@ -167,7 +175,7 @@ export function Acciones({
     let vivo = true;
     setCampos(null);
     void contratoDe(servicio).then((documento) => {
-      if (vivo) setCampos(camposDe(documento, abierta.plantilla, "post"));
+      if (vivo) setCampos(camposDe(documento, abierta.plantilla, abierta.metodo));
     });
     return () => {
       vivo = false;
@@ -190,7 +198,7 @@ export function Acciones({
       if (!vivo) return;
       const cuenta: Record<string, number> = {};
       for (const a of acciones) {
-        cuenta[a.ruta] = camposDe(documento, a.plantilla, "post").length;
+        cuenta[a.ruta] = camposDe(documento, a.plantilla, a.metodo).length;
       }
       setCamposPorRuta(cuenta);
     });
@@ -212,11 +220,16 @@ export function Acciones({
     setEnviando(true);
     setFallo(null);
     try {
+      // Con el método de la operación: la mayoría son `POST`, pero las de una
+      // fila sin ficha también son quitar (`DELETE`) y editar por clave
+      // (`PUT`), y mandarlas todas como `POST` contestaría 405.
+      const metodo = accion.metodo.toUpperCase();
       const r = await llamar<unknown>(accion.ruta, {
-        metodo: "POST",
+        metodo,
         // El cuerpo lo arma el contrato: hay operaciones cuyo único campo ES
         // el cuerpo, y meterlo dentro de una llave las rompería.
-        cuerpo: cuerpoDeLosValores(campos ?? [], valores),
+        cuerpo:
+          metodo === "DELETE" ? undefined : cuerpoDeLosValores(campos ?? [], valores),
       });
       setResultado(r.datos ?? { hecho: true });
       setAbierta(null);

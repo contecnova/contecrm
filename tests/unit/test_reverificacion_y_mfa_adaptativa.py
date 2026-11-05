@@ -586,3 +586,39 @@ def test_si_la_empresa_lo_exige_no_se_puede_quitar(
     assert respuesta.json().get("error_code") == "auth.mfa_obligatoria"
     db.refresh(usuario)
     assert usuario.mfa_activo is True
+
+
+# ── La ficha de un usuario ────────────────────────────────────────────────
+#
+# El listado de «Usuarios» enlazaba cada fila a su ficha y la ficha pedía
+# `GET /usuarios/{id}`, que no existía: abría con un «Method Not Allowed» y sin
+# ninguna acción, «Desactivar» incluida. Visto el 05-11-2026.
+
+
+def test_la_ficha_de_un_usuario_se_abre_y_no_ensena_secretos(
+    cliente_identidad: Any, tenant_id: UUID, db: Any
+) -> None:
+    usuario = _usuario(db, tenant_id, mfa=True)
+    r = cliente_identidad.get(f"/api/v1/usuarios/{usuario.id}", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    ficha = r.json()
+    assert ficha["id"] == str(usuario.id)
+    assert ficha["nombre"] == "Ana Ruiz"
+    assert not {"hash_contrasena", "mfa_secreto", "mfa_recuperacion"} & set(ficha)
+
+
+def test_la_ficha_de_un_usuario_de_otro_tenant_no_se_ve(
+    cliente_identidad: Any, tenant_id: UUID, db: Any
+) -> None:
+    # La unión por membresía es lo único que aísla: `Usuario` no lleva tenant.
+    usuario = _usuario(db, tenant_id, mfa=False)
+    r = cliente_identidad.get(f"/api/v1/usuarios/{usuario.id}", headers=_cabeceras(uuid4()))
+    assert r.status_code == 404, r.text
+
+
+def test_la_ficha_no_se_queda_con_la_ruta_de_licencias(
+    cliente_identidad: Any, tenant_id: UUID
+) -> None:
+    r = cliente_identidad.get("/api/v1/usuarios/licencias", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    assert "activos" in r.json()

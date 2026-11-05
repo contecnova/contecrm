@@ -28,7 +28,9 @@ import {
 } from "@/lib/contrato";
 import { llamar } from "@/lib/api";
 import type { Recurso } from "@/lib/modulos";
-import { usePuedeOperar } from "@/lib/permisos";
+import { comoRotulo } from "@/lib/formato";
+import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
+import { operacionDe } from "@/lib/superficie";
 import {
   MenuDeAcciones,
   type OpcionDeMenu,
@@ -43,11 +45,20 @@ import {
  */
 export function useEdicion(recurso: Recurso | undefined, id: string) {
   const puedeOperar = usePuedeOperar();
+  const { superficie } = useSuperficie();
   const ruta = recurso ? `${recurso.listar}/${id}` : "";
+  const puedeBorrar =
+    Boolean(ruta) && !recurso?.borrado_oculto_porque && puedeOperar("DELETE", ruta);
   return {
     ruta,
     puedeEditar: Boolean(ruta) && puedeOperar("PATCH", ruta),
-    puedeBorrar: Boolean(ruta) && puedeOperar("DELETE", ruta),
+    puedeBorrar,
+    // **Lo que hace el DELETE, dicho como lo dice el contrato.** De 124
+    // operaciones DELETE, muchas no borran: «Enviar una cuenta a la papelera»,
+    // «Revocar una clave», «Cerrar una sesión», «Dar de baja a un usuario». Con
+    // «Eliminar» para todas, quien da de baja a alguien cree que lo está
+    // borrando, y quien manda una cuenta a la papelera no sabe que se recupera.
+    borrado: puedeBorrar ? comoRotulo(operacionDe(superficie, "DELETE", ruta)?.resumen) : "",
   };
 }
 
@@ -68,12 +79,15 @@ export function useEdicion(recurso: Recurso | undefined, id: string) {
 export function BotonesDeRegistro({
   puedeEditar,
   puedeBorrar,
+  borrado = "",
   alEditar,
   alBorrar,
   extra = [],
 }: {
   puedeEditar: boolean;
   puedeBorrar: boolean;
+  /** Lo que hace el DELETE de este registro, de `useEdicion`. */
+  borrado?: string;
   alEditar: () => void;
   alBorrar: () => void;
   extra?: OpcionDeMenu[];
@@ -85,7 +99,7 @@ export function BotonesDeRegistro({
       ? [
           {
             clave: "__borrar",
-            nombre: t("ficha.eliminar"),
+            nombre: borrado || t("ficha.eliminar"),
             alElegir: alBorrar,
             destructiva: true,
           },
@@ -106,10 +120,13 @@ export function BotonesDeRegistro({
 
 export function ConfirmarBorrado({
   enviando,
+  borrado = "",
   alBorrar,
   alCancelar,
 }: {
   enviando: boolean;
+  /** Lo que hace el DELETE de este registro, de `useEdicion`. */
+  borrado?: string;
   alBorrar: () => void;
   alCancelar: () => void;
 }) {
@@ -120,9 +137,13 @@ export function ConfirmarBorrado({
     <div
       className="card mb-3 border-danger/40 p-4"
       role="alertdialog"
-      aria-label={t("ficha.eliminar")}
+      aria-label={borrado || t("ficha.eliminar")}
     >
-      <p className="text-titulin text-ink">{t("ficha.confirmarBorrado")}</p>
+      <p className="text-titulin text-ink">
+        {borrado
+          ? t("ficha.confirmarOperacion", { accion: borrado })
+          : t("ficha.confirmarBorrado")}
+      </p>
       <div className="mt-3 flex gap-2">
         <button
           type="button"
@@ -130,7 +151,7 @@ export function ConfirmarBorrado({
           disabled={enviando}
           className="btn-danger"
         >
-          {t("ficha.eliminarDeVerdad")}
+          {borrado || t("ficha.eliminarDeVerdad")}
         </button>
         <button type="button" onClick={alCancelar} className="btn-secondary">
           {t("modulo.cancelar")}
@@ -143,12 +164,22 @@ export function ConfirmarBorrado({
 export function FormularioDeEdicion({
   recurso,
   ruta,
+  plantilla: plantillaDada,
+  metodo = "PATCH",
   valores,
   alGuardar,
   alCancelar,
 }: {
   recurso: Recurso;
   ruta: string;
+  /**
+   * La operación de editar, cuando no sale de la ficha. Una fila sin ficha
+   * —sin `GET /{id}`— se edita igual, pero su plantilla no la encuentra
+   * `fichaDe`, que busca algo que se lee.
+   */
+  plantilla?: string;
+  /** `PUT` en las que se escriben enteras por clave: ajustes, riesgos, controles. */
+  metodo?: "PATCH" | "PUT";
   valores: Record<string, unknown>;
   /** Se llama con el registro ya guardado, para que la pantalla se refresque. */
   alGuardar: () => void;
@@ -166,19 +197,19 @@ export function FormularioDeEdicion({
       // nombra el parámetro por su objeto —`{oportunidad_id}`— y buscando
       // `/{id}` no aparecía la operación, así que el formulario de edición
       // salía sin ningún campo y no había nada que guardar.
-      const plantilla = fichaDe(documento, recurso.listar);
+      const plantilla = plantillaDada ?? fichaDe(documento, recurso.listar);
       if (vivo)
-        setCampos(plantilla ? camposDe(documento, plantilla, "patch") : []);
+        setCampos(plantilla ? camposDe(documento, plantilla, metodo) : []);
     });
     return () => {
       vivo = false;
     };
-  }, [recurso]);
+  }, [recurso, plantillaDada, metodo]);
 
   async function guardar(nuevos: Record<string, unknown>) {
     setEnviando(true);
     try {
-      await llamar(ruta, { metodo: "PATCH", cuerpo: nuevos });
+      await llamar(ruta, { metodo, cuerpo: nuevos });
       setFallo(null);
       alGuardar();
     } catch (error) {

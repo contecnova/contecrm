@@ -80,4 +80,22 @@ describe("una respuesta con varias listas", () => {
     }
     expect(declaradas).toBeGreaterThanOrEqual(10);
   });
+
+  it("un diccionario de registros con la misma forma es una lista, y cada fila guarda su clave", () => {
+    // «Ajustes»: 91 umbrales salían como una fila de 91 columnas.
+    const filas = comoFilas({
+      oidc_cache_ttl_s: { valor: 300, origen: "entorno", tipo: "int" },
+      busqueda_idioma: { valor: "es", origen: "tenant", tipo: "str" },
+    });
+    expect(filas).toHaveLength(2);
+    expect(filas[0]).toMatchObject({ clave: "oidc_cache_ttl_s", valor: 300 });
+  });
+
+  it("un resumen que mezcla formas sigue siendo una fila", () => {
+    const resumen = { total: 12, por_canal: { web: 3 }, por_mes: { "2026-10": 9 } };
+    expect(comoFilas(resumen)).toHaveLength(1);
+    expect(comoFilas({ solo: { valor: 1 } })).toHaveLength(1);
+    // Todo registros, pero de formas distintas: es un resumen, no una lista.
+    expect(comoFilas({ por_canal: { web: 3 }, por_mes: { "2026-10": 9 } })).toHaveLength(1);
+  });
 });

@@ -45,7 +45,12 @@ import {
   type VistaDeLista,
 } from "@/lib/vistasDeLista";
 import { llamar } from "@/lib/api";
-import { escalar, esIdentificadorTecnico, humanizar } from "@/lib/formato";
+import {
+  escalar,
+  esIdentificadorTecnico,
+  humanizar,
+  nombreDelRegistro,
+} from "@/lib/formato";
 import {
   comoQuery,
   leerFiltros,
@@ -63,7 +68,14 @@ import {
   type Proposito,
 } from "@/lib/contrato";
 import { Acciones } from "@/componentes/Acciones";
-import { accionesDeColeccion, type Accion } from "@/lib/acciones";
+import {
+  accionesDeColeccion,
+  comoAccionDeFila,
+  operacionesDeRegistro,
+  type Accion,
+} from "@/lib/acciones";
+import { FormularioDeEdicion } from "@/componentes/Edicion";
+import type { OpcionDeMenu } from "@/componentes/MenuDeAcciones";
 import {
   moduloDe,
   objetoDe,
@@ -607,7 +619,35 @@ function RecursoVista({
    * mandarles el identificador daba un 404 al pulsar la fila. Lo dice el
    * contrato en el nombre de su parámetro, así que no hay que declararlo.
    */
-  const [campoFicha, setCampoFicha] = useState(recurso.objeto ? "id" : "");
+  //
+  // Empieza vacío y lo pone el contrato, **no** `objeto`. Con el respaldo
+  // `objeto ? "id"`, toda pestaña con `objeto` enlazaba sus filas aunque el
+  // servidor no publicara cómo leer una: medido el 05-11-2026, seis fichas
+  // —usuarios, productos, categorías de caso, planes preventivos, niveles de
+  // partner y aprobaciones de activos— abrían en «No existe» o «Method Not
+  // Allowed». `objeto` sigue sirviendo para lo suyo: que las referencias a
+  // esos registros se resuelvan a nombres.
+  const [campoFicha, setCampoFicha] = useState("");
+  // La acción o la edición de una fila sin ficha que está abierta. La última
+  // elegida se queda para que el «Hecho» con lo que contestó el servidor siga
+  // a la vista cuando el formulario se cierra.
+  const [accionDeFila, setAccionDeFila] = useState<Accion | null>(null);
+  const [ultimaDeFila, setUltimaDeFila] = useState<Accion | null>(null);
+  const [filaElegida, setFilaElegida] = useState("");
+  const [edicionDeFila, setEdicionDeFila] = useState<{
+    ruta: string;
+    plantilla: string;
+    metodo: "PATCH" | "PUT";
+    valores: Record<string, unknown>;
+  } | null>(null);
+  const panelDeFila = useRef<HTMLDivElement>(null);
+  // El formulario sale encima de la tabla y la fila puede estar cuarenta más
+  // abajo: sin acercarlo, pulsar «Editar» no parecería hacer nada.
+  useEffect(() => {
+    if (accionDeFila || edicionDeFila) {
+      panelDeFila.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    }
+  }, [accionDeFila, edicionDeFila]);
   /**
    * La ruta de un registro y qué deja cambiar, para mover en el tablero.
    *
@@ -787,7 +827,7 @@ function RecursoVista({
       detalle: a.detalle,
     }));
     return [...aManoComoAccion, ...descubiertas];
-  }, [superficie, recurso.acciones, recurso.listar, sesion]);
+  }, [superficie, recurso.acciones, recurso.acciones_ocultas, recurso.listar, sesion]);
 
   // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una pantalla
   // vacía es peor que no tener enlace, porque parece que algo se ha roto.
@@ -811,6 +851,73 @@ function RecursoVista({
             : null;
         }
       : undefined;
+
+  // Lo que se hace con una fila **sin ficha**: sus acciones, editarla y
+  // quitarla, desde su propio menú. Ver `operacionesDeRegistro`.
+  const sinFicha = !aLaFicha;
+  const deLaFila = useMemo(
+    () =>
+      sinFicha
+        ? operacionesDeRegistro(superficie, recurso.listar, (p) => puede(sesion, p))
+        : null,
+    [sinFicha, superficie, recurso.listar, sesion],
+  );
+  function opcionesDeLaFila(fila: Record<string, unknown>): OpcionDeMenu[] {
+    if (!deLaFila) return [];
+    const valor = fila[deLaFila.campo];
+    if (typeof valor !== "string" && typeof valor !== "number") return [];
+    const clave = String(valor);
+    // Sin campo de nombre —una sesión no se llama de ninguna manera—, sus dos
+    // primeros textos que no sean identificadores: «127.0.0.1 · Firefox» dice
+    // cuál es; un UUID no.
+    const nombre =
+      nombreDelRegistro(fila) ||
+      Object.entries(fila)
+        .filter(([c, v]) => typeof v === "string" && v && !esIdentificadorTecnico(c))
+        .slice(0, 2)
+        .map(([, v]) => String(v))
+        .join(" · ") ||
+      clave;
+    const elegir = (accion: Accion) => () => {
+      setFilaElegida(nombre);
+      setEdicionDeFila(null);
+      setUltimaDeFila(accion);
+      setAccionDeFila(accion);
+    };
+    const opciones: OpcionDeMenu[] = deLaFila.acciones.map((op) => {
+      const accion = comoAccionDeFila(op, clave);
+      return { clave: accion.plantilla, nombre: accion.nombre, alElegir: elegir(accion) };
+    });
+    const editar = deLaFila.editar;
+    if (editar) {
+      opciones.unshift({
+        clave: "__editar",
+        nombre: t("modulo.editar"),
+        alElegir: () => {
+          setFilaElegida(nombre);
+          setAccionDeFila(null);
+          setEdicionDeFila({
+            ruta: comoAccionDeFila(editar, clave).ruta,
+            plantilla: editar.ruta,
+            metodo: editar.metodo.toUpperCase() === "PUT" ? "PUT" : "PATCH",
+            valores: fila,
+          });
+        },
+      });
+    }
+    if (deLaFila.quitar) {
+      // Con el nombre que le da el contrato, como en la ficha: «Revocar una
+      // clave», «Cerrar una sesión», «Levantar una supresión».
+      const accion = comoAccionDeFila(deLaFila.quitar, clave);
+      opciones.push({
+        clave: "__quitar",
+        nombre: accion.nombre,
+        destructiva: true,
+        alElegir: elegir(accion),
+      });
+    }
+    return opciones;
+  }
 
   const busqueda = recurso.busqueda;
   const terminoValido =
@@ -963,7 +1070,7 @@ function RecursoVista({
         : /(^|_)id$/.test(parametro)
           ? "id"
           : parametro;
-      setCampoFicha(campo || (recurso.objeto ? "id" : ""));
+      setCampoFicha(campo);
     });
     return () => {
       vivo = false;
@@ -1324,7 +1431,42 @@ function RecursoVista({
                   )}
                 </div>
               }
-              antes={formularioDeAlta}
+              antes={
+                <>
+                  {formularioDeAlta}
+                  {/* Lo que se ha elegido en el menú de una fila sin ficha. */}
+                  <div ref={panelDeFila}>
+                    {(edicionDeFila || accionDeFila) && filaElegida ? (
+                      <p className="mb-1.5 text-rotulo text-ink-faint">
+                        {t("modulo.sobreLaFila", { nombre: filaElegida })}
+                      </p>
+                    ) : null}
+                    {edicionDeFila ? (
+                      <FormularioDeEdicion
+                        recurso={recurso}
+                        ruta={edicionDeFila.ruta}
+                        plantilla={edicionDeFila.plantilla}
+                        metodo={edicionDeFila.metodo}
+                        valores={edicionDeFila.valores}
+                        alGuardar={() => {
+                          setEdicionDeFila(null);
+                          void cargar();
+                        }}
+                        alCancelar={() => setEdicionDeFila(null)}
+                      />
+                    ) : null}
+                    {ultimaDeFila ? (
+                      <Acciones
+                        acciones={[ultimaDeFila]}
+                        servicio={recurso.servicio}
+                        abierta={accionDeFila}
+                        alCambiarAbierta={setAccionDeFila}
+                        alTerminar={() => void cargar()}
+                      />
+                    ) : null}
+                  </div>
+                </>
+              }
               // El listado ES la pantalla: se recorre con la página.
               ocupaLaPantalla
               pegada
@@ -1360,7 +1502,9 @@ function RecursoVista({
                         },
                       ];
                     }
-                  : undefined
+                  : deLaFila
+                    ? opcionesDeLaFila
+                    : undefined
               }
               acciones={
                 <span className="flex items-center gap-2">

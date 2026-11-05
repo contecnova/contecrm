@@ -319,6 +319,15 @@ A las segundas **no se les declara clave a propósito**. Un ajuste que la consol
 deja poner por tenant y que luego no se aplica es peor que no tenerlo: quien lo
 pone cree que ya está.
 
+**Dónde se cambian.** En *Empresas y unidades → Ajustes*: una fila por ajuste,
+con su valor efectivo, de qué ámbito sale (`entorno`, `tenant`…), su tipo y su
+descripción. El menú del final de la fila tiene **Editar**, que abre sólo el
+valor —se valida contra el tipo y el rango declarados— y lo guarda con
+`PUT /api/v1/ajustes/{clave}`. Hasta el 05-11-2026 esa pantalla pintaba los 91
+ajustes como **una sola fila de 91 columnas**, y la única forma de cambiar uno
+era «Nuevo» tecleando su clave exacta: la respuesta es un diccionario por
+clave, no una lista, y el listado no lo reconocía.
+
 Y en ningún caso el valor va como defecto de un argumento: eso se evalúa al
 **importar**, así que congelaría el ajuste para toda la vida del proceso y
 cambiarlo en el `.env` no cambiaría nada. Se resuelve dentro de la función.

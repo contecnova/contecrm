@@ -587,6 +587,9 @@ export default {
     guardar: "Guardar cambios",
     eliminar: "Eliminar",
     eliminarDeVerdad: "Sí, eliminar",
+    confirmarOperacion:
+      "«{{accion}}», sobre este registro. Lo que cuelga de él —adjuntos, " +
+      "comentarios, documentos— puede dejar de estar accesible desde aquí.",
     confirmarBorrado:
       "Se va a eliminar este registro. Lo que cuelga de él —adjuntos, comentarios, " +
       "documentos— deja de estar accesible desde aquí.",
@@ -628,6 +631,9 @@ export default {
     // El menú del final de cada fila de un listado.
     abrir: "Abrir",
     editar: "Editar",
+    // Encima del formulario de una fila sin ficha: «Revocar una clave» no
+    // dice cuál, y con cincuenta en la lista eso es lo que hay que ver.
+    sobreLaFila: "Sobre «{{nombre}}»",
     servicio: "Servicio",
     sinRegistros: "Aquí no hay nada todavía",
     sinRegistrosDetalle: "Da de alta el primero y aparecerá en esta lista.",

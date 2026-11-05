@@ -449,6 +449,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         principal: true,
         objeto: "usuario",
         listar: "/api/v1/usuarios",
+        borrado_oculto_porque:
+          "El DELETE desactiva igual que «Dar de baja a un usuario», que además " +
+          "pregunta a quién pasan sus registros: ofrecer los dos es ofrecer el peor.",
       // Lo que se consume de licencias, encima de la lista: dar de alta a alguien
         // sin saber si quedan licencias es cómo se descubre el tope al revés.
       resumen: ["/api/v1/usuarios/licencias"],

@@ -281,7 +281,7 @@ export function Cuenta() {
   const recurso = moduloCuentas
     ? recursoDe(moduloCuentas, "cuenta")
     : undefined;
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
   // Las mismas dos pestañas que las demás fichas. «Relacionado» es el 360 que
   // esta pantalla ya enseñaba y «Detalles» son los campos de la cuenta, que
   // hasta hoy sólo se leían entrando a editar: aquí sale su sector y sus
@@ -472,6 +472,7 @@ export function Cuenta() {
               <BotonesDeRegistro
                 puedeEditar={puedeEditar}
                 puedeBorrar={puedeBorrar}
+              borrado={borrado}
                 alEditar={() => setEditando(true)}
                 alBorrar={() => setConfirmando(true)}
                 extra={acciones.map((a) => ({
@@ -494,6 +495,7 @@ export function Cuenta() {
 
       {confirmando ? (
         <ConfirmarBorrado
+          borrado={borrado}
           enviando={borrando}
           alBorrar={() => void borrar()}
           alCancelar={() => setConfirmando(false)}

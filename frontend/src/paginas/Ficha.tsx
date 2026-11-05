@@ -120,7 +120,7 @@ export function Ficha() {
     setConfirmando(false);
   }, [rutaDelModulo, tipo, id, parametrosDeFicha]);
 
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
 
   const cargar = useCallback(
     (signal?: AbortSignal) => {
@@ -280,6 +280,7 @@ export function Ficha() {
             <BotonesDeRegistro
               puedeEditar={puedeEditar}
               puedeBorrar={puedeBorrar}
+              borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
               extra={acciones.map((a) => ({
@@ -308,6 +309,7 @@ export function Ficha() {
 
       {confirmando ? (
         <ConfirmarBorrado
+          borrado={borrado}
           enviando={enviando}
           alBorrar={() => void borrar()}
           alCancelar={() => setConfirmando(false)}

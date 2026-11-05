@@ -1410,6 +1410,28 @@ def licencias(db: DbDep, principal: AutenticadoDep) -> Any:
     }
 
 
+# Detrás de `/licencias` y no antes: con el identificador como texto libre en la
+# ruta, declarada primero se quedaría con «licencias» y la contestaría con un 422.
+@router_usuarios.get(
+    "/{usuario_id}",
+    response_model=UsuarioOut,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Un usuario del tenant",
+    description="La ficha de una persona de la organización.",
+)
+def obtener_usuario(usuario_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    # Por membresía, como el listado: `Usuario` no lleva `tenant_id`, y sin esta
+    # unión cualquiera con `user:read` leería a las personas de otro tenant.
+    usuario = db.execute(
+        select(Usuario)
+        .join(Membresia, Membresia.usuario_id == Usuario.id)
+        .where(Usuario.id == usuario_id, Membresia.tenant_id == principal.tenant_id)
+    ).scalar_one_or_none()
+    if usuario is None:
+        raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
+    return usuario
+
+
 # ── Alcance de una persona, entre servicios ───────────────────────────────
 #
 # Existe para poder ejecutar algo **en nombre de** alguien que no está delante.

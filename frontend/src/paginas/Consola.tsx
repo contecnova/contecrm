@@ -259,6 +259,34 @@ export function comoFilas(
     // array; con dos no se adivina cuál es la lista.
     const arrays = Object.values(objeto).filter(Array.isArray) as unknown[][];
     if (arrays.length === 1 && arrays[0]) return normalizar(arrays[0]);
+    // Y la cuarta: un **diccionario de registros** —`{oidc_cache_ttl_s: {valor,
+    // origen, tipo…}, …}`—, la lista indexada por su clave. Se reconoce porque
+    // son dos o más valores, todos registros y todos con la misma forma; un
+    // resumen —`{total, este_mes, por_canal: {…}}`— mezcla formas y sigue
+    // siendo una fila. La clave pasa a la columna `clave`, que es por la que
+    // se edita (`PUT /ajustes/{clave}`).
+    //
+    // Medido el 05-11-2026 sobre las pestañas declaradas: le pasaba a una, y
+    // era «Ajustes» — los 91 umbrales que Administración tiene que poder
+    // cambiar salían como UNA fila de 91 columnas, sin forma de editar
+    // ninguno salvo teclear su clave exacta en «Nuevo».
+    const valores = Object.values(objeto);
+    const esRegistro = (v: unknown): v is Record<string, unknown> =>
+      Boolean(v) && typeof v === "object" && !Array.isArray(v);
+    const forma = (v: Record<string, unknown>) => Object.keys(v).sort().join("|");
+    const primero = valores[0];
+    if (
+      valores.length >= 2 &&
+      esRegistro(primero) &&
+      valores.every((v) => esRegistro(v) && forma(v) === forma(primero))
+    ) {
+      return normalizar(
+        Object.entries(objeto).map(([clave, v]) => ({
+          clave,
+          ...(v as Record<string, unknown>),
+        })),
+      );
+    }
     return [objeto];
   }
   return [];

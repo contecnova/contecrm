@@ -243,14 +243,22 @@ export function operacionPermitida(
   ruta: string,
   puede: (permiso: string | null) => boolean,
 ): boolean {
-  if (!superficie) return false;
+  const operacion = operacionDe(superficie, metodo, ruta);
+  return operacion ? puede(operacion.permiso) : false;
+}
+
+/** La operación publicada que contesta a ese método sobre esa ruta concreta. */
+export function operacionDe(
+  superficie: Superficie | null,
+  metodo: string,
+  ruta: string,
+): Operacion | undefined {
+  if (!superficie) return undefined;
   const tramos = (ruta.split("?")[0] ?? ruta).split("/");
-  for (const operacion of superficie.operaciones) {
-    if (operacion.metodo.toUpperCase() !== metodo.toUpperCase()) continue;
+  return superficie.operaciones.find((operacion) => {
+    if (operacion.metodo.toUpperCase() !== metodo.toUpperCase()) return false;
     const patron = operacion.ruta.split("/");
-    if (patron.length !== tramos.length) continue;
-    const encaja = patron.every((p, i) => p.startsWith("{") || p === tramos[i]);
-    if (encaja) return puede(operacion.permiso);
-  }
-  return false;
+    if (patron.length !== tramos.length) return false;
+    return patron.every((p, i) => p.startsWith("{") || p === tramos[i]);
+  });
 }

@@ -88,6 +88,85 @@ export function accionesDe(
 }
 
 /**
+ * Lo que se puede hacer con un registro **que no tiene ficha**.
+ *
+ * Una ficha es algo que se lee: sin `GET /coleccion/{id}` no la hay, y todo lo
+ * que la ficha ofrece —acciones, editar, quitar— se quedaba sin sitio. Medido
+ * el 05-11-2026 sobre las pestañas declaradas: **dieciséis** tenían
+ * operaciones sobre sus filas y ninguna puerta. No se podía revocar una clave
+ * de API, cerrar una sesión, quitar un dispositivo de confianza ni levantar
+ * una supresión desde ninguna pantalla, con el servidor admitiéndolo todo.
+ *
+ * Con esto, cada fila lleva su menú: las acciones `POST`, editar (`PATCH`, o
+ * `PUT` si es lo único que hay) y quitar (`DELETE`), cada una con el permiso
+ * que pide. `campo` es la columna de la fila que va en la ruta: `{x_id}` es el
+ * identificador de siempre; `{clave}`, `{codigo}` o `{nombre}`, esa columna.
+ */
+export interface OperacionesDeRegistro {
+  campo: string;
+  editar: Operacion | null;
+  quitar: Operacion | null;
+  acciones: Operacion[];
+}
+
+export function operacionesDeRegistro(
+  superficie: Superficie | null,
+  rutaBase: string,
+  puede: (permiso: string | null) => boolean,
+): OperacionesDeRegistro | null {
+  if (!superficie) return null;
+  const base = (rutaBase.split("?")[0] ?? rutaBase).split("/");
+  let parametro = "";
+  let patch: Operacion | null = null;
+  let put: Operacion | null = null;
+  let quitar: Operacion | null = null;
+  const acciones: Operacion[] = [];
+  for (const operacion of superficie.operaciones as Operacion[]) {
+    const tramos = operacion.ruta.split("/");
+    if (tramos.length < base.length + 1 || tramos.length > base.length + 2) continue;
+    if (tramos.slice(0, base.length).join("/") !== base.join("/")) continue;
+    const suyo = tramos[base.length] ?? "";
+    if (!suyo.startsWith("{")) continue;
+    if ((operacion.ruta.match(PARAMETRO) ?? []).length !== 1) continue;
+    if (!puede(operacion.permiso)) continue;
+    const metodo = operacion.metodo.toUpperCase();
+    const sobreElRegistro = tramos.length === base.length + 1;
+    if (sobreElRegistro && metodo === "PATCH") patch = operacion;
+    else if (sobreElRegistro && metodo === "PUT") put = operacion;
+    else if (sobreElRegistro && metodo === "DELETE") quitar = operacion;
+    else if (metodo === "POST") acciones.push(operacion);
+    else continue;
+    parametro = suyo.slice(1, -1);
+  }
+  const editar = patch ?? put;
+  if (!editar && !quitar && acciones.length === 0) return null;
+  return {
+    campo: /(^|_)id$/.test(parametro) ? "id" : parametro,
+    editar,
+    quitar,
+    acciones: acciones.sort((a, b) =>
+      comoRotulo(a.resumen).localeCompare(comoRotulo(b.resumen), "es"),
+    ),
+  };
+}
+
+/** Una operación de la fila, como acción con su ruta ya puesta. */
+export function comoAccionDeFila(operacion: Operacion, valor: string): Accion {
+  const tramos = operacion.ruta.split("/");
+  const ultimo = tramos[tramos.length - 1] ?? "";
+  return {
+    ruta: operacion.ruta.replace(PARAMETRO, encodeURIComponent(valor)),
+    plantilla: operacion.ruta,
+    metodo: operacion.metodo.toUpperCase(),
+    nombre: comoRotulo(operacion.resumen) || ultimo,
+    permiso: operacion.permiso,
+    // Sin tramo propio —`POST /x/{id}` o el `DELETE`— no hay clave que lo
+    // diga: la marca de irreversible la pone quien lo pinta.
+    clave: ultimo.startsWith("{") ? "" : ultimo,
+  };
+}
+
+/**
  * Las acciones que actúan sobre la COLECCIÓN entera, deducidas del contrato.
  *
  * **Se declaraban a mano, y una lista a mano siempre se queda corta.** El

@@ -2639,6 +2639,77 @@ trazabilidad; en un botón es media mitad del rótulo diciendo algo que a quien
 comprueba un contenido no le dice nada. Se quita **al rotular** (`comoRotulo`),
 no en los servicios, justo para que siga estando en el contrato.
 
+#### El botón de borrar dice lo que hace el DELETE (05-11-2026)
+
+De las **124 operaciones DELETE** publicadas, muchas no borran: «Enviar una
+cuenta a la papelera», «Revocar una clave», «Cerrar una sesión», «Dar de baja a
+un usuario del tenant». Las trece fichas las rotulaban todas **«Eliminar»**, con
+«Sí, eliminar» al confirmar: quien mandaba una cuenta a la papelera no sabía que
+se recupera, y quien daba de baja a alguien creía que lo borraba.
+
+Ahora `useEdicion` devuelve, además de si se puede, **qué hace**: el `summary`
+de la operación DELETE que contesta a esa ruta, pasado por `comoRotulo`. Lo
+usan el menú «Más» y la confirmación (`BotonesDeRegistro`, `ConfirmarBorrado`).
+La operación se busca con `operacionDe` (`lib/superficie.ts`), la misma que ya
+decidía el permiso, así que el rótulo y el permiso salen siempre de la misma
+operación. «Eliminar» queda sólo cuando el contrato no dice nada.
+
+**Un recurso puede callar su DELETE**, con `borrado_oculto_porque` en su
+declaración de `recursos.ts` — un texto y no un sí/no, para que el siguiente
+sepa que es a propósito. El único que lo usa es «Usuarios»: su DELETE desactiva
+igual que «Dar de baja a un usuario», pero sin preguntar a quién pasan sus
+registros, y dos botones para lo mismo es ofrecer el peor.
+
+Y la ficha de un usuario **no abría**: el listado enlazaba cada fila y la ficha
+pedía `GET /api/v1/usuarios/{usuario_id}`, que no existía — «Method Not
+Allowed» y ninguna acción, «Dar de baja» incluida. La ruta existe ahora, va
+**detrás** de `/usuarios/licencias` (declarada antes se quedaría con
+«licencias» y contestaría 422) y lee por membresía, como el listado: `Usuario`
+no lleva `tenant_id` y esa unión es lo que aísla. Las tres cosas —ficha, otro
+tenant, licencias— las vigila `test_reverificacion_y_mfa_adaptativa.py`, y las
+dos últimas se validaron plantando el fallo; el rótulo, en
+`el_borrado_dice_lo_que_hace.test.tsx`.
+
+#### Una fila sin ficha tiene su menú (05-11-2026)
+
+Una ficha es algo que se lee: sin `GET /coleccion/{id}` no la hay. Dos fallos
+salían de ahí, y se midieron cruzando las pestañas de `recursos.ts` con los
+trece contratos:
+
+- **Seis fichas que abrían en error.** `Modulo` enlazaba las filas de toda
+  pestaña con `objeto` aunque el contrato no publicara cómo leer una (el
+  respaldo `objeto ? "id"` cuando `fichaDe` no encontraba nada). Usuarios,
+  productos, categorías de caso, planes preventivos, niveles de partner y
+  aprobaciones de activos abrían en «No existe» o «Method Not Allowed». El
+  respaldo se ha quitado: **enlaza el contrato, no `objeto`**. `objeto` sigue
+  sirviendo para resolver referencias a nombres. Por lo mismo, el resultado de
+  una acción sólo enlaza un `…_id` si su registro se puede leer. A usuarios sí
+  se le ha dado su `GET`, porque «Dar de baja» necesita una ficha desde la que
+  pulsarse.
+- **Dieciséis pestañas con operaciones y sin puerta.** Revocar una clave de
+  API, cerrar una sesión, quitar una política de acceso o una regla de
+  enrutamiento, editar un riesgo o un control, levantar una supresión,
+  desinstalar un conector… el servidor lo admitía y ninguna pantalla lo
+  ofrecía. Ahora `operacionesDeRegistro` (`lib/acciones.ts`) saca del contrato,
+  para la colección, las `POST` sobre el registro, el editar (`PATCH`, o `PUT`
+  si es lo único) y el quitar (`DELETE`), cada una con su permiso, y la fila
+  sin ficha las lleva en su menú. El formulario es el de siempre: `<Acciones>`,
+  que ahora usa el método de cada operación en vez de `POST` fijo, y
+  `FormularioDeEdicion`, que acepta la plantilla y el método.
+
+Y una tercera forma de respuesta que el listado no reconocía: **un diccionario
+de registros** (`{clave: {valor, origen, tipo…}, …}`). `comoFilas` lo convierte
+en filas cuando son dos o más valores, todos registros y todos con la misma
+forma, guardando la clave en la columna `clave`. Medido en vivo sobre las
+pestañas: sólo «Ajustes» respondía así —los 91 umbrales salían como una fila de
+91 columnas—; las otras siete respuestas de un solo objeto son resúmenes y
+siguen pintándose como una fila.
+
+Pruebas: `una_fila_sin_ficha_tiene_su_menu.test.ts` y dos casos nuevos en
+`una_respuesta_con_dos_listas_se_pinta_entera.test.ts`, validadas plantando el
+fallo (sin la rama del `PUT`, sin el filtro de permiso, sin codificar la clave,
+sin comparar la forma).
+
 ### 4.6.16 El chat en vivo perdía lo escrito durante el corte
 
 `CRM-06.02.02.07` promete «entrega en vivo por SSE, **con reconexión y

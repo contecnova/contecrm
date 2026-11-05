@@ -80,7 +80,7 @@ export function SobreDeFirma() {
   // sería retirar algo que funcionaba sin que nadie lo decidiera.
   const modulo = moduloDe("operacion");
   const recurso = modulo ? recursoDe(modulo, "sobre_firma") : undefined;
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
   // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
   // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
   // hasta hoy sólo se leían entrando a editar.
@@ -136,6 +136,7 @@ export function SobreDeFirma() {
             <BotonesDeRegistro
               puedeEditar={puedeEditar}
               puedeBorrar={puedeBorrar}
+              borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
             />
@@ -145,6 +146,7 @@ export function SobreDeFirma() {
 
       {confirmando ? (
         <ConfirmarBorrado
+          borrado={borrado}
           enviando={borrando}
           alBorrar={() => void borrar()}
           alCancelar={() => setConfirmando(false)}

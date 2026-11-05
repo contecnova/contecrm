@@ -115,7 +115,7 @@ export function Articulo() {
   // permite corregir uno publicado sin que el cliente vea el cambio a medias.
   const modulo = moduloDe("conocimiento");
   const recurso = modulo ? recursoDe(modulo, "articulo") : undefined;
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
   // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
   // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
   // hasta hoy sólo se leían entrando a editar.
@@ -190,6 +190,7 @@ export function Articulo() {
             <BotonesDeRegistro
               puedeEditar={puedeEditar}
               puedeBorrar={puedeBorrar}
+              borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
             />
@@ -199,6 +200,7 @@ export function Articulo() {
 
       {confirmando ? (
         <ConfirmarBorrado
+          borrado={borrado}
           enviando={borrando}
           alBorrar={() => void borrar()}
           alCancelar={() => setConfirmando(false)}

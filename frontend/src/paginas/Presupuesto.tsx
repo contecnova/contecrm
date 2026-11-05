@@ -129,7 +129,7 @@ export function Presupuesto() {
   // tocar qué y en qué estado lo decide el servidor, no esta pantalla.
   const modulo = moduloDe("oportunidades");
   const recurso = modulo ? recursoDe(modulo, "presupuesto") : undefined;
-  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
+  const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
   // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
   // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
   // hasta hoy sólo se leían entrando a editar.
@@ -203,6 +203,7 @@ export function Presupuesto() {
             <BotonesDeRegistro
               puedeEditar={puedeEditar}
               puedeBorrar={puedeBorrar}
+              borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
             />
@@ -212,6 +213,7 @@ export function Presupuesto() {
 
       {confirmando ? (
         <ConfirmarBorrado
+          borrado={borrado}
           enviando={borrando}
           alBorrar={() => void borrar()}
           alCancelar={() => setConfirmando(false)}

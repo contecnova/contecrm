@@ -2137,8 +2137,22 @@ delante.
 
 Casi todas las pantallas que enseñan una lista permiten **dar de alta** y
 **abrir cada fila** para verla, cambiarla o borrarla. Eso incluye las fichas con
-diseño propio, como la de un cliente: ahí tienes **Editar** y **Eliminar**
-arriba, junto a las demás acciones. Hasta el 27-10-2026 no los tenía —la
+diseño propio, como la de un cliente: ahí tienes **Editar** arriba y, en
+«Más», las demás acciones y la de quitar el registro. Esa última **dice lo que
+hace**, porque no siempre es borrar: en un cliente es «Enviar una cuenta a la
+papelera» —se recupera desde la papelera—, en una clave de API es «Revocar», y
+en una persona es «Dar de baja», que corta su acceso y te pregunta a quién pasan
+sus registros. Sólo pone «Eliminar» cuando de verdad es eso.
+
+**Lo que no tiene ficha se hace desde su fila.** Hay listas cuyas filas no se
+abren —una clave de API, una sesión, un ajuste, una supresión— porque no hay
+nada más que ver de ellas que lo que ya enseña la fila. Lo que se puede hacer
+con ellas está en el menú del final de cada fila: *Revocar una clave*, *Cerrar
+una sesión*, *Levantar una supresión*, *Editar*. Al elegirlo, el formulario sale
+encima de la lista y dice sobre qué fila vas a actuar —«Sobre “Cuadro de mando
+de dirección”»—, para que con cincuenta parecidas no haya duda.
+
+Hasta el 27-10-2026 la ficha de un cliente no tenía ninguna de las dos cosas —la
 edición vivía dentro de la ficha genérica y la de cliente se quedó sin ella—,
 así que un cliente no se podía cambiar desde ningún punto de su propia ficha
 aunque el sistema lo admitiera y la misma pantalla estuviera avisando, al lado,

@@ -201,6 +201,17 @@ export interface Recurso {
    * cubre. Sin eso esto sería una lista de cosas escondidas.
    */
   acciones_ocultas?: string[];
+  /**
+   * Por qué este registro NO ofrece su DELETE, aunque el contrato lo publique.
+   *
+   * Es el motivo y no un sí/no a propósito: un borrado callado sin decir qué
+   * lo cubre es un hueco que el siguiente no sabrá si es intencionado.
+   *
+   * El caso que lo pide: `DELETE /usuarios/{id}` no borra, desactiva —lo
+   * mismo que «Dar de baja a un usuario»— pero sin preguntar a quién pasan sus
+   * registros. Dos botones para lo mismo y el peor rotulado como el más corto.
+   */
+  borrado_oculto_porque?: string;
   clave_lista?: string;
   acciones?: Array<{
     ruta: string;
