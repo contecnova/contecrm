@@ -139,6 +139,14 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "procesos": [
       {
         nombre: "Definiciones",
+        // Las dos las hace el EDITOR DE PROCESOS (`/procesos`, en el menú de
+        // Automatización), donde el lienzo es la definición: se valida y se
+        // simula sobre lo que estás mirando. Aquí el formulario genérico
+        // pediría teclear el grafo entero como pares clave/valor.
+        acciones_ocultas: [
+          "/api/v1/procesos/definiciones/simular",
+          "/api/v1/procesos/definiciones/validar",
+        ],
         principal: true,
         listar: "/api/v1/procesos/definiciones",
         servicio: "orchestrator",

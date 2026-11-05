@@ -183,6 +183,24 @@ export interface Recurso {
    * Sin esto, la pantalla pintaba una fila con el objeto entero: tres columnas
    * con nombre de propiedad y las filas de verdad apelotonadas en una celda.
    */
+  /**
+   * Acciones que NO se ofrecen aquí porque hay una pantalla que las hace bien.
+   *
+   * La pestaña deduce sus botones del contrato, y eso está bien: así una
+   * acción nueva aparece sola. Pero cuando el cuerpo de la operación es un
+   * objeto abierto —el grafo de un proceso, por ejemplo— el formulario
+   * genérico pide teclearlo como pares clave/valor, y eso no lo hace nadie.
+   *
+   * Medido el 05-11-2026 abriendo «Definiciones»: «Simular un proceso sin
+   * publicarlo» abría un editor de pares para el grafo entero, teniendo el
+   * producto un editor gráfico donde el lienzo ES la definición y simular es
+   * un botón. Un camino peor al lado de uno bueno no es una opción más: es el
+   * que alguien va a tomar.
+   *
+   * Cada ruta que se calle lleva al lado, en el comentario, qué pantalla la
+   * cubre. Sin eso esto sería una lista de cosas escondidas.
+   */
+  acciones_ocultas?: string[];
   clave_lista?: string;
   acciones?: Array<{
     ruta: string;

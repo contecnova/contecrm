@@ -983,6 +983,9 @@ def revisar_plazos(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
     )
     avisadas: list[str] = []
     escaladas: list[dict[str, Any]] = []
+    # Aprobadores que no están en el organigrama: no se puede saber quién está
+    # por encima, así que esas etapas se quedan sin escalar y hay que decirlo.
+    sin_organigrama: list[str] = []
 
     for etapa in abiertas:
         if etapa.avisar_at and not etapa.avisada and _con_tz(etapa.avisar_at) <= ahora:
@@ -1003,7 +1006,24 @@ def revisar_plazos(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
         if etapa.vence_at and not etapa.escalada and _con_tz(etapa.vence_at) <= ahora:
             nuevos: list[str] = []
             for titular in list(etapa.aprobadores or []):
-                cadena = org.cadena_de_mando(uow.db, tenant_id, UUID(str(titular)))
+                # UN APROBADOR DESCONOCIDO NO PUEDE TUMBAR LA REVISIÓN ENTERA.
+                #
+                # `cadena_de_mando` lanza si esa persona no está en el
+                # organigrama replicado, y eso abortaba la pasada completa:
+                # ni se avisaba a los que iban tarde ni se escalaba ninguna
+                # otra etapa. Medido el 05-11-2026 pulsando «Revisar plazos»:
+                # un 404 «Esa persona no está en el organigrama replicado» y
+                # cero trabajo hecho, con ocho aprobaciones abiertas.
+                #
+                # Es el mismo caso que el `else` de abajo —no hay a quién
+                # escalar— y se trata igual: se sigue con el resto y se DICE,
+                # porque una revisión que calla lo que no pudo se lee como una
+                # revisión completa.
+                try:
+                    cadena = org.cadena_de_mando(uow.db, tenant_id, UUID(str(titular)))
+                except NoEncontrado:
+                    sin_organigrama.append(str(titular))
+                    continue
                 if cadena:
                     nuevos.append(str(cadena[0]))
             if nuevos:
@@ -1036,6 +1056,15 @@ def revisar_plazos(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
         "revisadas": len(abiertas),
         "avisadas": avisadas,
         "escaladas": escaladas,
+        # Lo que NO se ha podido hacer, con su motivo y sin repetir a nadie.
+        "sin_a_quien_escalar": sorted(set(sin_organigrama)),
+        "porque": (
+            "Hay aprobadores que no están en el organigrama replicado, así que "
+            "de ésos no se sabe quién está por encima: sus etapas se quedan sin "
+            "escalar hasta que se replique el organigrama."
+            if sin_organigrama
+            else ""
+        ),
         # Sin etapas abiertas no se dice «todo al día»: no hay nada que medir.
         "medible": bool(abiertas),
     }

@@ -760,3 +760,58 @@ def test_los_enlaces_de_decision_vivos_se_pueden_contar(
     # que quien lea una copia de seguridad apruebe en nombre de nadie.
     assert "hash_token" not in salida["enlaces"][0]
     assert "token" not in salida["enlaces"][0]
+
+
+def test_un_aprobador_fuera_del_organigrama_no_tumba_la_revision(
+    uow: UnidadDeTrabajo, plantilla: Any, db: Any
+) -> None:
+    """Revisar plazos tiene que hacer lo que pueda y DECIR lo que no pudo.
+
+    `cadena_de_mando` lanza cuando el aprobador no está en el organigrama
+    replicado, y esa excepción abortaba la pasada entera: ni se avisaba a los
+    que iban tarde ni se escalaba ninguna otra etapa.
+
+    **Medido el 05-11-2026** pulsando «Revisar plazos» en el producto: un 404
+    «Esa persona no está en el organigrama replicado» y cero trabajo hecho,
+    con ocho aprobaciones abiertas. Es el mismo caso que «no hay a quién
+    escalar», que ya estaba bien resuelto tres líneas más abajo.
+    """
+    from uuid import uuid4
+
+    from sqlalchemy import select
+
+    # Una etapa vencida cuyo aprobador NO está en el organigrama.
+    desconocido = uuid4()
+    vencida = _crear(uow, plantilla, etapas=[{"origen": "usuario", "usuarios": [str(desconocido)]}])
+    etapa_mala = (
+        db.execute(
+            select(apr.EtapaAprobacion).where(apr.EtapaAprobacion.solicitud_id == vencida.id)
+        )
+        .scalars()
+        .one()
+    )
+    etapa_mala.vence_at = _ahora() - timedelta(hours=1)
+
+    # Y otra, normal, que sí hay que avisar.
+    buena = _crear(
+        uow, plantilla, etapas=[{"origen": "jerarquia", "escalones": 1, "vence_en_horas": 10}]
+    )
+    etapa_buena = (
+        db.execute(select(apr.EtapaAprobacion).where(apr.EtapaAprobacion.solicitud_id == buena.id))
+        .scalars()
+        .one()
+    )
+    etapa_buena.avisar_at = _ahora() - timedelta(minutes=1)
+    db.flush()
+
+    salida = apr.revisar_plazos(uow, uow.tenant_id)
+
+    # No revienta, y el trabajo que sí se podía hacer se ha hecho.
+    assert str(etapa_buena.id) in salida["avisadas"], (
+        "la etapa que sólo había que avisar se ha quedado sin aviso: una "
+        "excepción de otra etapa ha abortado la pasada"
+    )
+    # Y lo que no se pudo se dice, con quién y por qué. Callarlo dejaría una
+    # etapa vencida parada para siempre con el informe en verde.
+    assert salida["sin_a_quien_escalar"] == [str(desconocido)]
+    assert "organigrama" in salida["porque"]

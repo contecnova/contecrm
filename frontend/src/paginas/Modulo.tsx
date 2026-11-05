@@ -769,7 +769,10 @@ function RecursoVista({
       superficie,
       recurso.listar,
       (permiso) => puede(sesion, permiso),
-    ).filter((a) => !escritas.has(a.ruta));
+    )
+      .filter((a) => !escritas.has(a.ruta))
+      // Y las que la pestaña calla porque hay una pantalla que las hace bien.
+      .filter((a) => !(recurso.acciones_ocultas ?? []).includes(a.ruta));
     // Las escritas a mano se llevan a la misma forma que las deducidas, para
     // que las pinte un solo componente. Antes eran dos mecanismos: el de la
     // ficha, que sabe abrir el formulario de una acción, y uno propio de esta
