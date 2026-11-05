@@ -52,6 +52,9 @@ AMBIGUAS = {
     "continua": "«continua» y «continúa» son las dos palabras",
     "valido": "«valido» es también el verbo",
     "valida": "«valida» es también el verbo",
+    # `su_media` es el promedio de ese tenant, no el imperfecto de «medir».
+    # Son dos palabras distintas, no la misma mal escrita.
+    "media": "«media» es el promedio; «medía» es del verbo medir",
     "ingles": "el idioma lleva tilde, el gentilicio en minúscula también",
     # Salieron al ampliar la autoridad a los manuales: ahí aparecen como verbo
     # y en una clave técnica son sustantivo o preposición.

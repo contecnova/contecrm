@@ -146,6 +146,7 @@ stateDiagram-v2
 | `POST /api/v1/auth/login` | Iniciar sesión | email*, contrasena*, tenant*, codigo_mfa, huella_dispositivo, recordar_dispositivo | 200, 422 | — |
 | `POST /api/v1/auth/logout` | Cerrar la sesión en curso | — | 204, 422 | — |
 | `POST /api/v1/auth/mfa/activar` | Confirmar y activar el MFA | codigo* | 200, 422 | — |
+| `POST /api/v1/auth/mfa/desactivar` | Quitar el segundo factor de esta cuenta | — | 200, 422 | — |
 | `POST /api/v1/auth/mfa/iniciar` | Empezar la configuración del doble factor | — | 200, 422 | — |
 | `POST /api/v1/auth/passkeys` | Empezar a registrar una passkey | — | 200, 422 | — |
 | `POST /api/v1/auth/passkeys/confirmar` | Guardar la passkey recién creada | respuesta*, nombre | 201, 422 | `user.passkey.registered` |

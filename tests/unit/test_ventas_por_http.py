@@ -24,7 +24,7 @@ funciones completas que no podía pedir nadie.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -34,7 +34,13 @@ from starlette.testclient import TestClient
 
 pytestmark = pytest.mark.db
 
-HOY = date(2026, 10, 5)
+# El día de HOY, no un día escrito a fuego.
+#
+# Era `date(2026, 10, 5)`, y los pasos «futuros» se ponían a +30 días: el
+# 05-11-2026 ese futuro pasó a ser ayer y la prueba se puso roja sola, sin que
+# nadie tocara una línea. Una prueba con una fecha fija y desplazamientos
+# relativos no comprueba lo que dice: comprueba que todavía no ha caducado.
+HOY = hoy()
 
 
 @pytest.fixture
