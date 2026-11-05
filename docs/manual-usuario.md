@@ -865,6 +865,21 @@ existían y no había forma de llegar a ellas desde ninguna pantalla: eran **50*
 entre ellas comprobar un contenido antes de mandarlo o ver dónde duele si un
 proveedor falla mañana.
 
+### Mover una oportunidad de etapa
+
+El camino de etapas que sale debajo del nombre —Cualificación, Análisis
+técnico, Oferta presentada…— **se pulsa**. Un clic en la etapa a la que quieres
+llevarla y se mueve; no hace falta entrar a editar.
+
+La etapa en la que estás no se puede pulsar, porque no haría nada. Y si el
+sistema no deja el movimiento —criterios de salida sin cumplir, una etapa ya
+cerrada— te lo dice en vez de quedarse callado.
+
+**El historial guarda cada movimiento**, con cuánto se deslizó la fecha y
+cuánto cambió el importe. Si se movió sin motivo escrito, el historial lo dice:
+una etapa que cambió y nadie puede explicar por qué es la que no se sostiene en
+un comité.
+
 ### Poner y quitar tu segundo factor
 
 Está en **Puesto de trabajo**, que es la pantalla de tu propio acceso —no en

@@ -75,7 +75,9 @@ interface Oportunidad {
 /** Un pipeline con sus etapas en orden, tal y como lo publica `sales`. */
 interface Pipeline {
   id: string;
-  etapas: { nombre: string }[];
+  // Con el identificador: mover la oportunidad se hace con el id de la etapa,
+  // no con su nombre. Declarar sólo el nombre dejaba la ruta inútil.
+  etapas: { id: string; nombre: string }[];
 }
 
 interface Linea {
@@ -341,7 +343,13 @@ export function Oportunidad() {
    * un dato clave más. Es un adorno útil, no el contenido.
    */
   const pipelineId = op?.pipeline_id ?? "";
-  const [etapasDelPipeline, setEtapasDelPipeline] = useState<string[]>([]);
+  // Las etapas CON SU IDENTIFICADOR, no sólo el nombre: mover la oportunidad
+  // se hace con el id de la etapa del pipeline, que es configuración del
+  // tenant. Guardando sólo los nombres, la ruta podía pintarse y no se podía
+  // usar para nada.
+  const [etapasDelPipeline, setEtapasDelPipeline] = useState<
+    { id: string; nombre: string }[]
+  >([]);
   useEffect(() => {
     if (!pipelineId) return undefined;
     const control = new AbortController();
@@ -350,7 +358,9 @@ export function Oportunidad() {
     })
       .then((r) => {
         const suyo = filas<Pipeline>(r.datos).find((x) => x.id === pipelineId);
-        setEtapasDelPipeline((suyo?.etapas ?? []).map((e) => e.nombre));
+        setEtapasDelPipeline(
+          (suyo?.etapas ?? []).map((e) => ({ id: String(e.id ?? ""), nombre: e.nombre })),
+        );
       })
       .catch(() => undefined);
     return () => control.abort();
@@ -402,7 +412,34 @@ export function Oportunidad() {
         nombre={op.nombre}
         fila={op as unknown as Record<string, unknown>}
         volverA={{ a: "/m/oportunidades", titulo: modulo?.titulo ?? "", id }}
-        recorrido={{ campo: "etapa", pasos: etapasDelPipeline }}
+        recorrido={{
+          campo: "etapa",
+          pasos: etapasDelPipeline.map((e) => e.nombre),
+          // Y SE PUEDE MOVER DESDE AHÍ.
+          //
+          // Lo pidió quien lo usa: «clicando en alguno de estos deberíamos
+          // poder movernos». Mover de etapa es el gesto más repetido del día
+          // en una oportunidad, y tenerlo sólo dentro del formulario de
+          // edición lo convierte en cuatro clics.
+          //
+          // Si el producto lo rechaza —criterios de salida sin cumplir, una
+          // etapa cerrada— el mensaje sale donde salen los demás de esta
+          // ficha, no se traga.
+          alElegir: async (paso: string) => {
+            const destino = etapasDelPipeline.find((e) => e.nombre === paso);
+            if (!destino?.id || !id) return;
+            try {
+              await llamar(`/api/v1/opportunities/${id}/etapa`, {
+                metodo: "POST",
+                cuerpo: { etapa_id: destino.id },
+              });
+              setFallo(null);
+              await cargar();
+            } catch (error) {
+              setFallo(error);
+            }
+          },
+        }}
         distintivos={
           <>
             {/* El estado no: es una de las columnas preferidas del recurso y

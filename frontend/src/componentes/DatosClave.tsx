@@ -86,14 +86,29 @@ function Ruta({
   campo,
   pasos,
   valor,
+  alElegir,
 }: {
   /** El nombre del campo, para decir de qué es la ruta. */
   campo: string;
   pasos: string[];
   valor: string;
+  /**
+   * Mover el registro a ese paso, si se puede.
+   *
+   * Sin esto la ruta es un indicador: dice dónde estás y no deja ir. Lo pidió
+   * quien lo usa el 05-11-2026 mirando una oportunidad — «clicando en alguno
+   * de estos deberíamos poder movernos»— y tiene razón: es lo que hace el
+   * camino de Lightning, y una etapa que sólo se cambia desde un formulario
+   * de edición convierte el gesto más repetido del día en cuatro clics.
+   *
+   * Lo trae quien sabe moverlo: esta pieza no conoce ningún objeto. Si no
+   * viene, la ruta se pinta igual y no se puede pulsar.
+   */
+  alElegir?: (paso: string) => void | Promise<void>;
 }) {
   const { t } = useTranslation();
   const actual = pasos.indexOf(valor);
+  const [moviendo, setMoviendo] = useState("");
   return (
     <ol
       aria-label={t("ficha.ruta", { campo: humanizar(campo) })}
@@ -102,23 +117,44 @@ function Ruta({
       {pasos.map((opcion, i) => {
         const hecha = actual >= 0 && i < actual;
         const aqui = i === actual;
+        const clases = cn(
+          "flex items-center whitespace-nowrap px-3 py-1 text-dato",
+          // Lo recorrido en azul, lo de ahora en azul oscuro y lo que
+          // queda en gris. Tres tonos y no dos: sin el del medio no se
+          // distingue dónde estás de lo que ya has pasado.
+          aqui
+            ? "bg-accent-soft font-semibold text-white"
+            : hecha
+              ? "bg-accent/15 text-accent"
+              : "bg-paper-light text-ink-muted",
+        );
         return (
-          <li
-            key={opcion}
-            aria-current={aqui ? "step" : undefined}
-            className={cn(
-              "flex items-center whitespace-nowrap px-3 py-1 text-dato",
-              // Lo recorrido en azul, lo de ahora en azul oscuro y lo que
-              // queda en gris. Tres tonos y no dos: sin el del medio no se
-              // distingue dónde estás de lo que ya has pasado.
-              aqui
-                ? "bg-accent-soft font-semibold text-white"
-                : hecha
-                  ? "bg-accent/15 text-accent"
-                  : "bg-paper-light text-ink-muted",
+          <li key={opcion} aria-current={aqui ? "step" : undefined}>
+            {alElegir && !aqui ? (
+              <button
+                type="button"
+                disabled={Boolean(moviendo)}
+                // El paso de ahora NO es un botón: pulsar donde ya estás no
+                // hace nada, y un botón que no hace nada enseña a desconfiar
+                // de los de al lado.
+                onClick={async () => {
+                  setMoviendo(opcion);
+                  try {
+                    await alElegir(opcion);
+                  } finally {
+                    setMoviendo("");
+                  }
+                }}
+                className={cn(
+                  clases,
+                  "w-full hover:brightness-110 disabled:opacity-60",
+                )}
+              >
+                {moviendo === opcion ? "…" : humanizar(opcion)}
+              </button>
+            ) : (
+              <span className={clases}>{humanizar(opcion)}</span>
             )}
-          >
-            {humanizar(opcion)}
           </li>
         );
       })}
@@ -182,7 +218,12 @@ export function DatosClave({
    * Con esto, quien conoce sus pasos los trae. Sigue sin haber nada escrito
    * por objeto: los pasos son los que el tenant tenga configurados.
    */
-  recorrido?: { campo: string; pasos: string[] } | null;
+  recorrido?: {
+    campo: string;
+    pasos: string[];
+    /** Mover a ese paso. Sin esto la ruta sólo informa. */
+    alElegir?: (paso: string) => void | Promise<void>;
+  } | null;
   /**
    * De dónde viene el registro: su listado y su identificador.
    *
@@ -316,7 +357,12 @@ export function DatosClave({
 
         {pasos.length >= 3 && valorEtapa ? (
           <div className="mt-3">
-            <Ruta campo={campoRecorrido} pasos={pasos} valor={valorEtapa} />
+            <Ruta
+              campo={campoRecorrido}
+              pasos={pasos}
+              valor={valorEtapa}
+              alElegir={recorrido?.alElegir}
+            />
           </div>
         ) : null}
 
