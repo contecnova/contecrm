@@ -18,6 +18,13 @@
  *
  * **Y la capacidad enseña lo que hay en ofertas abiertas**, que todavía no está
  * comprometido pero tampoco cabría si se ganaran todas.
+ *
+ * **Los datos los pone quien pregunta, y la pantalla no trae ninguno.** Es una
+ * calculadora: el servidor no guarda ni la oferta ni la capacidad que mide.
+ * Hasta el 05-11-2026 «Ver capacidad» preguntaba SIEMPRE con 1.000, 800 y 300
+ * escritos en el código, y las líneas venían rellenas con un ejemplo: pulsar
+ * sin tocar nada daba un margen y una capacidad de nadie, con aspecto de
+ * respuesta.
  */
 
 import { useState } from "react";
@@ -51,9 +58,10 @@ interface Capacidad {
 
 export function Coste() {
   const { t } = useTranslation();
-  const [lineas, setLineas] = useState(
-    '[{"referencia":"L1","precio_venta":1000,"coste":700,"cantidad":1}]',
-  );
+  const [lineas, setLineas] = useState("");
+  const [contratada, setContratada] = useState("");
+  const [comprometida, setComprometida] = useState("");
+  const [enOfertas, setEnOfertas] = useState("");
   const [margen, setMargen] = useState<Margen | null>(null);
   const [capacidad, setCapacidad] = useState<Capacidad | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -74,9 +82,12 @@ export function Coste() {
   const mirarCapacidad = async () => {
     setFallo(null);
     try {
-      const r = await llamar<Capacidad>(
-        "/api/v1/coste/capacidad?contratada=1000&comprometida=800&en_ofertas=300",
-      );
+      const consulta = new URLSearchParams({
+        contratada,
+        comprometida,
+        en_ofertas: enOfertas || "0",
+      });
+      const r = await llamar<Capacidad>(`/api/v1/coste/capacidad?${consulta}`);
       setCapacidad(r.datos);
     } catch (e) {
       setFallo(e);
@@ -102,20 +113,46 @@ export function Coste() {
         rows={4}
         className="mt-1 w-full rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 font-mono text-dato text-ink"
         value={lineas}
+        placeholder='[{"referencia":"L1","precio_venta":1000,"coste":700,"cantidad":1}]'
         onChange={(e) => setLineas(e.target.value)}
       />
-      <div className="mt-2 flex gap-2">
+      <div className="mt-2">
         <button
           type="button"
           onClick={calcular}
-          className="rounded-lg bg-accent px-3 py-1.5 text-dato text-paper"
+          disabled={!lineas.trim()}
+          className="btn-primary"
         >
           {t("coste.calcular")}
         </button>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        {(
+          [
+            ["contratada", contratada, setContratada],
+            ["comprometida", comprometida, setComprometida],
+            ["enOfertasDato", enOfertas, setEnOfertas],
+          ] as const
+        ).map(([clave, valor, poner]) => (
+          <label key={clave} className="block text-dato text-ink-muted">
+            {t(`coste.${clave}`)}
+            <input
+              type="number"
+              min={0}
+              value={valor}
+              onChange={(e) => poner(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-ink-dim/60 bg-paper px-3 py-1.5 text-dato text-ink"
+            />
+          </label>
+        ))}
+      </div>
+      <div className="mt-2">
         <button
           type="button"
           onClick={mirarCapacidad}
-          className="rounded-lg border border-ink-dim/60 px-3 py-1.5 text-dato text-ink"
+          disabled={!contratada || !comprometida}
+          className="btn-secondary"
         >
           {t("coste.verCapacidad")}
         </button>

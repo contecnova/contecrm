@@ -210,9 +210,26 @@ describe("coste y capacidad", () => {
       },
     };
     pintar(<Coste />);
+    // Los datos los pone quien pregunta: hasta el 05-11-2026 la pantalla
+    // preguntaba siempre con 1.000, 800 y 300 escritos en el código.
+    await userEvent.type(screen.getByLabelText("coste.contratada"), "1200");
+    await userEvent.type(screen.getByLabelText("coste.comprometida"), "900");
+    await userEvent.type(screen.getByLabelText("coste.enOfertasDato"), "350");
     await userEvent.click(screen.getByRole("button", { name: "coste.verCapacidad" }));
     expect(await screen.findByText(/no cabría/)).toBeInTheDocument();
     expect(screen.getByText("-100")).toBeInTheDocument();
+    const { llamar } = await import("@/lib/api");
+    const pedida = vi.mocked(llamar).mock.calls.map(([r]) => String(r)).find((r) => r.includes("/coste/capacidad"));
+    expect(pedida).toContain("contratada=1200");
+    expect(pedida).toContain("comprometida=900");
+    expect(pedida).toContain("en_ofertas=350");
+  });
+
+  it("sin datos no pregunta: ni capacidad ni margen salen de un ejemplo", async () => {
+    respuestas = {};
+    pintar(<Coste />);
+    expect(screen.getByRole("button", { name: "coste.verCapacidad" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "coste.calcular" })).toBeDisabled();
   });
 });
 

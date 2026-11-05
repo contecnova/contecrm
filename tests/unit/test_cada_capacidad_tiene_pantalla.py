@@ -975,7 +975,14 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # campañas, activos y su aprobación, ingreso previsto, territorios, visitas,
 # vocabularios, sagas, invitados externos, proveedores, canal—, y dos que no la
 # tenían y ahora sí: quitar un módulo con el ensayo delante, en su ficha.
-TOPE_SIN_PANTALLA = 122
+#
+# 05-11-2026, quinta: 122 → 112. Diez más verificadas pulsando: conectores
+# nativos, canales de entrada, vistas federadas, elección de proveedor por regla,
+# buzones, proveedores de IA con región, objetos propios, revisión estructurada
+# de oportunidades, migración entre regiones y actividades polimórficas. La
+# pantalla de coste NO cuenta para la familia 09.02: es una calculadora aparte,
+# y la capacidad pide el coste dentro de la oportunidad y de la oferta.
+TOPE_SIN_PANTALLA = 112
 
 
 def _es_pantalla(p: Path) -> bool:

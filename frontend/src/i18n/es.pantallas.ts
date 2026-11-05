@@ -671,6 +671,9 @@ const pantallas = {
     libre: "Libre",
     enOfertas: "En ofertas abiertas",
     siSeGananTodas: "Libre si se ganan todas",
+    contratada: "Capacidad contratada",
+    comprometida: "Ya comprometida",
+    enOfertasDato: "En ofertas abiertas (opcional)",
   },
   cuadros: {
     informeNoExiste: "El informe «{{clave}}» ya no existe.",

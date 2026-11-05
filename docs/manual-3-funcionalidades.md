@@ -14202,7 +14202,11 @@ alrededor de la decisión que la hace útil o inútil:
   «está bien».
 - **Coste y capacidad.** Un margen desconocido no se pinta como cero, lo que está
   en pérdidas se ve a la primera, y la capacidad enseña lo que hay en ofertas
-  abiertas.
+  abiertas. Es una calculadora: **los datos los pones tú** —las líneas de la
+  oferta, y la capacidad contratada, la ya comprometida y la que hay en ofertas—
+  y los botones no se activan sin ellos. Hasta el 05-11-2026 la capacidad se
+  calculaba siempre con 1.000, 800 y 300 escritos en el código y las líneas
+  venían con un ejemplo: pulsar sin tocar nada daba una respuesta de nadie.
 - **Ayuda en producto.** Se abre por el capítulo de la pantalla en la que estás, no
   por el índice: mandar al índice es mandar a buscar, y quien está atascado no
   busca, se rinde y escribe a soporte. El mapa de pantalla a capítulo es explícito

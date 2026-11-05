@@ -46,6 +46,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // Las exposiciones MCP: qué agente se expone, con «Publicar una herramienta».
     // Verificado pulsando el 05-11-2026.
     "CRM-00.03.04.11",
+    // Proveedores de IA con su región y si el modelo es propio: es donde se
+    // decide que el dato no salga. Verificado pulsando el 05-11-2026.
+    "CRM-00.01.05.04",
   ],
 
   // El alta por API y el autoservicio (`POST /tenants`), el cambio de estado
@@ -80,6 +83,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // son los que usa la previsión en otra moneda. Verificado pulsando el 05-11-2026.
     "CRM-04.01.02.04",
     "CRM-03.02.01.07",
+    // Las migraciones entre regiones: su ficha abre la ventana de solo lectura,
+    // verifica la integridad, cierra o revierte. Verificado pulsando el 05-11-2026.
+    "CRM-00.01.03.09",
   ],
   // La superficie publicada entera —cada operación con su método, su ruta y
   // el permiso que exige— y la salud de cada servicio enrutado, que es el
@@ -141,6 +147,13 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // Las sagas, con compensar hacia atrás el paso que falló: el order-to-cash
     // corre como una de ellas. Verificado pulsando el 05-11-2026.
     "CRM-03.03.02.12",
+    // El catálogo de conectores nativos con «Instalar un conector en este tenant»;
+    // los canales de entrada sin pantalla —correo, SMS, voz, chatbot— con su
+    // «Registrar una interacción llegada por un canal»; y las vistas federadas, que
+    // componen datos del ERP sin copiarlos. Verificado pulsando el 05-11-2026.
+    "CRM-00.03.04.01",
+    "CRM-00.02.03.09",
+    "CRM-01.01.05.04",
   ],
   // Los objetos propios del tenant y el grafo de relaciones con sus tipos.
   "modelo": [
@@ -161,6 +174,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // Los vocabularios de negocio: cada lista dice si sigue con los valores de
     // fábrica o ya es de la empresa. Verificado pulsando el 05-11-2026.
     "CRM-07.01.01.03",
+    // Los objetos propios del tenant, que extienden su modelo sin tocar el de
+    // los demás. Verificado pulsando el 05-11-2026.
+    "CRM-00.01.04.03",
   ],
   // Proveedores de identidad por tenant, credenciales de máquina con ámbito y
   // caducidad, sesiones revocables, dispositivos de confianza, roles y las
@@ -201,6 +217,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-06.01.02.09",
     "CRM-06.01.02.13",
     "CRM-06.01.02.14",
+    // Proveedores de servicio con «Regla de elección de proveedor» y «A qué
+    // proveedor iría este encargo»; y los buzones conectados, que registran solos lo
+    // que llega por correo. Verificado pulsando el 05-11-2026.
+    "CRM-00.04.05.07",
+    "CRM-01.02.01.04",
   ],
   // La ficha de cuenta y la de contacto con sus canales, las relaciones entre
   // cuentas, las direcciones e identificadores fiscales con su
@@ -267,6 +288,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-01.02.01.02",
     "CRM-01.02.01.07",
     "CRM-01.02.01.09",
+    // Las actividades cuelgan de cualquier objeto: la lista enseña de cuál, y
+    // la ficha delega, programa el recordatorio y la completa. Verificado pulsando el 05-11-2026.
+    "CRM-01.02.01.03",
   ],
   // La oportunidad con su pipeline y sus etapas, los presupuestos con
   // versiones y vigencia, el motor de precios, los pedidos y su traspaso al
@@ -296,6 +320,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-03.03.02.08",
     "CRM-03.03.02.09",
     "CRM-03.03.02.11",
+    // «Registrar una revisión estructurada de la oportunidad», con el aviso de
+    // cuántas revisiones tienen resultado antes de sacar conclusiones. Verificado pulsando el 05-11-2026.
+    "CRM-03.01.02.06",
   ],
   // El lead con su ciclo de vida, la captura multicanal con sus canales y
   // recepciones, el enrutamiento por reglas, los motivos de descarte
