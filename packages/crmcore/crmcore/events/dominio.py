@@ -784,6 +784,19 @@ OPPORTUNITY_REOPENED = registrar(
         campos=("oportunidad_id", "estado_previo", "motivo"),
     )
 )
+OPPORTUNITY_LESSON_SIGNED = registrar(
+    TipoEvento(
+        tipo="opportunity.lesson.signed",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Se ha firmado la lección aprendida de una oportunidad cerrada, con "
+            "su expediente congelado. Quien quiera que las oportunidades "
+            "parecidas la lean —un índice, un aviso— se suscribe aquí"
+        ),
+        campos=("leccion_id", "oportunidad_id", "resultado"),
+    )
+)
 LEAD_ASSIGNED = registrar(
     TipoEvento(
         tipo="lead.assigned",
