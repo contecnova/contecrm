@@ -655,11 +655,33 @@ la suya **sin obligar** (acción «Crear la lección de las oportunidades que se
 cerraron antes»): llenar de golpe la lista de deberes con cierres de hace meses
 que nadie recuerda no enseñaría nada.
 
-**Pendiente**, y dicho para que no se dé por hecho: que las lecciones firmadas
-lleguen a las oportunidades abiertas —consejos de las parecidas
-(`CRM-03.01.01.16`), avisos en los momentos clave (`CRM-03.01.01.17`) y el
-resumen semanal (`CRM-03.01.01.18`)—. Hoy una lección se lee en su ficha y en
-la de su oportunidad, y en ningún sitio más.
+**Lo que las lecciones le dicen a las ventas abiertas.**
+
+- **Consejos** (`CRM-03.01.01.16`). Cada oportunidad abierta enseña las
+  lecciones firmadas del **mismo cliente** y las **parecidas por significado**
+  de cualquier otro, ganadas y perdidas, con cuánto se parecen. Se buscan en el
+  índice de conocimiento con la identidad de quien mira: lo que no puede ver no
+  sale. Sólo cuentan las que pasan el parecido mínimo
+  (`lecciones_parecido_minimo`, 0,65 por defecto, medido con el modelo de
+  vectores actual). Con «Qué hacer y qué no, con IA», la IA las resume en «haz»
+  y «no hagas», y **cada consejo dice de qué lección sale**: el que no se puede
+  atribuir se descarta y se cuenta. Sin lecciones no se llama al modelo.
+- **Avisos** (`CRM-03.01.01.17`): al crear la oportunidad, al entrar en una
+  etapa y al mandar el presupuesto. Dicen lo que hay del mismo cliente, cuántas
+  se perdieron en esa etapa y por qué, y si el descuento pasa de la mediana de
+  las ganadas. Se calculan sin la IA, para que mover una etapa no dependa de
+  ella. Se guardan —salen en la ficha y en la pestaña «Avisos»— y se notifican
+  al responsable. Si no hay nada que decir no hay aviso, y volver a una etapa no
+  lo repite.
+- **Resumen** (`CRM-03.01.01.18`), cada `lecciones_resumen_dias` (7): lo
+  firmado, lo cerrado y los post-mortem obligatorios pendientes de firma, para
+  quien dirige a quien tiene lecciones. Sale una vez por periodo aunque el sistema se reinicie, y se
+  puede adelantar con «Generar ahora el resumen de lecciones».
+
+Dónde empieza cada señal —cuántas veces lo de las ganadas es «tardar
+demasiado», cuántos puntos de descuento, cuántos días sin contacto— son
+**ajustes en caliente**, en Admin › Ajustes, y el expediente guarda con qué
+reglas se calculó.
 
 ### Derechos del interesado
 

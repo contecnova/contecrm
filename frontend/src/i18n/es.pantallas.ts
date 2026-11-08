@@ -665,6 +665,21 @@ const pantallas = {
     },
   },
   // Lecciones aprendidas de las oportunidades cerradas (05-11-2026).
+  consejos: {
+    titulo: "Lo que dicen las lecciones",
+    ninguna: "Ninguna lección firmada viene a cuento todavía: ni de este cliente ni de ventas parecidas.",
+    conIA: "Qué hacer y qué no, con IA",
+    pidiendo: "Leyendo las lecciones…",
+    iaSinNada: "La IA no ha sacado ningún consejo que pueda atribuir a una lección.",
+    descartados: "{{n}} consejos de la IA se han descartado porque no salían de ninguna lección.",
+    mismoCliente: "Del mismo cliente",
+    parecidas: "Parecidas, de otros clientes",
+    parecido: "se parece un {{n}} %",
+    deLaLeccion: "de «{{titulo}}»",
+    sinBusqueda: "No se han podido buscar las parecidas por significado: {{porque}}",
+    momento: { creacion: "Al crearla", etapa: "Al cambiar de etapa", presupuesto: "Al mandar el presupuesto" },
+    tipo: { haz: "Haz", no_hagas: "No hagas" },
+  },
   leccion: {
     tipo: "Lección aprendida",
     verOportunidad: "Abrir la oportunidad",

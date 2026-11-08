@@ -797,6 +797,31 @@ OPPORTUNITY_LESSON_SIGNED = registrar(
         campos=("leccion_id", "oportunidad_id", "resultado"),
     )
 )
+OPPORTUNITY_LESSON_ADVICE = registrar(
+    TipoEvento(
+        tipo="opportunity.lesson.advice",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Las lecciones aprendidas tienen algo que decir en un momento clave de "
+            "una oportunidad abierta: al crearla, al entrar en una etapa o al "
+            "mandar el presupuesto. Lleva al responsable para avisarle"
+        ),
+        campos=("oportunidad_id", "aviso_id", "momento", "titulo", "detalle", "owner_id"),
+    )
+)
+OPPORTUNITY_LESSONS_SUMMARY = registrar(
+    TipoEvento(
+        tipo="opportunity.lessons.summary",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "El resumen periódico de lecciones aprendidas: lo firmado, lo cerrado y "
+            "lo que queda por firmar, con a quién va"
+        ),
+        campos=("resumen_id", "titulo", "detalle", "destinatarios"),
+    )
+)
 LEAD_ASSIGNED = registrar(
     TipoEvento(
         tipo="lead.assigned",

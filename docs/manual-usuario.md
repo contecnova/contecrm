@@ -1395,6 +1395,20 @@ su lección.
 Una lección firmada **no se cambia**: es lo que se sabía al firmarla. Si algo
 estaba mal, se dice en la siguiente.
 
+**En una oportunidad abierta**, el panel **«Lo que dicen las lecciones»**
+enseña:
+
+- los **avisos** que han salido al crearla, al cambiar de etapa o al mandar el
+  presupuesto;
+- las lecciones del **mismo cliente** y las **parecidas** de otros, con cuánto
+  se parecen. Pincha una para ver su expediente entero;
+- con **«Qué hacer y qué no, con IA»**, consejos concretos, cada uno con la
+  lección de la que sale.
+
+Los avisos también te llegan como notificación si la oportunidad es tuya. Y
+en **Ventas › Lecciones aprendidas**, el selector de arriba a la izquierda
+lleva a **Avisos** y a **Resúmenes**, el resumen periódico para quien dirige.
+
 **Lo que ves por tu territorio.** Además de lo tuyo y de lo que te compartan, ves
 las cuentas de los territorios que trabajas — como responsable o como miembro. Dos
 cosas que conviene saber: si te acaban de añadir a un territorio, lo verás en

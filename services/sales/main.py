@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from crmcore.service import crear_servicio
 
 from services.sales import (
@@ -26,16 +28,64 @@ from services.sales.consumidores import (
 )
 from services.sales.respuesta_erp import consumir_respuesta_erp
 
+_relevo: Any = None
+_tarea_relevo: Any = None
 
-def _al_arrancar() -> None:
-    """Comprueba el gestor documental al desplegar, no al abrir el primero.
 
-    No impide arrancar salvo que se pida (`DMS_EXIGIR_AL_ARRANCAR`): el CRM
-    operativo no puede depender del corpus documental.
+def _tareas() -> list[Any]:
+    """Lo que este servicio hace solo, cada tanto.
+
+    El resumen de lecciones aprendidas (CRM-03.01.01.18). Se mira a menudo
+    —`lecciones_resumen_revisar_s`— y se genera sólo cuando toca, que es lo que
+    lo hace inmune a los reinicios: un reloj de siete días se reiniciaría con
+    cada despliegue y no saldría nunca.
     """
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.fechas import hoy
+    from crmcore.tareas import Tarea, por_tenant
+
+    from services.sales.ajustes import ajustes as ajustes_sales
+    from services.sales.consejos import resumen, tenants_con_lecciones
+
+    def _resumen(tenant_id: Any) -> dict[str, Any]:
+        with unidad_de_trabajo(tenant_id, sistema=True) as uow:
+            fila = resumen(uow, hoy=hoy(uow.db))
+        return {"generado": fila is not None}
+
+    return [
+        Tarea(
+            "sales.resumen_lecciones",
+            int(ajustes_sales().lecciones_resumen_revisar_s),
+            por_tenant(tenants_con_lecciones, _resumen),
+            al_arrancar=False,
+        ),
+    ]
+
+
+async def _al_arrancar() -> None:
+    """Comprueba el gestor documental al desplegar, y arranca las tareas.
+
+    El gestor no impide arrancar salvo que se pida (`DMS_EXIGIR_AL_ARRANCAR`):
+    el CRM operativo no puede depender del corpus documental.
+    """
+    global _relevo, _tarea_relevo
+    import asyncio
+
+    from crmcore.config import get_settings
     from crmcore.documental.cliente import comprobar_al_arrancar
+    from crmcore.tareas import RelevoDeTareas
 
     comprobar_al_arrancar()
+    if get_settings().tareas_fondo_enabled:
+        _relevo = RelevoDeTareas(_tareas())
+        _tarea_relevo = asyncio.create_task(_relevo.correr(), name="sales-tareas")
+
+
+async def _al_parar() -> None:
+    if _relevo is not None:
+        _relevo.parar()
+    if _tarea_relevo is not None:
+        _tarea_relevo.cancel()
 
 
 app = crear_servicio(
@@ -63,6 +113,7 @@ app = crear_servicio(
         router_embebido,
     ],
     al_arrancar=_al_arrancar,
+    al_parar=_al_parar,
     routers_sin_prefijo=ROUTERS_SIN_PREFIJO,
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus
     # comandos los atiende el servicio dueño del objeto. El patrón es ancho

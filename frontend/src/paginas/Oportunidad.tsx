@@ -34,7 +34,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
 import {
   BotonesDeRegistro,
@@ -50,10 +55,16 @@ import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
+import { ConsejosDeLecciones } from "@/componentes/ConsejosDeLecciones";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
-import { escalar, fecha, humanizar, importe as comoImporte } from "@/lib/formato";
+import {
+  escalar,
+  fecha,
+  humanizar,
+  importe as comoImporte,
+} from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 import { cn } from "@/lib/utiles";
@@ -253,7 +264,15 @@ export function Oportunidad() {
   // Las acciones del contrato sobre la oportunidad —entre ellas «Qué hacer ahora», con IA— en el menú, igual que en la ficha del cliente. Mover de etapa no: tiene su control arriba.
   const { superficie, tiene } = useSuperficie();
   const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
-  const acciones = accionesDe(superficie, "/api/v1/opportunities", id ?? "", tiene).filter((a) => !["/api/v1/opportunities/{oportunidad_id}/etapa"].includes(a.plantilla));
+  const acciones = accionesDe(
+    superficie,
+    "/api/v1/opportunities",
+    id ?? "",
+    tiene,
+  ).filter(
+    (a) =>
+      !["/api/v1/opportunities/{oportunidad_id}/etapa"].includes(a.plantilla),
+  );
   // Las mismas dos pestañas que las demás fichas. «Relacionado» es lo que
   // esta pantalla ya enseñaba —las líneas, quién decide, el plan— y
   // «Detalles» son sus campos, que hasta hoy sólo se leían entrando a editar.
@@ -387,7 +406,10 @@ export function Oportunidad() {
       .then((r) => {
         const suyo = filas<Pipeline>(r.datos).find((x) => x.id === pipelineId);
         setEtapasDelPipeline(
-          (suyo?.etapas ?? []).map((e) => ({ id: String(e.id ?? ""), nombre: e.nombre })),
+          (suyo?.etapas ?? []).map((e) => ({
+            id: String(e.id ?? ""),
+            nombre: e.nombre,
+          })),
         );
       })
       .catch(() => undefined);
@@ -497,12 +519,14 @@ export function Oportunidad() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
-              extra={acciones.filter((a) => !esDeIA(a)).map((a) => ({
-                clave: a.ruta,
-                nombre: a.nombre,
-                alElegir: () => setAccionAbierta(a),
-                destructiva: esIrreversible(a),
-              }))}
+              extra={acciones
+                .filter((a) => !esDeIA(a))
+                .map((a) => ({
+                  clave: a.ruta,
+                  nombre: a.nombre,
+                  alElegir: () => setAccionAbierta(a),
+                  destructiva: esIrreversible(a),
+                }))}
             />
           ) : null
         }
@@ -517,28 +541,22 @@ export function Oportunidad() {
         />
       ) : null}
 
-
       {op && (op.estado === "perdida" || op.estado === "ganada") ? (
         <PorQueSeCerro id={op.id} estado={op.estado} />
-      ) : null}
+      ) : (
+        // Abierta: lo que las lecciones de otras ventas tienen que decirle.
+        <ConsejosDeLecciones id={op.id} />
+      )}
 
       <AsistenteIA
-
-
         acciones={acciones}
-
 
         abierta={accionAbierta}
 
-
         alElegir={setAccionAbierta}
-
-
       />
 
-
       <Acciones
-
         acciones={acciones}
 
         servicio="sales"
@@ -548,7 +566,6 @@ export function Oportunidad() {
         alCambiarAbierta={setAccionAbierta}
 
         alTerminar={() => cargar()}
-
       />
 
       {editando && recurso ? (
@@ -677,13 +694,17 @@ function LasLineas({
           cuentan como cero, y una línea que pierde dinero se nombra aunque el
           total salga sano. */}
       {margen ? (
-        <div className="mt-3 border-t border-ink-dim/30 pt-2" data-testid="margen-oportunidad">
+        <div
+          className="mt-3 border-t border-ink-dim/30 pt-2"
+          data-testid="margen-oportunidad"
+        >
           <p className="text-dato text-ink">
             {margen.lineas_sin_coste.length === lineas.length
               ? t("oportunidad.margenSinCoste")
               : t("oportunidad.margen", { pct: escalar(margen.margen_pct) })}
           </p>
-          {margen.lineas_sin_coste.length && margen.lineas_sin_coste.length < lineas.length ? (
+          {margen.lineas_sin_coste.length &&
+          margen.lineas_sin_coste.length < lineas.length ? (
             <p className="text-rotulo text-ink-faint">
               {t("oportunidad.margenIncompleto", {
                 cuales: margen.lineas_sin_coste.join(", "),
@@ -691,7 +712,9 @@ function LasLineas({
             </p>
           ) : null}
           {margen.aviso_lineas_en_perdidas ? (
-            <p className="text-rotulo text-danger">{margen.aviso_lineas_en_perdidas}</p>
+            <p className="text-rotulo text-danger">
+              {margen.aviso_lineas_en_perdidas}
+            </p>
           ) : null}
           {margen.necesita_aprobacion ? (
             <p className="text-rotulo text-warning">{margen.porque}</p>
@@ -1113,15 +1136,19 @@ function PorQueSeCerro({ id, estado }: { id: string; estado: string }) {
   } | null>(null);
   useEffect(() => {
     const control = new AbortController();
-    llamar<NonNullable<typeof datos>>(`/api/v1/opportunities/${id}/expediente`, {
-      signal: control.signal,
-    })
+    llamar<NonNullable<typeof datos>>(
+      `/api/v1/opportunities/${id}/expediente`,
+      {
+        signal: control.signal,
+      },
+    )
       .then((r) => setDatos(r.datos))
       .catch(salvoCancelacion(() => setDatos(null)));
     return () => control.abort();
   }, [id]);
   if (!datos) return null;
-  const pendiente = datos.leccion?.estado === "pendiente" && datos.leccion.obligatoria;
+  const pendiente =
+    datos.leccion?.estado === "pendiente" && datos.leccion.obligatoria;
   // Con la forma de los demás paneles de la ficha —rótulo de sección, filas
   // separadas, el factor como etiqueta—, no con un encabezado propio.
   return (

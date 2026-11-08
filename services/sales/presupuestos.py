@@ -762,6 +762,30 @@ def enviar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> dict[str, Any]:
         )
 
     politica = politica_de_descuento(uow.db, tenant_id, presupuesto)
+    # Antes de mandarlo, lo que dicen las lecciones de este descuento y de este
+    # cliente (CRM-03.01.01.17). Se avisa también si se para en aprobación: es
+    # cuando más sirve saberlo.
+    if presupuesto.oportunidad_id:
+        from crmcore.errors import CrmError
+
+        from services.sales.consejos import avisar_en
+        from services.sales.servicio import _oportunidad
+
+        # Por el cargador compartido, que pasa las políticas: si quien manda el
+        # presupuesto no puede ver la oportunidad, no hay aviso —el envío sigue—.
+        try:
+            oportunidad = _oportunidad(uow.db, presupuesto.oportunidad_id)
+        except CrmError:
+            oportunidad = None
+        if oportunidad is not None:
+            descuento = politica.get("descuento_maximo")
+            avisar_en(
+                uow,
+                oportunidad,
+                "presupuesto",
+                clave=str(presupuesto.id),
+                descuento=float(descuento) if descuento not in (None, "") else None,
+            )
     if politica["necesita_aprobacion"] and presupuesto.estado != "aprobado":
         presupuesto.estado = "en_aprobacion"
         presupuesto.motivo_aprobacion = " ".join(politica["motivos"])

@@ -99,6 +99,26 @@ AVISOS: dict[str, dict[str, Any]] = {
         "titulo": "Se ha cerrado una oportunidad",
         "prioridad": "alta",
     },
+    # Lo que dicen las lecciones aprendidas en un momento clave de una
+    # oportunidad (CRM-03.01.01.17): al responsable, que es quien decide.
+    "opportunity.lesson.advice": {
+        "objeto_tipo": "oportunidad",
+        "campo_id": "oportunidad_id",
+        "titulo": "",
+        "titulo_campo": "titulo",
+        "cuerpo_campo": "detalle",
+        "destinatario_campo": "owner_id",
+    },
+    # Y el resumen periódico (CRM-03.01.01.18), a quien dirige a los que tienen
+    # lecciones; la lista la calcula sales con la jerarquía replicada.
+    "opportunity.lessons.summary": {
+        "objeto_tipo": "resumen_lecciones",
+        "campo_id": "resumen_id",
+        "titulo": "",
+        "titulo_campo": "titulo",
+        "cuerpo_campo": "detalle",
+        "destinatarios_campo": "destinatarios",
+    },
     # Actividades (CRM-01.02.01.02). Los cuatro avisan al asignado, que es quien
     # tiene que hacer algo. El de vencida avisa ADEMÁS a quien la delegó: quien
     # delega sigue siendo responsable, y sin eso la tarea desaparece de su vista

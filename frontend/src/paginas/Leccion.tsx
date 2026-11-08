@@ -76,6 +76,12 @@ interface Expediente {
     ultimas?: { tipo?: string; asunto?: string; cuando?: string | null }[];
     porque?: string;
   };
+  /**
+   * Dónde empezaba cada señal cuando se calculó. Lo manda el servidor —son
+   * ajustes de cada empresa— y un expediente congelado antes de guardarlos no
+   * lo trae: entonces no se resalta nada en vez de inventar una regla.
+   */
+  umbrales?: { factor_lento?: number; dias_sin_contacto?: number };
   comparado_con_las_ganadas: {
     comparable: boolean;
     ganadas: number;
@@ -395,7 +401,8 @@ export function Leccion() {
               const lento =
                 normal != null &&
                 p.dias_en_la_anterior != null &&
-                p.dias_en_la_anterior >= 2 * normal;
+                ex.umbrales?.factor_lento != null &&
+                p.dias_en_la_anterior >= ex.umbrales.factor_lento * normal;
               return (
                 <Fila key={i}>
                   <span className="w-24 shrink-0 text-ink-faint">
@@ -604,7 +611,9 @@ export function Leccion() {
                   <li
                     className={cn(
                       "chip-dato",
-                      ex.actividad.dias_sin_contacto_al_cerrar >= 14 &&
+                      ex.umbrales?.dias_sin_contacto != null &&
+                        ex.actividad.dias_sin_contacto_al_cerrar >=
+                          ex.umbrales.dias_sin_contacto &&
                         "chip-dato--aviso",
                     )}
                   >

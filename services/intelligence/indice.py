@@ -42,10 +42,16 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
-FUENTES = ("articulo", "caso_resuelto")
+FUENTES = ("articulo", "caso_resuelto", "leccion")
 # El permiso que hace falta para ver lo que se recupera de cada fuente. Se
-# comprueba contra quien pregunta antes de mandárselo al modelo.
-PERMISO_DE = {"articulo": "knowledge:read", "caso_resuelto": "case:read"}
+# comprueba contra quien pregunta antes de mandárselo al modelo. Las lecciones
+# aprendidas (CRM-03.01.01.16) las empuja sales al firmarlas: se buscan desde
+# las oportunidades abiertas, y quien no puede leer oportunidades no las ve.
+PERMISO_DE = {
+    "articulo": "knowledge:read",
+    "caso_resuelto": "case:read",
+    "leccion": "opportunity:read",
+}
 
 _incrustador: Callable[..., list[list[float]]] | None = None
 

@@ -632,13 +632,42 @@ una fila por oportunidad cerrada.
   firma nada. Exige `ia:usar`.
 - **Patrones** (`GET /lecciones/patrones`): desgloses planos que el front dibuja
   como cualquier medida de un módulo —ver «El front oficial»—.
-- **Ajustes**: `lecciones_minimo_comparables` (5) y
-  `lecciones_actividades_max` (200), en Admin › Ajustes.
+- **Ajustes**: los `lecciones_*`, en Admin › Ajustes (ver abajo).
 - **Datos de demostración**: `scripts/sembrar_configuracion.py --parte
   lecciones`. Firma 42 con textos que empiezan por «Demostración:».
 
-En el front es el módulo `lecciones` (`recursos.ts`), con su ficha a medida en
-`/m/lecciones/leccion/:id` (`paginas/Leccion.tsx`).
+**Consejos, avisos y resumen** (`services/sales/consejos.py`):
+
+- `GET /opportunities/{id}/consejos`: las firmadas del mismo cliente y las
+  parecidas, preguntadas a `POST /ia/indice/buscar` con `fuentes=["leccion"]`
+  y la identidad de quien mira; cada candidata se recarga por
+  `lecciones.leccion()`, que pasa la política de su oportunidad.
+  `POST …/consejos/ia` usa la plantilla `consejos_lecciones` y descarta lo que
+  no cite una lección dada.
+- **El índice**: la lección se manda al firmar (`consejos.indexar`, como quien
+  firma; hace falta `ia:usar`). No va por evento a propósito: el texto es
+  interno y un evento lo dejaría en el bus y en los webhooks. Si no llega, la
+  firma vale igual y `POST /lecciones/indexar` lo recoge.
+- **Avisos** (`avisar_en`): desde `crear_oportunidad_nueva`, `cambiar_etapa`
+  (si la etapa no es terminal) y `presupuestos.enviar`. Sólo consultas a la
+  base, dentro de la transacción; tabla `avisos_leccion`, única por
+  oportunidad, momento y clave. Emiten `opportunity.lesson.advice`, que
+  identity notifica al `owner_id`.
+- **Resumen**: tarea `sales.resumen_lecciones` en el relevo de sales, cada
+  `lecciones_resumen_revisar_s` (3.600 s); genera sólo si el último es de hace
+  `lecciones_resumen_dias` o más. Destinatarios: los superiores de la
+  jerarquía replicada (`mando_replicado`) de quien tiene lecciones, o ellos
+  mismos si no hay jerarquía. Emite `opportunity.lessons.summary`.
+- Lecciones y avisos llevan clave ajena **en cascada** a `oportunidades`: son
+  parte de la oportunidad, y sin ella la protección de integridad impedía
+  borrar cualquier oportunidad cerrada.
+- Los umbrales (`lecciones_*`) son `ClaveAjuste`: se cambian en Admin ›
+  Ajustes por empresa. `lecciones.umbrales()` los lee una vez por expediente.
+
+En el front es el módulo `lecciones` (`recursos.ts`, con las pestañas Avisos y
+Resúmenes), su ficha a medida en `/m/lecciones/leccion/:id`
+(`paginas/Leccion.tsx`) y el panel `componentes/ConsejosDeLecciones.tsx` en la
+ficha de la oportunidad abierta.
 
 ### El front oficial
 

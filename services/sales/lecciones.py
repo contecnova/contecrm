@@ -40,6 +40,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    ForeignKey,
     Numeric,
     String,
     Text,
@@ -50,6 +51,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
+
+# Registra las claves que lee `umbrales()`. Sin esto, quien importe este módulo
+# sin pasar por el arranque del servicio —una prueba, un script— leía `None`.
+from services.sales import ajustes as _ajustes  # noqa: E402,F401
 
 ESTADOS = ("pendiente", "firmada")
 # Lo que puede pesar en una pérdida o en una victoria. Lista cerrada a propósito:
@@ -71,6 +76,26 @@ FACTORES = (
     "otro",
 )
 
+# Cómo se escribe cada factor en un texto que lee una persona —un aviso, un
+# resumen, la notificación que sale por correo—. La pantalla tiene los suyos;
+# éstos son para lo que redacta el servidor.
+ROTULO_FACTOR = {
+    "precio": "el precio",
+    "descuento_tardio": "un descuento tardío",
+    "competidor": "un competidor",
+    "sin_decisor": "no saber quién decidía",
+    "decisor_en_contra": "un decisor en contra",
+    "sin_presupuesto_cliente": "que el cliente no tenía presupuesto",
+    "plazo": "el plazo",
+    "producto_no_encaja": "que el producto no encajaba",
+    "seguimiento_flojo": "un seguimiento flojo",
+    "demasiado_tiempo_en_etapa": "demasiado tiempo en una etapa",
+    "fecha_movida": "una fecha que se movió",
+    "relacion": "la relación",
+    "propuesta_de_valor": "la propuesta de valor",
+    "otro": "otros motivos",
+}
+
 
 class LeccionOportunidad(Base, TimestampMixin):
     """Lo que enseñó una oportunidad cerrada."""
@@ -80,7 +105,11 @@ class LeccionOportunidad(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    oportunidad_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    # Parte de su oportunidad (ver `consejos.AvisoLeccion`): sin la cascada,
+    # ninguna oportunidad cerrada se podía borrar, porque toda tiene lección.
+    oportunidad_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("oportunidades.id", ondelete="CASCADE"), nullable=False
+    )
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     titulo: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     resultado: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -264,12 +293,30 @@ def _cuando_paso(actividad: dict[str, Any]) -> str | None:
     return None
 
 
-def _actividad(oportunidad: Any, principal: Any) -> dict[str, Any]:
+def umbrales(db: Session | None) -> dict[str, Any]:
+    """Dónde empieza cada señal, leído UNA vez por expediente.
+
+    Son ajustes en caliente —cada empresa decide qué es «tardar demasiado»— y
+    leerlos va a la base, así que no se leen dentro de los bucles: se leen
+    aquí, se pasan y quedan guardados en el expediente. Así la pantalla pinta
+    con las mismas reglas con las que se calculó, y un expediente congelado
+    dice con qué reglas se congeló.
+    """
+    from crmcore.runtime.settings import efectivo
+
+    return {
+        "minimo_comparables": int(efectivo("lecciones_minimo_comparables", db)),
+        "actividades_max": int(efectivo("lecciones_actividades_max", db)),
+        "factor_lento": float(efectivo("lecciones_factor_lento", db)),
+        "descuento_margen_pp": float(efectivo("lecciones_descuento_margen_pp", db)),
+        "dias_sin_contacto": int(efectivo("lecciones_dias_sin_contacto", db)),
+    }
+
+
+def _actividad(oportunidad: Any, principal: Any, u: dict[str, Any]) -> dict[str, Any]:
     """La actividad de la oportunidad, de party, leída como quien la pide."""
     from crmcore import ia_ficha
     from crmcore.errors import CrmError
-
-    from services.sales.ajustes import ajustes
 
     try:
         datos = ia_ficha.leer(
@@ -278,7 +325,8 @@ def _actividad(oportunidad: Any, principal: Any) -> dict[str, Any]:
             {
                 "objeto": "oportunidad",
                 "objeto_id": str(oportunidad.id),
-                "limite": min(200, ajustes().lecciones_actividades_max),
+                # 200 es el tope de página de la API de party, no un umbral.
+                "limite": min(200, u["actividades_max"]),
             },
         )
     except CrmError as exc:
@@ -308,9 +356,8 @@ def _actividad(oportunidad: Any, principal: Any) -> dict[str, Any]:
     }
 
 
-def _referencia_ganadas(db: Session, oportunidad: Any) -> dict[str, Any]:
+def _referencia_ganadas(db: Session, oportunidad: Any, u: dict[str, Any]) -> dict[str, Any]:
     """Cómo fueron las ganadas del mismo embudo: la vara de medir."""
-    from services.sales.ajustes import ajustes
     from services.sales.modelos import CambioEtapa, Etapa, Oportunidad
     from services.sales.presupuestos import Presupuesto
 
@@ -326,7 +373,7 @@ def _referencia_ganadas(db: Session, oportunidad: Any) -> dict[str, Any]:
             Oportunidad.deleted_at.is_(None),
         )
     ).all()
-    minimo = ajustes().lecciones_minimo_comparables
+    minimo = u["minimo_comparables"]
     if len(ganadas) < minimo:
         return {
             "comparable": False,
@@ -374,12 +421,14 @@ def _senales(hechos: dict[str, Any]) -> list[dict[str, Any]]:
     """Lo que se aparta de las ganadas, dicho con su número. Sólo hechos."""
     senales: list[dict[str, Any]] = []
     ref = hechos.get("comparado_con_las_ganadas") or {}
-    if ref.get("comparable"):
+    u = hechos.get("umbrales") or {}
+    lento = float(u.get("factor_lento") or 0)
+    if ref.get("comparable") and lento:
         por_etapa = ref.get("mediana_dias_por_etapa") or {}
         for paso in hechos.get("recorrido") or []:
             etapa, dias = paso.get("desde"), paso.get("dias_en_la_anterior")
             normal = por_etapa.get(etapa) if etapa else None
-            if dias is not None and normal and dias >= 2 * normal:
+            if dias is not None and normal and dias >= lento * normal:
                 senales.append(
                     {
                         "factor": "demasiado_tiempo_en_etapa",
@@ -388,7 +437,7 @@ def _senales(hechos: dict[str, Any]) -> list[dict[str, Any]]:
                 )
         duracion = (hechos.get("oportunidad") or {}).get("dias_abierta")
         normal = ref.get("mediana_dias_hasta_cerrar")
-        if duracion and normal and duracion >= 2 * normal:
+        if duracion and normal and duracion >= lento * normal:
             senales.append(
                 {
                     "factor": "demasiado_tiempo_en_etapa",
@@ -399,7 +448,8 @@ def _senales(hechos: dict[str, Any]) -> list[dict[str, Any]]:
             p["descuento_pct"] for p in hechos.get("presupuestos") or [] if p.get("descuento_pct")
         ]
         normal = ref.get("mediana_descuento_pct")
-        if descuentos and normal is not None and max(descuentos) > normal + 5:
+        margen = float(u.get("descuento_margen_pp") or 0)
+        if descuentos and normal is not None and max(descuentos) > normal + margen:
             senales.append(
                 {
                     "factor": "precio",
@@ -430,7 +480,8 @@ def _senales(hechos: dict[str, Any]) -> list[dict[str, Any]]:
             senales.append({"factor": "decisor_en_contra", "texto": f"En contra: {quienes}."})
     actividad = hechos.get("actividad") or {}
     sin = actividad.get("dias_sin_contacto_al_cerrar")
-    if actividad.get("leida") and sin is not None and sin >= 14:
+    tope_sin = u.get("dias_sin_contacto")
+    if actividad.get("leida") and sin is not None and tope_sin and sin >= int(tope_sin):
         senales.append(
             {"factor": "seguimiento_flojo", "texto": f"{sin} días sin contacto antes de cerrarse."}
         )
@@ -447,6 +498,7 @@ def expediente(db: Session, oportunidad_id: UUID, principal: Any) -> dict[str, A
     # Por el cargador compartido: evalúa las políticas de acceso al registro.
     # El expediente enseña la oportunidad entera; quien no puede leerla no lo ve.
     op = _oportunidad(db, oportunidad_id)
+    u = umbrales(db)
     recorrido = _recorrido(db, op.id)
     abierta = (
         ((op.fecha_cierre_real or datetime.now(timezone.utc).date()) - op.created_at.date()).days
@@ -472,8 +524,9 @@ def expediente(db: Session, oportunidad_id: UUID, principal: Any) -> dict[str, A
         "presupuestos": _presupuestos(db, op.id),
         "competencia": _competencia(db, op.id),
         "decisores": _decisores(db, op.id, principal),
-        "actividad": _actividad(op, principal),
-        "comparado_con_las_ganadas": _referencia_ganadas(db, op),
+        "actividad": _actividad(op, principal, u),
+        "comparado_con_las_ganadas": _referencia_ganadas(db, op, u),
+        "umbrales": u,
     }
     hechos["senales"] = _senales(hechos)
     return hechos

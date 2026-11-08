@@ -76,6 +76,21 @@ DE_SERIE: dict[str, dict[str, Any]] = {
             "el expediente no diga."
         ),
     },
+    "consejos_lecciones": {
+        "tarea": "resumen",
+        "nombre": "Consejos de las lecciones para una oportunidad abierta",
+        "sistema": _SISTEMA,
+        "cuerpo": (
+            "Para la oportunidad abierta «{{nombre}}», lee las lecciones firmadas que "
+            "se te dan —cada una con su `id`, si se ganó o se perdió, qué pasó y qué "
+            "se haría distinto— y escribe consejos concretos. Devuelve SOLO un JSON: "
+            "una lista de objetos con `tipo` («haz» o «no_hagas»), `texto` (el "
+            "consejo, en una frase, diciendo por qué) y `leccion_id` (el `id` de la "
+            "lección de la que sale). Cada consejo sale de UNA lección de las que se "
+            "te dan; no escribas ninguno que no puedas atribuir. Si no hay nada útil, "
+            "devuelve una lista vacía."
+        ),
+    },
     "traducir": {
         "tarea": "traduccion",
         "nombre": "Traducir un texto",

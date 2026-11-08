@@ -1060,6 +1060,26 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // que más pesan, la etapa en la que se pierde y lo que queda por firmar.
         resumen: ["/api/v1/lecciones/patrones"],
       },
+      // Lo que las lecciones dijeron en los momentos clave de las abiertas
+      // (CRM-03.01.01.17), cada aviso abre su oportunidad.
+      {
+        nombre: "Avisos",
+        objeto: "aviso_leccion",
+        listar: "/api/v1/avisos-lecciones",
+        servicio: "sales",
+        permiso: "opportunity:read",
+        columnas: ["titulo", "momento", "detalle", "updated_at"],
+        abre: { modulo: "oportunidades", objeto: "oportunidad", campo: "oportunidad_id" },
+      },
+      // Y el resumen periódico para quien dirige (CRM-03.01.01.18).
+      {
+        nombre: "Resúmenes",
+        objeto: "resumen_lecciones",
+        listar: "/api/v1/resumenes-lecciones",
+        servicio: "sales",
+        permiso: "opportunity:read",
+        columnas: ["titulo", "detalle", "hasta", "enviado_at"],
+      },
   ],
   "oportunidades": [
       {

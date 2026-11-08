@@ -75,6 +75,8 @@ PREFIJOS: dict[str, str] = {
     "opportunities": "sales",
     # Las lecciones aprendidas de las oportunidades cerradas.
     "lecciones": "sales",
+    "avisos-lecciones": "sales",
+    "resumenes-lecciones": "sales",
     "pipelines": "sales",
     "pipeline": "sales",
     "lead-routing": "sales",

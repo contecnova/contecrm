@@ -747,6 +747,7 @@ from services.sales.comisiones import (  # noqa: E402,F401
     PlanComision,
     ReglaComision,
 )
+from services.sales.consejos import AvisoLeccion, ResumenLecciones  # noqa: E402,F401
 
 # Ingresos recurrentes, calendario, reparto, grupo de compra y oportunidades
 # relacionadas (CRM-03.01.01.06, .07, .08, .10, .11 · CRM-01.01.02.04).

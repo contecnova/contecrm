@@ -93,6 +93,33 @@ class AjustesSales(Settings):
     lecciones_minimo_comparables: int = Field(5, ge=1, le=1_000)
     # Hasta cuántas actividades de la oportunidad se traen al expediente.
     lecciones_actividades_max: int = Field(200, ge=1, le=5_000)
+    # Cuántas veces lo de las ganadas tiene que tardar una etapa para que sea
+    # una señal: «149 días en Cualificación; las ganadas, 20».
+    lecciones_factor_lento: float = Field(2.0, ge=1.1, le=20.0)
+    # Puntos de descuento por encima de la mediana de las ganadas a partir de
+    # los cuales el precio es una señal. Por debajo es ruido de negociación.
+    lecciones_descuento_margen_pp: float = Field(5.0, ge=0.0, le=100.0)
+    # Días sin contacto antes de cerrar a partir de los cuales el seguimiento
+    # fue flojo.
+    lecciones_dias_sin_contacto: int = Field(14, ge=1, le=365)
+    # Cuántas lecciones se traen como consejo a una oportunidad abierta, por
+    # cada camino (del mismo cliente, parecidas por significado).
+    lecciones_consejos_max: int = Field(5, ge=1, le=50)
+    # Parecido mínimo, de 0 a 1, para que una lección de otro cliente cuente
+    # como «parecida». Por debajo, el índice siempre devuelve algo, y algo
+    # que no se parece es peor que nada: se lee como un consejo.
+    #
+    # Medido el 08-11-2026 con `gemini-embedding-001` sobre 42 lecciones: las
+    # del mismo tipo de venta dan entre 0,66 y 0,75, y las de otro tipo entre
+    # 0,59 y 0,61. Con 0,75 no pasaba casi ninguna; 0,65 separa los dos
+    # grupos. Depende del modelo de vectores: si se cambia, se vuelve a medir.
+    lecciones_parecido_minimo: float = Field(0.65, ge=0.0, le=1.0)
+    # Cada cuántos días sale el resumen de lecciones para quien dirige.
+    lecciones_resumen_dias: int = Field(7, ge=1, le=90)
+    # Cada cuántos segundos se mira si toca un resumen. Mirar a menudo y
+    # generarlo sólo cuando toca es lo que lo hace inmune a los reinicios: un
+    # reloj de siete días se reiniciaría con cada despliegue y no saldría nunca.
+    lecciones_resumen_revisar_s: int = Field(3_600, ge=60, le=86_400)
 
 
 registrar_claves(
@@ -219,6 +246,72 @@ registrar_claves(
             maximo=365,
             campo_settings="comision_dias_disputa",
             sensible=True,
+        ),
+        # Las lecciones aprendidas, todas en caliente: dónde empieza una señal
+        # es una decisión de negocio de cada empresa, no del código.
+        ClaveAjuste(
+            clave="lecciones_minimo_comparables",
+            tipo="int",
+            descripcion="Ganadas del mismo embudo que hacen falta para comparar una lección",
+            minimo=1,
+            maximo=1_000,
+            campo_settings="lecciones_minimo_comparables",
+        ),
+        ClaveAjuste(
+            clave="lecciones_actividades_max",
+            tipo="int",
+            descripcion="Actividades de la oportunidad que se traen al expediente",
+            minimo=1,
+            maximo=5_000,
+            campo_settings="lecciones_actividades_max",
+        ),
+        ClaveAjuste(
+            clave="lecciones_factor_lento",
+            tipo="float",
+            descripcion="Veces lo de las ganadas para que el tiempo en una etapa sea señal",
+            minimo=1.1,
+            maximo=20,
+            campo_settings="lecciones_factor_lento",
+        ),
+        ClaveAjuste(
+            clave="lecciones_descuento_margen_pp",
+            tipo="float",
+            descripcion="Puntos de descuento sobre la mediana de las ganadas que son señal",
+            minimo=0,
+            maximo=100,
+            campo_settings="lecciones_descuento_margen_pp",
+        ),
+        ClaveAjuste(
+            clave="lecciones_dias_sin_contacto",
+            tipo="int",
+            descripcion="Días sin contacto antes de cerrar que cuentan como seguimiento flojo",
+            minimo=1,
+            maximo=365,
+            campo_settings="lecciones_dias_sin_contacto",
+        ),
+        ClaveAjuste(
+            clave="lecciones_consejos_max",
+            tipo="int",
+            descripcion="Lecciones que se traen como consejo a una oportunidad abierta",
+            minimo=1,
+            maximo=50,
+            campo_settings="lecciones_consejos_max",
+        ),
+        ClaveAjuste(
+            clave="lecciones_parecido_minimo",
+            tipo="float",
+            descripcion="Parecido mínimo (0 a 1) para que una lección cuente como parecida",
+            minimo=0,
+            maximo=1,
+            campo_settings="lecciones_parecido_minimo",
+        ),
+        ClaveAjuste(
+            clave="lecciones_resumen_dias",
+            tipo="int",
+            descripcion="Cada cuántos días sale el resumen de lecciones",
+            minimo=1,
+            maximo=90,
+            campo_settings="lecciones_resumen_dias",
         ),
         ClaveAjuste(
             clave="dias_estancamiento_defecto",

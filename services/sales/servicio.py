@@ -416,6 +416,11 @@ def crear_oportunidad_nueva(
     from services.sales.indexacion import indexar_oportunidad
 
     indexar_oportunidad(uow.db, oportunidad)
+    # Lo que las lecciones del mismo cliente tienen que decir, desde el primer
+    # día (CRM-03.01.01.17). Sin lecciones no hay aviso.
+    from services.sales.consejos import avisar_en
+
+    avisar_en(uow, oportunidad, "creacion")
     return oportunidad
 
 
@@ -562,6 +567,11 @@ def cambiar_etapa(
 
     if destino.terminal:
         _cerrar(uow, oportunidad, ganada=destino.ganada, motivo=motivo)
+    else:
+        # Al entrar en una etapa, lo que se perdió en ella (CRM-03.01.01.17).
+        from services.sales.consejos import avisar_en
+
+        avisar_en(uow, oportunidad, "etapa", clave=str(destino.id), etapa=destino.nombre)
     return oportunidad
 
 

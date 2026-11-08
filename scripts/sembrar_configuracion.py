@@ -6069,6 +6069,48 @@ def sembrar_lecciones(api: Api) -> None:
             },
         )
 
+    _lecciones_que_avisan(api)
+
+
+def _lecciones_que_avisan(api: Api) -> None:
+    """Lo que dicen las lecciones a las ventas abiertas, con datos de verdad.
+
+    Las firmadas al índice —sin eso no hay parecidas—, el resumen del periodo,
+    y tres oportunidades nuevas en clientes con lecciones, movidas una etapa:
+    al crearlas y al moverlas nacen sus avisos por el mismo camino que en uso
+    real. Se puede pasar dos veces: la oportunidad se busca por su nombre, el
+    aviso de una etapa se actualiza en vez de repetirse y el resumen no se
+    repite el mismo día.
+    """
+    for ruta in ("/api/v1/lecciones/indexar", "/api/v1/lecciones/resumen"):
+        estado, cuerpo = api._llamar("POST", ruta)
+        if estado != 200:
+            api.fallos.append(f"POST {ruta} → {estado} {_motivo(cuerpo)}")
+    firmadas = api.listar("/api/v1/lecciones?estado=firmada&resultado=perdida", 50)
+    # El nombre sale de la lección: «Ampliación de capacidad de inyección —
+    # Componentes Miño» da «Ampliación de capacidad de inyección — Componentes
+    # Miño (segunda fase)». Con un trozo del identificador, las tres se
+    # llamaban igual —los UUIDv7 comparten prefijo— y sólo se creaba una.
+    cuentas: dict[str, str] = {}
+    for f in firmadas:
+        if f.get("cuenta_id") and f["cuenta_id"] not in cuentas and f.get("titulo"):
+            cuentas[f["cuenta_id"]] = f"{f['titulo']} (segunda fase)"
+    pipelines = api.listar("/api/v1/pipelines", 10)
+    etapas = (pipelines[0].get("etapas") if pipelines else None) or []
+    abiertas = [e for e in etapas if not e.get("terminal")]
+    for cuenta_id, nombre in list(cuentas.items())[:3]:
+        op = api.crear(
+            "/api/v1/opportunities",
+            {"nombre": nombre, "cuenta_id": cuenta_id, "importe": "45000", "moneda": "EUR"},
+            unico_por="nombre",
+        )
+        if op and op.get("id") and len(abiertas) > 1:
+            api._llamar(
+                "POST",
+                f"/api/v1/opportunities/{op['id']}/etapa",
+                {"etapa_id": abiertas[1]["id"], "forzar": True, "motivo": "Datos de demostración"},
+            )
+
 
 def _actividad_de_la_oportunidad(api: Api, op: dict, contactos: list[dict], *, flojo: bool) -> None:
     """Llamada, demo y propuesta, en las fechas en que estuvo abierta.

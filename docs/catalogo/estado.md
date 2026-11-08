@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**783 capacidades**: 🔧 3 en-curso · ✅ 777 hecho · ⬜ 3 pendiente
+**783 capacidades**: 🔧 3 en-curso · ✅ 780 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -649,7 +649,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-70 capacidades · ✅ 67 · ⬜ 3
+70 capacidades · ✅ 70
 
 ### 3.1 Pipeline y oportunidades
 
@@ -672,9 +672,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.01.13` | Historial de cambios de importe y fecha (slippage tracking) | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.14` | Bloqueo de edición tras cierre y proceso de reapertura auditado | A | 1 | sales | ✅ | — |
 | `CRM-03.01.01.15` | Lecciones aprendidas de cada cierre: expediente comparado con las ganadas del mismo embudo, post-mortem obligatorio en las perdidas con borrador de la IA, firmado y congelado, y lo que se repite | A | 2 | sales | ✅ | — |
-| `CRM-03.01.01.16` | Consejos de las lecciones en las oportunidades abiertas: las del mismo cliente y las parecidas por significado, ganadas y perdidas, como «haz esto / no hagas esto» con la lección citada | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.01.17` | Avisos de las lecciones en los momentos clave de una oportunidad: al crearla, al cambiar de etapa, al mandar el presupuesto y al descontar | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.01.18` | Resumen semanal de lecciones para quien dirige el equipo: lo firmado, lo pendiente y lo que se repite | B | 2 | sales | ⬜ | — |
+| `CRM-03.01.01.16` | Consejos de las lecciones en las oportunidades abiertas: las del mismo cliente y las parecidas por significado, ganadas y perdidas, como «haz esto / no hagas esto» con la lección citada | A | 2 | sales | ✅ | — |
+| `CRM-03.01.01.17` | Avisos de las lecciones en los momentos clave de una oportunidad: al crearla, al cambiar de etapa, al mandar el presupuesto y al descontar | A | 2 | sales | ✅ | — |
+| `CRM-03.01.01.18` | Resumen semanal de lecciones para quien dirige el equipo: lo firmado, lo pendiente y lo que se repite | B | 2 | sales | ✅ | — |
 
 #### CRM-03.01.02 · Metodologías de venta
 

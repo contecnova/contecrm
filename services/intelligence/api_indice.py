@@ -19,7 +19,7 @@ router_indice = APIRouter(prefix="/ia/indice", tags=["ia"])
 
 
 class IndexarIn(BaseModel):
-    fuente: str = Field(..., description="«articulo» o «caso_resuelto»")
+    fuente: str = Field(..., description="«articulo», «caso_resuelto» o «leccion»")
     referencia: str = Field(..., min_length=1, max_length=80)
     titulo: str = ""
     texto: str = Field(..., min_length=1)

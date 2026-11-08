@@ -197,6 +197,8 @@ const CON_TILDE: Record<string, string> = {
   movio: "movió",
   multiple: "múltiple",
   tenian: "tenían",
+  busqueda: "búsqueda",
+  notificacion: "notificación",
   // `mencion_neutra` es uno de los tipos de lo que se recoge en redes, y el
   // humanizador lo pintaba «Mencion neutra». El producto escribe «menciones»
   // con tilde en todas partes menos ahí.
