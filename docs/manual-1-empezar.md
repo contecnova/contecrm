@@ -575,7 +575,7 @@ curl -sX PUT http://localhost:8080/api/v1/mis-preferencias/ui_densidad \
 |---|---|
 | `./setup.sh estado` | Qué está corriendo y si responde |
 | `./setup.sh parar` | Para los servicios (los datos se conservan) |
-| `./setup.sh migrar` | Aplica las migraciones de los ocho servicios y RLS |
+| `./setup.sh migrar` | Aplica las migraciones de todos los servicios y RLS, contra la misma base que `arrancar`: la local por defecto, la del `.env` con `--docker` |
 | `./setup.sh gates` | Corre los gates locales, que aquí sustituyen a la CI |
 | `tail -f var/log/<servicio>.log` | Los logs de un servicio |
 

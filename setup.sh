@@ -9,7 +9,7 @@
 #    ./setup.sh arrancar --docker     levanta todo con Docker (como producción)
 #    ./setup.sh parar                 para lo que haya levantado
 #    ./setup.sh estado                qué está corriendo y si responde
-#    ./setup.sh migrar                aplica las migraciones de los 8 servicios
+#    ./setup.sh migrar [--docker]     aplica las migraciones (local por defecto)
 #    ./setup.sh gates                 corre los gates locales (sustituyen a la CI)
 #    ./setup.sh demo                  siembra un tenant de demostración
 #    ./setup.sh vecinos [orden]       contecintelligence y contecmind
@@ -717,6 +717,17 @@ estado() {
 # ── resto de comandos ────────────────────────────────────────────────────────
 migrar() {
   titulo "Migrando"
+  # Contra la MISMA base que `arrancar`: local por defecto, la del `.env` con
+  # `--docker`. Hasta el 08-11-2026 iba siempre a la del `.env` —el puerto
+  # 5432, el Postgres de Docker—, así que en la instalación local, que es la
+  # que usa todo el mundo, fallaba con «connection refused» cinco veces seguidas
+  # y la única forma de migrar era volver a arrancar.
+  if [[ "${1:-}" != "--docker" ]]; then
+    local uri
+    uri=$(postgres_local_uri)
+    export DATABASE_URL="$uri"
+    export DATABASE_ADMIN_URL="$uri"
+  fi
   $PY scripts/migrar.py --todos upgrade head
   $PY scripts/aplicar_rls.py --todos
 }
@@ -737,7 +748,7 @@ case "${1:-ayuda}" in
     if [[ "${2:-}" == "--docker" ]]; then arrancar_docker; else arrancar_local; fi ;;
   parar)    shift; parar "$@" ;;
   estado)   titulo "Estado"; estado ;;
-  migrar)   migrar ;;
+  migrar)   shift; migrar "$@" ;;
   gates)    shift; gates "$@" ;;
   demo)     demo ;;
   vecinos)  shift; $PY scripts/vecinos.py "${1:-estado}" "${@:2}" ;;
