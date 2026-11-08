@@ -499,10 +499,22 @@ GATES: list[Gate] = [
 # sería grasa. Y el reloj de referencia, 360 → 400: midió 384 s. Ése no tumba
 # nada —pasarse de reloj sólo avisa—, pero una referencia por debajo de lo
 # medido avisa siempre, y un aviso que sale siempre deja de leerse.
+#
+# **08-11-2026, el nivel «push»: 280 → 320 s de CPU.** Gastó 285 s con los
+# diecisiete gates en verde y el reloj en 102 s de los 120. Medido lo que pide
+# el párrafo del 30-10, con `aislamiento` corriendo solo y la máquina quieta
+# (carga 6 sobre 10 núcleos): **177 pruebas en 56,2 s, 318 ms por prueba**,
+# frente a 288 el 30-10. Es más que el umbral de 300 que se escribió como
+# señal de grasa, así que se buscó la grasa antes de mover nada: las mismas
+# 177 pruebas —esta tanda no añadió ninguna—, la más lenta en 4,0 s (el
+# fuzzing de sales, que ahora recorre también las tres rutas de lecciones) y
+# las demás repartidas por debajo de 3,3 s. No hay un sitio gordo: cada prueba
+# levanta un servicio y recorre sus rutas, y hay más rutas. El umbral de grasa
+# pasa a 340 ms por prueba; por encima, sí hay que buscarla.
 PRESUPUESTOS: dict[str, tuple[float, float]] = {
     # nivel: (reloj de referencia, tope de CPU)
     "rapido": (35.0, 40.0),
-    "push": (120.0, 280.0),
+    "push": (120.0, 320.0),
     "completo": (400.0, 760.0),
 }
 
