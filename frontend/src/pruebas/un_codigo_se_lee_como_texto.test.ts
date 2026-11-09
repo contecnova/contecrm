@@ -6,7 +6,13 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { escalar, nombreDelRegistro, rotuloDeOpcion } from "@/lib/formato";
+import { opcionesDeLosEsquemas } from "@/lib/contrato";
+import {
+  escalar,
+  nombreDelRegistro,
+  registrarOpciones,
+  rotuloDeOpcion,
+} from "@/lib/formato";
 
 describe("escalar", () => {
   it("separa las listas y escribe los códigos como texto, todos igual", () => {
@@ -25,6 +31,34 @@ describe("escalar", () => {
   it("las siglas se quedan como vienen", () => {
     expect(rotuloDeOpcion("B2B")).toBe("B2B");
     expect(rotuloDeOpcion("EUR")).toBe("EUR");
+  });
+});
+
+describe("una opción que el contrato declara", () => {
+  it("se escribe legible en su campo, y en otro campo no se toca", () => {
+    registrarOpciones(
+      opcionesDeLosEsquemas({
+        components: {
+          // Lo que el servicio publica aparte, como los estados de una máquina.
+          "x-opciones": { resultado: ["ganada"] },
+          schemas: {
+            Filtro: {
+              properties: { estado: { enum: ["abierta", "perdida"] } },
+            },
+            Edicion: {
+              properties: {
+                prioridad: { anyOf: [{ enum: ["alta"] }, { type: "null" }] },
+              },
+            },
+          },
+        },
+      }),
+    );
+    expect(escalar("abierta", "estado")).toBe("Abierta");
+    expect(escalar("ganada", "resultado")).toBe("Ganada");
+    expect(escalar("alta", "prioridad")).toBe("Alta");
+    // «abierta» en un campo que no la declara puede ser cualquier cosa.
+    expect(escalar("abierta", "slug")).toBe("abierta");
   });
 });
 

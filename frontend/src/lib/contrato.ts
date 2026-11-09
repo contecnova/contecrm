@@ -15,7 +15,7 @@ import { llamar } from "@/lib/api";
 // Una sola `humanizar` en todo el front. Había dos, idénticas, en
 // `formato.ts` y aquí: la de allí aprendió a escribir en castellano y la
 // de aquí se quedó poniendo «Sector codigo» en los rótulos de formulario.
-import { comoRotulo, humanizar } from "@/lib/formato";
+import { comoRotulo, humanizar, registrarOpciones } from "@/lib/formato";
 
 export interface CampoEsquema {
   nombre: string;
@@ -97,10 +97,50 @@ interface Esquema {
 
 export interface Documento {
   paths?: Record<string, Record<string, unknown>>;
-  components?: { schemas?: Record<string, Esquema> };
+  components?: {
+    schemas?: Record<string, Esquema>;
+    /** Las listas cerradas que conoce el servicio, por campo. */
+    "x-opciones"?: Record<string, string[]>;
+  };
 }
 
 const cache = new Map<string, Promise<Documento>>();
+
+/**
+ * Los valores de las listas cerradas que declara un contrato, por campo.
+ *
+ * Se recorren TODOS los esquemas —alta, edición, filtros— porque cada uno
+ * declara las opciones donde las usa, y basta con que una lo diga para saber
+ * que «perdida» en el campo `estado` es una opción y no un texto libre.
+ */
+export function opcionesDeLosEsquemas(
+  documento: Documento,
+): Map<string, Set<string>> {
+  const salida = new Map<string, Set<string>>();
+  const anota = (campo: string, valores: unknown) => {
+    if (!Array.isArray(valores)) return;
+    const hay = salida.get(campo) ?? new Set<string>();
+    for (const v of valores) if (typeof v === "string") hay.add(v);
+    if (hay.size) salida.set(campo, hay);
+  };
+  // Lo que el servicio publica aparte: las listas de sus columnas y los
+  // estados de sus máquinas, que no siempre salen en un esquema —el estado de
+  // una oportunidad no se edita en el formulario, se mueve con su acción—.
+  for (const [campo, valores] of Object.entries(
+    documento.components?.["x-opciones"] ?? {},
+  )) {
+    anota(campo, valores);
+  }
+  for (const esquema of Object.values(documento.components?.schemas ?? {})) {
+    for (const [campo, prop] of Object.entries(esquema.properties ?? {})) {
+      anota(campo, prop.enum);
+      anota(campo, prop.items?.enum);
+      for (const alternativa of prop.anyOf ?? [])
+        anota(campo, alternativa.enum);
+    }
+  }
+  return salida;
+}
 
 export function contratoDe(servicio: string): Promise<Documento> {
   const existente = cache.get(servicio);
@@ -110,7 +150,12 @@ export function contratoDe(servicio: string): Promise<Documento> {
   // ella, así que aquello devolvía 404 siempre. El `catch` se lo tragaba y
   // todos los formularios de alta salían vacíos sin que nada lo dijera.
   const promesa = llamar<Documento>(`/api/v1/contrato/${servicio}`)
-    .then((r) => r.datos)
+    .then((r) => {
+      // Qué valores son opciones de una lista cerrada: así un «abierta» que
+      // llega en una fila se escribe «Abierta» sin que la pantalla lo adivine.
+      registrarOpciones(opcionesDeLosEsquemas(r.datos));
+      return r.datos;
+    })
     .catch(() => ({}) as Documento);
   cache.set(servicio, promesa);
   return promesa;
@@ -125,9 +170,15 @@ export function contratoDe(servicio: string): Promise<Documento> {
  * capacidad sin usar. Declararlo a mano garantizaba una de las dos, y el
  * recuento decía cuál: 64 listados tenían POST y ningún botón.
  */
-export function admite(documento: Documento, ruta: string, metodo: string): boolean {
+export function admite(
+  documento: Documento,
+  ruta: string,
+  metodo: string,
+): boolean {
   const plantilla = plantillaDe(documento, ruta);
-  return Boolean(plantilla && documento.paths?.[plantilla]?.[metodo.toLowerCase()]);
+  return Boolean(
+    plantilla && documento.paths?.[plantilla]?.[metodo.toLowerCase()],
+  );
 }
 
 /**
@@ -182,7 +233,9 @@ export function plantillaDe(documento: Documento, ruta: string): string | null {
  */
 export function fichaDe(documento: Documento, listar: string): string | null {
   const base = plantillaDe(documento, listar) ?? listar;
-  const patron = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/\\{[a-z_]+\\}$`);
+  const patron = new RegExp(
+    `^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/\\{[a-z_]+\\}$`,
+  );
   for (const [ruta, operaciones] of Object.entries(documento.paths ?? {})) {
     // Con `get`: una ficha es algo que se **lee**. Sin comprobarlo, cualquier
     // ruta de un registro valía —`POST /duplicados/cola/{id}` es decidir una
@@ -231,10 +284,16 @@ export function altaPorClave(
   return null;
 }
 
-export function camposDe(documento: Documento, ruta: string, metodo: string): CampoEsquema[] {
+export function camposDe(
+  documento: Documento,
+  ruta: string,
+  metodo: string,
+): CampoEsquema[] {
   const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[
     metodo.toLowerCase()
-  ] as { requestBody?: { content?: Record<string, { schema?: Esquema }> } } | undefined;
+  ] as
+    | { requestBody?: { content?: Record<string, { schema?: Esquema }> } }
+    | undefined;
   const bruto = operacion?.requestBody?.content?.["application/json"]?.schema;
   if (!bruto) return [];
   const esquema = resolver(documento, bruto);
@@ -307,7 +366,8 @@ export function cuerpoDeLosValores(
 
 /** Las columnas de una línea, sacadas del esquema de sus elementos. */
 function subcamposDe(documento: Documento, elemento?: Esquema): CampoEsquema[] {
-  if (!elemento || elemento.type !== "object" || !elemento.properties) return [];
+  if (!elemento || elemento.type !== "object" || !elemento.properties)
+    return [];
   const obligatorios = new Set(elemento.required ?? []);
   return Object.entries(elemento.properties).map(([nombre, prop]) => {
     const p = resolver(documento, prop);
@@ -341,9 +401,14 @@ function resolver(documento: Documento, esquema: Esquema): Esquema {
       continue;
     }
     if (actual.anyOf) {
-      const util = actual.anyOf.find((o) => o.type !== "null") ?? actual.anyOf[0];
+      const util =
+        actual.anyOf.find((o) => o.type !== "null") ?? actual.anyOf[0];
       if (!util) break;
-      actual = { ...util, title: actual.title ?? util.title, description: actual.description };
+      actual = {
+        ...util,
+        title: actual.title ?? util.title,
+        description: actual.description,
+      };
       continue;
     }
     break;
@@ -394,10 +459,16 @@ const RAICES_DE_PROSA = [
 /** Si el nombre del campo dice que lo que se escribe ahí es un texto largo. */
 function esProsa(nombre: string): boolean {
   const n = nombre.toLowerCase();
-  return RAICES_DE_PROSA.some((r) => n === r || n.startsWith(`${r}_`) || n.endsWith(`_${r}`));
+  return RAICES_DE_PROSA.some(
+    (r) => n === r || n.startsWith(`${r}_`) || n.endsWith(`_${r}`),
+  );
 }
 
-function tipoDe(esquema: Esquema, elemento?: Esquema, nombre = ""): CampoEsquema["tipo"] {
+function tipoDe(
+  esquema: Esquema,
+  elemento?: Esquema,
+  nombre = "",
+): CampoEsquema["tipo"] {
   if (esquema.enum) return "lista";
   switch (esquema.type) {
     case "integer":
@@ -409,14 +480,18 @@ function tipoDe(esquema: Esquema, elemento?: Esquema, nombre = ""): CampoEsquema
       // Una lista de opciones cerradas se elige; una lista de textos se escribe
       // uno a uno. Las dos son listas y ninguna es JSON.
       if (elemento?.enum) return "lista_multiple";
-      if (!elemento || elemento.type === "string" || elemento.type === "number") return "etiquetas";
+      if (!elemento || elemento.type === "string" || elemento.type === "number")
+        return "etiquetas";
       // Con estructura conocida se edita como una tabla de líneas; sin ella no
       // hay columnas que pintar y se queda en el editor genérico.
-      return elemento.type === "object" && elemento.properties ? "lineas" : "objeto";
+      return elemento.type === "object" && elemento.properties
+        ? "lineas"
+        : "objeto";
     case "object":
       return "objeto";
     default:
-      if (esquema.format === "date" || esquema.format === "date-time") return "fecha";
+      if (esquema.format === "date" || esquema.format === "date-time")
+        return "fecha";
       // **Una línea, salvo que algo diga que ahí va un texto largo.**
       //
       // Las dos reglas anteriores fallaron por el mismo motivo —decidir sobre
@@ -436,11 +511,11 @@ function tipoDe(esquema: Esquema, elemento?: Esquema, nombre = ""): CampoEsquema
       //
       // Y por defecto, una línea: un campo de prosa en una línea molesta; un
       // nombre de pila en un área de cinco líneas hace el formulario inusable.
-      if (esquema.maxLength !== undefined && esquema.maxLength >= 1000) return "texto_largo";
+      if (esquema.maxLength !== undefined && esquema.maxLength >= 1000)
+        return "texto_largo";
       return esProsa(nombre) ? "texto_largo" : "texto";
   }
 }
-
 
 export interface Proposito {
   /** Una línea: para qué sirve esto. */
@@ -484,16 +559,18 @@ export function propositoDe(
   /** El rótulo que el usuario ya está leyendo encima: la pestaña. */
   rotulo = "",
 ): Proposito {
-  const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[metodo] as
-    | { summary?: string; description?: string }
-    | undefined;
+  const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[
+    metodo
+  ] as { summary?: string; description?: string } | undefined;
   // Sin el código de la capacidad: en el contrato sirve, en pantalla no.
   const resumen = comoRotulo(operacion?.summary);
   const detalle = (operacion?.description ?? "").split("\n\n")[0] ?? "";
   return {
     resumen: yaLoDiceElRotulo(resumen, rotulo) ? "" : resumen,
     // Sin el marcado de negrita del contrato: aquí no se pinta como markdown.
-    detalle: esPlantilla(documento, detalle) ? "" : detalle.replace(/\*\*/g, "").trim(),
+    detalle: esPlantilla(documento, detalle)
+      ? ""
+      : detalle.replace(/\*\*/g, "").trim(),
   };
 }
 
@@ -512,7 +589,22 @@ function palabras(texto: string): string[] {
 // no distinguen nada. Si se cuentan, «Listar cuentas» frente a la pestaña
 // «Cuentas» parece que aporta un 50 % de información nueva, y no aporta
 // ninguna.
-const VACIAS = new Set(["listar", "ver", "consultar", "de", "del", "la", "el", "los", "las", "un", "una", "y", "en", "a"]);
+const VACIAS = new Set([
+  "listar",
+  "ver",
+  "consultar",
+  "de",
+  "del",
+  "la",
+  "el",
+  "los",
+  "las",
+  "un",
+  "una",
+  "y",
+  "en",
+  "a",
+]);
 
 /**
  * ¿El resumen dice algo que el rótulo de la pestaña no diga ya?
@@ -528,7 +620,11 @@ function yaLoDiceElRotulo(resumen: string, rotulo: string): boolean {
   const suyas = palabras(resumen).filter((p) => !VACIAS.has(p));
   if (suyas.length === 0) return true;
   const delRotulo = palabras(rotulo);
-  return suyas.every((p) => delRotulo.some((r) => r.startsWith(p.slice(0, 4)) || p.startsWith(r.slice(0, 4))));
+  return suyas.every((p) =>
+    delRotulo.some(
+      (r) => r.startsWith(p.slice(0, 4)) || p.startsWith(r.slice(0, 4)),
+    ),
+  );
 }
 
 /** Cuántas descripciones casi iguales hay en un contrato, por párrafo. */
@@ -562,7 +658,10 @@ function esPlantilla(documento: Documento, detalle: string): boolean {
     for (const p of parrafos) {
       const clave = p.join(" ");
       if (contados.has(clave)) continue;
-      contados.set(clave, parrafos.filter((otro) => parecido(p, otro) >= 0.8).length - 1);
+      contados.set(
+        clave,
+        parrafos.filter((otro) => parecido(p, otro) >= 0.8).length - 1,
+      );
     }
     gemelos.set(documento, contados);
   }

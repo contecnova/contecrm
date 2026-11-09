@@ -198,6 +198,7 @@ const CON_TILDE: Record<string, string> = {
   multiple: "múltiple",
   tenian: "tenían",
   busqueda: "búsqueda",
+  transicion: "transición",
   notificacion: "notificación",
   // `mencion_neutra` es uno de los tipos de lo que se recoge en redes, y el
   // humanizador lo pintaba «Mencion neutra». El producto escribe «menciones»
@@ -597,6 +598,24 @@ export function tieneDato(valor: unknown): boolean {
   return true;
 }
 
+/**
+ * Las opciones de lista cerrada que han declarado los contratos cargados, por
+ * nombre de campo. Las rellena `contratoDe` al cargar cada contrato.
+ *
+ * Con esto, «abierta» en el campo `estado` sale «Abierta» porque el servidor
+ * dice que es una opción, no porque la pantalla lo suponga: una palabra suelta
+ * en minúscula puede ser también un nombre o un identificador.
+ */
+const OPCIONES_DE_CAMPO = new Map<string, Set<string>>();
+
+export function registrarOpciones(nuevas: Map<string, Set<string>>): void {
+  for (const [campo, valores] of nuevas) {
+    const hay = OPCIONES_DE_CAMPO.get(campo) ?? new Set<string>();
+    for (const v of valores) hay.add(v);
+    OPCIONES_DE_CAMPO.set(campo, hay);
+  }
+}
+
 /** Un código de opción: `descuento_tardio`, `en_curso`. */
 const CODIGO_DE_OPCION = /^[a-z][a-z0-9]*(_[a-z0-9]+)+$/;
 
@@ -639,6 +658,9 @@ export function escalar(valor: unknown, campo = "", moneda = ""): string {
       .join(", ");
   }
   const texto = String(valor);
+  // Una opción que el contrato declara para este campo se escribe como texto.
+  if (campo && OPCIONES_DE_CAMPO.get(campo)?.has(texto))
+    return rotuloDeOpcion(texto);
   // Un código de opción —`descuento_tardio`, `en_curso`— se lee como texto.
   // Sólo con guion bajo: una palabra suelta puede ser un nombre o un
   // identificador corto, y cambiarle la mayúscula lo falsearía.

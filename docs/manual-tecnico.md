@@ -862,6 +862,15 @@ pantallas:
 - **`escalar`** separa las listas con «, » y escribe los códigos `snake_case`
   como texto; una palabra suelta no se toca, porque puede ser un nombre.
 - **`nombreDelRegistro`** prefiere `nombre_completo` a `nombre`.
+- **Las listas cerradas viajan en el contrato** (`crmcore/http/opciones.py`).
+  Cada servicio publica en `components.x-opciones` los valores de las columnas
+  que declaran `info={"opciones": …}` y los estados de sus máquinas de estado;
+  `contratoDe` los registra y `escalar` escribe «Abierta» en vez de
+  «abierta» sólo cuando el contrato dice que es una opción de ese campo. Para
+  que un estado nuevo salga legible basta con declarar su lista en la columna.
+- **Un objeto con máquina de estados no ofrece `estado` en su formulario de
+  edición**: se mueve con sus acciones, que validan la transición. El estado de
+  un caso, que no tiene máquina, se valida contra `ESTADOS_CASO`.
 - **Insignias de dato**: además de `chip-dato--si` y `chip-dato--no` (que
   tacha: significa «no»), `chip-dato--aviso` y `chip-dato--mal` para lo que pide
   atención y lo que es malo de por sí.

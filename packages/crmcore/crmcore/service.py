@@ -669,6 +669,11 @@ def crear_servicio(
     )
 
     _montar_middlewares(app, s, nombre)
+    # Las listas cerradas que conoce el servicio, en su contrato: con ellas la
+    # pantalla escribe «Abierta» y no «abierta» sin adivinar nada.
+    from crmcore.http.opciones import publicar_en_el_contrato
+
+    publicar_en_el_contrato(app)
     from crmcore.http.problems import registrar_manejadores
 
     registrar_manejadores(app)

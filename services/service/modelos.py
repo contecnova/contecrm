@@ -122,6 +122,13 @@ class DefinicionSLA(Base, TimestampMixin):
     )
 
 
+PRIORIDADES = ("baja", "media", "alta", "critica")
+# Los estados de un caso. Hasta el 09-11-2026 no estaban escritos en ningún
+# sitio y `cambiar_estado` aceptaba cualquier texto: una errata creaba un estado
+# nuevo que ni el reloj del SLA, ni las colas, ni los informes reconocían.
+ESTADOS_CASO = ("nuevo", "asignado", "en_curso", "esperando_cliente", "resuelto", "cerrado")
+
+
 class Caso(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     """Una solicitud de servicio (CRM-04.01.01.01)."""
 
@@ -148,11 +155,15 @@ class Caso(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # dos campos y no uno porque «grave pero puede esperar» y «menor pero urgente
     # por el cliente» son casos reales que un solo campo no puede representar.
     severidad: Mapped[str] = mapped_column(String(20), nullable=False, default="media")
-    prioridad: Mapped[str] = mapped_column(String(20), nullable=False, default="media", index=True)
+    prioridad: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="media", index=True, info={"opciones": PRIORIDADES}
+    )
     origen: Mapped[str] = mapped_column(String(30), nullable=False, default="manual")
 
     # nuevo | asignado | en_curso | esperando_cliente | resuelto | cerrado
-    estado: Mapped[str] = mapped_column(String(30), nullable=False, default="nuevo", index=True)
+    estado: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="nuevo", index=True, info={"opciones": ESTADOS_CASO}
+    )
 
     # ── Con qué se relaciona (CRM-04.01.01.03) ────────────────────────────
     # Identificadores opacos y no claves foráneas: cuenta y contacto viven en

@@ -776,6 +776,8 @@ def montar_ficha(
     from pydantic import create_model
     from sqlalchemy import inspect as sa_inspect
 
+    from crmcore.datos.estados import MAQUINAS
+
     # También aquí, y no solo en `montar_listado`: hay recursos cuyo listado está
     # escrito a mano y solo pasan por la ficha —oportunidades y leads, entre
     # otros—. Apuntándolo solo en el listado, esos dos se quedaban fuera del
@@ -796,6 +798,10 @@ def montar_ficha(
         # Lo que es del sistema por cómo se llama: huellas y sellos, contadores,
         # derivados y marcas de «último evento». Ver `ES_DEL_SISTEMA`.
         and not ES_DEL_SISTEMA.search(nombre_campo)
+        # Un objeto con máquina de estados se mueve con sus acciones, que son
+        # las que validan la transición. Editar `estado` a mano se la saltaba:
+        # medido el 09-11-2026 en el lead, que lo ofrecía en su formulario.
+        and not (nombre_campo == "estado" and objeto in MAQUINAS)
         and (editable is None or nombre_campo in editable)
         # Las claves ajenas al dueño del registro no se cambian por aquí: mover
         # un contacto de cuenta tiene consecuencias —visibilidad, territorio,

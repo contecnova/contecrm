@@ -37,7 +37,8 @@ ESTADOS_TERMINALES = ("resuelto", "cerrado")
 # La prioridad es de aquí y no sale: en qué orden se atiende es decisión del
 # servicio. La severidad sí viaja —la manda la telemetría en el comando que abre
 # un caso—, así que se escribe una vez en `crmcore.vocabularios`.
-PRIORIDADES = ("baja", "media", "alta", "critica")
+from services.service.modelos import ESTADOS_CASO, PRIORIDADES  # noqa: E402
+
 SEVERIDADES = SEVERIDADES_QUE_CRUZAN
 
 
@@ -411,6 +412,12 @@ def cambiar_estado(uow: UnidadDeTrabajo, caso_id: UUID, *, estado: str, motivo: 
     en una discusión con el cliente que no se puede ganar sin el dato.
     """
     caso = exigir_caso(uow.db, caso_id)
+    if estado not in ESTADOS_CASO:
+        raise ErrorValidacion(
+            f"«{estado}» no es un estado de caso",
+            error_code="caso.estado_desconocido",
+            detalle={"validos": list(ESTADOS_CASO)},
+        )
     if estado == caso.estado:
         return caso
 

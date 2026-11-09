@@ -503,6 +503,10 @@ class Consentimiento(Base, TimestampMixin):
     )
 
 
+ESTADOS_ACTIVIDAD = ("pendiente", "en_curso", "completada")
+PRIORIDADES_ACTIVIDAD = ("baja", "normal", "alta", "urgente")
+
+
 class Actividad(EntidadBase, SoftDeleteMixin):
     """Tarea, llamada, reunión, nota o visita (CRM-01.02.01.01).
 
@@ -541,8 +545,14 @@ class Actividad(EntidadBase, SoftDeleteMixin):
 
     # ── Estado y asignación ───────────────────────────────────────────────
     # pendiente | en_curso | completada | cancelada
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
-    prioridad: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
+    # El tipo NO se cierra: entra también por plantillas y recurrencias, que
+    # traen el suyo. El estado y la prioridad sí son estos y sólo éstos.
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pendiente", info={"opciones": ESTADOS_ACTIVIDAD}
+    )
+    prioridad: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="normal", info={"opciones": PRIORIDADES_ACTIVIDAD}
+    )
     asignada_a: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     delegada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 

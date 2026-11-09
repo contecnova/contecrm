@@ -73,6 +73,15 @@ ESTADOS_PRESUPUESTO = (
 )
 ESTADOS_CONTRATO = ("borrador", "vigente", "suspendido", "terminado", "renovado")
 ESTADOS_PEDIDO = ("pendiente", "enviado_erp", "confirmado", "rechazado_erp", "conciliado")
+ESTADOS_SUSCRIPCION = ("activa", "pausada", "cancelada")
+TIPOS_CAMBIO_SUSCRIPCION = (
+    "alta",
+    "cambio_plan",
+    "cambio_cantidad",
+    "pausa",
+    "reanudacion",
+    "baja",
+)
 
 
 class Presupuesto(EntidadBase, SoftDeleteMixin):
@@ -102,7 +111,9 @@ class Presupuesto(EntidadBase, SoftDeleteMixin):
     # Sin `index=True`: SQLAlchemy lo llamaría `ix_presupuestos_estado`, que es
     # el nombre del índice compuesto de abajo, y el segundo choca con el primero.
     # El compuesto ya sirve para filtrar por estado, porque empieza por él.
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="borrador")
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="borrador", info={"opciones": ESTADOS_PRESUPUESTO}
+    )
     moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
     canal: Mapped[str] = mapped_column(String(60), nullable=False, default="")
     idioma: Mapped[str] = mapped_column(String(10), nullable=False, default="es")
@@ -187,7 +198,13 @@ class Contrato(EntidadBase, SoftDeleteMixin):
     cuenta_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     presupuesto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     titulo: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="borrador", index=True)
+    estado: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="borrador",
+        index=True,
+        info={"opciones": ESTADOS_CONTRATO},
+    )
 
     inicio: Mapped[date] = mapped_column(Date, nullable=False)
     fin: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
@@ -237,7 +254,13 @@ class SuscripcionCliente(EntidadBase, SoftDeleteMixin):
     inicio: Mapped[date] = mapped_column(Date, nullable=False)
     fin: Mapped[date | None] = mapped_column(Date, nullable=True)
     # activa | pausada | cancelada
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="activa", index=True)
+    estado: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="activa",
+        index=True,
+        info={"opciones": ESTADOS_SUSCRIPCION},
+    )
     proxima_factura: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
 
     __table_args__ = (Index("ix_suscripciones_cuenta", "tenant_id", "cuenta_id", "estado"),)
@@ -254,7 +277,9 @@ class CambioSuscripcion(Base):
         PgUUID(as_uuid=True), ForeignKey("suscripciones.id", ondelete="CASCADE"), nullable=False
     )
     # alta | cambio_plan | cambio_cantidad | pausa | reanudacion | baja
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False)
+    tipo: Mapped[str] = mapped_column(
+        String(20), nullable=False, info={"opciones": TIPOS_CAMBIO_SUSCRIPCION}
+    )
     efectivo_el: Mapped[date] = mapped_column(Date, nullable=False)
     plan_antes: Mapped[str | None] = mapped_column(String(120), nullable=True)
     plan_despues: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -280,7 +305,13 @@ class Pedido(EntidadBase, SoftDeleteMixin):
     numero: Mapped[str] = mapped_column(String(60), nullable=False)
     presupuesto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     cuenta_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente", index=True)
+    estado: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="pendiente",
+        index=True,
+        info={"opciones": ESTADOS_PEDIDO},
+    )
     total: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
     moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
 

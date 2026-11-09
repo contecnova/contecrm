@@ -57,6 +57,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from services.sales import ajustes as _ajustes  # noqa: E402,F401
 
 ESTADOS = ("pendiente", "firmada")
+RESULTADOS = ("ganada", "perdida")
 # Lo que puede pesar en una pérdida o en una victoria. Lista cerrada a propósito:
 # es lo que permite agrupar y contar patrones; un texto libre no se agrupa.
 FACTORES = (
@@ -112,9 +113,13 @@ class LeccionOportunidad(Base, TimestampMixin):
     )
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     titulo: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    resultado: Mapped[str] = mapped_column(String(20), nullable=False)
+    resultado: Mapped[str] = mapped_column(
+        String(20), nullable=False, info={"opciones": RESULTADOS}
+    )
     motivo: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pendiente", info={"opciones": ESTADOS}
+    )
     # El post-mortem: lo que firma el comercial.
     que_paso: Mapped[str | None] = mapped_column(
         Text, nullable=True, info={"anonimizar_en_copias": True}
