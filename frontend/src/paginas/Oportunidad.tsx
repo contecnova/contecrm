@@ -156,13 +156,6 @@ interface GrupoDeCompra {
   que_mirar: string;
 }
 
-interface Metodologia {
-  id: string;
-  clave: string;
-  nombre: string;
-  activa: boolean;
-}
-
 /** Un criterio de la metodología que todavía no está cubierto. */
 interface CriterioQueFalta {
   clave: string;
@@ -171,6 +164,15 @@ interface CriterioQueFalta {
 }
 
 interface Evaluacion {
+  /** Todos los criterios, cubiertos y no: se marcan desde la ficha. */
+  detalle?: {
+    clave: string;
+    etiqueta: string;
+    peso: number;
+    cubierto: boolean;
+    nota: string;
+  }[];
+  metodologia?: { id: string; nombre: string } | null;
   puntuacion: number;
   criterios: number;
   cubiertos: number;
@@ -337,21 +339,12 @@ export function Oportunidad() {
       .then((r) => setDeslizamientos(r.datos))
       .catch(() => undefined);
 
-    // La metodología ACTIVA, no una cualquiera: evaluar con una retirada daría
-    // una puntuación contra criterios que ya no se aplican.
-    void listar<Metodologia>("/api/v1/metodologias?activa=true", {
-      signal: control.signal,
-    })
-      .then((metodologias) => {
-        const activa = metodologias[0];
-        if (!activa) return;
-        void llamar<Evaluacion>(
-          `/api/v1/metodologias/${activa.id}/oportunidad/${id}`,
-          { signal: control.signal },
-        )
-          .then((r) => setEvaluacion(r.datos))
-          .catch(() => undefined);
-      })
+    // La metodología de SU embudo —o la general—, con todos sus criterios.
+    // Antes se cogía la primera activa, fuera del embudo que fuera.
+    void llamar<
+      Evaluacion & { metodologia: { id: string; nombre: string } | null }
+    >(`/api/v1/opportunities/${id}/metodologia`, { signal: control.signal })
+      .then((r) => setEvaluacion(r.datos?.metodologia ? r.datos : null))
       .catch(() => undefined);
 
     // El plan conjunto se busca por su oportunidad: puede no haberlo, y no
@@ -547,7 +540,8 @@ export function Oportunidad() {
       {/* Por lo que SIGNIFICA el estado, no por cómo se llama: la empresa
           puede llamar «Adjudicada» a la ganada o tener sus propios estados. */}
       {op &&
-      (op.estado_significa === "perdido" || op.estado_significa === "ganado") ? (
+      (op.estado_significa === "perdido" ||
+        op.estado_significa === "ganado") ? (
         <PorQueSeCerro id={op.id} estado={op.estado_significa} />
       ) : (
         // Abierta: lo que las lecciones de otras ventas tienen que decirle.
@@ -629,7 +623,24 @@ export function Oportunidad() {
             <QuienDecide grupo={grupo} />
             <QuienSeLoLleva reparto={reparto} />
             <LoQueSeHaMovido cambios={deslizamientos} />
-            <QueFaltaParaCerrar evaluacion={evaluacion} playbook={playbook} />
+            <QueFaltaParaCerrar
+              evaluacion={evaluacion}
+              playbook={playbook}
+              alMarcar={async (clave, cubierto) => {
+                if (!evaluacion?.metodologia) return;
+                const r = await llamar<Evaluacion>(
+                  `/api/v1/metodologias/${evaluacion.metodologia.id}/oportunidad/${id}`,
+                  {
+                    metodo: "PUT",
+                    cuerpo: { respuestas: { [clave]: { cubierto } } },
+                  },
+                );
+                setEvaluacion({
+                  ...r.datos,
+                  metodologia: evaluacion.metodologia,
+                });
+              }}
+            />
             <ElPlanConElCliente plan={plan} />
           </div>
         ) : (
@@ -963,9 +974,11 @@ function LoQueSeHaMovido({ cambios }: { cambios: CambioDePrevision[] }) {
 function QueFaltaParaCerrar({
   evaluacion,
   playbook,
+  alMarcar,
 }: {
   evaluacion: Evaluacion | null;
   playbook: Playbook | null;
+  alMarcar: (clave: string, cubierto: boolean) => Promise<void>;
 }) {
   const { t } = useTranslation();
   if (!evaluacion && !playbook) {
@@ -1004,8 +1017,34 @@ function QueFaltaParaCerrar({
                 : "oportunidad.noCualificada",
             )}
           </p>
+          {/* Todos los criterios de su metodología, para marcarlos: lo que se
+              sabe de esta venta se apunta aquí mismo. */}
+          {evaluacion.detalle?.length ? (
+            <ul className="mt-2 divide-y divide-ink-dim/30" role="status">
+              {evaluacion.detalle.map((c) => (
+                <li
+                  key={c.clave}
+                  className="flex items-center gap-2 py-1.5 text-dato"
+                >
+                  <input
+                    type="checkbox"
+                    checked={c.cubierto}
+                    aria-label={c.etiqueta}
+                    onChange={(e) => void alMarcar(c.clave, e.target.checked)}
+                    className="h-4 w-4 accent-accent"
+                  />
+                  <span className={c.cubierto ? "text-ink" : "text-ink-muted"}>
+                    {c.etiqueta}
+                  </span>
+                  <span className="ml-auto text-rotulo text-ink-faint">
+                    {c.peso}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {/* Lo que falta, enumerado. La nota sola no cambia nada. */}
-          {faltan.length > 0 ? (
+          {!evaluacion.detalle?.length && faltan.length > 0 ? (
             <ul className="mt-2 flex flex-col gap-1">
               {faltan.map((x) => (
                 <li key={x.clave} className="text-dato text-ink">

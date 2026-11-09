@@ -416,7 +416,12 @@ def crear_metodologia(datos: CrearMetodologia, db: DbDep, principal: Autenticado
             error_code="metodologia.familia_no_valida",
             detalle={"validas": list(cad.METODOLOGIAS)},
         )
-    fila = cad.Metodologia(tenant_id=principal.tenant_id, **datos.model_dump())
+    valores = datos.model_dump()
+    # Los de serie se COPIAN en la metodología: así se ven y se editan. Sin
+    # copiarlos, la pantalla de edición salía vacía aunque se evaluara con ellos.
+    if not valores["criterios"]:
+        valores["criterios"] = [dict(c) for c in cad.CRITERIOS_DE_SERIE.get(datos.familia, [])]
+    fila = cad.Metodologia(tenant_id=principal.tenant_id, **valores)
     db.add(fila)
     db.flush()
     return {"id": str(fila.id), "clave": fila.clave}
@@ -440,6 +445,42 @@ def evaluar(
     metodologia_id: UUID, oportunidad_id: UUID, db: DbDep, principal: AutenticadoDep
 ) -> Any:
     return cad.evaluar(db, principal.tenant_id, metodologia_id, oportunidad_id)
+
+
+class ResponderIn(BaseModel):
+    respuestas: dict[str, Any] = Field(
+        ...,
+        description='`{clave: {cubierto: true, nota: "..."}}`; `cubierto: false` lo quita',
+    )
+
+
+@router_metodologia.put(
+    "/{metodologia_id}/oportunidad/{oportunidad_id}",
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Marcar qué criterios están cubiertos",
+    description=(
+        "Se mezcla con lo que había y se recalcula la puntuación. Un criterio "
+        "que no es de la metodología se rechaza."
+    ),
+)
+def responder(
+    metodologia_id: UUID,
+    oportunidad_id: UUID,
+    datos: ResponderIn,
+    db: DbDep,
+    principal: AutenticadoDep,
+) -> Any:
+    from services.sales.servicio import _oportunidad
+
+    _oportunidad(db, oportunidad_id)
+    return cad.responder(
+        db,
+        principal.tenant_id,
+        metodologia_id,
+        oportunidad_id,
+        datos.respuestas,
+        por=principal.id,
+    )
 
 
 @router_metodologia.get(

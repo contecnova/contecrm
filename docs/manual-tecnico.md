@@ -880,6 +880,13 @@ pantallas:
   `estado_significa`, `estado_nombre` y `estado_color`; la pantalla pinta
   `<campo>_nombre` cuando viene. En el front: `paginas/Estados.tsx` y
   `componentes/CambioDeEstado.tsx`, que `DatosClave` pinta en la cabecera.
+- **Metodologías** (`services/sales/cadencias.py`): `metodologia_de` elige
+  la del embudo de la oportunidad (o la general), `criterios_de` normaliza las
+  dos formas en que se han escrito los criterios (`etiqueta`/`peso` y
+  `pregunta`/`nombre` sin peso, que reparte por igual), `responder` marca
+  criterios y recalcula. Rutas: `GET /opportunities/{id}/metodologia` y
+  `PUT /metodologias/{id}/oportunidad/{oid}`. Los playbooks se buscan por la
+  etapa normalizada (clave o nombre). Pantalla: `paginas/Metodologias.tsx`.
 - **Etapas del embudo**: `PATCH /pipelines/{id}/etapas/{etapa}`,
   `PUT /pipelines/{id}/etapas/orden` y `DELETE …/etapas/{etapa}?mover_a=`,
   con `_exigir_cierres` (una final ganada y una perdida). Pantalla:

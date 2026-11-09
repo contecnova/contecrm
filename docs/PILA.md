@@ -57,6 +57,10 @@
   configuración del tenant, con los de fábrica como punto de partida; (b) el
   editor de embudos y etapas; (c) las metodologías; (d) todo ello en una
   sección de Administrar.
+- **(c) hecho el 09-11-2026**: Administrar › Plataforma › Metodologías y
+  playbooks —MEDDIC, BANT, SPIN, Challenger o propia, por embudo; pregunta,
+  peso y desde qué etapa; pasos por etapa— y los criterios se marcan desde la
+  ficha de la oportunidad.
 - **(b) hecho el 09-11-2026**: Administrar › Plataforma › Embudos y etapas —
   crear embudos; nombre, probabilidad, color, estancamiento, final y ganada,
   criterios de salida, orden y quitar etapas moviendo sus oportunidades—.

@@ -1373,6 +1373,15 @@ abre. Ahora dentro está:
 Una venta que ha cambiado tres veces de fecha no es la misma que una que nunca
 se movió, aunque hoy tengan el mismo importe y la misma etapa.
 
+### Lo que falta para cerrar, y qué hacer en cada etapa
+
+En la ficha de una oportunidad, **«Qué falta para poder cerrar»** es la lista de
+preguntas de la metodología de su embudo (MEDDIC, BANT…). Marca las que ya
+tienes contestadas: la puntuación sube y el «siguiente paso» pasa a la
+siguiente que más pesa. Debajo salen **los pasos de la etapa** en la que está.
+Las preguntas y los pasos los define tu administrador en **Administrar ›
+Plataforma › Metodologías y playbooks**.
+
 ### Cambiar el estado de una oportunidad o de un lead
 
 En la cabecera de la ficha, debajo del nombre, está el **estado actual**. Pulsa

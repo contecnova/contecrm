@@ -741,6 +741,27 @@ def cambiar_estado_oportunidad(oportunidad_id: UUID, datos: CambiarEstadoIn, uow
     return _una_oportunidad(uow.db, oportunidad)
 
 
+@router_oportunidades.get(
+    "/{oportunidad_id}/metodologia",
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="La metodología de esta oportunidad y lo que tiene cubierto",
+    description=(
+        "La de su embudo, o la general si su embudo no tiene. Con todos los "
+        "criterios —cubiertos y no— para poder marcarlos desde la ficha."
+    ),
+)
+def metodologia_de_la_oportunidad(
+    oportunidad_id: UUID, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.sales import cadencias as cad
+
+    oportunidad = svc._oportunidad(db, oportunidad_id)
+    metodologia = cad.metodologia_de(db, principal.tenant_id, oportunidad)
+    if metodologia is None:
+        return {"metodologia": None}
+    return cad.evaluar(db, principal.tenant_id, metodologia.id, oportunidad_id)
+
+
 @router_oportunidades.post(
     "/{oportunidad_id}/reabrir",
     response_model=OportunidadOut,

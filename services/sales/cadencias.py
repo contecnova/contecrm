@@ -938,7 +938,128 @@ CRITERIOS_DE_SERIE: dict[str, list[dict[str, Any]]] = {
         {"clave": "necesidad", "etiqueta": "Hay una necesidad real", "peso": 25},
         {"clave": "plazo", "etiqueta": "Hay una fecha", "peso": 25},
     ],
+    # SPIN y Challenger se ofrecían como familias y salían vacías: quien las
+    # elegía se encontraba la pantalla en blanco que esto existe para evitar.
+    "spin": [
+        {"clave": "situacion", "etiqueta": "Conocemos su situación actual", "peso": 20},
+        {"clave": "problema", "etiqueta": "Sabemos qué problema tienen", "peso": 25},
+        {"clave": "implicacion", "etiqueta": "Saben lo que les cuesta no resolverlo", "peso": 30},
+        {
+            "clave": "necesidad_beneficio",
+            "etiqueta": "Ellos mismos dicen qué ganarían",
+            "peso": 25,
+        },
+    ],
+    "challenger": [
+        {"clave": "ensenar", "etiqueta": "Les hemos enseñado algo que no sabían", "peso": 30},
+        {"clave": "adaptar", "etiqueta": "Lo hemos adaptado a cada decisor", "peso": 25},
+        {"clave": "tomar_control", "etiqueta": "Llevamos nosotros el proceso", "peso": 25},
+        {"clave": "movilizador", "etiqueta": "Hay alguien dentro que empuja", "peso": 20},
+    ],
 }
+
+
+def criterios_de(metodologia: Metodologia) -> list[dict[str, Any]]:
+    """Los criterios de una metodología, en una sola forma.
+
+    Se han escrito de dos maneras —`etiqueta` y `peso`, o `nombre` y
+    `pregunta` sin peso—, y el motor sólo leía la primera: una metodología
+    sembrada de la segunda salía con los criterios sin nombre y puntuando cero
+    aunque se marcaran todos. La etiqueta es la pregunta, si la hay; y sin pesos
+    declarados, todos pesan lo mismo.
+    """
+    crudos = list(metodologia.criterios or []) or CRITERIOS_DE_SERIE.get(metodologia.familia, [])
+    sin_peso = not any(c.get("peso") for c in crudos if isinstance(c, dict))
+    reparto = round(100 / len(crudos)) if crudos and sin_peso else 0
+    return [
+        {
+            **c,
+            "etiqueta": c.get("etiqueta") or c.get("pregunta") or c.get("nombre") or c.get("clave"),
+            "peso": reparto if sin_peso else int(c.get("peso") or 0),
+        }
+        for c in crudos
+        if isinstance(c, dict) and c.get("clave")
+    ]
+
+
+def metodologia_de(db: Session, tenant_id: UUID, oportunidad: Any) -> Metodologia | None:
+    """La metodología que se aplica a esta oportunidad: la de su embudo.
+
+    Una que nombra el embudo manda sobre la general (sin embudo): cada embudo
+    puede tener la suya —la venta de proyecto con MEDDIC, la renovación con
+    BANT— y una general cubre los que no tienen.
+    """
+    from services.sales.modelos import Pipeline
+
+    pipeline = db.get(Pipeline, oportunidad.pipeline_id) if oportunidad.pipeline_id else None
+    filas = list(
+        db.execute(
+            select(Metodologia).where(
+                Metodologia.tenant_id == tenant_id,
+                Metodologia.activa.is_(True),
+                Metodologia.deleted_at.is_(None),
+            )
+        ).scalars()
+    )
+    propia = [m for m in filas if pipeline is not None and m.pipeline == pipeline.clave]
+    general = [m for m in filas if not m.pipeline]
+    return (propia or general or [None])[0]
+
+
+def responder(
+    db: Session,
+    tenant_id: UUID,
+    metodologia_id: UUID,
+    oportunidad_id: UUID,
+    respuestas: dict[str, Any],
+    *,
+    por: UUID | None,
+) -> dict[str, Any]:
+    """Apunta qué criterios están cubiertos y con qué, y recalcula.
+
+    Se mezcla con lo que había: contestar un criterio no borra los demás. Un
+    criterio que no es de la metodología se rechaza —una errata no puede
+    quedarse guardada como si cubriera algo—.
+    """
+    metodologia = db.get(Metodologia, metodologia_id)
+    if metodologia is None or metodologia.tenant_id != tenant_id:
+        raise NoEncontrado("La metodología no existe", error_code="metodologia.no_encontrada")
+    criterios = criterios_de(metodologia)
+    validas = {str(c.get("clave")) for c in criterios}
+    desconocidas = sorted(set(respuestas) - validas)
+    if desconocidas:
+        raise ErrorValidacion(
+            f"Criterios que no son de esta metodología: {', '.join(desconocidas)}",
+            error_code="metodologia.criterio_desconocido",
+            detalle={"validos": sorted(validas)},
+        )
+    fila = db.execute(
+        select(EvaluacionMetodologia).where(
+            EvaluacionMetodologia.tenant_id == tenant_id,
+            EvaluacionMetodologia.oportunidad_id == oportunidad_id,
+            EvaluacionMetodologia.metodologia_id == metodologia_id,
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        fila = EvaluacionMetodologia(
+            tenant_id=tenant_id, oportunidad_id=oportunidad_id, metodologia_id=metodologia_id
+        )
+        db.add(fila)
+    actuales = dict(fila.respuestas or {})
+    for clave, valor in respuestas.items():
+        cubierto = bool(valor.get("cubierto")) if isinstance(valor, dict) else bool(valor)
+        if cubierto:
+            nota = str(valor.get("nota") or "") if isinstance(valor, dict) else ""
+            actuales[clave] = {"cubierto": True, "nota": nota, "por": str(por) if por else None}
+        else:
+            actuales.pop(clave, None)
+    fila.respuestas = actuales
+    db.flush()
+    resultado = evaluar(db, tenant_id, metodologia_id, oportunidad_id)
+    fila.puntuacion = Decimal(str(resultado["puntuacion"]))
+    fila.actualizada_at = _ahora()
+    db.flush()
+    return resultado
 
 
 def evaluar(
@@ -965,7 +1086,7 @@ def evaluar(
     ).scalar_one_or_none()
     respuestas = (evaluacion.respuestas if evaluacion else {}) or {}
 
-    criterios = list(metodologia.criterios or []) or CRITERIOS_DE_SERIE.get(metodologia.familia, [])
+    criterios = criterios_de(metodologia)
     total = sum(int(c.get("peso", 0)) for c in criterios) or 100
     logrado = 0
     falta: list[dict[str, Any]] = []
@@ -994,7 +1115,34 @@ def evaluar(
         # Con la mitad sin contestar, la puntuación no dice si el negocio va bien:
         # dice que no se ha cualificado. Son cosas distintas.
         "cualificada": len(falta) <= len(criterios) / 2,
+        # Todos, cubiertos y no, con lo que se apuntó: es lo que deja marcarlos
+        # desde la ficha. Sin esto sólo se veía lo que faltaba y no había forma
+        # de decir que ya se tenía.
+        "detalle": [
+            {
+                "clave": str(c.get("clave")),
+                "etiqueta": c.get("etiqueta", c.get("clave")),
+                "peso": c.get("peso", 0),
+                "desde_etapa": c.get("desde_etapa"),
+                "cubierto": bool(respuestas.get(str(c.get("clave")))),
+                "nota": (respuestas.get(str(c.get("clave"))) or {}).get("nota", "")
+                if isinstance(respuestas.get(str(c.get("clave"))), dict)
+                else "",
+            }
+            for c in criterios
+        ],
+        "metodologia": {"id": str(metodologia.id), "nombre": metodologia.nombre},
     }
+
+
+def _normal(texto: str) -> str:
+    import re
+    import unicodedata
+
+    sin_tildes = "".join(
+        c for c in unicodedata.normalize("NFD", texto or "") if unicodedata.category(c) != "Mn"
+    )
+    return re.sub(r"[^a-z0-9]+", "_", sin_tildes.lower()).strip("_")
 
 
 def playbook_para(
@@ -1023,7 +1171,10 @@ def playbook_para(
     ambito = {"oportunidad": contexto or {}}
     candidatos: list[tuple[int, Playbook]] = []
     for fila in filas:
-        if fila.etapa and fila.etapa != etapa:
+        # La etapa se compara normalizada: unos guardan la clave
+        # («cualificacion») y otros piden por el nombre («Cualificación»). Sin
+        # esto, los pasos guardados desde Administrar no salían en la ficha.
+        if fila.etapa and _normal(fila.etapa) != _normal(etapa):
             continue
         if fila.segmento and fila.segmento != segmento:
             continue

@@ -259,6 +259,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // Los embudos de venta y sus etapas: cuántas hay, cómo se llaman, su
   // probabilidad y qué hace falta para salir de cada una.
   { area: "plataforma", a: "/embudos", clave: "nav.embudos", icono: "view_kanban", permiso: "pipeline:write" },
+  // Cómo se vende: las preguntas que hay que tener contestadas —MEDDIC,
+  // BANT…— por embudo, y qué hacer en cada etapa (CRM-03.01.02).
+  { area: "plataforma", a: "/metodologias", clave: "nav.metodologias", icono: "checklist", permiso: "opportunity:write" },
   { area: "plataforma", a: "/estados", clave: "nav.estados", icono: "rule", permiso: "tenant:write" },
   { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read"  },
   // El código del tenant (CRM-00.04.02): estaba sólo dentro de «Procesos», en

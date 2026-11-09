@@ -72,7 +72,10 @@ let PLAN: Record<string, unknown> | null = {
   pasos: 8,
   hechos: 3,
   retrasados_nuestros: [{ paso: "Mandar la propuesta técnica" }],
-  retrasados_del_cliente: [{ paso: "Validar con legal" }, { paso: "Confirmar aforo" }],
+  retrasados_del_cliente: [
+    { paso: "Validar con legal" },
+    { paso: "Confirmar aforo" },
+  ],
   retrasados_conjuntos: [],
   compartido: true,
   visto_por_el_cliente: "2026-10-20T10:00:00Z",
@@ -127,16 +130,28 @@ vi.mock("@/lib/api", async () => {
       else if (ruta === "/api/v1/ingresos/de/o-1")
         datos = {
           reparto: [
-            { usuario_id: "u-1", papel: "credito", porcentaje: "60.00", motivo: "lo cerró" },
+            {
+              usuario_id: "u-1",
+              papel: "credito",
+              porcentaje: "60.00",
+              motivo: "lo cerró",
+            },
           ],
           credito_total: "60.00",
           credito_cuadra: false,
-          porque_el_overlay_no_suma: "El overlay es apoyo que no resta al titular.",
-          relacionadas: [{ tipo: "renovacion", sentido: "sale_de_aqui", otra_id: "o-2" }],
+          porque_el_overlay_no_suma:
+            "El overlay es apoyo que no resta al titular.",
+          relacionadas: [
+            { tipo: "renovacion", sentido: "sale_de_aqui", otra_id: "o-2" },
+          ],
         };
       else if (ruta === "/api/v1/ingresos/grupo-compra/o-1")
         datos = {
-          roles: { economico: [{ contacto_id: "c-1", postura: 0, motivo: "", hablado: false }] },
+          roles: {
+            economico: [
+              { contacto_id: "c-1", postura: 0, motivo: "", hablado: false },
+            ],
+          },
           faltan_por_identificar: ["tecnico"],
           clave_sin_hablar: ["c-1"],
           en_contra: 0,
@@ -155,10 +170,15 @@ vi.mock("@/lib/api", async () => {
             at: "2026-10-01T10:00:00+00:00",
           },
         ];
-      else if (ruta.startsWith("/api/v1/metodologias?activa=true"))
-        datos = [{ id: "me-1", clave: "meddic", nombre: "MEDDIC", activa: true }];
-      else if (ruta === "/api/v1/metodologias/me-1/oportunidad/o-1") datos = EVALUACION;
-      else if (ruta.startsWith("/api/v1/metodologias/playbook")) datos = PLAYBOOK;
+      // La ficha pide la metodología DE la oportunidad —la de su embudo—, no
+      // la primera activa (09-11-2026).
+      else if (ruta === "/api/v1/opportunities/o-1/metodologia")
+        datos = {
+          ...EVALUACION,
+          metodologia: { id: "me-1", nombre: "MEDDIC" },
+        };
+      else if (ruta.startsWith("/api/v1/metodologias/playbook"))
+        datos = PLAYBOOK;
       else if (ruta.startsWith("/api/v1/planes-conjuntos?oportunidad_id="))
         datos = PLANES;
       else if (ruta === "/api/v1/planes-conjuntos/pc-1/estado") datos = PLAN;
@@ -179,7 +199,10 @@ async function montar() {
   return render(
     <MemoryRouter initialEntries={["/m/oportunidades/oportunidad/o-1"]}>
       <Routes>
-        <Route path="/m/oportunidades/oportunidad/:id" element={<Oportunidad />} />
+        <Route
+          path="/m/oportunidades/oportunidad/:id"
+          element={<Oportunidad />}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -192,7 +215,9 @@ describe("la ficha de una venta", () => {
 
   it("enseña las líneas y pide el ARR al servicio que sabe calcularlo", async () => {
     await montar();
-    await waitFor(() => expect(screen.getByText("Suscripción anual")).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText("Suscripción anual")).toBeTruthy(),
+    );
     // El ARR NO se calcula aquí: se manda a quien sabe qué es recurrente.
     // Calcularlo en la pantalla mete la implantación dentro y deja dos sitios
     // donde se calcula, que acaban diciendo cosas distintas.
@@ -202,7 +227,9 @@ describe("la ficha de una venta", () => {
     await waitFor(() => expect(screen.getByText(/^ARR /)).toBeTruthy());
     // Y lo que NO cuenta como ARR, dicho: sin eso el número se cita en un
     // comité como si fuera todo lo que entra.
-    expect(screen.getByText(/oportunidad.noCuentaComoArr.*implantacion/)).toBeTruthy();
+    expect(
+      screen.getByText(/oportunidad.noCuentaComoArr.*implantacion/),
+    ).toBeTruthy();
   });
 
   it("el margen lo pide al servidor y dice lo que no sabe", async () => {
@@ -285,14 +312,18 @@ describe("qué falta para poder cerrar", () => {
     expect(screen.getByText("Criterios decisión")).toBeInTheDocument();
     expect(screen.getByText("Campeón")).toBeInTheDocument();
     expect(
-      screen.getByText('oportunidad.siguientePaso:{"paso":"Pregunta quién firma"}'),
+      screen.getByText(
+        'oportunidad.siguientePaso:{"paso":"Pregunta quién firma"}',
+      ),
     ).toBeInTheDocument();
   });
 
   it("y dice si está cualificada o no", async () => {
     await montar();
     await screen.findByText("oportunidad.noCualificada");
-    expect(screen.queryByText("oportunidad.cualificada")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("oportunidad.cualificada"),
+    ).not.toBeInTheDocument();
   });
 
   it("el playbook viene con el porqué se eligió ése", async () => {
@@ -316,18 +347,24 @@ describe("el plan con el cliente", () => {
       screen.getByText('oportunidad.retrasoDelCliente:{"cuantos":2}'),
     ).toBeInTheDocument();
     // Y no se pinta la categoría vacía.
-    expect(screen.queryByText(/oportunidad\.retrasoConjunto/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/oportunidad\.retrasoConjunto/),
+    ).not.toBeInTheDocument();
   });
 
   it("dice si la fecha objetivo ya no se sostiene", async () => {
     await montar();
-    expect(await screen.findByText("oportunidad.fechaNoCreible")).toBeInTheDocument();
+    expect(
+      await screen.findByText("oportunidad.fechaNoCreible"),
+    ).toBeInTheDocument();
   });
 
   it("un plan que el cliente no ha visto se señala", async () => {
     PLAN = { ...(PLAN as Record<string, unknown>), compartido: false };
     await montar();
-    expect(await screen.findByText("oportunidad.planSinCompartir")).toBeInTheDocument();
+    expect(
+      await screen.findByText("oportunidad.planSinCompartir"),
+    ).toBeInTheDocument();
   });
 
   it("sin plan lo dice, y dice qué significa no tenerlo", async () => {

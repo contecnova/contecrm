@@ -1732,6 +1732,22 @@ embudo conserva siempre una etapa final ganada y una perdida —sin ellas no se
 cierra ninguna venta—, y una etapa con oportunidades sólo se quita diciendo a
 cuál pasan; el paso queda en el historial de cada una con el motivo.
 
+### Las metodologías de venta y los playbooks, por embudo
+
+En **Administrar › Plataforma › Metodologías y playbooks** se crean
+metodologías a partir de MEDDIC, BANT, SPIN o Challenger —traen sus criterios
+de serie, que se copian para poder editarlos— o en blanco, y se dice a qué
+embudo se aplican: cada embudo puede tener la suya, y una sin embudo cubre los
+demás. De cada criterio se edita la pregunta, su peso y desde qué etapa se
+pide. Debajo, **qué hacer en cada etapa**: un paso por línea, que sale en la
+ficha de cada oportunidad que esté en esa etapa.
+
+En la ficha de la oportunidad, «Qué falta para poder cerrar» enseña todos los
+criterios de **la metodología de su embudo** y se marcan ahí mismo; la
+puntuación se recalcula al momento. Hasta el 09-11-2026 la evaluación existía
+y no había forma de rellenarla, y se cogía la primera metodología activa fuera
+del embudo que fuera.
+
 ### La empresa configura sus estados; el código pregunta por lo que significan
 
 Hasta el 09-11-2026 la máquina se declaraba en el código y la empresa sólo
