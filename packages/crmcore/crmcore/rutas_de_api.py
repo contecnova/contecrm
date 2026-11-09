@@ -38,6 +38,9 @@ PREFIJOS: dict[str, str] = {
     "marca": "tenancy",
     "flags": "tenancy",
     "ajustes": "tenancy",
+    # El consumo medido cortado por periodo y enviado al sistema de cobro
+    # (CRM-00.01.06.07): sale del tenant, que es quien lo mide y lo topa.
+    "facturacion": "tenancy",
     # Las preferencias de cada persona van al mismo sitio que los ajustes:
     # salen de la misma jerarquía, sólo que resueltas y escritas en el ámbito
     # de quien llama. Prefijo aparte y no `ajustes/mias` porque lo que las
@@ -113,6 +116,8 @@ PREFIJOS: dict[str, str] = {
     "scim": "identity",
     "factores": "identity",
     "dispositivos-confianza": "identity",
+    # El segundo factor por proveedor del tenant (CRM-00.05.01.22).
+    "mfa-proveedor": "identity",
     "sso-gobierno": "identity",
     "forecast": "sales",
     "suite": "tenancy",
@@ -295,6 +300,10 @@ PREFIJOS: dict[str, str] = {
     # Publicidad, biblioteca de activos y redes sociales (CRM-02.03, CRM-02.04,
     # CRM-04.02.01.06).
     "audiencias-externas": "marketing",
+    # Las audiencias sincronizadas con una plataforma y los envíos programados
+    # por destinatario (CRM-02.01.01.09, CRM-02.02.02.05).
+    "audiencias-publicitarias": "marketing",
+    "envios-programados": "marketing",
     "activos-marketing": "marketing",
     "social": "marketing",
     "captura": "sales",

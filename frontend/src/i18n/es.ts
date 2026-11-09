@@ -109,6 +109,23 @@ export default {
     editarComoJson: "Editar como JSON",
     volverAPares: "Volver a clave y valor",
   },
+  // El editor de condiciones de una regla (CRM-00.04.03.05).
+  condiciones: {
+    escribeElObjetivo:
+      "Escribe el objetivo para poder elegir entre sus campos propios.",
+    sinCamposPropios:
+      "«{{objeto}}» no tiene campos propios declarados: escribe el campo a mano.",
+    ninguna: "Sin condiciones: la regla salta siempre que se dispare.",
+    campoPropio: "Campo propio de la condición {{numero}}",
+    elegirCampoPropio: "Campo propio…",
+    atributo: "Campo de la condición {{numero}}",
+    atributoEjemplo: "importe o campos.mi_campo",
+    operador: "Operador de la condición {{numero}}",
+    valor: "Valor de la condición {{numero}}",
+    quitar: "Quitar la condición {{numero}}",
+    quitarCorto: "Quitar",
+    anadir: "Añadir una condición",
+  },
   altas: {
     cuenta: "Cliente",
     contacto: "Contacto",
@@ -123,6 +140,9 @@ export default {
     metodologias: "Metodologías y playbooks",
     segregacion: "Segregación de funciones",
     tcsec: "Clasificación TCSEC",
+    historialAjustes: "Historial de la configuración",
+    grupoEmpresas: "Grupo de empresas",
+    consumoFacturacion: "Consumo para facturación",
     queCliente: "Cliente que estás mirando",
     crear: "Crear",
     crearQue: "Qué quieres dar de alta",
@@ -173,6 +193,7 @@ export default {
     // «Entornos y despliegues» y la de al lado «Entornos y despliegue», en
     // singular: dos entradas que empiezan igual obligan a entrar en las dos.
     entornos: "Despliegues y desvíos",
+    sandboxApi: "Probar la API",
     canales: "Canales y consentimiento",
     menciones: "Mis menciones",
     loQueSigo: "Lo que sigo",
@@ -190,6 +211,8 @@ export default {
     coste: "Coste",
     territorios: "Territorios",
     inteligencia: "Inteligencia",
+    modelosPredictivos: "Modelos predictivos",
+    asistente: "Asistente IA",
     nexus: "Nexus",
     duplicados: "Duplicados",
     importar: "Importar datos",
@@ -512,6 +535,8 @@ export default {
   },
   entrar: {
     codigo: "Código del segundo factor",
+    recordarEquipo:
+      "Recordar este equipo, si tu empresa lo permite: no volverá a pedir el código aquí salvo que cambie algo (la red, el país o el tiempo sin entrar)",
     codigoPorQue: "Tu empresa exige el segundo factor: escribe el código de tu aplicación de autenticación.",
     olvidada: "¿No la recuerdas?",
     recuperarTitulo: "Recuperar el acceso",
@@ -687,6 +712,9 @@ export default {
     cerrar: "Cerrar",
     corpusSinResultados:
       "No hay ningún documento que puedas ver con eso. La búsqueda va con tu identidad, así que enseña lo que verías entrando al gestor.",
+  },
+  descargas: {
+    bajado: "Bajado {{fichero}} ({{bytes}} caracteres).",
   },
   modulo: {
     // El menú del final de cada fila de un listado.
@@ -948,5 +976,36 @@ export default {
     organizador: "Cuenta que organiza (si la suite la pide)",
     ayuda:
       "La sala se crea ahora en la suite y el enlace queda guardado en la actividad.",
+  },
+  // El archivo de histórico (CRM-07.03.01.02). Aquí y no en las pantallas
+  // diferidas porque lo pinta también la ficha, que va de una pieza.
+  archivo: {
+    titulo: "Archivo de histórico",
+    ayuda:
+      "Lo viejo se archiva, no se borra: sale de la tabla viva, conserva su identificador y se sigue consultando. Cada clase se archiva a partir de sus días; vacío, los generales.",
+    sinArchivo:
+      "«{{servicio}}» no tiene archivo de histórico: no guarda nada que crezca lo bastante como para archivarlo.",
+    clase: "Clase de dato",
+    dias: "Archivar a partir de (días)",
+    diasDe: "Días a partir de los cuales se archiva {{clase}}",
+    guardarCriterio: "Guardar el criterio",
+    criterioGuardado: "Criterio de {{clase}} guardado.",
+    corte: "Corte",
+    candidatas: "Hoy movería",
+    simular: "Simular",
+    archivar: "Archivar",
+    simulado:
+      "Simulación: se archivarían {{n}} filas anteriores al {{corte}}. No se ha movido nada.",
+    archivadas:
+      "Archivadas {{n}} filas. {{bloqueo}} tenían bloqueo legal: no impide archivar, sólo destruir.",
+    consultar: "Consultar lo archivado",
+    buscarAyuda: "Identificador de un registro (vacío: lo último archivado)",
+    nada: "No hay nada archivado con ese criterio.",
+    hayMas: "Hay más: se enseñan las 50 más recientes.",
+    deCuando: "del {{original}} · archivada el {{archivada}}",
+    contenido: "Contenido archivado",
+    devolver: "Devolver a la tabla viva",
+    devuelto: "Devuelto a la tabla viva.",
+    delRegistro: "Archivado de este registro",
   },
 };

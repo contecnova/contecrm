@@ -1,6 +1,6 @@
 /**
  * Identidad y seguridad: las preguntas que nadie podía contestar
- * (CRM-00.05.01.15, CRM-00.05.01.17, CRM-00.05.01.25, CRM-00.05.02.11,
+ * (CRM-00.05.01.15, CRM-00.05.01.17, CRM-00.05.01.22, CRM-00.05.01.25, CRM-00.05.02.11,
  * CRM-07.03.02.06, CRM-00.05.01.14).
  *
  * Y, desde el 28-10-2026, **la primera de todas**: qué impide ahora mismo que
@@ -109,6 +109,7 @@ import { Link } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { SegundoFactorPorProveedor } from "@/componentes/SegundoFactorPorProveedor";
 import {
   ErrorApi,
   filas as filasDe,
@@ -285,6 +286,15 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
         puedeCambiar={puede(sesion, "tenant:write")}
         alCambiar={setAdopcion}
       />
+      {/* El proveedor de segundo factor de la empresa (CRM-00.05.01.22): el
+          código de Okta Verify, Twilio Verify, Duo o RSA sirve para entrar.
+          Comprobado el 09-11-2026 contra un doble HTTP local: alta desde
+          plantilla, datos de la persona, «Probar» y la entrada con el código. */}
+      {puede(sesion, "user:read") ? (
+        <SegundoFactorPorProveedor
+          puedeCambiar={puede(sesion, "tenant:write")}
+        />
+      ) : null}
       {/* Y lo de UNA persona, que es lo que no contesta el porcentaje: el
           administrador ve quién no tiene factor; quien entra necesita saber
           qué le falta a él, qué operaciones le van a pedir verificarse otra

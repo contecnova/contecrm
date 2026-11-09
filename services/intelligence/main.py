@@ -63,7 +63,19 @@ def _tareas() -> list[object]:
             trabajo = encolar_medicion(db, tenant_id=tenant_id, pedido_por=None)
             return {"trabajo": str(trabajo.id)}
 
-    return [Tarea("intelligence.salud", cada, por_tenant(_tenants_con_salud, _encolar))]
+    from services.intelligence import predictivo
+
+    return [
+        Tarea("intelligence.salud", cada, por_tenant(_tenants_con_salud, _encolar)),
+        # El reentreno programado de los modelos entrenados con el histórico.
+        # Mira cada `IA_REENTRENO_COMPROBAR_S` qué toca; cada modelo se
+        # reentrena cada `ia_reentreno_dias` y deja escrito qué salió.
+        Tarea(
+            "intelligence.reentreno",
+            int(predictivo._ajuste("ia_reentreno_comprobar_s")),
+            por_tenant(predictivo.tenants_con_programacion, predictivo.reentrenar_lo_que_toca),
+        ),
+    ]
 
 
 async def _al_arrancar() -> None:

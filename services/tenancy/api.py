@@ -7,6 +7,7 @@ capa, y hay un gate que lo comprueba (`test_layering_contract.py`).
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -44,6 +45,7 @@ from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
 from services.tenancy.api_ciclo_vida import ROUTERS_CICLO_VIDA
 from services.tenancy.api_compromisos import ROUTERS_COMPROMISOS
 from services.tenancy.api_grc import ROUTERS_GRC
+from services.tenancy.api_jerarquia import ROUTERS_JERARQUIA
 from services.tenancy.api_marca import ROUTERS_MARCA
 from services.tenancy.api_sandboxes import ROUTERS_SANDBOXES
 from services.tenancy.api_tcsec import ROUTERS_TCSEC
@@ -352,6 +354,97 @@ def fijar_ajuste(clave: str, datos: FijarAjuste, db: DbDep, principal: Autentica
     return {"clave": clave, "valor": valor, "ambito": datos.ambito}
 
 
+# ── Versiones de la configuración (CRM-00.01.04.02) ───────────────────────
+#
+# `fijar` guardaba cada cambio con su antes y su después desde septiembre, y
+# ninguna ruta lo enseñaba: el historial, el diff y la vuelta atrás estaban
+# escritos y probados en `crmcore.runtime.versiones` y sólo se llegaba a ellos
+# desde una prueba. Medido el 09-11-2026.
+
+
+@router_ajustes.get(
+    "/versiones",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Historial de cambios de la configuración",
+    description=(
+        "Los cambios de ajustes de este tenant, del más reciente al más antiguo, "
+        "cada uno con el valor de antes y el de después, quién y cuándo. Con "
+        "`clave`, sólo los de ese ajuste. Devuelve además qué ajustes tienen "
+        "historial, para poder elegir sin saberse la clave."
+    ),
+)
+def versiones_de_ajustes(
+    db: DbDep,
+    principal: AutenticadoDep,
+    clave: str = Query("", max_length=120),
+    limite: int = Query(100, ge=1, le=500),
+) -> Any:
+    from crmcore.runtime import versiones
+
+    tenant_id = principal.tenant_id
+    return {
+        "claves": versiones.claves_con_historial(db, tenant_id),
+        "versiones": versiones.historial(db, tenant_id, clave=clave, limite=limite),
+    }
+
+
+@router_ajustes.get(
+    "/versiones/diferencias",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Qué cambió en la configuración entre dos momentos",
+    description=(
+        "Colapsado por ajuste: de dónde salió y dónde acabó, con cuántos cambios "
+        "hubo entre medias y quién los hizo. Lo que acabó igual que empezó no "
+        "sale: no cambió nada."
+    ),
+)
+def diferencias_de_ajustes(
+    db: DbDep,
+    principal: AutenticadoDep,
+    desde: datetime = Query(..., description="Inicio, ISO 8601"),
+    hasta: datetime | None = Query(None, description="Fin, ISO 8601; sin él, ahora"),
+) -> Any:
+    from crmcore.runtime import versiones
+
+    return {
+        "desde": desde.isoformat(),
+        "hasta": hasta.isoformat() if hasta else None,
+        "cambios": versiones.diff(db, principal.tenant_id, desde=desde, hasta=hasta),
+    }
+
+
+@router_ajustes.get(
+    "/versiones/comparar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Diferencias entre dos versiones de un ajuste",
+)
+def comparar_versiones(db: DbDep, principal: AutenticadoDep, a: UUID, b: UUID) -> Any:
+    from crmcore.runtime import versiones
+
+    return versiones.comparar(db, principal.tenant_id, a, b)
+
+
+@router_ajustes.post(
+    "/versiones/{version_id}/volver",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("tenant:write"))],
+    summary="Volver al valor de antes de un cambio",
+    description=(
+        "Deshace ese cambio poniendo el valor que había antes, por el camino "
+        "normal —se replica a todos los servicios— y queda en el historial como "
+        "una vuelta atrás y en la auditoría como `ajuste.vuelta_atras`. No borra "
+        "el apunte original."
+    ),
+)
+def volver_a_version(version_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.runtime import versiones
+
+    return versiones.volver_a(db, version_id, tenant_id=principal.tenant_id, por=principal.id)
+
+
 # ── Mis preferencias ──────────────────────────────────────────────────────
 #
 # Fijar un ajuste exige `tenant:write`, y con razón: son las palancas de la
@@ -655,6 +748,7 @@ ROUTERS = [
     *ROUTERS_SANDBOXES,
     *ROUTERS_CICLO_VIDA,
     *ROUTERS_ALTA,
+    *ROUTERS_JERARQUIA,
 ]
 
 

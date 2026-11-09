@@ -108,6 +108,13 @@ que una avalancha de uno no bloquea la entrega de los demás.
   (CRM-00.01.03.08). La diferencia importa: dos tenants no comparten nada y su
   aislamiento es duro; dos unidades de negocio comparten configuración y
   catálogos, y su separación es una regla de visibilidad.
+- **La jerarquía, completa** (09-11-2026): cada empresa hija dice qué relación
+  tiene con su matriz —matriz–filial, franquiciador–franquiciado u holding—, el
+  árbol se ve entero en «Grupo de empresas», y la matriz ve de sus hijas **sólo
+  lo que cada una le comparte**: el consumo y unos indicadores sumados, nunca
+  registros. Lo decide la hija y sólo ella —ni la matriz ni la plataforma
+  pueden concederlo en su nombre—, y si cambia de matriz se borra. Una filial
+  no ve a sus hermanas.
 
 ### Configuración, planes y flags
 
@@ -124,6 +131,13 @@ despliegue. Los **feature flags** son otra cosa y conviene no mezclarlos
 el flag es técnico —si eso está listo para él—. El despliegue por porcentaje
 reparte por *hash* del identificador, no al azar, para que a un mismo usuario le
 toque siempre lo mismo.
+
+Cada cambio de configuración queda **con su valor de antes y el de después**,
+quién y cuándo (CRM-00.01.04.02). En «Historial de la configuración» se ve el
+historial de cada ajuste, se comparan dos versiones entrada a entrada, se
+pregunta qué cambió entre dos fechas y se vuelve al valor de antes de un
+cambio. Volver es un cambio más: queda en el historial como vuelta atrás y en
+la auditoría, y no borra el apunte original.
 
 Los **secretos de integración** se guardan cifrados por tenant
 (CRM-00.01.04.08), con AES-256-GCM y claves derivadas por propósito: comprometer
@@ -165,6 +179,16 @@ documentar y que ninguna operación de escritura declara solo el camino feliz.
 - **Correlación extremo a extremo** con `X-Request-Id` y `traceparent`
   (CRM-00.02.04.07): una petición que atraviesa el gateway y dos servicios
   conserva un único hilo en los logs.
+
+
+**El consumo, hacia facturación** (CRM-00.01.06.07). En «Consumo para
+facturación» se toma un corte de lo que lleva gastado la empresa en cada módulo,
+en un formato neutro que entiende cualquier sistema de cobro (periodo, módulo,
+métrica, cantidad, unidad y tope), se descarga en CSV o JSON y se manda al
+sistema de facturación configurado, firmado como un webhook. Si un módulo no
+contesta, el corte sale **incompleto** y lo dice, nunca con un cero. Cada envío
+deja su estado —enviado, fallido con el porqué, o sin destino—, y si se
+enciende, una tarea toma el corte de cada periodo y lo manda al cerrarlo.
 
 ### Eventos salientes
 
@@ -1279,6 +1303,23 @@ interna, porque negarlo obligaría a apagar el guard entero.
 ---
 
 ## 15. Cuánto se guarda cada cosa, y cuándo no se puede borrar
+
+### Archivo de histórico consultable (`CRM-07.03.01.02`)
+
+Entre tenerlo todo en las tablas vivas y purgarlo cae casi todo el dato viejo de
+un CRM: actividades de hace cuatro años, oportunidades de un producto que ya no
+se vende. **Se archiva, no se borra**: sale de la tabla viva —que deja de pagar
+su peso en cada consulta—, conserva su identificador y se sigue leyendo.
+
+El criterio es **la antigüedad por clase de dato**, que fija cada empresa: las
+actividades a partir de tres años, por ejemplo, y lo demás con el general (dos
+años de serie). Antes de mover nada se ve cuántas filas movería hoy, y se simula.
+Un bloqueo legal no impide archivar —prohíbe destruir, y esto no destruye— y se
+dice cuántas filas lo tenían. Lo archivado de un registro se ve en su ficha, y lo
+que hay que volver a trabajar se devuelve a la tabla viva.
+
+Hasta el 09-11-2026 esto no se hacía nunca: la única ruta planificaba sobre filas
+escritas a mano y no movía nada.
 
 ### Retención con borrado automático
 
@@ -9780,10 +9821,78 @@ están **vacíos por defecto a propósito**: así el sistema dice que no están
 separados en vez de fingir que sí con un valor inventado. Si no lo están, se avisa
 — porque el día que la entrega se hunda, nadie sabrá por qué.
 
-### Lo que todavía no está
+### Lo que sale de verdad (09-11-2026)
 
-De los recorridos, la **optimización de hora y canal por destinatario**
-(`CRM-02.02.02.05`), que es de fase 5 y consta como pendiente en el catálogo.
+Medido el 09-11-2026: varias de estas capacidades constaban hechas y sólo
+simulaban. Ahora salen de verdad, y se ven en pantalla.
+
+**Mejor hora y canal aplicados (`CRM-02.02.02.05`).** Programar el envío de una
+campaña, o pasar por un paso de acción con plantilla en un recorrido, crea **un
+envío por persona** a su hora local y por su canal. Se eligen con su historial
+real —los clics y respuestas a envíos anteriores, que ahora se guardan por envío,
+y su paso por campañas—; lo que pidió la persona (canal y horario preferidos)
+manda sobre el historial; y sin historial suficiente se usan la hora y el canal
+por defecto, que son ajustes (`momento_hora_por_defecto`,
+`momento_canal_por_defecto`, `momento_canales`). Cada envío dice por qué se
+eligió así, y el resumen dice **cuántos van a la hora general**.
+
+**Transaccional por su dominio (`CRM-02.03.01.07`).** Cada envío sale por el
+transporte SMTP de la casa con el dominio, el remitente y el servidor de **su
+clase** (`remitente_*`, `correo_flujo_*`; sin flujo propio, el canal de correo de
+la empresa). Si el remitente no es del dominio de la clase, **no sale** y se dice
+por qué. Lo promocional lleva `List-Unsubscribe`; lo transaccional, no, y no lo
+para una baja de marketing: la factura tiene que llegar.
+
+**Recomendaciones y datos reales (`CRM-02.03.01.02`).** La vista previa y el envío
+rellenan los tokens con los datos del contacto y de su cuenta, y añaden
+recomendaciones del historial: los productos de las familias que la cuenta ya
+tiene en sus oportunidades y que todavía no tiene, y los contenidos de la
+biblioteca etiquetados con esas familias. Sin historial no se recomienda nada y se
+dice. Un envío con campos sin dato **no sale**.
+
+**Previsualización y spam (`CRM-02.03.01.06`).** La plantilla se monta con los
+datos de un contacto real en los clientes configurados (`vista_previa_clientes`:
+ancho, imágenes bloqueadas, modo oscuro) y se puntúa con reglas que dicen qué han
+visto: estructura del asunto, palabras marcadas, proporción de texto e imagen,
+enlaces a IP, acortadores o que dicen una cosa y llevan a otra, baja ausente en lo
+promocional y autenticación del dominio (SPF, DKIM, DMARC). Pesos y umbral son
+ajustes.
+
+**Audiencias en plataformas publicitarias (`CRM-02.01.01.09`).** Una audiencia
+se da de alta sobre un segmento y una conexión de Integraciones con tres
+operaciones declaradas (crear, añadir, quitar): el proveedor es configuración.
+Cada sincronización manda **primero las bajas** (supresiones, consentimiento
+retirado), crea la audiencia si hace falta y sube las altas troceadas; sólo va
+quien consintió la finalidad `audiencia_finalidad` en `party`, y por debajo de
+`audiencia_minimo` no se sube nadie. Cada vuelta queda en el historial.
+
+**Atribución con modelo basado en datos (`CRM-02.02.01.06`).** Además de los
+modelos por posición, el basado en datos: cadena de Markov de primer orden sobre
+los caminos reales de toques del tenant, con efecto de eliminación; los leads
+convertidos se preguntan a `sales`. En la ficha del lead, con el importe de su
+oportunidad.
+
+**Lienzo y prueba A/B (`CRM-02.02.02.01`, `CRM-02.02.02.04`).** El recorrido se
+dibuja en un lienzo que genera los nodos —ya no se escriben en JSON—. En una
+prueba A/B, cuando cada variante llega al mínimo (`prueba_minimo_por_variante`) y
+la mejor supera a la segunda con significación (`prueba_significacion`), la
+ganadora se guarda en el nodo y el tráfico nuevo va a ella
+(`prueba_desviar_al_ganador`).
+
+**Por cuenta sin decir la cuenta (`CRM-02.02.02.09`).** Si no se dice la cuenta
+al meter a alguien, sale de su perfil: antes, un recorrido por cuenta sólo lo era
+cuando quien llamaba se acordaba de mandarla.
+
+**Sale solo, con la identidad de quien lo lanzó.** Los envíos a los que les llega
+la hora salen solos (cada `envios_despachar_cada_s`) y los recorridos publicados
+avanzan solos (cada `recorridos_avanzar_cada_s`): ya no hace falta pulsar
+«Despachar» ni «Avanzar». Lo que corre solo actúa con la identidad de **quien
+programó el envío o publicó el recorrido**, con sus permisos y roles de ese
+momento, y no con más. Si no consta quién —envíos o recorridos anteriores al
+09-11-2026—, no se inventa: el envío se queda programado con el motivo «No consta
+quién lo programó» y el recorrido no avanza solo hasta que se vuelve a publicar.
+Nada sale dos veces aunque haya dos procesos a la vez, y el fallo de una empresa
+no para a las demás.
 
 ## Canales de marketing y entregabilidad (`CRM-02.03.02`, `CRM-02.03.01`)
 
@@ -9890,16 +9999,14 @@ Van separados a propósito: lo primero lo toca quien monta la campaña y lo segu
 quien responde de lo que se manda. Juntarlos en una sola pantalla hace que el
 consentimiento se vea como un detalle de configuración del canal, y es al revés.
 
-### Lo que no está, y por qué
+### La hora de envío por destinatario, ya aplicada
 
-La **optimización de hora de envío por destinatario** (`CRM-02.02.02.05`) **sigue
-pendiente**, y esto se descubrió construyéndola: la única señal de apertura que
-existe hoy es el estado del miembro de campaña, y una persona está **una sola vez
-en cada campaña**. Diez aperturas son diez campañas, así que para la mayoría de los
-contactos nunca habrá datos suficientes. La función existe y devuelve la hora
-cuando los hay —en UTC y diciéndolo—, pero llamar «hecha» a la capacidad sería
-prometer una optimización que casi nunca se va a poder hacer. Hace falta telemetría
-de apertura por envío, que hoy no se guarda.
+La **optimización de hora y canal por destinatario** (`CRM-02.02.02.05`) estaba
+parada porque no había telemetría por envío: la única señal era el estado del
+miembro de campaña. Desde el 09-11-2026 cada envío se guarda con su clic y su
+respuesta (`envios_programados`), y de ahí sale la hora de cada persona; ver «Lo
+que sale de verdad» más arriba. Sin historial suficiente se usa la hora por
+defecto y se dice cuántos van así.
 
 Quedan también la **publicidad digital y el retargeting** (`CRM-02.03.02.04`), el
 **correo postal y el telemarketing como pasos del recorrido** (`CRM-02.03.02.05`) y
@@ -14033,6 +14140,8 @@ cuánto hay que corregir: por encima del 40 % no ahorra tiempo, lo cambia de sit
 —de escribir a revisar, que cansa más—. Transcribir, además, cuesta dinero por
 minuto: una biblioteca de tres años de llamadas es una factura, no un botón, y se
 dice antes.
+La **publicidad digital y el retargeting** (`CRM-02.03.02.04`) tienen ya la
+sincronización real de audiencias (`CRM-02.01.01.09`).
 
 ## Variantes de texto y hora de envío (`CRM-02.04.01.04`, `CRM-02.02.02.05`)
 

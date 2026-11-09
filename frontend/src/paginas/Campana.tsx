@@ -42,6 +42,7 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
+import { EnvioDeCampana } from "@/componentes/EnviosDeMarketing";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -447,6 +448,9 @@ export function Campana() {
                   </p>
                 </section>
               ) : null}
+              {/* El envío: cada miembro a su hora y por su canal, y cada
+                  clase por su dominio (CRM-02.02.02.05, CRM-02.03.01.07). */}
+              <EnvioDeCampana campanaId={id} />
             </div>
           </>
         ) : (

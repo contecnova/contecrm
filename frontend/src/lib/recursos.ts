@@ -581,6 +581,17 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         crear: "/api/v1/politicas-acceso/{nombre}",
         servicio: "identity",
         permiso: "user:read",
+        // La política entera en formato neutro, para cargarla en otro motor
+        // de decisión (CRM-00.05.02.06). Sólo se alcanzaba por API.
+        descargas: [
+          {
+            ruta: "/api/v1/politicas-acceso/publicar",
+            nombre: "Descargar en formato neutro",
+            fichero: "politica-de-acceso.json",
+            detalle: "Para cargarla en otro motor de decisión (OPA, Cedar o el del cliente)",
+            permiso: "user:read",
+          },
+        ],
       },
       {
         nombre: "Claves de API",
@@ -1982,6 +1993,17 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // Se queda allí, con las renovaciones de opt-in y las categorías de
       // preferencia, porque la pregunta que contesta es de consentimiento —«a
       // quién no se le puede escribir»— y no de segmentación.
+      // Las audiencias que viven en una plataforma de anuncios, con su estado
+      // y su historial (CRM-02.01.01.09). Antes sólo se preparaba la lista.
+      {
+        nombre: "Audiencias publicitarias",
+        listar: "/api/v1/audiencias-publicitarias",
+        objeto: "audiencia_publicitaria",
+        alta_en: "/m/segmentos/audiencia_publicitaria/nueva",
+        columnas: ["nombre", "estado", "miembros", "ultima_sync_at"],
+        servicio: "marketing",
+        permiso: "marketing:read",
+      },
       {
         nombre: "Puntuación",
         listar: "/api/v1/puntuacion/modelos",
@@ -2071,6 +2093,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Recorridos",
         listar: "/api/v1/recorridos",
+        // La fila abre el lienzo y «Nuevo» lleva a él: los nodos ya no se
+        // escriben en JSON (CRM-02.02.02.01).
+        objeto: "recorrido",
+        alta_en: "/m/campanas/recorrido/nuevo",
+        columnas: ["clave", "nombre", "estado", "version", "por_cuenta"],
         servicio: "marketing",
         permiso: "campana:read",
       },

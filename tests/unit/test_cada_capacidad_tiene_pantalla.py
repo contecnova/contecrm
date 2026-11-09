@@ -1022,7 +1022,13 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # encargos en el portal, acciones del sobre de firma, reunión en línea,
 # deduplicar leads, duplicar y traspasar, importar con reversión, lote desde la
 # tabla y previsión por jerarquía. Cada una vista en el navegador.
-TOPE_SIN_PANTALLA = 63
+# 09-11-2026, tercera: 63 → 33. La primera tanda de las que constaban hechas y
+# simulaban, construida de verdad y vista en el navegador: modelos predictivos
+# entrenados y asistente con conocimiento y acciones; audiencias, mejor hora,
+# vista previa y spam, transaccional separado, atribución, lienzo y A/B;
+# historial de ajustes, grupo de empresas, consumo a facturación, archivado,
+# sandbox de API, segundo factor por proveedor; y declaradas las alcanzables.
+TOPE_SIN_PANTALLA = 33
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -37,6 +37,13 @@
  * cada apunte, el mismo que la pantalla de error deja copiar. Comprobado con
  * una escritura real: su `X-Request-Id` encuentra su apunte.
  *
+ * Y el archivo de histórico de verdad (CRM-07.03.01.02), por servicio: sus
+ * clases de dato con los días a partir de los que se archiva cada una —se
+ * cambian aquí y quedan como ajuste del tenant—, cuántas filas movería hoy,
+ * simular, archivar y consultar lo archivado. Comprobado el 09-11-2026 con
+ * pruebas por HTTP contra `party`: fijar 30 días a «actividades», archivar
+ * una de hace 60, encontrarla por su cuenta y devolverla a la tabla viva.
+ *
  * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.05.04.06`
  * —event sourcing para reconstruir un agregado—, porque reconstruir pide el
  * identificador de un registro concreto y su sitio es la ficha de ese
@@ -47,6 +54,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ArchivoDelServicio } from "@/componentes/Archivo";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -256,6 +264,10 @@ export function Plataforma({ sesion }: { sesion: Sesion | null }) {
         puedeVer={puede(sesion, "datos:restaurar")}
       />
       <ComoSeCorta servicio={servicio} puedeVer={puede(sesion, "admin:read")} />
+      <ArchivoDelServicio
+        servicio={servicio}
+        puedeVer={puede(sesion, "admin:read")}
+      />
       <RastroCompleto
         servicio={servicio}
         puedeVer={puede(sesion, "admin:read")}

@@ -90,3 +90,21 @@ declarar(
         responsable=RESPONSABLE,
     )
 )
+
+
+declarar(
+    Tratamiento(
+        objeto="envios_programados",
+        # Se guarda la dirección a la que se mandó y lo que la persona hizo con
+        # el mensaje (abrir, clic, respuesta): sin eso no hay historial del que
+        # sacar su mejor hora, ni forma de explicar por qué recibió algo.
+        finalidad=(
+            "Programar cada envío a la hora y por el canal de la persona, y dejar "
+            "constancia de por dónde salió y qué hizo con él"
+        ),
+        base_legal="consentimiento",
+        plazo="Lo que el perfil de marketing: hasta que se retire el consentimiento",
+        destinatarios=("Proveedor de envío de correo o SMS configurado por el cliente",),
+        responsable=RESPONSABLE,
+    )
+)

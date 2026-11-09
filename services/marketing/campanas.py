@@ -83,6 +83,10 @@ ESTADOS_MIEMBRO = (
 ORDEN_MIEMBRO = {e: i for i, e in enumerate(ESTADOS_MIEMBRO)}
 
 MODELOS_ATRIBUCION = ("primer_toque", "ultimo_toque", "lineal", "en_u", "en_w", "decaimiento")
+# El que sale de los datos (cadena de Markov con efecto de eliminación). Va
+# aparte porque no se calcula con los toques de UN lead: necesita los caminos de
+# todos, los que acabaron en venta y los que no.
+DATA_DRIVEN = "data_driven"
 
 
 class Campana(Base, TimestampMixin, SoftDeleteMixin):
@@ -842,6 +846,57 @@ def repartir(
     ]
 
 
+def _prob_conversion(transiciones: dict[str, dict[str, int]], quitada: str = "") -> float:
+    """Probabilidad de llegar a «conversión» desde el inicio, sin pasar por `quitada`."""
+    prob: dict[str, dict[str, float]] = {}
+    for origen, destinos in transiciones.items():
+        total = sum(destinos.values())
+        fila: dict[str, float] = {}
+        for d, n in destinos.items():
+            clave = "(nulo)" if d == quitada else d
+            fila[clave] = fila.get(clave, 0.0) + (n / total if total else 0.0)
+        prob[origen] = fila
+    valor = {estado: 0.0 for estado in prob}
+    valor["(conversion)"] = 1.0
+    valor["(nulo)"] = 0.0
+    for _ in range(200):
+        for origen, destinos in prob.items():
+            if origen == quitada:
+                valor[origen] = 0.0
+                continue
+            valor[origen] = sum(p * valor.get(d, 0.0) for d, p in destinos.items())
+    return valor.get("(inicio)", 0.0)
+
+
+def efecto_de_eliminacion(caminos: list[tuple[list[str], bool]]) -> dict[str, Any]:
+    """Atribución basada en datos: cuánto cae la conversión si quitas cada campaña.
+
+    Cadena de Markov de primer orden sobre los caminos REALES —inicio, campañas
+    en el orden en que tocaron, y conversión o nada—. El peso de una campaña es
+    lo que baja la probabilidad de convertir si desaparece. A diferencia de los
+    modelos por posición, aquí una campaña que aparece en todos los caminos que
+    NO convierten pesa poco aunque sea la primera.
+    """
+    transiciones: dict[str, dict[str, int]] = {}
+    for pasos, convirtio in caminos:
+        estados = ["(inicio)", *pasos, "(conversion)" if convirtio else "(nulo)"]
+        for a, b in zip(estados, estados[1:], strict=False):
+            transiciones.setdefault(a, {})
+            transiciones[a][b] = transiciones[a].get(b, 0) + 1
+    base = _prob_conversion(transiciones)
+    campanas = sorted({c for pasos, _ in caminos for c in pasos})
+    efectos = {
+        c: (max(0.0, 1 - _prob_conversion(transiciones, c) / base) if base else 0.0)
+        for c in campanas
+    }
+    return {
+        "prob_conversion": round(base, 6),
+        "efectos": {c: round(e, 6) for c, e in efectos.items()},
+        "caminos": len(caminos),
+        "convertidos": sum(1 for _, c in caminos if c),
+    }
+
+
 def atribuir(
     db: Session,
     tenant_id: UUID,
@@ -850,6 +905,7 @@ def atribuir(
     importe: Decimal,
     modelos: list[str] | None = None,
     ventana_dias: int = 90,
+    convertidos: set[UUID] | None = None,
 ) -> dict[str, Any]:
     """Atribuye una venta a las campañas que la precedieron, con varios modelos.
 
@@ -858,7 +914,9 @@ def atribuir(
     lo que pase después — que es el resultado favorito de quien la lanzó y el
     motivo por el que nadie se fía del informe.
     """
-    modelos = modelos or list(MODELOS_ATRIBUCION)
+    modelos = modelos or [*MODELOS_ATRIBUCION, DATA_DRIVEN]
+    pide_datos = DATA_DRIVEN in modelos
+    modelos = [m for m in modelos if m != DATA_DRIVEN]
     desde = _ahora() - timedelta(days=ventana_dias)
     toques = list(
         db.execute(
@@ -874,18 +932,24 @@ def atribuir(
         .all()
     )
 
+    por_modelo = {
+        modelo: [
+            {"campana": r.campana, "peso": r.peso, "importe": str(r.importe)}
+            for r in repartir(toques, importe, modelo=modelo)
+        ]
+        for modelo in modelos
+    }
+    datos_modelo: dict[str, Any] | None = None
+    if pide_datos:
+        datos_modelo = _data_driven(db, tenant_id, toques, importe, desde, convertidos)
+        por_modelo[DATA_DRIVEN] = datos_modelo.pop("reparto")
     return {
         "lead_id": str(lead_id),
         "importe": str(importe),
         "ventana_dias": ventana_dias,
         "toques": len(toques),
-        "modelos": {
-            modelo: [
-                {"campana": r.campana, "peso": r.peso, "importe": str(r.importe)}
-                for r in repartir(toques, importe, modelo=modelo)
-            ]
-            for modelo in modelos
-        },
+        "modelos": por_modelo,
+        "data_driven": datos_modelo,
         # Sin toques no se atribuye a nadie, y se dice. Repartirlo «a la campaña
         # más reciente» inventaría un origen que no consta, que es exactamente
         # cómo se fabrica un ROI que no se sostiene.
@@ -897,6 +961,71 @@ def atribuir(
             "dos son defendibles. Elige el que encaje con cómo vendéis y "
             "mantenlo."
         ),
+    }
+
+
+def _data_driven(
+    db: Session,
+    tenant_id: UUID,
+    toques_del_lead: list[ToqueCampana],
+    importe: Decimal,
+    desde: datetime,
+    convertidos: set[UUID] | None,
+) -> dict[str, Any]:
+    """El reparto del lead con los pesos que salen de todos los caminos."""
+    if convertidos is None:
+        return {
+            "reparto": [],
+            "medible": False,
+            "aviso": "No se ha podido saber qué leads convirtieron (ventas no contesta): "
+            "sin eso no hay modelo basado en datos.",
+        }
+    por_lead: dict[UUID, list[ToqueCampana]] = {}
+    for t in db.execute(
+        select(ToqueCampana)
+        .where(
+            ToqueCampana.tenant_id == tenant_id,
+            ToqueCampana.lead_id.isnot(None),
+            ToqueCampana.ocurrio_at >= desde,
+        )
+        .order_by(ToqueCampana.ocurrio_at)
+    ).scalars():
+        por_lead.setdefault(t.lead_id, []).append(t)  # type: ignore[arg-type]
+    caminos = [
+        ([t.campana or "(sin campaña)" for t in ts], lead in convertidos)
+        for lead, ts in por_lead.items()
+    ]
+    modelo = efecto_de_eliminacion(caminos)
+    if not modelo["convertidos"] or not toques_del_lead:
+        return {
+            "reparto": [],
+            "medible": False,
+            **modelo,
+            "aviso": (
+                "Ningún camino de la ventana acabó en conversión: sin conversiones no "
+                "hay nada que eliminar y el modelo no dice nada."
+                if not modelo["convertidos"]
+                else "Este lead no tiene toques en la ventana."
+            ),
+        }
+    presentes = sorted({t.campana or "(sin campaña)" for t in toques_del_lead})
+    efectos = {c: modelo["efectos"].get(c, 0.0) for c in presentes}
+    total = sum(efectos.values())
+    reparto = [
+        {
+            "campana": c,
+            "peso": round(e / total, 6) if total else 0.0,
+            "importe": str(
+                (importe * Decimal(str(e / total if total else 0))).quantize(Decimal("0.01"))
+            ),
+        }
+        for c, e in sorted(efectos.items(), key=lambda x: -x[1])
+    ]
+    return {
+        "reparto": reparto,
+        "medible": total > 0,
+        **modelo,
+        "aviso": "" if total > 0 else "Las campañas de este lead no cambian la conversión.",
     }
 
 

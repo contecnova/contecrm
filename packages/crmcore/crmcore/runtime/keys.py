@@ -753,6 +753,29 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="papelera_dias_retencion",
             sensible=True,
         ),
+        # Archivado de histórico por criterio (CRM-07.03.01.02)
+        _c(
+            "archivado_dias_por_defecto",
+            "int",
+            "Días a partir de los cuales una fila se archiva, si su clase no tiene los suyos",
+            minimo=30,
+            maximo=36_500,
+            campo_settings="archivado_dias_por_defecto",
+        ),
+        _c(
+            "archivado_antiguedad_por_clase",
+            "json",
+            "Días a partir de los cuales se archiva cada clase de dato: {clase: días}",
+            campo_settings="archivado_antiguedad_por_clase",
+        ),
+        _c(
+            "archivado_tope_por_pasada",
+            "int",
+            "Filas que mueve como mucho cada pasada de archivado",
+            minimo=1,
+            maximo=100_000,
+            campo_settings="archivado_tope_por_pasada",
+        ),
         # Protección del dato
         _c(
             "politica_sensibilidad",
@@ -942,6 +965,52 @@ CLAVES: dict[str, ClaveAjuste] = {
             minimo=1,
             maximo=10_080,
             campo_settings="telemetria_silencio_min",
+        ),
+        # Consumo a facturación (CRM-00.01.06.07)
+        _c(
+            "facturacion_exportar_periodicamente",
+            "bool",
+            "Tomar el corte de consumo de cada periodo y mandarlo solo al sistema de facturación",
+            campo_settings="facturacion_exportar_periodicamente",
+        ),
+        _c(
+            "facturacion_destino_url",
+            "str",
+            "URL del sistema de facturación al que se manda el corte (firmado, como un webhook)",
+            campo_settings="facturacion_destino_url",
+            sensible=True,
+        ),
+        _c(
+            "facturacion_destino_cabeceras",
+            "json",
+            "Cabeceras que pide el sistema de facturación (su clave de API, por ejemplo)",
+            campo_settings="facturacion_destino_cabeceras",
+            sensible=True,
+        ),
+        _c(
+            "facturacion_formato_envio",
+            "str",
+            "Forma en que viaja el corte de consumo al sistema de facturación",
+            opciones=("json", "csv"),
+            campo_settings="facturacion_formato_envio",
+        ),
+        _c(
+            "facturacion_max_intentos",
+            "int",
+            "Intentos de envío de un corte antes de dejarlo en «fallido»",
+            minimo=1,
+            maximo=50,
+            campo_settings="facturacion_max_intentos",
+        ),
+        # Jerarquía de empresas (CRM-00.01.03.07)
+        _c(
+            "jerarquia_indicadores",
+            "json",
+            (
+                "Indicadores que la matriz suma de las empresas hijas que se los "
+                "comparten: lista de {nombre, ruta, campo, permiso, roles}"
+            ),
+            campo_settings="jerarquia_indicadores",
         ),
         _c(
             "canal_guardar_contenido",

@@ -442,15 +442,23 @@ def preguntar(datos: Preguntar, uow: UowDep, principal: AutenticadoDep) -> Any:
 @router.post(
     "/preguntar-datos",
     dependencies=[Depends(exige_permiso("ia:usar"))],
-    summary="Traducir una pregunta a un plan de consulta",
+    summary="Contestar una pregunta sobre los datos del CRM, ejecutándola",
     description=(
-        "El modelo **no toca la base de datos**: propone un plan que ejecuta quien "
-        "tiene el dato, con los permisos de quien pregunta. Y devuelve cómo "
-        "entendió la pregunta, para verlo antes de llevarse el número a una reunión."
+        "El modelo **no toca la base de datos**: lee el esquema real de cada "
+        "servicio con tus permisos, propone un plan y el plan se **ejecuta "
+        "contra la API de listados** del CRM, con tus permisos — nada de SQL "
+        "libre. Devuelve la respuesta, cómo entendió la pregunta y **la consulta "
+        "que se hizo** (ruta y parámetros), y dice si es parcial.\n\n"
+        "Con `modelo_datos` en el cuerpo sólo traduce a un plan contra ese "
+        "modelo, sin ejecutarlo."
     ),
 )
 def preguntar_datos(datos: PreguntarDatos, uow: UowDep, principal: AutenticadoDep) -> Any:
-    return rag_mod.preguntar_a_los_datos(uow, principal=principal, **datos.model_dump())
+    if datos.modelo_datos:
+        return rag_mod.preguntar_a_los_datos(uow, principal=principal, **datos.model_dump())
+    from services.intelligence import consulta_natural
+
+    return consulta_natural.preguntar(uow, pregunta=datos.pregunta, principal=principal)
 
 
 # ── Extracción ────────────────────────────────────────────────────────────
@@ -535,6 +543,7 @@ def historial(objeto: str, objeto_id: UUID, db: DbDep, principal: AutenticadoDep
 
 from services.intelligence.api_agentes import ROUTERS_AGENTES  # noqa: E402
 from services.intelligence.api_prediccion import ROUTERS_PREDICCION  # noqa: E402
+from services.intelligence.api_predictivo import ROUTERS_PREDICTIVO  # noqa: E402
 from services.intelligence.enrutador import ProveedorIA  # noqa: E402
 
 # ── Listados ──────────────────────────────────────────────────────────────
@@ -552,4 +561,11 @@ montar_listado(
 )
 
 
-ROUTERS = [router, router_modelos, router_uso, *ROUTERS_PREDICCION, *ROUTERS_AGENTES]
+ROUTERS = [
+    router,
+    router_modelos,
+    router_uso,
+    *ROUTERS_PREDICCION,
+    *ROUTERS_AGENTES,
+    *ROUTERS_PREDICTIVO,
+]

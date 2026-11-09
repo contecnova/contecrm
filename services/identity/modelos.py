@@ -562,3 +562,10 @@ from services.identity.chat import (  # noqa: E402,F401
     Presencia,
     ReaccionMensaje,
 )
+
+# El segundo factor verificado por el proveedor del tenant (CRM-00.05.01.22).
+# Aquí por lo mismo que el chat: sin importarlo, la migración no ve sus tablas.
+from services.identity.mfa_proveedor import (  # noqa: E402,F401
+    PerfilMfaProveedor,
+    VinculoMfaProveedor,
+)

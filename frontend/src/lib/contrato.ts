@@ -77,6 +77,16 @@ export interface CampoEsquema {
    * alguien quiere poder usar.
    */
   cuerpoEntero?: boolean;
+  /**
+   * El valor que pone el servidor si el campo no viaja.
+   *
+   * Sólo para ENSEÑARLO, no para mandarlo: guardarlo como valor del
+   * formulario haría que el del cliente tapara para siempre al del servidor.
+   * Medido el 09-11-2026 en «Sandboxes»: «Anonimizar» salía sin marcar y el
+   * servidor anonimizaba —su valor por defecto es `true`—, así que la pantalla
+   * decía lo contrario de lo que iba a pasar con los datos de los clientes.
+   */
+  porDefecto?: unknown;
 }
 
 interface Esquema {
@@ -93,6 +103,7 @@ interface Esquema {
   items?: Esquema;
   anyOf?: Esquema[];
   $ref?: string;
+  default?: unknown;
 }
 
 export interface Documento {
@@ -284,6 +295,24 @@ export function altaPorClave(
   return null;
 }
 
+/**
+ * La ruta a la que se da de alta por `POST`, si la colección lo admite.
+ *
+ * **Sin el filtro del listado.** Una pestaña que lista con filtro —«Claves de
+ * API» lista `/claves-api?revocada_at__vacio=true` para no enterrar las vivas
+ * entre las revocadas— mandaba el alta a esa misma ruta, filtro incluido, y el
+ * servidor la rechazaba con 422 («esta operación no mira revocada_at__vacio»).
+ * Medido el 09-11-2026 en el navegador: crear una clave de API desde su
+ * pantalla no era posible. El filtro es de la lista, no del alta.
+ */
+export function altaPorPost(
+  documento: Documento,
+  listar: string,
+): string | null {
+  if (!admite(documento, listar, "post")) return null;
+  return listar.split("?")[0] ?? listar;
+}
+
 export function camposDe(
   documento: Documento,
   ruta: string,
@@ -344,6 +373,7 @@ export function camposDe(
       formato: p.format ?? "",
       subcampos: subcamposDe(documento, elemento),
       referencia: p.referencia ?? "",
+      ...(p.default !== undefined ? { porDefecto: p.default } : {}),
     };
   });
 }

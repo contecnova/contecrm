@@ -61,6 +61,12 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   "tenants": [
     // Sandboxes: se crean, se copian anonimizados y se apagan desde su ficha.
     "CRM-07.02.01.02",
+    // La copia anonimizada: «Anonimizar» sale marcada (es lo que hace el
+    // servidor), «Copiar los datos al sandbox» y, mirando el sandbox, los
+    // 181 contactos salen como «Persona …» con correo @ejemplo.invalid y
+    // ninguno coincide con el original. Verificado en el navegador el
+    // 09-11-2026, y apagado después.
+    "CRM-00.05.03.05",
     "CRM-00.01.03.01",
     "CRM-00.01.03.04",
     "CRM-00.01.03.08",
@@ -105,6 +111,12 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // conectores instalables, los trabajos largos y el progreso de convivencia
   // con el CRM heredado.
   "procesos": [
+    // Integraciones › Nuevo, «Declarar una operación» con `transformar` y
+    // `validar`, y «Probar la conectividad»: cuatro registros de un JSON
+    // local, dos pasan recortados, en mayúsculas, con número, fecha ISO y
+    // código traducido, y dos se apartan (nombre vacío, estado fuera de la
+    // lista). Verificado en el navegador el 09-11-2026.
+    "CRM-00.03.04.04",
     // La ficha de una conexión: «Fijar/Rotar credenciales» con los campos que
     // pide su tipo de autenticación, cuándo y quién (nunca el valor), y
     // «Probar la conexión». Verificado en el navegador el 09-11-2026 contra un
@@ -199,6 +211,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // caducidad, sesiones revocables, dispositivos de confianza, roles y las
   // políticas de acceso editables desde aquí.
   "acceso": [
+    // Políticas de acceso › «Descargar en formato neutro»: baja la política
+    // entera (formato, tenant, semántica, políticas). Pulsado el 09-11-2026.
+    "CRM-00.05.02.06",
     "CRM-00.05.01.03",
     "CRM-00.05.01.07",
     "CRM-00.05.01.08",
@@ -218,6 +233,12 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // las apunta el gateway. Verificado el 05-11-2026 con una clave real: tres
     // llamadas, el 404 y el 403 contados como del integrador.
     "CRM-00.02.04.06",
+    // IP permitidas por credencial: «Nuevo» en Claves de API con «Ips
+    // permitidas»; una red mal escrita se rechaza al guardar, la clave con
+    // 203.0.113.0/24 contesta 401 desde aquí y la de la red local 200. Las
+    // del tenant entero son el ajuste «Reglas contextuales» (Empresas y
+    // unidades › Ajustes). Verificado en el navegador el 09-11-2026.
+    "CRM-00.02.04.04",
   ],
   // El modelo canónico de intercambio, los conflictos de sincronización, el
   // catálogo de eventos publicado, la cola de fallidos con su reenvío y el

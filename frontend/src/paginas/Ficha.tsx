@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
+import { ArchivadoDelRegistro } from "@/componentes/Archivo";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Tabla } from "@/componentes/Tabla";
 import {
@@ -28,9 +29,12 @@ import {
 import { nombreDelRegistro } from "@/lib/formato";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
+import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { CredencialesDeConexion } from "@/componentes/CredencialesDeConexion";
 import { ReunionEnLinea } from "@/componentes/ReunionEnLinea";
+import { AtribucionDeLead } from "@/componentes/AtribucionDeLead";
+import { VistaPreviaCorreo } from "@/componentes/VistaPreviaCorreo";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { SubColecciones } from "@/componentes/SubColecciones";
@@ -346,11 +350,30 @@ export function Ficha() {
           (CRM-00.01.04.08) y la sala de una reunión (CRM-06.01.03.10). Va
           encima de las pestañas para que se vea en cualquiera: escondido en
           una que no es la de entrada, cuenta como no hecho. */}
+      {/* La probabilidad de convertir, del modelo entrenado con los leads
+          convertidos y descartados (CRM-02.01.02.02). */}
+      {!editando && tipo === "lead" && id ? (
+        <PrediccionDelRegistro objeto="lead" id={id} />
+      ) : null}
       {!editando && tipo === "conexion" && id ? (
         <CredencialesDeConexion conexionId={id} />
       ) : null}
       {!editando && tipo === "actividad" && id && fila?.tipo === "reunion" ? (
         <ReunionEnLinea actividadId={id} actividad={fila} alCrear={cargar} />
+      ) : null}
+      {/* La atribución de la venta del lead, con el importe de su oportunidad
+          (CRM-02.02.01.06), y la plantilla montada con los datos de un contacto
+          real en varios clientes de correo (CRM-02.03.01.06). */}
+      {!editando && tipo === "lead" && id ? (
+        <AtribucionDeLead leadId={id} lead={fila} />
+      ) : null}
+      {!editando &&
+      recurso?.listar === "/api/v1/correo/plantillas" &&
+      typeof fila?.clave === "string" ? (
+        <VistaPreviaCorreo
+          clave={fila.clave}
+          idioma={typeof fila.idioma === "string" ? fila.idioma : "es"}
+        />
       ) : null}
 
       {confirmando ? (
@@ -379,7 +402,16 @@ export function Ficha() {
 
       <div className="mt-4">
         {fallo && !fila ? (
-          <Fallo error={fallo} reintentar={() => cargar()} />
+          <>
+            <Fallo error={fallo} reintentar={() => cargar()} />
+            {/* Un registro que ya no está en la tabla viva puede estar
+                archivado: aquí se dice dónde está y se puede devolver. */}
+            {recurso?.servicio && id ? (
+              <div className="mt-3">
+                <ArchivadoDelRegistro servicio={recurso.servicio} id={id} />
+              </div>
+            ) : null}
+          </>
         ) : !fila ? (
           <Cargando />
         ) : editando && recurso ? (
@@ -424,6 +456,10 @@ export function Ficha() {
                 ) : null}
                 {puedeTener("documentos") ? (
                   <Documentos tipo={tipo} id={id} nombre={nombre} />
+                ) : null}
+                {/* Lo archivado que cuelga de este registro (CRM-07.03.01.02). */}
+                {recurso?.servicio ? (
+                  <ArchivadoDelRegistro servicio={recurso.servicio} id={id} />
                 ) : null}
               </div>
             ) : null}

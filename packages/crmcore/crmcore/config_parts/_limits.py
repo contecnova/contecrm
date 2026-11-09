@@ -48,6 +48,14 @@ class _LimitsSettings(BaseSettings):
 
     # Meses que se quedan en la partición caliente antes de archivar.
     particion_meses_en_caliente: int = Field(13, ge=1, le=120)
+    # Archivado de histórico por criterio (CRM-07.03.01.02): a partir de
+    # cuántos días se archiva una clase de dato, la de cada clase si la tiene
+    # (`{"actividades": 1095}`) y cuántas filas mueve cada pasada. La pasada
+    # acotada por lo mismo que la purga: cien mil filas en una transacción la
+    # tienen abierta minutos y, si falla a la mitad, revierte entera.
+    archivado_dias_por_defecto: int = Field(730, ge=30, le=36_500)
+    archivado_antiguedad_por_clase: dict[str, int] = Field(default_factory=dict)
+    archivado_tope_por_pasada: int = Field(5_000, ge=1, le=100_000)
     # Cada cuánto hay que probar que una copia de seguridad se restaura. Una
     # copia que nunca se ha restaurado no es una copia: es una esperanza.
     recuperacion_dias_entre_pruebas: int = Field(90, ge=1, le=3650)
@@ -117,6 +125,19 @@ class _LimitsSettings(BaseSettings):
     # Coste máximo de una consulta a la superficie, y días que vive un sandbox.
     superficie_coste_maximo: int = Field(50, ge=1, le=100_000)
     sandbox_dias: int = Field(30, ge=1, le=3650)
+    # Qué colecciones llena de datos sintéticos el sandbox de API si quien lo
+    # pide no dice cuáles, y cuántas filas por colección (CRM-00.02.01.15).
+    # Sin `opportunities` de serie: una oportunidad exige un embudo con sus
+    # etapas, y un tenant de pruebas recién creado no tiene ninguno —medido el
+    # 09-11-2026 en la pila: 0 de 10, «no hay ningún pipeline configurado»—.
+    # Quien la quiera la pide, y el sandbox dice por qué no la pudo crear.
+    sandbox_api_objetos: list[str] = Field(
+        default_factory=lambda: ["accounts", "contacts", "activities"]
+    )
+    sandbox_api_filas_por_objeto: int = Field(10, ge=1, le=500)
+    # El dominio de los correos sintéticos: uno reservado para ejemplos (RFC
+    # 2606), que pasa la validación y no entrega a nadie.
+    sandbox_api_dominio_correo: str = Field("example.com", min_length=3)
     # Filas por inserción al copiar un tenant a su sandbox (CRM-07.02.01.02).
     # Una tabla ancha lo baja sola para no pasar del tope de parámetros de
     # Postgres; esto es el máximo, no lo que siempre se usa.

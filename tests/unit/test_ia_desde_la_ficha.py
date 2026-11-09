@@ -317,11 +317,12 @@ def test_la_respuesta_sugerida_y_el_asistente_devuelven_lo_que_contesta_el_model
         conversacion_id=uuid4(),
         pregunta="¿Cuándo vence el contrato?",
         fragmentos=[_fragmento()],
-        acciones_posibles=[{"nombre": "marzo", "ruta": "/api/v1/x"}],
         principal=quien,
     )
     assert "marzo" in asistente["texto"] and asistente["fuentes"]
-    assert asistente["acciones_propuestas"] == [{"nombre": "marzo", "ruta": "/api/v1/x"}]
+    # Las acciones ya no son «las que el llamante pasa y el texto nombra»: son
+    # de una lista cerrada y se proponen aparte (test_ia_predictivo_entrenado).
+    assert asistente["accion_propuesta"] is None and asistente["ejecutado"] is False
 
 
 def test_aceptar_un_dato_extraido_cambia_el_contacto_sin_borrar_lo_demas(

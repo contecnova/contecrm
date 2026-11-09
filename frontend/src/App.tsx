@@ -136,6 +136,14 @@ const Preguntar = pantalla(
   () => import("@/paginas/Preguntar"),
   (m) => m.Preguntar,
 );
+const ModelosPredictivos = pantalla(
+  () => import("@/paginas/ModelosPredictivos"),
+  (m) => m.ModelosPredictivos,
+);
+const Asistente = pantalla(
+  () => import("@/paginas/Asistente"),
+  (m) => m.Asistente,
+);
 const Rendimiento = pantalla(
   () => import("@/paginas/Rendimiento"),
   (m) => m.Rendimiento,
@@ -155,6 +163,18 @@ const Cuadros = pantalla(
 const Tcsec = pantalla(
   () => import("@/paginas/Tcsec"),
   (m) => m.Tcsec,
+);
+const HistorialDeAjustes = pantalla(
+  () => import("@/paginas/HistorialDeAjustes"),
+  (m) => m.HistorialDeAjustes,
+);
+const GrupoDeEmpresas = pantalla(
+  () => import("@/paginas/GrupoDeEmpresas"),
+  (m) => m.GrupoDeEmpresas,
+);
+const ConsumoAFacturacion = pantalla(
+  () => import("@/paginas/ConsumoAFacturacion"),
+  (m) => m.ConsumoAFacturacion,
 );
 const Segregacion = pantalla(
   () => import("@/paginas/Segregacion"),
@@ -225,6 +245,16 @@ const Territorios = pantalla(
   () => import("@/paginas/Territorios"),
   (m) => m.Territorios,
 );
+// El recorrido con su lienzo y la audiencia con su historial (CRM-02.02.02.01,
+// CRM-02.01.01.09): devuelven objetos que la ficha genérica no sabe pintar.
+const RecorridoDeMarketing = pantalla(
+  () => import("@/paginas/RecorridoDeMarketing"),
+  (m) => m.RecorridoDeMarketing,
+);
+const AudienciaPublicitaria = pantalla(
+  () => import("@/paginas/AudienciaPublicitaria"),
+  (m) => m.AudienciaPublicitaria,
+);
 const Segmento = pantalla(
   () => import("@/paginas/Segmento"),
   (m) => m.Segmento,
@@ -244,6 +274,10 @@ const Articulo = pantalla(
 const Entornos = pantalla(
   () => import("@/paginas/Entornos"),
   (m) => m.Entornos,
+);
+const SandboxDeApi = pantalla(
+  () => import("@/paginas/SandboxDeApi"),
+  (m) => m.SandboxDeApi,
 );
 const Canales = pantalla(
   () => import("@/paginas/Canales"),
@@ -490,6 +524,18 @@ export function App() {
             <Route path="/metodologias" element={<Metodologias />} />
             <Route path="/segregacion" element={<Segregacion />} />
             <Route path="/tcsec" element={<Tcsec />} />
+            <Route
+              path="/historial-de-ajustes"
+              element={<HistorialDeAjustes />}
+            />
+            <Route
+              path="/grupo-de-empresas"
+              element={<GrupoDeEmpresas sesion={sesion} />}
+            />
+            <Route
+              path="/consumo-a-facturacion"
+              element={<ConsumoAFacturacion />}
+            />
             {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
               —ajustes, fotos, desglose, deslizamiento— se dirigen por su
               clave, y pasarles el identificador las deja en 404. */}
@@ -604,11 +650,21 @@ export function App() {
               de una incidencia —«¿qué hay puesto ahí ahora mismo?»— no la
               contestaba ninguna pantalla. */}
             <Route path="/entornos" element={<Entornos />} />
+            {/* El sandbox de API con su consola (CRM-00.02.01.15). */}
+            <Route path="/sandbox-api" element={<SandboxDeApi />} />
             {/* La campaña tiene ficha propia porque sus cuatro preguntas
               devuelven OBJETOS: el consumo, el rendimiento con su plan vs
               real, el embudo y el resultado del evento. La ficha genérica
               sólo descubre paneles que devuelven listas. */}
             <Route path="/m/campanas/campana/:id" element={<Campana />} />
+            <Route
+              path="/m/campanas/recorrido/:id"
+              element={<RecorridoDeMarketing />}
+            />
+            <Route
+              path="/m/segmentos/audiencia_publicitaria/:id"
+              element={<AudienciaPublicitaria />}
+            />
             {/* El artículo tiene ficha propia porque sus tres preguntas
               devuelven OBJETOS: el artículo con su aviso, el estado de sus
               traducciones y la eficacia del conjunto. Y porque el título no
@@ -649,6 +705,11 @@ export function App() {
             <Route path="/coste" element={<Coste />} />
             <Route path="/inteligencia" element={<Inteligencia />} />
             <Route path="/preguntar" element={<Preguntar />} />
+            <Route
+              path="/modelos-predictivos"
+              element={<ModelosPredictivos />}
+            />
+            <Route path="/asistente" element={<Asistente />} />
             <Route path="/archivos" element={<Archivos />} />
             <Route path="/calendario" element={<Calendario />} />
             <Route path="/lo-que-sigo" element={<LoQueSigo />} />

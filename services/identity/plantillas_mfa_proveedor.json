@@ -1,0 +1,63 @@
+{
+  "_que_es": "Plantillas de perfil de segundo factor por proveedor (CRM-00.05.01.22). Son DATOS: rellenan el formulario del perfil y se pueden cambiar campo a campo. El código no sabe de ningún proveedor; lo que hace es llamar a la URL con el cuerpo y la autenticación declarados y leer la respuesta donde dice el perfil. Marcas: {{codigo}}, {{email}}, {{usuario}} (lo de antes de la arroba), {{id_peticion}}, {{var.X}} (variables del perfil), {{persona.X}} (datos de la persona en el proveedor) y {{secreto}} solo en la autenticación.",
+  "twilio_verify": {
+    "nombre": "Twilio Verify",
+    "url": "https://verify.twilio.com/v2/Services/{{var.service_sid}}/VerificationCheck",
+    "metodo": "POST",
+    "formato": "form",
+    "autenticacion": { "tipo": "basica", "usuario": "{{var.account_sid}}" },
+    "cabeceras": {},
+    "cuerpo": { "To": "{{persona.telefono}}", "Code": "{{codigo}}" },
+    "variables": { "service_sid": "", "account_sid": "" },
+    "campos_persona": ["telefono"],
+    "respuesta": { "campo": "status", "validos": ["approved"] },
+    "nota": "El secreto es el Auth Token de la cuenta. El teléfono de cada persona va en formato internacional (+34…)."
+  },
+  "okta_verify": {
+    "nombre": "Okta Verify",
+    "url": "https://{{var.dominio}}/api/v1/users/{{persona.okta_user_id}}/factors/{{persona.okta_factor_id}}/verify",
+    "metodo": "POST",
+    "formato": "json",
+    "autenticacion": { "tipo": "cabecera", "cabecera": "Authorization", "valor": "SSWS {{secreto}}" },
+    "cabeceras": { "Accept": "application/json" },
+    "cuerpo": { "passCode": "{{codigo}}" },
+    "variables": { "dominio": "" },
+    "campos_persona": ["okta_user_id", "okta_factor_id"],
+    "respuesta": { "campo": "factorResult", "validos": ["SUCCESS"] },
+    "nota": "El secreto es un token de API de Okta. Cada persona necesita su identificador de usuario y el del factor TOTP de Okta Verify."
+  },
+  "duo": {
+    "nombre": "Duo",
+    "url": "https://{{var.api_host}}/auth/v2/auth",
+    "metodo": "POST",
+    "formato": "form",
+    "autenticacion": { "tipo": "basica", "usuario": "{{var.integration_key}}" },
+    "cabeceras": {},
+    "cuerpo": { "username": "{{usuario}}", "factor": "passcode", "passcode": "{{codigo}}" },
+    "variables": { "api_host": "", "integration_key": "" },
+    "campos_persona": [],
+    "respuesta": { "campo": "response.result", "validos": ["allow"] },
+    "nota": "La Auth API de Duo firma cada petición con HMAC (fecha, método, host, ruta y parámetros). El transporte genérico manda la credencial tal cual, así que contra Duo directo hace falta una pasarela que firme delante; su dirección va en api_host."
+  },
+  "rsa_securid": {
+    "nombre": "RSA SecurID",
+    "url": "https://{{var.dominio}}/mfa/v1_1/authn/initialize",
+    "metodo": "POST",
+    "formato": "json",
+    "autenticacion": { "tipo": "cabecera", "cabecera": "client-key", "valor": "{{secreto}}" },
+    "cabeceras": {},
+    "cuerpo": {
+      "clientId": "{{var.client_id}}",
+      "subjectName": "{{usuario}}",
+      "context": { "messageId": "{{id_peticion}}" },
+      "authnAttemptTimeout": 180,
+      "subjectCredentials": [
+        { "methodId": "SECURID", "collectedInputs": [{ "name": "SECURID", "value": "{{codigo}}" }] }
+      ]
+    },
+    "variables": { "dominio": "", "client_id": "" },
+    "campos_persona": [],
+    "respuesta": { "campo": "attemptResponseCode", "validos": ["SUCCESS"] },
+    "nota": "El secreto es la client-key de la Cloud Authentication Service. Se manda el código en la misma llamada que abre el intento."
+  }
+}

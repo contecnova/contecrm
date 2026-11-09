@@ -127,6 +127,77 @@ class AjustesIntelligence(Settings):
     # para eso es un ajuste y no una constante.
     ia_caracteres_resultado_paso: int = Field(20_000, ge=200, le=200_000)
 
+    # ── Modelos entrenados con el histórico del CRM (CRM-02.01.02.02, ─────
+    # CRM-05.02.01.02, CRM-05.02.01.03, CRM-02.01.01.08)
+    #
+    # AUC mínimo, medido sobre el periodo apartado, para PUBLICAR un
+    # clasificador. 0,5 es tirar una moneda; por debajo de esto el modelo se
+    # guarda con sus métricas y no puntúa, y se dice.
+    ia_auc_minimo_publicar: float = Field(0.6, ge=0.5, le=1.0)
+    # Cuánto tiene que mejorar una regresión —importe, días hasta el cierre— al
+    # «decir siempre la mediana» del entrenamiento, en % de error medio. Una
+    # regresión que no le gana a la mediana es la mediana con decimales.
+    ia_mejora_minima_regresion_pct: float = Field(5.0, ge=0.0, le=100.0)
+    # Casos mínimos para una regresión (importe de lo ganado, días hasta el
+    # cierre). Más bajo que el de un clasificador porque aquí no hay clases
+    # que equilibrar; por debajo, el error medido depende de cuatro casos.
+    ia_minimo_casos_regresion: int = Field(100, ge=10, le=1_000_000)
+    # Cada cuántos días se reentrena un modelo programado.
+    ia_reentreno_dias: int = Field(30, ge=1, le=365)
+    # Cada cuánto mira el servicio si toca reentrenar alguno, en segundos.
+    ia_reentreno_comprobar_s: int = Field(3600, ge=60, le=86_400)
+    # Tope de registros que se leen del CRM para entrenar. Lo que pase se dice
+    # («entrenado con los N más recientes»), no se recorta en silencio.
+    ia_entreno_tope_registros: int = Field(20_000, ge=100, le=1_000_000)
+    # Regularización de los modelos lineales. Sin ella, con pocas filas y una
+    # categoría rara, un peso se dispara y la explicación dice que «ser de
+    # Soria» vale más que todo lo demás junto.
+    ia_regularizacion_l2: float = Field(1.0, ge=0.0, le=1_000.0)
+    # Vueltas máximas del ajuste (Newton). Converge en menos de diez casi
+    # siempre; el tope está para que un caso degenerado no se coma la CPU.
+    ia_entreno_iteraciones: int = Field(25, ge=1, le=500)
+    # Ventana de la propensión a compra: «compra en los próximos N días».
+    ia_propension_horizonte_dias: int = Field(180, ge=7, le=1_095)
+    # Categorías que se convierten en variable (origen, embudo…). Las demás
+    # van juntas a «otros»: una categoría con tres casos no enseña nada y
+    # dispara un peso.
+    ia_categorias_maximas: int = Field(8, ge=1, le=50)
+    # Casos mínimos de una categoría para que tenga variable propia.
+    ia_minimo_por_categoria: int = Field(10, ge=1, le=10_000)
+    # Cuántos días vale una predicción guardada antes de recalcularla.
+    ia_prediccion_vigencia_dias: int = Field(7, ge=1, le=365)
+    # Siguiente mejor oferta: cuentas con al menos dos productos que hacen
+    # falta para recomendar por coocurrencia. Con menos, «los que compraron X
+    # también compraron Y» es una anécdota.
+    ia_nbo_minimo_cuentas: int = Field(10, ge=2, le=100_000)
+    # Cuántas oportunidades ganadas se leen línea a línea para la siguiente
+    # mejor oferta: son una llamada cada una.
+    ia_nbo_tope_oportunidades: int = Field(2_000, ge=10, le=100_000)
+    # Recomendaciones que se enseñan por cuenta.
+    ia_nbo_recomendaciones: int = Field(3, ge=1, le=20)
+
+    # ── Preguntas en lenguaje natural sobre los datos (CRM-05.02.02.04) ───
+    # De qué servicios se ofrece el esquema al modelo. Sólo los que guardan
+    # registros de negocio: las tablas de configuración no se preguntan así.
+    ia_consulta_servicios: str = "sales,party,service,marketing"
+    # Cuántos objetos se describen campo a campo en la petición al modelo: los
+    # que más se parecen a la pregunta. Los demás van sólo por su nombre.
+    ia_consulta_objetos_detallados: int = Field(4, ge=1, le=30)
+    # Filas que se leen como mucho para contestar. Si hay más, la respuesta
+    # se da sobre las leídas y se dice que es parcial.
+    ia_consulta_tope_filas: int = Field(2_000, ge=50, le=100_000)
+    # Filas de ejemplo que vuelven con la respuesta.
+    ia_consulta_filas_devueltas: int = Field(50, ge=1, le=500)
+
+    # ── El asistente con conocimiento y acciones (CRM-04.03.02.02) ────────
+    # Fragmentos del índice que se le pasan al modelo por pregunta.
+    ia_asistente_fragmentos: int = Field(5, ge=1, le=30)
+    # Parecido mínimo de un fragmento para usarlo. Por debajo, se contesta
+    # «no lo sé» antes de mandarle al modelo algo que no tiene que ver.
+    ia_asistente_parecido_minimo: float = Field(0.3, ge=0.0, le=1.0)
+    # Horas que vale una acción propuesta antes de poder confirmarla.
+    ia_asistente_caducidad_horas: int = Field(24, ge=1, le=720)
+
 
 # ── Cuáles se pueden afinar POR CLIENTE y cuáles no ───────────────────────
 #
@@ -172,6 +243,73 @@ registrar_claves(
             minimo=1,
             maximo=50,
             campo_settings="ia_factores_visibles",
+        ),
+        # Los de los modelos entrenados con el histórico: se leen al entrenar
+        # y al puntuar, que tienen sesión, así que sí se pueden afinar por
+        # cliente desde la consola.
+        ClaveAjuste(
+            clave="ia_auc_minimo_publicar",
+            tipo="float",
+            descripcion="AUC mínimo, medido en el periodo apartado, para publicar un clasificador",
+            minimo=0.5,
+            maximo=1.0,
+            campo_settings="ia_auc_minimo_publicar",
+        ),
+        ClaveAjuste(
+            clave="ia_mejora_minima_regresion_pct",
+            tipo="float",
+            descripcion="Cuánto tiene que mejorar una regresión a «decir siempre la mediana» (%)",
+            minimo=0.0,
+            maximo=100.0,
+            campo_settings="ia_mejora_minima_regresion_pct",
+        ),
+        ClaveAjuste(
+            clave="ia_reentreno_dias",
+            tipo="int",
+            descripcion="Cada cuántos días se reentrena un modelo programado",
+            minimo=1,
+            maximo=365,
+            campo_settings="ia_reentreno_dias",
+        ),
+        ClaveAjuste(
+            clave="ia_propension_horizonte_dias",
+            tipo="int",
+            descripcion="Ventana de la propensión a compra, en días",
+            minimo=7,
+            maximo=1_095,
+            campo_settings="ia_propension_horizonte_dias",
+        ),
+        ClaveAjuste(
+            clave="ia_prediccion_vigencia_dias",
+            tipo="int",
+            descripcion="Días que vale una predicción guardada antes de recalcularla",
+            minimo=1,
+            maximo=365,
+            campo_settings="ia_prediccion_vigencia_dias",
+        ),
+        ClaveAjuste(
+            clave="ia_nbo_minimo_cuentas",
+            tipo="int",
+            descripcion="Cuentas con dos o más productos necesarias para la siguiente mejor oferta",
+            minimo=2,
+            maximo=100_000,
+            campo_settings="ia_nbo_minimo_cuentas",
+        ),
+        ClaveAjuste(
+            clave="ia_consulta_tope_filas",
+            tipo="int",
+            descripcion="Filas que se leen como mucho al contestar una pregunta sobre los datos",
+            minimo=50,
+            maximo=100_000,
+            campo_settings="ia_consulta_tope_filas",
+        ),
+        ClaveAjuste(
+            clave="ia_asistente_parecido_minimo",
+            tipo="float",
+            descripcion="Parecido mínimo de un fragmento del conocimiento para usarlo",
+            minimo=0.0,
+            maximo=1.0,
+            campo_settings="ia_asistente_parecido_minimo",
         ),
     ]
 )

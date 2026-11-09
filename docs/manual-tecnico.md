@@ -1303,6 +1303,78 @@ salud de cuenta, formatos y moneda. Todo ello **con historial**: se puede ver qu
 valor había en una fecha y quién lo cambió, que es lo que permite explicar por qué
 un cálculo de hace tres meses dio otro número.
 
+### 3.3.1 Historial de ajustes, jerarquía de empresas y consumo a facturación (CRM-00.01.04.02, CRM-00.01.03.07, CRM-00.01.06.07)
+
+**Historial de ajustes.** `rt.fijar` anota cada cambio en `versiones_ajuste`
+(`crmcore/runtime/versiones.py`) con el valor de antes y el de después. Rutas en
+`services/tenancy/api.py`, todas sobre el tenant de quien llama:
+
+| Ruta | Permiso | Qué hace |
+| --- | --- | --- |
+| `GET /api/v1/ajustes/versiones?clave=&limite=` | `tenant:read` | historial y lista de claves con cambios |
+| `GET /api/v1/ajustes/versiones/diferencias?desde=&hasta=` | `tenant:read` | qué cambió entre dos momentos, colapsado por clave |
+| `GET /api/v1/ajustes/versiones/comparar?a=&b=` | `tenant:read` | diferencias entrada a entrada entre dos versiones de la misma clave y ámbito |
+| `POST /api/v1/ajustes/versiones/{id}/volver` | `tenant:write` | vuelve al valor de antes de ese cambio |
+
+Volver pasa por `fijar` (se replica como cualquier cambio) con
+`tipo_version="vuelta_atras"`, así que deja **un** apunte —antes dejaba dos— y
+la auditoría `ajuste.vuelta_atras`. Si el valor de antes era `None` (el ámbito
+no tenía valor propio) se llama a `rt.quitar` y el ámbito vuelve a heredar.
+Pantalla: `/historial-de-ajustes` (Entornos y despliegue).
+
+**Jerarquía de empresas.** Columnas nuevas en `tenants` (migración
+`20261109_1600_jerarquia_y_consumo_a_facturacion`): `relacion_padre`
+(`matriz_filial`, `franquicia`, `holding`), `comparte_con_padre` (`consumo`,
+`indicadores`), `comparte_actualizado_at/por`. Lógica en
+`services/tenancy/jerarquia.py`, rutas en `api_jerarquia.py`:
+
+| Ruta | Quién | Qué hace |
+| --- | --- | --- |
+| `GET /api/v1/tenants/{id}/jerarquia` | la propia o la plataforma | árbol: su línea hacia arriba y sus descendientes (sin hermanas); la plataforma, desde la raíz |
+| `PUT /api/v1/tenants/{id}/jerarquia` | plataforma | colgar de otra con su relación; rechaza ciclos; cambiar de padre borra lo compartido |
+| `PUT /api/v1/tenants/{id}/jerarquia/comparticion` | **sólo la propia** (`tenant:write`) | qué deja ver a su matriz |
+| `GET /api/v1/tenants/{id}/jerarquia/agregado` | la propia o la plataforma | lo compartido por cada descendiente y los totales |
+
+El agregado no lee filas de otra empresa: a cada hija que lo ha autorizado se le
+pregunta por HTTP firmado con su identidad —el consumo en `/estado/consumo` de
+cada módulo, los indicadores en las rutas del ajuste `jerarquia_indicadores`
+(`{nombre, ruta, campo, permiso, roles}`, sólo el permiso y los roles que pide
+cada uno)— y se queda sólo con el número. A la que no comparte no se le pregunta.
+La firma lleva una identidad de lectura fija (`identidad_de_lectura()`, un
+UUIDv5): sin usuario la firma es anónima y cada módulo contesta 401 —medido el
+09-11-2026, el corte periódico y el agregado salían con los trece módulos sin
+leer—. Los totales del embudo de serie piden el rol `admin` porque un agregado
+del importe exige verlo en claro (sin rol, 403 `proyeccion.campo_no_usable`).
+
+**Consumo a facturación.** `services/tenancy/facturacion.py`, tabla
+`cortes_consumo`. Un corte compone el consumo del tenant preguntando a cada
+servicio de `RUTAS_SERVICIOS` (salvo el gateway); el que no contesta va a
+`no_leidos` y el corte queda `completo=false`. Formato neutro, columnas
+`periodo, tenant, modulo, metrica, cantidad, unidad, tope` (tope vacío = sin
+límite). Se envía como un webhook de la casa: `cliente_seguro` (guard de SSRF),
+firma HMAC (`crmcore.security.firma`), cabecera `x-crm-corte` para deduplicar y
+las cabeceras de `facturacion_destino_cabeceras`.
+
+| Ruta | Permiso | Qué hace |
+| --- | --- | --- |
+| `GET /api/v1/facturacion/destino` | `tenant:read` | si hay destino (sólo la máquina), formato, si es periódico |
+| `GET /api/v1/facturacion/cortes` | `tenant:read` | cortes con su estado de envío |
+| `POST /api/v1/facturacion/cortes` `{enviar}` | `tenant:write` | toma el corte ahora y, si se pide, lo manda |
+| `GET /api/v1/facturacion/cortes/{id}/exportar?formato=csv\|json` | `tenant:read` | fichero y contenido |
+| `POST /api/v1/facturacion/cortes/{id}/enviar` | `tenant:write` | manda o reenvía |
+
+Estados: `abierto` (periodo en curso, lo rehace la tarea), `pendiente`,
+`enviado` (con el código), `fallido` (con el porqué e intentos), `sin_destino`.
+La tarea `tenancy.consumo_a_facturacion` (cada `TAREA_FACTURACION_INTERVALO_S`)
+recorre los tenants activos: si `facturacion_exportar_periodicamente` está
+encendido, rehace el corte del periodo en curso y manda los de periodos cerrados
+hasta `facturacion_max_intentos`. El corte de un mes es el último tomado dentro
+de él: lo que puede faltar del final es, como mucho, un intervalo de la tarea.
+Ajustes: `facturacion_destino_url`, `facturacion_destino_cabeceras` (sensibles),
+`facturacion_formato_envio` (`json`/`csv`), `facturacion_max_intentos`,
+`jerarquia_indicadores`. Pantallas: `/grupo-de-empresas` y
+`/consumo-a-facturacion` (Usuarios y empresa).
+
 ### 3.4 Vocabularios de negocio
 
 Un ajuste es un número o un interruptor. Un **vocabulario** es una lista de
@@ -4048,6 +4120,60 @@ El embudo **se pincha**. Dice cuántos hay en cada estado, y lo que hace falta
 para trabajar es quiénes: la diferencia entre «40 han hecho clic» y poder
 llamarlos es toda, y la ruta de miembros ya filtraba por estado para eso.
 
+### 4.6.30 bis Marketing que sale de verdad (09-11-2026)
+
+- **Tablas** (migración `alembic/versions/marketing/20261109_1603_audiencias_sincronizadas_y_envios_.py`):
+  `audiencias_publicitarias`, `miembros_audiencia_publicitaria`,
+  `sincronizaciones_audiencia` y `envios_programados`.
+- **Código**: `services/marketing/audiencias_sync.py` (sincronizar),
+  `envios.py` (elegir hora y canal, programar, despachar, sucesos),
+  `vista_correo.py` (datos reales, recomendaciones, montaje, spam, salida por
+  clase), `api_envios.py` (rutas). En `recorridos.py`, el paso de acción con
+  plantilla programa el envío, la prueba A/B aplica su ganadora y hay
+  `actualizar_lienzo`; en `campanas.py`, `efecto_de_eliminacion` (Markov).
+- **Rutas**: `/audiencias-publicitarias` (+`/{id}/sincronizar`),
+  `/envios-programados` (+`/despachar`, `/{id}/suceso`),
+  `POST /campanas/{id}/programar-envio`,
+  `GET /correo/plantillas/{clave}/vista-previa`, `GET /correo/salida`,
+  `GET|PUT /recorridos/{id}/lienzo`, `GET /recorridos/{id}/inscritos`,
+  `GET /momento/destinatario/{id}`.
+- **Por HTTP** (`crmcore.http.interno.invocar`, con la identidad de quien pide):
+  `integration` (invocar la operación de la conexión), `party` (contacto,
+  cuentas, `puede-contactar`) y `sales` (oportunidades, líneas, catálogo, leads
+  convertidos). Ningún import entre servicios.
+- **Conector**: un valor que es sólo `{{marcador}}` y apunta a una lista u objeto
+  se manda tal cual (antes salía la representación de Python).
+- **Envío**: `crmcore.notificaciones.smtp.TransporteSMTP` para el correo y
+  `TransporteHTTP` (`canal_sms`) para SMS.
+- **Lo que sale solo** (migración `20261109_1735_quien_programo_el_envio_y_quien_.py`):
+  dos tareas periódicas en `services/marketing/main.py` (`_tareas()`, con
+  `crmcore.tareas.Tarea`/`por_tenant` y `RelevoDeTareas`):
+  `marketing.avanzar_recorridos` (`recorridos.avanzar_solos`, cada
+  `recorridos_avanzar_cada_s`, como mucho `recorridos_avance_lote` personas por
+  tenant) y `marketing.despachar_envios` (`envios.despachar_vencidos`, cada
+  `envios_despachar_cada_s`, como mucho `envios_despacho_max_por_vuelta` envíos,
+  **uno por transacción**). Los intervalos se leen al arrancar. Cada envío guarda
+  quién lo programó (`programado_por_id` + `programado_con`: tipo, permisos y
+  roles en foto) y cada recorrido quién lo publicó (`publicado_por_id` +
+  `publicado_con`); lo automático actúa con esa identidad y sólo con esos
+  permisos (`envios.invocar_como`). Sin ella, el envío se queda `programado`
+  con motivo «No consta quién lo programó…» y el recorrido publicado no avanza
+  solo y sale en `sin_identidad`. Filas con `FOR UPDATE SKIP LOCKED`: dos
+  procesos no despachan ni mueven dos veces lo mismo. Un fallo de un tenant no
+  para a los demás (`por_tenant`); un fallo de un envío queda en ese envío
+  (savepoint) y no deshace los que ya salieron. A mano
+  (`/envios-programados/despachar`, `/recorridos/avanzar`) actúa quien lo pide.
+- **Ajustes** (`services/marketing/ajustes.py`): `audiencia_*`, `momento_*`,
+  `remitente_*`, `correo_flujo_*`, `correo_url_baja`, `vista_previa_clientes`,
+  `spam_*`, `recomendaciones_maximo`, `prueba_significacion`,
+  `prueba_desviar_al_ganador`, `envios_despachar_cada_s`,
+  `envios_despacho_max_por_vuelta`, `recorridos_avanzar_cada_s`,
+  `recorridos_avance_lote`.
+- **Pantallas**: `paginas/RecorridoDeMarketing.tsx`,
+  `paginas/AudienciaPublicitaria.tsx`, `componentes/EnviosDeMarketing.tsx`
+  (en la campaña), `componentes/VistaPreviaCorreo.tsx` (ficha de plantilla) y
+  `componentes/AtribucionDeLead.tsx` (ficha del lead).
+
 ### 4.6.31 Un artículo: a quién llega, en qué idiomas y si sirve
 
 La lista enseña título, estado y vistas. Las tres preguntas de delante de un
@@ -4584,7 +4710,151 @@ Pruebas: `tests/unit/test_dedupe_leads_al_capturar.py`,
 `test_sales_duplicar_jerarquia_lote_por_http.py`,
 `frontend/src/pruebas/lote_duplicado_e_importar.test.tsx`.
 
+### 4.6.44 Archivo de histórico por criterio (CRM-07.03.01.02)
+
+`crmcore.datos.archivado` sabía archivar y consultar y no lo llamaba nadie: la
+única ruta, `POST /{servicio}/volumen/archivar`, planifica sobre filas tecleadas.
+Ahora `crmcore/http/volumen_router.py` monta en cada servicio, bajo
+`/{servicio}/volumen/archivo`:
+
+| Ruta | Permiso | Qué hace |
+|---|---|---|
+| `GET /archivo/clases` | `admin:read` | Clases de dato del servicio (`retencion.CLASES`) con sus días, el corte y las filas que movería hoy |
+| `PUT /archivo/clases/{clase}` | `admin:write` | Fija los días de la clase en el ajuste `archivado_antiguedad_por_clase` del tenant (`dias: null` la devuelve al general) |
+| `POST /archivo/archivar` | `admin:write` | `{clase, simular}`; simula por defecto; mueve como mucho `archivado_tope_por_pasada` filas |
+| `GET /archivo` | `admin:read` | Por `clase`, `desde`/`hasta`, `registro_id` o `relacionado_con` (`jsonb_path_exists` sobre los valores de primer nivel del contenido) |
+| `GET /archivo/resumen` | `admin:read` | Filas por clase y de cuándo |
+
+El corte es `fechas.hoy(db) − días`, con el día del cliente. Ajustes nuevos
+(Settings + `ClaveAjuste`): `ARCHIVADO_DIAS_POR_DEFECTO` (730),
+`ARCHIVADO_ANTIGUEDAD_POR_CLASE` (`{}`), `ARCHIVADO_TOPE_POR_PASADA` (5000). Hoy
+tienen tabla `filas_archivadas` `party` y `sales`; los demás contestan
+`hay_archivo: false` (se mira con `to_regclass`) en vez de un 500, y
+`archivar`/`desarchivar` responden 422 `archivado.sin_archivo`. Sin migración
+nueva. Pruebas: `tests/unit/test_archivado_consultable.py`.
+
+En el front, `componentes/Archivo.tsx`: `ArchivoDelServicio` en Plataforma y
+cumplimiento (por el selector de servicio) y `ArchivadoDelRegistro` en la
+pestaña «Relacionado» de la ficha genérica, en la de cuenta y debajo del error
+de una ficha cuyo registro ya no está en la tabla viva.
+
+### 4.6.45 Sandbox de API con datos sintéticos y consola (CRM-00.02.01.15)
+
+`POST /integracion/sandbox` (gateway, `integracion:write`) hace ahora, en
+`services/gateway/sandbox_api.py`:
+
+1. `POST /sandboxes` a tenancy con la identidad de quien llama (necesita
+   además `tenancy:write`): un tenant hijo con caducidad. No se pide la copia.
+2. Para cada colección de `objetos` (vacío: `SANDBOX_API_OBJETOS`), lee el
+   contrato del servicio dueño (`/api/v1/openapi.json`), resuelve el esquema
+   del `POST` y genera `filas_por_objeto` cuerpos (vacío:
+   `SANDBOX_API_FILAS_POR_OBJETO`): obligatorios, correos
+   (`SANDBOX_API_DOMINIO_CORREO`, `example.com`) y referencias a lo ya creado,
+   que se casan por el parámetro de la ruta de la ficha
+   (`/accounts/{cuenta_id}` → `cuenta_id`). Se mandan al servicio con el
+   tenant del sandbox, tipo `servicio` y los permisos de quien lo pidió.
+3. `POST /claves-api` a identity en el tenant del sandbox, rol
+   `integracion`, `dias = SANDBOX_DIAS`. Como `servicio` no pide
+   reverificación: la clave no alcanza los datos de la empresa.
+
+Devuelve `sandbox_id`, `tenant_sandbox_id`, por colección `creadas`/`pedidas`
+y el primer error, y la credencial (el secreto, una sola vez). La consola
+(`paginas/SandboxDeApi.tsx`, ruta `/sandbox-api`) llama con `fetch` directo,
+`credentials: "omit"` y `Authorization: Bearer <clave>`, sin la cabecera de
+tenant mirado. Pruebas: `tests/unit/test_sandbox_de_api.py`.
+
+### Lo cerrado al verlo en el navegador (09-11-2026)
+
+- `Recurso.descargas` (`frontend/src/lib/modulos.ts`, pintado por
+  `componentes/Descargas.tsx` en `Modulo.tsx`): un `GET` que devuelve un
+  documento y se guarda como fichero. Lo usa *Políticas de acceso* con
+  `GET /api/v1/politicas-acceso/publicar` (CRM-00.05.02.06).
+- «Probar un registro» en `paginas/ObjetoDelModelo.tsx` llama a
+  `POST /api/v1/metadata/objetos/{nombre}/validar` (CRM-00.02.03.07).
+- Login web: casilla «Recordar este equipo» → `recordar_dispositivo`; si la
+  instalación no recuerda equipos (`dispositivo_confianza_dias` = 0), identity
+  entra igual y lo anota (`auth.dispositivo_no_recordado`) en vez de deshacer la
+  entrada con 403. Ojo: el login corre sin tenant en el contexto, así que sólo
+  aplica el valor global del ajuste, no el de la empresa.
+- `mfa_proveedor.verificar_en_login` audita con el `tenant_id` explícito: sin
+  él, la auditoría daba 422 `auditoria.sin_tenant` en el login.
+- `facturacion` → tenancy en `crmcore/rutas_de_api.py` (el gateway daba 404).
+- `Cuenta.tsx` pinta `ArchivadoDelRegistro` bajo el «No existe».
+- `SANDBOX_API_OBJETOS` sin `opportunities` de serie: un tenant recién creado
+  no tiene embudo.
+
 ## 5. Operación
+
+### 4.6.46 Modelos entrenados con el histórico, asistente con acciones y preguntas que se ejecutan (CRM-02.01.02.02, CRM-05.02.01.02, CRM-05.02.01.03, CRM-02.01.01.08, CRM-04.03.02.02, CRM-05.02.02.04)
+
+**Modelos.** `services/intelligence/predictivo.py`. Lee por HTTP
+(`crmcore.http.interno.invocar`) `GET /api/v1/leads`, `GET /api/v1/opportunities?estado=`
+(vacío: el listado da por defecto sólo las abiertas) y, para la siguiente
+oferta, `GET /api/v1/opportunities/{id}/lineas` de cada ganada. Entrenar lee con
+identidad de **agente** y sólo `lead:read`/`opportunity:read`, a nombre de quien
+lo pide (el modelo es del tenant entero); puntuar y segmentar leen con la
+identidad de **quien pide** (`tipo=usuario`, sus permisos y roles). Sin numpy:
+logística por Newton/IRLS y ridge por eliminación gaussiana (`ajustar_logistica`,
+`ajustar_lineal`, `resolver`), AUC por rangos. Los rasgos se calculan con las
+mismas funciones al entrenar y al puntuar (`rasgos_oportunidad`, `rasgos_lead`,
+`rasgos_cuenta`), y `Historial` sólo cuenta lo cerrado antes de la fecha. Partición
+por fecha (`particion`, `IA_PCT_VALIDACION`); escalado y categorías aprendidos
+sólo del entrenamiento (`preparar`). `veredicto` decide la publicación.
+
+`modelos_ml` gana `definicion` (escalas, categorías, intervalo, `origen=historico`)
+y `entrenado_por`; estado nuevo `descartada`; tipo nuevo `siguiente_oferta`
+(familia `recomendacion`, métricas `acierto_top`/`muestras`). Un modelo
+`origen=historico` no se puntúa por `POST /ia/prediccion` (rasgos tecleados): 422
+`prediccion.modelo_por_id`. Las puntuaciones se guardan en `predicciones` con
+caducidad `ia_prediccion_vigencia_dias` y se reutilizan mientras el modelo sea el
+mismo. Reentreno: tabla `programaciones_entreno` y tarea
+`intelligence.reentreno` en `main._tareas` (cada `IA_REENTRENO_COMPROBAR_S`).
+
+Rutas (`api_predictivo.py`): `POST /ia/predictivo/{tipo}/entrenar`
+(`ia:administrar`), `GET /ia/predictivo/versiones`, `GET /ia/predictivo/programaciones`,
+`PUT /ia/predictivo/{tipo}/programacion` (`ia:administrar`),
+`GET /ia/predictivo/{lead|oportunidad|cuenta}/{id}?recalcular=`,
+`POST /ia/predictivo/segmento` (crea en marketing `POST /segmentos` con
+`cuenta.objeto_id en […]` y `POST /segmentos/{id}/congelar`).
+
+**Asistente.** `asistencia.conversar` recupera con `indice.buscar` (artículo,
+caso resuelto, lección; descarta por debajo de `ia_asistente_parecido_minimo`) y
+contesta con `rag.responder`. `acciones_asistente.py`: lista cerrada `ACCIONES`
+(tarea, nota, caso, lead) con ruta, permiso, campos fijos y declarados; el puerto
+`_proponer_accion` (`puerto.py`) elige una o ninguna; se guarda en
+`acciones_asistente` como `propuesta` con caducidad
+(`IA_ASISTENTE_CADUCIDAD_HORAS`). `POST /ia/asistente/acciones/{id}`
+`{confirmar, argumentos}` la ejecuta por `invocar` con la identidad de quien
+preguntó y `Idempotency-Key=asistente-{id}`; sólo la confirma quien la pidió
+(403), una vez (409), con los obligatorios (422). `GET /ia/asistente/acciones`.
+
+**Preguntas a los datos.** `consulta_natural.py`, desde `POST /ia/preguntar-datos`
+cuando no se manda `modelo_datos`. Esquema: `GET /api/v1/{servicio}/filtros`
+(servicios en `IA_CONSULTA_SERVICIOS`), campos filtrables de los objetos más
+parecidos a la pregunta (`/{servicio}/filtros/{objeto}`), valores de estado
+(`/{servicio}/estados/{objeto}`) y los parámetros con valor por defecto del
+listado, leídos de su OpenAPI. El plan (`rag.preguntar_a_los_datos`, prompt en
+`puerto._traducir_a_plan`) se normaliza, se valida y se ejecuta paginando el
+listado con los operadores de URL (`A_URL`); `contiene`/`empieza` no se
+ejecutan. Tope `IA_CONSULTA_TOPE_FILAS`. La respuesta trae `consulta`
+(ruta, parámetros, `por_defecto_del_listado`), `parcial` y `campos_tapados`.
+
+**Arreglado al construirlo:** `rag.RE_CITA` no leía citas agrupadas («[1, 2]»),
+que es como cita el modelo real, y descartaba respuestas bien citadas.
+
+Ajustes nuevos (`services/intelligence/ajustes.py`, editables por tenant los que
+llevan clave): `IA_AUC_MINIMO_PUBLICAR`, `IA_MEJORA_MINIMA_REGRESION_PCT`,
+`IA_MINIMO_CASOS_REGRESION`, `IA_REENTRENO_DIAS`, `IA_REENTRENO_COMPROBAR_S`,
+`IA_ENTRENO_TOPE_REGISTROS`, `IA_REGULARIZACION_L2`, `IA_ENTRENO_ITERACIONES`,
+`IA_PROPENSION_HORIZONTE_DIAS`, `IA_CATEGORIAS_MAXIMAS`, `IA_MINIMO_POR_CATEGORIA`,
+`IA_PREDICCION_VIGENCIA_DIAS`, `IA_NBO_MINIMO_CUENTAS`, `IA_NBO_TOPE_OPORTUNIDADES`,
+`IA_NBO_RECOMENDACIONES`, `IA_CONSULTA_SERVICIOS`, `IA_CONSULTA_OBJETOS_DETALLADOS`,
+`IA_CONSULTA_TOPE_FILAS`, `IA_CONSULTA_FILAS_DEVUELTAS`, `IA_ASISTENTE_FRAGMENTOS`,
+`IA_ASISTENTE_PARECIDO_MINIMO`, `IA_ASISTENTE_CADUCIDAD_HORAS`. Migración
+`alembic/versions/intelligence/20261109_1604_modelos_entrenados_con_el_historico_y_.py`.
+Pruebas: `tests/unit/test_ia_predictivo_entrenado.py`,
+`tests/unit/test_ia_predictivo_por_http.py`,
+`frontend/src/pruebas/modelos_predictivos_y_asistente.test.tsx`.
 
 ### 5.1 Copias y restauración
 
@@ -4666,6 +4936,43 @@ Una cadena por servicio en `alembic/versions/<servicio>/`. Reglas:
   encola y empuja **sólo** las filas `objeto=tenant` del propio tenant
   (`suite_conector.aplicar_alta_tenant`); `GET /suite/provisionar/tenant` da el
   estado por herramienta, con `sin_alta` para las que nunca se pidieron.
+
+#### Segundo factor por proveedor (CRM-00.05.01.22)
+
+- **Módulo** `services/identity/mfa_proveedor.py`; rutas en
+  `api_mfa_proveedor.py` bajo `/api/v1/mfa-proveedor` (prefijo en
+  `crmcore/rutas_de_api.py` → identidad). Tablas `perfiles_mfa_proveedor` y
+  `vinculos_mfa_proveedor` (migración
+  `alembic/versions/identity/20261109_1500_segundo_factor_por_proveedor.py`).
+- **Plantillas** en `services/identity/plantillas_mfa_proveedor.json`: Twilio
+  Verify, Okta Verify, Duo y RSA SecurID. Son datos con la forma del perfil;
+  no hay código de ningún proveedor. Marcas: `{{codigo}}`, `{{email}}`,
+  `{{usuario}}` (antes de la arroba), `{{id_peticion}}`, `{{var.X}}`
+  (variables del perfil), `{{persona.X}}` (vínculo de la persona) y
+  `{{secreto}}` **sólo** en la autenticación (`ninguna`, `basica`, `bearer`,
+  `cabecera`). `validar` rechaza al guardar una marca sin origen
+  (`mfa_proveedor.marca_desconocida`), el secreto fuera de la autenticación y
+  un perfil que no manda el código.
+- **Secreto** cifrado con `cifrar(..., proposito="idp")`; la API devuelve
+  `tiene_secreto` y nunca el valor. «Probar» devuelve la petición con secreto y
+  código tapados.
+- **Llamada** por `crmcore.red.cliente_seguro` (guard de SSRF; un host interno
+  necesita `url_guard_hosts_permitidos`) con `http_externo_timeout_s`. Lee la
+  respuesta por ruta con puntos (`respuesta.campo`) contra `respuesta.validos`;
+  sin campo, vale un 2xx. Una marca sin valor (p. ej. la persona sin teléfono)
+  **no llama**.
+- **Login** (`servicio.autenticar` y `_verificar_segundo_factor`): TOTP propio →
+  perfil activo del tenant → OTP → recuperación. Con un perfil activo y la
+  persona vinculada (`mfa_proveedor.aplica_a`), a quien no tiene TOTP propio ya
+  no se le corta con `auth.mfa_no_configurada`, y la MFA adaptativa también le
+  pide el código. Si el proveedor no contesta, no se entra (`auth.mfa_invalida`).
+  Cada verificación queda en auditoría (`mfa_proveedor.verificado` /
+  `.rechazado`). Uno activo por empresa (`mfa_proveedor.ya_hay_uno_activo`).
+- **Límite conocido**: la Auth API de Duo firma cada petición con HMAC; el
+  transporte genérico manda la credencial tal cual, así que contra Duo directo
+  hace falta una pasarela de firma delante (lo dice la nota de la plantilla).
+- Pruebas: `tests/unit/test_segundo_factor_por_proveedor.py` (doble HTTP real en
+  127.0.0.1) y `frontend/src/pruebas/segundo_factor_por_proveedor.test.tsx`.
 
 ### 5.4 Cuando algo va mal
 

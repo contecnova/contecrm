@@ -189,29 +189,29 @@ El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.
   sólo en parte), 11 necesitan pantalla y ~34 **constan hechas y sólo
   simulan** —calculan sobre datos tecleados, devuelven un plan sin ejecutarlo
   o no guardan—. Decidido por formulario **construirlas todas**:
-  - [ ] IA: modelos predictivos entrenados con el histórico (scoring, cierre,
+  - [x] IA: modelos predictivos entrenados con el histórico (scoring, cierre,
     importe, fecha, propensión, siguiente oferta, segmentación).
   - [ ] IA: transcripción y resumen de llamadas y reuniones, con compromisos.
-  - [ ] IA: asistente que busca en el conocimiento y ejecuta acciones; preguntas
+  - [x] IA: asistente que busca en el conocimiento y ejecuta acciones; preguntas
     en lenguaje natural que se ejecutan.
   - [ ] IA: variantes de copy generadas, con revisión; asistente de voz.
-  - [ ] Marketing: audiencias a plataformas publicitarias.
-  - [ ] Marketing: mejor hora y canal aplicados al envío y a los recorridos.
-  - [ ] Marketing: recomendaciones en la personalización; previsualización en
+  - [x] Marketing: audiencias a plataformas publicitarias.
+  - [x] Marketing: mejor hora y canal aplicados al envío y a los recorridos.
+  - [x] Marketing: recomendaciones en la personalización; previsualización en
     varios clientes y spam score real.
-  - [ ] Marketing: transaccional por su dominio, separado del promocional.
+  - [x] Marketing: transaccional por su dominio, separado del promocional.
   - [ ] Telefonía/CTI y marcador sobre la telefonía del tenant.
   - [ ] Analítica de cohortes, embudo y actividad con datos del CRM;
     instantáneas programadas; consulta al lake del cliente.
   - [ ] Suite: avisos y consultas en Teams/Slack, reuniones y asistentes
     registrados, notas/ficheros/chats por referencia guardados.
   - [ ] Compensación externa y SLA de proveedor frente al prometido.
-  - [ ] Historial de configuración con diff y vuelta atrás; jerarquía de
+  - [x] Historial de configuración con diff y vuelta atrás; jerarquía de
     empresas completa; consumo exportable a facturación.
   - [ ] Calidad del dato: golden record, enriquecimiento externo, identidad
     entre canales, umbral por objeto, direcciones.
-  - [ ] Archivado consultable y modo sin conexión.
-  - [ ] Sandbox de API con datos sintéticos y consola; MFA por proveedor.
+  - [ ] Archivado consultable (hecho) y modo sin conexión (pendiente).
+  - [x] Sandbox de API con datos sintéticos y consola; MFA por proveedor.
   - [ ] Las 11 pantallas que faltan y declarar las ~19 alcanzables.
 - **Arreglado al medir (09-11-2026)**: el inicio de sesión web no mandaba nunca
   el código del segundo factor —con él exigido, nadie entraba—; el consumo de

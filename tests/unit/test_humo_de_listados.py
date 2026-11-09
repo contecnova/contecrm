@@ -493,6 +493,11 @@ def test_el_postgres_de_desarrollo_no_se_recoge() -> None:
 # que no esté ni marcado ni aquí, esta prueba lo dice.
 AISLAMIENTO_DE_DOMINIO = {
     "test_adjuntos_y_notificaciones.py",
+    # 09-11-2026: el archivo consultable comprueba que una empresa no consulta
+    # lo archivado de otra, y la jerarquía que la matriz sólo ve lo que la hija
+    # comparte; el caso genérico lo barre el fuzzing en cada push.
+    "test_archivado_consultable.py",
+    "test_versionado_jerarquia_y_consumo_a_facturacion.py",
     # Las cuatro de los bloques de auditoría del catálogo (26-10-2026). Las tres
     # primeras comprueban aislamiento **de paso**: lo suyo es la jerarquía de
     # ajustes, el modelo extensible y el motor de reglas, y el caso genérico

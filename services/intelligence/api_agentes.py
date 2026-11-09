@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
@@ -231,10 +231,10 @@ class SugerirRespuesta(BaseModel):
 
 
 class Conversar(BaseModel):
-    conversacion_id: UUID
-    pregunta: str
+    conversacion_id: UUID = Field(default_factory=uuid4)
+    pregunta: str = Field(..., min_length=2)
+    # Opcional: sin ellos, el asistente busca en el índice de conocimiento.
     fragmentos: list[dict[str, Any]] = Field(default_factory=list)
-    acciones_posibles: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ResumenCuenta(BaseModel):
@@ -272,10 +272,12 @@ def sugerir_respuesta(cuerpo: SugerirRespuesta, uow: UowDep, principal: Autentic
     dependencies=[Depends(exige_permiso("ia:usar"))],
     summary="Asistente con conocimiento y acciones (CRM-04.03.02.02)",
     description=(
-        "La parte transaccional **no se ejecuta aquí**: devuelve qué acción "
-        "propone, para que la ejecute el agente con su tope, su aprobación y su "
-        "reversión. Un chatbot que escribe directamente en el CRM es un chatbot "
-        "sin ninguno de esos controles."
+        "Busca en el **índice de conocimiento** de la casa —artículos, casos "
+        "resueltos, lecciones— y contesta citando, o dice que no lo sabe.\n\n"
+        "Si hace falta hacer algo, propone **una acción de una lista cerrada** "
+        "(tarea, nota, caso, lead) con sus argumentos. **No se ejecuta aquí**: "
+        "se confirma con `POST /ia/asistente/acciones/{id}` y entonces va por la "
+        "API del CRM con tu identidad y tus permisos."
     ),
 )
 def conversar(cuerpo: Conversar, uow: UowDep, principal: AutenticadoDep) -> Any:
@@ -284,7 +286,6 @@ def conversar(cuerpo: Conversar, uow: UowDep, principal: AutenticadoDep) -> Any:
         conversacion_id=cuerpo.conversacion_id,
         pregunta=cuerpo.pregunta,
         fragmentos=cuerpo.fragmentos,
-        acciones_posibles=cuerpo.acciones_posibles,
         principal=principal,
     )
 

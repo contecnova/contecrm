@@ -395,6 +395,11 @@ from services.marketing import tratamientos  # noqa: E402,F401
 
 # Biblioteca de activos y aprobación de contenidos (CRM-02.04.01.01, .02).
 from services.marketing.activos import Activo, Aprobacion  # noqa: E402,F401
+from services.marketing.audiencias_sync import (  # noqa: E402,F401
+    AudienciaPublicitaria,
+    MiembroAudiencia,
+    SincronizacionAudiencia,
+)
 from services.marketing.canales import (  # noqa: E402,F401
     Canal,
     ConsentimientoCanal,
@@ -413,6 +418,7 @@ from services.marketing.correo import (  # noqa: E402,F401
     PlantillaMarketing,
     Preferencia,
 )
+from services.marketing.envios import EnvioProgramado  # noqa: E402,F401
 from services.marketing.fondos import (  # noqa: E402,F401
     FondoMdf,
     JustificacionMdf,

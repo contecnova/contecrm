@@ -45,7 +45,13 @@ logger = get_logger(__name__)
 
 # Cómo cita el modelo: [1], [2]… Se le pide así porque es lo que menos se
 # equivoca y lo más fácil de comprobar contra la lista que se le pasó.
-RE_CITA = re.compile(r"\[(\d{1,2})\]")
+#
+# **Y también agrupadas: «[1, 2, 3]».** Medido el 09-11-2026 con el modelo de
+# verdad: a «¿qué aprendimos de las ventas perdidas por precio?» contestó con
+# todas sus afirmaciones citadas así, y como esto sólo entendía «[1]» la
+# respuesta se tiraba por «no cita ninguna fuente». Una cita bien hecha que se
+# lee como ninguna.
+RE_CITA = re.compile(r"\[(\d{1,2}(?:\s*[,;]\s*\d{1,2})*)\]")
 
 # Operadores que puede proponer una pregunta en lenguaje natural. Cerrada: el
 # plan lo ejecuta otro, y un operador que no sepa traducir sería una consulta que
@@ -151,7 +157,12 @@ def responder(
     texto = str(respuesta.get("texto") or "")
     sin_respuesta = bool(respuesta.get("sin_respuesta")) or not texto.strip()
 
-    citados = {int(n) for n in RE_CITA.findall(texto) if n.isdigit()}
+    citados = {
+        int(n)
+        for grupo in RE_CITA.findall(texto)
+        for n in re.split(r"[,;\s]+", grupo)
+        if n.isdigit()
+    }
     validos = {f["n"] for f in numerados}
     inventadas = sorted(citados - validos)
     usadas = sorted(citados & validos)
@@ -276,6 +287,9 @@ def preguntar_a_los_datos(
     problemas: list[str] = []
 
     objetos = {str(o.get("clave") or o.get("nombre")) for o in (modelo_datos.get("objetos") or [])}
+    # Los que van sólo por su nombre también valen: sus campos los comprueba
+    # después quien ejecuta, contra el esquema de ese objeto.
+    objetos |= {str(o) for o in (modelo_datos.get("otros_objetos") or [])}
     objeto = str(plan.get("objeto") or "")
     if objetos and objeto not in objetos:
         problemas.append(f"El plan pregunta por «{objeto}», que no está en el modelo publicado.")

@@ -22,7 +22,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { altaPorClave, type Documento } from "@/lib/contrato";
+import { altaPorClave, altaPorPost, type Documento } from "@/lib/contrato";
 
 const DOC = {
   paths: {
@@ -58,7 +58,9 @@ describe("el alta por clave", () => {
   it("aguanta la ruta con parámetros de consulta y con barra final", () => {
     // El `listar` de un recurso puede traer su filtro puesto; la plantilla es
     // la misma. Sin esto, la pestaña que acota su listado se quedaba sin alta.
-    expect(altaPorClave(DOC, "/api/v1/grc/riesgos?estado=abierto")?.clave).toBe("codigo");
+    expect(altaPorClave(DOC, "/api/v1/grc/riesgos?estado=abierto")?.clave).toBe(
+      "codigo",
+    );
     expect(altaPorClave(DOC, "/api/v1/grc/riesgos/")?.clave).toBe("codigo");
   });
 });
@@ -90,5 +92,20 @@ describe("la pantalla de módulo", () => {
     );
     expect(fuente).toContain("camposConLaClave(");
     expect(fuente).toMatch(/delCuerpo\.find\(\(c\) => c\.nombre === clave\)/);
+  });
+});
+
+describe("el alta por POST", () => {
+  // Medido el 09-11-2026: «Claves de API» lista con filtro y el alta iba a la
+  // misma ruta CON el filtro, que el servidor rechaza con 422.
+  it("va a la colección sin el filtro de la lista", () => {
+    expect(altaPorPost(DOC, "/api/v1/cuentas?revocada_at__vacio=true")).toBe(
+      "/api/v1/cuentas",
+    );
+    expect(altaPorPost(DOC, "/api/v1/cuentas")).toBe("/api/v1/cuentas");
+  });
+
+  it("y no la hay donde la colección no admite POST", () => {
+    expect(altaPorPost(DOC, "/api/v1/grc/riesgos?x=1")).toBeNull();
   });
 });

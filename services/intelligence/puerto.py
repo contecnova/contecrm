@@ -217,14 +217,31 @@ def _traducir_a_plan(
         {
             "role": "system",
             "content": (
-                "Devuelve SOLO un JSON con `plan` {objeto, campos, filtros, "
-                "agrupar_por} y `interpretacion`, una frase en castellano que diga "
-                "cómo has entendido la pregunta. No escribas SQL."
+                "Traduces una pregunta sobre los datos de un CRM a un plan de "
+                "consulta. Devuelve SOLO un JSON con `plan` y `interpretacion`.\n"
+                "`plan` = {objeto, campos, filtros, agrupar_por, agregado}:\n"
+                "- objeto: una `clave` de `objetos` o un nombre de `otros_objetos`.\n"
+                "- campos: lista de campos a enseñar (pueden ir vacíos).\n"
+                "- filtros: lista de {campo, operador, valor}; operador uno de "
+                "=, !=, >, >=, <, <=, en (valor lista), vacio, no_vacio. Las "
+                "fechas en AAAA-MM-DD.\n"
+                "- agrupar_por: un campo o null.\n"
+                "- agregado: {funcion: cuenta|suma|media|minimo|maximo, campo}.\n"
+                "Usa SOLO campos que aparezcan en el objeto y, para el estado, los "
+                "valores de `valores_de_estado` tal cual. Si el objeto trae "
+                "`filtra_por_defecto` y la pregunta es sobre todos los registros, "
+                'pon ese campo con operador = y valor "" para quitarlo. '
+                "`interpretacion` es una "
+                "frase en castellano que diga cómo has entendido la pregunta, con "
+                "el periodo y los filtros. No escribas SQL."
             ),
         },
         {
             "role": "user",
-            "content": f"{pregunta}\n\nModelo de datos:\n{json.dumps(modelo_datos)[:6000]}",
+            "content": (
+                f"{pregunta}\n\nHoy es {_hoy_iso()}.\n\nModelo de datos:\n"
+                f"{json.dumps(modelo_datos, ensure_ascii=False)[:12000]}"
+            ),
         },
     ]
     salida = _llamar(
@@ -239,6 +256,67 @@ def _traducir_a_plan(
         "plan": datos.get("plan") or {},
         "interpretacion": datos.get("interpretacion") or "",
     }
+
+
+def _proponer_accion(
+    *,
+    proveedor: str,
+    modelo: str,
+    pregunta: str,
+    respuesta: str,
+    acciones: list[dict[str, Any]],
+    opt_out: bool,
+) -> dict[str, Any]:
+    """Si la petición pide HACER algo de la lista, cuál y con qué datos.
+
+    Se le enseña sólo la lista de quien pregunta y se le pide que no elija
+    ninguna si nadie ha pedido hacer nada: un asistente que propone una tarea a
+    cada pregunta acaba con todas descartadas sin leer.
+    """
+    import json
+
+    peticion = [
+        {
+            "role": "system",
+            "content": (
+                "Decides si la persona está pidiendo HACER algo en el CRM. Devuelve "
+                "SOLO un JSON con `accion` (una `clave` de la lista, o null si no "
+                "pide hacer nada), `argumentos` (sólo campos de esa acción, con "
+                "valores sacados de lo que ha escrito; no inventes ninguno) y "
+                "`porque` (una frase). Fechas en ISO 8601."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Petición: {pregunta}\n\nRespuesta ya dada: {respuesta or '(ninguna)'}\n\n"
+                f"Hoy es {_hoy_iso()}.\n\n"
+                f"Acciones: {json.dumps(acciones, ensure_ascii=False)}"
+            ),
+        },
+    ]
+    salida = _llamar(
+        proveedor=proveedor, modelo=modelo, mensajes=peticion, opt_out=opt_out, formato_json=True
+    )
+    try:
+        datos = json.loads(salida.get("texto") or "{}")
+    except json.JSONDecodeError:
+        datos = {}
+    if not isinstance(datos, dict):
+        datos = {}
+    return {
+        **salida,
+        "accion": datos.get("accion") or None,
+        "argumentos": datos.get("argumentos") if isinstance(datos.get("argumentos"), dict) else {},
+        "porque": str(datos.get("porque") or ""),
+    }
+
+
+def _hoy_iso() -> str:
+    """La fecha de hoy, para que «este año» o «el mes pasado» se traduzcan bien."""
+    from datetime import date
+
+    return date.today().isoformat()
 
 
 def _extraer(
@@ -603,7 +681,15 @@ def _repartir_argumentos(
 
 def conectar() -> None:
     """Registra los puertos en sus módulos."""
-    from services.intelligence import agentes, conversacion, extraccion, generacion, indice, rag
+    from services.intelligence import (
+        acciones_asistente,
+        agentes,
+        conversacion,
+        extraccion,
+        generacion,
+        indice,
+        rag,
+    )
 
     generacion.registrar_generador(_generar)
     rag.registrar_respondedor(_responder)
@@ -615,4 +701,5 @@ def conectar() -> None:
     agentes.registrar_continuador(_siguiente_paso)
     agentes.registrar_invocador(_invocar_herramienta)
     indice.registrar_incrustador(_incrustar)
+    acciones_asistente.registrar_proponedor(_proponer_accion)
     logger.info("intelligence.puertos_conectados")

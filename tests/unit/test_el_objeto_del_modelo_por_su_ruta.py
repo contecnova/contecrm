@@ -40,6 +40,7 @@ LIMITES = "/api/v1/metadata/objetos/{nombre}/limites"
 TRAZABILIDAD = "/api/v1/metadata/objetos/{nombre}/trazabilidad"
 TIPOS = "/api/v1/metadata/objetos/{nombre}/tipos"
 CAMPOS = "/api/v1/metadata/objetos/{nombre}/campos"
+VALIDAR = "/api/v1/metadata/objetos/{nombre}/validar"
 
 
 @pytest.fixture
@@ -227,3 +228,28 @@ def test_la_previsualizacion_dice_a_cuantos_afecta_y_distingue_el_no_lo_se(
     assert previo["hay_cambios"] is True
     assert previo["version_al_publicar"] == previo["version_actual"] + 1
     assert previo["registros"] is None or isinstance(previo["registros"], int)
+
+
+def test_probar_un_registro_dice_lo_mismo_que_al_guardar(
+    cliente: Any, cabeceras: dict[str, str], un_objeto: dict[str, Any]
+) -> None:
+    """«Probar un registro» (CRM-00.02.03.07): lo que lee la pantalla.
+
+    La pantalla pinta `valido` y, por cada error, `campo` y `mensaje`. Con el
+    obligatorio vacío no pasa y lo dice en ESE campo; relleno, pasa. Y como
+    cambio (`parcial`), el obligatorio que no se manda no se exige.
+    """
+    ruta = VALIDAR.format(nombre="encargo_taller")
+    r = cliente.post(ruta, json={"datos": {}}, headers=cabeceras)
+    assert r.status_code == 200, r.text[:300]
+    cuerpo = r.json()
+    assert cuerpo["valido"] is False
+    assert [e["campo"] for e in cuerpo["errores"]] == ["matricula"]
+    assert cuerpo["errores"][0]["mensaje"]
+
+    r = cliente.post(ruta, json={"datos": {"matricula": "1234ABC"}}, headers=cabeceras)
+    assert r.json()["valido"] is True
+    assert r.json()["valores"]["matricula"] == "1234ABC"
+
+    r = cliente.post(ruta, json={"datos": {}, "parcial": True}, headers=cabeceras)
+    assert r.json()["valido"] is True

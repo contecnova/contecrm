@@ -25,9 +25,19 @@
  *   · **¿qué pierdo si lo quito?** Lo que se borra y lo que se queda, antes de
  *     tocar el botón y no después.
  *
+ * Y los paquetes instalables por tenant con sus dependencias
+ * (CRM-07.02.01.09), verificado en el navegador el 09-11-2026 con dos módulos
+ * de prueba: instalar el que depende antes que el otro contesta «Falta el
+ * módulo…» y «Se puede instalar: no»; con los dos puestos, el ensayo de
+ * quitar el de abajo dice «No se puede quitar: … depende de este módulo» y no
+ * ofrece el botón; quitados en orden, los dos.
+ *
  * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.04.04.06`
  * —los conectores que vienen dentro de un módulo—, porque aquí se ve el
- * módulo y no sus conectores; y
+ * módulo y no sus conectores, y porque el 09-11-2026 no se pudo ver llegar
+ * ninguno: el conector viaja en el evento `module.installed` y la pila local
+ * corre con el bus en memoria, así que `integration` no lo recibe (cero
+ * entradas de `integration-modulos`, tampoco la del 05-11); y
  * `CRM-00.04.04.11` —el módulo de ejemplo documentado—, que es un entregable
  * del repositorio y no una pantalla.
  */
@@ -70,11 +80,27 @@ interface Telemetria {
   instalado_hace_dias: number;
   elementos: number;
   usados: number;
-  sin_usar: string[];
-  modificados_por_el_cliente: string[];
+  sin_usar: Elemento[];
+  modificados_por_el_cliente: Elemento[];
   mas_usados: { elemento: string; veces: number }[];
   concluyente: boolean;
   aviso: string;
+}
+
+/**
+ * Un elemento del módulo como lo devuelve la telemetría: con su sección y su
+ * nombre sin prefijo. Se pintaba con `join` como si fuera un texto y salía
+ * «Sin usar nunca: [object Object]» (medido el 09-11-2026).
+ */
+type Elemento = string | { seccion?: string; clave?: string; nombre?: string };
+
+function nombresDe(elementos: Elemento[], cuantos: number): string {
+  return elementos
+    .slice(0, cuantos)
+    .map((e) =>
+      typeof e === "string" ? e : String(e.nombre || e.clave || "?"),
+    )
+    .join(", ");
 }
 
 interface Superficie {
@@ -249,16 +275,14 @@ export function ModuloInstalado() {
             {telemetria.sin_usar.length ? (
               <p className="mt-1 text-rotulo text-ink-muted">
                 {t("modulo.sinUsar", {
-                  cuales: telemetria.sin_usar.slice(0, 8).join(", "),
+                  cuales: nombresDe(telemetria.sin_usar, 8),
                 })}
               </p>
             ) : null}
             {telemetria.modificados_por_el_cliente.length ? (
               <p className="text-rotulo text-ink-faint">
                 {t("modulo.ajustados", {
-                  cuales: telemetria.modificados_por_el_cliente
-                    .slice(0, 6)
-                    .join(", "),
+                  cuales: nombresDe(telemetria.modificados_por_el_cliente, 6),
                 })}
               </p>
             ) : null}
@@ -387,11 +411,15 @@ function Quitar({ clave }: { clave: string }) {
           {ensayo.modificados_por_el_cliente.length ? (
             <p className="text-rotulo text-warning">
               {t("modulo.ajustadosSePierden", {
-                cuales: ensayo.modificados_por_el_cliente.slice(0, 8).join(", "),
+                cuales: ensayo.modificados_por_el_cliente
+                  .slice(0, 8)
+                  .join(", "),
               })}
             </p>
           ) : null}
-          <p className="text-rotulo text-ink">{ensayo.que_pasa_con_los_datos}</p>
+          <p className="text-rotulo text-ink">
+            {ensayo.que_pasa_con_los_datos}
+          </p>
           {ensayo.se_puede_desinstalar ? (
             <>
               <label className="mt-1 flex items-center gap-2 text-dato text-ink">
@@ -405,7 +433,9 @@ function Quitar({ clave }: { clave: string }) {
                 />
                 {t("modulo.borrarDatos")}
               </label>
-              <p className="text-rotulo text-ink-faint">{t("modulo.borrarDatosAviso")}</p>
+              <p className="text-rotulo text-ink-faint">
+                {t("modulo.borrarDatosAviso")}
+              </p>
               <div className="mt-2">
                 <button
                   type="button"
@@ -419,7 +449,9 @@ function Quitar({ clave }: { clave: string }) {
             </>
           ) : (
             <p className="text-rotulo text-danger">
-              {t("modulo.dependen", { cuales: ensayo.modulos_que_dependen.join(", ") })}
+              {t("modulo.dependen", {
+                cuales: ensayo.modulos_que_dependen.join(", "),
+              })}
             </p>
           )}
         </div>

@@ -211,6 +211,11 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
   const [pideCodigo, setPideCodigo] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [porQueCodigo, setPorQueCodigo] = useState("");
+  // Recordar este equipo al pasar el segundo factor (CRM-00.05.01.20). Sin
+  // esta casilla la MFA adaptativa (CRM-00.05.01.21) no servía de nada en el
+  // navegador: ningún equipo quedaba de confianza, así que el código se pedía
+  // SIEMPRE y nunca «sólo cuando cambia el contexto» —medido el 09-11-2026—.
+  const [recordar, setRecordar] = useState(false);
   // Al pedirlo, el foco va al campo: es lo único que queda por hacer.
   useEffect(() => {
     if (pideCodigo) document.getElementById("entrar-codigo")?.focus();
@@ -249,6 +254,9 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
           tenant,
           huella_dispositivo: huellaDelNavegador(),
           ...(pideCodigo && codigo.trim() ? { codigo_mfa: codigo.trim() } : {}),
+          ...(pideCodigo && codigo.trim() && recordar
+            ? { recordar_dispositivo: true }
+            : {}),
         },
       });
       alEntrar();
@@ -581,6 +589,14 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                       onChange={(e) => setCodigo(e.target.value)}
                       className={cl.campo}
                     />
+                    <label className="flex items-center gap-2 text-rotulo text-ink-muted">
+                      <input
+                        type="checkbox"
+                        checked={recordar}
+                        onChange={(e) => setRecordar(e.target.checked)}
+                      />
+                      {t("entrar.recordarEquipo")}
+                    </label>
                   </div>
                 ) : null}
 

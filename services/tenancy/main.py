@@ -23,7 +23,7 @@ def _tareas() -> list[object]:
     """
     from crmcore.config import get_settings
     from crmcore.db.session import sesion
-    from crmcore.tareas import Tarea
+    from crmcore.tareas import Tarea, por_tenant
 
     from services.tenancy.alta import purgar
 
@@ -34,7 +34,37 @@ def _tareas() -> list[object]:
         with sesion(sistema=True) as db:
             return {"borradas": purgar(db, dias=int(s.onboarding_retencion_dias))}
 
-    return [Tarea("tenancy.altas_pendientes", int(s.tarea_purgas_intervalo_s), _purgar_altas)]
+    return [
+        Tarea("tenancy.altas_pendientes", int(s.tarea_purgas_intervalo_s), _purgar_altas),
+        # El corte de consumo para facturación (CRM-00.01.06.07): se rehace el
+        # del periodo en curso y se mandan los de periodos cerrados. Cada tenant
+        # decide con su ajuste si se exporta solo; los que no, no hacen nada.
+        Tarea(
+            "tenancy.consumo_a_facturacion",
+            int(s.tarea_facturacion_intervalo_s),
+            por_tenant(_tenants_activos, _cortar_consumo),
+        ),
+    ]
+
+
+def _tenants_activos() -> list[object]:
+    from crmcore.db.session import sesion
+    from sqlalchemy import select
+
+    from services.tenancy.modelos import Tenant
+
+    with sesion(sistema=True) as db:
+        return list(db.execute(select(Tenant.id).where(Tenant.estado == "activo")).scalars().all())
+
+
+def _cortar_consumo(tenant_id: object) -> dict[str, object]:
+    from crmcore.db.session import sesion
+    from crmcore.tenancy.context import con_contexto
+
+    from services.tenancy.facturacion import barrer
+
+    with con_contexto(tenant_id=tenant_id, origen="tareas"), sesion(tenant_id) as db:  # type: ignore[arg-type]
+        return barrer(db, tenant_id)  # type: ignore[arg-type]
 
 
 async def _al_arrancar() -> None:

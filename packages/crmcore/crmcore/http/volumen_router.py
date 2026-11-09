@@ -29,16 +29,36 @@ evitar.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from crmcore import fechas
+from crmcore.datos import archivado as arch
 from crmcore.datos import particionado as part
 from crmcore.datos.archivado import desarchivar as _desarchivar
+from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+
+
+class ArchivarPorCriterioIn(BaseModel):
+    clase: str = Field(..., min_length=1, description="Una clase de dato declarada del servicio")
+    simular: bool = Field(
+        True,
+        description="Por defecto sólo dice qué movería: diez mil filas se miran antes",
+    )
+
+
+class AntiguedadIn(BaseModel):
+    dias: int | None = Field(
+        None,
+        ge=1,
+        le=36_500,
+        description="Días a partir de los cuales se archiva esta clase. Vacío: el general",
+    )
 
 
 class ArchivarIn(BaseModel):
@@ -229,7 +249,164 @@ def crear_router_volumen(servicio: str) -> APIRouter:
             "al sitio equivocado sería peor que no devolverla."
         ),
     )
-    def desarchivar(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> Any:
+    def desarchivar(registro_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+        _exigir_archivo(db)
         return _desarchivar(db, principal.tenant_id, registro_id=registro_id, por=principal.id)
 
+    # ── El archivo de verdad (CRM-07.03.01.02) ───────────────────────────
+    #
+    # `/archivar` de arriba PLANIFICA sobre filas tecleadas; no mueve nada y no
+    # se puede consultar lo que no se movió. Estas cuatro archivan de verdad,
+    # con el criterio de antigüedad por clase del tenant, y leen lo archivado.
+
+    @router.get(
+        "/archivo/clases",
+        dependencies=[Depends(exige_permiso("admin:read"))],
+        summary="Qué se puede archivar en este servicio, con qué criterio y cuánto es",
+        description=(
+            "Cada clase de dato del servicio con su antigüedad (la suya o la "
+            "general), la fecha de corte que sale de ella y **cuántas filas "
+            "movería hoy**. Sin el recuento, «se archiva lo de hace dos años» no "
+            "dice si son diez filas o diez millones.\n\n"
+            "Un servicio sin tabla de archivo contesta `hay_archivo: false` y "
+            "ninguna clase, en vez de un error."
+        ),
+    )
+    def clases_del_archivo(db: DbDep, principal: AutenticadoDep) -> Any:
+        if not arch.hay_archivo(db):
+            return {"servicio": servicio, "hay_archivo": False, "clases": []}
+        return {
+            "servicio": servicio,
+            "hay_archivo": True,
+            "clases": arch.clases_archivables(db, principal.tenant_id),
+        }
+
+    @router.put(
+        "/archivo/clases/{clase}",
+        dependencies=[Depends(exige_permiso("admin:write"))],
+        summary="Fijar a partir de cuántos días se archiva una clase",
+        description=(
+            "Se guarda en el ajuste `archivado_antiguedad_por_clase` del tenant, "
+            "con su versión y su auditoría como cualquier ajuste. Sin `dias`, la "
+            "clase vuelve al criterio general (`archivado_dias_por_defecto`)."
+        ),
+    )
+    def fijar_antiguedad(
+        clase: str, cuerpo: AntiguedadIn, db: DbDep, principal: AutenticadoDep
+    ) -> Any:
+        from crmcore.datos.retencion import CLASES
+        from crmcore.runtime import settings as rt
+
+        if clase not in CLASES:
+            raise ErrorValidacion(
+                f"«{clase}» no es una clase de dato de este servicio",
+                error_code="archivado.clase_desconocida",
+                detalle={"declaradas": sorted(CLASES)},
+            )
+        actual = dict(rt.efectivo("archivado_antiguedad_por_clase", db) or {})
+        if cuerpo.dias is None:
+            actual.pop(clase, None)
+        else:
+            actual[clase] = int(cuerpo.dias)
+        rt.fijar(
+            db,
+            "archivado_antiguedad_por_clase",
+            actual,
+            ambito="tenant",
+            ambito_id=str(principal.tenant_id),
+            por=principal.id,
+        )
+        return {"clase": clase, "dias": arch.dias_de_antiguedad(db, clase)}
+
+    @router.post(
+        "/archivo/archivar",
+        dependencies=[Depends(exige_permiso("admin:write"))],
+        summary="Archivar lo que el criterio dice que ya es histórico",
+        description=(
+            "Mueve a la tabla de archivo las filas de la clase anteriores a su "
+            "corte, **conservando su identificador**, y las quita de la tabla "
+            "viva. Simula por defecto: con `simular: false` mueve, como mucho "
+            "`archivado_tope_por_pasada` filas por pasada.\n\n"
+            "Un bloqueo legal no impide archivar —prohíbe destruir, y esto no "
+            "destruye—; se dice cuántas filas lo tenían."
+        ),
+    )
+    def archivar_de_verdad(
+        cuerpo: ArchivarPorCriterioIn, db: DbDep, principal: AutenticadoDep
+    ) -> Any:
+        _exigir_archivo(db)
+        return {
+            "servicio": servicio,
+            **arch.archivar_por_criterio(
+                db,
+                tenant_id=principal.tenant_id,
+                clase=cuerpo.clase,
+                simular=cuerpo.simular,
+                por=principal.id,
+            ),
+        }
+
+    @router.get(
+        "/archivo",
+        dependencies=[Depends(exige_permiso("admin:read"))],
+        summary="Consultar lo archivado",
+        description=(
+            "Por clase, por fechas, por el identificador ORIGINAL de la fila "
+            "(`registro_id`) o por el registro del que cuelga "
+            "(`relacionado_con`: lo archivado de una cuenta, por ejemplo). "
+            "Archivar no es purgar: lo archivado se lee entero."
+        ),
+    )
+    def consultar_archivo(
+        db: DbDep,
+        principal: AutenticadoDep,
+        clase: str = Query(""),
+        registro_id: UUID | None = Query(None),
+        relacionado_con: UUID | None = Query(None),
+        desde: datetime | None = Query(None),
+        hasta: datetime | None = Query(None),
+        limite: int = Query(50, ge=1, le=500),
+    ) -> Any:
+        if not arch.hay_archivo(db):
+            return {
+                "servicio": servicio,
+                "hay_archivo": False,
+                "filas": [],
+                "cuantas": 0,
+                "hay_mas": False,
+            }
+        return {
+            "servicio": servicio,
+            "hay_archivo": True,
+            **arch.consultar(
+                db,
+                principal.tenant_id,
+                clase=clase,
+                registro_id=registro_id,
+                relacionado_con=relacionado_con,
+                desde=desde,
+                hasta=hasta,
+                limite=limite,
+            ),
+        }
+
+    @router.get(
+        "/archivo/resumen",
+        dependencies=[Depends(exige_permiso("admin:read"))],
+        summary="Cuánto hay archivado y de cuándo",
+    )
+    def resumen_del_archivo(db: DbDep, principal: AutenticadoDep) -> Any:
+        if not arch.hay_archivo(db):
+            return {"servicio": servicio, "hay_archivo": False, "por_clase": [], "total": 0}
+        return {"servicio": servicio, "hay_archivo": True, **arch.resumen(db, principal.tenant_id)}
+
     return router
+
+
+def _exigir_archivo(db: Any) -> None:
+    if not arch.hay_archivo(db):
+        raise ErrorValidacion(
+            "Este servicio no tiene archivo de histórico: no guarda nada que crezca "
+            "lo bastante como para archivarlo.",
+            error_code="archivado.sin_archivo",
+        )

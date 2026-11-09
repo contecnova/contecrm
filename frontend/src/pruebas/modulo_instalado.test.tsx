@@ -35,7 +35,13 @@ vi.mock("@/lib/api", () => ({
       return {
         datos: {
           modulos: [],
-          pantallas: [{ modulo: "homologaciones", clave: "homologaciones.lista", titulo: "Homologaciones" }],
+          pantallas: [
+            {
+              modulo: "homologaciones",
+              clave: "homologaciones.lista",
+              titulo: "Homologaciones",
+            },
+          ],
         },
       };
     return { datos: modulo };
@@ -71,7 +77,8 @@ describe("la ficha de un módulo instalado", () => {
       modificados_por_el_cliente: ["campos.norma"],
       modulos_que_dependen: [],
       se_puede_desinstalar: true,
-      que_pasa_con_los_datos: "Los registros se CONSERVAN y quedarán sin pantalla que los enseñe.",
+      que_pasa_con_los_datos:
+        "Los registros se CONSERVAN y quedarán sin pantalla que los enseñe.",
     };
     modulo = {
       clave: "homologaciones",
@@ -104,7 +111,8 @@ describe("la ficha de un módulo instalado", () => {
       modificados_por_el_cliente: [],
       mas_usados: [],
       concluyente: false,
-      aviso: "Lleva 0 días instalado: todavía es pronto para concluir qué sobra.",
+      aviso:
+        "Lleva 0 días instalado: todavía es pronto para concluir qué sobra.",
     };
   });
 
@@ -137,7 +145,8 @@ describe("la ficha de un módulo instalado", () => {
     integridad = {
       modulo: "homologaciones",
       medible: false,
-      motivo: "La versión 1.0.0 ya no está en el catálogo: no se puede comparar.",
+      motivo:
+        "La versión 1.0.0 ya no está en el catálogo: no se puede comparar.",
     };
     abrir();
     const caja = await screen.findByTestId("modulo-integridad");
@@ -155,11 +164,30 @@ describe("la ficha de un módulo instalado", () => {
     expect(lista).toBeGreaterThan(aviso);
   });
 
+  it("lo que no se usa sale por su nombre, no como [object Object]", async () => {
+    // Así lo devuelve el servidor (medido el 09-11-2026): cada elemento con su
+    // sección, su clave con prefijo y su nombre sin él.
+    telemetria = {
+      ...(telemetria as Record<string, unknown>),
+      sin_usar: [
+        {
+          seccion: "conectores",
+          clave: "zzaudhijo__zzaud_taller",
+          nombre: "zzaud_taller",
+        },
+      ],
+    };
+    abrir();
+    const caja = await screen.findByTestId("modulo-telemetria");
+    expect(caja.textContent).toContain("zzaud_taller");
+    expect(caja.textContent).not.toContain("[object Object]");
+  });
+
   it("enseña las pantallas que el módulo declara", async () => {
     abrir();
-    expect((await screen.findByTestId("modulo-pantallas")).textContent).toContain(
-      "Homologaciones",
-    );
+    expect(
+      (await screen.findByTestId("modulo-pantallas")).textContent,
+    ).toContain("Homologaciones");
   });
 
   // Quitarlo, con el ensayo delante (CRM-00.04.04.02, CRM-00.04.04.09). La
@@ -169,20 +197,32 @@ describe("la ficha de un módulo instalado", () => {
     abrir();
     fireEvent.click(await screen.findByText("modulo.verQuePasaria"));
     const caja = await screen.findByTestId("modulo-quitar");
-    expect(await screen.findByText(/homologacion_mercado 120/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/homologacion_mercado 120/),
+    ).toBeInTheDocument();
     expect(caja.textContent).toContain("certificado_mercado");
     expect(caja.textContent).toContain("campos.norma");
     expect(caja.textContent).toContain("se CONSERVAN");
-    const ensayos = vi.mocked(llamar).mock.calls.filter(([r]) => String(r).endsWith("/desinstalar"));
+    const ensayos = vi
+      .mocked(llamar)
+      .mock.calls.filter(([r]) => String(r).endsWith("/desinstalar"));
     expect(ensayos).toHaveLength(1);
-    expect(ensayos[0]?.[1]).toMatchObject({ cuerpo: { aplicar: false, borrar_datos: false } });
+    expect(ensayos[0]?.[1]).toMatchObject({
+      cuerpo: { aplicar: false, borrar_datos: false },
+    });
   });
 
   it("si otro módulo depende de este, no ofrece quitarlo y dice cuál", async () => {
-    ensayo = { ...(ensayo as Record<string, unknown>), modulos_que_dependen: ["calidad"], se_puede_desinstalar: false };
+    ensayo = {
+      ...(ensayo as Record<string, unknown>),
+      modulos_que_dependen: ["calidad"],
+      se_puede_desinstalar: false,
+    };
     abrir();
     fireEvent.click(await screen.findByText("modulo.verQuePasaria"));
-    expect(await screen.findByText(/modulo\.dependen.*calidad/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/modulo\.dependen.*calidad/),
+    ).toBeInTheDocument();
     expect(screen.queryByText("modulo.quitarDeVerdad")).toBeNull();
   });
 
@@ -192,8 +232,13 @@ describe("la ficha de un módulo instalado", () => {
     fireEvent.click(await screen.findByLabelText("modulo.borrarDatos"));
     fireEvent.click(await screen.findByText("modulo.quitarDeVerdad"));
     await vi.waitFor(() => {
-      const ultima = vi.mocked(llamar).mock.calls.filter(([r]) => String(r).endsWith("/desinstalar")).at(-1);
-      expect(ultima?.[1]).toMatchObject({ cuerpo: { aplicar: true, borrar_datos: true } });
+      const ultima = vi
+        .mocked(llamar)
+        .mock.calls.filter(([r]) => String(r).endsWith("/desinstalar"))
+        .at(-1);
+      expect(ultima?.[1]).toMatchObject({
+        cuerpo: { aplicar: true, borrar_datos: true },
+      });
     });
   });
 });

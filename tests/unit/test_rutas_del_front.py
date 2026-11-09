@@ -227,6 +227,10 @@ _DEL_GATEWAY = {
     # del gateway —lo anota su propio proxy en cada petición— y ningún
     # servicio lo tiene. No es una ruta agregada: es suya.
     "/api/v1/estado/frenados",
+    # El sandbox de API (CRM-00.02.01.15): lo compone el gateway pidiendo el
+    # entorno a tenancy, los datos sintéticos a cada servicio y la clave a
+    # identity; no es de ninguno de ellos.
+    "/api/v1/integracion/sandbox",
 }
 
 # Y las que el gateway sirve con un tramo variable dentro.

@@ -519,6 +519,13 @@ vistas lleva tres vistas de automatizaciones:
 - **Cola de automatizaciones**: lo diferido y lo programado, con su hora y su
   estado (pendiente, hecha, fallida o descartada).
 
+**Condiciones con campos propios.** Al dar de alta una regla (**Nuevo**), en
+**Más campos › Condiciones** pulsa **«Añadir una condición»**: cada fila es
+campo, operador y valor. Con el **Objetivo** escrito, el desplegable **«Campo
+propio…»** ofrece los campos que tu empresa ha añadido a ese objeto y, al
+elegir uno, rellena el campo como `campos.<nombre>`. Los campos de serie
+(`importe`, `estado`) se escriben en la caja de al lado.
+
 **Cuándo corre (el «momento»).** *Inmediata* corre en el instante del disparo.
 *Diferida* corre después de que se confirme lo que la disparó —si el alta se
 deshace, no corre— y, si el administrador lo ha configurado, tras unos segundos
@@ -651,6 +658,10 @@ todo lo que gobierna ese objeto:
 - **Los tipos de registro**, que son el mismo objeto visto de formas distintas.
 - **Qué se publicó y cuándo**, con cuántos campos llevaba cada versión: es a lo
   que se vuelve cuando algo deja de encajar.
+- **Probar un registro**, abajo del todo: rellena los campos y pulsa **Probar un
+  registro**. Contesta lo mismo que contestaría al guardar —«Pasaría» o los
+  problemas, cada uno en su campo— sin guardar nada. Marca «Como un cambio» para
+  probar una edición, que no exige los obligatorios que no rellenes.
 
 Y desde el 29-10-2026, seis cosas más que se podían hacer y no se podían mirar:
 
@@ -1110,6 +1121,13 @@ cuánto cambió el importe. Si se movió sin motivo escrito, el historial lo dic
 una etapa que cambió y nadie puede explicar por qué es la que no se sostiene en
 un comité.
 
+### Que no te pida el código cada vez en tu equipo
+
+Al entrar con el código, marca **Recordar este equipo**. Si tu empresa lo
+permite, las siguientes veces desde ese navegador no te lo pedirá; te lo volverá
+a pedir desde otro equipo, o si cambia algo de la entrada (la red, el país, mucho
+tiempo sin entrar). Si tu empresa no lo permite, entras igual y no se recuerda.
+
 ### Poner y quitar tu segundo factor
 
 Está en **Puesto de trabajo**, que es la pantalla de tu propio acceso —no en
@@ -1442,6 +1460,50 @@ hay que tener en cuenta:
   versión con la que entró, porque cambiarle el guion a la mitad lo deja en un
   paso que ya no existe.
 
+
+### Programar el envío de una campaña
+
+**Marketing → Campañas → la campaña → Programar el envío.** Eliges la plantilla
+y pulsas «Programar a la mejor hora». Cada persona queda programada a su hora y
+por su canal; la tabla «Envíos programados» dice por qué (su historial, lo que
+pidió o el valor por defecto) y, al despachar, por qué dominio, remitente y
+servidor salió. «Por dónde sale cada clase» enseña si lo promocional y lo
+transaccional van separados.
+
+**Sale solo, a su hora.** No hace falta pulsar «Despachar»: cada minuto (ajuste
+`envios_despachar_cada_s`) se manda lo que ya toca, **en tu nombre y con tus
+permisos de cuando lo programaste**. Si en la tabla un envío sigue «programado»
+con el motivo «No consta quién lo programó», es de antes del 09-11-2026: vuelve
+a programarlo (o despáchalo a mano) y saldrá. Lo mismo con los recorridos: al
+«Publicar» quedan a tu nombre y avanzan solos; uno publicado antes de esa fecha
+no avanza solo hasta que alguien lo vuelve a publicar.
+
+### Dibujar un recorrido
+
+**Marketing → Campañas → Recorridos → Nuevo.** Pones la clave y el nombre (y
+«Por cuenta» si es B2B) y se abre el lienzo: añades nodos por tipo, eliges sus
+salidas a la derecha, los colocas con las flechas, «Guardar el lienzo» y
+«Publicar». Debajo, el resultado de cada prueba A/B con su ganadora, «Meter a
+alguien» y «Quién está dentro».
+
+### Ver un correo como le llegará a alguien
+
+**Marketing → Contenido y gobierno → Plantillas → la plantilla.** En «Vista
+previa con datos reales» buscas un contacto y eliges el cliente de correo
+(escritorio, móvil, sin imágenes, modo oscuro). A la derecha, la puntuación de
+spam regla a regla, las recomendaciones y por dónde sale.
+
+### Atribución de un lead
+
+**Ventas → Leads → el lead → Atribución de la venta.** Eliges el modelo; el
+importe sale de su oportunidad si se convirtió.
+
+### Audiencias publicitarias
+
+**Marketing → Segmentos → Audiencias publicitarias → Nuevo.** Eliges el
+segmento y la plataforma (una conexión de Integraciones) y «Dar de alta»; luego
+«Sincronizar». El historial dice en cada vuelta altas, bajas y quién se quedó
+fuera por falta de consentimiento o por supresión.
 ---
 
 ## Cómo se manda cada cosa (sección 2.3)
@@ -2216,6 +2278,59 @@ la respuesta. En cuanto haya dos, vuelve a preguntarte.
 
 ---
 
+### Modelos predictivos
+
+**Analítica → Modelos predictivos.** Una tarjeta por modelo: probabilidad de
+convertir un lead, probabilidad de ganar una oportunidad, importe previsto,
+fecha real de cierre, propensión a comprar y siguiente mejor oferta.
+
+1. Pulsa **«Entrenar ahora»** en la tarjeta. El CRM lee tu histórico —lo
+   ganado, lo perdido, lo convertido, lo descartado—, aprende con lo antiguo y
+   se mide con lo más reciente, que no ha visto.
+2. Debajo sale el resultado: **publicada** (empieza a puntuar) o **no
+   publicada**, con el número que lo decide —el AUC, o cuánto mejora a «decir
+   siempre la mediana»— y el mínimo que exige tu empresa. Si no hay bastantes
+   datos, no entrena y te dice cuántos hay y cuántos hacen falta.
+3. Marca **«Reentrenar solo cada N días»** para que se repita sola; la tarjeta
+   dice cuándo toca y qué salió la última vez.
+4. En **«Segmento por propensión»** eliges el criterio —propensión, valor
+   esperado o probabilidad de convertir—, el mínimo y cuántos como mucho, y
+   pulsas **«Crear el segmento»**: aparece en Marketing → Segmentos, congelado
+   ese día. Necesitas poder crear segmentos.
+5. En **«Versiones»** están todas, también las no publicadas; pasa el ratón por
+   una fila para leer el porqué.
+
+**En la ficha.** La de un lead, una oportunidad abierta o una cuenta enseña
+**«Predicción con el histórico»**: el número, lo que lo sube y lo que lo baja,
+y con qué modelo se calculó. En la oportunidad, también el importe previsto con
+su horquilla y la fecha real prevista al lado de la declarada. Si no hay modelo
+publicado, dice por qué. **«Recalcular»** lo vuelve a calcular con los datos de
+ahora.
+
+Los mínimos —el AUC para publicar, la mejora sobre la mediana, cada cuántos
+días se reentrena, la ventana de la propensión— se cambian en **Administrar →
+Usuarios y empresa → Administración**, en los ajustes de la IA (`ia_…`).
+
+### Asistente IA
+
+**Analítica → Asistente IA.** Dos cajas:
+
+- **Conocimiento y acciones.** Pregunta lo que sea —«¿qué aprendimos de las
+  ventas perdidas por precio?»— y contesta con lo que la casa sabe (artículos,
+  casos resueltos, lecciones), con cada afirmación numerada y la fuente
+  enlazada debajo. Si no lo encuentra, lo dice. Si le pides que haga algo
+  —«crea una tarea para llamar mañana a…»— te enseña **lo que propone**: la
+  acción, sus datos (que puedes corregir) y a dónde va. **No se hace nada** hasta
+  que pulsas **«Confirmar y hacerlo»**, y se hace con tu usuario y tus permisos;
+  **«Descartar»** la tira. Puede crear tareas y notas, abrir casos y capturar
+  leads; nada más.
+- **Pregunta a los datos.** «¿Cuántas oportunidades ganadas hay de más de
+  50.000 €?» o «importe total por estado». Te dice cómo lo ha entendido, la
+  respuesta, **la consulta que se ha hecho** —la puedes copiar y repetir— y, si
+  es el caso, que es parcial o que el listado filtraba algo por defecto (las
+  oportunidades, por ejemplo, enseñan sólo las abiertas si no se dice otra
+  cosa).
+
 ## Correo, calendario y el resto de tus herramientas (sección 6.1)
 
 El CRM se conecta con la suite que ya usas —Microsoft 365, Google o la que sea— y
@@ -2506,6 +2621,13 @@ tiene ese dato. No se puede soltar nada en ella, porque eso escribiría el guion
 como si fuera un valor. Vaciar un campo se hace en la ficha, con el campo
 delante.
 
+### Llevarse la política de acceso a otro motor
+
+En *Usuarios y permisos → Políticas de acceso*, **Descargar en formato neutro**
+baja `politica-de-acceso.json`: todas las políticas del tenant con la semántica
+dentro, para cargarlas en OPA, Cedar o el motor del cliente. Debajo del botón
+dice qué se ha bajado.
+
 ### Qué ha hecho una clave de API
 
 En *Usuarios y permisos → Claves de API*, el menú de cada fila tiene **Qué ha
@@ -2723,6 +2845,26 @@ Qué encontrarás dentro:
 
 Con **Apagar** el sandbox deja de dejar entrar, con el motivo que escribas.
 
+### Probar la API en un sandbox con datos inventados
+
+Para quien escribe una integración: en **Administrar › Entornos y despliegue ›
+Probar la API**.
+
+1. En **Crear un sandbox**, ponle nombre y, si quieres, qué colecciones llenar
+   (`accounts, contacts…`; vacío, las de serie) y cuántas filas. Pulsa **Crear
+   el sandbox**. Se crea un entorno aparte con datos **inventados** —no copias
+   de tus clientes— y una **clave de API** que sólo abre ese entorno. La tabla
+   dice cuántas filas se crearon de cada cosa y qué falló.
+2. La clave se enseña **una vez**: cópiala si la vas a usar fuera. Ya queda
+   puesta en la consola de abajo.
+3. En **Consola**, elige el servicio, el método y una ruta del contrato (o
+   escríbela, rellenando los `{parámetros}`), escribe el cuerpo si hace falta y
+   pulsa **Enviar**. Sale el código de respuesta, lo que tardó y el cuerpo.
+
+Las llamadas de la consola van con la clave del sandbox, no con tu sesión: lo que
+borres o rompas ahí no toca los datos de tu empresa. El sandbox caduca solo y se
+apaga desde **Empresas → Sandboxes**.
+
 ---
 
 ## Tus derechos y los de tus clientes (sección 7.3)
@@ -2826,6 +2968,15 @@ existían por API, es decir, que estaban hechas y no se podían ver:
 - **Qué se puede recuperar.** Lo que hay en la papelera, lo primero lo que menos
   tiempo le queda antes de purgarse, con cuántos registros se llevaría por
   delante al restaurarlo.
+- **El archivo de histórico**, por servicio (el selector de arriba): cada clase
+  de dato con **a partir de cuántos días se archiva** —cámbialo en la casilla y
+  pulsa el disquete—, la fecha de corte y cuántas filas movería hoy. **Simular**
+  dice cuántas sin mover nada; **Archivar** las saca de la tabla viva y las deja
+  en el archivo con su identificador. Debajo, **Consultar lo archivado** busca
+  por el identificador de un registro (vacío, lo último archivado). Y en la
+  ficha de un registro, pestaña **Relacionado**, **Archivado de este registro**
+  enseña lo suyo archivado y lo **devuelve a la tabla viva** si hay que seguir
+  trabajándolo.
 
 Y tres más que se preguntan el día que algo va mal, que es el día en que nadie
 se pone a buscarlas:
@@ -3176,6 +3327,38 @@ Lo que ves ahí se cuenta de verdad sobre tus datos, no de un contador aparte: s
 borras registros, el número baja. Y si alguna métrica no se puede medir en ese
 momento, te lo dice en esa línea en lugar de enseñarte un cero, que es muy
 distinto.
+
+### Mandar el consumo a facturación
+
+**Administrar › Usuarios y empresa › Consumo para facturación.** Pulsa **Tomar
+el corte ahora** para ver lo que lleva gastado tu empresa en cada módulo, o
+**Tomar y enviar** para mandarlo además a vuestro sistema de facturación. En
+cada corte, **CSV** o **JSON** lo descargan, y **Enviar** (o **Reenviar**) lo
+manda otra vez. La columna «Envío» dice cómo fue: enviado, falló (con el
+porqué) o sin destino. Si un corte dice «Incompleto», algún módulo no contestó
+al tomarlo: tómalo otra vez antes de cobrar con él. El destino y si se manda
+solo cada mes los configura quien administra, en los ajustes que empiezan por
+`facturacion_`.
+
+### Tu grupo de empresas
+
+**Administrar › Usuarios y empresa › Grupo de empresas.** Ves de qué empresa
+cuelga la tuya y cuáles cuelgan de ella, con su relación. En **Qué ve mi matriz
+de esta empresa** marca **Consumo** o **Indicadores** y pulsa **Guardar lo que
+comparto**: sólo tú decides eso, y la matriz sólo ve cifras sumadas, nunca tus
+registros. En **Lo que veo de mis empresas hijas** ves lo que cada una te
+comparte; las que no comparten nada salen como «No compartido». Si eres de la
+plataforma, **Colgar una empresa de otra** pone la matriz y la relación.
+
+### Ver y deshacer un cambio de configuración
+
+**Administrar › Entornos y despliegue › Historial de la configuración.** Elige un
+ajuste en el desplegable (salen los que tienen cambios) y verás cada cambio con
+el valor de antes y el de después. Para comparar dos versiones, marca sus dos
+casillas y pulsa **Comparar las dos elegidas**. Para ver qué cambió entre dos
+fechas, rellena **Desde** (y si quieres **Hasta**) y pulsa **Ver qué cambió**.
+**Volver a antes** pone el valor que había antes de ese cambio, para toda la
+empresa, y queda en el historial como «Vuelta atrás».
 
 ### Si el CRM te dice que algo «no puede apuntar ahí»
 
@@ -3580,6 +3763,28 @@ le exige»: habla con ellas antes. Para quitar un rol, pulsa la × de su
 etiqueta y guarda. Cumplen una aplicación de códigos (TOTP) o una passkey; el
 SMS y el correo cuentan si tu empresa los tiene encendidos. No hay
 notificación push.
+
+### Entrar con el código de Okta Verify, Twilio Verify, Duo o RSA
+
+**Administrar › Identidad y seguridad › «Segundo factor con el proveedor de la
+empresa».**
+
+1. En el desplegable «Empezar desde una plantilla…» elige tu proveedor (o «En
+   blanco» si es otro). El formulario sale relleno; lee la nota de arriba.
+2. Completa las variables (por ejemplo, el dominio o el identificador del
+   servicio), escribe el **Secreto** —el token o la clave del proveedor; se
+   guarda cifrado y no se vuelve a enseñar— y marca **Activo** si quieres que
+   el login lo use ya. Pulsa **Guardar el perfil**.
+3. Si el perfil pide datos de cada persona (el teléfono en Twilio, los
+   identificadores en Okta), en «Quién es cada persona en el proveedor» elige
+   a la persona, rellena sus datos y pulsa **Guardar sus datos**.
+4. En «Probar un código» elige a una persona, escribe el código que le da su
+   aplicación y pulsa **Probar un código**. Verás si el proveedor lo da por
+   bueno y la petición enviada, con el secreto y el código tapados.
+
+Con el perfil activo, al entrar se pide el código y vale el del proveedor. El
+código propio (TOTP) y los de recuperación siguen valiendo. Si el proveedor
+no responde, no se entra: avisa a quien administra.
 
 ### Entrar como otra persona para resolver un ticket (personal de plataforma)
 

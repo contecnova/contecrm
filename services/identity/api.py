@@ -108,7 +108,12 @@ def login(datos: Credenciales, request: Request) -> Any:
                 huella=datos.huella_dispositivo or "",
             )
         )
-        if riesgo["exigir_factor"] and usuario.mfa_activo and not datos.codigo_mfa:
+        # Con el proveedor del tenant (CRM-00.05.01.22) también hay factor que
+        # pedir aunque la persona no tenga TOTP propio.
+        from services.identity import mfa_proveedor as _mp
+
+        tiene_factor = usuario.mfa_activo or _mp.aplica_a(db, tenant_id, usuario.id)
+        if riesgo["exigir_factor"] and tiene_factor and not datos.codigo_mfa:
             raise NoAutenticado(
                 "El contexto de esta entrada ha cambiado: hace falta el segundo factor.",
                 error_code="auth.factor_requerido_por_riesgo",
@@ -137,15 +142,26 @@ def login(datos: Credenciales, request: Request) -> Any:
             # confianza en una forma de no tener MFA nunca.
             from services.identity import factores as _f
 
-            dispositivo = _f.recordar_dispositivo(
-                db,
-                usuario.id,
-                tenant_id,
-                huella=datos.huella_dispositivo,
-                nombre=request.headers.get("user-agent", "")[:120],
-                ip=request.client.host if request.client else "",
-            )
-            _sesion.dispositivo_confianza_id = dispositivo.id
+            # Con el recuerdo apagado en la instalación (`dispositivo_confianza_
+            # dias` = 0, el de fábrica) se entra igual y sin recordar nada. Antes
+            # el 403 deshacía la entrada ENTERA —contraseña y código buenos— por
+            # marcar una casilla: medido el 09-11-2026 desde el login web.
+            try:
+                dispositivo = _f.recordar_dispositivo(
+                    db,
+                    usuario.id,
+                    tenant_id,
+                    huella=datos.huella_dispositivo,
+                    nombre=request.headers.get("user-agent", "")[:120],
+                    ip=request.client.host if request.client else "",
+                )
+                _sesion.dispositivo_confianza_id = dispositivo.id
+            except Prohibido as no_se_recuerda:
+                from crmcore.logging import get_logger
+
+                get_logger(__name__).info(
+                    "auth.dispositivo_no_recordado", porque=no_se_recuerda.error_code
+                )
     return Tokens(
         access_token=acceso,
         refresh_token=refresco,
@@ -1655,6 +1671,7 @@ from crmcore.http.retencion_router import crear_router_retencion  # noqa: E402
 # registra las clases, así que el import no es decorativo.
 from services.identity import retencion as _retencion_identity  # noqa: E402,F401
 from services.identity.api_factores import ROUTERS_FACTORES  # noqa: E402
+from services.identity.api_mfa_proveedor import ROUTERS_MFA_PROVEEDOR  # noqa: E402
 from services.identity.api_politicas import ROUTERS_POLITICAS  # noqa: E402
 from services.identity.api_scim import ROUTERS_SCIM  # noqa: E402
 from services.identity.api_sod import ROUTERS_SOD  # noqa: E402
@@ -1680,6 +1697,7 @@ ROUTERS = [
     *ROUTERS_SOD,
     *ROUTERS_SCIM,
     *ROUTERS_FACTORES,
+    *ROUTERS_MFA_PROVEEDOR,
     *ROUTERS_CHAT,
 ]
 

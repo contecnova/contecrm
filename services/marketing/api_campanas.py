@@ -314,13 +314,23 @@ def atribuir(
     ventana_dias: int = Query(90, ge=1, le=1095),
     modelo: list[str] = Query(default=[]),
 ) -> Any:
+    modelos = list(modelo) or None
+    convertidos = None
+    if modelos is None or cmp.DATA_DRIVEN in modelos:
+        # El modelo basado en datos necesita saber qué leads convirtieron, y
+        # eso lo sabe `sales`. Se pregunta por HTTP; sin respuesta, el modelo
+        # dice que no es medible en vez de tratar a todos como no convertidos.
+        from services.marketing.api_envios import convertidos_de_ventas
+
+        convertidos = convertidos_de_ventas(principal.tenant_id, principal.id)
     return cmp.atribuir(
         db,
         principal.tenant_id,
         lead_id=lead_id,
         importe=importe,
-        modelos=list(modelo) or None,
+        modelos=modelos,
         ventana_dias=ventana_dias,
+        convertidos=convertidos,
     )
 
 

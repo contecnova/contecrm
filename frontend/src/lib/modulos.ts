@@ -230,6 +230,20 @@ export interface Recurso {
     permiso?: string;
   }>;
   /**
+   * Lo que se DESCARGA de la colección entera: un `GET` que devuelve un
+   * documento —no una lista— y que se guarda como fichero. La política de
+   * acceso en formato neutro es el caso que lo pidió: estaba publicada y sólo
+   * se alcanzaba por API.
+   */
+  descargas?: Array<{
+    ruta: string;
+    nombre: string;
+    /** Nombre del fichero que se guarda. */
+    fichero: string;
+    detalle?: string;
+    permiso?: string;
+  }>;
+  /**
    * Icono con el que se rotula la pestaña, **en vez del nombre**.
    *
    * Para lo que se repite en todos los módulos y cuyo contexto ya está claro:

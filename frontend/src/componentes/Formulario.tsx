@@ -43,6 +43,7 @@ import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
+import { EditorDeCondiciones } from "@/componentes/EditorDeCondiciones";
 import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
 import { cifra, nombreDelRegistro, rotuloDeOpcion } from "@/lib/formato";
@@ -223,6 +224,12 @@ export function Formulario({
   const cambiar = (nombre: string) => (v: unknown) =>
     setEstado((previo) => ({ ...previo, [nombre]: v }));
 
+  // Las condiciones de una regla miran campos de SU objetivo: con él escrito,
+  // el editor ofrece los campos propios de ese objeto (CRM-00.04.03.05).
+  const objetoDeCondiciones = campos.some((c) => c.nombre === "objetivo")
+    ? String(estado.objetivo ?? "")
+    : undefined;
+
   return (
     <form onSubmit={enviar} className="flex flex-col gap-4">
       {/* Dos columnas en cuanto hay sitio. Una sola a ochocientos píxeles de
@@ -238,6 +245,7 @@ export function Formulario({
             alCambiar={cambiar(campo.nombre)}
             propio={recurso}
             fallo={fallosPorCampo.get(campo.nombre)}
+            objetoDeCondiciones={objetoDeCondiciones}
           />
         ))}
       </div>
@@ -270,6 +278,7 @@ export function Formulario({
                   alCambiar={cambiar(campo.nombre)}
                   propio={recurso}
                   fallo={fallosPorCampo.get(campo.nombre)}
+                  objetoDeCondiciones={objetoDeCondiciones}
                 />
               ))}
             </div>
@@ -401,6 +410,7 @@ function Campo({
   alCambiar,
   propio,
   fallo,
+  objetoDeCondiciones,
 }: {
   campo: CampoEsquema;
   valor: unknown;
@@ -409,6 +419,8 @@ function Campo({
   propio?: Recurso | null;
   /** Lo que el servidor dice de ESTE campo, si ha dicho algo. */
   fallo?: string;
+  /** El objeto de la regla, si el formulario lo pide: ver `EditorDeCondiciones`. */
+  objetoDeCondiciones?: string;
 }) {
   const id = `campo-${campo.nombre}`;
   const ayuda = campo.descripcion ? `${id}-ayuda` : undefined;
@@ -477,7 +489,11 @@ function Campo({
             type="checkbox"
             id={id}
             aria-describedby={ayuda}
-            checked={Boolean(valor)}
+            // Sin tocar, lo que hará el servidor: una casilla vacía que el
+            // servidor lee como «sí» dice lo contrario de lo que va a pasar.
+            checked={
+              valor === undefined ? campo.porDefecto === true : Boolean(valor)
+            }
             onChange={(e) => alCambiar(e.target.checked)}
             className="h-4 w-4 rounded border-ink-dim accent-accent"
           />
@@ -520,6 +536,16 @@ function Campo({
           valor={valor}
           alCambiar={alCambiar}
           id={id}
+          ayuda={ayuda}
+        />
+      ) : campo.nombre === "condiciones" &&
+        objetoDeCondiciones !== undefined &&
+        (campo.tipo === "objeto" || campo.tipo === "lineas") ? (
+        <EditorDeCondiciones
+          id={id}
+          valor={valor}
+          alCambiar={alCambiar}
+          objeto={objetoDeCondiciones}
           ayuda={ayuda}
         />
       ) : campo.tipo === "lineas" ? (

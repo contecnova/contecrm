@@ -56,6 +56,7 @@ import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { ConsejosDeLecciones } from "@/componentes/ConsejosDeLecciones";
+import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
@@ -547,6 +548,14 @@ export function Oportunidad() {
         // Abierta: lo que las lecciones de otras ventas tienen que decirle.
         <ConsejosDeLecciones id={op.id} />
       )}
+
+      {/* Lo que dice el modelo entrenado con el histórico: probabilidad,
+          importe y fecha real, con sus porqués (CRM-05.02.01.02). */}
+      {op &&
+      op.estado_significa !== "perdido" &&
+      op.estado_significa !== "ganado" ? (
+        <PrediccionDelRegistro objeto="oportunidad" id={op.id} />
+      ) : null}
 
       <AsistenteIA
         acciones={acciones}

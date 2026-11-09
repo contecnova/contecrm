@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**321 ajustes** en total, de los cuales **102** son editables en caliente por tenant.
+**336 ajustes** en total, de los cuales **114** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -68,6 +68,13 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `ONBOARDING_ENLACE_HORAS` | — | `24` | 1–168 | Cuánto vale el enlace de confirmación. Pocas horas: es una credencial en el buzón de alguien, y quien da de alta su empresa lo hace en el momento. |
 | `ONBOARDING_ALTAS_POR_IP_HORA` | — | `5` | 1–100 | Altas que admite una misma IP por hora. Muy por debajo del límite general de la API porque esto crea tenants: dejarlo en el de una lectura cualquiera permitiría llenar el sistema de empresas inventadas desde un portátil. |
 | `ONBOARDING_RETENCION_DIAS` | — | `30` | 1–365 | Días antes de olvidar una solicitud, usada o no. Son correos de gente que nunca llegó a ser cliente: dato personal que no hay motivo para guardar. |
+| `FACTURACION_EXPORTAR_PERIODICAMENTE` | 🔥 `facturacion_exportar_periodicamente` | `False` |  | Si el corte de consumo de cada tenant se toma y se manda solo. Apagado de fábrica: mandar números a un sistema de cobro sin que nadie lo haya pedido es la forma más rápida de facturar algo que no estaba acordado. |
+| `FACTURACION_DESTINO_URL` | 🔥 `facturacion_destino_url` | *(vacío)* |  | A dónde se manda el corte: el sistema de facturación del cliente, como un webhook de la casa (firmado con HMAC y por el guard de SSRF). Vacío, no se manda y el corte se queda «sin destino», que se ve en la pantalla. |
+| `FACTURACION_DESTINO_CABECERAS` | 🔥 `facturacion_destino_cabeceras` |  |  | Cabeceras que pide ese sistema (su clave de API, por ejemplo). Sensibles: la consola las enseña tapadas. |
+| `FACTURACION_FORMATO_ENVIO` | 🔥 `facturacion_formato_envio` | `json` |  | En qué forma viaja el corte: `json` (una lista de filas) o `csv`. |
+| `FACTURACION_MAX_INTENTOS` | 🔥 `facturacion_max_intentos` | `5` | 1–50 | Intentos de envío antes de dejar el corte en «fallido» y dejar de reintentarlo solo. Se puede reenviar a mano. |
+| `TAREA_FACTURACION_INTERVALO_S` | — | `3600` | 60–86400 | Cada cuánto se toma el corte del periodo en curso y se mandan los periodos ya cerrados. El corte de un mes es el ÚLTIMO que se tomó dentro de ese mes, así que el intervalo es también lo que puede faltar del final del periodo. |
+| `JERARQUIA_INDICADORES` | 🔥 `jerarquia_indicadores` |  |  | Qué indicadores agrega la matriz de las empresas hijas que se los han COMPARTIDO: cada uno es `{nombre, ruta, campo}` — una ruta GET de la API del CRM y el campo numérico de su respuesta que se suma. Sólo cifras, y sólo de las hijas que lo han autorizado. |
 
 ## Bus de eventos, outbox y webhooks
 
@@ -114,6 +121,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `LOGIN_BLOQUEO_MINUTOS` | — | `15` | 1–1440 |  |
 | `MFA_ENABLED` | — | `True` |  |  |
 | `MFA_OBLIGATORIA` | 🔥 `mfa_obligatoria` | `False` |  | Exigir MFA a todo el mundo. Lo normal es exigirla por rol (se configura por tenant); esto es el interruptor global para instalaciones que la quieren obligatoria sin excepciones. |
+| `MFA_OBLIGATORIA_ROLES` | 🔥 `mfa_obligatoria_roles` |  |  | MFA obligatoria **por rol** (CRM-00.05.01.06): a quién se le exige el segundo factor aunque no lo haya activado. Vacío = manda el interruptor de arriba, como antes. Con roles, se exige a quien tenga alguno de ellos en la empresa en la que entra; el interruptor global sigue sumando, nunca… |
 | `TOTP_VENTANA_PASOS` | — | `1` | 0–10 | Ventana de códigos TOTP aceptados hacia atrás y adelante, para absorber relojes desajustados. Cada paso son 30 s; 1 = ±30 s. |
 | `OTP_SMS_ENABLED` | 🔥 `otp_sms_enabled` | `False` |  | Van apagados por defecto, y a propósito: el SMS es el factor más débil de los que hay —se intercepta con un cambio de SIM que no depende de nadie de aquí—, y encenderlo tiene que ser una decisión consciente de quien acepta ese riesgo, no el estado de fábrica. |
 | `OTP_EMAIL_ENABLED` | 🔥 `otp_email_enabled` | `False` |  |  |
@@ -162,6 +170,9 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `MASIVAS_ERRORES_DEVUELTOS` | — | `200` | 1–100000 | Cuántos errores se devuelven de una operación masiva, y cuántos se guardan. Devolver todos convierte la respuesta en un volcado que nadie lee; guardar todos llena la tabla con el primer fichero mal formado. |
 | `TRABAJOS_ERRORES_GUARDADOS` | — | `500` | 1–100000 |  |
 | `PARTICION_MESES_EN_CALIENTE` | — | `13` | 1–120 | Meses que se quedan en la partición caliente antes de archivar. |
+| `ARCHIVADO_DIAS_POR_DEFECTO` | 🔥 `archivado_dias_por_defecto` | `730` | 30–36500 | Archivado de histórico por criterio (CRM-07.03.01.02): a partir de cuántos días se archiva una clase de dato, la de cada clase si la tiene (`{"actividades": 1095}`) y cuántas filas mueve cada pasada. La pasada acotada por lo mismo que la purga: cien mil filas en una transacción la tienen abierta… |
+| `ARCHIVADO_ANTIGUEDAD_POR_CLASE` | 🔥 `archivado_antiguedad_por_clase` |  |  |  |
+| `ARCHIVADO_TOPE_POR_PASADA` | 🔥 `archivado_tope_por_pasada` | `5000` | 1–100000 |  |
 | `RECUPERACION_DIAS_ENTRE_PRUEBAS` | — | `90` | 1–3650 | Cada cuánto hay que probar que una copia de seguridad se restaura. Una copia que nunca se ha restaurado no es una copia: es una esperanza. |
 | `CREDENCIAL_MARGEN_S` | — | `30.0` | 1.0–3600.0 | Margen con el que se renueva una credencial antes de que caduque. |
 | `FIRMA_DURACION_MINIMA_MS` | — | `300` | 1–60000 | Qué hace falta para que una firma manuscrita cuente como firma y no como un toque accidental en la pantalla. |
@@ -185,6 +196,9 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CLAVES_LLAMADAS_DIAS` | — | `35` | 1–3650 | Cuántos días se guardan. Un mes cubre el panel del mes y la pregunta de «qué pasó la semana pasada»; más es un registro de acceso, que es otra cosa. |
 | `SUPERFICIE_COSTE_MAXIMO` | — | `50` | 1–100000 | Coste máximo de una consulta a la superficie, y días que vive un sandbox. |
 | `SANDBOX_DIAS` | — | `30` | 1–3650 |  |
+| `SANDBOX_API_OBJETOS` | — |  |  | Qué colecciones llena de datos sintéticos el sandbox de API si quien lo pide no dice cuáles, y cuántas filas por colección (CRM-00.02.01.15). |
+| `SANDBOX_API_FILAS_POR_OBJETO` | — | `10` | 1–500 |  |
+| `SANDBOX_API_DOMINIO_CORREO` | — | `example.com` |  | El dominio de los correos sintéticos: uno reservado para ejemplos (RFC 2606), que pasa la validación y no entrega a nadie. |
 | `SANDBOX_COPIA_LOTE` | — | `500` | 1–10000 | Filas por inserción al copiar un tenant a su sandbox (CRM-07.02.01.02). Una tabla ancha lo baja sola para no pasar del tope de parámetros de Postgres; esto es el máximo, no lo que siempre se usa. |
 | `EXTENSIONES_MOTOR_RUTA` | — | *(vacío)* |  | El código del tenant (CRM-00.04.02.01). Corre en QuickJS compilado a WebAssembly y lo ejecuta wasmtime; estos son los topes de CADA ejecución, y los pone el sandbox, no el código: cortar a los dos segundos es que no pueda tardar más, pedírselo es que se porte bien. Dónde está el motor. Vacío:… |
 | `EXTENSIONES_TIEMPO_MS` | — | `2000` | 10–60000 | Reloj, memoria y combustible —instrucciones de WebAssembly—. Los tres: con sólo el reloj, una función que espera no gasta y se la deja; con sólo el combustible, una máquina lenta corta lo que en otra cabe. |
@@ -280,6 +294,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `AUTOMATIZACION_DIFERIDA_ESPERA_S` | 🔥 `automatizacion_diferida_espera_s` | `0` | 0–86400 | Cuánto espera una automatización «diferida» después de confirmarse el disparo. Cero ya la separa de la transacción que la disparó —corre en la vuelta siguiente del planificador, nunca dentro de quien guardó—; más da margen a que alguien deshaga lo que acaba de hacer antes de que salga el correo. |
 | `AUTOMATIZACION_PENDIENTES_REVISAR_S` | 🔥 `automatizacion_pendientes_revisar_s` | `10` | 1–3600 | Cada cuánto mira el planificador la cola y los horarios. Es el retraso máximo de una diferida sin espera y la precisión de una programada. |
 | `AUTOMATIZACION_PENDIENTES_LOTE` | 🔥 `automatizacion_pendientes_lote` | `100` | 1–10000 | Cuántas ejecuciones pendientes atiende por tenant y vuelta. Con un tope, un tenant con diez mil encoladas no deja esperando a los demás. |
+| `AUTOMATIZACION_PROGRAMADA_MAX_REGISTROS` | 🔥 `automatizacion_programada_max_registros` | `1000` | 1–100000 | Cuántos registros recorre como mucho una regla programada sobre un objeto («todos los leads sin atender») en cada vuelta. Pasado el tope se avisa en el registro; el resto entra en la siguiente. |
 | `AUTOMATIZACION_PENDIENTES_MAX_INTENTOS` | 🔥 `automatizacion_pendientes_max_intentos` | `3` | 1–50 | Intentos antes de dar por fallida una ejecución pendiente. Lo que se reintenta es un fallo de la base o de la red, no el de una acción —ése queda en la traza a la primera, como en las inmediatas—. |
 | `METADATA_MAX_CAMPOS` | 🔥 `metadata_max_campos` | `150` | 10–1000 | Campos activos por objeto. Ciento cincuenta es mucho más de lo que necesita cualquier objeto bien modelado y bastante menos de donde empieza a doler: a partir de doscientos, la ficha, el listado, la exportación y las migraciones se degradan a la vez. El techo no está para fastidiar: está para… |
 | `METADATA_AVISO_PCT` | 🔥 `metadata_aviso_pct` | `80` | 10–100 | Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el modelo; al 100 % el aviso llega cuando ya no se puede añadir nada. |

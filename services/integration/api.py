@@ -395,9 +395,7 @@ async def probar(conexion_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any
             tenant_id=str(principal.tenant_id),
         )
         conexion.prueba_ok = True
-        conexion.prueba_detalle = (
-            f"{resultado['registros'] and len(resultado['registros'])} registros"
-        )
+        conexion.prueba_detalle = conector.resumen_de_prueba(resultado)[:500]
     except CrmError as exc:
         conexion.prueba_ok = False
         conexion.prueba_detalle = f"{exc.error_code}: {exc.mensaje}"[:500]
@@ -416,6 +414,7 @@ def crear_operacion(
     conexion_id: UUID, datos: CrearOperacion, db: DbDep, principal: AutenticadoDep
 ) -> Any:
     conexion = _conexion(db, principal.tenant_id, conexion_id)
+    conector.exigir_funciones_conocidas(datos.definicion)
     operacion = Operacion(
         tenant_id=principal.tenant_id, conexion_id=conexion.id, **datos.model_dump()
     )
@@ -480,6 +479,10 @@ async def invocar(
         "total": len(resultado["registros"]),
         "paginas": resultado["paginas"],
         "crudos": resultado["crudos"],
+        # Lo que no pasó la validación, con su motivo. Se calculaba y no se
+        # devolvía: quien invocaba veía 2 de 4 sin saber qué pasó con los otros.
+        "rechazados": resultado.get("rechazados") or [],
+        "cuantos_rechazados": len(resultado.get("rechazados") or []),
     }
 
 

@@ -1199,8 +1199,18 @@ def instalado(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any] | None
         "espacio_de_nombres": str(
             manifiesto.get("espacio_de_nombres") or manifiesto.get("prefijo") or fila.clave
         ),
-        "depende_de": dict(manifiesto.get("depende_de") or {}),
-        "nucleo_minimo": str(manifiesto.get("nucleo_minimo") or ""),
+        # De `requiere`, que es donde los pone el formato y de donde los lee
+        # `comprobar_dependencias`. Leía `depende_de` en la raíz, que no existe:
+        # la ficha de un módulo que depende de otro decía «No depende de ningún
+        # otro módulo» (medido el 09-11-2026 con dos módulos de prueba).
+        "depende_de": dict(
+            (manifiesto.get("requiere") or {}).get("modulos") or manifiesto.get("depende_de") or {}
+        ),
+        "nucleo_minimo": str(
+            (manifiesto.get("requiere") or {}).get("nucleo")
+            or manifiesto.get("nucleo_minimo")
+            or ""
+        ),
         # La huella con la que se instaló: es lo que convierte «de quién es este
         # módulo» en algo comprobable y no en una línea del manifiesto.
         "huella": fila.huella,

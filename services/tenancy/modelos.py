@@ -80,6 +80,22 @@ class Tenant(Base, TimestampMixin):
     tenant_padre_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True
     )
+    # Qué relación es: `matriz_filial`, `franquicia` o `holding`. Hasta el
+    # 09-11-2026 sólo existía el padre, y «cuelga de» no dice si la de arriba
+    # manda, cobra un canon o sólo consolida.
+    relacion_padre: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Lo que ESTA empresa deja ver a su padre: `consumo`, `indicadores`. Lo
+    # decide la hija y sólo ella; vacío es no compartir nada, que es lo de
+    # fábrica. Nunca filas: sólo agregados.
+    comparte_con_padre: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    comparte_actualizado_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    comparte_actualizado_por: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True
+    )
 
     # ── Localización y marca ──────────────────────────────────────────────
     idioma: Mapped[str] = mapped_column(String(10), nullable=False, default="es")
@@ -274,6 +290,9 @@ from services.tenancy.ciclo_vida import (  # noqa: E402,F401
     OperacionTenant,
     PerfilIndustria,
 )
+
+# Los cortes de consumo para facturación (CRM-00.01.06.07).
+from services.tenancy.facturacion import CorteConsumo  # noqa: E402,F401
 from services.tenancy.grc import (  # noqa: E402
     Control,
     EvaluacionControl,

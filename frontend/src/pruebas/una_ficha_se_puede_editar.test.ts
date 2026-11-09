@@ -27,6 +27,16 @@ const RAIZ = join(__dirname, "..", "..", "src");
 
 /** Rutas que abren un registro y no ofrecen edición, y por qué. */
 const SIN_EDICION_PORQUE: Record<string, string> = {
+  RecorridoDeMarketing:
+    "El recorrido se edita en su lienzo, que se guarda entero con " +
+    "`PUT /recorridos/{id}/lienzo` y se valida como al crearlo: los nodos, sus " +
+    "salidas y su posición son una sola definición, y un `PATCH` campo a campo " +
+    "dejaría guardar un nodo que apunta a otro que no existe.",
+  AudienciaPublicitaria:
+    "Una audiencia no se edita campo a campo: cambiarle el segmento o la " +
+    "plataforma con miembros ya subidos dejaría fuera a gente que nadie da de " +
+    "baja allí. Se retira y se da de alta otra, y cada vuelta queda en su " +
+    "historial.",
   Leccion:
     "Una lección no se edita campo a campo: se escribe en su post-mortem y se " +
     "firma, y al firmarla se congela con el expediente de ese momento. El " +

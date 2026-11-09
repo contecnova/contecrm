@@ -1755,8 +1755,14 @@ class ComposicionIn(BaseModel):
 
 
 class SandboxIn(BaseModel):
-    objetos: list[str] = Field(default_factory=list)
-    filas_por_objeto: int = Field(25, ge=1, le=500)
+    nombre: str = Field("Pruebas de API", min_length=1, max_length=100)
+    objetos: list[str] = Field(
+        default_factory=list,
+        description="Colecciones de la API a llenar (`accounts`, `contacts`…). Vacío: las de serie",
+    )
+    filas_por_objeto: int | None = Field(
+        None, ge=1, le=500, description="Vacío: `SANDBOX_API_FILAS_POR_OBJETO`"
+    )
 
 
 class MtlsIn(BaseModel):
@@ -1813,11 +1819,28 @@ async def validar_composicion(cuerpo: ComposicionIn, principal: AutenticadoDep) 
     ),
 )
 async def sandbox(cuerpo: SandboxIn, principal: AutenticadoDep) -> Any:
-    return superficie.crear_sandbox(
+    # Hasta el 09-11-2026 esto devolvía un diccionario y no creaba nada. Ahora
+    # crea el entorno en tenancy, lo llena de datos generados del contrato y
+    # emite una clave que sólo lo abre a él (`sandbox_api.py`).
+    from services.gateway import sandbox_api
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+    filas = cuerpo.filas_por_objeto or get_settings().sandbox_api_filas_por_objeto
+    plan = superficie.crear_sandbox(
         tenant_id=principal.tenant_id,
-        objetos=cuerpo.objetos,
-        filas_por_objeto=cuerpo.filas_por_objeto,
+        objetos=cuerpo.objetos or list(get_settings().sandbox_api_objetos),
+        filas_por_objeto=filas,
     )
+    hecho = await sandbox_api.crear(
+        cliente=_cliente,
+        destinos=_destinos,
+        principal=principal,
+        nombre=cuerpo.nombre,
+        objetos=plan["objetos"],
+        filas_por_objeto=filas,
+    )
+    return {**hecho, "caduca_at": plan["caduca_at"], "caduca_porque": plan["caduca_porque"]}
 
 
 @router.post(

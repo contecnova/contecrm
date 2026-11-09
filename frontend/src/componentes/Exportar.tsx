@@ -22,6 +22,10 @@
  *     factor otra vez para una exportación masiva, y un 401 pintado como «no
  *     autorizado» hace pensar que falta un permiso. Son dos cosas distintas, y
  *     «vuelve a verificarte» y «configúrate un segundo factor» también.
+ *
+ * La marca de origen (CRM-00.05.03.07) va DENTRO del fichero, arriba y abajo:
+ * verificado el 09-11-2026 exportando los contactos desde su lista, el CSV
+ * empieza y acaba con `# origen=contecrm; tenant=…; exportado_at=…; traza=…`.
  */
 
 import { useState } from "react";

@@ -24,6 +24,7 @@ from crmcore.datos.trabajos import Trabajo  # noqa: E402,F401
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402,F401
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
 
+from services.intelligence.acciones_asistente import AccionAsistente  # noqa: F401
 from services.intelligence.agentes import (  # noqa: F401
     Agente,
     EjecucionAgente,
@@ -52,6 +53,7 @@ from services.intelligence.gobierno import MedicionDeriva, ModeloML  # noqa: F40
 from services.intelligence.guardias import BloqueoIA, ReglaGuardia  # noqa: F401
 from services.intelligence.indice import FragmentoIndice  # noqa: F401
 from services.intelligence.prediccion import Prediccion  # noqa: F401
+from services.intelligence.predictivo import ProgramacionEntreno  # noqa: F401
 from services.intelligence.salud import SaludCuenta  # noqa: F401
 from services.intelligence.uso import LlamadaIA  # noqa: F401
 

@@ -134,8 +134,22 @@ def plantilla(texto: str, parametros: dict[str, Any]) -> str:
 
 
 def _renderizar(valor: Any, parametros: dict[str, Any]) -> Any:
-    """Aplica la plantilla recursivamente a cadenas, listas y diccionarios."""
+    """Aplica la plantilla recursivamente a cadenas, listas y diccionarios.
+
+    **Un valor que es SOLO un marcador y apunta a una lista o a un objeto se
+    pasa tal cual**, no como texto. Sin esto, `{"miembros": "{{miembros}}"}`
+    salía con la representación de Python de la lista —`"['a1', 'b2']"`— y no
+    había forma de mandar en el cuerpo una lista de identificadores, que es lo
+    que pide cualquier API que reciba altas por lotes (una audiencia de
+    anuncios, por ejemplo). Los escalares siguen yendo como texto, como antes:
+    cambiarles el tipo rompería las conexiones ya declaradas.
+    """
     if isinstance(valor, str):
+        solo = RE_PLANTILLA.fullmatch(valor.strip())
+        if solo:
+            crudo = resolver_ruta(parametros, solo.group(1))
+            if isinstance(crudo, (list, dict)):
+                return crudo
         return plantilla(valor, parametros)
     if isinstance(valor, dict):
         return {k: _renderizar(v, parametros) for k, v in valor.items()}
@@ -585,6 +599,46 @@ def funciones_desconocidas(operacion: dict[str, Any]) -> list[str]:
             if nombre and nombre not in FUNCIONES:
                 fuera.append(nombre)
     return sorted(set(fuera))
+
+
+def exigir_funciones_conocidas(definicion: dict[str, Any]) -> None:
+    """Rechaza una operación que nombra funciones que no existen.
+
+    La comprobación estaba en la publicación de conectores del catálogo y NO en
+    la operación declarada sobre una conexión, que es la que se escribe desde la
+    pantalla: medido el 09-11-2026, una operación con `mayuscuals` se guardaba y
+    al ejecutarse dejaba el valor sin tocar y sin decir nada.
+    """
+    desconocidas = funciones_desconocidas(definicion)
+    if desconocidas:
+        from crmcore.errors import ErrorValidacion
+
+        raise ErrorValidacion(
+            f"La operación usa funciones que no existen: {', '.join(desconocidas)}. "
+            f"Las que hay son {', '.join(sorted(FUNCIONES))}.",
+            error_code="integracion.funciones_desconocidas",
+            detalle={"desconocidas": desconocidas, "disponibles": sorted(FUNCIONES)},
+        )
+
+
+def resumen_de_prueba(resultado: dict[str, Any], *, motivos: int = 3) -> str:
+    """Lo que dice «Probar»: cuántos pasan y cuántos se apartaron, y por qué.
+
+    Decía «2 registros» cuando llegaron cuatro y dos no pasaron la validación:
+    una prueba que dice 200 y guarda 180 es la forma más callada de perder
+    datos (medido el 09-11-2026).
+    """
+    registros = resultado.get("registros") or []
+    apartados = resultado.get("rechazados") or []
+    texto = f"{len(registros)} registros"
+    if apartados:
+        vistos: list[str] = []
+        for r in apartados:
+            for m in r.get("motivos") or []:
+                if m not in vistos:
+                    vistos.append(str(m))
+        texto += f"; {len(apartados)} apartados: " + "; ".join(vistos[:motivos])
+    return texto
 
 
 def validar_mapeado(registro: dict[str, Any], reglas: Any) -> list[str]:

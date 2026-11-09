@@ -228,6 +228,27 @@ def test_una_version_insuficiente_de_otro_modulo_se_detecta(
     assert "al menos la 2.0.0" in salida["dependencias_que_faltan"][0]
 
 
+@pytest.mark.db
+def test_la_ficha_dice_de_que_depende(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """La ficha leía `depende_de` en la raíz y el formato lo pone en
+    `requiere.modulos`: medido el 09-11-2026, un módulo que dependía de otro
+    salía con «No depende de ningún otro módulo»."""
+    mod.instalar(uow, _simple(clave="base", version="1.0.0"), aplicar=True)
+    db.flush()
+    mod.instalar(
+        uow,
+        _simple(clave="encima", requiere={"nucleo": 1, "modulos": {"base": "1.0.0"}}),
+        aplicar=True,
+    )
+    db.flush()
+    ficha = mod.instalado(db, tenant_id, "encima")
+    assert ficha is not None
+    assert ficha["depende_de"] == {"base": "1.0.0"}
+    assert ficha["nucleo_minimo"] == "1"
+
+
 # ── Actualizar sin pisar al cliente (CRM-00.04.04.04) ─────────────────────
 
 

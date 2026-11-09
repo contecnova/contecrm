@@ -74,6 +74,14 @@ class TenantOut(BaseModel):
     region: str
     aislamiento: str
     tenant_padre_id: UUID | None = None
+    # La relación con el padre y lo que esta empresa le deja ver
+    # (CRM-00.01.03.07).
+    relacion_padre: str | None = None
+    comparte_con_padre: list[str] = []
+    # Cuándo y quién decidió lo que se comparte: lo pregunta la matriz que ve
+    # aparecer o desaparecer una cifra de su filial.
+    comparte_actualizado_at: datetime | None = None
+    comparte_actualizado_por: UUID | None = None
     idioma: str
     zona_horaria: str
     moneda: str

@@ -47,6 +47,12 @@ const NO_ES_UNA_LISTA: Record<string, string> = {
     "Son las opciones de un desplegable («Abrir una versión guardada»): el " +
     "navegador las pinta dentro del propio control, que ocupa una línea " +
     "tenga las que tenga, y no empuja nada.",
+  "AudienciaPublicitaria.tsx:segmentos":
+    "Son las opciones del desplegable «Segmento» del alta: el navegador las " +
+    "pinta dentro del control, que ocupa una línea tenga las que tenga.",
+  "AudienciaPublicitaria.tsx:conexiones":
+    "Son las opciones del desplegable «Plataforma» del alta: el navegador las " +
+    "pinta dentro del control, que ocupa una línea tenga las que tenga.",
 };
 
 /**

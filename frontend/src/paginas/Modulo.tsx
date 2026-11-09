@@ -30,6 +30,7 @@ import {
   Retenidos,
   Vacio,
 } from "@/componentes/Estados";
+import { Descargas } from "@/componentes/Descargas";
 import { Exportar } from "@/componentes/Exportar";
 import {
   Agrupado,
@@ -78,6 +79,7 @@ import {
 import {
   admite,
   altaPorClave,
+  altaPorPost,
   camposDe,
   contratoDe,
   fichaDe,
@@ -1100,9 +1102,7 @@ function RecursoVista({
       // las admitiera, y la que lo declaraba a mano salía con botón y un
       // formulario VACÍO, porque no hay `POST` del que sacar los campos.
       const declarada = recurso.crear ?? null;
-      const porPost = admite(documento, recurso.listar, "post")
-        ? recurso.listar
-        : null;
+      const porPost = altaPorPost(documento, recurso.listar);
       const porClave =
         declarada?.includes("{") || (!declarada && !porPost)
           ? altaPorClave(documento, recurso.listar)
@@ -1404,6 +1404,12 @@ function RecursoVista({
           del consumo, la calidad de los borradores encima de los borradores.
           Es donde se preguntan. */}
       {recurso.resumen?.length ? <Medidas rutas={recurso.resumen} /> : null}
+
+      {recurso.descargas?.some((d) => puede(sesion, d.permiso)) ? (
+        <Descargas
+          descargas={recurso.descargas.filter((d) => puede(sesion, d.permiso))}
+        />
+      ) : null}
 
       {accionesDeLaColeccion.length ? (
         <Acciones

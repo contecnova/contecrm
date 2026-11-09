@@ -47,7 +47,17 @@ logger = get_logger(__name__)
 
 # Tipos de bloque. Cerrado: el editor tiene que saber pintarlos y el compositor
 # convertirlos a HTML, y un tipo libre deja las dos cosas adivinando.
-TIPOS_BLOQUE = ("texto", "imagen", "boton", "separador", "columnas", "pie", "cabecera")
+TIPOS_BLOQUE = (
+    "texto",
+    "imagen",
+    "boton",
+    "separador",
+    "columnas",
+    "pie",
+    "cabecera",
+    # Los productos recomendados por el historial de la cuenta (CRM-02.03.01.02).
+    "recomendaciones",
+)
 # Clases de correo. La distinción no es cosmética: decide por qué dominio sale.
 CLASES = ("promocional", "transaccional")
 
@@ -198,7 +208,10 @@ def componer(
     usados: list[dict[str, Any]] = []
     faltan: list[str] = []
     for referencia in plantilla.bloques or []:
-        clave = str(referencia.get("bloque") or "")
+        # `bloque` es como lo escribe la API; `clave` como lo escribieron las
+        # cargas de datos. Leer sólo una dejaba esas plantillas con TODOS los
+        # bloques «que faltan» y sin una línea que enseñar al previsualizar.
+        clave = str(referencia.get("bloque") or referencia.get("clave") or "")
         bloque = disponibles.get(clave)
         if bloque is None:
             faltan.append(clave)

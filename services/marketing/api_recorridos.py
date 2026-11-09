@@ -114,8 +114,9 @@ def crear(datos: CrearRecorrido, uow: UowDep) -> Any:
         "explicar después, y son justo los que se descubren por una queja."
     ),
 )
-def publicar(recorrido_id: UUID, uow: UowDep) -> Any:
-    return rec.publicar(uow, recorrido_id)
+def publicar(recorrido_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    # Quien lo publica es con quien avanza solo (foto de sus permisos y roles).
+    return rec.publicar(uow, recorrido_id, principal=principal)
 
 
 class Entrar(BaseModel):
@@ -178,7 +179,9 @@ def comportamiento(datos: Comportamiento, uow: UowDep) -> Any:
     ),
 )
 def avanzar(uow: UowDep, principal: AutenticadoDep) -> Any:
-    return rec.avanzar(uow, principal.tenant_id)
+    from services.marketing.envios import foto
+
+    return rec.avanzar(uow, principal.tenant_id, por=foto(principal))
 
 
 class Salir(BaseModel):
@@ -226,7 +229,9 @@ def prueba(
     nodo: str,
     db: DbDep,
     principal: AutenticadoDep,
-    minimo: int = Query(100, ge=10, le=10000),
+    minimo: int | None = Query(
+        None, ge=10, le=10000, description="Vacío: el ajuste `prueba_minimo_por_variante`"
+    ),
 ) -> Any:
     return rec.resultado_prueba(db, principal.tenant_id, recorrido_id, nodo, minimo=minimo)
 
@@ -424,14 +429,16 @@ def comprobar(
         "mismo y callar: el día que la entrega se hunda, nadie sabrá por qué."
     ),
 )
-def remitente(clase: str = Query("promocional")) -> Any:
+def remitente(db: DbDep, clase: str = Query("promocional")) -> Any:
     from crmcore.runtime.settings import efectivo
 
+    # Con la sesión: sin ella `efectivo` sólo lee el `.env`, y el dominio que el
+    # administrador fijó en la consola no se veía nunca aquí.
     return cor.remitente_para(
         clase,
         config={
-            "dominio_promocional": efectivo("dominio_promocional", default=""),
-            "dominio_transaccional": efectivo("dominio_transaccional", default=""),
+            "dominio_promocional": efectivo("dominio_promocional", db, default=""),
+            "dominio_transaccional": efectivo("dominio_transaccional", db, default=""),
         },
     )
 

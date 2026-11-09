@@ -5,6 +5,11 @@
  * CRM-00.04.03.02, CRM-00.04.03.03, CRM-00.04.03.04, CRM-00.04.03.06,
  * CRM-00.04.03.07, CRM-00.04.03.10, CRM-00.04.03.11, CRM-00.04.03.12).
  *
+ * Y «Probar un registro» (CRM-00.02.03.07): se rellenan los campos y el
+ * servidor contesta con las MISMAS reglas que al guardar, sin guardar nada.
+ * Comprobado en el navegador el 09-11-2026: con un obligatorio vacío sale
+ * «es obligatorio» en ese campo, y con todo bien, «Pasaría».
+ *
  * **La familia entera estaba publicada y sin puerta.** El módulo «Modelo de
  * datos» listaba los objetos y ahí se acababa: las filas no abrían, y como los
  * paneles de una ficha se construyen a partir de los `GET` que devuelven
@@ -590,6 +595,14 @@ export function ObjetoDelModelo() {
               <RenombrarYLlevarse objeto={objeto.nombre} rastro={rastro} />
             </div>
 
+            {/* ── Probar un registro sin guardarlo ──────────────────────────── */}
+            {describe ? (
+              <ProbarUnRegistro
+                objeto={objeto.nombre}
+                campos={describe.campos}
+              />
+            ) : null}
+
             {/* ── Qué se publicó y cuándo ─────────────────────────────────────── */}
             {rastro && rastro.publicaciones.length > 0 ? (
               <section className="card mt-4 p-4">
@@ -1111,6 +1124,175 @@ function RenombrarYLlevarse({
         >
           {bajado}
         </p>
+      </div>
+    </section>
+  );
+}
+
+interface ResultadoDeProbar {
+  valido: boolean;
+  errores: { campo: string; motivo?: string; mensaje: string }[];
+  valores: Record<string, unknown>;
+}
+
+/**
+ * Probar un registro contra las reglas del objeto, sin guardarlo
+ * (CRM-00.02.03.07).
+ *
+ * El servidor ya lo contestaba (`POST /objetos/{nombre}/validar`) con las
+ * mismas reglas que al guardar, y no había dónde preguntárselo: quien escribe
+ * una regla de validación no tenía cómo ver qué haría con un registro sin
+ * crear uno de verdad. Los calculados y los retirados no salen: no se teclean.
+ */
+function ProbarUnRegistro({
+  objeto,
+  campos,
+}: {
+  objeto: string;
+  campos: Campo[];
+}) {
+  const { t } = useTranslation();
+  const [valores, setValores] = useState<Record<string, string>>({});
+  const [parcial, setParcial] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState<ResultadoDeProbar | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const tecleables = campos.filter(
+    (c) =>
+      !c.deprecado &&
+      !c.solo_lectura &&
+      c.tipo !== "formula" &&
+      c.tipo !== "rollup",
+  );
+
+  async function probar() {
+    setEnviando(true);
+    setFallo(null);
+    try {
+      // Sólo lo que se ha rellenado: un campo vacío mandado como «» es un
+      // valor, y el servidor lo trataría como tal.
+      const datos = Object.fromEntries(
+        Object.entries(valores).filter(([, v]) => v !== ""),
+      );
+      const { datos: r } = await llamar<ResultadoDeProbar>(
+        `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/validar`,
+        { metodo: "POST", cuerpo: { datos, parcial } },
+      );
+      setResultado(r);
+    } catch (e) {
+      setFallo(e);
+      setResultado(null);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="section-label mb-1">{t("modeloDatos.probar.titulo")}</h2>
+      <p className="mb-3 text-rotulo text-ink-faint">
+        {t("modeloDatos.probar.ayuda")}
+      </p>
+      {tecleables.length === 0 ? (
+        <Vacio titulo={t("modeloDatos.probar.sinCampos")} compacto />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {tecleables.map((c) => (
+            <label
+              key={c.id}
+              className="flex flex-col gap-1 text-rotulo text-ink-muted"
+            >
+              <span>
+                {c.etiqueta || c.nombre}
+                {c.obligatorio ? " *" : ""}
+              </span>
+              {c.tipo === "booleano" ? (
+                <select
+                  className="input-base"
+                  aria-label={c.etiqueta || c.nombre}
+                  value={valores[c.nombre] ?? ""}
+                  onChange={(e) =>
+                    setValores({ ...valores, [c.nombre]: e.target.value })
+                  }
+                >
+                  <option value="">{t("modeloDatos.probar.sinValor")}</option>
+                  <option value="true">{t("modeloDatos.probar.si")}</option>
+                  <option value="false">{t("modeloDatos.probar.no")}</option>
+                </select>
+              ) : (
+                <input
+                  className="input-base"
+                  aria-label={c.etiqueta || c.nombre}
+                  type={
+                    c.tipo === "fecha"
+                      ? "date"
+                      : c.tipo === "numero" ||
+                          c.tipo === "moneda" ||
+                          c.tipo === "porcentaje"
+                        ? "number"
+                        : "text"
+                  }
+                  value={valores[c.nombre] ?? ""}
+                  onChange={(e) =>
+                    setValores({ ...valores, [c.nombre]: e.target.value })
+                  }
+                />
+              )}
+            </label>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-rotulo text-ink-muted">
+          <input
+            type="checkbox"
+            aria-label={t("modeloDatos.probar.parcial")}
+            checked={parcial}
+            onChange={(e) => setParcial(e.target.checked)}
+          />
+          {t("modeloDatos.probar.parcial")}
+        </label>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={enviando}
+          onClick={() => void probar()}
+        >
+          <Icono nombre="fact_check" tamano="sm" />
+          {t("modeloDatos.probar.boton")}
+        </button>
+      </div>
+      {fallo ? (
+        <div className="mt-3">
+          <Fallo error={fallo} />
+        </div>
+      ) : null}
+      <div role="status" aria-live="polite" className="mt-3">
+        {resultado ? (
+          resultado.valido ? (
+            <p className="text-dato text-success">
+              {t("modeloDatos.probar.pasaria")}
+            </p>
+          ) : (
+            <>
+              <p className="text-dato text-danger">
+                {t("modeloDatos.probar.noPasaria", {
+                  cuantos: resultado.errores.length,
+                })}
+              </p>
+              <ul className="mt-1 divide-y divide-ink-dim/30">
+                {resultado.errores.map((e, i) => (
+                  <li key={`${e.campo}-${i}`} className="py-1 text-dato">
+                    {e.campo ? (
+                      <span className="chip-dato mr-2">{e.campo}</span>
+                    ) : null}
+                    {e.mensaje}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        ) : null}
       </div>
     </section>
   );

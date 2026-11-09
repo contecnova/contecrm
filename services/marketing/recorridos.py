@@ -118,6 +118,20 @@ class Recorrido(Base, TimestampMixin, SoftDeleteMixin):
     # borrador | publicado | pausado | archivado
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="borrador")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Quién lo publicó y con qué permisos y roles, en foto al publicarlo. El
+    # avance automático actúa con esta identidad, y los envíos que programan sus
+    # pasos la llevan. Se pisa en cada publicación: quien vuelve a publicar es
+    # quien decide que siga corriendo. Sin ella no avanza solo, y se dice.
+    publicado_por_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"calculado": True}
+    )
+    publicado_con: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"calculado": True},
+    )
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "clave", name="uq_recorrido_clave"),
@@ -375,13 +389,17 @@ def crear(
     return fila, avisos
 
 
-def publicar(uow: UnidadDeTrabajo, recorrido_id: UUID) -> dict[str, Any]:
+def publicar(uow: UnidadDeTrabajo, recorrido_id: UUID, *, principal: Any = None) -> dict[str, Any]:
     """Publica el recorrido. Quien esté dentro sigue con su versión.
 
     Cambiar el recorrido bajo los pies de quien ya recibió tres correos produce
     saltos que nadie puede explicar después —«¿por qué a este le llegó el paso
     cinco sin el cuatro?»— y son justo los que se descubren por una queja.
+
+    Guarda quién lo publica (`principal`, en foto): es con quien avanza solo.
     """
+    from services.marketing.envios import foto, guardar_foto
+
     fila = uow.db.get(Recorrido, recorrido_id)
     if fila is None or fila.tenant_id != uow.tenant_id:
         raise NoEncontrado("El recorrido no existe", error_code="recorrido.no_encontrado")
@@ -389,8 +407,14 @@ def publicar(uow: UnidadDeTrabajo, recorrido_id: UUID) -> dict[str, Any]:
     if fila.estado == "publicado":
         fila.version += 1
     fila.estado = "publicado"
+    fila.publicado_por_id, fila.publicado_con = guardar_foto(foto(principal))
     uow.db.flush()
-    return {"recorrido": fila.clave, "version": fila.version, "avisos": avisos}
+    return {
+        "recorrido": fila.clave,
+        "version": fila.version,
+        "avisos": avisos,
+        "avanza_solo": fila.publicado_por_id is not None,
+    }
 
 
 # ── Entrar (CRM-02.02.02.02) ──────────────────────────────────────────────
@@ -469,6 +493,21 @@ def entrar(
             "entro": False,
             "motivo": _por_que_no_alcanzable(uow.db, tenant_id, objeto, objeto_id),
         }
+
+    if recorrido.por_cuenta and cuenta_id is None:
+        # La cuenta sale del perfil si quien llama no la dice. Sin esto, un
+        # recorrido «por cuenta» sólo lo era cuando la pantalla o la API se
+        # acordaban de mandar la cuenta, y la segunda persona de la misma
+        # empresa entraba igual.
+        from services.marketing.modelos import PerfilMarketing
+
+        cuenta_id = uow.db.execute(
+            select(PerfilMarketing.cuenta_id).where(
+                PerfilMarketing.tenant_id == tenant_id,
+                PerfilMarketing.objeto == objeto,
+                PerfilMarketing.objeto_id == objeto_id,
+            )
+        ).scalar_one_or_none()
 
     if recorrido.por_cuenta and cuenta_id is not None:
         # En B2B, cuatro personas de la misma empresa recibiendo la misma
@@ -668,28 +707,67 @@ def _variante(
     return variantes[-1]
 
 
-def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 500) -> dict[str, Any]:
+def avanzar(
+    uow: UnidadDeTrabajo,
+    tenant_id: UUID,
+    *,
+    limite: int = 500,
+    por: dict[str, Any] | None = None,
+    automatico: bool = False,
+) -> dict[str, Any]:
     """Mueve a la gente por sus recorridos.
 
     Antes de cada paso se comprueba la **salida** y la **supresión**. Las dos van
     aquí y no al entrar porque las dos cambian con el tiempo: alguien compra a
     mitad, alguien se da de baja a mitad, y los dos tienen que dejar de recibir
     en el paso siguiente y no al final.
+
+    **A mano** actúa quien lo pide (`por`, su foto): los envíos que programen
+    los pasos la llevan. **Solo** (`automatico`) sólo se mueven los recorridos
+    publicados, cada uno con la foto de quien lo publicó; los publicados sin
+    ella no se mueven y salen en `sin_identidad`, con el motivo.
+
+    Las filas se cogen con `FOR UPDATE SKIP LOCKED`: dos procesos avanzando a la
+    vez no mueven dos veces a la misma persona.
     """
     from services.marketing.campanas import anotar_envio, comprobar_fatiga
+    from services.marketing.envios import leer_foto
     from services.marketing.segmentos import filtrar_suprimidos
 
     ahora = _ahora()
+    consulta = select(EnRecorrido).where(
+        EnRecorrido.tenant_id == tenant_id,
+        EnRecorrido.estado.in_(("activo", "esperando")),
+        EnRecorrido.despertar_at.isnot(None),
+        EnRecorrido.despertar_at <= ahora,
+    )
+    sin_identidad: list[dict[str, Any]] = []
+    if automatico:
+        publicados = select(Recorrido.id).where(
+            Recorrido.tenant_id == tenant_id,
+            Recorrido.estado == "publicado",
+            Recorrido.deleted_at.is_(None),
+        )
+        sin_identidad = [
+            {"recorrido": clave, "motivo": SIN_PUBLICADOR}
+            for (clave,) in uow.db.execute(
+                select(Recorrido.clave)
+                .where(
+                    Recorrido.id.in_(publicados),
+                    Recorrido.publicado_por_id.is_(None),
+                    Recorrido.id.in_(consulta.with_only_columns(EnRecorrido.recorrido_id)),
+                )
+                .order_by(Recorrido.clave)
+            ).all()
+        ]
+        consulta = consulta.where(
+            EnRecorrido.recorrido_id.in_(publicados.where(Recorrido.publicado_por_id.isnot(None)))
+        )
     pendientes = (
         uow.db.execute(
-            select(EnRecorrido)
-            .where(
-                EnRecorrido.tenant_id == tenant_id,
-                EnRecorrido.estado.in_(("activo", "esperando")),
-                EnRecorrido.despertar_at.isnot(None),
-                EnRecorrido.despertar_at <= ahora,
-            )
+            consulta.order_by(EnRecorrido.despertar_at)
             .limit(limite)
+            .with_for_update(skip_locked=True)
         )
         .scalars()
         .all()
@@ -735,7 +813,30 @@ def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 500) -> dict
                 if not fatiga.get("permitido", True):
                     ejecutado = False
                     omision = "fatiga"
-            if ejecutado:
+            if ejecutado and nodo.get("plantilla"):
+                # **Con plantilla, el paso programa el envío de verdad**, a la
+                # hora y por el canal de esta persona (CRM-02.02.02.05). Antes
+                # sólo se emitía un evento que no consumía nadie. El envío se
+                # apunta en la fatiga al salir, en `envios.despachar`.
+                from services.marketing.envios import programar
+
+                programar(
+                    uow,
+                    por=(
+                        leer_foto(recorrido.publicado_por_id, recorrido.publicado_con)
+                        if automatico
+                        else por
+                    ),
+                    origen="recorrido",
+                    origen_id=recorrido.id,
+                    nodo=fila.nodo_actual,
+                    destinatarios=[fila.objeto_id],
+                    objeto=fila.objeto,
+                    plantilla=str(nodo.get("plantilla")),
+                    idioma=str(nodo.get("idioma") or "es"),
+                    inmediato=str(nodo.get("momento") or "mejor") == "inmediato",
+                )
+            elif ejecutado:
                 # **Se apunta el envío aquí.** `anotar_envio` estaba escrita,
                 # probada y sin que la llamara nadie, así que `ContactoEnviado`
                 # no se llenaba nunca y `comprobar_fatiga` —que lee esa tabla—
@@ -797,7 +898,18 @@ def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 500) -> dict
             siguiente = rutas.get(rama) or rutas.get("no")
 
         elif tipo == "prueba":
-            elegida = _variante(fila, fila.nodo_actual, list(nodo.get("variantes") or []))
+            ganadora = _ganadora_aplicable(uow.db, tenant_id, recorrido, fila.nodo_actual)
+            variantes_nodo = list(nodo.get("variantes") or [])
+            ya = (fila.variantes or {}).get(fila.nodo_actual)
+            if ganadora and not ya:
+                # Con ganadora declarada, el tráfico NUEVO va a ella; quien ya
+                # cayó en una rama sigue en la suya.
+                elegida = next(
+                    (v for v in variantes_nodo if str(v.get("clave")) == ganadora),
+                    _variante(fila, fila.nodo_actual, variantes_nodo),
+                )
+            else:
+                elegida = _variante(fila, fila.nodo_actual, variantes_nodo)
             variante = str(elegida.get("clave"))
             fila.variantes = {**(fila.variantes or {}), fila.nodo_actual: variante}
             siguiente = elegida.get("siguiente")
@@ -858,7 +970,55 @@ def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 500) -> dict
         # enviado inflaría el embudo con correos que nadie recibió.
         "omitidos": omitidos,
         "medible": bool(pendientes),
+        "sin_identidad": sin_identidad,
     }
+
+
+SIN_PUBLICADOR = "No consta quién lo publicó: sin eso no avanza solo. Vuelve a publicarlo."
+
+
+def tenants_con_recorridos_pendientes() -> list[UUID]:
+    """Los tenants con alguien a quien ya le toca el siguiente paso."""
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as s:
+        filas = s.execute(
+            select(EnRecorrido.tenant_id)
+            .where(
+                EnRecorrido.estado.in_(("activo", "esperando")),
+                EnRecorrido.despertar_at.isnot(None),
+                EnRecorrido.despertar_at <= _ahora(),
+            )
+            .distinct()
+        ).all()
+    return sorted({t for (t,) in filas}, key=str)
+
+
+def avanzar_solos(tenant_id: UUID) -> dict[str, Any]:
+    """La vuelta de la tarea periódica por un tenant: mueve lo que ya toca."""
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+
+    from services.marketing.ajustes import valor
+
+    with con_contexto(tenant_id=tenant_id, origen="tareas"):
+        with unidad_de_trabajo(tenant_id) as uow:
+            r = avanzar(
+                uow,
+                tenant_id,
+                automatico=True,
+                limite=int(valor("recorridos_avance_lote", uow.db) or 500),
+            )
+    resumen = {
+        "pendientes": r["pendientes"],
+        "movidos": len(r["movidos"]),
+        "salidos": len(r["salidos"]),
+        "omitidos": len(r["omitidos"]),
+        "sin_identidad": [x["recorrido"] for x in r["sin_identidad"]],
+    }
+    if r["pendientes"] or r["sin_identidad"]:
+        logger.info("recorridos.avanzados_solos", tenant=str(tenant_id), **resumen)
+    return resumen
 
 
 # ── Analítica por nodo (CRM-02.02.02.08) ──────────────────────────────────
@@ -975,17 +1135,38 @@ def embudo(db: Session, tenant_id: UUID, recorrido_id: UUID) -> dict[str, Any]:
     }
 
 
+def _p_valor(c1: int, n1: int, c2: int, n2: int) -> float:
+    """Prueba de dos proporciones (z), dos colas. 1.0 si no se puede calcular."""
+    import math
+
+    if not n1 or not n2:
+        return 1.0
+    total = (c1 + c2) / (n1 + n2)
+    error = math.sqrt(total * (1 - total) * (1 / n1 + 1 / n2))
+    if error == 0:
+        return 1.0
+    z = abs(c1 / n1 - c2 / n2) / error
+    return math.erfc(z / math.sqrt(2))
+
+
 def resultado_prueba(
-    db: Session, tenant_id: UUID, recorrido_id: UUID, nodo: str, *, minimo: int = 100
+    db: Session, tenant_id: UUID, recorrido_id: UUID, nodo: str, *, minimo: int | None = None
 ) -> dict[str, Any]:
     """Qué variante gana en una prueba A/B (CRM-02.02.02.04).
 
-    **Con pocos datos no se declara ganador.** Con treinta personas por rama, la
-    diferencia que se ve es ruido, y elegir por ella es peor que no probar: se
+    **Con pocos datos no se declara ganador**, y con muchos tampoco si la
+    diferencia cabe en el ruido: se exige el mínimo por variante Y que la mejor
+    supere a la segunda con significación (los dos, ajustes). Con treinta
+    personas por rama la diferencia que se ve es ruido, y elegir por ella
     consolida una variante peor con la confianza de haberla medido.
     """
+    from services.marketing.ajustes import valor
+
+    if minimo is None:
+        minimo = int(valor("prueba_minimo_por_variante", db) or 100)
+    alfa = float(valor("prueba_significacion", db) or 0.05)
     filas = db.execute(
-        select(PasoRecorrido.variante, func.count())
+        select(PasoRecorrido.variante, func.count(func.distinct(PasoRecorrido.en_recorrido_id)))
         .where(
             PasoRecorrido.tenant_id == tenant_id,
             PasoRecorrido.recorrido_id == recorrido_id,
@@ -999,11 +1180,14 @@ def resultado_prueba(
     for variante in por_variante:
         conversiones[variante] = int(
             db.execute(
-                select(func.count())
+                select(func.count(func.distinct(EnRecorrido.id)))
                 .select_from(EnRecorrido)
                 .join(PasoRecorrido, PasoRecorrido.en_recorrido_id == EnRecorrido.id)
                 .where(
                     EnRecorrido.tenant_id == tenant_id,
+                    # Sin el recorrido, contaba las conversiones de CUALQUIER
+                    # recorrido con un nodo que se llamara igual.
+                    EnRecorrido.recorrido_id == recorrido_id,
                     EnRecorrido.motivo_salida == "conversion",
                     PasoRecorrido.nodo == nodo,
                     PasoRecorrido.variante == variante,
@@ -1016,7 +1200,36 @@ def resultado_prueba(
     tasas = {
         k: round(100 * conversiones.get(k, 0) / v, 2) if v else 0.0 for k, v in por_variante.items()
     }
-    ganadora = max(tasas, key=lambda k: tasas[k]) if tasas and suficiente else None
+    orden = sorted(tasas, key=lambda k: -tasas[k])
+    p_valor = (
+        _p_valor(
+            conversiones.get(orden[0], 0),
+            por_variante[orden[0]],
+            conversiones.get(orden[1], 0),
+            por_variante[orden[1]],
+        )
+        if len(orden) >= 2
+        else 1.0
+    )
+    significativa = p_valor < alfa
+    ganadora = orden[0] if suficiente and significativa else None
+    recorrido = db.get(Recorrido, recorrido_id)
+    aplicada = (
+        str(((recorrido.nodos or {}).get(nodo) or {}).get("ganadora") or "") if recorrido else ""
+    )
+    if not suficiente:
+        aviso = (
+            f"Hacen falta al menos {minimo} personas por variante. Con menos, la "
+            "diferencia que se ve es ruido, y elegir por ella consolida una "
+            "variante peor con la confianza de haberla medido."
+        )
+    elif not significativa:
+        aviso = (
+            f"Con la muestra que hay, la diferencia no es significativa (p = "
+            f"{p_valor:.3f}, se exige p < {alfa}). Se sigue repartiendo."
+        )
+    else:
+        aviso = f"«{ganadora}» gana con p = {p_valor:.4f}."
     return {
         "nodo": nodo,
         "variantes": [
@@ -1025,11 +1238,131 @@ def resultado_prueba(
         ],
         "ganadora": ganadora,
         "concluyente": suficiente,
-        "aviso": ""
-        if suficiente
-        else (
-            f"Hacen falta al menos {minimo} personas por variante. Con menos, la "
-            "diferencia que se ve es ruido, y elegir por ella consolida una "
-            "variante peor con la confianza de haberla medido."
-        ),
+        "significativa": significativa,
+        "p_valor": round(p_valor, 6),
+        "alfa": alfa,
+        "minimo": minimo,
+        "ganadora_aplicada": aplicada or None,
+        "aviso": aviso,
     }
+
+
+def _ganadora_aplicable(
+    db: Session, tenant_id: UUID, recorrido: Recorrido, nodo: str
+) -> str | None:
+    """La variante a la que va el tráfico nuevo, si ya hay ganadora.
+
+    Se decide aquí, al pasar gente por el nodo, y se **guarda en el lienzo**
+    (`ganadora` en el nodo): la pantalla del recorrido la enseña y quien abre el
+    recorrido ve a dónde está yendo la gente, no una probabilidad.
+    """
+    from sqlalchemy.orm.attributes import flag_modified
+
+    from services.marketing.ajustes import valor
+
+    if not bool(valor("prueba_desviar_al_ganador", db)):
+        return None
+    definicion = dict((recorrido.nodos or {}).get(nodo) or {})
+    if definicion.get("auto_ganador") is False:
+        return None
+    if definicion.get("ganadora"):
+        return str(definicion["ganadora"])
+    resultado = resultado_prueba(db, tenant_id, recorrido.id, nodo)
+    if not resultado["ganadora"]:
+        return None
+    definicion["ganadora"] = resultado["ganadora"]
+    definicion["ganadora_at"] = _ahora().isoformat()
+    definicion["ganadora_p"] = resultado["p_valor"]
+    recorrido.nodos = {**(recorrido.nodos or {}), nodo: definicion}
+    flag_modified(recorrido, "nodos")
+    logger.info("recorrido.ganadora_aplicada", nodo=nodo, ganadora=resultado["ganadora"])
+    return str(resultado["ganadora"])
+
+
+def actualizar_lienzo(
+    uow: UnidadDeTrabajo,
+    recorrido_id: UUID,
+    *,
+    nodos: dict[str, Any],
+    inicio: str,
+    salidas: list[dict[str, Any]] | None = None,
+    por_cuenta: bool | None = None,
+    nombre: str | None = None,
+) -> dict[str, Any]:
+    """Guarda lo que se ha dibujado en el lienzo (CRM-02.02.02.01).
+
+    Se valida igual que al crear. Si estaba publicado pasa a borrador: un
+    cambio de lienzo publicado sin querer cambia el camino de quien entre
+    mañana, y publicar es un paso aparte, con su versión.
+    """
+    fila = uow.db.get(Recorrido, recorrido_id)
+    if fila is None or fila.tenant_id != uow.tenant_id:
+        raise NoEncontrado("El recorrido no existe", error_code="recorrido.no_encontrado")
+    nuevas_salidas = salidas if salidas is not None else list(fila.salidas or [])
+    avisos = validar({"nodos": nodos, "inicio": inicio, "salidas": nuevas_salidas})
+    fila.nodos = nodos
+    fila.inicio = inicio
+    fila.salidas = nuevas_salidas
+    if por_cuenta is not None:
+        fila.por_cuenta = por_cuenta
+    if nombre:
+        fila.nombre = nombre
+    if fila.estado == "publicado":
+        fila.estado = "borrador"
+    uow.db.flush()
+    return {"id": str(fila.id), "estado": fila.estado, "version": fila.version, "avisos": avisos}
+
+
+def ficha(db: Session, tenant_id: UUID, recorrido_id: UUID) -> dict[str, Any]:
+    fila = db.get(Recorrido, recorrido_id)
+    if fila is None or fila.tenant_id != tenant_id or fila.deleted_at is not None:
+        raise NoEncontrado("El recorrido no existe", error_code="recorrido.no_encontrado")
+    inscritos = dict(
+        db.execute(
+            select(EnRecorrido.estado, func.count())
+            .where(EnRecorrido.tenant_id == tenant_id, EnRecorrido.recorrido_id == recorrido_id)
+            .group_by(EnRecorrido.estado)
+        ).all()
+    )
+    return {
+        "id": str(fila.id),
+        "clave": fila.clave,
+        "nombre": fila.nombre,
+        "descripcion": fila.descripcion,
+        "nodos": fila.nodos or {},
+        "inicio": fila.inicio,
+        "entrada": fila.entrada,
+        "salidas": fila.salidas or [],
+        "excluye_si_en": fila.excluye_si_en or [],
+        "dias_maximos": fila.dias_maximos,
+        "reentrada": fila.reentrada,
+        "por_cuenta": fila.por_cuenta,
+        "estado": fila.estado,
+        "version": fila.version,
+        "inscritos": {str(k): int(v) for k, v in inscritos.items()},
+        "tipos": list(TIPOS_NODO),
+        "comportamientos": list(COMPORTAMIENTOS),
+    }
+
+
+def inscritos(
+    db: Session, tenant_id: UUID, recorrido_id: UUID, *, limite: int = 200
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": str(f.id),
+            "objeto_id": str(f.objeto_id),
+            "cuenta_id": str(f.cuenta_id) if f.cuenta_id else None,
+            "nodo_actual": f.nodo_actual,
+            "estado": f.estado,
+            "variantes": f.variantes or {},
+            "entro_at": f.entro_at,
+            "motivo_salida": f.motivo_salida,
+        }
+        for f in db.execute(
+            select(EnRecorrido)
+            .where(EnRecorrido.tenant_id == tenant_id, EnRecorrido.recorrido_id == recorrido_id)
+            .order_by(EnRecorrido.entro_at.desc())
+            .limit(limite)
+        ).scalars()
+    ]

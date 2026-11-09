@@ -111,53 +111,117 @@ def sugerir_respuesta(
     }
 
 
+def recuperar(db: Any, tenant_id: UUID, *, pregunta: str) -> dict[str, Any]:
+    """Lo del índice de conocimiento de la casa que se parece a la pregunta.
+
+    Artículos publicados, casos resueltos y lecciones aprendidas, cada uno con
+    el permiso que hace falta para verlo: el guardarraíl lo comprueba contra
+    quien pregunta antes de mandárselo al modelo. Lo que se parece poco se
+    queda fuera — mandarle al modelo algo que no tiene que ver es invitarle a
+    contestar con ello.
+    """
+    from crmcore.errors import Conflicto, NoEncontrado
+
+    from services.intelligence import indice
+    from services.intelligence.ajustes import ajustes
+
+    minimo = float(_ajuste_runtime(db, "ia_asistente_parecido_minimo"))
+    try:
+        encontrados = indice.buscar(
+            db, tenant_id, texto=pregunta, tope=int(ajustes().ia_asistente_fragmentos)
+        )
+    except (NoEncontrado, Conflicto) as exc:
+        return {"fragmentos": [], "buscado": False, "porque": str(exc)}
+    utiles = [f for f in encontrados if float(f.get("parecido") or 0) >= minimo]
+    return {
+        "buscado": True,
+        "encontrados": len(encontrados),
+        "descartados_por_parecido": len(encontrados) - len(utiles),
+        "fragmentos": [
+            {
+                "texto": f"{f.get('titulo') or ''}\n{f.get('texto') or ''}",
+                "fuente": f.get("fuente"),
+                "id": f.get("referencia"),
+                "titulo": f.get("titulo"),
+                "permiso": f.get("permiso"),
+                "sensibilidad": "interno",
+                "parecido": f.get("parecido"),
+            }
+            for f in utiles
+        ],
+    }
+
+
+def _ajuste_runtime(db: Any, clave: str) -> Any:
+    from crmcore.runtime import settings as rt
+
+    from services.intelligence.ajustes import ajustes
+
+    valor = rt.efectivo(clave, db)
+    return getattr(ajustes(), clave) if valor is None else valor
+
+
 def conversar(
     uow: UnidadDeTrabajo,
     *,
     conversacion_id: UUID,
     pregunta: str,
-    fragmentos: list[dict[str, Any]],
-    acciones_posibles: list[dict[str, Any]] | None = None,
+    fragmentos: list[dict[str, Any]] | None = None,
     principal: Any = None,
 ) -> dict[str, Any]:
     """Asistente conversacional con conocimiento **y** acciones (CRM-04.03.02.02).
 
-    La parte de conocimiento es la de siempre: contesta citando o no contesta.
+    **El conocimiento lo busca él** en el índice de la casa, salvo que se le
+    pasen fragmentos. Contesta citando o no contesta.
 
-    La parte transaccional **no se ejecuta aquí**. Lo que devuelve es qué acción
-    propone y con qué argumentos, para que la ejecute el agente —con sus
-    herramientas, su tope, su aprobación y su reversión—. Un chatbot que escribe
-    directamente en el CRM es un chatbot sin ninguno de esos cuatro controles.
+    **Las acciones salen de una lista cerrada** y se proponen, no se ejecutan:
+    `acciones_asistente.ejecutar` lo hace cuando quien preguntó lo confirma,
+    con su identidad y sus permisos.
     """
-    respuesta = rag.responder(
-        uow,
-        pregunta=pregunta,
-        fragmentos=fragmentos,
-        principal=principal,
-        objeto="conversacion",
-        objeto_id=conversacion_id,
-    )
-    # `respuesta` y `citas`, que es lo que devuelve `rag.responder`: se leían
-    # `texto` y `fuentes`, el asistente contestaba siempre vacío y nunca
-    # proponía ninguna acción (el mismo fallo que la sugerencia de respuesta).
-    texto = str(respuesta.get("respuesta") or "")
-    propuestas = []
-    for accion in acciones_posibles or []:
-        nombre = str(accion.get("nombre") or "")
-        if nombre and nombre.lower() in texto.lower():
-            propuestas.append(accion)
+    from services.intelligence import acciones_asistente as acc
 
+    recuperado: dict[str, Any] = {"buscado": False}
+    if not fragmentos:
+        recuperado = recuperar(uow.db, uow.tenant_id, pregunta=pregunta)
+        fragmentos = recuperado["fragmentos"]
+    texto = ""
+    fuentes: list[dict[str, Any]] = []
+    respuesta: dict[str, Any] = {}
+    if fragmentos:
+        respuesta = rag.responder(
+            uow,
+            pregunta=pregunta,
+            fragmentos=fragmentos,
+            principal=principal,
+            objeto="conversacion",
+            objeto_id=conversacion_id,
+        )
+        # `respuesta` y `citas`, que es lo que devuelve `rag.responder`.
+        texto = str(respuesta.get("respuesta") or "") if respuesta.get("respondida") else ""
+        por_id = {str(f.get("id")): f for f in fragmentos}
+        fuentes = [
+            {**c, "titulo": (por_id.get(str(c.get("id"))) or {}).get("titulo") or ""}
+            for c in respuesta.get("citas") or []
+        ]
+    propuesta = acc.proponer(uow, pregunta=pregunta, respuesta=texto, principal=principal)
     return {
         "texto": texto,
-        "fuentes": respuesta.get("citas") or [],
-        "acciones_propuestas": propuestas,
+        "respondida": bool(texto),
+        "fuentes": fuentes,
+        "porque": (
+            ""
+            if texto
+            else str(respuesta.get("porque") or recuperado.get("porque") or "")
+            or "No hay nada en el conocimiento de la casa que conteste a esto."
+        ),
+        "conocimiento": {k: v for k, v in recuperado.items() if k != "fragmentos"},
+        "accion_propuesta": propuesta,
         # Dicho explícitamente: nadie tiene que deducir del JSON que esto no ha
-        # tocado nada.
+        # tocado nada todavía.
         "ejecutado": False,
-        "quien_ejecuta": (
-            "El agente de IA con sus herramientas, su tope de acciones, su "
-            "aprobación humana y su reversión. Escribir desde aquí se saltaría "
-            "los cuatro controles."
+        "como_se_ejecuta": (
+            "La acción propuesta no se hace hasta que la confirmes: "
+            "POST /api/v1/ia/asistente/acciones/{id}, con tus permisos."
         ),
     }
 

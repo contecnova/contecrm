@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -82,3 +82,62 @@ class _TenancySettings(BaseSettings):
     # Días antes de olvidar una solicitud, usada o no. Son correos de gente que
     # nunca llegó a ser cliente: dato personal que no hay motivo para guardar.
     onboarding_retencion_dias: int = Field(30, ge=1, le=365)
+
+    # ── Consumo a facturación (CRM-00.01.06.07) ───────────────────────────
+    #
+    # Si el corte de consumo de cada tenant se toma y se manda solo. Apagado de
+    # fábrica: mandar números a un sistema de cobro sin que nadie lo haya
+    # pedido es la forma más rápida de facturar algo que no estaba acordado.
+    facturacion_exportar_periodicamente: bool = False
+    # A dónde se manda el corte: el sistema de facturación del cliente, como un
+    # webhook de la casa (firmado con HMAC y por el guard de SSRF). Vacío, no se
+    # manda y el corte se queda «sin destino», que se ve en la pantalla.
+    facturacion_destino_url: str = ""
+    # Cabeceras que pide ese sistema (su clave de API, por ejemplo). Sensibles:
+    # la consola las enseña tapadas.
+    facturacion_destino_cabeceras: dict[str, Any] = Field(default_factory=dict)
+    # En qué forma viaja el corte: `json` (una lista de filas) o `csv`.
+    facturacion_formato_envio: str = "json"
+    # Intentos de envío antes de dejar el corte en «fallido» y dejar de
+    # reintentarlo solo. Se puede reenviar a mano.
+    facturacion_max_intentos: int = Field(5, ge=1, le=50)
+    # Cada cuánto se toma el corte del periodo en curso y se mandan los
+    # periodos ya cerrados. El corte de un mes es el ÚLTIMO que se tomó dentro
+    # de ese mes, así que el intervalo es también lo que puede faltar del final
+    # del periodo.
+    tarea_facturacion_intervalo_s: int = Field(3_600, ge=60, le=86_400)
+
+    # ── Jerarquía de empresas (CRM-00.01.03.07) ───────────────────────────
+    #
+    # Qué indicadores agrega la matriz de las empresas hijas que se los han
+    # COMPARTIDO: cada uno es `{nombre, ruta, campo}` — una ruta GET de la API
+    # del CRM y el campo numérico de su respuesta que se suma. Sólo cifras, y
+    # sólo de las hijas que lo han autorizado.
+    jerarquia_indicadores: list[dict[str, Any]] = Field(
+        default_factory=lambda: [
+            {
+                "nombre": "Embudo abierto (importe bruto)",
+                "ruta": "/api/v1/pipeline/resumen",
+                "campo": "total",
+                "permiso": "opportunity:read",
+                # Un total del embudo exige ver el importe en claro (un agregado
+                # de una etapa con una sola oportunidad ES su importe), y una
+                # llamada sin rol no lo ve: medido el 09-11-2026, 403
+                # `proyeccion.campo_no_usable`. Sólo se lee el número, y sólo
+                # de la hija que lo ha compartido.
+                "roles": ["admin"],
+            },
+            {
+                "nombre": "Embudo abierto (ponderado)",
+                "ruta": "/api/v1/pipeline/resumen",
+                "campo": "total_ponderado",
+                "permiso": "opportunity:read",
+                # Un total del embudo exige ver el importe en claro (un agregado
+                # de una etapa con una sola oportunidad ES su importe), y una
+                # llamada sin rol no lo ve: medido el 09-11-2026, 403
+                # `proyeccion.campo_no_usable`. Sólo se lee el número, y sólo
+                # de la hija que lo ha compartido.
+                "roles": ["admin"],
+            },
+        ]
+    )

@@ -229,8 +229,17 @@ def fijar(
     ambito: Ambito = "tenant",
     ambito_id: str = "",
     por: UUID | None = None,
+    motivo: str = "",
+    tipo_version: str = "cambio",
 ) -> Any:
-    """Fija un ajuste en un ámbito. Valida, audita e invalida la caché."""
+    """Fija un ajuste en un ámbito. Valida, audita e invalida la caché.
+
+    `motivo` y `tipo_version` sólo viajan al histórico (CRM-00.01.04.02): una
+    vuelta atrás pasa por aquí como cualquier cambio —para que se replique igual—
+    y tiene que quedar UNA vez y marcada como lo que es. Con dos apuntes (el
+    «cambio» que hacía esta función y el «vuelta_atras» que añadía quien la
+    llamaba) el histórico contaba dos cambios donde hubo uno.
+    """
     from crmcore.audit.chain import registrar
     from crmcore.errors import ErrorValidacion
 
@@ -264,7 +273,9 @@ def fijar(
     # no en quien llame, para que no haya forma de cambiar un ajuste sin dejar
     # rastro: un histórico que depende de que alguien se acuerde de anotar es un
     # histórico con huecos justo donde importa.
-    _anotar_version(db, clave, ambito, ambito_id, anterior, convertido, por)
+    _anotar_version(
+        db, clave, ambito, ambito_id, anterior, convertido, por, motivo=motivo, tipo=tipo_version
+    )
 
     # Auditar el cambio de configuración es obligatorio (CRM-00.05.04.03): la
     # mitad de los incidentes de «esto antes funcionaba» son un ajuste que
@@ -523,6 +534,9 @@ def _anotar_version(
     anterior: Any,
     nuevo: Any,
     por: UUID | None,
+    *,
+    motivo: str = "",
+    tipo: str = "cambio",
 ) -> None:
     """Guarda el antes y el después del ajuste (CRM-00.01.04.02).
 
@@ -557,6 +571,8 @@ def _anotar_version(
             valor_anterior=anterior,
             valor_nuevo=nuevo,
             por=por,
+            motivo=motivo,
+            tipo=tipo,
         )
 
 

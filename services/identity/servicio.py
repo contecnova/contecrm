@@ -178,7 +178,11 @@ def autenticar(
         if factores.dispositivo_de_confianza(db, usuario.id, tenant_id, huella_dispositivo):
             exige_mfa = False
     if exige_mfa:
-        if not usuario.mfa_activo:
+        # Con el proveedor de segundo factor del tenant (CRM-00.05.01.22) la
+        # persona puede no tener TOTP propio: su factor está en el proveedor.
+        from services.identity import mfa_proveedor
+
+        if not usuario.mfa_activo and not mfa_proveedor.aplica_a(db, tenant_id, usuario.id):
             raise Prohibido(
                 "Este tenant exige doble factor: configúralo para poder entrar",
                 error_code="auth.mfa_no_configurada",
@@ -257,6 +261,15 @@ def _verificar_segundo_factor(
     """
     if usuario.mfa_secreto and verificar_totp(usuario.mfa_secreto, codigo):
         return True
+
+    # El proveedor de segundo factor del tenant (CRM-00.05.01.22): Okta Verify,
+    # Twilio Verify, RSA… declarado como perfil, sin código de ninguno. Va
+    # después del TOTP propio, que no sale de la máquina, y antes del OTP.
+    if tenant_id is not None:
+        from services.identity import mfa_proveedor
+
+        if mfa_proveedor.verificar_en_login(db, tenant_id, usuario, codigo):
+            return True
 
     # Segundo factor por SMS o correo (CRM-00.05.01.17).
     if tenant_id is not None:

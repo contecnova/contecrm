@@ -154,6 +154,16 @@ ALIAS_POR_SERVICIO = {
     ("integration", "proveedor_servicio_id"): "proveedor",
     # La lección aprendida: la ruta dice «la lección»; el modelo, de qué es.
     ("sales", "leccion_id"): "leccionoportunidad",
+    # Las piezas del 09-11-2026: la ruta nombra lo que es para quien la usa
+    # —el perfil, la acción, la audiencia, el envío— y el modelo, de qué es.
+    ("identity", "perfil_id"): "perfilmfaproveedor",
+    ("intelligence", "accion_id"): "accionasistente",
+    ("marketing", "audiencia_id"): "audienciapublicitaria",
+    ("marketing", "envio_id"): "envioprogramado",
+    # El historial de ajustes (CRM-00.01.04.02) y los cortes de consumo para
+    # facturación (CRM-00.01.06.07): la ruta dice «la versión» y «el corte».
+    ("tenancy", "version_id"): "versionajuste",
+    ("tenancy", "corte_id"): "corteconsumo",
 }
 
 ALIAS_MODELO = {

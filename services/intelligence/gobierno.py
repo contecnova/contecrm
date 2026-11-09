@@ -71,6 +71,10 @@ TIPOS = (
     "propension",
     "churn",
     "anomalia",
+    # Siguiente mejor oferta por coocurrencia de productos entre cuentas
+    # (CRM-05.02.01.03). No es un clasificador ni una regresión: se mide por
+    # cuántas veces acierta el producto apartado entre sus primeras propuestas.
+    "siguiente_oferta",
 )
 
 # Estados del ciclo de vida de una versión.
@@ -79,13 +83,24 @@ TIPOS = (
 #   evaluada    tiene métricas; todavía no puntúa
 #   activa      la que se usa
 #   retirada    ya no puntúa; sus predicciones pasadas se conservan
-ESTADOS = ("entrenando", "evaluada", "activa", "retirada")
+#   descartada  entrenada con el histórico y NO publicada: no superó el
+#               mínimo configurado. Se guarda con sus métricas para que se vea
+#               por qué, y no puntúa nunca.
+ESTADOS = ("entrenando", "evaluada", "activa", "retirada", "descartada")
 
 # Métricas mínimas por familia. Sin ellas no se activa: no es burocracia, es que
 # sin ellas no se puede comparar con la versión siguiente.
 MINIMAS: dict[str, tuple[str, ...]] = {
     "clasificacion": ("auc", "precision", "recall", "muestras"),
     "regresion": ("mae", "muestras"),
+    "recomendacion": ("acierto_top", "muestras"),
+}
+
+# Con qué métrica se compara una versión con la anterior, y si más es mejor.
+METRICA_DE_FAMILIA: dict[str, tuple[str, bool]] = {
+    "clasificacion": ("auc", True),
+    "regresion": ("mae", False),
+    "recomendacion": ("acierto_top", True),
 }
 
 # A qué familia pertenece cada tipo.
@@ -98,6 +113,7 @@ FAMILIA = {
     "anomalia": "clasificacion",
     "importe": "regresion",
     "fecha_cierre": "regresion",
+    "siguiente_oferta": "recomendacion",
 }
 
 
@@ -141,6 +157,17 @@ class ModeloML(Base, TimestampMixin):
     # de un modelo de hace dos años es peor que ninguna, porque nadie duda de ella.
     vigencia_dias: Mapped[int] = mapped_column(Integer, nullable=False, default=180)
     notas: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Lo que hace falta para puntuar con un modelo entrenado aquí y que los
+    # pesos no dicen: cómo se escala cada variable, qué categorías tienen
+    # variable propia y si el objetivo va en logaritmo. Sin esto, puntuar un
+    # registro nuevo sería reconstruir el entrenamiento a ojo — y ahí es donde
+    # el modelo que validó bien empieza a puntuar distinto.
+    definicion: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    # Quién lo entrenó (o programó el reentreno). Las versiones con pesos
+    # tecleados no lo llevan, y eso también dice algo.
+    entrenado_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "tipo", "version", name="uq_modelo_ml_version"),
@@ -310,11 +337,11 @@ def activar(uow: UnidadDeTrabajo, *, tipo: str, version: int) -> dict[str, Any]:
     )
     comparacion: dict[str, Any] = {"habia_anterior": anterior is not None}
     if anterior is not None:
-        clave = "auc" if familia == "clasificacion" else "mae"
+        clave, mas_es_mejor = METRICA_DE_FAMILIA.get(familia, ("auc", True))
         antes = float((anterior.metricas or {}).get(clave) or 0)
         ahora = float((fila.metricas or {}).get(clave) or 0)
-        # En clasificación más es mejor; en regresión, menos.
-        mejora = ahora > antes if familia == "clasificacion" else ahora < antes
+        # En clasificación y recomendación más es mejor; en regresión, menos.
+        mejora = ahora > antes if mas_es_mejor else ahora < antes
         comparacion.update(
             {
                 "metrica": clave,
@@ -555,6 +582,9 @@ def estado_modelos(db: Session, tenant_id: UUID, *, hoy: date | None = None) -> 
                 "caducado": caducado,
                 "ejemplos": fila.ejemplos,
                 "metricas": fila.metricas,
+                # Si la entrenó el servicio con el histórico del CRM o si se
+                # registró con los pesos tecleados por alguien: no se fían igual.
+                "origen": str((fila.definicion or {}).get("origen") or "declarado"),
                 "ventana": (
                     f"{fila.datos_desde} → {fila.datos_hasta}"
                     if fila.datos_desde and fila.datos_hasta

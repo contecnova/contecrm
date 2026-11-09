@@ -46,6 +46,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 
+import { ArchivadoDelRegistro } from "@/componentes/Archivo";
 import {
   BotonesDeRegistro,
   ConfirmarBorrado,
@@ -61,6 +62,7 @@ import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar, listarPagina } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
+import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { ReunionEnLinea } from "@/componentes/ReunionEnLinea";
 import { SubColecciones } from "@/componentes/SubColecciones";
@@ -381,7 +383,20 @@ export function Cuenta() {
     }
   }
 
-  if (fallo) return <Fallo error={fallo} reintentar={() => cargar()} />;
+  // Una cuenta que ya no está en la tabla viva puede estar archivada: sin
+  // esto se veía «No existe» y no había por dónde devolverla (medido el
+  // 09-11-2026 abriendo una cuenta archivada).
+  if (fallo)
+    return (
+      <>
+        <Fallo error={fallo} reintentar={() => cargar()} />
+        {id ? (
+          <div className="mt-3">
+            <ArchivadoDelRegistro servicio="party" id={id} />
+          </div>
+        ) : null}
+      </>
+    );
   if (!vista) return <Cargando />;
 
   // Fusionar duplicados, verificar un identificador, geocodificar, dar de alta
@@ -646,6 +661,10 @@ export function Cuenta() {
                 <h2 className="section-label mb-2">{t("cuenta.metricas")}</h2>
                 <Metricas datos={metricas} />
               </section>
+
+              {/* Propensión a comprar y siguiente mejor oferta, del modelo
+                  entrenado con el histórico (CRM-05.02.01.03). */}
+              <PrediccionDelRegistro objeto="cuenta" id={id} />
             </aside>
 
             {/* ── Lo que ha pasado ───────────────────────────────────────── */}
@@ -846,6 +865,12 @@ export function Cuenta() {
               id={id}
             />
           ) : null}
+
+          {/* Lo archivado de esta cuenta (CRM-07.03.01.02): sus actividades
+          de hace años, que ya no están en la tabla viva y se siguen leyendo. */}
+          <div className="mt-4">
+            <ArchivadoDelRegistro servicio="party" id={id} />
+          </div>
         </>
       )}
     </>

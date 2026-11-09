@@ -161,6 +161,16 @@ def puntuar(
     # consultas para el mismo número.
     visibles = _ia_factores_visibles(uow.db)
     modelo = gobierno.exigir_activo(uow.db, uow.tenant_id, tipo)
+    if (modelo.definicion or {}).get("origen") == "historico":
+        # Un modelo entrenado aquí pesa variables ESCALADAS y categorías que
+        # salen de su propia definición: aplicarle rasgos tecleados en crudo
+        # daría un número con la forma de una predicción y ningún sentido.
+        raise ErrorValidacion(
+            "Este modelo se entrenó con el histórico del CRM y puntúa registros "
+            "por su identificador, con los datos que tiene el CRM: "
+            "GET /api/v1/ia/predictivo/{objeto}/{id}.",
+            error_code="prediccion.modelo_por_id",
+        )
     pesos = {str(k): float(v) for k, v in (modelo.pesos or {}).items()}
     if not pesos:
         raise ErrorValidacion(

@@ -252,6 +252,12 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "analisis", a: "/explotacion", clave: "nav.explotacion", icono: "query_stats", permiso: "informe:read" , recursos: ["explotacion"] },
   { area: "analisis", a: "/rendimiento", clave: "nav.rendimiento", icono: "speed"  },
   { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar"  },
+  // Los modelos entrenados con el histórico: entrenar, ver métricas y
+  // versiones, programar el reentreno y segmentar por propensión.
+  { area: "analisis", a: "/modelos-predictivos", clave: "nav.modelosPredictivos", icono: "model_training", permiso: "ia:usar" },
+  // El asistente que contesta con el conocimiento de la casa, propone acciones
+  // que se confirman y ejecuta preguntas sobre los datos.
+  { area: "analisis", a: "/asistente", clave: "nav.asistente", icono: "support_agent", permiso: "ia:usar" },
 
   // ── Automatización ──────────────────────────────────────────────────────
   // Los estados de cada objeto, como los llama y ordena la empresa
@@ -283,6 +289,10 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // esto. `user:read` porque es lo que exigen sus extremos.
   { area: "usuarios", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
   { area: "usuarios", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read"  },
+  // El árbol de empresas y lo que cada hija comparte con su matriz
+  // (CRM-00.01.03.07), y el consumo hacia facturación (CRM-00.01.06.07).
+  { area: "usuarios", a: "/grupo-de-empresas", clave: "nav.grupoEmpresas", icono: "account_tree", permiso: "tenant:read" },
+  { area: "usuarios", a: "/consumo-a-facturacion", clave: "nav.consumoFacturacion", icono: "receipt_long", permiso: "tenant:read" },
   // Importar cuentas y contactos con su mapeo, la simulación fila a fila y la
   // reversión de una importación entera (CRM-07.01.01.08). Y el traspaso de la
   // cartera de quien se va (CRM-07.01.01.07). Las dos estaban sólo por API.
@@ -303,6 +313,14 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // ── Entornos y despliegue ───────────────────────────────────────────────
   { area: "entornos", a: "/alm", clave: "nav.alm", icono: "swap_horiz", permiso: "metadata:read" , recursos: ["entornos"] },
   { area: "entornos", a: "/entornos", clave: "nav.entornos", icono: "difference", permiso: "metadata:read" },
+  // Qué cambió en la configuración, quién y cuándo, y volver atrás
+  // (CRM-00.01.04.02): el historial se guardaba desde septiembre y no se veía.
+  // Va con los entornos: es la otra mitad de «qué ha cambiado en esta
+  // instalación», la que se cambia en caliente y no se despliega.
+  { area: "entornos", a: "/historial-de-ajustes", clave: "nav.historialAjustes", icono: "history", permiso: "tenant:read" },
+  // Un sandbox con datos sintéticos y una consola para probar la API contra
+  // él (CRM-00.02.01.15): la pregunta de quien integra, no de quien vende.
+  { area: "entornos", a: "/sandbox-api", clave: "nav.sandboxApi", icono: "terminal", permiso: "integracion:write" },
   // En Configuración y con permiso de tenant: quien clona, fusiona o migra un
   // cliente no es quien vende ni quien atiende.
   { area: "entornos", a: "/ciclo-de-vida", clave: "nav.cicloDeVida", icono: "swap_horiz", permiso: "tenant:read" },

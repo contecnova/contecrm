@@ -40,6 +40,7 @@ from sqlalchemy import (
     Index,
     String,
     func,
+    or_,
     select,
     text,
 )
@@ -214,6 +215,7 @@ def consultar(
     *,
     clase: str = "",
     registro_id: UUID | None = None,
+    relacionado_con: UUID | None = None,
     desde: datetime | None = None,
     hasta: datetime | None = None,
     limite: int = 200,
@@ -229,6 +231,23 @@ def consultar(
         consulta = consulta.where(FilaArchivada.clase == clase)
     if registro_id is not None:
         consulta = consulta.where(FilaArchivada.registro_id == registro_id)
+    if relacionado_con is not None:
+        # «Lo archivado de esta cuenta»: las filas que la nombran en alguna
+        # columna —`cuenta_id`, `contacto_id`, `relacionado_id`…—. Se mira el
+        # valor y no el nombre de la columna, porque cada objeto llama a su
+        # padre de una forma y una lista de nombres se queda corta el primer
+        # día que alguien añade un objeto. O la fila misma, si el registro es
+        # el archivado.
+        consulta = consulta.where(
+            or_(
+                FilaArchivada.registro_id == relacionado_con,
+                func.jsonb_path_exists(
+                    FilaArchivada.contenido,
+                    text("'$.* ? (@ == $id)'::jsonpath"),
+                    func.jsonb_build_object("id", str(relacionado_con)),
+                ),
+            )
+        )
     if desde is not None:
         consulta = consulta.where(FilaArchivada.fecha_original >= desde)
     if hasta is not None:
@@ -346,4 +365,114 @@ def resumen(db: Session, tenant_id: UUID) -> dict[str, Any]:
         ],
         "total": sum(n for _, n, _, _ in filas),
         "generado_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ── Archivar por criterio (CRM-07.03.01.02) ──────────────────────────────
+#
+# `archivar` pedía la fecha de corte a quien llamaba, y la única ruta que había
+# —`POST /{servicio}/volumen/archivar`— ni siquiera la llamaba: planificaba
+# sobre filas tecleadas en el cuerpo. O sea, nada se archivaba nunca. Aquí está
+# el criterio que faltaba: la antigüedad por clase de dato, como ajuste del
+# tenant, y el corte calculado con el día del cliente.
+
+
+def hay_archivo(db: Session) -> bool:
+    """Si este servicio tiene tabla de archivo.
+
+    No todos la tienen: sólo los que guardan histórico que crece. Preguntar a
+    uno que no la tiene no es un error del usuario, y un 500 por «la tabla no
+    existe» lo parecería; se contesta que aquí no hay archivo.
+    """
+    return db.execute(text("select to_regclass('filas_archivadas') is not null")).scalar() is True
+
+
+def dias_de_antiguedad(db: Session, clase: str) -> int:
+    """A partir de cuántos días se archiva una clase: la suya o la de todas."""
+    from crmcore.runtime import settings as rt
+
+    por_clase = rt.efectivo("archivado_antiguedad_por_clase", db) or {}
+    propio = por_clase.get(clase) if isinstance(por_clase, dict) else None
+    if propio:
+        return int(propio)
+    return int(rt.efectivo("archivado_dias_por_defecto", db))
+
+
+def corte_de(db: Session, clase: str) -> datetime:
+    """La fecha antes de la cual una fila de esa clase se archiva.
+
+    Contada desde el día del cliente, no desde el UTC: dos años contados en
+    UTC archivan un día antes de tiempo para media Europa de madrugada.
+    """
+    from datetime import time, timedelta
+
+    from crmcore import fechas
+
+    dia = fechas.hoy(db) - timedelta(days=dias_de_antiguedad(db, clase))
+    return datetime.combine(dia, time.min, tzinfo=timezone.utc)
+
+
+def clases_archivables(db: Session, tenant_id: UUID) -> list[dict[str, Any]]:
+    """Las clases de dato de este servicio, con su criterio y lo que movería.
+
+    Con el recuento de candidatas: «se archiva lo de hace dos años» sin decir
+    cuánto es deja a quien lo decide sin saber si va a mover diez filas o diez
+    millones.
+    """
+    from crmcore.datos.retencion import CLASES
+
+    salida: list[dict[str, Any]] = []
+    for clave in sorted(CLASES):
+        declarada = CLASES[clave]
+        corte = corte_de(db, clave)
+        modelo = declarada.modelo
+        campo = getattr(modelo, declarada.campo_fecha)
+        consulta = (
+            select(func.count())
+            .select_from(modelo)
+            .where(modelo.tenant_id == tenant_id, campo.is_not(None), campo < corte)
+        )
+        if declarada.solo_si_borrado and hasattr(modelo, "deleted_at"):
+            consulta = consulta.where(modelo.deleted_at.is_not(None))
+        with con_borrados(db):
+            candidatas = int(db.execute(consulta).scalar_one())
+        salida.append(
+            {
+                "clase": clave,
+                "descripcion": declarada.descripcion,
+                "tabla": modelo.__tablename__,
+                "campo_fecha": declarada.campo_fecha,
+                "dias": dias_de_antiguedad(db, clave),
+                "corte": corte.date().isoformat(),
+                "candidatas": candidatas,
+            }
+        )
+    return salida
+
+
+def archivar_por_criterio(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    clase: str,
+    simular: bool = True,
+    por: UUID | None = None,
+) -> dict[str, Any]:
+    """Archiva lo que el criterio del tenant dice que ya es histórico."""
+    from crmcore.runtime import settings as rt
+
+    corte = corte_de(db, clase)
+    informe = archivar(
+        db,
+        tenant_id=tenant_id,
+        clase=clase,
+        antes_de=corte,
+        simular=simular,
+        tope=int(rt.efectivo("archivado_tope_por_pasada", db)),
+        por=por,
+    )
+    return {
+        **informe.a_dict(),
+        "corte": corte.date().isoformat(),
+        "dias": dias_de_antiguedad(db, clase),
     }

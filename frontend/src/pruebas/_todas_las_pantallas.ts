@@ -12,6 +12,8 @@
 
 export { Alm } from "@/paginas/Alm";
 export { Aprobaciones } from "@/paginas/Aprobaciones";
+export { AudienciaPublicitaria } from "@/paginas/AudienciaPublicitaria";
+export { RecorridoDeMarketing } from "@/paginas/RecorridoDeMarketing";
 export { Ayuda } from "@/paginas/Ayuda";
 export { Archivos } from "@/paginas/Archivos";
 export { Calendario } from "@/paginas/Calendario";
@@ -22,6 +24,7 @@ export { Cobertura } from "@/paginas/Cobertura";
 export { Conocimiento } from "@/paginas/Conocimiento";
 export { ConsolaAgente } from "@/paginas/Consola.agente";
 export { Consola } from "@/paginas/Consola";
+export { ConsumoAFacturacion } from "@/paginas/ConsumoAFacturacion";
 export { Coste } from "@/paginas/Coste";
 export { Cuadros } from "@/paginas/Cuadros";
 export { Cuenta } from "@/paginas/Cuenta";
@@ -30,6 +33,8 @@ export { Entrar } from "@/paginas/Entrar";
 export { Estado } from "@/paginas/Estado";
 export { Explotacion } from "@/paginas/Explotacion";
 export { Ficha } from "@/paginas/Ficha";
+export { GrupoDeEmpresas } from "@/paginas/GrupoDeEmpresas";
+export { HistorialDeAjustes } from "@/paginas/HistorialDeAjustes";
 export { Inicio } from "@/paginas/Inicio";
 export { Inteligencia } from "@/paginas/Inteligencia";
 export { Marketing } from "@/paginas/Marketing";
