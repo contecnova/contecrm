@@ -306,9 +306,13 @@ def test_la_hoja_de_estado_no_publica_un_hueco_como_algo_construido() -> None:
         pytest.skip("la hoja de estado no está generada")
 
     html = ruta.read_text(encoding="utf-8")
-    encontrado = re.search(r"const DATOS = (\{.*?\});", html, re.S)
+    # El JSON se lee entero con el decodificador, no se corta con una expresión
+    # regular: `\{.*?\};` paraba en el primer «};» de un texto —un `visto` que
+    # citaba `{conexion_id, operaciones};`— y la prueba reventaba sin que la
+    # hoja tuviera nada mal (09-11-2026).
+    encontrado = re.search(r"const DATOS = (?=\{)", html)
     assert encontrado, "la hoja no lleva sus datos dentro: no se puede comprobar"
-    datos = json.loads(encontrado.group(1))
+    datos, _ = json.JSONDecoder().raw_decode(html, encontrado.end())
 
     mal = [
         f"{c['id']} ({c['estado']}): «hay» dice «{c['hay'][:70]}…»"

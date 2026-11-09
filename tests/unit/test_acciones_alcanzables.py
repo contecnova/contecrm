@@ -148,6 +148,10 @@ ABIERTOS = {
     # de entrada, y con el mismo cuidado: la excusa «esto es libre» es la que
     # deja sin formulario a media aplicación, así que va nombrada una a una.
     ("integration", "post", "/api/v1/modelo-canonico/traducir-salida"),
+    # El aviso de la centralita (webhook): su forma la decide el proveedor de
+    # telefonía y se traduce con el mapeo del perfil; no lo rellena nadie en
+    # una pantalla.
+    ("integration", "post", "/api/v1/telefonia/avisos"),
     ("integration", "post", "/api/v1/proveedores-servicio/simular"),
     ("integration", "post", "/api/v1/firma/simular"),
     # Importación: filas tal cual vienen del fichero.
