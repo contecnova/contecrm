@@ -552,6 +552,23 @@ export default {
     enHoras: "vence en {{horas}} h",
     sinPlazo: "sin plazo declarado",
     totalHoras: "Plazo declarado del camino: {{horas}} h",
+    migrarAEsta: "Migrar las instancias en vuelo a esta versión",
+    migracionTitulo: "Instancias en vuelo hacia la versión {{version}}",
+    pasarian: "Pasarían a esta versión",
+    migradas: "Ya siguen con esta versión",
+    seQuedan: "Se quedan con su versión",
+    instanciaEnPaso: "{{id}} · v{{version}} · en «{{paso}}»",
+    instanciaMovida: "{{id}} · desde la v{{version}} · en «{{paso}}»",
+    confirmarMigracion: "Migrar {{n}} a la versión {{version}}",
+    plantillasTitulo: "Plantillas de flujo",
+    plantillasAyuda:
+      "Procesos de ejemplo por sector. Copiar crea un BORRADOR tuyo con clave nueva y lo abre aquí: lo ajustas y lo publicas. Mejorar la plantilla no cambia tus copias.",
+    plantillasVacia: "La biblioteca está vacía en esta instalación.",
+    cargarDeSerie: "Cargar las de serie",
+    claveDeLaCopia: "Clave de la copia de «{{plantilla}}»",
+    copiarComoBorrador: "Copiar como borrador",
+    copiada:
+      "Copiada como «{{clave}}»: {{estado}}. Ajústala y publícala cuando esté lista.",
   },
   aprobaciones: {
     titulo: "Aprobaciones de documentos",

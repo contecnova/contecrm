@@ -108,8 +108,27 @@ function cuantasAcotadas(fuente: string): number {
   return (
     (fuente.match(/lista-acotada/g) ?? []).length +
     (fuente.match(/overflow-y-auto/g) ?? []).length +
-    (fuente.match(/\.slice\(0,/g) ?? []).length
+    (fuente.match(/\.slice\(0,/g) ?? []).length +
+    rejillasAcotadas(fuente)
   );
+}
+
+/**
+ * Las `<Rejilla>` que se acotan solas: lo hacen por defecto, salvo que se les
+ * diga `acotada={false}`. Sin contarlas, una pantalla de varias tablas hechas
+ * con el armazón de la casa salía como «sin acotar» aunque lo estuviera, y la
+ * salida fácil era escribir la clase a mano otra vez. Se mira el bloque de
+ * propiedades —hasta la línea que cierra la etiqueta—, no el resto.
+ */
+function rejillasAcotadas(fuente: string): number {
+  let n = 0;
+  for (const m of fuente.matchAll(/<Rejilla\b/g)) {
+    const resto = fuente.slice(m.index ?? 0);
+    const fin = resto.search(/\n\s*>\s*\n/);
+    const props = fin === -1 ? resto.slice(0, 600) : resto.slice(0, fin);
+    if (!props.includes("acotada={false}")) n += 1;
+  }
+  return n;
 }
 
 function pantallas(): string[] {

@@ -1,6 +1,12 @@
-"""Procesos de negocio que cruzan servicios: sagas con compensación, migración
-de instancias en vuelo y plantillas por sector
-(CRM-03.03.02.12, CRM-00.03.02.13, CRM-00.03.05.15).
+"""Procesos de negocio que cruzan servicios: sagas con compensación
+(CRM-03.03.02.12).
+
+La migración de instancias en vuelo (CRM-00.03.02.13) vive en `migracion.py` y
+las plantillas de flujo (CRM-00.03.05.15) en `plantillas.py`. Estuvieron aquí
+hasta el 09-11-2026 y no hacían lo que decían: la «simulación de migración»
+miraba la tabla de sagas —que no son instancias de proceso— y contestaba cero
+para cualquier proceso del editor, y «clonar» devolvía un JSON que nadie
+guardaba.
 
 Un pedido que se cobra toca cuatro servicios y ninguna base de datos los abarca a
 todos. No hay transacción que valga: o se orquesta con compensaciones, o el día
@@ -21,12 +27,8 @@ pasó, y lo que pasó tiene consecuencias contables aunque se arrepienta.
 enviado al cliente no vuelve. Saberlo antes cambia el orden de los pasos: lo
 irreversible va al final, cuando ya no puede fallar nada detrás.
 
-**Una instancia en vuelo no salta a la versión nueva del proceso.** Termina con
-la suya. Cambiarle el guion a la mitad deja instancias en un paso que en la nueva
-versión no existe, y nadie sabe qué hacer con ellas.
-
-**Y una plantilla de flujo se clona, no se hereda.** Si heredara, mejorar la
-plantilla cambiaría los procesos que ya están corriendo en veinte clientes.
+**Una saga en vuelo no salta a la versión nueva del proceso.** Termina con la
+suya: sus pasos se declararon al arrancarla y son los que sabe deshacer.
 """
 
 from __future__ import annotations
@@ -115,33 +117,6 @@ class PasoSaga(Base):
     __table_args__ = (
         UniqueConstraint("tenant_id", "saga_id", "orden", name="uq_paso_saga"),
         Index("ix_pasos_saga", "tenant_id", "saga_id", "orden"),
-    )
-
-
-class PlantillaFlujo(Base, TimestampMixin):
-    """Un proceso de ejemplo por sector, para clonar (CRM-00.03.05.15)."""
-
-    __tablename__ = "plantillas_flujo"
-
-    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
-    clave: Mapped[str] = mapped_column(String(80), nullable=False)
-    sector: Mapped[str] = mapped_column(String(60), nullable=False, default="")
-    caso_de_uso: Mapped[str] = mapped_column(String(120), nullable=False, default="")
-    nombre: Mapped[str] = mapped_column(String(200), nullable=False)
-    definicion: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
-    )
-    # Lo que la plantilla NO resuelve. Una que promete el proceso entero y deja
-    # fuera la aprobación hace que el cliente lo descubra en producción.
-    no_resuelve: Mapped[list[Any]] = mapped_column(
-        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
-    )
-    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
-    __table_args__ = (
-        UniqueConstraint("clave", "version", name="uq_plantilla_flujo"),
-        Index("ix_plantillas_flujo", "sector", "activa"),
     )
 
 
@@ -314,128 +289,6 @@ def fallar(uow: UnidadDeTrabajo, *, saga_id: UUID, orden: int, error: str) -> di
             else "Queda trabajo hecho que NO se puede deshacer. La saga está atascada "
             "a propósito: alguien tiene que decidir qué se hace con eso, y decir que "
             "está compensada haría que nadie se fiara de esa palabra."
-        ),
-    }
-
-
-# ── Migración de instancias en vuelo (CRM-00.03.02.13) ────────────────────
-
-
-def plan_de_migracion(
-    db: Session,
-    tenant_id: UUID,
-    *,
-    clave: str,
-    version_nueva: int,
-    pasos_nuevos: list[str],
-) -> dict[str, Any]:
-    """Qué pasaría con las instancias en vuelo al publicar una versión nueva.
-
-    **Las que están corriendo terminan con su versión.** Cambiarles el guion a la
-    mitad las deja en un paso que en la nueva no existe, y entonces nadie sabe qué
-    hacer con ellas: ni avanzan ni se pueden cancelar sin dejar cosas a medias.
-
-    Lo que sí se puede es **decir cuántas hay y en qué paso**, porque de eso
-    depende si la versión nueva puede esperar a que terminen o hay que migrarlas a
-    mano una a una.
-    """
-    en_vuelo = (
-        db.execute(
-            select(Saga).where(
-                Saga.tenant_id == tenant_id,
-                Saga.clave == clave,
-                Saga.estado.in_(("en_curso", "compensando")),
-            )
-        )
-        .scalars()
-        .all()
-    )
-    por_version: dict[int, int] = {}
-    en_paso_que_desaparece: list[str] = []
-    for saga in en_vuelo:
-        por_version[saga.version_proceso] = por_version.get(saga.version_proceso, 0) + 1
-        actual = next(
-            (
-                p.nombre
-                for p in sorted(pasos_de(db, tenant_id, saga.id), key=lambda p: p.orden)
-                if p.estado == "pendiente"
-            ),
-            "",
-        )
-        if actual and actual not in pasos_nuevos:
-            en_vuelo_id = str(saga.id)
-            en_paso_que_desaparece.append(f"{en_vuelo_id} (en «{actual}»)")
-
-    return {
-        "clave": clave,
-        "version_nueva": version_nueva,
-        "en_vuelo": len(en_vuelo),
-        "por_version": por_version,
-        # Las que no podrían migrarse aunque se quisiera: su paso actual no
-        # existe en la versión nueva.
-        "en_paso_que_desaparece": en_paso_que_desaparece,
-        "se_pueden_migrar_todas": not en_paso_que_desaparece,
-        "que_pasa": (
-            "Las instancias en vuelo terminan con SU versión. La nueva se aplica a "
-            "las que empiecen a partir de ahora."
-        ),
-        "aviso": (
-            ""
-            if not en_paso_que_desaparece
-            else f"{len(en_paso_que_desaparece)} instancias están en un paso que la "
-            "versión nueva no tiene. Migrarlas las dejaría sin sitio: o terminan con "
-            "la suya, o hay que decidir una a una."
-        ),
-    }
-
-
-# ── Plantillas de flujo por sector (CRM-00.03.05.15) ──────────────────────
-
-
-def clonar_plantilla(uow: UnidadDeTrabajo, *, clave: str, nombre_destino: str) -> dict[str, Any]:
-    """Copia una plantilla de flujo para que el tenant la modifique.
-
-    **Se clona, no se hereda.** Si heredara, mejorar la plantilla cambiaría los
-    procesos que ya están corriendo en veinte clientes — incluido uno que la
-    ajustó hace seis meses y no espera que le cambie nada.
-
-    Y se devuelve **lo que la plantilla no resuelve**: una que promete el proceso
-    entero y deja fuera la aprobación hace que el cliente lo descubra en
-    producción, con el proceso ya en marcha.
-    """
-    plantilla = (
-        uow.db.execute(
-            select(PlantillaFlujo)
-            .where(PlantillaFlujo.clave == clave, PlantillaFlujo.activa.is_(True))
-            .order_by(PlantillaFlujo.version.desc())
-        )
-        .scalars()
-        .first()
-    )
-    if plantilla is None:
-        raise NoEncontrado(
-            f"No hay plantilla de flujo activa con la clave «{clave}»",
-            error_code="flujo.plantilla_no_existe",
-        )
-    if not nombre_destino.strip():
-        raise ErrorValidacion(
-            "El clon necesita nombre propio: si se queda con el de la plantilla, "
-            "nadie sabe después cuál es el suyo y cuál el de fábrica.",
-            error_code="flujo.clon_sin_nombre",
-        )
-
-    return {
-        "desde": plantilla.clave,
-        "version_origen": plantilla.version,
-        "nombre": nombre_destino,
-        "definicion": plantilla.definicion,
-        "es_copia_independiente": True,
-        # Lo que el cliente va a tener que resolver por su cuenta, dicho antes de
-        # empezar.
-        "no_resuelve": plantilla.no_resuelve,
-        "porque_copia": (
-            "Se clona y no se hereda: si heredara, mejorar la plantilla cambiaría los "
-            "procesos que ya están corriendo en otros clientes."
         ),
     }
 

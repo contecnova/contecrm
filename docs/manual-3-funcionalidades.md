@@ -218,6 +218,29 @@ una norma escrita en un documento: es una imposibilidad a nivel de permisos.
   anteriores **en orden inverso**. No es un *rollback*: un pedido enviado al ERP
   no se «desenvía», se anula, y esa anulación es una operación de negocio con
   sus propias consecuencias — por eso está declarada y no se infiere.
+- **Pasos «servicio» que llaman al CRM** con los permisos de quien lanzó el
+  proceso. La operación se escribe como la ruta de la API —`POST
+  /api/v1/opportunities`, `PATCH /api/v1/casos/@caso_id`—, con `entrada` (el
+  cuerpo, con `@variables`) y `salida` (la variable donde se guarda la
+  respuesta). Al arrancar se guarda quién lo lanzó, sus permisos y sus roles, y
+  cada paso llama en su nombre: el servicio de destino aplica sus permisos, su
+  compartición y su auditoría como si lo hiciera esa persona. Un 4xx/5xx del
+  destino es un fallo del paso con el mensaje del destino, y sigue el camino de
+  siempre (reintentos, `al_fallar` o compensación). Al publicar se rechaza una
+  operación que no tiene la forma «MÉTODO /api/v1/…» o cuya ruta no atiende
+  ningún servicio. **Hasta el 09-11-2026 ningún paso «servicio» se ejecutaba**:
+  el worker no registraba ninguna operación y todos fallaban con «No hay
+  invocador registrado», y el ejemplo del editor traía una que no existía.
+- **Lanzar un proceso desde una automatización**: la acción «lanzar_proceso»
+  emite una orden que ahora atiende el motor (antes no la escuchaba nadie y la
+  regla decía «proceso lanzado» sin que existiera). Si la orden no dice quién
+  activó la regla, la instancia arranca **sin identidad**: decide y pide
+  aprobaciones, y el primer paso que tenga que llamar al CRM falla diciendo que
+  no sabe con qué permisos actuar. No se inventan.
+- **Migrar lo que está en vuelo a otra versión** (CRM-00.03.02.13), desde el
+  Editor de procesos. Ver «Migrar instancias en vuelo» más abajo.
+- **Plantillas de flujo por sector** (CRM-00.03.05.15), copiables como borrador
+  propio. Ver «Plantillas de flujo» más abajo.
 - **Coreografía por eventos** para lo de bajo acoplamiento (CRM-00.03.02.04).
 - **Temporizadores y esperas** (CRM-00.03.02.07): mientras espera, una instancia
   no consume nada; solo tiene una fecha de despertar.
@@ -246,6 +269,16 @@ Dos garantías que van juntas porque una sin la otra no sirve
 (CRM-00.03.03.06): **orden determinista** entre reglas —por prioridad y, a
 igualdad, por antigüedad— y **corte de cascada** cuando una regla dispara otra
 más allá del tope configurado.
+
+**El momento y los siete disparadores, de verdad (09-11-2026).** Hasta entonces
+`momento` y `programacion` se guardaban y no los leía nadie —todo corría al
+instante y una programada no corría nunca— y sólo creación y modificación tenían
+quien los disparara. Ahora las diferidas y programadas pasan por una **cola en
+tabla** que no pierde nada si el proceso cae ni ejecuta dos veces lo mismo; las
+programadas corren a su hora en la zona de la empresa; y eliminación, evento del
+catálogo, manual («ejecutar ahora») y webhook firmado tienen cada uno su camino.
+Al encender una regla queda quién la encendió y con qué permisos: los procesos
+que lance actúan con esa identidad.
 
 Y un **depurador** (CRM-00.03.03.07) que registra también las veces que la regla
 **no** se disparó y por qué condición. Sin eso, «¿por qué no se ha asignado este
@@ -2120,11 +2153,11 @@ flujo de aprobación de descuentos desde un lienzo vacío.
 Una dependencia real y una que no lo es, dichas ahora para no descubrirlas a
 mitad:
 
-1. `CRM-00.03.05.12` (decidir desde el correo) **no se puede entregar** hasta que
-   exista el repartidor de notificaciones, el mismo que falta para
-   `enviar_correo` en las automatizaciones. Ambas cosas se destraban a la vez, y
-   hasta entonces la capacidad se queda en `pendiente` aunque el resto del grupo
-   avance.
+1. `CRM-00.03.05.12` (decidir desde el correo) dependía del repartidor de
+   notificaciones, el mismo que necesitaba `enviar_correo` en las
+   automatizaciones. Ya existe, y desde el 09-11-2026 el enlace sale por correo
+   al abrirse cada etapa y se canjea en una página pública sin sesión: ver
+   [Decidir desde el correo o el móvil](#decidir-desde-el-correo-o-el-móvil-crm-00030512).
 2. La resolución de aprobador por jerarquía (`CRM-00.03.05.07`) **no bloquea
    nada**: la jerarquía de mando ya existe. Es `superior_id` en la membresía del
    tenant (`services/identity/modelos.py`), que es de donde sale la visibilidad
@@ -2370,6 +2403,41 @@ analizador que dice «completa» cuando no lo sabe es peor que no tenerlo.
 También es conservador con los bordes: `<= 1000` y `> 1000` se declaran
 solapadas aunque solo se toquen en el punto exacto. Un falso positivo se
 descarta mirando; un falso negativo se descubre en producción.
+
+### El editor: columnas, una rejilla de reglas, validar y probar
+
+Hasta el 09-11-2026 la tabla constaba hecha y sólo tenía API: la pantalla era la
+ficha genérica, que edita con `PATCH` lo que se guarda entero con `PUT` y pinta
+las reglas —que son estructura— como una caja de texto. Una tabla de decisión es
+para que la cambie negocio sin escribir código; con una caja de JSON no la cambia
+nadie.
+
+Ahora tiene editor propio (`/m/procesos/tablas-decision/:clave`, y
+`/tablas-decision/nueva` para empezar una), al que llevan la fila y el botón
+«Nuevo» de la pestaña **Tablas de decisión**:
+
+- **Las columnas.** Las de entrada dicen de dónde sale su valor
+  (`@oportunidad.importe`) y de qué tipo es; las de salida, qué devuelve la
+  tabla. Renombrar una columna arrastra sus casillas en todas las reglas —es el
+  error más frecuente al editar una tabla, y dejaría reglas comparando contra
+  una columna que ya no existe—.
+- **Una fila por regla**, con una casilla por entrada y otra por salida. Una
+  casilla vacía es «cualquiera»; una casilla puede llevar varias condiciones
+  («≥ 1000 y < 5000»). Las reglas se añaden, se quitan y se suben o bajan, que
+  con la política `primera` es cambiar la decisión.
+- **Los valores se convierten al tipo de su columna al enviar**, no mientras se
+  teclea: un «50000» de texto comparado con el número 50.000 da falso sin avisar,
+  y convertir al teclear rompe el «1.» de quien escribe 1,5. Lo que empieza por
+  `@` se manda tal cual: es comparar con otra variable del proceso.
+- **Validar** enseña los problemas de forma y el análisis (huecos, solapes,
+  reglas que nunca casarán) de la tabla tal como está en pantalla.
+- **Probar** evalúa la tabla **sin guardarla** con los datos que se escriban
+  —cada uno se coloca donde lo lee la expresión de su columna— y enseña qué sale,
+  qué regla acertó y en qué condición falló cada una de las demás. Va por
+  `POST /tablas-decision/probar`, que no existía: la API sólo evaluaba la tabla
+  guardada, y probar sobre lo publicado obliga a publicar para probar.
+- **Guardar** la reemplaza entera por su clave y devuelve el análisis, que queda
+  registrado si tiene avisos.
 
 ### El paso `tabla` en el motor de procesos
 
@@ -8436,6 +8504,43 @@ aprobación en marcha sobre algo. Y el enlace se marca usado **antes** de decidi
 si decidir falla hay que pedir otro, que es molesto y mucho mejor que dejar vivo
 un enlace que ya ha viajado por un correo reenviable.
 
+**Hasta el 09-11-2026 constaba hecho y no servía para lo que dice.** Canjear el
+enlace pedía una sesión con permiso de decidir —para decidir «sin entrar» había
+que entrar— y no se mandaba ningún correo. Ahora:
+
+- **El correo sale solo.** Al abrirse una etapa —la primera, la siguiente tras
+  aprobar la anterior, o la primera otra vez tras una reaprobación— cada
+  aprobador recibe su enlace por correo, con lo que se decide y hasta cuándo vale.
+  También se puede pedir uno a mano para un aprobador (`POST
+  /aprobaciones/enlaces`, que ahora además lo manda y devuelve la dirección). El
+  correo lo manda identidad —es quien sabe el buzón— a partir de un evento
+  interno, `approval.link.issued`, que **no sale a los webhooks**: lleva el
+  enlace, y entregarlo a una integración le daría la firma del aprobador. Si el
+  aprobador ya no está, el aviso no se reparte a quien siga la aprobación, como
+  hacen los demás: se descarta.
+- **La página pública**, `/decidir?t=…`, fuera del CRM: enseña el título, la
+  etapa, los datos que la acompañan y hasta cuándo vale el enlace, y deja
+  aprobar, rechazar o pedir cambios con un comentario (obligatorio para pedir
+  cambios). **Abrirla no decide ni gasta nada**: los escáneres de correo abren
+  los enlaces para revisarlos.
+- **Qué hace que un enlace deje de servir**, además de usarse y caducar: que su
+  etapa ya no sea la que se vota —un enlace de la primera etapa no vota en la
+  segunda aunque el titular esté en las dos—, que sea de antes de una
+  reaprobación —no puede firmar lo que cambió después de mandarlo—, que la
+  aprobación ya esté resuelta o que su titular ya haya votado. Todo responde lo
+  mismo.
+- **Límite de intentos por IP** en el gateway —30 por hora de serie—, aparte
+  del general: es la única pieza que ve la IP de quien llama.
+- La decisión queda **a nombre del titular y con `via = correo`** en la
+  auditoría y en el historial de la aprobación.
+
+Se gobierna con cuatro ajustes: `aprobacion_enlace_por_correo` (mandarlo al
+abrirse cada etapa; apagado, sólo se manda al pedirlo),
+`aprobacion_enlace_validez_horas` (72), y en el `.env`
+`APROBACION_ENLACE_INTENTOS_POR_IP` / `APROBACION_ENLACE_VENTANA_S`. La
+dirección de la página sale de `FRONT_BASE_URL`, que es la de la interfaz y no
+la de la API.
+
 ### La bandeja de lo que me toca (`CRM-00.03.05.13`)
 
 `GET /aprobaciones/bandeja` trae el contexto dentro y en una sola llamada. Una
@@ -12702,10 +12807,14 @@ la forma más rápida de que se deje de mirar.
 
 ## Probar y promocionar automatizaciones (`CRM-00.03.03.08`, `CRM-00.03.03.09`)
 
-Se piden por ruta: la prueba en seco, la promoción y la instalación de una
-plantilla por industria. Durante un tiempo estuvieron escritas y sin puerta, que
-es como no tenerlas — y mientras tanto la única forma de probar una regla seguía
-siendo activarla.
+> **Hasta el 09-11-2026 ninguna de las dos guardaba nada.** «Promocionar»
+> devolvía la definición limpia y no la escribía en ningún sitio, e «instalar
+> una plantilla» pedía teclearla en JSON y contestaba «instaladas» sin crear
+> ninguna. Ahora **promover desde un sandbox crea o actualiza de verdad** las
+> automatizaciones en la empresa —primero en seco, con un plan y una huella que
+> hay que devolver para aplicarlo— y la **biblioteca** son seis plantillas por
+> industria que se eligen de una lista, validan con el motor y crean la regla
+> apagada.
 
 Una automatización se escribe en producción porque es donde están los datos de
 verdad, y se prueba **activándola**. Eso funciona hasta el día en que la regla que
@@ -14852,7 +14961,7 @@ y el primero, en ese orden.
 
 Esto estaba entero y escrito, y **no lo alcanzaba ninguna ruta**: el motor de
 procesos anunciaba en su propia descripción «sagas con compensación» y no había
-forma de arrancar una. Ahora hay seis puertas, todas bajo `/api/v1/sagas`.
+forma de arrancar una. Ahora hay cinco puertas, todas bajo `/api/v1/sagas`.
 
 ### Arrancar una saga
 
@@ -14892,29 +15001,61 @@ deshacer y esperan a que alguien decida.
 los pasos que quedaron sin compensar. Eso es trabajo manual pendiente, y una ficha
 que no lo destaca lo deja sin reclamar.
 
-### Publicar una versión nueva con cosas en vuelo
+### Migrar instancias en vuelo (`CRM-00.03.02.13`)
 
-`POST /api/v1/sagas/migracion/simular` **no ejecuta nada**: dice cuántas instancias
-hay en vuelo, de qué versión, y cuáles están en un paso que la versión nueva ya no
-tiene. Una saga de alta de cliente puede durar semanas; publicar sin mirar es
-cambiarle los pasos a procesos que ya están a mitad, y lo que estaba a mitad es lo
-que nadie reclama.
+Publicar una versión nueva no toca lo que ya corre: cada instancia termina con
+la suya. Cuando la nueva corrige un error, esperar a que doscientas instancias
+viejas terminen con el error no es una opción, y para eso está **migrar**.
 
-Las que están corriendo **terminan con su versión**. La nueva se aplica a las que
-empiecen a partir de ahora.
+`POST /api/v1/procesos/definiciones/{clave}/{version}/migracion/simular`
+(`proceso:read`) no mueve nada: de cada instancia en vuelo de esa clave y otra
+versión dice si pasaría —su paso actual existe en la versión destino y es del
+mismo tipo— o por qué se queda. `POST …/migracion` (`proceso:admin`, con un
+`motivo` opcional) mueve las que pueden y deja las demás con su versión. Es la
+misma función con y sin aplicar, así que lo que enseña la simulación es lo que
+hará.
 
-### Plantillas de flujo
+Se quedan, cada una con su motivo: la que está en un paso que la destino no
+tiene o que es de otro tipo; la que tiene una tarea humana pendiente cuyas
+respuestas la destino ya no admite (contestar con esa opción terminaría el
+proceso sin pasar por un final); la que ya hizo pasos que su versión sabe
+deshacer y la destino no; la que está compensando, y la que un worker tiene
+tomada en ese momento. Sólo se migra a una versión **publicada**. Cada instancia
+movida deja su apunte de auditoría (`proceso.instancia_migrada`, con la versión
+de la que salió) y la migración entera otro (`proceso.migracion_de_instancias`).
 
-`POST /api/v1/sagas/plantillas/clonar` copia una plantilla por sector para que el
-cliente la modifique. **Se copia y no se hereda**: si heredara, mejorar la
-plantilla cambiaría los procesos que ya corren en otros veinte clientes — incluido
-uno que la ajustó hace seis meses. Y la respuesta trae `no_resuelve`: lo que la
-plantilla deja fuera, dicho antes de empezar y no en producción.
+> **Hasta el 09-11-2026 esto no existía.** Había `POST
+> /api/v1/sagas/migracion/simular`, que miraba la tabla de **sagas** —que no son
+> instancias de proceso— y contestaba cero para cualquier proceso del editor; y
+> migrar no se podía. La ruta de sagas se ha retirado.
+
+### Plantillas de flujo (`CRM-00.03.05.15`)
+
+`GET /api/v1/procesos/plantillas` lista la biblioteca: procesos de ejemplo por
+sector, cada uno con lo que **no** resuelve. Vienen cinco de serie —aprobación de
+descuento comercial, alta de cliente con revisión de riesgo, devolución y abono,
+onboarding de proveedor y escalado de caso urgente—, que validan con el
+validador del motor y cuyos pasos «servicio» llaman a rutas que existen en el
+contrato (lo vigila una prueba). `POST /api/v1/procesos/plantillas/cargar`
+(`proceso:admin`) las carga y es idempotente: una plantilla que cambió con el
+producto entra como versión nueva y las copias ya hechas no cambian. También las
+carga `scripts/sembrar_configuracion.py`.
+
+`POST /api/v1/procesos/plantillas/{clave}/copiar` (`proceso:write`, con `clave` y
+`nombre` nuevos) crea un **borrador** de definición propio. **Se copia y no se
+hereda**: si heredara, mejorar la plantilla cambiaría los procesos que ya corren.
+La clave tiene que ser nueva —con la de otro proceso sería su versión siguiente y
+heredaría sus disparadores—, y el borrador no lo ejecuta nadie hasta que alguien
+lo publica.
+
+> **Hasta el 09-11-2026 la tabla estaba vacía** y `POST
+> /api/v1/sagas/plantillas/clonar` devolvía un JSON que nadie guardaba. Esa ruta
+> se ha retirado.
 
 ### Lo que hace falta para llamarlas
 
-Todas piden permiso: `proceso:write` las cuatro que escriben, `proceso:read` la
-ficha y la simulación. Una saga mueve dinero y stock en varios servicios; la ruta
+Todas piden permiso: `proceso:write` las tres que escriben, `proceso:read` el
+listado y la ficha. Una saga mueve dinero y stock en varios servicios; la ruta
 que se quedara sin permiso sería la que nadie mira.
 
 ## El tipo de registro y el gobierno de los módulos, enchufados (`CRM-00.04.01.05`, `CRM-00.04.04.03`, `CRM-00.04.04.10`)

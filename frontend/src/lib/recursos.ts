@@ -179,14 +179,47 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       { nombre: "Tareas", listar: "/api/v1/tareas", servicio: "orchestrator" },
       {
+        // Con editor propio (CRM-00.03.02.10): la fila abre
+        // `/m/procesos/tablas-decision/:clave` y «Nuevo» lleva al mismo editor
+        // vacío. El formulario genérico pintaba las reglas como texto y la
+        // ficha editaba con PATCH una tabla que se guarda entera por clave.
         nombre: "Tablas de decisión",
         listar: "/api/v1/tablas-decision",
         servicio: "orchestrator",
+        alta_en: "/tablas-decision/nueva",
+        // Validar y probar son botones del editor, sobre la tabla que se está
+        // editando: aquí pedían teclear la tabla entera como pares.
+        acciones_ocultas: [
+          "/api/v1/tablas-decision/validar",
+          "/api/v1/tablas-decision/probar",
+        ],
       },
       {
         nombre: "Automatizaciones",
         listar: "/api/v1/automatizaciones",
         servicio: "automation",
+        // La calculadora de antes, que pedía teclear los registros afectados:
+        // sigue en la API para quien la use con sus datos, y desde la ficha
+        // está «Probar», que evalúa la regla guardada.
+        acciones_ocultas: ["/api/v1/automatizaciones/probar-en-seco"],
+      },
+      // La biblioteca de plantillas (CRM-00.03.03.09): se elige de la lista y
+      // «Instalar una plantilla de la biblioteca» crea la regla apagada. Antes
+      // había que teclear la plantilla en JSON y no creaba nada.
+      {
+        nombre: "Plantillas de automatización",
+        listar: "/api/v1/automatizaciones/plantillas",
+        servicio: "automation",
+        columnas: ["nombre", "industrias", "disparador", "momento", "instalada"],
+      },
+      // Lo diferido y lo programado (CRM-00.03.03.05): lo que espera su hora
+      // y lo que ya corrió. Sin esto una diferida que no ha corrido no se
+      // distingue de una que no se disparó.
+      {
+        nombre: "Cola de automatizaciones",
+        listar: "/api/v1/automatizaciones/pendientes",
+        servicio: "automation",
+        columnas: ["origen", "objeto", "ejecutar_at", "estado", "intentos", "error"],
       },
       // El código del tenant (CRM-00.04.02.01, .05, .06, .07): funciones en
       // JavaScript que corren aisladas en WebAssembly. Desde la ficha se publica

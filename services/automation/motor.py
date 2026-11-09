@@ -68,9 +68,29 @@ class ContextoEjecucion:
     es lo que permite detener una cascada antes de que se convierta en bucle.
     """
 
-    def __init__(self, profundidad: int = 0) -> None:
+    def __init__(self, profundidad: int = 0, lanzado_por: dict[str, Any] | None = None) -> None:
         self.profundidad = profundidad
         self.tocados: set[tuple[str, str]] = set()
+        # La identidad con la que actúa lo que la regla lance: la de quien la
+        # activó (ver `identidad_de`).
+        self.lanzado_por = lanzado_por
+
+
+def identidad_de(regla: Automatizacion) -> dict[str, Any] | None:
+    """Con qué identidad actúa lo que lanza esta regla: la de quien la activó.
+
+    `None` si no consta —una regla encendida antes de guardarse esto—: mejor
+    decir que no se sabe que inventar una identidad con permisos.
+    """
+    if regla.activada_por_id is None:
+        return None
+    con = regla.activada_con or {}
+    return {
+        "principal_id": str(regla.activada_por_id),
+        "tipo": str(con.get("tipo") or "usuario"),
+        "permisos": list(con.get("permisos") or []),
+        "roles": list(con.get("roles") or []),
+    }
 
 
 def aplicables(
@@ -365,7 +385,9 @@ def _ejecutar_bloque(
 
             salida = ejecutor(
                 **resolver(accion.get("parametros") or {}, ambito),
-                _contexto=ContextoEjecucion(contexto.profundidad + 1),
+                _contexto=ContextoEjecucion(
+                    contexto.profundidad + 1, lanzado_por=identidad_de(regla)
+                ),
                 _tenant_id=regla.tenant_id,
             )
             ejecutadas.append({"tipo": tipo, "salida": salida})

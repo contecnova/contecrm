@@ -33,7 +33,11 @@ from crmcore.logging import get_logger, setup_logging
 from sqlalchemy import or_, select
 
 from services.orchestrator.modelos import InstanciaProceso, TareaHumana
-from services.orchestrator.motor import Motor
+
+# Los invocadores con nombre se declaran en el motor y no aquí: la API los
+# necesita para validar al publicar, y que los dos lean la misma lista es lo que
+# impide publicar algo que el worker no sabrá ejecutar.
+from services.orchestrator.motor import Motor, construir_invocadores
 
 logger = get_logger(__name__)
 
@@ -204,17 +208,6 @@ def _vencer_tareas(db: Any) -> int:
     if vencidas:
         db.commit()
     return len(vencidas)
-
-
-def construir_invocadores() -> dict[str, Any]:
-    """Operaciones que los procesos pueden invocar.
-
-    De momento vacío: los servicios de negocio llegan en la fase 1, y un
-    invocador que no existe se detecta al **publicar** la definición, no al
-    ejecutarla. Registrar aquí operaciones falsas para «que no falle» sería
-    peor: los procesos parecerían funcionar y no harían nada.
-    """
-    return {}
 
 
 def run() -> None:

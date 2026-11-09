@@ -193,6 +193,9 @@ const MARCA_DE_TIEMPO = /_at$/;
 const CON_TILDE: Record<string, string> = {
   tardio: "tardío",
   decidio: "decidió",
+  acerto: "acertó",
+  eliminacion: "eliminación",
+  maxima: "máxima",
   mayoria: "mayoría",
   leccion: "lección",
   hariamos: "haríamos",

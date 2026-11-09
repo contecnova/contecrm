@@ -49,63 +49,99 @@ DISPARADORES: dict[str, tuple[str, str]] = {
 }
 
 
+# Los borrados no tienen un evento por objeto: los publica el router común de
+# fichas como `record.deleted`, con el objeto dentro. El disparador
+# «eliminación» se resuelve aquí con ese objeto.
+EVENTO_BORRADO = "record.deleted"
+
+
+def _campo(mensaje: Any, nombre: str) -> Any:
+    """Un campo del sobre, venga como objeto o como diccionario."""
+    valor = getattr(mensaje, nombre, None)
+    if valor is None and isinstance(mensaje, dict):
+        valor = mensaje.get(nombre)
+    return valor
+
+
+def encajes(tipo: str, datos: dict[str, Any]) -> list[tuple[str, str]]:
+    """Qué disparadores despierta este evento: (disparador, objetivo).
+
+    Tres caminos, y un evento puede despertar varios a la vez:
+
+      * la tabla `DISPARADORES`, para creación y modificación;
+      * `record.deleted`, para eliminación, con el objeto que trae dentro;
+      * y **cualquier evento del catálogo**, para el disparador «evento», cuyo
+        objetivo es el propio tipo. Es lo que permite reaccionar a «contrato a
+        punto de vencer» o «caso escalado» sin esperar a que alguien los meta
+        en la tabla de arriba.
+    """
+    from crmcore.events.catalogo import obtener
+
+    salida: list[tuple[str, str]] = []
+    if tipo in DISPARADORES:
+        salida.append(DISPARADORES[tipo])
+    if tipo == EVENTO_BORRADO and datos.get("objeto"):
+        salida.append(("eliminacion", str(datos["objeto"])))
+    if obtener(tipo) is not None:
+        salida.append(("evento", tipo))
+    return salida
+
+
 async def consumir_evento(mensaje: Any) -> None:
     """Dispara las reglas que encajen con este evento.
 
-    Un evento sin reglas no cuesta nada: `aplicables()` no devuelve ninguna y se
-    sale. Por eso el patrón de suscripción es ancho — filtrar aquí es más barato
-    que mantener la lista de suscripciones al día con la tabla de arriba.
+    Un evento sin reglas cuesta una consulta por índice —la del disparador
+    «evento»— y nada más. Por eso el patrón de suscripción es ancho: filtrar
+    aquí es más barato que mantener la lista de suscripciones al día.
+
+    Cada regla corre en **su momento**: las inmediatas aquí, dentro de esta
+    transacción; las diferidas y programadas se encolan en ella y corren
+    después (`planificador`).
     """
     from crmcore.db.uow import unidad_de_trabajo
     from crmcore.tenancy.context import con_contexto
 
-    from services.automation import ejecutores as ejecutores_mod
-    from services.automation.motor import disparar
+    from services.automation.planificador import despachar
 
-    tipo = getattr(mensaje, "tipo", None) or (
-        mensaje.get("tipo") if isinstance(mensaje, dict) else None
-    )
-    encaje = DISPARADORES.get(str(tipo or ""))
-    if encaje is None:
+    tipo = str(_campo(mensaje, "tipo") or _campo(mensaje, "type") or "")
+    datos = _campo(mensaje, "data") or {}
+    caminos = encajes(tipo, datos)
+    if not caminos:
         return
 
-    bruto = getattr(mensaje, "tenant_id", None) or (
-        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
-    )
+    bruto = _campo(mensaje, "tenant_id")
     if not bruto:
         logger.warning("automatizacion.evento_sin_tenant", tipo=tipo)
         return
     tenant_id = UUID(str(bruto))
-
-    disparador, objetivo = encaje
-    datos = (
-        getattr(mensaje, "data", None)
-        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
-        or {}
-    )
-    registro_id = _registro_de(datos, objetivo)
+    # La clave del disparo: con ella, un evento que el bus entrega dos veces no
+    # encola dos veces la misma regla diferida.
+    evento_id = str(_campo(mensaje, "id") or "")
 
     with (
         con_contexto(tenant_id=tenant_id, origen="automatizacion"),
         unidad_de_trabajo(tenant_id) as uow,
     ):
-        trazas = disparar(
-            uow.db,
-            tenant_id=tenant_id,
-            disparador=disparador,
-            objetivo=objetivo,
-            valores={**datos, "_evento": tipo},
-            registro_id=registro_id,
-            # Los ejecutores se construyen atados a ESTA unidad de trabajo: los
-            # comandos que emitan salen solo si la transacción se confirma.
-            ejecutores=ejecutores_mod.construir(uow),
-        )
-    if trazas:
+        resultados: list[dict[str, Any]] = []
+        for disparador, objetivo in caminos:
+            registro_id = _registro_de(datos, objetivo)
+            resultados += despachar(
+                uow,
+                tenant_id=tenant_id,
+                disparador=disparador,
+                objetivo=objetivo,
+                valores={**datos, "_evento": tipo},
+                registro_id=registro_id,
+                clave_disparo=f"evento:{evento_id or tipo}:{disparador}",
+                origen=disparador,
+            )
+    if resultados:
         logger.info(
             "automatizacion.disparada",
             evento=tipo,
-            reglas=len(trazas),
-            disparadas=sum(1 for t in trazas if t.resultado == "disparada"),
+            reglas=len(resultados),
+            ejecutadas=sum(1 for r in resultados if r.get("ejecutada")),
+            encoladas=sum(1 for r in resultados if r.get("encolada")),
         )
 
 
@@ -117,9 +153,14 @@ def _registro_de(datos: dict[str, Any], objetivo: str) -> str | None:
     y no hay un campo común. Tenerlo es lo que permite que la regla actúe sobre
     el registro en vez de solo mirarlo.
     """
+    # El de un evento suelto se llama como su sujeto —`caso_id` en
+    # `case.created`—, así que se prueba también el primer `*_id` que traiga.
     for clave in (f"{objetivo}_id", "registro_id", "objeto_id", "superviviente_id"):
         valor = datos.get(clave)
         if valor:
+            return str(valor)
+    for clave, valor in datos.items():
+        if clave.endswith("_id") and valor and not clave.startswith("_"):
             return str(valor)
     return None
 

@@ -215,6 +215,11 @@ PREFIJOS: dict[str, str] = {
     "suscripciones": "sales",
     "pedidos": "sales",
     "aprobaciones": "orchestrator",
+    # Decidir una aprobación desde el correo (CRM-00.03.05.12). SIN sesión: lo
+    # abre quien recibe el correo. Prefijo propio y no bajo `aprobaciones`, para
+    # que ninguna ruta con permiso viva en el mismo espacio que una pública. Su
+    # tope por IP está en `TOPES_POR_IP`.
+    "enlace-de-aprobacion": "orchestrator",
     "analitica-procesos": "orchestrator",
     "encargos": "integration",
     "firma": "integration",
@@ -416,6 +421,22 @@ RUTAS_DE_SESION = frozenset(
         "/api/v1/auth/sso",
     }
 )
+
+# Rutas públicas con tope propio de intentos por IP, aparte del general.
+#
+# Prefijo de la ruta → (ajuste del tope, ajuste de la ventana en segundos), los
+# dos de `Settings`. Va en el gateway y no en el servicio porque detrás del
+# gateway todas las peticiones llegan con SU dirección: un tope por IP contado
+# en el servicio sería un tope compartido por todo el mundo.
+#
+# Es para lo que se puede adivinar probando: un token en una ruta sin sesión. El
+# límite general está pensado para lecturas de alguien que ya ha entrado.
+TOPES_POR_IP: dict[str, tuple[str, str]] = {
+    "/api/v1/enlace-de-aprobacion/": (
+        "aprobacion_enlace_intentos_por_ip",
+        "aprobacion_enlace_ventana_s",
+    ),
+}
 
 # El portal es **un solo espacio de direcciones** y lo sirven varios servicios.
 #

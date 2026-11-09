@@ -495,6 +495,16 @@ def _abrir_etapa(
     db.flush()
 
 
+def _avisar_por_correo(
+    uow: UnidadDeTrabajo, solicitud: SolicitudAprobacion, etapa: EtapaAprobacion
+) -> None:
+    """Manda a cada aprobador de la etapa recién abierta su enlace por correo
+    (CRM-00.03.05.12). Vive en `enlaces_publicos`; aquí sólo se le llama."""
+    from services.orchestrator.enlaces_publicos import avisar_etapa
+
+    avisar_etapa(uow, solicitud, etapa)
+
+
 def crear(
     uow: UnidadDeTrabajo,
     *,
@@ -627,6 +637,7 @@ def crear(
             "aprobadores": [str(a) for a in filas[0].aprobadores],
         },
     )
+    _avisar_por_correo(uow, solicitud, filas[0])
     return solicitud
 
 
@@ -802,6 +813,7 @@ def decidir(
         else:
             solicitud.etapa_actual = siguiente.orden
             _abrir_etapa(uow.db, solicitud, siguiente, {})
+            _avisar_por_correo(uow, solicitud, siguiente)
             uow.emitir(
                 "approval.stage.opened",
                 subject=("aprobacion", solicitud.id),
@@ -992,6 +1004,7 @@ def comprobar_vigencia(
         etapa.vuelta += 1
     if etapas:
         _abrir_etapa(uow.db, solicitud, etapas[0], {})
+        _avisar_por_correo(uow, solicitud, etapas[0])
     uow.db.flush()
 
     registrar(
@@ -1148,6 +1161,11 @@ def emitir_enlace(
         titular_id=titular_id,
         hash_token=_hash(token),
         caduca_at=_ahora() + timedelta(hours=validez_horas),
+        # Con la hora de aquí y no la de la base: la de la base es la del
+        # INICIO de la transacción, anterior a la apertura de la etapa que se
+        # acaba de abrir en ella, y el enlace saldría muerto por «de una vuelta
+        # anterior» (ver `enlaces_publicos._vigente`).
+        created_at=_ahora(),
     )
     uow.db.add(fila)
     uow.db.flush()

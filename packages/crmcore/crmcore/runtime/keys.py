@@ -154,6 +154,22 @@ CLAVES: dict[str, ClaveAjuste] = {
             "Quién aprueba un presupuesto que se pasa de la matriz de descuentos (etapas)",
             campo_settings="aprobacion_presupuesto_etapas",
         ),
+        # Decidir una aprobación desde el correo (CRM-00.03.05.12)
+        _c(
+            "aprobacion_enlace_validez_horas",
+            "int",
+            "Horas que vale el enlace para decidir una aprobación desde el correo",
+            minimo=1,
+            maximo=720,
+            campo_settings="aprobacion_enlace_validez_horas",
+            sensible=True,
+        ),
+        _c(
+            "aprobacion_enlace_por_correo",
+            "bool",
+            "Mandar a cada aprobador su enlace por correo al abrirse una etapa",
+            campo_settings="aprobacion_enlace_por_correo",
+        ),
         # Búsqueda (CRM-00.01.01.09)
         _c(
             "busqueda_idioma",
@@ -648,6 +664,14 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="proceso_max_duracion_h",
         ),
         _c(
+            "proceso_paso_servicio_timeout_s",
+            "float",
+            "Espera máxima de un paso de proceso que llama a la API del CRM, en segundos",
+            minimo=1.0,
+            maximo=600.0,
+            campo_settings="proceso_paso_servicio_timeout_s",
+        ),
+        _c(
             "automatizacion_max_cascada",
             "int",
             "Automatizaciones encadenadas antes de cortar la cascada",
@@ -655,6 +679,41 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=100,
             campo_settings="automatizacion_max_cascada",
             sensible=True,
+        ),
+        # Ejecución diferida y programada (CRM-00.03.03.05)
+        _c(
+            "automatizacion_diferida_espera_s",
+            "int",
+            "Segundos que espera una automatización diferida tras confirmarse el disparo",
+            minimo=0,
+            maximo=86_400,
+            campo_settings="automatizacion_diferida_espera_s",
+        ),
+        _c(
+            "automatizacion_pendientes_revisar_s",
+            "int",
+            "Cada cuántos segundos mira el planificador las automatizaciones pendientes",
+            minimo_ambito="global",
+            minimo=1,
+            maximo=3_600,
+            campo_settings="automatizacion_pendientes_revisar_s",
+        ),
+        _c(
+            "automatizacion_pendientes_lote",
+            "int",
+            "Automatizaciones pendientes que se atienden por tenant en cada vuelta",
+            minimo_ambito="global",
+            minimo=1,
+            maximo=10_000,
+            campo_settings="automatizacion_pendientes_lote",
+        ),
+        _c(
+            "automatizacion_pendientes_max_intentos",
+            "int",
+            "Intentos antes de dar por fallida una automatización pendiente",
+            minimo=1,
+            maximo=50,
+            campo_settings="automatizacion_pendientes_max_intentos",
         ),
         # Papelera (CRM-00.06.02.04)
         _c(

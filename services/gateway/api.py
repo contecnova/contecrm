@@ -1306,6 +1306,22 @@ async def superficie_completa(_: AutenticadoDep) -> Any:
     }
 
 
+async def _tope_por_ip(ruta: str, request: Request) -> None:
+    """Aplica el tope propio de una ruta pública (`rutas.TOPES_POR_IP`), si lo tiene."""
+    for prefijo, (campo_limite, campo_ventana) in rutas.TOPES_POR_IP.items():
+        if ruta.startswith(prefijo):
+            from crmcore.http.rate_limit import exigir_tope
+
+            s = get_settings()
+            await exigir_tope(
+                f"ip_{prefijo.strip('/').split('/')[-1]}",
+                ip_de(request) or "sin-ip",
+                int(getattr(s, campo_limite)),
+                int(getattr(s, campo_ventana)),
+            )
+            return
+
+
 @router_proxy.api_route(
     "/api/{ruta:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
@@ -1334,6 +1350,10 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
         raise rechazada
 
     ruta_completa = f"/api/{ruta}"
+    # Las públicas que se pueden atacar probando —un token en una ruta sin
+    # sesión— llevan su propio tope por IP, contado AQUÍ: detrás del gateway
+    # todas las peticiones llegan con la dirección del gateway.
+    await _tope_por_ip(ruta_completa, request)
     nombre = rutas.servicio_de(ruta_completa)
     if nombre is None:
         raise NoEncontrado(

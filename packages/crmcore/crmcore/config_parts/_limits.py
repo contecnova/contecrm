@@ -326,6 +326,12 @@ class _LimitsSettings(BaseSettings):
     proceso_max_pasos: int = Field(1_000, ge=1, le=1_000_000)
     proceso_max_profundidad: int = Field(10, ge=1, le=100)
     proceso_max_duracion_h: int = Field(720, ge=1, le=8760)
+    # Espera máxima de un paso «servicio» que llama a la API del CRM. Es la de
+    # una petición y no la del proceso: un paso que se queda colgado retiene la
+    # instancia en el worker, y con él a las demás del lote que esperan turno.
+    # Si el destino tarda más, el paso falla y lo trata `_tratar_fallo` con sus
+    # reintentos, que es mejor que un worker parado sin saber por qué.
+    proceso_paso_servicio_timeout_s: float = Field(30.0, ge=1.0, le=600.0)
     # Cadena máxima de automatizaciones que se disparan unas a otras
     # (CRM-00.03.03.06).
     automatizacion_max_cascada: int = Field(5, ge=1, le=100)
@@ -406,6 +412,20 @@ class _LimitsSettings(BaseSettings):
         ]
     )
 
+    # ── Decidir una aprobación desde el correo (CRM-00.03.05.12) ──────────
+    # Horas que vale el enlace del correo. Es una credencial que viaja por un
+    # buzón que se puede reenviar: tres días cubren un fin de semana sin dejarla
+    # viva una semana entera.
+    aprobacion_enlace_validez_horas: int = Field(72, ge=1, le=720)
+    # Si al abrirse una etapa se manda a cada aprobador su enlace por correo.
+    # Apagado, el enlace sólo sale cuando alguien lo pide desde la ficha.
+    aprobacion_enlace_por_correo: bool = True
+    # Intentos que admite una misma IP contra la página pública del enlace, por
+    # ventana. Muy por debajo del límite general: quien prueba tokens al azar
+    # hace muchas peticiones, y quien abre su correo hace dos o tres.
+    aprobacion_enlace_intentos_por_ip: int = Field(30, ge=1, le=10_000)
+    aprobacion_enlace_ventana_s: int = Field(3_600, ge=60, le=86_400)
+
     # ── Control de flujo en automatizaciones (CRM-00.03.03.04) ────────────
     # Vueltas máximas de un `para_cada`. Una automatización que recorre una
     # colección no puede colgar la petición que la disparó: guardar una
@@ -420,6 +440,24 @@ class _LimitsSettings(BaseSettings):
     # alguien construye en una interfaz; más que eso es un proceso, y para eso
     # está el motor de procesos, que sabe reanudar y compensar.
     automatizacion_max_anidamiento: int = Field(3, ge=1, le=10)
+
+    # ── Ejecución diferida y programada (CRM-00.03.03.05) ─────────────────
+    # Cuánto espera una automatización «diferida» después de confirmarse el
+    # disparo. Cero ya la separa de la transacción que la disparó —corre en la
+    # vuelta siguiente del planificador, nunca dentro de quien guardó—; más da
+    # margen a que alguien deshaga lo que acaba de hacer antes de que salga el
+    # correo.
+    automatizacion_diferida_espera_s: int = Field(0, ge=0, le=86_400)
+    # Cada cuánto mira el planificador la cola y los horarios. Es el retraso
+    # máximo de una diferida sin espera y la precisión de una programada.
+    automatizacion_pendientes_revisar_s: int = Field(10, ge=1, le=3_600)
+    # Cuántas ejecuciones pendientes atiende por tenant y vuelta. Con un tope,
+    # un tenant con diez mil encoladas no deja esperando a los demás.
+    automatizacion_pendientes_lote: int = Field(100, ge=1, le=10_000)
+    # Intentos antes de dar por fallida una ejecución pendiente. Lo que se
+    # reintenta es un fallo de la base o de la red, no el de una acción —ése
+    # queda en la traza a la primera, como en las inmediatas—.
+    automatizacion_pendientes_max_intentos: int = Field(3, ge=1, le=50)
 
     # ── Gobierno del esquema (CRM-00.04.01.09) ────────────────────────────
     # Campos activos por objeto. Ciento cincuenta es mucho más de lo que

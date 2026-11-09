@@ -7,11 +7,11 @@
       "pasos": {
         "crear_pedido": {
           "tipo": "servicio",
-          "servicio": "sales", "operacion": "crear_pedido",
+          "operacion": "POST /api/v1/pedidos",
           "entrada": {"oportunidad_id": "@oportunidad_id"},
           "salida": "pedido",
-          "compensacion": {"servicio": "sales", "operacion": "anular_pedido",
-                           "entrada": {"pedido_id": "@pedido.id"}},
+          "compensacion": {"operacion": "POST /api/v1/pedidos/@pedido.id/cancelar",
+                           "entrada": {"motivo": "Compensación del proceso"}},
           "siguiente": "aprobar_si_grande"
         },
         "aprobar_si_grande": {
@@ -31,8 +31,8 @@
           "al_vencer": "escalar",
           "rutas": {"aprobar": "enviar_al_erp", "rechazar": "fin_rechazado"}
         },
-        "enviar_al_erp": {"tipo": "servicio", "servicio": "integration",
-                          "operacion": "enviar_pedido_erp",
+        "enviar_al_erp": {"tipo": "servicio",
+                          "operacion": "POST /api/v1/pedidos/@pedido.id/enviar-erp",
                           "reintentos": 5, "siguiente": "fin_ok"},
         "fin_ok": {"tipo": "fin", "resultado": "completado"},
         "fin_rechazado": {"tipo": "fin", "resultado": "rechazado"}
@@ -43,6 +43,23 @@ Las referencias `@algo` se resuelven contra las variables de la instancia. Es
 deliberadamente limitado —rutas con punto, sin expresiones ni llamadas— porque
 una definición es **dato del tenant**: si admitiera expresiones arbitrarias,
 publicar un proceso sería ejecutar código del cliente dentro del motor.
+
+── Pasos «servicio»: la API del CRM, con los permisos de quien lo lanzó ─────
+
+`operacion` es «MÉTODO /api/v1/ruta», la misma ruta que usaría la pantalla. La
+ruta admite `@variable` en sus tramos; `entrada` es el cuerpo (o los parámetros
+de un GET) y `salida`, la variable donde se guarda lo que conteste. Se llama
+con la identidad de quien lanzó la instancia —su id, sus permisos y sus roles,
+guardados al arrancar—, así que el servicio de destino aplica sus permisos, su
+compartición y su auditoría como si lo hiciera esa persona: un proceso no puede
+hacer nada que quien lo lanzó no pudiera hacer a mano.
+
+No hay una lista de operaciones por servicio a propósito. La ruta se resuelve
+con la misma tabla que usa el gateway (`crmcore.rutas_de_api`), y cada servicio
+nuevo queda disponible para los procesos el día que publica su API, sin tocar
+el motor. Una respuesta 4xx/5xx del destino es un fallo del paso, con el
+mensaje del destino, y sigue el camino de siempre: reintentos, `al_fallar` o
+compensación.
 
 ── Por qué el estado se guarda en cada paso ──────────────────────────────────
 
@@ -66,6 +83,7 @@ explícitamente y no inferirse.
 
 from __future__ import annotations
 
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -172,13 +190,83 @@ def interpolar(texto: str, variables: dict[str, Any]) -> str:
 # ── Validación de la definición ───────────────────────────────────────────
 
 
-def validar_definicion(definicion: dict[str, Any]) -> list[str]:
+# «MÉTODO /api/v1/…». El método en mayúsculas o minúsculas —se escribe a mano y
+# las dos formas son la misma petición—; la ruta, entera y sin espacios.
+_OPERACION_HTTP = re.compile(r"^(GET|POST|PUT|PATCH|DELETE)\s+(/api/v1/\S+)$", re.IGNORECASE)
+# Las referencias `@variable` dentro de la ruta. Mismo alfabeto que `interpolar`.
+_REFERENCIA = re.compile(r"@([a-zA-Z_][\w.]*)")
+
+
+def operacion_http(operacion: str) -> tuple[str, str] | None:
+    """(método, ruta) si la operación es una llamada a la API; si no, None."""
+    m = _OPERACION_HTTP.match(str(operacion or "").strip())
+    if m is None:
+        return None
+    return m.group(1).upper(), m.group(2)
+
+
+def problema_de_operacion(
+    nombre: str, operacion: Any, operaciones_con_nombre: frozenset[str] | set[str] | None
+) -> str | None:
+    """Qué le pasa a la operación de un paso, o None si se puede ejecutar.
+
+    `operaciones_con_nombre` son los invocadores registrados en este despliegue.
+    Con `None` no se juzgan las que no tienen forma de ruta —es la validación
+    estructural pura, la que no sabe qué hay registrado—; la API pasa siempre el
+    conjunto real, que hoy está vacío, así que lo que llega a publicarse o es una
+    ruta que existe o es un invocador que alguien registró.
+    """
+    texto = str(operacion or "").strip()
+    if operaciones_con_nombre is not None and texto in operaciones_con_nombre:
+        return None
+    http = operacion_http(texto)
+    if http is None:
+        if operaciones_con_nombre is None and not texto.lower().startswith(
+            ("get ", "post ", "put ", "patch ", "delete ", "/")
+        ):
+            return None
+        return (
+            f"«{nombre}» llama a «{texto}», que no es una operación: se escribe "
+            "«MÉTODO /api/v1/ruta», por ejemplo «POST /api/v1/opportunities»"
+        )
+    from crmcore.rutas_de_api import servicio_de
+
+    _metodo, ruta = http
+    if not servicio_de(ruta.lstrip("/")):
+        return (
+            f"«{nombre}» llama a «{ruta}», y ninguna parte del CRM atiende esa ruta: "
+            "el paso fallaría siempre"
+        )
+    return None
+
+
+def construir_invocadores() -> dict[str, Callable[..., dict[str, Any]]]:
+    """Operaciones CON NOMBRE que los procesos pueden invocar.
+
+    Vacío, y a propósito: lo que un proceso hace en el CRM se escribe como ruta
+    de la API («POST /api/v1/opportunities»), que se resuelve sola y se ejecuta
+    con los permisos de quien lanzó el proceso. Esto queda para el caso que la
+    API no cubre —una operación de un tercero, por ejemplo— y quien la registre
+    la tendrá validada al publicar, porque la API valida contra este mapa.
+    Registrar aquí operaciones falsas para «que no falle» sería peor: los
+    procesos parecerían funcionar y no harían nada.
+    """
+    return {}
+
+
+def validar_definicion(
+    definicion: dict[str, Any],
+    *,
+    operaciones_con_nombre: frozenset[str] | set[str] | None = None,
+) -> list[str]:
     """Comprueba la definición antes de publicarla. Devuelve los problemas.
 
     Se valida al **publicar** y no al ejecutar. Un paso que apunta a otro
     inexistente descubierto en ejecución significa un proceso a medias en
     producción, con su compensación pendiente; descubierto al publicar, es un
     mensaje de error y nada más.
+
+    `operaciones_con_nombre`: ver `problema_de_operacion`.
     """
     problemas: list[str] = []
     pasos = definicion.get("pasos") or {}
@@ -232,6 +320,19 @@ def validar_definicion(definicion: dict[str, Any]) -> list[str]:
 
         if tipo == "servicio" and not paso.get("operacion"):
             problemas.append(f"«{nombre}» es de tipo servicio y no declara operación")
+        elif tipo == "servicio":
+            problema = problema_de_operacion(nombre, paso.get("operacion"), operaciones_con_nombre)
+            if problema:
+                problemas.append(problema)
+        compensacion = paso.get("compensacion") or {}
+        if compensacion:
+            # La compensación también: una que no se puede ejecutar se descubre
+            # justo el día que hace falta deshacer, que es el peor día.
+            problema = problema_de_operacion(
+                f"{nombre} (compensación)", compensacion.get("operacion"), operaciones_con_nombre
+            )
+            if problema:
+                problemas.append(problema)
         if tipo == "tabla":
             if not paso.get("tabla"):
                 problemas.append(f"«{nombre}» es un paso de tabla y no dice qué tabla")
@@ -374,10 +475,14 @@ class Motor:
         *,
         invocadores: dict[str, Callable[..., dict[str, Any]]] | None = None,
         worker_id: str = "motor",
+        llamar_api: Callable[..., dict[str, Any]] | None = None,
     ) -> None:
         self.db = db
         self.invocadores = invocadores or {}
         self.worker_id = worker_id
+        # Cómo se llama a la API del CRM. Por defecto, la llamada interna
+        # firmada; en pruebas se pasa una función, igual que los invocadores.
+        self.llamar_api = llamar_api
 
     # ── Arranque ─────────────────────────────────────────────────────────
 
@@ -412,8 +517,17 @@ class Motor:
         origen: tuple[str, str] | None = None,
         padre_id: UUID | None = None,
         profundidad: int = 0,
+        lanzada_por: UUID | None = None,
+        permisos_de_lanzamiento: dict[str, Any] | None = None,
     ) -> InstanciaProceso:
-        """Crea una instancia de la última versión publicada."""
+        """Crea una instancia de la última versión publicada.
+
+        `lanzada_por` y `permisos_de_lanzamiento` son la identidad con la que
+        los pasos «servicio» llamarán a la API. Sin ellos la instancia arranca
+        igual —un proceso de decisiones y tareas humanas no los necesita—, y el
+        primer paso que tenga que llamar al CRM falla diciendo que no se sabe
+        con qué permisos actuar, en vez de inventárselos.
+        """
         from crmcore.config import get_settings
         from sqlalchemy import select
 
@@ -475,6 +589,8 @@ class Motor:
             origen_id=origen[1] if origen else None,
             padre_id=padre_id,
             profundidad=profundidad,
+            lanzada_por=lanzada_por,
+            permisos_de_lanzamiento=permisos_de_lanzamiento,
             # Despierta ya: el worker la recogerá en su siguiente vuelta. No se
             # ejecuta aquí mismo para que arrancar un proceso no alargue la
             # petición que lo pidió.
@@ -641,6 +757,11 @@ class Motor:
                 variables=resolver(paso.get("entrada") or {}, instancia.variables),
                 padre_id=instancia.id,
                 profundidad=instancia.profundidad + 1,
+                # El hijo actúa con los permisos del padre: un subproceso es
+                # parte de la misma ejecución, y darle otros —o ninguno— haría
+                # que el mismo paso funcionara o no según dónde estuviera.
+                lanzada_por=instancia.lanzada_por,
+                permisos_de_lanzamiento=instancia.permisos_de_lanzamiento,
             )
             if paso.get("esperar", True):
                 raise _Espera(
@@ -705,27 +826,106 @@ class Motor:
     def _paso_servicio(
         self, instancia: InstanciaProceso, nombre: str, paso: dict[str, Any]
     ) -> str | None:
-        """Invoca una operación de un servicio."""
-        operacion = str(paso.get("operacion"))
-        invocador = self.invocadores.get(operacion)
-        if invocador is None:
-            raise ErrorValidacion(
-                f"No hay invocador registrado para «{operacion}»",
-                error_code="proceso.operacion_desconocida",
-            )
-
+        """Invoca una operación: una ruta de la API o un invocador con nombre."""
         entrada = resolver(paso.get("entrada") or {}, instancia.variables)
         # Clave de idempotencia derivada de la instancia y el paso: si el worker
         # muere después de invocar y antes de guardar, el reintento repite la
         # llamada y la operación destino la reconoce como la misma.
-        salida = invocador(
-            **entrada,
-            _idempotencia=f"{instancia.id}:{nombre}:{instancia.pasos_ejecutados}",
-            _tenant_id=instancia.tenant_id,
+        salida = self._invocar(
+            instancia,
+            str(paso.get("operacion")),
+            entrada,
+            idempotencia=f"{instancia.id}:{nombre}:{instancia.pasos_ejecutados}",
         )
         if paso.get("salida"):
             instancia.variables = {**instancia.variables, str(paso["salida"]): salida}
         return paso.get("siguiente")
+
+    def _invocar(
+        self,
+        instancia: InstanciaProceso,
+        operacion: str,
+        entrada: dict[str, Any],
+        *,
+        idempotencia: str,
+    ) -> Any:
+        """Ejecuta una operación y devuelve lo que contestó. Lanza si falla.
+
+        Primero el invocador con nombre, si alguien lo registró; después, la
+        ruta de la API. En ese orden para que registrar un invocador sea la
+        forma de sustituir una ruta concreta —en pruebas, o mientras un tercero
+        no publica la suya— sin tocar las definiciones.
+        """
+        invocador = self.invocadores.get(operacion)
+        if invocador is not None:
+            return invocador(**entrada, _idempotencia=idempotencia, _tenant_id=instancia.tenant_id)
+
+        http = operacion_http(operacion)
+        if http is None:
+            raise ErrorValidacion(
+                f"«{operacion}» no es una operación que se pueda ejecutar: ni hay "
+                "invocador registrado con ese nombre ni tiene la forma «MÉTODO /api/v1/ruta»",
+                error_code="proceso.operacion_desconocida",
+            )
+        metodo, plantilla = http
+
+        # Los tramos `@variable` de la ruta. Uno vacío NO se sustituye por nada:
+        # `/accounts//` contestaría otra cosa —o la colección entera— y el paso
+        # «funcionaría» sobre lo que no era.
+        faltan = [
+            ref
+            for ref in _REFERENCIA.findall(plantilla)
+            if resolver(f"@{ref}", instancia.variables) in (None, "")
+        ]
+        if faltan:
+            raise ErrorValidacion(
+                f"La ruta «{plantilla}» necesita {', '.join(f'«{f}»' for f in faltan)} "
+                "y la instancia no lo tiene",
+                error_code="proceso.ruta_incompleta",
+            )
+        ruta = interpolar(plantilla, instancia.variables)
+
+        identidad = instancia.permisos_de_lanzamiento
+        if not identidad or instancia.lanzada_por is None:
+            # Ni se inventan permisos ni se llama como «la casa». Quien la lanzó
+            # sin identidad —un comando que no la traía, una instancia de antes
+            # de que se guardara— no tiene con qué actuar, y decirlo es lo único
+            # honesto: llamar sin identidad sería un proceso con poderes que
+            # nadie le dio.
+            raise ErrorValidacion(
+                "No se sabe con qué permisos actuar: la instancia no guarda quién la "
+                "lanzó, así que no puede llamar al CRM en su nombre",
+                error_code="proceso.sin_identidad",
+            )
+
+        from crmcore.runtime import settings as rt
+
+        llamar = self.llamar_api
+        if llamar is None:
+            from crmcore.http.interno import invocar
+
+            llamar = invocar
+        respuesta = llamar(
+            metodo=metodo,
+            ruta=ruta,
+            parametros=entrada if metodo == "GET" else None,
+            cuerpo=None if metodo == "GET" else entrada,
+            tenant_id=instancia.tenant_id,
+            principal_id=instancia.lanzada_por,
+            permisos=list(identidad.get("permisos") or []),
+            roles=list(identidad.get("roles") or []),
+            tipo=str(identidad.get("tipo") or "usuario"),
+            idempotencia=idempotencia,
+            timeout_s=float(rt.efectivo("proceso_paso_servicio_timeout_s", self.db)),
+        )
+        if not respuesta.get("ok", int(respuesta.get("estado") or 0) < 400):
+            raise ErrorValidacion(
+                f"{metodo} {ruta} contestó {respuesta.get('estado')}: "
+                + _mensaje_del_destino(respuesta.get("datos")),
+                error_code="proceso.paso_rechazado",
+                detalle={"estado": respuesta.get("estado"), "ruta": ruta},
+            )
+        return respuesta.get("datos")
 
     def _paso_humano(
         self, instancia: InstanciaProceso, nombre: str, paso: dict[str, Any]
@@ -913,15 +1113,12 @@ class Motor:
             if not compensacion:
                 continue
             operacion = str(compensacion.get("operacion"))
-            invocador = self.invocadores.get(operacion)
-            if invocador is None:
-                fallos_compensando.append(f"{ejecutado.paso}: sin invocador «{operacion}»")
-                continue
             try:
-                invocador(
-                    **resolver(compensacion.get("entrada") or {}, instancia.variables),
-                    _idempotencia=f"{instancia.id}:comp:{ejecutado.paso}",
-                    _tenant_id=instancia.tenant_id,
+                self._invocar(
+                    instancia,
+                    operacion,
+                    resolver(compensacion.get("entrada") or {}, instancia.variables),
+                    idempotencia=f"{instancia.id}:comp:{ejecutado.paso}",
                 )
                 ejecutado.resultado = "compensado"
             except Exception as exc:  # noqa: BLE001 — se sigue compensando el resto
@@ -1030,6 +1227,24 @@ class Motor:
         instancia.estado = "ejecutando" if instancia.paso_actual else "completada"
         instancia.despertar_at = datetime.now(timezone.utc)
         return instancia
+
+
+def _mensaje_del_destino(datos: Any) -> str:
+    """El porqué que dio el servicio de destino, en una línea.
+
+    Los errores del CRM son problemas normalizados —`detail`, `title`,
+    `error_code`, y a veces `errores` por campo—. Se compone lo que haya, porque
+    «contestó 422» a secas obliga a ir a buscar al log qué campo era.
+    """
+    if not isinstance(datos, dict):
+        return str(datos or "sin detalle")[:500]
+    partes = [str(datos.get(k)) for k in ("detail", "title", "mensaje") if datos.get(k)]
+    for error in datos.get("errores") or []:
+        if isinstance(error, dict):
+            partes.append(f"{error.get('campo', '')}: {error.get('motivo', '')}".strip(": "))
+    if datos.get("error_code"):
+        partes.append(f"({datos['error_code']})")
+    return (" ".join(dict.fromkeys(partes)) or str(datos))[:500]
 
 
 class _Espera(Exception):

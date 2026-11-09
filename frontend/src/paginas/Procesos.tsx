@@ -48,9 +48,14 @@ import {
 const EJEMPLO: Definicion = {
   inicio: "recibir",
   pasos: {
+    // Un paso «servicio» llama a la API del CRM con la forma «MÉTODO ruta»,
+    // con los permisos de quien lanza el proceso. El ejemplo traía
+    // «sales.crear_oportunidad», un nombre que no ejecutaba nada.
     recibir: {
       tipo: "servicio",
-      operacion: "sales.crear_oportunidad",
+      operacion: "POST /api/v1/opportunities",
+      entrada: { nombre: "@nombre", cuenta_id: "@cuenta_id" },
+      salida: "oportunidad",
       siguiente: "aprobar",
     },
     // Con a quién le toca: el ejemplo de partida tiene que pasar su propia
@@ -72,6 +77,30 @@ interface Guardada {
   nombre: string;
   estado: string;
   definicion: Definicion;
+}
+
+/** Una plantilla de flujo de la biblioteca (CRM-00.03.05.15). */
+interface Plantilla {
+  clave: string;
+  version: number;
+  sector: string;
+  caso_de_uso: string;
+  nombre: string;
+  no_resuelve: string[];
+}
+
+/** Lo que pasaría (o pasó) al migrar lo que está en vuelo (CRM-00.03.02.13). */
+interface PlanDeMigracion {
+  aplicada: boolean;
+  en_vuelo: number;
+  migrables: { instancia_id: string; version: number; paso_actual: string }[];
+  se_quedan: {
+    instancia_id: string;
+    version: number;
+    paso_actual: string;
+    motivo: string;
+  }[];
+  que_significa: string;
 }
 
 /** Quién aprobaría y cuánto tardaría el camino simulado (CRM-00.03.05.04). */
@@ -102,6 +131,9 @@ export function Procesos() {
   const [guardadas, setGuardadas] = useState<Guardada[]>([]);
   const [abierta, setAbierta] = useState<Guardada | null>(null);
   const [aviso, setAviso] = useState("");
+  // Migrar lo que está en vuelo a la versión abierta: primero se simula y se
+  // enseña, y sólo se aplica cuando alguien lo confirma.
+  const [plan, setPlan] = useState<PlanDeMigracion | null>(null);
 
   const cargarGuardadas = useCallback(() => {
     llamar<Guardada[]>("/api/v1/procesos/definiciones")
@@ -110,9 +142,10 @@ export function Procesos() {
   }, []);
   useEffect(cargarGuardadas, [cargarGuardadas]);
 
-  function abrir(id: string) {
-    const d = guardadas.find((g) => g.id === id);
+  function abrir(id: string, lista: Guardada[] = guardadas) {
+    const d = lista.find((g) => g.id === id);
     if (!d) return;
+    setPlan(null);
     setAbierta(d);
     setClave(d.clave);
     setNombre(d.nombre);
@@ -127,10 +160,13 @@ export function Procesos() {
     if (!definicion) return;
     setFallo(null);
     try {
-      const { datos } = await llamar<Guardada>("/api/v1/procesos/definiciones", {
-        metodo: "POST",
-        cuerpo: { clave, nombre, definicion, estado },
-      });
+      const { datos } = await llamar<Guardada>(
+        "/api/v1/procesos/definiciones",
+        {
+          metodo: "POST",
+          cuerpo: { clave, nombre, definicion, estado },
+        },
+      );
       setAbierta(datos);
       setProblemas(null);
       setAviso(
@@ -143,6 +179,36 @@ export function Procesos() {
     } catch (error) {
       setFallo(error);
     }
+  }
+
+  async function migrar(aplicar: boolean) {
+    if (!abierta) return;
+    setFallo(null);
+    const base = `/api/v1/procesos/definiciones/${abierta.clave}/${abierta.version}/migracion`;
+    try {
+      const { datos } = await llamar<PlanDeMigracion>(
+        aplicar ? base : `${base}/simular`,
+        aplicar ? { metodo: "POST", cuerpo: {} } : { metodo: "POST" },
+      );
+      setPlan(datos);
+    } catch (error) {
+      setFallo(error);
+    }
+  }
+
+  // Una copia de plantilla es un borrador nuevo: se abre en el editor para
+  // ajustarlo y publicarlo, que es para lo que se copia.
+  async function abrirCopia(copia: Guardada) {
+    const { datos } = await llamar<Guardada[]>("/api/v1/procesos/definiciones");
+    const lista = Array.isArray(datos) ? datos : [];
+    setGuardadas(lista);
+    abrir(copia.id, lista.some((g) => g.id === copia.id) ? lista : [copia]);
+    setAviso(
+      t("procesos.copiada", {
+        clave: copia.clave,
+        estado: rotuloDeOpcion(copia.estado),
+      }),
+    );
   }
 
   async function cambiarEstado(estado: "publicada" | "archivada") {
@@ -319,6 +385,14 @@ export function Procesos() {
             onClick={() => void cambiarEstado("archivada")}
           />
         ) : null}
+        {/* Lo que va en vuelo con otras versiones, a ésta (CRM-00.03.02.13).
+            Sólo a una publicada: a un borrador nadie lo ha dado por bueno. */}
+        {abierta?.estado === "publicada" ? (
+          <Boton
+            texto={t("procesos.migrarAEsta")}
+            onClick={() => void migrar(false)}
+          />
+        ) : null}
       </div>
       <div role="status" className="mt-2">
         {aviso ? <p className="text-dato text-success">{aviso}</p> : null}
@@ -328,6 +402,14 @@ export function Procesos() {
         <div className="mt-3">
           <Fallo error={fallo} />
         </div>
+      ) : null}
+
+      {plan && abierta ? (
+        <Migracion
+          plan={plan}
+          version={abierta.version}
+          alConfirmar={() => void migrar(true)}
+        />
       ) : null}
 
       {problemas !== null ? (
@@ -433,6 +515,8 @@ export function Procesos() {
         </section>
       ) : null}
 
+      <Plantillas alCopiar={(c) => void abrirCopia(c)} alFallar={setFallo} />
+
       {recorrido ? (
         <section className="mt-6">
           <h2 className="text-dato font-medium uppercase tracking-wide text-ink-faint">
@@ -453,6 +537,180 @@ export function Procesos() {
         </section>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Qué instancias en vuelo pasarían a la versión abierta, y cuáles no y por
+ * qué. Lo que se enseña al simular es exactamente lo que hará al confirmar:
+ * es la misma función en el servidor, sin aplicar.
+ */
+function Migracion({
+  plan,
+  version,
+  alConfirmar,
+}: {
+  plan: PlanDeMigracion;
+  version: number;
+  alConfirmar: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section className="card mt-4 p-4" aria-live="polite">
+      <h2 className="section-label mb-1">
+        {t("procesos.migracionTitulo", { version })}
+      </h2>
+      <p className="mb-2 text-dato text-ink">{plan.que_significa}</p>
+      {plan.migrables.length ? (
+        <>
+          <h3 className="text-rotulo font-medium text-ink-muted">
+            {plan.aplicada ? t("procesos.migradas") : t("procesos.pasarian")}
+          </h3>
+          <ul className="lista-acotada mb-2 flex flex-col gap-0.5 pr-1">
+            {plan.migrables.map((m) => (
+              <li
+                key={m.instancia_id}
+                className="font-mono text-rotulo text-ink"
+              >
+                {t("procesos.instanciaMovida", {
+                  id: m.instancia_id.slice(0, 8),
+                  version: m.version,
+                  paso: m.paso_actual,
+                })}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {plan.se_quedan.length ? (
+        <>
+          <h3 className="text-rotulo font-medium text-warning">
+            {t("procesos.seQuedan")}
+          </h3>
+          <ul className="lista-acotada mb-2 flex flex-col gap-0.5 pr-1">
+            {plan.se_quedan.map((q) => (
+              <li key={q.instancia_id} className="text-rotulo text-ink">
+                <span className="font-mono">
+                  {t("procesos.instanciaEnPaso", {
+                    id: q.instancia_id.slice(0, 8),
+                    version: q.version,
+                    paso: q.paso_actual,
+                  })}
+                </span>{" "}
+                — {q.motivo}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {!plan.aplicada && plan.migrables.length ? (
+        <Boton
+          texto={t("procesos.confirmarMigracion", {
+            n: plan.migrables.length,
+            version,
+          })}
+          destacado
+          onClick={alConfirmar}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * La biblioteca de plantillas de flujo (CRM-00.03.05.15). Copiar una crea un
+ * BORRADOR propio con clave nueva, que se abre aquí mismo: se copia y no se
+ * hereda, así que mejorar la plantilla no cambia lo que ya corre.
+ */
+function Plantillas({
+  alCopiar,
+  alFallar,
+}: {
+  alCopiar: (copia: Guardada) => void;
+  alFallar: (error: unknown) => void;
+}) {
+  const { t } = useTranslation();
+  const [plantillas, setPlantillas] = useState<Plantilla[] | null>(null);
+  const [claves, setClaves] = useState<Record<string, string>>({});
+
+  const cargar = useCallback(() => {
+    llamar<Plantilla[]>("/api/v1/procesos/plantillas")
+      .then((r) => setPlantillas(Array.isArray(r.datos) ? r.datos : []))
+      .catch(() => setPlantillas([]));
+  }, []);
+  useEffect(cargar, [cargar]);
+
+  async function cargarDeSerie() {
+    try {
+      await llamar("/api/v1/procesos/plantillas/cargar", { metodo: "POST" });
+      cargar();
+    } catch (error) {
+      alFallar(error);
+    }
+  }
+
+  async function copiar(p: Plantilla) {
+    const clave = (claves[p.clave] ?? `${p.clave}_propio`).trim();
+    try {
+      const { datos } = await llamar<{ definicion: Guardada }>(
+        `/api/v1/procesos/plantillas/${p.clave}/copiar`,
+        { metodo: "POST", cuerpo: { clave, nombre: p.nombre } },
+      );
+      alCopiar(datos.definicion);
+    } catch (error) {
+      alFallar(error);
+    }
+  }
+
+  return (
+    <section className="card mt-6 p-4">
+      <h2 className="section-label mb-1">{t("procesos.plantillasTitulo")}</h2>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("procesos.plantillasAyuda")}
+      </p>
+      {plantillas !== null && plantillas.length === 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-dato text-ink-muted">
+            {t("procesos.plantillasVacia")}
+          </p>
+          <Boton
+            texto={t("procesos.cargarDeSerie")}
+            onClick={() => void cargarDeSerie()}
+          />
+        </div>
+      ) : null}
+      <ul className="divide-y divide-ink-dim/30">
+        {(plantillas ?? []).map((p) => (
+          <li key={p.clave} className="flex flex-col gap-1 py-2">
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <span className="text-dato font-medium text-ink">{p.nombre}</span>
+              <span className="chip-dato">{p.sector}</span>
+              <span className="text-rotulo text-ink-muted">
+                {p.caso_de_uso}
+              </span>
+            </div>
+            {p.no_resuelve.length ? (
+              <ul className="ml-4 list-disc text-rotulo text-ink-faint">
+                {p.no_resuelve.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="flex flex-wrap items-end gap-2">
+              <Campo
+                etiqueta={t("procesos.claveDeLaCopia", { plantilla: p.nombre })}
+                valor={claves[p.clave] ?? `${p.clave}_propio`}
+                alCambiar={(v) => setClaves({ ...claves, [p.clave]: v })}
+              />
+              <Boton
+                texto={t("procesos.copiarComoBorrador")}
+                onClick={() => void copiar(p)}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

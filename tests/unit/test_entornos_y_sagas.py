@@ -296,66 +296,9 @@ def test_una_saga_sin_pasos_no_arranca(uow: UnidadDeTrabajo, contexto_tenant: UU
         sg.iniciar(uow, clave="x", pasos=[])
 
 
-# ── Migración de instancias en vuelo (CRM-00.03.02.13) ────────────────────
-
-
-@pytest.mark.db
-def test_las_instancias_en_vuelo_terminan_con_su_version(
-    uow: UnidadDeTrabajo, tenant_id: UUID, contexto_tenant: UUID
-) -> None:
-    """Cambiarles el guion a la mitad las deja en un paso que en la nueva no
-    existe, y entonces ni avanzan ni se pueden cancelar limpiamente."""
-    arrancada = sg.iniciar(uow, clave="order_to_cash", pasos=_pasos_pedido(), version_proceso=1)
-    # Se avanza el primer paso para que el pendiente sea «cobrar», que es el que
-    # la versión nueva no tiene: con la instancia parada en el primero no habría
-    # nada que comprobar, porque ese paso sigue existiendo.
-    sg.marcar_hecho(uow, saga_id=UUID(arrancada["saga_id"]), orden=1)
-
-    salida = sg.plan_de_migracion(
-        uow.db,
-        tenant_id,
-        clave="order_to_cash",
-        version_nueva=2,
-        pasos_nuevos=["reservar_stock", "facturar"],
-    )
-    assert salida["en_vuelo"] == 1
-    assert salida["se_pueden_migrar_todas"] is False
-    assert "terminan con SU versión" in salida["que_pasa"]
-
-
-# ── Plantillas de flujo (CRM-00.03.05.15) ─────────────────────────────────
-
-
-@pytest.mark.db
-def test_una_plantilla_de_flujo_se_clona_y_no_se_hereda(
-    uow: UnidadDeTrabajo, contexto_tenant: UUID
-) -> None:
-    """Si heredara, mejorar la plantilla cambiaría los procesos que ya están
-    corriendo en veinte clientes."""
-    uow.db.add(
-        sg.PlantillaFlujo(
-            clave="alta_cliente",
-            sector="industrial",
-            nombre="Alta de cliente industrial",
-            definicion={"pasos": ["verificar", "aprobar"]},
-            no_resuelve=["La aprobación de riesgo la decide cada empresa"],
-        )
-    )
-    uow.db.flush()
-
-    salida = sg.clonar_plantilla(uow, clave="alta_cliente", nombre_destino="Mi alta")
-    assert salida["es_copia_independiente"] is True
-    assert salida["no_resuelve"]
-
-
-@pytest.mark.db
-def test_el_clon_necesita_nombre_propio(uow: UnidadDeTrabajo, contexto_tenant: UUID) -> None:
-    """Si se queda con el de la plantilla, nadie sabe después cuál es el suyo y
-    cuál el de fábrica."""
-    uow.db.add(sg.PlantillaFlujo(clave="x", nombre="X", definicion={"pasos": []}))
-    uow.db.flush()
-    with pytest.raises(ErrorValidacion):
-        sg.clonar_plantilla(uow, clave="x", nombre_destino="  ")
+# La migración de instancias en vuelo (CRM-00.03.02.13) y las plantillas de
+# flujo (CRM-00.03.05.15) tienen sus pruebas en
+# `test_procesos_migracion_y_plantillas.py`: dejaron de vivir en las sagas.
 
 
 # ── Vistas servidas (CRM-00.02.03.08, CRM-00.04.03.01) ────────────────────

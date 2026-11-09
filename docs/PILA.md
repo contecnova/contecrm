@@ -123,6 +123,39 @@ teclado—, se resalta la señalada con su emergente y la gráfica mide su sitio
 Declaradas hechas y con prueba; lo que no está medido es que un usuario llegue
 a ellas. Se recorren una a una, como se hizo con lecciones.
 
+- **Recorrido hecho el 09-11-2026** en el navegador (procesos, automatizaciones
+  y aprobaciones). Arreglado ya: crear aprobaciones desde el formulario, la
+  bandeja, versiones en el editor, quién decidió, reaprobación falsa, las
+  esperas que no despertaban, tareas que respondía o delegaba cualquiera,
+  ramas y bucles que no se guardaban.
+- **Declaradas hechas y sin construir; decidido por formulario construirlas
+  todas** (09-11-2026):
+  - [x] Pasos «servicio» que llaman al CRM, **con los permisos de quien lanzó
+    el proceso** — hecho el 09-11-2026: «MÉTODO /api/v1/ruta», visto crear una
+    actividad desde el worker real. Una automatización lanza procesos con los
+    de quien la activó; las que ya estaban encendidas no tienen esa identidad
+    hasta que alguien las vuelva a encender.
+  - [x] Editor de tablas de decisión — hecho el 09-11-2026: columnas, rejilla
+    de reglas, validar, probar sin guardar y guardar; la fila y «Nuevo» de la
+    pestaña llevan a él.
+  - [x] Migrar instancias en vuelo a otra versión — hecho el 09-11-2026, desde
+    el Editor de procesos, simulando antes.
+  - [x] Plantillas de flujo por sector, que se copian a un borrador — hecho el
+    09-11-2026 (cinco).
+  - [x] Automatizaciones diferidas y programadas — hecho el 09-11-2026 (cola
+    con planificador).
+  - [x] Disparadores de borrado, webhook, programado, manual y evento — hecho
+    el 09-11-2026. Borrado y evento, probados sólo llamando al consumidor: la
+    pila local no tiene bus.
+  - [x] Promover automatizaciones entre entornos — hecho el 09-11-2026: en seco
+    contra un sandbox real; aplicarlo, probado en unitaria.
+  - [x] Biblioteca de plantillas de automatización que se instalan — hecho el
+    09-11-2026 (seis).
+  - [x] Decidir una aprobación desde el correo: página pública de un solo uso
+    y el correo con el enlace — hecho el 09-11-2026 (`/decidir?t=…`, tope por IP
+    en el gateway). En la pila local el correo no llega: el bus no lo entrega a
+    identidad.
+
 ### 6. Las 82 capacidades sin pantalla
 
 El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.

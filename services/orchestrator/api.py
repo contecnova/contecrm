@@ -58,6 +58,38 @@ class DelegarTarea(BaseModel):
     usuario_id: UUID = Field(..., description="Quién se queda la tarea")
 
 
+def _problemas(definicion: dict[str, Any]) -> list[str]:
+    """La validación del motor, con los invocadores que hay de verdad.
+
+    En un solo sitio para que publicar, revalidar, validar desde el editor y
+    simular juzguen igual: con cuatro llamadas sueltas, la que se olvidara de
+    pasar los invocadores dejaría publicar un paso que el worker no sabe
+    ejecutar.
+    """
+    return mtr.validar_definicion(
+        definicion, operaciones_con_nombre=frozenset(mtr.construir_invocadores())
+    )
+
+
+def identidad_de(principal: Any) -> tuple[UUID | None, dict[str, Any] | None]:
+    """Con qué identidad actuarán los pasos «servicio» de lo que lanza `principal`.
+
+    **Ninguna si viene con ámbitos OAuth.** Una aplicación de terceros autorizada
+    con `cuenta:read` no puede escribir aunque quien la autorizó sea
+    administrador; si el proceso guardara los permisos de la persona, la
+    aplicación escribiría a través de él. Los ámbitos no viajan en la llamada
+    interna, así que lo seguro es no guardar nada: el paso dirá que no sabe con
+    qué permisos actuar.
+    """
+    if getattr(principal, "id", None) is None or getattr(principal, "scopes", None):
+        return None, None
+    return principal.id, {
+        "tipo": str(getattr(principal, "tipo", "") or "usuario"),
+        "permisos": sorted(getattr(principal, "permisos", None) or []),
+        "roles": sorted(getattr(principal, "roles", None) or []),
+    }
+
+
 router_def = APIRouter(prefix="/procesos", tags=["procesos"])
 
 
@@ -86,7 +118,7 @@ def publicar(datos: PublicarDefinicion, db: DbDep, principal: AutenticadoDep) ->
     # está rota el día que se publica, con prisa, es exactamente cuando peor
     # viene. Lo que el borrador evita es que ALGUIEN LA EJECUTE, no que se
     # revise.
-    problemas = mtr.validar_definicion(datos.definicion)
+    problemas = _problemas(datos.definicion)
     if problemas:
         raise ErrorValidacion(
             "La definición del proceso no es válida",
@@ -169,7 +201,7 @@ def cambiar_estado_definicion(
         # Se revalida al publicar: entre guardar el borrador y publicarlo pueden
         # haber pasado semanas, y lo que valía entonces puede apuntar a una
         # tabla de decisión que ya no existe.
-        problemas = mtr.validar_definicion(definicion.definicion)
+        problemas = _problemas(definicion.definicion)
         if problemas:
             raise ErrorValidacion(
                 "La definición ya no es válida",
@@ -202,7 +234,7 @@ def cambiar_estado_definicion(
     ),
 )
 def validar(datos: PublicarDefinicion) -> Any:
-    problemas = mtr.validar_definicion(datos.definicion)
+    problemas = _problemas(datos.definicion)
     return {"valida": not problemas, "problemas": problemas}
 
 
@@ -228,7 +260,7 @@ def validar(datos: PublicarDefinicion) -> Any:
     ),
 )
 def simular(datos: SimularProceso, db: DbDep, principal: AutenticadoDep) -> Any:
-    problemas = mtr.validar_definicion(datos.definicion)
+    problemas = _problemas(datos.definicion)
     if problemas:
         return {"valida": False, "problemas": problemas, "recorrido": []}
 
@@ -342,6 +374,165 @@ def listar_definiciones(db: DbDep, principal: AutenticadoDep) -> Any:
     )
 
 
+# ── Migrar lo que está en vuelo (CRM-00.03.02.13) ─────────────────────────
+
+
+class MigrarInstancias(BaseModel):
+    motivo: str = Field(
+        "",
+        max_length=500,
+        description="Por qué se migran. Queda en la auditoría de cada instancia movida",
+    )
+
+
+@router_def.post(
+    "/definiciones/{clave}/{version}/migracion/simular",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Qué instancias en vuelo pasarían a esta versión, y cuáles no y por qué",
+    description=(
+        "No mueve nada. Recorre las instancias en vuelo de la misma clave y "
+        "otra versión, y dice de cada una si se puede mover —su paso actual "
+        "existe en esta versión y es del mismo tipo— o por qué se queda.\n\n"
+        "Es la misma función que migra, sin aplicar: lo que enseña es "
+        "exactamente lo que hará."
+    ),
+)
+def simular_migracion(clave: str, version: int, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.orchestrator import migracion
+
+    return migracion.migrar(db, principal.tenant_id, clave=clave, version=version, aplicar=False)
+
+
+@router_def.post(
+    "/definiciones/{clave}/{version}/migracion",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("proceso:admin"))],
+    summary="Migrar las instancias en vuelo a esta versión",
+    description=(
+        "Mueve a esta versión las instancias en vuelo que se pueden mover y "
+        "deja las demás con la suya, cada una con su motivo. Cada instancia "
+        "movida deja su apunte en la auditoría, con la versión de la que salió: "
+        "es en su historia donde alguien buscará por qué siguió un camino que "
+        "su versión no tenía."
+    ),
+)
+def migrar_instancias(
+    clave: str, version: int, cuerpo: MigrarInstancias, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.orchestrator import migracion
+
+    return migracion.migrar(
+        db,
+        principal.tenant_id,
+        clave=clave,
+        version=version,
+        aplicar=True,
+        motivo=cuerpo.motivo,
+    )
+
+
+# ── Plantillas de flujo (CRM-00.03.05.15) ─────────────────────────────────
+
+
+class PlantillaOut(BaseModel):
+    clave: str
+    version: int
+    sector: str
+    caso_de_uso: str
+    nombre: str
+    definicion: dict[str, Any] = {}
+    no_resuelve: list[str] = []
+
+    model_config = {"from_attributes": True}
+
+
+class CopiarPlantilla(BaseModel):
+    clave: str = Field(
+        ...,
+        min_length=1,
+        max_length=120,
+        pattern=r"^[a-z0-9_]+$",
+        description="Clave del proceso nuevo. Tiene que ser nueva en el tenant",
+    )
+    nombre: str = Field(..., min_length=1, max_length=200)
+
+
+class CopiaDePlantilla(BaseModel):
+    definicion: DefinicionOut
+    plantilla: str
+    version_plantilla: int
+    no_resuelve: list[str] = []
+
+
+@router_def.get(
+    "/plantillas",
+    response_model=list[PlantillaOut],
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Plantillas de flujo por sector, para copiar",
+    description=(
+        "La última versión de cada plantilla, con lo que NO resuelve: una que "
+        "promete el proceso entero y deja fuera la aprobación hace que el "
+        "cliente lo descubra en producción."
+    ),
+)
+def listar_plantillas(db: DbDep) -> Any:
+    from services.orchestrator import plantillas
+
+    return plantillas.listar(db)
+
+
+@router_def.post(
+    "/plantillas/cargar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("proceso:admin"))],
+    summary="Cargar las plantillas de flujo de serie",
+    description=(
+        "Idempotente: dos veces es lo mismo que una. Una plantilla cuyo "
+        "contenido cambió con el producto entra como versión nueva; las copias "
+        "ya hechas no cambian."
+    ),
+)
+def cargar_plantillas(db: DbDep) -> Any:
+    from services.orchestrator import plantillas
+
+    return plantillas.cargar_de_serie(db)
+
+
+@router_def.post(
+    "/plantillas/{clave_plantilla}/copiar",
+    response_model=CopiaDePlantilla,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Copiar una plantilla como borrador propio",
+    description=(
+        "Crea un BORRADOR de definición con clave nueva, que se abre en el "
+        "Editor de procesos. Se copia y no se hereda: si heredara, mejorar la "
+        "plantilla cambiaría los procesos que ya corren. Nadie lo ejecuta hasta "
+        "que alguien lo publica."
+    ),
+)
+def copiar_plantilla(
+    clave_plantilla: str, cuerpo: CopiarPlantilla, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.orchestrator import plantillas
+
+    definicion, plantilla = plantillas.copiar(
+        db,
+        principal.tenant_id,
+        clave_plantilla=clave_plantilla,
+        clave=cuerpo.clave,
+        nombre=cuerpo.nombre,
+        operaciones_con_nombre=frozenset(mtr.construir_invocadores()),
+    )
+    return {
+        "definicion": definicion,
+        "plantilla": plantilla.clave,
+        "version_plantilla": plantilla.version,
+        "no_resuelve": list(plantilla.no_resuelve or []),
+    }
+
+
 # ── Instancias ────────────────────────────────────────────────────────────
 
 router_inst = APIRouter(prefix="/instancias", tags=["instancias de proceso"])
@@ -353,14 +544,22 @@ router_inst = APIRouter(prefix="/instancias", tags=["instancias de proceso"])
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(exige_permiso("proceso:write"))],
     summary="Arrancar un proceso",
+    description=(
+        "Los pasos «servicio» de la instancia llamarán a la API del CRM **con "
+        "los permisos y roles de quien la arranca**, guardados ahora: un "
+        "proceso no puede hacer nada que esa persona no pudiera hacer a mano."
+    ),
 )
 def arrancar(datos: ArrancarProceso, db: DbDep, principal: AutenticadoDep) -> Any:
     motor = mtr.Motor(db)
+    quien, permisos = identidad_de(principal)
     return motor.arrancar(
         tenant_id=principal.tenant_id,
         clave=datos.clave,
         variables=datos.variables,
         origen=(datos.origen_tipo, datos.origen_id) if datos.origen_tipo else None,
+        lanzada_por=quien,
+        permisos_de_lanzamiento=permisos,
     )
 
 
@@ -860,17 +1059,6 @@ class PasoFallidoIn(BaseModel):
     error: str = Field(..., min_length=1)
 
 
-class MigracionIn(BaseModel):
-    clave: str = Field(..., min_length=1)
-    version_nueva: int = Field(..., ge=1)
-    pasos_nuevos: list[str] = Field(default_factory=list)
-
-
-class ClonarIn(BaseModel):
-    clave: str = Field(..., min_length=1)
-    nombre_destino: str = Field(..., min_length=1)
-
-
 @router_sagas.post(
     "",
     status_code=status.HTTP_201_CREATED,
@@ -922,43 +1110,6 @@ def paso_hecho(saga_id: UUID, cuerpo: PasoHechoIn, uow: UowDep) -> Any:
 )
 def paso_fallido(saga_id: UUID, cuerpo: PasoFallidoIn, uow: UowDep) -> Any:
     return sagas.fallar(uow, saga_id=saga_id, orden=cuerpo.orden, error=cuerpo.error)
-
-
-@router_sagas.post(
-    "/migracion/simular",
-    dependencies=[Depends(exige_permiso("proceso:read"))],
-    summary="Qué pasaría con lo que está en vuelo al publicar otra versión",
-    description=(
-        "Una saga de alta de cliente puede durar semanas. Publicar una versión "
-        "nueva sin mirar qué hay dentro es cambiarle los pasos a procesos que ya "
-        "están a mitad — y lo que estaba a mitad es lo que nadie reclama.\n\n"
-        "No ejecuta nada: dice cuántas instancias hay en vuelo y cuáles se "
-        "quedarían con un paso que ya no existe."
-    ),
-)
-def simular_migracion(cuerpo: MigracionIn, db: DbDep, principal: AutenticadoDep) -> Any:
-    return sagas.plan_de_migracion(
-        db,
-        principal.tenant_id,
-        clave=cuerpo.clave,
-        version_nueva=cuerpo.version_nueva,
-        pasos_nuevos=cuerpo.pasos_nuevos,
-    )
-
-
-@router_sagas.post(
-    "/plantillas/clonar",
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(exige_permiso("proceso:write"))],
-    summary="Copiar una plantilla de flujo para modificarla",
-    description=(
-        "Se **copia** y no se edita la original: una plantilla que el producto "
-        "actualiza y el cliente ha tocado es la que se queda sin actualizar o "
-        "pierde los cambios, y las dos cosas se descubren tarde."
-    ),
-)
-def clonar_plantilla(cuerpo: ClonarIn, uow: UowDep) -> Any:
-    return sagas.clonar_plantilla(uow, clave=cuerpo.clave, nombre_destino=cuerpo.nombre_destino)
 
 
 class SagaOut(BaseModel):
@@ -1062,10 +1213,11 @@ def ver_saga(saga_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     }
 
 
-# Las rutas literales van declaradas antes que `/{saga_id}`; FastAPI resuelve por
-# orden y `/sagas/migracion/simular` casaría con la parametrizada si fuera al
-# revés. Van en métodos distintos, pero el orden se mantiene igual: el día que
-# alguien añada un GET literal, el error ya no sería suyo.
+# `/sagas/migracion/simular` y `/sagas/plantillas/clonar` se retiraron el
+# 09-11-2026: la primera miraba la tabla de sagas y contestaba cero para
+# cualquier proceso del editor, y la segunda devolvía un JSON que nadie
+# guardaba. Lo que prometían está ahora en `/procesos/definiciones/{clave}/
+# {version}/migracion` y en `/procesos/plantillas`, y funciona.
 ROUTERS = [router_def, router_inst, router_tareas, router_tablas, router_sagas]
 
 

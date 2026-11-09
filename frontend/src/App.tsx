@@ -1,4 +1,11 @@
-import { Suspense, lazy, useCallback, useEffect, useState, type ComponentType } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useState,
+  type ComponentType,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
@@ -41,7 +48,10 @@ import { cargarEntrada, type Sesion } from "@/lib/sesion";
  * paralelo quedaría una ventana de milisegundos con la clave de traducción
  * escrita en la cabecera, que es el aspecto que tiene una interfaz rota.
  */
-function pantalla<M, P>(cargar: () => Promise<M>, elegir: (modulo: M) => ComponentType<P>) {
+function pantalla<M, P>(
+  cargar: () => Promise<M>,
+  elegir: (modulo: M) => ComponentType<P>,
+) {
   return lazy(async () => {
     const [modulo] = await Promise.all([cargar(), cargarTextosDePantallas()]);
     return { default: elegir(modulo) };
@@ -58,6 +68,17 @@ const Consola = pantalla(
 const Portal = pantalla(
   () => import("@/paginas/Portal"),
   (m) => m.Portal,
+);
+// El editor de una tabla de decisión (CRM-00.03.02.10).
+const TablaDeDecision = pantalla(
+  () => import("@/paginas/TablaDeDecision"),
+  (m) => m.TablaDeDecision,
+);
+// La página pública para decidir una aprobación desde el correo: fuera del
+// marco y sin sesión, como el portal (CRM-00.03.05.12).
+const DecidirPorEnlace = pantalla(
+  () => import("@/paginas/DecidirPorEnlace"),
+  (m) => m.DecidirPorEnlace,
 );
 const Cobertura = pantalla(
   () => import("@/paginas/Cobertura"),
@@ -184,7 +205,10 @@ const SobreDeFirma = pantalla(
   () => import("@/paginas/SobreDeFirma"),
   (m) => m.SobreDeFirma,
 );
-const Caso = pantalla(() => import("@/paginas/Caso"), (m) => m.Caso);
+const Caso = pantalla(
+  () => import("@/paginas/Caso"),
+  (m) => m.Caso,
+);
 const Liquidacion = pantalla(
   () => import("@/paginas/Liquidacion"),
   (m) => m.Liquidacion,
@@ -193,14 +217,38 @@ const Territorios = pantalla(
   () => import("@/paginas/Territorios"),
   (m) => m.Territorios,
 );
-const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento);
-const Gobierno = pantalla(() => import("@/paginas/Gobierno"), (m) => m.Gobierno);
-const Campana = pantalla(() => import("@/paginas/Campana"), (m) => m.Campana);
-const Articulo = pantalla(() => import("@/paginas/Articulo"), (m) => m.Articulo);
-const Entornos = pantalla(() => import("@/paginas/Entornos"), (m) => m.Entornos);
-const Canales = pantalla(() => import("@/paginas/Canales"), (m) => m.Canales);
-const Menciones = pantalla(() => import("@/paginas/Menciones"), (m) => m.Menciones);
-const Activo = pantalla(() => import("@/paginas/Activo"), (m) => m.Activo);
+const Segmento = pantalla(
+  () => import("@/paginas/Segmento"),
+  (m) => m.Segmento,
+);
+const Gobierno = pantalla(
+  () => import("@/paginas/Gobierno"),
+  (m) => m.Gobierno,
+);
+const Campana = pantalla(
+  () => import("@/paginas/Campana"),
+  (m) => m.Campana,
+);
+const Articulo = pantalla(
+  () => import("@/paginas/Articulo"),
+  (m) => m.Articulo,
+);
+const Entornos = pantalla(
+  () => import("@/paginas/Entornos"),
+  (m) => m.Entornos,
+);
+const Canales = pantalla(
+  () => import("@/paginas/Canales"),
+  (m) => m.Canales,
+);
+const Menciones = pantalla(
+  () => import("@/paginas/Menciones"),
+  (m) => m.Menciones,
+);
+const Activo = pantalla(
+  () => import("@/paginas/Activo"),
+  (m) => m.Activo,
+);
 const Prospeccion = pantalla(
   () => import("@/paginas/Prospeccion"),
   (m) => m.Prospeccion,
@@ -359,6 +407,17 @@ export function App() {
     );
   }
 
+  // Decidir una aprobación desde el correo, por lo mismo que el portal: quien
+  // llega no tiene por qué haber entrado, y pedirle la sesión sería pedirle
+  // justo lo que el enlace existe para ahorrarle.
+  if (window.location.pathname === "/decidir") {
+    return (
+      <Suspense fallback={<Cargando />}>
+        <DecidirPorEnlace />
+      </Suspense>
+    );
+  }
+
   if (!resuelta) return <Cargando />;
   // Primero lo caído: con el sistema sin responder, la pantalla de entrada
   // promete algo que no se puede hacer.
@@ -380,192 +439,235 @@ export function App() {
       <FronteraDeRuta>
         <Suspense fallback={<Cargando />}>
           <Routes>
-          <Route path="/" element={<Inicio sesion={sesion} />} />
-          <Route path="/administracion" element={<Consola sesion={sesion} />} />
-          <Route path="/m/:ruta" element={<Modulo sesion={sesion} />} />
-          {/* La cuenta tiene ficha propia: la genérica es un inspector de
+            <Route path="/" element={<Inicio sesion={sesion} />} />
+            <Route
+              path="/administracion"
+              element={<Consola sesion={sesion} />}
+            />
+            <Route path="/m/:ruta" element={<Modulo sesion={sesion} />} />
+            {/* La cuenta tiene ficha propia: la genérica es un inspector de
               registros y con ella delante no se puede contestar «¿cómo vamos
               con este cliente?», que es para lo que se abre un CRM. */}
-          <Route path="/m/cuentas/cuenta/:id" element={<Cuenta />} />
-          {/* Y la del proveedor es **la misma pantalla**, porque un proveedor
+            <Route path="/m/cuentas/cuenta/:id" element={<Cuenta />} />
+            {/* Y la del proveedor es **la misma pantalla**, porque un proveedor
               es una cuenta con ese rol. Una ficha propia y parecida sería un
               segundo sitio donde mirar lo mismo, con el «lo que ha pasado» en
               otro lugar y las mismas cosas contadas de otra forma. */}
-          <Route path="/m/proveedores/proveedor/:id" element={<Cuenta />} />
-          {/* El objeto del modelo tiene pantalla propia, y no por capricho:
+            <Route path="/m/proveedores/proveedor/:id" element={<Cuenta />} />
+            {/* El objeto del modelo tiene pantalla propia, y no por capricho:
               sus rutas hijas se dirigen por NOMBRE —`/objetos/{nombre}/campos`—
               y la ficha genérica pasa el identificador, así que cada panel
               habría salido en 404. Ésta abre por identificador, lee el nombre
               y con él pide lo demás. */}
-          {/* La oportunidad tiene ficha propia por lo mismo que el cliente:
+            {/* La oportunidad tiene ficha propia por lo mismo que el cliente:
               con un volcado de campos delante no se contesta «¿cómo vamos con
               esta venta?». Y tres de sus paneles leen rutas de OTRO prefijo
               —`/ingresos/…`, `/forecast/…`—, que la ficha genérica no
               descubre porque busca por prefijo común. */}
-          <Route path="/m/oportunidades/oportunidad/:id" element={<Oportunidad />} />
-          <Route path="/m/lecciones/leccion/:id" element={<Leccion />} />
-          <Route path="/estados" element={<Estados />} />
-          <Route path="/embudos" element={<Embudos />} />
-          <Route path="/metodologias" element={<Metodologias />} />
-          <Route path="/segregacion" element={<Segregacion />} />
-          <Route path="/tcsec" element={<Tcsec />} />
-          {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
+            <Route
+              path="/m/oportunidades/oportunidad/:id"
+              element={<Oportunidad />}
+            />
+            <Route path="/m/lecciones/leccion/:id" element={<Leccion />} />
+            <Route path="/estados" element={<Estados />} />
+            <Route path="/embudos" element={<Embudos />} />
+            <Route path="/metodologias" element={<Metodologias />} />
+            <Route path="/segregacion" element={<Segregacion />} />
+            <Route path="/tcsec" element={<Tcsec />} />
+            {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
               —ajustes, fotos, desglose, deslizamiento— se dirigen por su
               clave, y pasarles el identificador las deja en 404. */}
-          <Route
-            path="/m/prevision/periodo/:clave"
-            element={<PeriodoDePrevision />}
-          />
-          <Route path="/m/modelo/objeto/:id" element={<ObjetoDelModelo />} />
-          {/* Una instancia de proceso tiene pantalla propia por lo mismo que
+            <Route
+              path="/m/prevision/periodo/:clave"
+              element={<PeriodoDePrevision />}
+            />
+            <Route path="/m/modelo/objeto/:id" element={<ObjetoDelModelo />} />
+            {/* Una instancia de proceso tiene pantalla propia por lo mismo que
               el objeto del modelo: la ficha genérica enseña columnas —estado,
               paso actual— y la pregunta delante de un proceso parado es «¿por
               dónde va, qué pasó y cómo lo desatasco?». Además el gráfico
               necesita la definición de SU versión, que la ficha no pide. */}
-          <Route
-            path="/m/procesos/instancia/:id"
-            element={<InstanciaDeProceso />}
-          />
-          {/* Por CLAVE y no por identificador: las rutas hijas de un módulo
+            <Route
+              path="/m/procesos/instancia/:id"
+              element={<InstanciaDeProceso />}
+            />
+            {/* Una tabla de decisión tiene editor propio: columnas y una rejilla
+              de reglas, que la ficha genérica pintaba como texto. Por CLAVE,
+              que es como la guarda y la llaman los procesos. */}
+            <Route
+              path="/m/procesos/tablas-decision/:clave"
+              element={<TablaDeDecision />}
+            />
+            <Route
+              path="/tablas-decision/nueva"
+              element={<TablaDeDecision />}
+            />
+            {/* Por CLAVE y no por identificador: las rutas hijas de un módulo
               —integridad, telemetría— se dirigen por su clave, y pasarles el
               identificador las dejaría en 404, que es peor que no tenerlas. */}
-          <Route path="/m/modelo/modulo/:clave" element={<ModuloInstalado />} />
-          <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
-          <Route path="/estado" element={<Estado />} />
-          <Route path="/seguridad" element={<Seguridad sesion={sesion} />} />
-          <Route path="/plataforma" element={<Plataforma sesion={sesion} />} />
-          <Route path="/cobertura" element={<Cobertura />} />
-          <Route path="/chat" element={<Chat sesion={sesion} />} />
-          <Route path="/recorrido" element={<Recorrido />} />
-          <Route path="/territorios" element={<Territorios />} />
-          {/* La liquidación tiene ficha propia: su detalle devuelve las
+            <Route
+              path="/m/modelo/modulo/:clave"
+              element={<ModuloInstalado />}
+            />
+            <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
+            <Route path="/estado" element={<Estado />} />
+            <Route path="/seguridad" element={<Seguridad sesion={sesion} />} />
+            <Route
+              path="/plataforma"
+              element={<Plataforma sesion={sesion} />}
+            />
+            <Route path="/cobertura" element={<Cobertura />} />
+            <Route path="/chat" element={<Chat sesion={sesion} />} />
+            <Route path="/recorrido" element={<Recorrido />} />
+            <Route path="/territorios" element={<Territorios />} />
+            {/* La liquidación tiene ficha propia: su detalle devuelve las
               líneas y las reclamaciones dentro del mismo objeto, y la ficha
               genérica descubre paneles por rutas hijas que aquí no existen. */}
-          <Route path="/m/canal/liquidacion/:id" element={<Liquidacion />} />
-          {/* El caso tiene ficha propia: su detalle trae en UNA llamada las
+            <Route path="/m/canal/liquidacion/:id" element={<Liquidacion />} />
+            {/* El caso tiene ficha propia: su detalle trae en UNA llamada las
               relaciones, el árbol, el reloj y el historial, y la ficha
               genérica los pintaba como campos sueltos —seis UUID y un array—. */}
-          <Route path="/m/casos/caso/:id" element={<Caso />} />
-          {/* El sobre tiene ficha propia porque su EVIDENCIA devuelve un
+            <Route path="/m/casos/caso/:id" element={<Caso />} />
+            {/* El sobre tiene ficha propia porque su EVIDENCIA devuelve un
               objeto, y la ficha genérica sólo descubre paneles que devuelven
               listas: pintarla como panel daría siempre «nada todavía». Y la
               evidencia es justo lo que hace defendible una firma. */}
-          <Route path="/m/operacion/sobre_firma/:id" element={<SobreDeFirma />} />
-          {/* El segmento tiene ficha propia porque sus tres preguntas no son
+            <Route
+              path="/m/operacion/sobre_firma/:id"
+              element={<SobreDeFirma />}
+            />
+            {/* El segmento tiene ficha propia porque sus tres preguntas no son
               paneles: el recuento devuelve un OBJETO —y la ficha genérica sólo
               descubre lo que devuelve listas—, el solapamiento cuelga del
               prefijo de la colección y se pide contra otro segmento, y
               congelar cambia la naturaleza del segmento. */}
-          <Route path="/m/segmentos/segmento/:id" element={<Segmento />} />
-          {/* Por dónde entran los casos. El listado genérico enseñaba nombre y
+            <Route path="/m/segmentos/segmento/:id" element={<Segmento />} />
+            {/* Por dónde entran los casos. El listado genérico enseñaba nombre y
               tipo; lo que decide es qué se está tirando y POR QUÉ, y el total
               de descartados no distingue el anti-bucle haciendo su trabajo de
               una trampa tragándose clientes. */}
-          <Route path="/canales-de-entrada" element={<CanalesDeEntrada />} />
-          {/* Por dónde se puede SALIR a hablar con alguien, que es la
+            <Route path="/canales-de-entrada" element={<CanalesDeEntrada />} />
+            {/* Por dónde se puede SALIR a hablar con alguien, que es la
               pregunta contraria a la de arriba. El consentimiento es por
               canal y por destino, y no había pantalla que lo contestara. */}
-          <Route path="/canales" element={<Canales />} />
-          {/* Mencionar a alguien funcionaba y no había dónde ver las tuyas:
+            <Route path="/canales" element={<Canales />} />
+            {/* Mencionar a alguien funcionaba y no había dónde ver las tuyas:
               sin esta pantalla la función no existe en la práctica, porque
               nadie abre cuarenta fichas por si acaso. */}
-          <Route path="/menciones" element={<Menciones />} />
-          {/* Qué plantillas funcionan y a quién le toca la próxima reunión.
+            <Route path="/menciones" element={<Menciones />} />
+            {/* Qué plantillas funcionan y a quién le toca la próxima reunión.
               La tasa de respuesta sin su número de envíos es ruido, y pedir
               el turno AVANZA el round-robin: las dos cosas necesitaban una
               pantalla que lo dijera. */}
-          <Route path="/prospeccion" element={<Prospeccion />} />
-          {/* Un activo instalado no es una ficha de inventario: es la máquina
+            <Route path="/prospeccion" element={<Prospeccion />} />
+            {/* Un activo instalado no es una ficha de inventario: es la máquina
               que hay en casa del cliente. Su árbol, su historial a través de
               las sustituciones y su cobertura devuelven OBJETOS, así que la
               ficha genérica los pintaba como campos sueltos. */}
-          <Route path="/m/campo/activo/:id" element={<Activo />} />
-          {/* La orden de trabajo: el reparto de cobertura va en TRES cestas
+            <Route path="/m/campo/activo/:id" element={<Activo />} />
+            {/* La orden de trabajo: el reparto de cobertura va en TRES cestas
               —lo que paga el cliente, lo que se reclama y lo que no se sabe—,
               y el parte dice si se tocó después de firmar. Dos objetos que la
               ficha genérica no sabe pintar. */}
-          <Route path="/m/campo/ordenes-trabajo/:id" element={<OrdenDeTrabajo />} />
-          {/* Clonar, fusionar y partir un tenant guardaban su plan y sus
+            <Route
+              path="/m/campo/ordenes-trabajo/:id"
+              element={<OrdenDeTrabajo />}
+            />
+            {/* Clonar, fusionar y partir un tenant guardaban su plan y sus
               conflictos —«lo que alguien tiene que leer ANTES de aprobar»— y no
               había ruta que los listara: sólo volvía a ellos quien se hubiera
               guardado el id. Lo mismo con las migraciones de modalidad. */}
-          <Route path="/ciclo-de-vida" element={<CicloDeVidaDelCliente />} />
-          {/* El GRC: el módulo genérico lista riesgos y controles, y un GRC
+            <Route path="/ciclo-de-vida" element={<CicloDeVidaDelCliente />} />
+            {/* El GRC: el módulo genérico lista riesgos y controles, y un GRC
               que sólo lista es un archivo. Lo que lo hace herramienta son el
               panel con su «medible», el informe de cobertura contra el
               catálogo y el mapeo a marcos — los tres devuelven OBJETOS. */}
-          <Route path="/cumplimiento" element={<Gobierno />} />
-          {/* Qué hay desplegado en cada entorno y qué se ha tocado a mano.
+            <Route path="/cumplimiento" element={<Gobierno />} />
+            {/* Qué hay desplegado en cada entorno y qué se ha tocado a mano.
               Todo existía por API y no se veía: la primera pregunta delante
               de una incidencia —«¿qué hay puesto ahí ahora mismo?»— no la
               contestaba ninguna pantalla. */}
-          <Route path="/entornos" element={<Entornos />} />
-          {/* La campaña tiene ficha propia porque sus cuatro preguntas
+            <Route path="/entornos" element={<Entornos />} />
+            {/* La campaña tiene ficha propia porque sus cuatro preguntas
               devuelven OBJETOS: el consumo, el rendimiento con su plan vs
               real, el embudo y el resultado del evento. La ficha genérica
               sólo descubre paneles que devuelven listas. */}
-          <Route path="/m/campanas/campana/:id" element={<Campana />} />
-          {/* El artículo tiene ficha propia porque sus tres preguntas
+            <Route path="/m/campanas/campana/:id" element={<Campana />} />
+            {/* El artículo tiene ficha propia porque sus tres preguntas
               devuelven OBJETOS: el artículo con su aviso, el estado de sus
               traducciones y la eficacia del conjunto. Y porque el título no
               es una columna suya —vive en la versión—, así que la ficha
               genérica lo pintaba sin nombre. */}
-          <Route path="/m/conocimiento/articulo/:id" element={<Articulo />} />
-          {/* El presupuesto tiene ficha propia porque sus tres preguntas
+            <Route path="/m/conocimiento/articulo/:id" element={<Articulo />} />
+            {/* El presupuesto tiene ficha propia porque sus tres preguntas
               devuelven OBJETOS: la política de descuento con sus motivos, la
               comparación con la versión anterior y el documento tal y como
               saldrá. La ficha genérica sólo descubre paneles de listas. */}
-          <Route path="/m/oportunidades/presupuesto/:id" element={<Presupuesto />} />
-          {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
+            <Route
+              path="/m/oportunidades/presupuesto/:id"
+              element={<Presupuesto />}
+            />
+            {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
               separado: pintarla como campos sueltos los sumaría visualmente,
               que es justo lo que el modelo evita. */}
-          <Route path="/m/segmentos/lead/:id/puntuacion" element={<PuntuacionDeLead />} />
-          <Route path="/procesos" element={<Procesos />} />
-          <Route path="/aprobaciones" element={<Aprobaciones />} />
-          <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />
-          <Route path="/explotacion" element={<Explotacion />} />
-          <Route path="/cuadros" element={<Cuadros />} />
-          <Route path="/embudo" element={<Pipeline sesion={sesion} />} />
-          <Route path="/casos" element={<Casos />} />
-          <Route path="/consola-agente" element={<ConsolaAgente />} />
-          {/* La cola de la consola de agente enlazaba aquí desde el primer
+            <Route
+              path="/m/segmentos/lead/:id/puntuacion"
+              element={<PuntuacionDeLead />}
+            />
+            <Route path="/procesos" element={<Procesos />} />
+            <Route path="/aprobaciones" element={<Aprobaciones />} />
+            <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />
+            <Route path="/explotacion" element={<Explotacion />} />
+            <Route path="/cuadros" element={<Cuadros />} />
+            <Route path="/embudo" element={<Pipeline sesion={sesion} />} />
+            <Route path="/casos" element={<Casos />} />
+            <Route path="/consola-agente" element={<ConsolaAgente />} />
+            {/* La cola de la consola de agente enlazaba aquí desde el primer
               día y este módulo no existe: se llegaba a «no existe». */}
-          <Route
-            path="/m/conversaciones/conversacion/:id"
-            element={<Conversacion sesion={sesion} />}
-          />
-          <Route path="/conocimiento" element={<Conocimiento />} />
-          <Route path="/marketing" element={<Marketing />} />
-          <Route path="/coste" element={<Coste />} />
-          <Route path="/inteligencia" element={<Inteligencia />} />
-          <Route path="/preguntar" element={<Preguntar />} />
-          <Route path="/archivos" element={<Archivos />} />
-          <Route path="/calendario" element={<Calendario />} />
-          <Route path="/lo-que-sigo" element={<LoQueSigo />} />
-          <Route path="/duplicados" element={<Duplicados />} />
-          <Route path="/puesto" element={<Puesto />} />
-          <Route path="/alm" element={<Alm />} />
-          <Route path="/rendimiento" element={<Rendimiento />} />
-          <Route path="/suite" element={<SuiteGobierno />} />
-          <Route path="/ayuda" element={<Ayuda />} />
-          {/* Atajos que la gente escribe. `/admin` es el que más: se teclea sin
+            <Route
+              path="/m/conversaciones/conversacion/:id"
+              element={<Conversacion sesion={sesion} />}
+            />
+            <Route path="/conocimiento" element={<Conocimiento />} />
+            <Route path="/marketing" element={<Marketing />} />
+            <Route path="/coste" element={<Coste />} />
+            <Route path="/inteligencia" element={<Inteligencia />} />
+            <Route path="/preguntar" element={<Preguntar />} />
+            <Route path="/archivos" element={<Archivos />} />
+            <Route path="/calendario" element={<Calendario />} />
+            <Route path="/lo-que-sigo" element={<LoQueSigo />} />
+            <Route path="/duplicados" element={<Duplicados />} />
+            <Route path="/puesto" element={<Puesto />} />
+            <Route path="/alm" element={<Alm />} />
+            <Route path="/rendimiento" element={<Rendimiento />} />
+            <Route path="/suite" element={<SuiteGobierno />} />
+            <Route path="/ayuda" element={<Ayuda />} />
+            {/* Atajos que la gente escribe. `/admin` es el que más: se teclea sin
               pensar y aquí la pantalla se llama `/administracion`. */}
-          <Route path="/admin" element={<Navigate to="/administracion" replace />} />
-          <Route path="/dashboard" element={<Navigate to="/cuadros" replace />} />
-          <Route path="/informes" element={<Navigate to="/cuadros" replace />} />
-          {/* Y CUALQUIER otra dirección dice que no existe.
+            <Route
+              path="/admin"
+              element={<Navigate to="/administracion" replace />}
+            />
+            <Route
+              path="/dashboard"
+              element={<Navigate to="/cuadros" replace />}
+            />
+            <Route
+              path="/informes"
+              element={<Navigate to="/cuadros" replace />}
+            />
+            {/* Y CUALQUIER otra dirección dice que no existe.
               Sin esto, una dirección desconocida no daba error: dejaba la
               pantalla EN BLANCO, con un aviso en la consola del navegador que
               nadie mira. Es la peor forma de fallar — parece que la aplicación
               se ha roto, y no hay nada que leer ni a dónde ir. */}
-          <Route path="*" element={<NoExiste />} />
+            <Route path="*" element={<NoExiste />} />
           </Routes>
         </Suspense>
       </FronteraDeRuta>
     </Marco>
   );
 }
-
 
 /**
  * Una dirección que no existe, dicha con todas las letras.
@@ -581,9 +683,13 @@ function NoExiste() {
     <div className="p-4" role="alert">
       <h1 className="text-grande text-ink">{t("noExiste.titulo")}</h1>
       <p className="mt-2 max-w-prose text-dato text-ink-muted">
-        {t("noExiste.detalle")} <code className="font-mono text-ink">{pathname}</code>
+        {t("noExiste.detalle")}{" "}
+        <code className="font-mono text-ink">{pathname}</code>
       </p>
-      <Link to="/" className="mt-4 inline-block text-dato text-accent underline">
+      <Link
+        to="/"
+        className="mt-4 inline-block text-dato text-accent underline"
+      >
         {t("noExiste.volver")}
       </Link>
     </div>

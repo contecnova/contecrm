@@ -1775,8 +1775,6 @@ compensar hacia atrás cuando uno falla.
 | `POST /api/v1/sagas/{id}/hecho` | `proceso:write` | Anotar que el paso `orden` salió bien |
 | `POST /api/v1/sagas/{id}/fallo` | `proceso:write` | Anotar el fallo y compensar hacia atrás |
 | `GET /api/v1/sagas/{id}` | `proceso:read` | Estado, pasos y lo que quedó sin deshacer |
-| `POST /api/v1/sagas/migracion/simular` | `proceso:read` | Qué pasa con lo que está en vuelo al publicar otra versión |
-| `POST /api/v1/sagas/plantillas/clonar` | `proceso:write` | Copiar una plantilla de flujo por sector |
 
 Lo que hay que saber para integrar:
 
@@ -1792,10 +1790,10 @@ Lo que hay que saber para integrar:
   hecho que no se puede deshacer; está en `sin_compensar` de la respuesta y en
   `sin_deshacer` de la ficha. Es trabajo manual pendiente: enganchad ahí vuestra
   alerta, no en el código HTTP.
-- **La migración no migra**: simula. Las instancias en vuelo terminan con SU
-  versión de proceso, siempre. `se_pueden_migrar_todas: false` significa que hay
-  instancias paradas en un paso que la versión nueva no tiene, y esas hay que
-  decidirlas una a una.
+- **Una saga en vuelo termina con SU versión.** `/sagas/migracion/simular` y
+  `/sagas/plantillas/clonar` se retiraron el 09-11-2026 (resellado el
+  contrato): miraban la tabla de sagas y no las instancias de proceso. La
+  migración de instancias y las plantillas están en 4.4.1.1.
 - **`GET /api/v1/sagas?estado=atascada` es la consulta que importa**: son las que
   esperan una decisión humana. Sin listado no se llega a ninguna ficha, y sin ficha
   no se llega a lo que hay que arreglar a mano — lo cazó el gate de acciones
@@ -1807,6 +1805,130 @@ Lo que hay que saber para integrar:
 Cómo se ve desde fuera: la puerta de entrada encamina `/api/v1/sagas` al
 `orchestrator`. Si una ruta existe en el servicio y falta ese encaminamiento,
 devuelve 404 y el módulo sigue incomunicado — es exactamente lo que pasaba.
+
+### 4.4.1.1 Motor de procesos: pasos que llaman al CRM, migración y plantillas
+
+Base: `/api/v1/procesos` y `/api/v1/instancias` (servicio `orchestrator`).
+
+| Ruta | Permiso | Para qué |
+|---|---|---|
+| `POST /api/v1/instancias` | `proceso:write` | Arrancar; guarda `lanzada_por` y la identidad con la que actuarán sus pasos |
+| `POST /api/v1/procesos/definiciones/{clave}/{version}/migracion/simular` | `proceso:read` | Qué instancias en vuelo pasarían a esa versión y por qué se quedan las demás |
+| `POST /api/v1/procesos/definiciones/{clave}/{version}/migracion` | `proceso:admin` | Migrarlas (cuerpo: `motivo` opcional) |
+| `GET /api/v1/procesos/plantillas` | `proceso:read` | Biblioteca de plantillas de flujo, con `no_resuelve` |
+| `POST /api/v1/procesos/plantillas/cargar` | `proceso:admin` | Cargar las de serie (idempotente) |
+| `POST /api/v1/procesos/plantillas/{clave}/copiar` | `proceso:write` | Copiarla como borrador propio (`clave`, `nombre` nuevos) |
+
+**Pasos «servicio».** `operacion` = `"MÉTODO /api/v1/ruta"`; la ruta admite
+tramos `@variable`. `entrada` es el cuerpo (o los parámetros de un `GET`) y
+`salida`, la variable donde se guarda `datos` de la respuesta. El motor
+(`services/orchestrator/motor.py`, `Motor._invocar`) llama con
+`crmcore.http.interno.invocar`, que resuelve el servicio de la ruta con
+`crmcore.rutas_de_api.servicio_de` —la tabla del gateway— y firma las cabeceras
+con la identidad guardada en la instancia:
+
+- `instancias_proceso.lanzada_por` (UUID) y `permisos_de_lanzamiento` (JSONB
+  `{"tipo","permisos","roles"}`), migración `da41584730f7`. Se toman del
+  principal en `POST /api/v1/instancias`; un subproceso hereda los del padre.
+  **Con ámbitos OAuth no se guarda nada** (una aplicación de terceros escribiría
+  a través del proceso con los permisos de quien la autorizó). Es una foto del
+  momento de arrancar.
+- `tipo` viaja como `x-crm-tipo` (de serie `usuario`) para que el destino aplique
+  la compartición de esa persona; `cabeceras_de` admite ahora `tipo` y `invocar`
+  admite `tipo` e `idempotencia` (va como `Idempotency-Key`, derivada de
+  instancia, paso e intento).
+- Sin identidad → `proceso.sin_identidad`; un tramo `@x` vacío →
+  `proceso.ruta_incompleta` (no se llama); 4xx/5xx → `proceso.paso_rechazado` con
+  `detail`/`errores`/`error_code` del destino. Los tres los trata `_tratar_fallo`
+  (reintentos, `al_fallar`, compensación). La compensación usa el mismo camino.
+- Espera máxima de cada llamada: ajuste `proceso_paso_servicio_timeout_s`
+  (`PROCESO_PASO_SERVICIO_TIMEOUT_S`, 30 s, editable en Admin).
+- Validación al publicar (`validar_definicion(…, operaciones_con_nombre=…)`): la
+  API pasa los invocadores con nombre registrados (`motor.construir_invocadores`,
+  hoy vacío); lo que no es uno de ellos tiene que tener forma de ruta y un
+  servicio que la atienda. También se valida la operación de cada compensación.
+
+**Orden de lanzar desde una automatización.** `comando.proceso.lanzar` (lo emite
+`automation`, acción `lanzar_proceso`) lo consume
+`services/orchestrator/lanzar_desde_automatizacion.py`, grupo
+`orchestrator-lanzar-proceso`. Lee `data.datos.definicion` y `data.datos.entrada`;
+la instancia queda con `origen_tipo`/`origen_id` del comando. La identidad sale
+de `data.datos.lanzado_por = {"principal_id", "tipo", "permisos", "roles"}` si
+viene; si no, arranca sin identidad. Proceso no publicado o cuota agotada: se
+registra (`lanzar_proceso.no_se_puede`) y se descarta, sin reintento.
+
+**Migración** (`services/orchestrator/migracion.py`). Una instancia en vuelo
+(`ejecutando`, `esperando`, `esperando_humano`) de la misma clave y otra versión
+se migra si su `paso_actual` existe en la destino con el mismo `tipo`; se queda
+si tiene tarea humana pendiente con rutas que la destino no tiene, si ya ejecutó
+pasos con compensación que la destino no declara, si está `compensando` o si un
+worker la tiene tomada (`tomada_hasta` futuro). Sólo a versión `publicada`.
+Migrar cambia `definicion_id` y `version` y audita `proceso.instancia_migrada`
+por instancia y `proceso.migracion_de_instancias` por lote.
+
+**Plantillas** (`services/orchestrator/plantillas.py`). `plantillas_flujo` es de
+la instalación (sin `tenant_id`). Las de serie son `PLANTILLAS_DE_SERIE`; cargar
+añade versión nueva sólo si el contenido cambió. Copiar valida, exige clave
+nueva en el tenant (409 `flujo.clave_ocupada`) y crea la definición en
+`borrador`. `test_las_plantillas_de_serie_validan_y_llaman_a_rutas_que_existen_crm_00_03_05_15`
+comprueba cada ruta, con su método, contra `docs/contrato-publicado.json`.
+
+### 4.4.1.2 Automatizaciones: momento, disparadores, promoción y plantillas
+
+`CRM-00.03.03.02`, `.05`, `.08`, `.09`, construidas el 09-11-2026: estaban
+declaradas hechas y `momento`, `programacion`, cuatro de los siete disparadores,
+`promocionar` e `instalar` no hacían nada.
+
+- **Cola y planificador** (`services/automation/planificador.py`). Tabla
+  `ejecuciones_pendientes` (única por `(tenant_id, clave)`, `ON CONFLICT DO
+  NOTHING`): la fila se escribe en la transacción del disparo y se ejecuta en
+  otra, con `SELECT … FOR UPDATE SKIP LOCKED`, marcándola `hecha` en la misma
+  transacción que corre la regla. Una caída a medias deja la fila `pendiente`;
+  un fallo de base se reintenta apartándola `revisar_s × intentos` y a los
+  `AUTOMATIZACION_PENDIENTES_MAX_INTENTOS` queda `fallida`. Una regla apagada
+  antes de su hora deja lo suyo `descartada`. La tarea `automation.planificador`
+  corre en el `RelevoDeTareas` del proceso de API (`main.py`), cada
+  `AUTOMATIZACION_PENDIENTES_REVISAR_S`, por tenant (`por_tenant`), hasta
+  `AUTOMATIZACION_PENDIENTES_LOTE`. La tabla declara
+  `info={"no_copiar_a_sandbox": …}` y `copia_sandbox` se la salta.
+- **Programadas**: `services/automation/cron.py` (cinco campos, `*`, listas,
+  rangos y pasos; día del mes y de la semana se combinan como en cron), en la
+  zona del tenant (`zona_del_tenant`). `automatizaciones.proxima_ejecucion_at` y
+  `proxima_segun` (con qué expresión se calculó: si la cambian desde la ficha se
+  recalcula). Horas perdidas se colapsan en una vuelta. Clave
+  `programada:<regla>:<hora>`.
+- **Disparadores** (`consumidores.encajes`): la tabla `DISPARADORES`;
+  `record.deleted` → `eliminacion` con `data.objeto`; y todo tipo del catálogo →
+  `evento` con objetivo el tipo. Manual: `POST /automatizaciones/{id}/ejecutar`.
+  Webhook: `POST /automatizaciones/{id}/secreto-webhook` (lo devuelve una vez;
+  tabla `secretos_webhook_automatizacion`, cifrado con propósito
+  `automatizacion_webhook`, aparte para que la copia a sandbox siga copiando las
+  reglas) y `POST /automatizaciones/webhook/{tenant_id}/{id}`, público, exento en
+  el gate de permisos (`recibir_webhook`), verificado con
+  `crmcore.security.firma.verificar_firma` sobre los bytes recibidos; todo fallo
+  contesta el mismo 401 `automatizacion.webhook_no_autorizado`.
+- **Validación** (`validacion.py`): una sola para el alta, las plantillas y la
+  promoción —cron que se cumple, evento del catálogo, operadores del motor; en
+  modo estricto, los parámetros obligatorios de cada ejecutor—.
+- **Identidad de quien activó**: `automatizaciones.activada_por_id` y
+  `activada_con` (`tipo`, `permisos`, `roles`), escritos en `activar` y en el
+  alta encendida, borrados al apagar o al promover. `motor.identidad_de` la pone
+  en `ContextoEjecucion.lanzado_por` y `lanzar_proceso` la manda en
+  `datos.lanzado_por` del comando. Sin identidad guardada no se inventa: el
+  comando sale sin ella.
+- **Promoción** (`entornos_auto.promover`, `POST /automatizaciones/promocionar`):
+  pregunta el sandbox a `tenancy` por HTTP con la identidad de quien llama, lee
+  las reglas del tenant del sandbox, casa por nombre y devuelve plan y huella
+  (sha256 del plan); con la huella aplica, apaga y audita
+  `automatizacion.promovida`.
+- **Plantillas** (`plantillas.py`, `GET /automatizaciones/plantillas`,
+  `POST /automatizaciones/plantillas/instalar` con `clave` enumerada y
+  `responsable_id`): la prueba comprueba que cada una valida en estricto y que
+  sus comandos tienen manejador con esos campos.
+- **Migraciones**: `20261109_1123_momento_cola_y_secreto_de_webhook.py` y
+  `20261109_1221_quien_activo_cada_automatizacion.py`. Pruebas:
+  `test_automatizacion_momento.py`, `test_automatizacion_disparadores.py`,
+  `test_automatizacion_plantillas_y_promocion.py`.
 
 ### 4.4.2 Describir un objeto por tipo de registro
 
@@ -4209,6 +4331,87 @@ servidor contesta con su porqué, porque repartir entre cero personas deja la
 reunión sin proponer y sin que nadie se entere. La pantalla enseña la
 `explicacion` del error y no su título: la frase del servidor está escrita para
 leerse, y el título es sólo «No encontrado».
+
+### 4.6.40 El editor de tablas de decisión (CRM-00.03.02.10)
+
+Pantalla propia en `frontend/src/paginas/TablaDeDecision.tsx`, montada en
+`/m/procesos/tablas-decision/:clave` —la ruta que la fila del listado ya abría
+por su clave— y en `/tablas-decision/nueva`. El botón «Nuevo» de la pestaña va
+ahí por la propiedad `alta_en` del recurso (`frontend/src/lib/modulos.ts`), que
+cualquier pestaña puede usar cuando su alta no cabe en un formulario de campos.
+`validar` y `probar` van en `acciones_ocultas`: son botones del editor.
+
+- **El estado de la pantalla guarda texto**, y `aTablaApi` lo convierte al tipo
+  de cada columna al enviar (número, sí/no, lista; lo que empieza por `@` se
+  manda tal cual). Con `en`, el valor se parte por comas.
+- **Probar sin guardar**: `POST /api/v1/tablas-decision/probar` —
+  `services/orchestrator/api_tablas_decision.py`— valida la tabla y la evalúa con
+  `decision.evaluar`, que ya aceptaba un diccionario. Exige `proceso:read`. Va
+  montada en `ROUTERS_APROBACIONES` para no tocar `main.py` ni `api.py`.
+- El guardián `ninguna_lista_echa_a_las_demas` cuenta ahora como acotada cada
+  `<Rejilla>` sin `acotada={false}`: lo hace el componente, y sin contarlo la
+  salida fácil era repetir la clase a mano.
+
+### 4.6.41 Decidir una aprobación desde el correo (CRM-00.03.05.12)
+
+**La cadena del correo.** `aprobaciones._abrir_etapa` lo llaman tres sitios
+—crear, avanzar de etapa, reaprobar— y en los tres se llama después a
+`enlaces_publicos.avisar_etapa`, que, con `aprobacion_enlace_por_correo`
+encendido, emite un enlace por aprobador (`emitir_enlace`: el token sólo en el
+correo, en la base su hash) y el evento interno `approval.link.issued`
+(`publico=False`: lleva el enlace). Identidad lo traduce en una notificación por
+el canal `correo` al titular (`AVISOS` en `services/identity/notificaciones.py`,
+con `solo_destinatarios`: sin titular válido no se cae a los seguidores) y el
+repartidor la entrega. **Sin bus el correo no sale**: el evento se queda en
+`orchestrator.eventos_salientes` hasta que el relevo lo publique. Es lo que pasa
+en la pila local, que no tiene NATS.
+
+Ojo con lo que eso implica: el texto del enlace pasa por la tabla de salida del
+orquestador y por la notificación del titular en identidad. Es de un solo uso,
+caduca y muere si cambia la etapa o la vuelta, que es lo que lo acota.
+
+**La puerta pública**, `services/orchestrator/api_enlaces_publicos.py`:
+
+| Ruta | Sin sesión | Qué hace |
+|---|---|---|
+| `POST /api/v1/enlace-de-aprobacion/ver` | sí | Lo mínimo para decidir; no gasta el enlace |
+| `POST /api/v1/enlace-de-aprobacion/decidir` | sí | Vota como el titular, `via="correo"`; devuelve sólo `{decision, estado}` |
+
+- El token va en el **cuerpo**, nunca en la URL de la API (acabaría en los
+  registros de acceso). La página del front sí lo lleva en la suya
+  (`/decidir?t=…`), que es lo que se manda por correo.
+- El token no lleva el tenant. `_localizar` lee `tenant_id` y `titular_id` por
+  el hash —único en toda la tabla— con una sesión `sistema=True`, y todo lo demás
+  corre en una unidad de trabajo del tenant del enlace, con el titular como
+  usuario del contexto.
+- `_vigente` exige, además de no usado y no caducado: que la etapa del enlace
+  sea la actual y esté pendiente, la solicitud pendiente, el enlace creado
+  después de la última apertura de la etapa (`created_at` lo pone
+  `emitir_enlace` con la hora de Python: la de la base es la del inicio de la
+  transacción, anterior a la apertura), que el titular pueda decidir y no haya
+  votado ya. Todo da el mismo `401 aprobacion.enlace_invalido`. Al decidir, la
+  fila del enlace se bloquea (`FOR UPDATE`): dos clics a la vez no votan dos
+  veces.
+- **El tope por IP** lo pone el gateway (`_tope_por_ip` en
+  `services/gateway/api.py`) a las rutas de `TOPES_POR_IP` en
+  `crmcore/rutas_de_api.py`, con `rate_limit.exigir_tope`: mismo contador que el
+  límite general (Redis si lo hay; si no, por proceso). En el servicio no
+  serviría: detrás del gateway todas las peticiones llegan con su IP.
+- Exentas por nombre en `test_toda_ruta_de_escritura_exige_permiso`
+  (`ver_con_enlace_publico`, `decidir_con_enlace_publico`), con su motivo.
+
+**El front**: `frontend/src/paginas/DecidirPorEnlace.tsx`, servida por
+`App.tsx` antes de la comprobación de sesión y fuera del marco, como el portal.
+Pide con `credentials: "omit"`: con la cookie de una sesión caducada, el gateway
+contestaría «sesión caducada» a quien no necesita ninguna.
+
+**Ajustes**: `aprobacion_enlace_por_correo`, `aprobacion_enlace_validez_horas`
+(editables en caliente), `APROBACION_ENLACE_INTENTOS_POR_IP` (30),
+`APROBACION_ENLACE_VENTANA_S` (3600) y `FRONT_BASE_URL` (la de la interfaz;
+`PUBLIC_BASE_URL` es la de la API).
+
+Pruebas: `tests/unit/test_decidir_desde_el_correo.py`,
+`frontend/src/pruebas/decidir_por_enlace.test.tsx`.
 
 ### 4.7 CDC hacia el lago del cliente
 

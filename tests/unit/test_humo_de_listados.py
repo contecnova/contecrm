@@ -518,6 +518,11 @@ AISLAMIENTO_DE_DOMINIO = {
     "test_retencion.py",
     "test_scim.py",
     "test_tablas_decision.py",
+    # Las dos de automatizaciones del 09-11-2026 miran el tenant de paso —la
+    # cola y la promoción leen y escriben en el suyo—; lo suyo es el momento
+    # de ejecución y las plantillas, y el caso genérico ya lo barre el fuzzing.
+    "test_automatizacion_momento.py",
+    "test_automatizacion_plantillas_y_promocion.py",
     "test_trabajos_y_masivo.py",
     # Su asunto es la privacidad ENTRE PERSONAS del mismo tenant —que la vista
     # guardada de uno no la vea otro— y el cruce de tenants es una de sus siete

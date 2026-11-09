@@ -149,6 +149,15 @@ export function Formulario({
     const limpio: Record<string, unknown> = {};
     for (const campo of campos) {
       const valor = estado[campo.nombre];
+      // Una casilla no tiene «vacío»: sin marcar es `false`, que es lo que
+      // enseña. Se mandaba `undefined` —que el JSON se come— y una acción
+      // con un único booleano obligatorio salía como `{}` y volvía con 422
+      // «activa: Falta este campo». Medido el 09-11-2026 al apagar una
+      // automatización desde su ficha.
+      if (campo.tipo === "booleano" && valor === undefined) {
+        if (campo.obligatorio) limpio[campo.nombre] = false;
+        continue;
+      }
       const vacio =
         valor === undefined ||
         valor === "" ||

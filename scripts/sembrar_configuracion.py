@@ -1183,6 +1183,12 @@ def sembrar_procesos(api: Api) -> None:
         "/api/v1/instancias", {"clave": "alta_cliente", "variables": {"cif": ""}}, unico_por="clave"
     )
 
+    # La biblioteca de plantillas de flujo (CRM-00.03.05.15). Es de la
+    # instalación y la carga es idempotente: pasar el sembrado dos veces no
+    # duplica nada, y una plantilla mejorada entra como versión nueva sin tocar
+    # las copias que ya hizo nadie.
+    api.crear("/api/v1/procesos/plantillas/cargar", {})
+
 
 # ── Automatización, integraciones y eventos ───────────────────────────────
 

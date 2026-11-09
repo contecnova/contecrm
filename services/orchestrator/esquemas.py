@@ -70,6 +70,10 @@ class InstanciaOut(BaseModel):
     # Medido el 26-10-2026 recorriendo la familia.
     padre_id: UUID | None = None
     profundidad: int = 0
+    # Quién la lanzó: en nombre de quién llaman al CRM sus pasos «servicio».
+    # Los permisos con los que actúa NO salen en la respuesta: son una foto de
+    # los de otra persona y no le hacen falta a quien mira la instancia.
+    lanzada_por: UUID | None = None
     despertar_at: datetime | None = None
     error: str | None = None
     created_at: datetime

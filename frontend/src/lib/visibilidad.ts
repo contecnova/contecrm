@@ -122,6 +122,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "automation"
     },
     {
+      "r": "/api/v1/automatizaciones/plantillas",
+      "s": "automation"
+    },
+    {
+      "r": "/api/v1/automatizaciones/pendientes",
+      "s": "automation"
+    },
+    {
       "r": "/api/v1/extensiones",
       "o": "extension",
       "s": "automation"

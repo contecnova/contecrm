@@ -9,6 +9,7 @@ from services.orchestrator.api_aprobaciones import ROUTERS_APROBACIONES
 from services.orchestrator.aprobacion_de_presupuestos import (
     consumir as consumir_aprobacion_presupuesto,
 )
+from services.orchestrator.lanzar_desde_automatizacion import consumir as consumir_lanzar_proceso
 from services.orchestrator.organizacion import consumir as consumir_organigrama
 
 
@@ -51,5 +52,9 @@ app = crear_servicio(
         # Abrir la aprobación de un presupuesto parado por la matriz de
         # descuentos: el aviso salía y no lo escuchaba nadie.
         ("quote.approval.needed", consumir_aprobacion_presupuesto, "orchestrator-presupuestos"),
+        # La orden de lanzar un proceso desde una automatización. La emitía
+        # `automation` y no la escuchaba nadie: la regla decía «proceso
+        # lanzado» y el proceso no existía.
+        ("comando.proceso.lanzar", consumir_lanzar_proceso, "orchestrator-lanzar-proceso"),
     ],
 )

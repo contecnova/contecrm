@@ -162,6 +162,15 @@ export interface Recurso {
    */
   abre?: { modulo: string; objeto: string; campo: string };
   /**
+   * El alta abre ESTA pantalla en vez del formulario genérico.
+   *
+   * Para lo que no se puede dar de alta con un formulario de campos: una tabla
+   * de decisión son columnas y una rejilla de reglas, y el formulario pintaba
+   * las reglas como una caja de texto. Con esto «Nuevo» lleva a su editor, y la
+   * fila —que ya abre su ficha por la ruta— lleva al mismo editor.
+   */
+  alta_en?: string;
+  /**
    * Acciones que actúan sobre la COLECCIÓN entera, no sobre una fila.
    *
    * Las de fila salen solas del contrato —la superficie las declara colgando
@@ -232,70 +241,70 @@ export interface Recurso {
 }
 
 export const MODULOS: Modulo[] = [
-{
+  {
     ruta: "tenants",
     titulo: "Empresas y unidades",
     seccion: "0.1",
     capacidad: "CRM-07.04.03.01",
     grupo: "Usuarios y empresa",
   },
-{
+  {
     ruta: "contrato",
     titulo: "Contrato de la API",
     seccion: "0.2",
     capacidad: "CRM-07.04.03.02",
     grupo: "Herramientas de plataforma",
   },
-{
+  {
     ruta: "procesos",
     titulo: "Procesos y orquestación",
     seccion: "0.3",
     capacidad: "CRM-07.04.03.03",
     grupo: "Automatización",
   },
-{
+  {
     ruta: "modelo",
     titulo: "Gestor de objetos",
     seccion: "0.4",
     capacidad: "CRM-07.04.03.04",
     grupo: "Herramientas de plataforma",
   },
-{
+  {
     ruta: "acceso",
     titulo: "Usuarios y permisos",
     seccion: "0.5",
     capacidad: "CRM-07.04.03.05",
     grupo: "Usuarios y empresa",
   },
-{
+  {
     ruta: "operacion",
     titulo: "Operación",
     seccion: "0.6",
     capacidad: "CRM-07.04.03.06",
     grupo: "Entornos y despliegue",
   },
-{
+  {
     ruta: "cuentas",
     titulo: "Cuentas",
     seccion: "1.1",
     capacidad: "CRM-07.04.03.07",
     grupo: "Clientes",
   },
-{
+  {
     ruta: "proveedores",
     titulo: "Proveedores",
     seccion: "9.1",
     capacidad: "CRM-07.04.03.31",
     grupo: "Clientes",
   },
-{
+  {
     ruta: "actividades",
     titulo: "Actividades",
     seccion: "1.2",
     capacidad: "CRM-07.04.03.08",
     grupo: "Clientes",
   },
-{
+  {
     ruta: "oportunidades",
     // «Oportunidades» y no «Pipeline»: el tablero donde se arrastran de etapa
     // tiene su propia entrada en el menú, y dos sitios distintos con el mismo
@@ -305,28 +314,28 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.13",
     grupo: "Ventas",
   },
-{
+  {
     ruta: "leads",
     titulo: "Candidatos",
     seccion: "3.3",
     capacidad: "CRM-07.04.03.15",
     grupo: "Ventas",
   },
-{
+  {
     ruta: "prevision",
     titulo: "Previsiones",
     seccion: "3.2",
     capacidad: "CRM-07.04.03.14",
     grupo: "Ventas",
   },
-{
+  {
     ruta: "canal",
     titulo: "Socios",
     seccion: "3.4",
     capacidad: "CRM-07.04.03.16",
     grupo: "Ventas",
   },
-{
+  {
     // Por qué se pierden y se ganan las oportunidades (pedido el 05-11-2026).
     // Un módulo como los demás —lista con vistas, filtros, columnas y
     // exportación, y su ficha— y no una pantalla suelta: la primera versión
@@ -338,21 +347,21 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.34",
     grupo: "Ventas",
   },
-{
+  {
     ruta: "campo",
     titulo: "Servicio de campo",
     seccion: "4.4",
     capacidad: "CRM-07.04.03.20",
     grupo: "Servicio",
   },
-{
+  {
     ruta: "postventa",
     titulo: "Postventa",
     seccion: "4.5",
     capacidad: "CRM-07.04.03.21",
     grupo: "Servicio",
   },
-{
+  {
     // El gobierno de la IA, que no tenía ninguna puerta: `/api/v1/ia` publica
     // 71 operaciones y la única pantalla de inteligencia que había enseña la
     // salud de UNA cuenta. Lo que falta no es eso: es quién puede llamar a
@@ -370,14 +379,14 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.23",
     grupo: "Analítica",
   },
-{
+  {
     ruta: "explotacion",
     titulo: "Informes",
     seccion: "5.1",
     capacidad: "CRM-07.04.03.22",
     grupo: "Analítica",
   },
-{
+  {
     ruta: "gobierno",
     // «Riesgos y controles», que es lo que lista: riesgos, controles,
     // segregación, retención, bloqueos legales y clases de dato. Se llamaba
@@ -389,42 +398,42 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.28",
     grupo: "Gobierno y cumplimiento",
   },
-{
+  {
     ruta: "segmentos",
     titulo: "Segmentos",
     seccion: "2.1",
     capacidad: "CRM-07.04.03.09",
     grupo: "Marketing",
   },
-{
+  {
     ruta: "campanas",
     titulo: "Campañas",
     seccion: "2.2",
     capacidad: "CRM-07.04.03.10",
     grupo: "Marketing",
   },
-{
+  {
     ruta: "casos",
     titulo: "Casos",
     seccion: "4.1",
     capacidad: "CRM-07.04.03.17",
     grupo: "Servicio",
   },
-{
+  {
     ruta: "omnicanal",
     titulo: "Omnicanal",
     seccion: "4.2",
     capacidad: "CRM-07.04.03.18",
     grupo: "Servicio",
   },
-{
+  {
     ruta: "conocimiento",
     titulo: "Conocimiento",
     seccion: "4.3",
     capacidad: "CRM-07.04.03.19",
     grupo: "Servicio",
   },
-{
+  {
     ruta: "canales",
     // «Canales de marketing»: hay otra entrada «Canales de entrada», que es
     // por dónde llegan los casos de servicio. «De ejecución» y «de entrada»
@@ -434,7 +443,7 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.11",
     grupo: "Marketing",
   },
-{
+  {
     ruta: "contenido",
     titulo: "Contenido y gobierno",
     seccion: "2.4",

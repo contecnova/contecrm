@@ -68,6 +68,7 @@ def cabeceras_de(
     principal_id: Any,
     permisos: list[str] | None = None,
     roles: list[str] | None = None,
+    tipo: str = TIPO_DEL_AGENTE,
 ) -> dict[str, str]:
     """Firma una llamada interna CON una identidad concreta.
 
@@ -105,7 +106,12 @@ def cabeceras_de(
         # los consumidores, así que el agente llamaba como si fuera una
         # persona: la compartición le aplicaba su filtro, esa persona no posee
         # registros, y `GET /accounts` devolvía cero filas con un 200.
-        H_TIPO: TIPO_DEL_AGENTE,
+        #
+        # `tipo` se puede pedir distinto para el motor de procesos, que actúa
+        # EN NOMBRE de la persona que lanzó el proceso: si fuera como agente,
+        # la compartición no le aplicaría y el proceso vería registros que esa
+        # persona no ve — los permisos serían los suyos y el alcance no.
+        H_TIPO: tipo or TIPO_DEL_AGENTE,
         H_PERMISOS: ",".join(sorted(permisos or [])),
         H_ROLES: ",".join(sorted(roles or [])),
         H_SCOPES: "",
@@ -129,6 +135,8 @@ def invocar(
     permisos: list[str] | None = None,
     roles: list[str] | None = None,
     timeout_s: float = 30.0,
+    tipo: str = TIPO_DEL_AGENTE,
+    idempotencia: str | None = None,
 ) -> dict[str, Any]:
     """Llama a una ruta de la API del CRM con una identidad concreta.
 
@@ -166,8 +174,14 @@ def invocar(
         )
 
     cabeceras = cabeceras_de(
-        tenant_id=tenant_id, principal_id=principal_id, permisos=permisos, roles=roles
+        tenant_id=tenant_id, principal_id=principal_id, permisos=permisos, roles=roles, tipo=tipo
     )
+    if idempotencia:
+        # La clave de idempotencia del que llama (CRM-00.02.01.08). La usa el
+        # motor de procesos: si el worker muere después de llamar y antes de
+        # guardar, el reintento repite la llamada con la MISMA clave y el
+        # destino devuelve la respuesta de la primera en vez de crear otra.
+        cabeceras["Idempotency-Key"] = idempotencia
     try:
         salida = httpx.request(
             metodo.upper(),

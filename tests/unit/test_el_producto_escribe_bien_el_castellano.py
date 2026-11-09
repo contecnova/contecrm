@@ -80,6 +80,7 @@ AMBIGUAS = {
     "salto": "el sustantivo, no «saltó»",
     "retraso": "`veces_que_se_retraso` es el verbo, pero «el retraso» es el sustantivo",
     "rechazo": "`motivo_rechazo` es el sustantivo, y «el cliente lo rechazó» el verbo",
+    "activo": "`garantias_activo` es el activo (el bien), no «se activó»",
 }
 
 

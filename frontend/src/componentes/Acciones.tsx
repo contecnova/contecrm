@@ -82,7 +82,11 @@ function Resultado({ datos }: { datos: unknown }) {
           // Y sólo si ese registro se puede LEER: un `producto_id` enlazaba a
           // una ficha que contestaba 404 porque no hay `GET /productos/{id}`.
           Boolean(
-            operacionDe(superficie, "GET", `${recurso.listar.split("?")[0]}/${valor}`),
+            operacionDe(
+              superficie,
+              "GET",
+              `${recurso.listar.split("?")[0]}/${valor}`,
+            ),
           );
         return (
           <div
@@ -128,6 +132,25 @@ function moduloDelRecurso(recurso: Recurso): string | null {
 }
 
 /**
+ * Lo que ya marcan las casillas del registro, para que la acción lo enseñe.
+ * Ver la propiedad `registro` de `Acciones`.
+ */
+export function casillasDelRegistro(
+  campos: CampoEsquema[],
+  registro: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const salida: Record<string, unknown> = {};
+  if (!registro) return salida;
+  for (const campo of campos) {
+    const valor = registro[campo.nombre];
+    if (campo.tipo === "booleano" && typeof valor === "boolean") {
+      salida[campo.nombre] = valor;
+    }
+  }
+  return salida;
+}
+
+/**
  * Cuáles de estas acciones no se deshacen. Lo usa quien pinta la barra para
  * mandarlas al fondo del menú, separadas.
  */
@@ -141,6 +164,7 @@ export function Acciones({
   alTerminar,
   abierta: abiertaFuera,
   alCambiarAbierta,
+  registro,
 }: {
   acciones: Accion[];
   /** Servicio dueño, para leer su contrato. */
@@ -156,6 +180,17 @@ export function Acciones({
    */
   abierta?: Accion | null;
   alCambiarAbierta?: (accion: Accion | null) => void;
+  /**
+   * El registro sobre el que se actúa, si se tiene delante.
+   *
+   * Sirve para que una casilla enseñe **el valor que tiene ahora**: «Activar
+   * o desactivar» salía siempre sin marcar, también con la regla encendida,
+   * y quien la abría no sabía en qué estado estaba ni qué iba a pasar al
+   * pulsar. Sólo las casillas: un texto o una lista vacíos dicen «no lo
+   * cambies», y precargarlos con lo de ahora haría que una acción pensada
+   * para cambiar algo saliera rellena con lo que se quiere cambiar.
+   */
+  registro?: Record<string, unknown> | null;
 }) {
   const { t } = useTranslation();
   const controlada = alCambiarAbierta !== undefined;
@@ -175,7 +210,8 @@ export function Acciones({
     let vivo = true;
     setCampos(null);
     void contratoDe(servicio).then((documento) => {
-      if (vivo) setCampos(camposDe(documento, abierta.plantilla, abierta.metodo));
+      if (vivo)
+        setCampos(camposDe(documento, abierta.plantilla, abierta.metodo));
     });
     return () => {
       vivo = false;
@@ -190,7 +226,9 @@ export function Acciones({
   // en un listado, donde el botón está a la vista, es un paso de más en todas.
   // El contrato ya está en caché —lo pide la ficha al entrar—, así que esto no
   // añade una llamada.
-  const [camposPorRuta, setCamposPorRuta] = useState<Record<string, number>>({});
+  const [camposPorRuta, setCamposPorRuta] = useState<Record<string, number>>(
+    {},
+  );
   useEffect(() => {
     if (controlada || !servicio || acciones.length === 0) return;
     let vivo = true;
@@ -229,7 +267,9 @@ export function Acciones({
         // El cuerpo lo arma el contrato: hay operaciones cuyo único campo ES
         // el cuerpo, y meterlo dentro de una llave las rompería.
         cuerpo:
-          metodo === "DELETE" ? undefined : cuerpoDeLosValores(campos ?? [], valores),
+          metodo === "DELETE"
+            ? undefined
+            : cuerpoDeLosValores(campos ?? [], valores),
       });
       setResultado(r.datos ?? { hecho: true });
       setAbierta(null);
@@ -350,8 +390,9 @@ export function Acciones({
                 </button>
               ) : (
                 <Formulario
-          fallo={fallo}
+                  fallo={fallo}
                   campos={campos}
+                  valores={casillasDelRegistro(campos, registro)}
                   enviando={enviando}
                   textoEnviar={abierta.nombre}
                   alEnviar={(v) => void ejecutar(v)}

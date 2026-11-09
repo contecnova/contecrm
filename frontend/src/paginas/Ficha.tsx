@@ -261,9 +261,15 @@ export function Ficha() {
   // lista se enseña como tabla; y sin el registro delante no hay con qué
   // rellenar «Editar», así que no se ofrece: esos campos se editan en línea
   // desde el listado, que sí los tiene.
-  const contenido = Array.isArray(fila) ? (fila as Record<string, unknown>[]) : null;
+  const contenido = Array.isArray(fila)
+    ? (fila as Record<string, unknown>[])
+    : null;
   const registro = contenido ? null : fila;
-  const nombre = registro ? nombreDelRegistro(registro) : contenido ? (id ?? "") : "";
+  const nombre = registro
+    ? nombreDelRegistro(registro)
+    : contenido
+      ? (id ?? "")
+      : "";
 
   return (
     <>
@@ -299,12 +305,14 @@ export function Ficha() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
-              extra={acciones.filter((a) => !esDeIA(a)).map((a) => ({
-                clave: a.ruta,
-                nombre: a.nombre,
-                alElegir: () => setAccionAbierta(a),
-                destructiva: esIrreversible(a),
-              }))}
+              extra={acciones
+                .filter((a) => !esDeIA(a))
+                .map((a) => ({
+                  clave: a.ruta,
+                  nombre: a.nombre,
+                  alElegir: () => setAccionAbierta(a),
+                  destructiva: esIrreversible(a),
+                }))}
             />
           ) : null
         }
@@ -326,6 +334,7 @@ export function Ficha() {
             abierta={accionAbierta}
             alCambiarAbierta={setAccionAbierta}
             alTerminar={cargar}
+            registro={registro}
           />
         </>
       ) : null}
@@ -421,7 +430,6 @@ export function Ficha() {
                 <PreguntarSobreEsto objeto={tipo} objetoId={id} />
               </>
             ) : null}
-
           </>
         )}
       </div>

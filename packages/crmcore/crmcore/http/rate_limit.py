@@ -180,3 +180,24 @@ def _ponderar(actual: int, previa: int, ventana: int, ahora: float, inicio: floa
 def limpiar_memoria() -> None:
     """Vacía los contadores en memoria. Solo para pruebas."""
     _memoria.clear()
+
+
+async def exigir_tope(nombre: str, clave: str, limite: int, ventana: int) -> None:
+    """Un tope suelto, con el mismo contador que los generales.
+
+    Para las rutas que necesitan uno propio y más estrecho —las públicas que se
+    pueden atacar probando tokens—. Mismo algoritmo y mismo almacén que el resto,
+    para que con Redis el tope sea del despliegue y no de cada réplica.
+    """
+    ahora = time.time()
+    usado = await _incrementar(f"{nombre}:{clave}", ventana, ahora)
+    if usado > limite:
+        from crmcore.obs.metrics import observar_limite
+
+        observar_limite(nombre)
+        espera = int(ventana - (ahora % ventana)) or 1
+        raise LimiteExcedido(
+            "Demasiados intentos desde esta conexión. Inténtalo dentro de un rato.",
+            reintentar_en_s=espera,
+            error_code=f"limite.{nombre}",
+        )

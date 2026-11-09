@@ -96,6 +96,21 @@ class InstanciaProceso(Base, TimestampMixin):
     padre_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     profundidad: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # Quién la lanzó y con qué identidad actúan sus pasos «servicio». Se guarda
+    # al arrancar porque el proceso sigue días después, cuando la petición que
+    # lo pidió ya no existe: sin esto, el paso que crea la oportunidad no
+    # tendría en nombre de quién hacerlo y o fallaba siempre o actuaba como «la
+    # casa», que no tiene límite ni aparece como nadie en la auditoría.
+    #
+    # `permisos_de_lanzamiento` = {"tipo", "permisos", "roles"}. NULL es «no se
+    # sabe» —un comando que no traía quién lo pidió—, distinto de una lista
+    # vacía: con NULL el paso dice que no sabe con qué permisos actuar en vez
+    # de llamar sin ninguno. Es una foto del momento de arrancar: si a esa
+    # persona le quitan un permiso después, sus procesos en vuelo lo conservan
+    # hasta terminar.
+    lanzada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    permisos_de_lanzamiento: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
     pasos_ejecutados: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # Cuándo debe despertar: temporizador, espera o reintento. NULL = no espera
     # nada por tiempo. El planificador solo mira lo vencido, así que este campo
@@ -261,10 +276,11 @@ from services.orchestrator.aprobaciones import (  # noqa: E402,F401
 )
 from services.orchestrator.organizacion import PersonaOrg  # noqa: E402,F401
 
-# Sagas con compensación y plantillas de flujo (CRM-03.03.02.12,
-# CRM-00.03.05.15).
+# Plantillas de flujo (CRM-00.03.05.15).
+from services.orchestrator.plantillas import PlantillaFlujo  # noqa: E402,F401
+
+# Sagas con compensación (CRM-03.03.02.12).
 from services.orchestrator.sagas import (  # noqa: E402,F401
     PasoSaga,
-    PlantillaFlujo,
     Saga,
 )

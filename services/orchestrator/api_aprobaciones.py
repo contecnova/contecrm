@@ -347,7 +347,19 @@ def delegar(datos: CrearDelegacion, uow: UowDep) -> Any:
 class PedirEnlace(BaseModel):
     solicitud_id: UUID
     titular_id: UUID = Field(..., json_schema_extra={"referencia": "usuario"})
-    validez_horas: int = Field(72, ge=1, le=720)
+    validez_horas: int | None = Field(
+        None,
+        ge=1,
+        le=720,
+        description="Sin indicar, la del ajuste `aprobacion_enlace_validez_horas`",
+    )
+    enviar_por_correo: bool = Field(
+        True,
+        description=(
+            "Mandárselo al aprobador por correo. Apagado, sólo se devuelve: "
+            "para quien lo entregue por su propio canal"
+        ),
+    )
 
 
 @router.post(
@@ -358,7 +370,9 @@ class PedirEnlace(BaseModel):
     description=(
         "De un solo uso y con caducidad. El token se devuelve **una sola vez** y "
         "en la base queda solo su hash: quien lea esa tabla —una copia de "
-        "seguridad, un volcado de soporte— no puede aprobar en nombre de nadie."
+        "seguridad, un volcado de soporte— no puede aprobar en nombre de nadie.\n\n"
+        "Por defecto **se le manda al aprobador por correo** con la dirección de "
+        "la página pública (`/decidir?t=…`), donde decide sin entrar al CRM."
     ),
 )
 def pedir_enlace(datos: PedirEnlace, uow: UowDep, principal: AutenticadoDep) -> Any:
@@ -381,13 +395,27 @@ def pedir_enlace(datos: PedirEnlace, uow: UowDep, principal: AutenticadoDep) -> 
             apr.EtapaAprobacion.orden == etapa["orden"],
         )
     ).scalar_one()
-    _, token = apr.emitir_enlace(
-        uow,
-        etapa_id=fila_etapa.id,
-        titular_id=datos.titular_id,
-        validez_horas=datos.validez_horas,
-    )
-    return {"token": token, "validez_horas": datos.validez_horas}
+    from crmcore.runtime.settings import efectivo
+
+    from services.orchestrator import enlaces_publicos as enl
+
+    horas = datos.validez_horas or int(efectivo("aprobacion_enlace_validez_horas", uow.db))
+    if datos.enviar_por_correo:
+        solicitud = uow.db.get(apr.SolicitudAprobacion, datos.solicitud_id)
+        token, url = enl.enviar_enlace(
+            uow, solicitud, fila_etapa, datos.titular_id, validez_horas=horas
+        )
+    else:
+        _, token = apr.emitir_enlace(
+            uow, etapa_id=fila_etapa.id, titular_id=datos.titular_id, validez_horas=horas
+        )
+        url = enl.url_del_enlace(token)
+    return {
+        "token": token,
+        "url": url,
+        "validez_horas": horas,
+        "enviado_por_correo": datos.enviar_por_correo,
+    }
 
 
 class DecidirConEnlace(BaseModel):
@@ -481,7 +509,17 @@ montar_listado(
 )
 
 
-ROUTERS_APROBACIONES = [router, router_analitica]
+# La puerta pública del enlace del correo va en su propio fichero y con su propio
+# prefijo: sin sesión, y así no hay forma de que una ruta con permiso se cuele
+# en él ni de que `/{aprobacion_id}` se la trague.
+from services.orchestrator.api_enlaces_publicos import router_enlace_publico  # noqa: E402
+
+# Y probar una tabla de decisión sin guardarla. No es de aprobaciones: va en esta
+# lista para no tocar `main.py` ni `api.py`, que se estaban editando a la vez
+# (09-11-2026). Si se reordena el montaje, puede pasar a `ROUTERS`.
+from services.orchestrator.api_tablas_decision import router_probar_tabla  # noqa: E402
+
+ROUTERS_APROBACIONES = [router, router_analitica, router_enlace_publico, router_probar_tabla]
 
 # ── Corregir lo dado de alta ──────────────────────────────────────────────
 # Se podía crear y no había forma de cambiarlo: una errata, un plazo mal

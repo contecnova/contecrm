@@ -189,11 +189,21 @@ def construir(uow: Any) -> dict[str, Any]:
                 "«lanzar_proceso» necesita saber cuál",
                 error_code="automatizacion.falta_proceso",
             )
+        datos: dict[str, Any] = {"definicion": proceso, "entrada": entrada}
+        # Con la identidad de quien ACTIVÓ la regla: los pasos «servicio» del
+        # proceso actúan con esos permisos. Sin ella el proceso arrancaba sin
+        # identidad y sus pasos fallaban con «no se sabe con qué permisos
+        # actuar». Si no consta, no se inventa: el proceso lo dirá.
+        lanzado_por = getattr(_contexto, "lanzado_por", None)
+        if lanzado_por:
+            datos["lanzado_por"] = lanzado_por
+        else:
+            logger.warning("automatizacion.lanzar_sin_identidad", proceso=proceso)
         comando = Comando(
             accion="lanzar",
             objeto="proceso",
             tenant_id=_tenant_id or uow.tenant_id,
-            datos={"definicion": proceso, "entrada": entrada},
+            datos=datos,
         )
         emitir(uow, comando)
         return {"comando": comando.asunto, "proceso": proceso}

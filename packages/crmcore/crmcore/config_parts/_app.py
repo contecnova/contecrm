@@ -57,6 +57,10 @@ class _AppSettings(BaseSettings):
     # (callbacks de OAuth, enlaces de correo, URLs firmadas). Sin esto los
     # enlaces salen relativos y rotos en el correo.
     public_base_url: str = "http://localhost:18080"
+    # Dónde vive la interfaz, para los enlaces que abre una persona desde un
+    # correo —decidir una aprobación—. No es `public_base_url`: ésa es la API,
+    # y un enlace a la API enseña un JSON a quien esperaba una página.
+    front_base_url: str = "http://localhost:15173"
 
     # ── Orígenes permitidos (CORS) ────────────────────────────────────────
     # Lista separada por comas. Vacío = ningún origen de navegador permitido,

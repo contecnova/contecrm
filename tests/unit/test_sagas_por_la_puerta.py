@@ -301,82 +301,9 @@ def test_la_ficha_no_se_fia_solo_del_filtro_de_la_sesion() -> None:
     assert fallo.value.error_code == "saga.no_encontrada"
 
 
-# ── Migración y plantillas ────────────────────────────────────────────────
-
-
-def test_simular_la_migracion_no_ejecuta_nada(cliente: Any, cabeceras: dict[str, str]) -> None:
-    """Publicar una versión nueva sin mirar qué hay en vuelo es cambiarle los
-    pasos a procesos que ya están a mitad."""
-    _arrancar(cliente, cabeceras)
-
-    r = cliente.post(
-        "/api/v1/sagas/migracion/simular",
-        json={
-            "clave": "alta_de_cliente",
-            "version_nueva": 2,
-            "pasos_nuevos": ["cobrar", "avisar_cliente"],
-        },
-        headers=cabeceras,
-    )
-    assert r.status_code == 200, r.text
-    salida = r.json()
-    assert salida["en_vuelo"] == 1
-    # El paso pendiente es «reservar_stock», que la versión nueva no tiene.
-    assert salida["se_pueden_migrar_todas"] is False
-    assert salida["aviso"].strip()
-
-    # Y no ha tocado nada: la saga sigue en curso con su versión.
-    sigue = cliente.post(
-        "/api/v1/sagas/migracion/simular",
-        json={"clave": "alta_de_cliente", "version_nueva": 2, "pasos_nuevos": []},
-        headers=cabeceras,
-    ).json()
-    assert sigue["en_vuelo"] == 1
-    assert sigue["por_version"] == {"1": 1}
-
-
-def test_clonar_una_plantilla_que_no_existe_se_dice(
-    cliente: Any, cabeceras: dict[str, str]
-) -> None:
-    """Y no se crea una vacía con ese nombre: un proceso vacío que parece
-    instalado es peor que no tenerlo."""
-    r = cliente.post(
-        "/api/v1/sagas/plantillas/clonar",
-        json={"clave": "no_existe", "nombre_destino": "El mío"},
-        headers=cabeceras,
-    )
-    assert r.status_code == 404, r.text
-    assert r.json()["error_code"] == "flujo.plantilla_no_existe"
-
-
-def test_una_plantilla_se_clona_con_lo_que_no_resuelve(
-    cliente: Any, cabeceras: dict[str, str], db: Any
-) -> None:
-    """Una que promete el proceso entero y deja fuera la aprobación hace que el
-    cliente lo descubra en producción, con el proceso ya en marcha."""
-    from services.orchestrator.sagas import PlantillaFlujo
-
-    db.add(
-        PlantillaFlujo(
-            clave="alta_industrial",
-            sector="industria",
-            nombre="Alta de cliente industrial",
-            definicion={"pasos": ["validar", "firmar"]},
-            no_resuelve=["la aprobación de riesgos"],
-        )
-    )
-    db.commit()
-
-    r = cliente.post(
-        "/api/v1/sagas/plantillas/clonar",
-        json={"clave": "alta_industrial", "nombre_destino": "Mi alta"},
-        headers=cabeceras,
-    )
-    assert r.status_code == 201, r.text
-    salida = r.json()
-    assert salida["nombre"] == "Mi alta"
-    assert salida["es_copia_independiente"] is True
-    assert salida["no_resuelve"] == ["la aprobación de riesgos"]
+# La migración de instancias en vuelo y las plantillas de flujo salieron de
+# `/sagas` el 09-11-2026: no eran de sagas y no funcionaban. Sus pruebas están en
+# `test_procesos_migracion_y_plantillas.py`.
 
 
 # ── Permisos y encaminamiento ─────────────────────────────────────────────
@@ -388,8 +315,6 @@ def test_una_plantilla_se_clona_con_lo_que_no_resuelve(
         ("post", "/api/v1/sagas", {"clave": "x", "pasos": PASOS}),
         ("post", f"/api/v1/sagas/{uuid4()}/hecho", {"orden": 1}),
         ("post", f"/api/v1/sagas/{uuid4()}/fallo", {"orden": 1, "error": "x"}),
-        ("post", "/api/v1/sagas/migracion/simular", {"clave": "x", "version_nueva": 2}),
-        ("post", "/api/v1/sagas/plantillas/clonar", {"clave": "x", "nombre_destino": "y"}),
         ("get", f"/api/v1/sagas/{uuid4()}", None),
     ],
 )

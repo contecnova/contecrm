@@ -390,6 +390,58 @@ guardada»: se carga en el diagrama, y si es un borrador sale «Publicar la vers
 N»; si está publicada, «Archivar la versión N» —deja de arrancar procesos
 nuevos, y los que van en marcha terminan con ella—.
 
+### Pasos que hacen cosas en el CRM
+
+Un paso de tipo **servicio** crea o cambia registros: en su `operacion` se
+escribe la petición como la haría la pantalla —por ejemplo `POST
+/api/v1/opportunities` o `PATCH /api/v1/casos/@caso_id`—, en `entrada` lo que se
+manda (puede usar `@variables` del proceso) y en `salida` el nombre de la
+variable donde guardar lo que conteste. El ejemplo del editor trae uno.
+
+- Actúa **con tus permisos**, los de quien arranca el proceso: no puede hacer
+  nada que tú no pudieras hacer a mano, y en el historial del registro queda a
+  tu nombre.
+- **Validar** avisa si la operación no tiene esa forma o si la ruta no existe.
+- Si el CRM rechaza la petición (un campo que falta, un permiso que no tienes),
+  el paso falla con ese mensaje y lo ves en el historial de la instancia, en
+  **Administrar › Automatización › Procesos y orquestación**, pestaña
+  **Instancias**.
+- Si el proceso lo lanza una **automatización** y la regla no dice quién la
+  activó, el proceso arranca igual pero sus pasos de servicio fallan diciendo
+  que **no se sabe con qué permisos actuar**: no se inventan.
+
+### Pasar lo que está en marcha a una versión nueva
+
+Cuando publicas una versión que corrige algo, lo que ya estaba en marcha sigue
+con la suya. Para moverlo: **Administrar › Automatización › Editor de
+procesos**, abre la versión **publicada** en «Abrir una versión guardada» y
+pulsa **Migrar las instancias en vuelo a esta versión**.
+
+1. Primero se **enseña sin tocar nada**: qué instancias pasarían (de qué
+   versión vienen y en qué paso están) y cuáles **se quedan**, cada una con su
+   motivo —está en un paso que la versión nueva no tiene, tiene una tarea
+   pendiente con respuestas que ya no existen, está deshaciendo pasos…—.
+2. Si te parece bien, **Migrar N a la versión X**. Las que se quedan terminan
+   con su versión, como empezaron.
+
+Hace falta permiso de administración de procesos, y cada instancia movida queda
+apuntada en la auditoría con la versión de la que salió.
+
+### Empezar desde una plantilla
+
+Al final del **Editor de procesos** está la sección **Plantillas de flujo**:
+procesos de ejemplo por sector —aprobación de descuento comercial, alta de
+cliente con revisión de riesgo, devolución y abono, alta de proveedor, escalado
+de caso urgente—, cada uno con la lista de **lo que no resuelve** (qué datos
+necesita al arrancar, qué rol tendrás que cambiar).
+
+1. Si la biblioteca está vacía, **Cargar las de serie** (hace falta permiso de
+   administración de procesos).
+2. Escribe la **clave** que tendrá tu copia y pulsa **Copiar como borrador**.
+3. La copia se abre en el editor como **borrador tuyo**: ajústala, **Validar**,
+   y **Publicar** cuando esté lista. Hasta entonces no la ejecuta nadie, y si
+   la plantilla cambia más adelante, tu copia no.
+
 ### Lo que me toca aprobar
 
 En **Administrar › Automatización › Procesos y orquestación**, la vista **«Me toca
@@ -397,7 +449,113 @@ decidir»**: lo vencido primero, con lo que hace falta para decidir. Abre una
 fila para aprobar, rechazar o pedir cambios. En la aprobación ves quién decidió
 cada etapa y, si alguien lo hizo por otro, en nombre de quién.
 
+### Decidir desde el correo, sin entrar
+
+Cuando te toca decidir, te llega un **correo con un enlace**. Lo abres desde el
+ordenador o el móvil y ves qué se pide, en qué etapa y con qué datos; debajo,
+**Aprobar**, **Pedir cambios** (escribe cuáles: sin comentario no se puede) o
+**Rechazar**. No hace falta entrar al CRM ni tener la sesión abierta.
+
+- El enlace **sirve una vez** y **caduca** (tres días de serie). Abrirlo no
+  decide nada: sólo cuenta lo que pulses.
+- Deja de servir también si la aprobación ya no espera tu decisión: otro la
+  resolvió, ya votaste desde el CRM, pasó a la etapa siguiente o lo que se
+  pedía cambió y hay que volver a aprobarlo —entonces te llega un correo nuevo—.
+  En todos esos casos la página dice lo mismo, «este enlace ya no sirve», y lo
+  tienes en tu bandeja del CRM si aún te toca.
+- La decisión queda **a tu nombre**, apuntada como hecha desde el correo.
+- **No lo reenvíes**: quien lo abra decide por ti.
+
+Si no te ha llegado o caducó, quien administra procesos puede mandarte otro:
+**Administrar › Automatización › Procesos y orquestación**, pestaña **Enlaces de
+decisión**, botón **Nuevo**: la aprobación, el aprobador y, si se quiere, cuántas
+horas vale. Sale por correo y la misma pestaña enseña a quién representa cada
+enlace, cuándo caduca y si ya se usó.
+
+### Tablas de decisión: la política, escrita como una tabla
+
+Una tabla de decisión responde preguntas como «¿quién aprueba este descuento?»
+o «¿qué tipo de IVA se aplica?» con reglas que se cambian sin tocar el proceso
+que las usa.
+
+**Administrar › Automatización › Procesos y orquestación**, pestaña **Tablas de
+decisión**. Pulsa una fila para editarla, o **Nuevo** para empezar una.
+
+1. **La tabla**: el nombre —la clave sale de él y es como la llaman los
+   procesos; después no se cambia— y qué pasa **si casan varias reglas**: gana
+   la primera, sólo puede casar una, gana la de más prioridad, varias si dicen
+   lo mismo, o se acumulan todas.
+2. **Columnas de entrada**: lo que se compara. La **expresión** dice de dónde
+   sale el valor, por ejemplo `@oportunidad.importe`, y el **tipo** cómo se
+   compara (número, texto, sí/no…).
+3. **Columnas de salida**: lo que devuelve la tabla, por ejemplo «Aprobador».
+4. **Reglas**: una fila por regla. En cada casilla de entrada, **+ condición**
+   para poner una comparación (=, ≥, «está en»…); **+ y además** añade otra en la
+   misma casilla, para un tramo («≥ 1000» y «< 5000»). Una casilla vacía es
+   «cualquiera». En las casillas de salida, lo que sale si la regla casa. Las
+   flechas suben o bajan la regla: con «gana la primera», el orden decide.
+5. **Validar** dice si la tabla está bien formada y avisa de los **huecos**
+   (valores que ninguna regla cubre), los **solapes** y las reglas que **nunca
+   casarán** porque otra anterior las tapa.
+6. **Probar**: escribe unos datos y pulsa **Probar con estos datos**. Se ve qué
+   sale, qué regla acertó y, de cada una de las demás, en qué condición falló.
+   Prueba la tabla tal como está en pantalla, **sin guardarla**.
+7. **Guardar**. Desde ese momento, los procesos que la usan deciden con ella.
+
 ---
+
+### Automatizaciones: cuándo corren y qué las dispara
+
+En **Administrar › Automatización › Procesos y orquestación**, el selector de
+vistas lleva tres vistas de automatizaciones:
+
+- **Automatizaciones**: las reglas. Arriba, **«Instalar una plantilla de la
+  biblioteca»** y **«Promover automatizaciones desde un sandbox»**; al abrir una,
+  en **Más**: «Activar o desactivar una regla», «Ejecutar ahora sobre un
+  registro», «Generar el secreto del webhook que la dispara» y «Probar una regla
+  sin ejecutarla».
+- **Plantillas de automatización**: la biblioteca por industria, con cuáles ya
+  tienes instaladas.
+- **Cola de automatizaciones**: lo diferido y lo programado, con su hora y su
+  estado (pendiente, hecha, fallida o descartada).
+
+**Cuándo corre (el «momento»).** *Inmediata* corre en el instante del disparo.
+*Diferida* corre después de que se confirme lo que la disparó —si el alta se
+deshace, no corre— y, si el administrador lo ha configurado, tras unos segundos
+de espera (`AUTOMATIZACION_DIFERIDA_ESPERA_S`). *Programada* corre a la hora de
+su horario (`programacion`, una expresión cron como «0 8 * * 1», los lunes a las
+8), en la zona horaria de la empresa. Si el servicio estuvo parado y se saltó
+varias horas, corre una vez al volver, no tantas como se perdió. Al encender una
+programada, su ficha enseña cuándo correrá (`Próxima ejecución`).
+
+**Qué la dispara.** Creación y modificación, como siempre; **eliminación**,
+cuando se borra un registro de ese objeto; **evento**, cualquier evento del
+catálogo (por ejemplo `contract.renewal.due`, un contrato a punto de vencer);
+**programada**, su propio horario; **manual**, con «Ejecutar ahora sobre un
+registro» (pide el registro y los datos que miran sus condiciones; si está
+apagada no corre); y **webhook**, cuando otro sistema llama a su dirección con el
+cuerpo firmado. Para eso: «Generar el secreto del webhook que la dispara» enseña
+**una sola vez** la dirección y el secreto; quien llama firma con HMAC-SHA256
+`<momento>.<cuerpo>` en `X-Contecrm-Firma` y pone el momento en
+`X-Contecrm-Momento`, igual que los webhooks que manda el CRM. Generarlo otra vez
+invalida el anterior.
+
+**Quién la activó.** Al encenderla queda guardado quién lo hizo y con qué
+permisos: un proceso que lance la regla actúa con esa identidad. Si se apaga y la
+enciende otra persona, pasa a ser esa.
+
+**Plantillas.** «Instalar una plantilla de la biblioteca» se elige de una lista
+(oportunidad en la recta final, lead nuevo al responsable, caso crítico, contrato
+a punto de vencer, bienvenida a un cliente nuevo, recordatorio semanal). Las que
+reparten trabajo piden **Responsable**. Llega **apagada**; si ya tienes una con
+ese nombre no la pisa: instálala con otro nombre.
+
+**Promover desde un sandbox.** Elige el sandbox y pulsa: es la **prueba en
+seco**, que dice qué pasaría con cada automatización —crear, actualizar, sin
+cambios, cuáles se apagarían— y da una **huella**. Para aplicarlo, vuelve a
+abrirla con el mismo sandbox y pega la huella en «Más campos». Si algo cambió
+entre medias, no se aplica nada. Lo que llega, llega apagado y queda en la
+auditoría con el sandbox del que vino.
 
 ### Código propio: extensiones y endpoints
 

@@ -177,6 +177,25 @@ AVISOS: dict[str, dict[str, Any]] = {
     # guardaba, se validaba, se simulaba, se ejecutaba sin error y no pasaba
     # nada — el mismo modo de fallo por el que `enviar_correo` se había
     # retirado, solo que en este no se había visto.
+    # El enlace para decidir una aprobación desde el correo (CRM-00.03.05.12):
+    # a su aprobador y SÓLO a él —el enlace firma en su nombre—, por correo
+    # aunque sus preferencias digan otra cosa, porque decidir sin entrar al CRM
+    # es justo lo que pide. No suma seguidores ni suscribe a nadie.
+    "approval.link.issued": {
+        "objeto_tipo": "aprobacion",
+        "campo_id": "objeto_id",
+        "titulo": "",
+        "titulo_campo": "titulo",
+        "cuerpo_campo": "cuerpo",
+        "prioridad": "alta",
+        "destinatario_campo": "titular_id",
+        "canales_campo": "canales",
+        # Sin destinatario válido NO se cae a los seguidores del registro, como
+        # hacen los demás avisos: el enlace le daría a otro la firma del
+        # titular. Y no se excluye a quien lo provocó: pedirse uno mismo su
+        # enlace desde la ficha es un caso normal.
+        "solo_destinatarios": True,
+    },
     "automatizacion.aviso": {
         "objeto_tipo": None,
         "campo_id": "objeto_id",
@@ -313,7 +332,7 @@ async def consumir_evento(mensaje: Any) -> None:
 
     # Quien provocó el cambio no se avisa a sí mismo.
     actor = datos.get("actor_id") or getattr(mensaje, "actor_id", None)
-    excluir = [UUID(str(actor))] if actor else []
+    excluir = [UUID(str(actor))] if actor and not regla.get("solo_destinatarios") else []
 
     # El tipo de objeto puede venir fijo en la regla o en el propio evento (un
     # comentario cuelga de lo que sea).
@@ -325,6 +344,9 @@ async def consumir_evento(mensaje: Any) -> None:
     with con_contexto(tenant_id=tenant_id, origen="bus"), unidad_de_trabajo(tenant_id) as uow:
         explicitos: list[UUID] | None = None
         destinatarios = _activos(uow.db, _destinatarios(regla, datos), tenant_id)
+        if not destinatarios and regla.get("solo_destinatarios"):
+            logger.warning("notificacion.sin_destinatario_propio", tipo=tipo)
+            return
         if destinatarios:
             explicitos = destinatarios
             if regla.get("suscribir_destinatario"):

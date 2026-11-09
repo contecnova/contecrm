@@ -495,6 +495,23 @@ APPROVAL_DECIDED = registrar(
         campos=("solicitud_id", "objeto", "objeto_id", "estado"),
     )
 )
+APPROVAL_LINK_ISSUED = registrar(
+    TipoEvento(
+        tipo="approval.link.issued",
+        version=1,
+        productor="orchestrator",
+        descripcion=(
+            "Hay un enlace para decidir una aprobación desde el correo y hay que "
+            "mandárselo a su aprobador. Lo consume identidad, que es quien sabe "
+            "su buzón"
+        ),
+        campos=("objeto_tipo", "objeto_id", "titular_id", "titulo", "cuerpo", "canales"),
+        # Interno, y no por limpieza: el cuerpo lleva el enlace, que es una
+        # credencial de un solo uso. Entregarlo a los webhooks del tenant le
+        # daría la firma del aprobador a cualquier integración suscrita.
+        publico=False,
+    )
+)
 
 
 # ───────────────────────────────── party ──────────────────────────────────

@@ -294,6 +294,14 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         # hasheado y con caducidad; que la respuesta sea la misma esté el
         # identificador libre o cogido; y un tope por IP mucho más estrecho que
         # el general, porque esto crea tenants.
+        # Decidir una aprobación desde el correo (CRM-00.03.05.12): quien abre
+        # el correo no ha entrado, y eso es lo que pide la capacidad. Lo que
+        # autoriza es el enlace —un solo uso, hasheado, con caducidad, atado a
+        # la etapa y a la vuelta que se votan—; el mismo 401 para todo lo que
+        # no sirve, y un tope por IP en el gateway. Probado en
+        # `test_decidir_desde_el_correo.py`.
+        "ver_con_enlace_publico": "lo abre quien no ha entrado; autoriza el enlace del correo",
+        "decidir_con_enlace_publico": "ídem: la credencial es el token de un solo uso",
         "pedir_alta": "la pide quien aún no es cliente; lo que autoriza es el enlace",
         "confirmar_alta": "ídem: la credencial es el token del correo",
         # Entrar con passkey es entrar: exigir permiso sería tan circular como
@@ -331,6 +339,12 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         # probado en `test_captura_leads.py`, incluido que un canal de otro
         # tenant no sirve.
         "recibir_lead": "público por diseño; lo autoriza la clave del canal, no un permiso",
+        # El webhook que dispara una automatización (CRM-00.03.03.02): lo llama
+        # otro sistema, sin usuario en el CRM. Lo autoriza la firma HMAC del
+        # cuerpo con el secreto de esa regla, con ventana contra reenvíos.
+        # Probado en `test_automatizacion_disparadores.py`, incluida la firma
+        # mala y la de otra regla.
+        "recibir_webhook": "público por diseño; lo autoriza la firma con el secreto de la regla",
         # Las dos puertas del cuadro incrustado. Exigir sesión del CRM era
         # justamente el fallo: obligaba a repartir credenciales de empleado
         # entre los usuarios de la aplicación que incrusta el cuadro.

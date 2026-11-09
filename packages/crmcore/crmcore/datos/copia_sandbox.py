@@ -146,6 +146,13 @@ def copiar_tenant(
     fallidas: list[dict[str, str]] = []
 
     for tabla, modelo in _tablas_del_servicio(servicio):
+        # Lo que es de ESTE entorno y no de sus datos —una cola de ejecuciones
+        # pendientes— lo declara la propia tabla, con su motivo. Copiado, el
+        # sandbox repetiría el trabajo que producción tiene a medias.
+        propio = (tabla.info or {}).get("no_copiar_a_sandbox")
+        if propio:
+            no_copiadas.append({"tabla": tabla.name, "porque": str(propio)})
+            continue
         secretas = [c.name for c in tabla.c if (c.info or {}).get("secreto")]
         if secretas:
             no_copiadas.append(

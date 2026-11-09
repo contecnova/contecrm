@@ -310,6 +310,19 @@ COLUMNAS_DE_FONTANERIA = {
 }
 
 NO_SALEN: dict[tuple[str, str], str] = {
+    # La foto de permisos con la que se activó una automatización: es lo que
+    # usan sus procesos para actuar, y enseñarla sería publicar el mapa de
+    # permisos de una persona. Sale quién la activó (`activada_por_id`).
+    (
+        "AutomatizacionOut",
+        "activada_con",
+    ): "la foto de permisos de quien la activó no sale; sale quién la activó",
+    # Marca interna: con qué horario se calculó la próxima ejecución, para
+    # recalcularla si cambia. La próxima ejecución sí sale.
+    (
+        "AutomatizacionOut",
+        "proxima_segun",
+    ): "marca interna para recalcular la próxima ejecución, que sí sale",
     # Quién guardó una vista de lista no le importa a quien la usa, y el
     # identificador de una persona no tiene por qué viajar en el desplegable de
     # un listado. Lo que sí hace falta —si la ve todo el tenant o sólo yo— sale

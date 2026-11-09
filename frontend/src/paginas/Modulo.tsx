@@ -656,6 +656,12 @@ function RecursoVista({
   const [accionDeFila, setAccionDeFila] = useState<Accion | null>(null);
   const [ultimaDeFila, setUltimaDeFila] = useState<Accion | null>(null);
   const [filaElegida, setFilaElegida] = useState("");
+  // Los datos de la fila sobre la que se abre la acción: las casillas de la
+  // acción enseñan lo que la fila tiene ahora (ver `Acciones`).
+  const [datosDeFila, setDatosDeFila] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [edicionDeFila, setEdicionDeFila] = useState<{
     ruta: string;
     plantilla: string;
@@ -918,6 +924,7 @@ function RecursoVista({
       clave;
     const elegir = (accion: Accion) => () => {
       setFilaElegida(nombre);
+      setDatosDeFila(fila);
       setEdicionDeFila(null);
       setUltimaDeFila(accion);
       setAccionDeFila(accion);
@@ -1196,7 +1203,9 @@ function RecursoVista({
     rutaDeAlta && (creando || (filas !== null && filas.length > 0)) ? (
       <button
         type="button"
-        onClick={() => setCreando((v) => !v)}
+        onClick={() =>
+          recurso.alta_en ? navegar(recurso.alta_en) : setCreando((v) => !v)
+        }
         className={creando ? "btn-secondary" : "btn-primary"}
       >
         {creando ? t("modulo.cancelar") : t("modulo.nuevo")}
@@ -1358,7 +1367,10 @@ function RecursoVista({
                 rutaDeAlta && campos
                   ? {
                       texto: t("modulo.nuevo"),
-                      alPulsar: () => setCreando(true),
+                      alPulsar: () =>
+                        recurso.alta_en
+                          ? navegar(recurso.alta_en)
+                          : setCreando(true),
                     }
                   : undefined
               }
@@ -1505,6 +1517,7 @@ function RecursoVista({
                         servicio={recurso.servicio}
                         abierta={accionDeFila}
                         alCambiarAbierta={setAccionDeFila}
+                        registro={datosDeFila}
                         alTerminar={() => void cargar()}
                       />
                     ) : null}

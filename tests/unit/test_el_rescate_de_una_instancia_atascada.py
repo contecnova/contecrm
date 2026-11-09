@@ -48,7 +48,13 @@ DEFINICION: dict[str, Any] = {
             "vence_en_horas": 48,
             "rutas": {"aprobar": "enviar", "rechazar": "fin_no"},
         },
-        "enviar": {"tipo": "servicio", "operacion": "erp.enviar", "siguiente": "fin_si"},
+        # Con la forma de ruta: un nombre sin invocador ya no pasa la validación
+        # que usa la simulación (09-11-2026).
+        "enviar": {
+            "tipo": "servicio",
+            "operacion": "POST /api/v1/opportunities",
+            "siguiente": "fin_si",
+        },
         "fin_si": {"tipo": "fin", "resultado": "enviado"},
         "fin_no": {"tipo": "fin", "resultado": "rechazado"},
     },
@@ -164,7 +170,11 @@ def test_no_se_salta_a_un_paso_que_el_actual_no_enlaza(
 def test_una_instancia_terminada_no_se_salta(
     cliente: Any, cabeceras: dict[str, str], instancia_atascada: Any, db: Any
 ) -> None:
-    instancia_atascada.estado = "terminada"
+    # «completada», que es lo que escribe el motor al terminar. La prueba usaba
+    # «terminada», un estado que no existe, y el código comparaba con ese mismo
+    # texto: la una sostenía a la otra y una instancia terminada de verdad se
+    # dejaba saltar (09-11-2026).
+    instancia_atascada.estado = "completada"
     db.flush()
     r = cliente.post(
         f"/api/v1/instancias/{instancia_atascada.id}/saltar-paso",

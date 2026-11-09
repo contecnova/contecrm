@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**309 ajustes** en total, de los cuales **93** son editables en caliente por tenant.
+**321 ajustes** en total, de los cuales **102** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -23,6 +23,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `SERVICE_PORT` | — | `8000` | 1–65535 |  |
 | `RUTAS_SERVICIOS` | — | *(vacío)* |  | Los servicios DE ESTE DESPLIEGUE, como `nombre=url` separados por comas: `tenancy=http://tenancy:8000,party=http://party:8000`. Lo lee el gateway para enrutar —un servicio que no esté aquí no es alcanzable y responde 503 diciendo cuál falta, que es mejor que un 404 genérico— y lo lee `tenancy`… |
 | `PUBLIC_BASE_URL` | — | `http://localhost:18080` |  | URL base pública del sistema, usada para componer enlaces absolutos (callbacks de OAuth, enlaces de correo, URLs firmadas). Sin esto los enlaces salen relativos y rotos en el correo. |
+| `FRONT_BASE_URL` | — | `http://localhost:15173` |  | Dónde vive la interfaz, para los enlaces que abre una persona desde un correo —decidir una aprobación—. No es `public_base_url`: ésa es la API, y un enlace a la API enseña un JSON a quien esperaba una página. |
 | `CORS_ORIGINS` | — | *(vacío)* |  | Lista separada por comas. Vacío = ningún origen de navegador permitido, que es lo correcto para un servicio interno: solo el gateway habla con él. |
 | `API_PREFIX` | — | `/api/v1` |  | Prefijo de versión de la API pública. El versionado es explícito y por URI (CRM-00.02.01.05): un cambio rompedor estrena `v2` y `v1` sigue sirviéndose hasta su fecha de retirada. |
 | `API_SUNSET_DATE` | — | *(vacío)* |  | Fecha de retirada de ESTA versión mayor, en ISO-8601, o vacío si no hay una anunciada. Cuando está puesta, toda respuesta lleva las cabeceras `Sunset` y `Deprecation` (CRM-00.02.01.07) para que los consumidores se enteren por el canal que ya están leyendo, sin depender de una circular. |
@@ -254,6 +255,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `PROCESO_MAX_PASOS` | 🔥 `proceso_max_pasos` | `1000` | 1–1000000 | Topes que impiden un proceso desbocado. Sin ellos, una automatización que se dispara a sí misma consume el sistema entero. |
 | `PROCESO_MAX_PROFUNDIDAD` | — | `10` | 1–100 |  |
 | `PROCESO_MAX_DURACION_H` | 🔥 `proceso_max_duracion_h` | `720` | 1–8760 |  |
+| `PROCESO_PASO_SERVICIO_TIMEOUT_S` | 🔥 `proceso_paso_servicio_timeout_s` | `30.0` | 1.0–600.0 | Espera máxima de un paso «servicio» que llama a la API del CRM. Es la de una petición y no la del proceso: un paso que se queda colgado retiene la instancia en el worker, y con él a las demás del lote que esperan turno. Si el destino tarda más, el paso falla y lo trata `_tratar_fallo` con sus… |
 | `AUTOMATIZACION_MAX_CASCADA` | 🔥 `automatizacion_max_cascada` | `5` | 1–100 | Cadena máxima de automatizaciones que se disparan unas a otras (CRM-00.03.03.06). |
 | `COMENTARIO_MAX_CARACTERES` | 🔥 `comentario_max_caracteres` | `10000` | 100–1000000 | Longitud máxima de un comentario. 10.000 caracteres son unas tres páginas: de sobra para explicar un caso, y un tope que impide que alguien pegue un contrato entero en una nota y lo convierta en la fila más pesada de la tabla. |
 | `COMENTARIO_MAX_MENCIONES` | 🔥 `comentario_max_menciones` | `20` | 1–500 | Menciones por comentario. Sin tope, un solo comentario puede generar un aviso para toda la empresa. |
@@ -267,8 +269,18 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `BUSQUEDA_MAX_RESULTADOS` | 🔥 `busqueda_max_resultados` | `20` | 1–200 | Resultados por consulta. Más de una pantalla no se mira, y pedir mil obliga a Postgres a ordenar mil por relevancia para tirar novecientos. |
 | `TRANSICIONES_PROHIBIDAS` | 🔥 `transiciones_prohibidas` |  |  | Transiciones que este tenant QUITA de las que el código admite. Solo quita: añadir un estado que el código no conoce dejaría el registro en un limbo que ningún `if` sabe manejar. {"oportunidad": {"perdida": ["abierta"]}} significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:… |
 | `MAQUINAS_DE_ESTADO` | 🔥 `maquinas_de_estado` |  |  | Los estados de cada objeto tal como los ha configurado la empresa: nombres, orden, colores, estados propios y transiciones (CRM-00.04.01.07). Vacío = los de fábrica. Se edita desde Administrar, no a mano. |
+| `TCSEC_MFA_MINIMA_PCT` | 🔥 `tcsec_mfa_minima_pct` | `100` | 0–100 | Qué parte de las personas tiene que tener segundo factor para dar por cumplida la responsabilidad individual de C2. Cien por defecto: una sola cuenta sin segundo factor es la que se usa para entrar. |
+| `APROBACION_PRESUPUESTO_ETAPAS` | 🔥 `aprobacion_presupuesto_etapas` |  |  | Quién aprueba un presupuesto que se pasa de la matriz de descuentos: las etapas del motor de aprobaciones (origen jerarquia, rol, usuario, campo o unidad). De serie, el superior directo de quien lo envía. Hasta el 09-11-2026 el presupuesto se quedaba en «en aprobación» para siempre: el aviso… |
+| `APROBACION_ENLACE_VALIDEZ_HORAS` | 🔥 `aprobacion_enlace_validez_horas` | `72` | 1–720 | Horas que vale el enlace del correo. Es una credencial que viaja por un buzón que se puede reenviar: tres días cubren un fin de semana sin dejarla viva una semana entera. |
+| `APROBACION_ENLACE_POR_CORREO` | 🔥 `aprobacion_enlace_por_correo` | `True` |  | Si al abrirse una etapa se manda a cada aprobador su enlace por correo. Apagado, el enlace sólo sale cuando alguien lo pide desde la ficha. |
+| `APROBACION_ENLACE_INTENTOS_POR_IP` | — | `30` | 1–10000 | Intentos que admite una misma IP contra la página pública del enlace, por ventana. Muy por debajo del límite general: quien prueba tokens al azar hace muchas peticiones, y quien abre su correo hace dos o tres. |
+| `APROBACION_ENLACE_VENTANA_S` | — | `3600` | 60–86400 |  |
 | `AUTOMATIZACION_MAX_VUELTAS` | — | `200` | 1–10000 | Vueltas máximas de un `para_cada`. Una automatización que recorre una colección no puede colgar la petición que la disparó: guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y el usuario vería un formulario congelado sin saber por qué. Cuando se corta se DICE en la… |
 | `AUTOMATIZACION_MAX_ANIDAMIENTO` | — | `3` | 1–10 | Anidamiento máximo de ramas y bucles. Tres niveles cubren todo lo que alguien construye en una interfaz; más que eso es un proceso, y para eso está el motor de procesos, que sabe reanudar y compensar. |
+| `AUTOMATIZACION_DIFERIDA_ESPERA_S` | 🔥 `automatizacion_diferida_espera_s` | `0` | 0–86400 | Cuánto espera una automatización «diferida» después de confirmarse el disparo. Cero ya la separa de la transacción que la disparó —corre en la vuelta siguiente del planificador, nunca dentro de quien guardó—; más da margen a que alguien deshaga lo que acaba de hacer antes de que salga el correo. |
+| `AUTOMATIZACION_PENDIENTES_REVISAR_S` | 🔥 `automatizacion_pendientes_revisar_s` | `10` | 1–3600 | Cada cuánto mira el planificador la cola y los horarios. Es el retraso máximo de una diferida sin espera y la precisión de una programada. |
+| `AUTOMATIZACION_PENDIENTES_LOTE` | 🔥 `automatizacion_pendientes_lote` | `100` | 1–10000 | Cuántas ejecuciones pendientes atiende por tenant y vuelta. Con un tope, un tenant con diez mil encoladas no deja esperando a los demás. |
+| `AUTOMATIZACION_PENDIENTES_MAX_INTENTOS` | 🔥 `automatizacion_pendientes_max_intentos` | `3` | 1–50 | Intentos antes de dar por fallida una ejecución pendiente. Lo que se reintenta es un fallo de la base o de la red, no el de una acción —ése queda en la traza a la primera, como en las inmediatas—. |
 | `METADATA_MAX_CAMPOS` | 🔥 `metadata_max_campos` | `150` | 10–1000 | Campos activos por objeto. Ciento cincuenta es mucho más de lo que necesita cualquier objeto bien modelado y bastante menos de donde empieza a doler: a partir de doscientos, la ficha, el listado, la exportación y las migraciones se degradan a la vez. El techo no está para fastidiar: está para… |
 | `METADATA_AVISO_PCT` | 🔥 `metadata_aviso_pct` | `80` | 10–100 | Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el modelo; al 100 % el aviso llega cuando ya no se puede añadir nada. |
 | `DEVOLUCION_VENTANA_DIAS` | 🔥 `devolucion_ventana_dias` | `30` | 1–3650 | Los cuatro se leían con `rt.efectivo(...) or <número>` y su clave no estaba declarada en ninguna parte: leerla devolvía `None`, así que mandaba el número de al lado, y fijarla se rechazaba. El valor por defecto de cada uno es EXACTAMENTE el que usaba el código, para que enchufar la configuración… |
