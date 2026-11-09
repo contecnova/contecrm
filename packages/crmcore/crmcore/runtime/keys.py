@@ -133,6 +133,13 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="transiciones_prohibidas",
             sensible=True,
         ),
+        _c(
+            "maquinas_de_estado",
+            "json",
+            "Estados de cada objeto configurados por la empresa: nombres, orden y transiciones",
+            campo_settings="maquinas_de_estado",
+            sensible=True,
+        ),
         # Búsqueda (CRM-00.01.01.09)
         _c(
             "busqueda_idioma",

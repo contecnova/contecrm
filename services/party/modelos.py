@@ -503,7 +503,7 @@ class Consentimiento(Base, TimestampMixin):
     )
 
 
-ESTADOS_ACTIVIDAD = ("pendiente", "en_curso", "completada")
+ESTADOS_ACTIVIDAD = ("pendiente", "en_curso", "completada", "cancelada")
 PRIORIDADES_ACTIVIDAD = ("baja", "normal", "alta", "urgente")
 
 

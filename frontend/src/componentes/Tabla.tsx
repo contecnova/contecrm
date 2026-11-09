@@ -623,7 +623,7 @@ export function Tabla({
                           esquema={editable}
                           alGuardar={(v) => alEditarCelda(fila, c, v)}
                         >
-                          <Celda valor={fila[c]} campo={c} />
+                          <Celda valor={fila[`${c}_nombre`] ?? fila[c]} campo={c} />
                         </CeldaEditable>
                       </Casilla>
                     );
@@ -638,10 +638,10 @@ export function Tabla({
                           to={destino}
                           className="text-accent hover:underline"
                         >
-                          <Celda valor={fila[c]} campo={c} />
+                          <Celda valor={fila[`${c}_nombre`] ?? fila[c]} campo={c} />
                         </Link>
                       ) : (
-                        <Celda valor={fila[c]} campo={c} />
+                        <Celda valor={fila[`${c}_nombre`] ?? fila[c]} campo={c} />
                       )}
                     </Casilla>
                   );

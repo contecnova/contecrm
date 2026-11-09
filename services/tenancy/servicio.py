@@ -61,6 +61,8 @@ MAQUINA_TENANT = registrar_maquina(
         # «¿por qué está suspendido este cliente?» es una pregunta real, y sin
         # motivo escrito la respuesta se pierde con quien lo hizo.
         exigen_motivo=frozenset({"suspendido", "solo_lectura", "en_baja"}),
+        # La vida del propio tenant es de la plataforma, no de la empresa.
+        configurable=False,
     )
 )
 

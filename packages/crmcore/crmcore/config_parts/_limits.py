@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -381,6 +383,10 @@ class _LimitsSettings(BaseSettings):
     # significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:
     # el producto no decide por el cliente qué procesos son válidos en su casa.
     transiciones_prohibidas: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
+    # Los estados de cada objeto tal como los ha configurado la empresa: nombres,
+    # orden, colores, estados propios y transiciones (CRM-00.04.01.07). Vacío =
+    # los de fábrica. Se edita desde Administrar, no a mano.
+    maquinas_de_estado: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     # ── Control de flujo en automatizaciones (CRM-00.03.03.04) ────────────
     # Vueltas máximas de un `para_cada`. Una automatización que recorre una

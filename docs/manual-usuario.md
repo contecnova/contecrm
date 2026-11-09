@@ -1373,6 +1373,19 @@ abre. Ahora dentro está:
 Una venta que ha cambiado tres veces de fecha no es la misma que una que nunca
 se movió, aunque hoy tengan el mismo importe y la misma etapa.
 
+### Cambiar el estado de una oportunidad o de un lead
+
+En la cabecera de la ficha, debajo del nombre, está el **estado actual**. Pulsa
+encima y elige a cuál pasar: sólo salen los que tu empresa permite desde el
+estado en que está. Si ese paso pide motivo, te lo pide ahí mismo.
+
+Para **ganar o perder** una oportunidad, muévela a la etapa final; para
+**convertir o descartar** un lead, usa sus botones. Hacen más cosas que cambiar
+el estado (la lección aprendida, el bloqueo, la cuenta nueva).
+
+Quién decide qué estados hay, cómo se llaman y a cuáles se puede pasar: el
+administrador, en **Administrar › Plataforma › Estados de los objetos**.
+
 ### Por qué se perdió (o se ganó): las lecciones aprendidas
 
 Dónde: **Ventas › Lecciones aprendidas**. Y dentro de cualquier oportunidad

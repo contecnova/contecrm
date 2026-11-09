@@ -37,6 +37,7 @@ from uuid import UUID
 
 from crmcore.audit import registrar
 from crmcore.datos.cambio import convertir
+from crmcore.datos.estados import con_significado
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
@@ -660,7 +661,8 @@ def acierto_de_los_ajustes(db: Session, tenant_id: UUID, periodo_clave: str) -> 
         db.execute(
             select(func.coalesce(func.sum(Oportunidad.importe), 0)).where(
                 Oportunidad.tenant_id == tenant_id,
-                Oportunidad.estado == "ganada",
+                # Lo GANADO, se llame como se llame en esta empresa.
+                Oportunidad.estado.in_(con_significado("oportunidad", "ganado", db)),
                 Oportunidad.fecha_cierre >= per.desde,
                 Oportunidad.fecha_cierre <= per.hasta,
             )
@@ -821,7 +823,11 @@ def waterfall(db: Session, tenant_id: UUID, desde_id: UUID, hasta_id: UUID) -> d
             )
             continue
         previa = antes[op_id]
-        if fila.estado == "ganada" and previa.estado != "ganada":
+        ganado = con_significado("oportunidad", "ganado", db)
+        cerrado_sin_ganar = con_significado("oportunidad", "perdido", db) | con_significado(
+            "oportunidad", "cancelado", db
+        )
+        if fila.estado in ganado and previa.estado not in ganado:
             ganadas.append(
                 {
                     "oportunidad_id": str(op_id),
@@ -829,10 +835,7 @@ def waterfall(db: Session, tenant_id: UUID, desde_id: UUID, hasta_id: UUID) -> d
                     "importe": str(fila.importe_funcional),
                 }
             )
-        elif fila.estado in ("perdida", "cancelada") and previa.estado not in (
-            "perdida",
-            "cancelada",
-        ):
+        elif fila.estado in cerrado_sin_ganar and previa.estado not in cerrado_sin_ganar:
             perdidas.append(
                 {
                     "oportunidad_id": str(op_id),

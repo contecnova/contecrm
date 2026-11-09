@@ -31,6 +31,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar
+from crmcore.datos.estados import con_significado, significa
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
@@ -374,7 +375,7 @@ def _referencia_ganadas(db: Session, oportunidad: Any, u: dict[str, Any]) -> dic
             Oportunidad.importe,
         ).where(
             Oportunidad.pipeline_id == oportunidad.pipeline_id,
-            Oportunidad.estado == "ganada",
+            Oportunidad.estado.in_(con_significado("oportunidad", "ganado", db)),
             Oportunidad.deleted_at.is_(None),
         )
     ).all()
@@ -591,12 +592,16 @@ def crear_de_las_cerradas(uow: UnidadDeTrabajo) -> dict[str, int]:
     creadas = 0
     for op in uow.db.execute(
         select(Oportunidad).where(
-            Oportunidad.estado.in_(("perdida", "ganada")), Oportunidad.deleted_at.is_(None)
+            Oportunidad.estado.in_(
+                con_significado("oportunidad", "perdido", uow.db)
+                | con_significado("oportunidad", "ganado", uow.db)
+            ),
+            Oportunidad.deleted_at.is_(None),
         )
     ).scalars():
         if op.id in ya:
             continue
-        fila = al_cerrar(uow, op, ganada=op.estado == "ganada")
+        fila = al_cerrar(uow, op, ganada=significa("oportunidad", op.estado, "ganado", uow.db))
         fila.obligatoria = False
         creadas += 1
     uow.db.flush()

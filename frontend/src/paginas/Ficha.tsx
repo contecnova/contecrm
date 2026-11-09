@@ -286,6 +286,11 @@ export function Ficha() {
         // cargando: `null` aquí pinta «Cargando…» para siempre.
         fila={registro ?? (contenido ? {} : null)}
         volverA={{ a: `/m/${rutaDelModulo}`, titulo: modulo.titulo, id }}
+        cambioDeEstado={
+          recurso?.servicio && ruta
+            ? { servicio: recurso.servicio, ruta, alCambiar: () => cargar() }
+            : undefined
+        }
         acciones={
           fila && !editando ? (
             <BotonesDeRegistro

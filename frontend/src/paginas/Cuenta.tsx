@@ -68,7 +68,7 @@ import {
   subColeccionesDe,
   type Accion,
 } from "@/lib/acciones";
-import { escalar, humanizar, importe } from "@/lib/formato";
+import { escalar, humanizar, importe, rotuloDeOpcion } from "@/lib/formato";
 import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
 import { useSuperficie } from "@/lib/permisos";
 import { recursoDe } from "@/lib/recursos";
@@ -219,6 +219,8 @@ interface Oportunidad {
   importe: string | number;
   moneda: string;
   estado: string;
+  estado_significa?: string | null;
+  estado_nombre?: string | null;
   fecha_cierre: string | null;
 }
 
@@ -771,14 +773,14 @@ export function Cuenta() {
                       {importe(o.importe, o.moneda)}
                       <span
                         className={
-                          o.estado === "ganada"
+                          o.estado_significa === "ganado"
                             ? "badge badge-success"
-                            : o.estado === "perdida"
+                            : o.estado_significa === "perdido"
                               ? "badge badge-danger"
                               : "badge badge-muted"
                         }
                       >
-                        {o.estado}
+                        {o.estado_nombre || rotuloDeOpcion(o.estado)}
                       </span>
                     </p>
                   </li>

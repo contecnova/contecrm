@@ -23,6 +23,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.authz.abac import Condicion
+from crmcore.datos.estados import con_significado
 from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin
 from crmcore.errors import ErrorValidacion
 from crmcore.ids import nuevo_id
@@ -183,7 +184,13 @@ def _carga_abierta(db: Session, tenant_id: UUID, usuarios: list[UUID]) -> dict[U
         .where(
             Lead.tenant_id == tenant_id,
             Lead.owner_id.in_(usuarios),
-            Lead.estado.in_(("nuevo", "contactado", "cualificado")),
+            # Los vivos, por lo que significan: también los estados propios.
+            Lead.estado.in_(
+                con_significado("lead", "nuevo", db)
+                | con_significado("lead", "contactado", db)
+                | con_significado("lead", "cualificado", db)
+                | con_significado("lead", "reciclado", db)
+            ),
             Lead.deleted_at.is_(None),
         )
         .group_by(Lead.owner_id)

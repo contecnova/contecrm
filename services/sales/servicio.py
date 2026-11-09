@@ -11,6 +11,7 @@ from crmcore import vocabulario
 from crmcore.audit.chain import registrar, registrar_cambios
 from crmcore.authz.decision import exigir
 from crmcore.datos.estados import aplicar as aplicar_estado
+from crmcore.datos.estados import con_significado, maquina_efectiva, significa
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
@@ -121,7 +122,7 @@ def registrar_primera_respuesta(db: Session, lead_id: UUID, *, por: UUID | None 
     lead.sla_incumplido = bool(
         lead.sla_primera_respuesta_at and ahora > lead.sla_primera_respuesta_at
     )
-    if lead.estado == "nuevo":
+    if significa("lead", lead.estado, "nuevo", db):
         aplicar_estado(db, lead, objeto="lead", nuevo="contactado", por=por)
     if lead.sla_incumplido:
         logger.warning(
@@ -144,7 +145,7 @@ def descartar_lead(uow: UnidadDeTrabajo, lead_id: UUID, *, motivo: str, nota: st
     from crmcore.runtime import settings as rt
 
     lead = _lead(uow.db, lead_id)
-    if lead.estado == "convertido":
+    if significa("lead", lead.estado, "convertido", uow.db):
         raise Conflicto(
             "Un lead ya convertido no se puede descartar",
             error_code="sales.lead_ya_convertido",
@@ -223,7 +224,7 @@ def convertir_lead(
     responder a «¿de dónde salió este cliente?».
     """
     lead = _lead(uow.db, lead_id)
-    if lead.estado == "convertido":
+    if significa("lead", lead.estado, "convertido", uow.db):
         raise Conflicto(
             "Ese lead ya se convirtió",
             error_code="sales.lead_ya_convertido",
@@ -285,6 +286,43 @@ def exigir_lead(db: Session, lead_id: UUID) -> Lead:
     """El lead, o 404. Pública para que las rutas de subrecursos comprueben el
     padre antes de devolver su contenido."""
     return _lead(db, lead_id)
+
+
+# Los significados que tienen su propio camino, con lo que ese camino hace y
+# esta acción no: cerrar (lección, bloqueo, eventos de cierre), convertir (crea
+# cuenta y oportunidad) y descartar (motivo normalizado y reciclaje).
+_CON_SU_CAMINO = {
+    "oportunidad": {
+        "ganado": "se cierra moviéndola a la etapa de ganada",
+        "perdido": "se cierra moviéndola a la etapa de perdida, con su motivo",
+    },
+    "lead": {
+        "convertido": "se convierte con «Convertir»",
+        "descartado": "se descarta con «Descartar», con su motivo",
+    },
+}
+
+
+def cambiar_estado(
+    uow: UnidadDeTrabajo, objeto: str, fila: Any, *, estado: str, motivo: str = ""
+) -> Any:
+    """Mueve el registro a otro estado de los que ha configurado la empresa.
+
+    Es lo que hace alcanzables los estados propios —«En pausa», «Visitado»—:
+    sin esto se podían declarar y no había forma de llegar a ellos. La máquina
+    de la empresa decide si la transición vale y si pide motivo.
+    """
+    maquina = maquina_efectiva(objeto, uow.db)
+    destino = maquina.significado(estado) if maquina else estado
+    camino = _CON_SU_CAMINO.get(objeto, {}).get(destino)
+    if camino:
+        raise Conflicto(
+            f"Pasar a «{estado}» no se hace aquí: {camino}",
+            error_code="estados.con_su_camino",
+        )
+    aplicar_estado(uow.db, fila, objeto=objeto, nuevo=estado, motivo=motivo)
+    uow.db.flush()
+    return fila
 
 
 def _lead(db: Session, lead_id: UUID) -> Lead:
@@ -713,7 +751,7 @@ def reabrir(
     deja el resto del sistema con datos de un cierre que ya no existe.
     """
     oportunidad = _oportunidad(uow.db, oportunidad_id)
-    if oportunidad.estado == "abierta":
+    if significa("oportunidad", oportunidad.estado, "abierto", uow.db):
         raise Conflicto("Esa oportunidad ya está abierta", error_code="sales.ya_abierta")
     if not motivo.strip():
         raise ErrorValidacion(
@@ -728,7 +766,9 @@ def reabrir(
         )
 
     estado_previo = oportunidad.estado
-    aplicar_estado(uow.db, oportunidad, objeto="oportunidad", nuevo="abierta", motivo=motivo)
+    # Al estado inicial de esta empresa, que siempre es uno abierto.
+    inicial = maquina_efectiva("oportunidad", uow.db).inicial
+    aplicar_estado(uow.db, oportunidad, objeto="oportunidad", nuevo=inicial, motivo=motivo)
     oportunidad.bloqueada = False
     oportunidad.etapa_id = etapa.id
     oportunidad.etapa_desde = datetime.now(timezone.utc)
@@ -937,7 +977,7 @@ def oportunidades_estancadas(db: Session, tenant_id: UUID) -> list[dict[str, Any
         .join(Etapa, Etapa.id == Oportunidad.etapa_id)
         .where(
             Oportunidad.tenant_id == tenant_id,
-            Oportunidad.estado == "abierta",
+            Oportunidad.estado.in_(con_significado("oportunidad", "abierto", db)),
             Oportunidad.deleted_at.is_(None),
         )
     ).all()

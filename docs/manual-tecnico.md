@@ -868,6 +868,18 @@ pantallas:
   `contratoDe` los registra y `escalar` escribe «Abierta» en vez de
   «abierta» sólo cuando el contrato dice que es una opción de ese campo. Para
   que un estado nuevo salga legible basta con declarar su lista en la columna.
+- **Estados configurables** (`crmcore/datos/estados.py`). La configuración
+  de cada empresa vive en el ajuste `maquinas_de_estado` (por objeto) y
+  `maquina_efectiva(objeto, db)` la construye y valida contra la de fábrica
+  (`construir`). El código pregunta con `con_significado(objeto, "abierto",
+  db)` y `significa(...)`, nunca con el nombre de un estado. Cada servicio
+  publica las suyas en `GET/PUT/DELETE /api/v1/{servicio}/estados/{objeto}`
+  (`crmcore/http/estados_router.py`), y `POST {registro}/estado` mueve un
+  registro a cualquier estado permitido, salvo los que tienen su camino
+  (ganar, perder, convertir, descartar). La oportunidad devuelve
+  `estado_significa`, `estado_nombre` y `estado_color`; la pantalla pinta
+  `<campo>_nombre` cuando viene. En el front: `paginas/Estados.tsx` y
+  `componentes/CambioDeEstado.tsx`, que `DatosClave` pinta en la cabecera.
 - **Un objeto con máquina de estados no ofrece `estado` en su formulario de
   edición**: se mueve con sus acciones, que validan la transición. El estado de
   un caso, que no tiene máquina, se valida contra `ESTADOS_CASO`.

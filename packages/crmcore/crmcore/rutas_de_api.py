@@ -488,6 +488,9 @@ RECURSOS_TRANSVERSALES = {
     # Varias operaciones en una llamada y en una transacción: va por servicio
     # porque una composición que cruzara servicios no podría serlo.
     "compuesto",
+    # Los estados de cada objeto, configurados por la empresa: cada servicio
+    # publica las máquinas que declara (CRM-00.04.01.07).
+    "estados",
 }
 
 # Los nombres de servicio salen de la propia tabla de prefijos en vez de

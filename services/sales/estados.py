@@ -1,10 +1,8 @@
 """Las máquinas de estado de `sales` (CRM-00.04.01.07).
 
-Se declaran en el código porque el código las usa: hay comparaciones contra
-estos estados en el enrutamiento, en el pipeline y en la previsión, así que la
-lista de estados posibles **es** parte del programa. Un tenant puede quitar
-transiciones —«aquí una oportunidad perdida no se reabre»—, pero no añadir
-estados que ningún `if` de aquí sabría manejar.
+Lo que se declara aquí es la configuración de fábrica: la empresa la cambia
+desde Administrar —nombres, orden, colores, estados propios y transiciones— y
+el código pregunta por el **significado** de cada estado, no por su nombre.
 """
 
 from __future__ import annotations
@@ -42,6 +40,10 @@ LEAD = registrar_maquina(
         },
         finales=frozenset({"convertido"}),
         exigen_motivo=frozenset({"descartado"}),
+        # Cada estado significa lo que dice su clave: un estado propio de la
+        # empresa —«En espera», «Visitado»— elige a cuál se parece. Sin un
+        # «nuevo», un «convertido» y un «descartado» no hay embudo de leads.
+        obligatorios=frozenset({"nuevo", "convertido", "descartado"}),
     )
 )
 
@@ -76,5 +78,16 @@ OPORTUNIDAD = registrar_maquina(
             "cancelada": frozenset({"abierta"}),
         },
         exigen_motivo=frozenset({"perdida", "cancelada", "abierta"}),
+        # Lo que el código pregunta: «¿está abierta?», «¿se ganó?». Una empresa
+        # puede llamarlos como quiera y añadir los suyos —«En pausa» como otro
+        # abierto, «Adjudicada» como ganada—; la previsión y las comisiones
+        # siguen sabiendo qué cuenta.
+        significados={
+            "abierta": "abierto",
+            "ganada": "ganado",
+            "perdida": "perdido",
+            "cancelada": "cancelado",
+        },
+        obligatorios=frozenset({"abierto", "ganado", "perdido"}),
     )
 )

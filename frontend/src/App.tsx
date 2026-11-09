@@ -123,6 +123,10 @@ const Cuadros = pantalla(
   () => import("@/paginas/Cuadros"),
   (m) => m.Cuadros,
 );
+const Estados = pantalla(
+  () => import("@/paginas/Estados"),
+  (m) => m.Estados,
+);
 const Leccion = pantalla(
   () => import("@/paginas/Leccion"),
   (m) => m.Leccion,
@@ -384,6 +388,7 @@ export function App() {
               descubre porque busca por prefijo común. */}
           <Route path="/m/oportunidades/oportunidad/:id" element={<Oportunidad />} />
           <Route path="/m/lecciones/leccion/:id" element={<Leccion />} />
+          <Route path="/estados" element={<Estados />} />
           {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
               —ajustes, fotos, desglose, deslizamiento— se dirigen por su
               clave, y pasarles el identificador las deja en 404. */}

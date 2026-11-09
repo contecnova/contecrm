@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore import fechas
+from crmcore.datos.estados import con_significado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
@@ -362,7 +363,7 @@ def sin_revisar(db: DbDep, principal: AutenticadoDep, dias: int = Query(30)) -> 
         db.execute(
             select(Oportunidad).where(
                 Oportunidad.tenant_id == principal.tenant_id,
-                Oportunidad.estado == "abierta",
+                Oportunidad.estado.in_(con_significado("oportunidad", "abierto", db)),
             )
         )
         .scalars()

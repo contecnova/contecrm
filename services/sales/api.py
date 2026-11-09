@@ -10,6 +10,7 @@ from uuid import UUID
 from crmcore import vocabulario
 from crmcore.authz.proyeccion import exigir_campo_usable
 from crmcore.authz.visibilidad import aplicar_visibilidad
+from crmcore.datos.estados import con_significado, maquina_efectiva
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
@@ -120,7 +121,11 @@ def listar_leads(
         consulta = consulta.where(
             Lead.primera_respuesta_at.is_(None),
             Lead.sla_primera_respuesta_at < datetime.now(timezone.utc),
-            Lead.estado.notin_(("convertido", "descartado")),
+            # Por lo que significan: los estados propios de la empresa cuentan.
+            Lead.estado.notin_(
+                con_significado("lead", "convertido", db)
+                | con_significado("lead", "descartado", db)
+            ),
         )
     # Los filtros comunes, con sus rangos: `?created_at__desde=2026-10-01`.
     #
@@ -164,6 +169,26 @@ def listar_leads(
 )
 def primera_respuesta(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     return svc.registrar_primera_respuesta(db, lead_id, por=principal.id)
+
+
+class CambiarEstadoIn(BaseModel):
+    estado: str = Field(..., min_length=1, max_length=40, description="La clave del estado")
+    motivo: str = ""
+
+
+@router_leads.post(
+    "/{lead_id}/estado",
+    response_model=LeadOut,
+    dependencies=[Depends(exige_permiso("lead:write"))],
+    summary="Cambiar el estado",
+    description=(
+        "A cualquiera de los estados que ha configurado la empresa y que se "
+        "pueda alcanzar desde el actual. Convertir y descartar tienen su acción."
+    ),
+)
+def cambiar_estado_lead(lead_id: UUID, datos: CambiarEstadoIn, uow: UowDep) -> Any:
+    lead = svc._lead(uow.db, lead_id)
+    return svc.cambiar_estado(uow, "lead", lead, estado=datos.estado, motivo=datos.motivo)
 
 
 @router_leads.post(
@@ -365,8 +390,20 @@ def crear_oportunidad(datos: CrearOportunidad, uow: UowDep) -> Any:
     return svc.crear_oportunidad_nueva(uow, **datos.model_dump())
 
 
+def _del_estado(maquina: Any, estado: str) -> dict[str, Any]:
+    """Qué significa el estado y cómo lo llama y pinta esta empresa."""
+    presentacion = (maquina.presentacion.get(estado) if maquina else None) or {}
+    return {
+        "estado_significa": maquina.significado(estado) if maquina else estado,
+        "estado_nombre": presentacion.get("nombre") or None,
+        "estado_color": presentacion.get("color") or None,
+    }
+
+
 def _una_oportunidad(db: Any, oportunidad: Any) -> Any:
     """Una oportunidad con el nombre de su etapa y su pipeline resueltos."""
+    from crmcore.datos.estados import maquina_efectiva
+
     nombres_pipeline, nombres_etapa = _nombres_de_etapa(db, [oportunidad])
     return OportunidadOut.model_validate(
         {
@@ -374,6 +411,7 @@ def _una_oportunidad(db: Any, oportunidad: Any) -> Any:
             "importe_ponderado": oportunidad.importe_ponderado,
             "pipeline": nombres_pipeline.get(oportunidad.pipeline_id),
             "etapa": nombres_etapa.get(oportunidad.etapa_id),
+            **_del_estado(maquina_efectiva("oportunidad", db), oportunidad.estado),
         }
     )
 
@@ -431,7 +469,18 @@ def listar_oportunidades(
         permiso_ver_todo="opportunity:admin",
     )
     if estado:
-        consulta = consulta.where(Oportunidad.estado == estado)
+        # Un estado de fábrica se entiende por lo que significa: «abierta» son
+        # todas las abiertas, también las que la empresa haya llamado de otra
+        # forma o haya añadido —«En pausa»—. Uno propio, tal cual.
+        from crmcore.datos.estados import MAQUINAS, con_significado
+
+        fabrica = MAQUINAS["oportunidad"]
+        estados = (
+            con_significado("oportunidad", fabrica.significado(estado), db)
+            if estado in fabrica.estados
+            else {estado}
+        )
+        consulta = consulta.where(Oportunidad.estado.in_(estados))
     if cuenta_id:
         consulta = consulta.where(Oportunidad.cuenta_id == cuenta_id)
     if mias:
@@ -462,6 +511,8 @@ def listar_oportunidades(
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"], total_aprox=total)
     nombres_pipeline, nombres_etapa = _nombres_de_etapa(db, filas)
+    # La configuración de estados, una vez por página y no una por fila.
+    maquina = maquina_efectiva("oportunidad", db)
     # POR LA PROYECCIÓN, igual que la ficha. Serializar con el esquema de salida
     # se saltaba el enmascaramiento por rol: la ficha tapaba el importe y el
     # listado de la misma fila lo enseñaba.
@@ -477,6 +528,8 @@ def listar_oportunidades(
             "pipeline": nombres_pipeline.get(o.pipeline_id),
             "etapa": nombres_etapa.get(o.etapa_id),
         }
+        if "estado" in visto:
+            extra.update(_del_estado(maquina, o.estado))
         if "importe" in visto:
             extra["importe_ponderado"] = o.importe_ponderado
         return {k: v for k, v in {**visto, **extra}.items() if k in OportunidadOut.model_fields}
@@ -531,6 +584,24 @@ def cambiar_etapa(oportunidad_id: UUID, datos: CambiarEtapa, uow: UowDep) -> Any
         motivo=datos.motivo,
         forzar=datos.forzar,
     )
+    return _una_oportunidad(uow.db, oportunidad)
+
+
+@router_oportunidades.post(
+    "/{oportunidad_id}/estado",
+    response_model=OportunidadOut,
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Cambiar el estado",
+    description=(
+        "A cualquiera de los estados que ha configurado la empresa y que se "
+        "pueda alcanzar desde el actual. Ganar y perder tienen su camino —la "
+        "etapa final—, porque cerrar hace más cosas que cambiar el estado."
+    ),
+)
+def cambiar_estado_oportunidad(oportunidad_id: UUID, datos: CambiarEstadoIn, uow: UowDep) -> Any:
+    oportunidad = svc._oportunidad(uow.db, oportunidad_id)
+    svc._exigir_editable(uow.db, oportunidad)
+    svc.cambiar_estado(uow, "oportunidad", oportunidad, estado=datos.estado, motivo=datos.motivo)
     return _una_oportunidad(uow.db, oportunidad)
 
 

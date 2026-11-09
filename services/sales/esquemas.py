@@ -209,6 +209,12 @@ class OportunidadOut(BaseModel):
     # cada pantalla lo haga distinto.
     pipeline: str | None = None
     etapa: str | None = None
+    # Qué significa el estado —abierto, ganado, perdido, cancelado— y cómo lo
+    # llama y pinta esta empresa. La pantalla pregunta por el significado: un
+    # estado propio («En pausa») o renombrado («Adjudicada») se trata igual.
+    estado_significa: str | None = None
+    estado_nombre: str | None = None
+    estado_color: str | None = None
     importe: Decimal
     moneda: str
     probabilidad: int

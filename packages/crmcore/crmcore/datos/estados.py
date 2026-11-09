@@ -12,11 +12,16 @@ quince sitios, así que la lista de estados posibles **es** parte del código. S
 un tenant pudiera inventarse un estado, la mitad de esas comparaciones dejarían
 de acertar y el registro se quedaría en un limbo que nadie programó.
 
-**Lo que un tenant sí puede es restringir.** Quitar una transición que el código
-admite es seguro —el código sabe manejar los dos estados, simplemente no se va a
-llegar de uno al otro— y es lo que de verdad piden: «aquí una oportunidad
-perdida no se reabre». Añadir, no. Esa asimetría es la que hace configurable la
-máquina sin hacerla frágil.
+**Y desde el 09-11-2026, la empresa la configura entera** (pedido: «todo
+superconfigurable por administradores»). Lo que lo hace seguro es el
+**significado**: cada estado dice qué es —abierto, ganado, perdido…— y el
+código pregunta por el significado, no por el nombre. Así una empresa puede
+llamar «Adjudicada» a la ganada, añadir «En pausa» como otro estado abierto u
+ordenar y colorear los suyos, y la previsión y las comisiones siguen sabiendo
+qué cuenta como ganado. Los estados de fábrica no se borran —el histórico los
+usa—: se renombran o se desactivan.
+
+Las restricciones de antes (`transiciones_prohibidas`) siguen aplicando encima.
 
 Los objetos **propios del tenant** son el caso distinto: no tienen código detrás,
 así que ahí la declaración de metadatos **es** la máquina entera y sí define los
@@ -25,6 +30,7 @@ estados. Lo maneja `services.metadata`.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -55,6 +61,23 @@ class Maquina:
     # alguien va a preguntar meses después —por qué se perdió, por qué se
     # suspendió— y la respuesta se pierde con quien la tomó.
     exigen_motivo: frozenset[str] = field(default_factory=frozenset)
+    # Qué ES cada estado, para que el código pregunte por eso y no por el
+    # nombre: `{"ganada": "ganado"}`. Un estado sin significado declarado
+    # significa lo mismo que su clave.
+    significados: dict[str, str] = field(default_factory=dict)
+    # Los significados que la configuración de una empresa no puede quitar: sin
+    # un «ganado» no hay previsión ni comisión.
+    obligatorios: frozenset[str] = field(default_factory=frozenset)
+    # Si la empresa la puede configurar. La del propio tenant es de la
+    # plataforma y no lo es.
+    configurable: bool = True
+    # Lo que pone la configuración: nombre, color y orden de cada estado, y los
+    # que se han desactivado. Las de fábrica lo traen vacío.
+    presentacion: dict[str, dict[str, Any]] = field(default_factory=dict)
+    inactivos: frozenset[str] = field(default_factory=frozenset)
+
+    def significado(self, estado: str) -> str:
+        return self.significados.get(estado, estado)
 
     @property
     def estados(self) -> frozenset[str]:
@@ -90,6 +113,175 @@ def registrar_maquina(maquina: Maquina) -> Maquina:
     return maquina
 
 
+_CLAVE = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
+
+
+def maquina_efectiva(objeto: str, db: Session | None = None) -> Maquina | None:
+    """La máquina de este objeto tal como la tiene configurada la empresa.
+
+    Sin configuración, la de fábrica. Una configuración que ya no valida —el
+    producto cambió por debajo— no tumba nada: se avisa y se usa la de fábrica,
+    que es la que el código sabe manejar.
+    """
+    fabrica = MAQUINAS.get(objeto)
+    if fabrica is None or not fabrica.configurable or db is None:
+        return fabrica
+    from crmcore.runtime import settings as rt
+
+    crudo = rt.efectivo("maquinas_de_estado", db) or {}
+    conf = crudo.get(objeto) if isinstance(crudo, dict) else None
+    if not conf:
+        return fabrica
+    try:
+        return construir(fabrica, conf)
+    except ErrorValidacion as exc:
+        logger.warning("estados.configuracion_invalida", objeto=objeto, motivo=str(exc))
+        return fabrica
+
+
+def construir(fabrica: Maquina, conf: dict[str, Any]) -> Maquina:
+    """La máquina que sale de una configuración, validada contra la de fábrica.
+
+    Lo que se exige y por qué:
+
+    - los estados de fábrica siguen ahí —se pueden renombrar o desactivar, no
+      borrar—, porque hay registros y un histórico que los usan;
+    - un estado nuevo dice qué significa, y significa algo que el producto ya
+      sabe tratar;
+    - siguen existiendo los significados obligatorios —sin un «ganado» no hay
+      previsión—;
+    - las transiciones sólo nombran estados que existen.
+    """
+    estados = conf.get("estados") or []
+    if not isinstance(estados, list) or not estados:
+        raise ErrorValidacion("La configuración no trae estados", error_code="estados.sin_estados")
+    vistos: dict[str, dict[str, Any]] = {}
+    for e in estados:
+        clave = str((e or {}).get("clave") or "")
+        if not _CLAVE.match(clave):
+            raise ErrorValidacion(
+                f"«{clave}» no vale como clave de estado: minúsculas, números y _",
+                error_code="estados.clave_invalida",
+            )
+        if clave in vistos:
+            raise ErrorValidacion(
+                f"El estado «{clave}» está dos veces", error_code="estados.repetido"
+            )
+        vistos[clave] = e
+    faltan = sorted(fabrica.estados - set(vistos))
+    if faltan:
+        raise ErrorValidacion(
+            f"Los estados de fábrica no se borran, se desactivan: faltan {', '.join(faltan)}",
+            error_code="estados.falta_de_fabrica",
+            detalle={"faltan": faltan},
+        )
+    conocidos = {fabrica.significado(e) for e in fabrica.estados}
+    significados: dict[str, str] = {}
+    for clave, e in vistos.items():
+        sig = str(e.get("significado") or fabrica.significado(clave))
+        if clave in fabrica.estados and sig != fabrica.significado(clave):
+            raise ErrorValidacion(
+                f"«{clave}» es de fábrica y significa «{fabrica.significado(clave)}»: "
+                "se le puede cambiar el nombre, no lo que es",
+                error_code="estados.significado_de_fabrica",
+            )
+        if sig not in conocidos:
+            raise ErrorValidacion(
+                f"«{sig}» no es un significado que el producto sepa tratar",
+                error_code="estados.significado_desconocido",
+                detalle={"validos": sorted(conocidos)},
+            )
+        significados[clave] = sig
+    inactivos = frozenset(c for c, e in vistos.items() if e.get("activo") is False)
+    vivos = {significados[c] for c in vistos if c not in inactivos}
+    sin = sorted(fabrica.obligatorios - vivos)
+    if sin:
+        raise ErrorValidacion(
+            f"Tiene que quedar al menos un estado activo que signifique {', '.join(sin)}",
+            error_code="estados.falta_significado",
+        )
+    inicial = str(conf.get("inicial") or fabrica.inicial)
+    if inicial not in vistos or inicial in inactivos:
+        raise ErrorValidacion(
+            f"El estado inicial «{inicial}» no está entre los activos",
+            error_code="estados.inicial_invalido",
+        )
+    transiciones: dict[str, frozenset[str]] = {}
+    for origen, destinos in (conf.get("transiciones") or {}).items():
+        malos = [d for d in [origen, *(destinos or [])] if d not in vistos]
+        if malos:
+            raise ErrorValidacion(
+                f"Las transiciones nombran estados que no existen: {', '.join(malos)}",
+                error_code="estados.transicion_desconocida",
+            )
+        transiciones[str(origen)] = frozenset(str(d) for d in destinos or [] if d not in inactivos)
+    finales = frozenset(c for c, e in vistos.items() if e.get("final"))
+    presentacion = {
+        c: {
+            "nombre": str(e.get("nombre") or ""),
+            "color": str(e.get("color") or ""),
+            "orden": int(e.get("orden") or 0),
+        }
+        for c, e in vistos.items()
+    }
+    return Maquina(
+        objeto=fabrica.objeto,
+        transiciones=transiciones,
+        inicial=inicial,
+        finales=finales,
+        exigen_motivo=frozenset(str(x) for x in conf.get("exigen_motivo") or [] if x in vistos),
+        significados=significados,
+        obligatorios=fabrica.obligatorios,
+        configurable=True,
+        presentacion=presentacion,
+        inactivos=inactivos,
+    )
+
+
+def a_configuracion(maquina: Maquina, *, de_fabrica: bool) -> dict[str, Any]:
+    """La máquina como la edita la pantalla: una lista de estados ordenada."""
+    estados = sorted(
+        maquina.estados,
+        key=lambda e: (maquina.presentacion.get(e, {}).get("orden", 0), e),
+    )
+    return {
+        "objeto": maquina.objeto,
+        "de_fabrica": de_fabrica,
+        "inicial": maquina.inicial,
+        "estados": [
+            {
+                "clave": e,
+                "nombre": maquina.presentacion.get(e, {}).get("nombre", ""),
+                "color": maquina.presentacion.get(e, {}).get("color", ""),
+                "orden": maquina.presentacion.get(e, {}).get("orden", i),
+                "significado": maquina.significado(e),
+                "final": e in maquina.finales,
+                "activo": e not in maquina.inactivos,
+            }
+            for i, e in enumerate(estados)
+        ],
+        "transiciones": {o: sorted(d) for o, d in maquina.transiciones.items()},
+        "exigen_motivo": sorted(maquina.exigen_motivo),
+        "significados_obligatorios": sorted(maquina.obligatorios),
+    }
+
+
+def con_significado(objeto: str, significado: str, db: Session | None = None) -> frozenset[str]:
+    """Los estados de este objeto que significan esto, con la configuración de la empresa.
+
+    Es lo que el código usa en vez de comparar con un nombre: «las abiertas»
+    son todas las que significan «abierto», se llamen como se llamen.
+    """
+    maquina = maquina_efectiva(objeto, db)
+    if maquina is None:
+        return frozenset({significado})
+    return frozenset(e for e in maquina.estados if maquina.significado(e) == significado)
+
+
+def significa(objeto: str, estado: str | None, significado: str, db: Session | None = None) -> bool:
+    return bool(estado) and estado in con_significado(objeto, significado, db)
+
+
 def _restricciones(db: Session | None, objeto: str) -> dict[str, set[str]]:
     """Transiciones que este tenant ha quitado.
 
@@ -109,7 +301,7 @@ def _restricciones(db: Session | None, objeto: str) -> dict[str, set[str]]:
 
 def transiciones_de(objeto: str, estado: str, db: Session | None = None) -> frozenset[str]:
     """A dónde se puede ir desde aquí, ya con las restricciones del tenant."""
-    maquina = MAQUINAS.get(objeto)
+    maquina = maquina_efectiva(objeto, db)
     if maquina is None:
         return frozenset()
     permitidas = set(maquina.transiciones.get(estado, frozenset()))
@@ -131,11 +323,16 @@ def comprobar(
     callar a esta función. Lo que impide que eso se convierta en el agujero es el
     gate, que exige declararla o eximir el objeto con su motivo.
     """
-    maquina = MAQUINAS.get(objeto)
+    maquina = maquina_efectiva(objeto, db)
     if maquina is None:
         return
     if desde == hasta:
         return
+    if hasta in maquina.inactivos:
+        raise ErrorValidacion(
+            f"«{hasta}» está desactivado en esta configuración",
+            error_code="estados.estado_inactivo",
+        )
 
     if hasta not in maquina.estados:
         # Se distingue de «no puedes ir ahí»: un estado que no existe casi

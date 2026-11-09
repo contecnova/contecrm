@@ -1721,20 +1721,40 @@ migración— aparecen oportunidades «ganadas» que nunca pasaron por negociaci
 los informes de conversión dejan de significar nada **sin que nada haya
 fallado**.
 
-### La máquina se declara en el código, y eso es deliberado
+### La empresa configura sus estados; el código pregunta por lo que significan
 
-El código tiene un `if estado == "ganada"` en quince sitios: la lista de estados
-posibles **es** parte del programa. Si un tenant pudiera inventarse un estado, la
-mitad de esas comparaciones dejarían de acertar y el registro se quedaría en un
-limbo que nadie programó.
+Hasta el 09-11-2026 la máquina se declaraba en el código y la empresa sólo
+podía quitar transiciones, porque el código comparaba con nombres —`estado ==
+"ganada"`— en muchos sitios. Ahora **cada estado tiene un significado**
+(abierto, ganado, perdido, cancelado; en los leads, nuevo, contactado,
+cualificado, descartado, convertido, reciclado) y el código pregunta por el
+significado. Por eso la empresa puede, desde **Administrar › Plataforma ›
+Estados de los objetos**:
 
-Lo que un tenant **sí** puede es **restringir**. Quitar una transición que el
-código admite es seguro —el código sabe manejar los dos estados, simplemente no
-se va a llegar de uno al otro— y es lo que de verdad piden: «aquí una
-oportunidad perdida no se reabre». Esa asimetría es la que hace la máquina
-configurable sin hacerla frágil. Y cuando una transición está bloqueada por
-configuración, el error lo dice: sin eso, quien administra el tenant no sabe si
-tiene que cambiar un ajuste o pedir un cambio de producto.
+- **renombrar** y **colorear** cada estado —«Adjudicada» en vez de «Ganada»—;
+- **ordenarlos**;
+- **añadir los suyos**, diciendo qué significan —«En pausa» como otro estado
+  abierto—: sigue contando en las listas de abiertas, en la previsión y en el
+  embudo;
+- **desactivar** los de fábrica que no use —no se borran: el histórico y los
+  registros los usan—;
+- decidir **a cuáles se puede pasar desde cada uno**, cuáles **piden motivo**,
+  cuáles son **finales** y cuál es el **inicial**.
+
+Lo que se valida antes de guardar, y se dice con su motivo: que estén todos los
+de fábrica, que un estado de fábrica no cambie lo que significa, que los nuevos
+signifiquen algo que el producto sabe tratar y que quede al menos un estado
+activo de cada significado imprescindible —sin un «ganado» no hay previsión ni
+comisión—. La vida del propio tenant (activo, suspendido, en baja) es de la
+plataforma y no se configura.
+
+**Dónde se cambia el estado.** En la cabecera de la ficha, el estado actual es
+un desplegable con los estados a los que se puede pasar. Ganar y perder una
+oportunidad, y convertir o descartar un lead, siguen teniendo su propio camino
+—la etapa final, «Convertir», «Descartar»—, porque hacen más cosas que cambiar
+el estado; si se intenta por aquí, lo dice.
+
+Las restricciones de antes (`transiciones_prohibidas`) siguen aplicando encima.
 
 Los objetos **propios del tenant** son el caso distinto: no tienen código
 detrás, así que ahí la declaración de metadatos **es** la máquina entera y sí

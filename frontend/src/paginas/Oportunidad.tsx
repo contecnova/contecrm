@@ -83,6 +83,8 @@ interface Oportunidad {
   importe_ponderado: string;
   fecha_cierre: string | null;
   estado: string;
+  /** Qué significa el estado —abierto, ganado, perdido…—, lo dice el servidor. */
+  estado_significa?: string | null;
   categoria_forecast: string | null;
   etapa_desde: string | null;
   bloqueada: boolean;
@@ -462,6 +464,7 @@ export function Oportunidad() {
         nombre={op.nombre}
         fila={op as unknown as Record<string, unknown>}
         volverA={{ a: "/m/oportunidades", titulo: modulo?.titulo ?? "", id }}
+        cambioDeEstado={{ servicio: "sales", ruta, alCambiar: () => cargar() }}
         recorrido={{
           campo: "etapa",
           pasos: etapasDelPipeline.map((e) => e.nombre),
@@ -541,8 +544,11 @@ export function Oportunidad() {
         />
       ) : null}
 
-      {op && (op.estado === "perdida" || op.estado === "ganada") ? (
-        <PorQueSeCerro id={op.id} estado={op.estado} />
+      {/* Por lo que SIGNIFICA el estado, no por cómo se llama: la empresa
+          puede llamar «Adjudicada» a la ganada o tener sus propios estados. */}
+      {op &&
+      (op.estado_significa === "perdido" || op.estado_significa === "ganado") ? (
+        <PorQueSeCerro id={op.id} estado={op.estado_significa} />
       ) : (
         // Abierta: lo que las lecciones de otras ventas tienen que decirle.
         <ConsejosDeLecciones id={op.id} />
@@ -1159,7 +1165,7 @@ function PorQueSeCerro({ id, estado }: { id: string; estado: string }) {
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="section-label">
           {t(
-            estado === "perdida"
+            estado === "perdido"
               ? "oportunidad.porQue.perdida"
               : "oportunidad.porQue.ganada",
           )}

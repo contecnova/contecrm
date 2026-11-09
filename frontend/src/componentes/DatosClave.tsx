@@ -38,6 +38,7 @@ import {
   fichaDe,
   type CampoEsquema,
 } from "@/lib/contrato";
+import { CambioDeEstado } from "@/componentes/CambioDeEstado";
 import { Seguir } from "@/componentes/Seguir";
 import { anotarVisto } from "@/lib/vistos";
 import { escalar, humanizar, tieneDato, campoDelNombre } from "@/lib/formato";
@@ -173,6 +174,7 @@ export function DatosClave({
   recorrido,
   volverA,
   camposClave,
+  cambioDeEstado,
 }: {
   recurso: Recurso | undefined;
   /** El tipo del registro, que es lo que se pone encima del nombre. */
@@ -233,6 +235,11 @@ export function DatosClave({
    * menú de arriba o el botón del navegador.
    */
   volverA?: { a: string; titulo: string; id?: string };
+  /**
+   * Cambiar el estado desde la cabecera, con los estados que ha configurado
+   * la empresa. Sólo se pinta si el objeto los tiene: lo pregunta al servicio.
+   */
+  cambioDeEstado?: { servicio: string; ruta: string; alCambiar: () => void };
   /**
    * Qué campos son los datos clave, cuando los del listado no valen aquí.
    *
@@ -338,8 +345,18 @@ export function DatosClave({
             <h1 className="min-w-0 truncate text-pagina font-bold tracking-[-0.01em] text-ink">
               {nombre || humanizar(tipo)}
             </h1>
-            {distintivos ? (
+            {distintivos ||
+            (cambioDeEstado && typeof fila?.estado === "string") ? (
               <div className="mt-1 flex flex-wrap items-center gap-2">
+                {cambioDeEstado && typeof fila?.estado === "string" && tipo ? (
+                  <CambioDeEstado
+                    servicio={cambioDeEstado.servicio}
+                    objeto={tipo}
+                    ruta={cambioDeEstado.ruta}
+                    estado={fila.estado}
+                    alCambiar={cambioDeEstado.alCambiar}
+                  />
+                ) : null}
                 {distintivos}
               </div>
             ) : null}
@@ -349,7 +366,9 @@ export function DatosClave({
               {/* Seguir primero, a la izquierda de editar y borrar: es donde
                   lo pone Lightning, y además lo separa de lo que cambia el
                   registro — seguir no lo toca. */}
-              {puedeSeguirse ? <Seguir objetoTipo={tipo} objetoId={idDelRegistro} /> : null}
+              {puedeSeguirse ? (
+                <Seguir objetoTipo={tipo} objetoId={idDelRegistro} />
+              ) : null}
               {acciones}
             </div>
           ) : null}
@@ -376,11 +395,13 @@ export function DatosClave({
                 >
                   {humanizar(c)}
                 </dt>
+                {/* Si el servidor trae cómo lo llama esta empresa
+                    —`estado_nombre`—, manda eso: «Adjudicada», no «Ganada». */}
                 <dd
                   className="truncate text-titulo text-ink"
-                  title={escalar(fila?.[c], c, laMoneda)}
+                  title={escalar(fila?.[`${c}_nombre`] ?? fila?.[c], c, laMoneda)}
                 >
-                  {escalar(fila?.[c], c, laMoneda)}
+                  {escalar(fila?.[`${c}_nombre`] ?? fila?.[c], c, laMoneda)}
                 </dd>
               </div>
             ))}

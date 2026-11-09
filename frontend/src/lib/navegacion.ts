@@ -254,6 +254,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar"  },
 
   // ── Automatización ──────────────────────────────────────────────────────
+  // Los estados de cada objeto, como los llama y ordena la empresa
+  // (CRM-00.04.01.07). Va con el modelado: es la misma clase de decisión.
+  { area: "plataforma", a: "/estados", clave: "nav.estados", icono: "rule", permiso: "tenant:write" },
   { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read"  },
   // El código del tenant (CRM-00.04.02): estaba sólo dentro de «Procesos», en
   // el selector de vistas, y quien abría la herramienta no lo encontraba.

@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**308 ajustes** en total, de los cuales **92** son editables en caliente por tenant.
+**309 ajustes** en total, de los cuales **93** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -266,6 +266,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `IDIOMA_DEFECTO` | — | `es` |  | El idioma cuando ni el usuario ni su tenant han dicho el suyo. Estaba como un «es» escrito en la traducción de la interfaz, y la IA no tenía ninguno: un tenant dado de alta antes de que el alta propagara su idioma no podía generar nada («no se ha declarado el idioma»). Medido el 05-11-2026. |
 | `BUSQUEDA_MAX_RESULTADOS` | 🔥 `busqueda_max_resultados` | `20` | 1–200 | Resultados por consulta. Más de una pantalla no se mira, y pedir mil obliga a Postgres a ordenar mil por relevancia para tirar novecientos. |
 | `TRANSICIONES_PROHIBIDAS` | 🔥 `transiciones_prohibidas` |  |  | Transiciones que este tenant QUITA de las que el código admite. Solo quita: añadir un estado que el código no conoce dejaría el registro en un limbo que ningún `if` sabe manejar. {"oportunidad": {"perdida": ["abierta"]}} significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:… |
+| `MAQUINAS_DE_ESTADO` | 🔥 `maquinas_de_estado` |  |  | Los estados de cada objeto tal como los ha configurado la empresa: nombres, orden, colores, estados propios y transiciones (CRM-00.04.01.07). Vacío = los de fábrica. Se edita desde Administrar, no a mano. |
 | `AUTOMATIZACION_MAX_VUELTAS` | — | `200` | 1–10000 | Vueltas máximas de un `para_cada`. Una automatización que recorre una colección no puede colgar la petición que la disparó: guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y el usuario vería un formulario congelado sin saber por qué. Cuando se corta se DICE en la… |
 | `AUTOMATIZACION_MAX_ANIDAMIENTO` | — | `3` | 1–10 | Anidamiento máximo de ramas y bucles. Tres niveles cubren todo lo que alguien construye en una interfaz; más que eso es un proceso, y para eso está el motor de procesos, que sabe reanudar y compensar. |
 | `METADATA_MAX_CAMPOS` | 🔥 `metadata_max_campos` | `150` | 10–1000 | Campos activos por objeto. Ciento cincuenta es mucho más de lo que necesita cualquier objeto bien modelado y bastante menos de donde empieza a doler: a partir de doscientos, la ficha, el listado, la exportación y las migraciones se degradan a la vez. El techo no está para fastidiar: está para… |

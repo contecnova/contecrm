@@ -701,6 +701,11 @@ def crear_servicio(
         # que cada uno tiene que poder enseñarla. Sin esto, borrar una plantilla
         # la mandaba a una papelera sin pantalla.
         app.include_router(crear_router_papelera(nombre), prefix=s.api_prefix)
+        # Y los estados de sus objetos, configurables por la empresa: cada
+        # servicio publica las máquinas que declara (CRM-00.04.01.07).
+        from crmcore.http.estados_router import crear_router_estados
+
+        app.include_router(crear_router_estados(nombre), prefix=s.api_prefix)
         app.include_router(crear_router_cumplimiento(nombre), prefix=s.api_prefix)
 
         # Y la sincronización del móvil sin conexión. Va por servicio, como la

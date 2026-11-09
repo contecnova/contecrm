@@ -46,9 +46,22 @@
   - Estados: están escritos en el código (máquinas de lead y oportunidad, y
     tuplas en el resto). El tenant sólo puede **quitar** transiciones; no
     puede renombrar, añadir, ordenar ni decir cuántos hay.
-- **Falta**: una sección en Administrar con editores de verdad para embudos y
-  etapas, metodologías, y estados y tipos por objeto (nombre, orden, color,
-  cuáles son finales, transiciones), y que el resto del producto lea de ahí.
+- **Decidido por formulario (09-11-2026)**:
+  - Estados: **todo** configurable por objeto —añadir, renombrar, ordenar,
+    color, cuáles son finales y a cuáles se puede pasar desde cada uno—. El
+    producto sigue sabiendo qué significa cada final (ganado, perdido,
+    cerrado) para la previsión, las comisiones y el SLA.
+  - Metodologías: **preguntas por etapa** (MEDDIC, BANT…) con puntuación,
+    **pasos y playbook por etapa**, y **varias metodologías por embudo**.
+- **Se construye en este orden**: (a) estados y transiciones como
+  configuración del tenant, con los de fábrica como punto de partida; (b) el
+  editor de embudos y etapas; (c) las metodologías; (d) todo ello en una
+  sección de Administrar.
+- **(a) hecho el 09-11-2026** para lead y oportunidad: Administrar ›
+  Plataforma › Estados de los objetos, el desplegable de estado en la cabecera
+  de la ficha y el código preguntando por el significado. Falta extenderlo a
+  los objetos que hoy guardan su estado en una tupla —casos, presupuestos,
+  pedidos…—, dándoles máquina; con eso se cierra también la entrada 1.
 
 ### 3. Las gráficas se leen al pasar el ratón
 
@@ -66,10 +79,12 @@
   a tener un DEM o TCSEC como los que tiene Infor en sus herramientas».
 - **Medido**: hoy hay riesgos, controles, cobertura del catálogo y
   segregación de funciones (CRM-07.03).
-- **Por aclarar antes de empezar**: qué se quiere decir con «DEM» —se
-  preguntará con formulario—. TCSEC son los niveles de evaluación de seguridad
-  (D, C1, C2, B1…); hay que concretar qué parte se quiere: clasificación de la
-  instalación, controles exigidos por nivel, evidencias.
+- **Aclarado por formulario (09-11-2026)**: «DEM» es la **matriz de
+  segregación de funciones** —reglas de conflicto entre permisos y roles, con
+  detección y mitigación—. De TCSEC, las tres partes: **clasificar la
+  instalación por nivel** (D, C1, C2, B1…), **los controles exigidos por
+  nivel** con sus evidencias y su comprobación automática donde se pueda, y
+  **un informe exportable para auditoría**.
 
 ### 5. Las 41 capacidades críticas, alcanzables desde una pantalla
 
