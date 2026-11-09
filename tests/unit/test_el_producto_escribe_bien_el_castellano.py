@@ -79,6 +79,7 @@ AMBIGUAS = {
     "publica": "también es el verbo",
     "salto": "el sustantivo, no «saltó»",
     "retraso": "`veces_que_se_retraso` es el verbo, pero «el retraso» es el sustantivo",
+    "rechazo": "`motivo_rechazo` es el sustantivo, y «el cliente lo rechazó» el verbo",
 }
 
 

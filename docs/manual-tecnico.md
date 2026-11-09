@@ -900,6 +900,18 @@ pantallas:
   `estado_nombre` y `estado_color` como propiedades (sesión del objeto). Un
   rollup cuyo filtro depende de la empresa usa `Rollup.filtro_de(db)` en vez
   de `filtro`, que se construye al importar.
+- **Presupuesto y contrato** (`services/sales/estados.py`): máquinas con
+  `_CON_SU_CAMINO` en `servicio.py` para lo que tiene acción; entre dos
+  estados del mismo significado no se exige el camino. Rutas `POST
+  /presupuestos/{id}/estado` y `POST /contratos/{id}/estado`.
+- **Aprobación de presupuestos**: `quote.approval.needed` (con
+  `solicitante_id`) → `services/orchestrator/aprobacion_de_presupuestos.py`
+  abre la solicitud con `aprobaciones.crear` y las etapas del ajuste
+  `aprobacion_presupuesto_etapas`; si no resuelve aprobadores (cualquier
+  `CrmError`) emite `approval.decided` con `estado: sin_aprobadores`.
+  `services/sales/consumidores.py:consumir_aprobacion` aplica la decisión sólo
+  si el presupuesto sigue en un estado que significa `en_aprobacion`. En la
+  pila local de procesos no hay NATS: los eventos no cruzan de servicio.
 - **Metodologías** (`services/sales/cadencias.py`): `metodologia_de` elige
   la del embudo de la oportunidad (o la general), `criterios_de` normaliza las
   dos formas en que se han escrito los criterios (`etiqueta`/`peso` y

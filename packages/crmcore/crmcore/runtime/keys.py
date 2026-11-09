@@ -148,6 +148,12 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=100,
             campo_settings="tcsec_mfa_minima_pct",
         ),
+        _c(
+            "aprobacion_presupuesto_etapas",
+            "json",
+            "Quién aprueba un presupuesto que se pasa de la matriz de descuentos (etapas)",
+            campo_settings="aprobacion_presupuesto_etapas",
+        ),
         # Búsqueda (CRM-00.01.01.09)
         _c(
             "busqueda_idioma",

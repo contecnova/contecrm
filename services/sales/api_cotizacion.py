@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore.datos.estados import con_significado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import (
     aplicar_filtros_de_la_url,
@@ -590,6 +591,47 @@ class CrearContrato(BaseModel):
     clausulas: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class CambiarEstado(BaseModel):
+    estado: str = Field(max_length=40)
+    motivo: str = ""
+
+
+def _cambiar(uow: Any, objeto: str, modelo: Any, fila_id: UUID, datos: CambiarEstado) -> Any:
+    """El cambio de estado de la ficha, con los estados de la empresa.
+
+    Lo que tiene su acción —enviar, aceptar, la versión nueva, renovar— no se
+    hace aquí: lo dice y dice cuál. Lo demás —los estados propios, suspender o
+    terminar un contrato, que el cliente rechace— se mueve desde aquí.
+    """
+    from crmcore.errors import NoEncontrado
+
+    from services.sales import servicio as svc
+
+    fila = uow.db.get(modelo, fila_id)
+    if fila is None or fila.tenant_id != uow.tenant_id or getattr(fila, "deleted_at", None):
+        raise NoEncontrado(f"El {objeto} no existe", error_code=f"{objeto}.no_encontrado")
+    svc.cambiar_estado(uow, objeto, fila, estado=datos.estado, motivo=datos.motivo)
+    return {"id": str(fila.id), "estado": fila.estado}
+
+
+@router_pre.post(
+    "/{presupuesto_id}/estado",
+    dependencies=[Depends(exige_permiso("quote:write"))],
+    summary="Mover el presupuesto de estado",
+)
+def cambiar_estado_presupuesto(presupuesto_id: UUID, datos: CambiarEstado, uow: UowDep) -> Any:
+    return _cambiar(uow, "presupuesto", Presupuesto, presupuesto_id, datos)
+
+
+@router_ctr.post(
+    "/{contrato_id}/estado",
+    dependencies=[Depends(exige_permiso("contract:write"))],
+    summary="Mover el contrato de estado: suspender, terminar o reactivar",
+)
+def cambiar_estado_contrato(contrato_id: UUID, datos: CambiarEstado, uow: UowDep) -> Any:
+    return _cambiar(uow, "contrato", Contrato, contrato_id, datos)
+
+
 @router_ctr.post(
     "",
     status_code=status.HTTP_201_CREATED,
@@ -819,7 +861,7 @@ def mis_contratos(db: DbDep, sesion: PortalDep, limite: int = Query(100, ge=1, l
             .where(
                 Contrato.tenant_id == sesion.tenant_id,
                 Contrato.cuenta_id == sesion.exigir_cuenta(),
-                Contrato.estado != "borrador",
+                Contrato.estado.not_in(con_significado("contrato", "borrador", db)),
             )
             .order_by(Contrato.inicio.desc())
             .limit(limite)

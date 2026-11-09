@@ -30,12 +30,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
+from crmcore.datos.estados import con_significado, estado_de, significa
 from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
+from crmcore.tenancy.context import contexto_actual
 from sqlalchemy import (
     Boolean,
     Date,
@@ -565,7 +567,7 @@ def nueva_version(
     viejo = uow.db.get(Presupuesto, presupuesto_id)
     if viejo is None or viejo.tenant_id != tenant_id:
         raise NoEncontrado("El presupuesto no existe", error_code="presupuesto.no_encontrado")
-    if viejo.estado == "aceptado":
+    if significa("presupuesto", viejo.estado, "aceptado", uow.db):
         raise Conflicto(
             "Ese presupuesto ya está aceptado: para cambiarlo hace falta un "
             "presupuesto nuevo, no otra versión del aceptado.",
@@ -636,7 +638,7 @@ def nueva_version(
         )
 
     _totalizar(uow.db, nuevo)
-    viejo.estado = "sustituido"
+    viejo.estado = estado_de("presupuesto", "sustituido", uow.db)
     uow.db.flush()
 
     registrar(
@@ -786,7 +788,10 @@ def enviar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> dict[str, Any]:
     presupuesto = uow.db.get(Presupuesto, presupuesto_id)
     if presupuesto is None or presupuesto.tenant_id != tenant_id:
         raise NoEncontrado("El presupuesto no existe", error_code="presupuesto.no_encontrado")
-    if presupuesto.estado not in ("borrador", "aprobado"):
+    if presupuesto.estado not in (
+        con_significado("presupuesto", "borrador", uow.db)
+        | con_significado("presupuesto", "aprobado", uow.db)
+    ):
         raise Conflicto(
             f"Un presupuesto en estado «{presupuesto.estado}» no se manda.",
             error_code="presupuesto.estado_no_enviable",
@@ -817,8 +822,10 @@ def enviar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> dict[str, Any]:
                 clave=str(presupuesto.id),
                 descuento=float(descuento) if descuento not in (None, "") else None,
             )
-    if politica["necesita_aprobacion"] and presupuesto.estado != "aprobado":
-        presupuesto.estado = "en_aprobacion"
+    if politica["necesita_aprobacion"] and not significa(
+        "presupuesto", presupuesto.estado, "aprobado", uow.db
+    ):
+        presupuesto.estado = estado_de("presupuesto", "en_aprobacion", uow.db)
         presupuesto.motivo_aprobacion = " ".join(politica["motivos"])
         uow.db.flush()
         # La aprobación la abre `orchestrator`: aquí solo se dice que hace falta
@@ -835,11 +842,14 @@ def enviar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> dict[str, Any]:
                 "descuento_maximo": politica["descuento_maximo"],
                 "margen_pct": politica["margen_pct"] or "",
                 "motivos": politica["motivos"],
+                # Quién lo manda: de serie aprueba su superior, y sin saber
+                # quién pide no hay jerarquía que subir.
+                "solicitante_id": str(contexto_actual().user_id or ""),
             },
         )
         return {"enviado": False, "estado": presupuesto.estado, "motivos": politica["motivos"]}
 
-    presupuesto.estado = "enviado"
+    presupuesto.estado = estado_de("presupuesto", "enviado", uow.db)
     presupuesto.enviado_at = _ahora()
     uow.db.flush()
     uow.emitir(
@@ -867,7 +877,7 @@ def aceptar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> Pedido:
     presupuesto = uow.db.get(Presupuesto, presupuesto_id)
     if presupuesto is None or presupuesto.tenant_id != tenant_id:
         raise NoEncontrado("El presupuesto no existe", error_code="presupuesto.no_encontrado")
-    if presupuesto.estado != "enviado":
+    if not significa("presupuesto", presupuesto.estado, "enviado", uow.db):
         raise Conflicto(
             f"Solo se acepta un presupuesto enviado; este está «{presupuesto.estado}».",
             error_code="presupuesto.no_enviado",
@@ -890,7 +900,7 @@ def aceptar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> Pedido:
             detalle={"valido_hasta": str(presupuesto.valido_hasta)},
         )
 
-    presupuesto.estado = "aceptado"
+    presupuesto.estado = estado_de("presupuesto", "aceptado", uow.db)
     presupuesto.aceptado_at = _ahora()
     pedido = Pedido(
         tenant_id=tenant_id,
@@ -929,7 +939,11 @@ def caducar_vencidos(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
         uow.db.execute(
             select(Presupuesto).where(
                 Presupuesto.tenant_id == tenant_id,
-                Presupuesto.estado.in_(("borrador", "enviado", "aprobado")),
+                Presupuesto.estado.in_(
+                    con_significado("presupuesto", "borrador", uow.db)
+                    | con_significado("presupuesto", "enviado", uow.db)
+                    | con_significado("presupuesto", "aprobado", uow.db)
+                ),
                 Presupuesto.valido_hasta.isnot(None),
                 Presupuesto.valido_hasta < dia,
             )
@@ -938,7 +952,7 @@ def caducar_vencidos(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
         .all()
     )
     for fila in filas:
-        fila.estado = "caducado"
+        fila.estado = estado_de("presupuesto", "caducado", uow.db)
     uow.db.flush()
     return {
         "caducados": [f.numero for f in filas],
@@ -1106,7 +1120,7 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
         uow.db.execute(
             select(Contrato).where(
                 Contrato.tenant_id == tenant_id,
-                Contrato.estado == "vigente",
+                Contrato.estado.in_(con_significado("contrato", "vigente", uow.db)),
                 Contrato.fin.isnot(None),
             )
         )
@@ -1164,7 +1178,7 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
             # El viejo queda «renovado» y no «terminado»: la diferencia dice si
             # el cliente sigue con nosotros, y mezclarlas hace que la tasa de
             # bajas cuente como pérdidas las renovaciones.
-            contrato.estado = "renovado"
+            contrato.estado = estado_de("contrato", "renovado", uow.db)
             renovados.append({"de": contrato.numero, "a": nuevo.numero})
 
     uow.db.flush()

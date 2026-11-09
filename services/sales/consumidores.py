@@ -186,3 +186,50 @@ declarar_consumo(
         ),
     )
 )
+
+
+async def consumir_aprobacion(mensaje: Any) -> None:
+    """Aplica al presupuesto lo que se decidió en su aprobación.
+
+    Aprobada: pasa a «aprobado» y ya se puede enviar —`enviar` no vuelve a
+    pararlo—. Rechazada, con cambios pedidos o sin nadie que pudiera
+    aprobarla: vuelve a borrador y el motivo queda escrito en el presupuesto.
+    Sólo se toca un presupuesto que siga en aprobación: si mientras tanto se
+    sustituyó por otra versión, la decisión ya no le aplica.
+    """
+    from uuid import UUID
+
+    from crmcore.datos.estados import estado_de, significa
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+
+    if str(getattr(mensaje, "tipo", "") or "") != "approval.decided":
+        return
+    datos = getattr(mensaje, "data", None) or {}
+    bruto = getattr(mensaje, "tenant_id", None)
+    if not bruto or datos.get("objeto") != "presupuesto" or not datos.get("objeto_id"):
+        return
+
+    from services.sales.presupuestos import Presupuesto
+
+    tenant_id = UUID(str(bruto))
+    with con_contexto(tenant_id=tenant_id, origen="bus"), unidad_de_trabajo(tenant_id) as uow:
+        fila = uow.db.get(Presupuesto, UUID(str(datos["objeto_id"])))
+        if fila is None or fila.tenant_id != tenant_id:
+            return
+        if not significa("presupuesto", fila.estado, "en_aprobacion", uow.db):
+            return
+        resultado = str(datos.get("estado") or "")
+        if datos.get("solicitud_id"):
+            fila.aprobacion_id = UUID(str(datos["solicitud_id"]))
+        if resultado == "aprobada":
+            fila.estado = estado_de("presupuesto", "aprobado", uow.db)
+            return
+        fila.estado = estado_de("presupuesto", "borrador", uow.db)
+        explicacion = {
+            "rechazada": "Aprobación rechazada.",
+            "cambios_pedidos": "La aprobación pide cambios.",
+            "sin_aprobadores": "No hay quién lo apruebe: revisa quién aprueba presupuestos.",
+        }.get(resultado, f"Aprobación terminada como «{resultado}».")
+        detalle = str(datos.get("motivo") or "").strip()
+        fila.motivo_aprobacion = f"{explicacion} {detalle}".strip()

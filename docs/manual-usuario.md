@@ -1400,6 +1400,16 @@ por qué y cuenta como reapertura.
 Y en una **actividad**: el desplegable de la cabecera la empieza, la completa,
 la cancela (te pide por qué) o la retoma.
 
+En un **presupuesto**, el desplegable sirve para marcar que el cliente lo
+rechazó (te pide el motivo) y para los estados propios de tu empresa;
+enviar, aceptar y hacer otra versión siguen en sus botones. En un
+**contrato**, para suspenderlo, terminarlo (ambos con motivo) o reactivarlo.
+
+**Si tu presupuesto se queda «En aprobación»**: lo aprueba quien diga tu
+empresa —de serie, tu responsable— desde Automatización › Procesos y orquestación › Aprobaciones.
+Cuando lo aprueba, pulsa «Enviar» otra vez. Si lo rechaza, o si no hay nadie
+que pueda aprobarlo, vuelve a borrador y arriba de la ficha pone por qué.
+
 Quién decide qué estados hay, cómo se llaman y a cuáles se puede pasar: el
 administrador, en **Administrar › Plataforma › Estados de los objetos**. Y
 las etapas del embudo —cuántas hay, su probabilidad y qué hace falta para salir

@@ -1807,6 +1807,28 @@ de recibir avisos. Pasar a un estado que significa «completada» es completarla
 guarda cuándo y con qué resultado y avisa igual que el botón «Completar».
 Cancelar pide motivo.
 
+**El presupuesto y el contrato**, también desde el 09-11-2026, y con estados
+propios (decidido por formulario). En el presupuesto, lo que tiene efectos
+sigue en su botón —«Enviar» mira la matriz de descuentos, «Aceptar» crea el
+pedido, la versión nueva sustituye a la anterior, caducar es automático— y
+desde el desplegable se llega a lo demás: que el cliente lo **rechace** (con
+motivo) y los **estados propios**. Un estado propio dice qué significa: «En
+negociación» con significado «enviado» se puede aceptar igual que uno
+enviado. Entre dos estados que significan lo mismo se pasa libremente. En el
+contrato, **suspender** y **terminar** (con motivo) y reactivar se hacen desde
+el desplegable —antes no había forma de llegar—; renovar sigue siendo de la
+revisión de renovaciones.
+
+**La aprobación del presupuesto, que no se podía resolver.** Hasta el
+09-11-2026 un presupuesto que se pasaba de la matriz de descuentos quedaba
+«En aprobación» para siempre: el aviso salía y nadie abría la aprobación.
+Ahora la abre el motor de aprobaciones (Automatización › Procesos y orquestación › Aprobaciones), con
+las etapas del ajuste `aprobacion_presupuesto_etapas` —de serie, el superior
+de quien lo envía—. Aprobada, el presupuesto pasa a «Aprobado» y «Enviar» ya
+lo manda. Rechazada, con cambios pedidos o **sin nadie que pueda aprobarla**,
+vuelve a borrador y la ficha dice por qué: una cadena sin aprobadores no
+aprueba sola.
+
 Los objetos **propios del tenant** son el caso distinto: no tienen código
 detrás, así que ahí la declaración de metadatos **es** la máquina entera y sí
 define los estados.

@@ -300,6 +300,17 @@ _CON_SU_CAMINO = {
         "convertido": "se convierte con «Convertir»",
         "descartado": "se descarta con «Descartar», con su motivo",
     },
+    "presupuesto": {
+        "en_aprobacion": "se manda con «Enviar», que mira la matriz de descuentos",
+        "enviado": "se manda con «Enviar», que mira la matriz de descuentos",
+        "aprobado": "lo aprueba quien le toca, desde Aprobaciones",
+        "aceptado": "se acepta con «Aceptar», que crea el pedido",
+        "sustituido": "se sustituye haciendo una versión nueva",
+        "caducado": "caduca solo al pasar su validez",
+    },
+    "contrato": {
+        "renovado": "se renueva desde la revisión de renovaciones, que crea el contrato nuevo",
+    },
 }
 
 
@@ -314,7 +325,10 @@ def cambiar_estado(
     """
     maquina = maquina_efectiva(objeto, uow.db)
     destino = maquina.significado(estado) if maquina else estado
-    camino = _CON_SU_CAMINO.get(objeto, {}).get(destino)
+    origen = maquina.significado(fila.estado) if maquina else fila.estado
+    # Entre dos estados que significan lo mismo —«Enviado» y «En negociación»—
+    # no hay nada que rehacer: lo que hace la acción ya se hizo al llegar.
+    camino = None if destino == origen else _CON_SU_CAMINO.get(objeto, {}).get(destino)
     if camino:
         raise Conflicto(
             f"Pasar a «{estado}» no se hace aquí: {camino}",

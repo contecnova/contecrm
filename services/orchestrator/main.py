@@ -6,6 +6,9 @@ from crmcore.service import crear_servicio
 
 from services.orchestrator.api import ROUTERS
 from services.orchestrator.api_aprobaciones import ROUTERS_APROBACIONES
+from services.orchestrator.aprobacion_de_presupuestos import (
+    consumir as consumir_aprobacion_presupuesto,
+)
 from services.orchestrator.organizacion import consumir as consumir_organigrama
 
 
@@ -43,5 +46,10 @@ app = crear_servicio(
     # transacción de aquí ataría una decisión de negocio a que otro servicio
     # esté en pie.
     al_arrancar=_al_arrancar,
-    consumidores=[("user.org.changed", consumir_organigrama, "orchestrator-organigrama")],
+    consumidores=[
+        ("user.org.changed", consumir_organigrama, "orchestrator-organigrama"),
+        # Abrir la aprobación de un presupuesto parado por la matriz de
+        # descuentos: el aviso salía y no lo escuchaba nadie.
+        ("quote.approval.needed", consumir_aprobacion_presupuesto, "orchestrator-presupuestos"),
+    ],
 )

@@ -385,6 +385,7 @@ const pantallas = {
       "{{cuantos}} no se han podido comparar, así que este resultado no cubre el entorno entero.",
   },
   presupuesto: {
+    aprobacion: "Aprobación",
     costeCambiado: "El coste ha cambiado desde que se ofertó.",
     costeLinea: "{{referencia}}: {{antes}} al ofertar, {{hoy}} hoy",
     costeIgual: "El coste sigue siendo el de cuando se ofertó.",

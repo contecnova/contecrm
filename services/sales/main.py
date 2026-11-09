@@ -22,6 +22,7 @@ from services.sales.api_partners import ROUTERS_PARTNERS
 from services.sales.api_proveedores import ROUTERS_PROVEEDORES
 from services.sales.api_territorios import ROUTERS_TERRITORIOS
 from services.sales.consumidores import (
+    consumir_aprobacion,
     consumir_comando,
     consumir_firma,
     consumir_organigrama,
@@ -138,5 +139,7 @@ app = crear_servicio(
         # pedido se quedaba en «enviado_erp» para siempre, y eso se descubre en
         # el cierre de mes.
         ("order.erp.*", consumir_respuesta_erp, f"{__name__.split('.')[1]}-erp"),
+        # Lo que se decidió en la aprobación de un presupuesto (orchestrator).
+        ("approval.decided", consumir_aprobacion, f"{__name__.split('.')[1]}-aprobaciones"),
     ],
 )

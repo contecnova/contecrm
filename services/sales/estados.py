@@ -91,3 +91,54 @@ OPORTUNIDAD = registrar_maquina(
         obligatorios=frozenset({"abierto", "ganado", "perdido"}),
     )
 )
+
+
+# ── Presupuesto ───────────────────────────────────────────────────────────
+#
+# El presupuesto avanza por acciones que hacen más que cambiar el estado
+# —enviar mira la matriz de descuentos, aceptar crea el pedido, la versión
+# nueva sustituye a la anterior—; esas tienen su camino (`_CON_SU_CAMINO` en
+# `servicio.py`). Lo que la empresa añade son estados propios entre medias
+# —«En negociación» que significa «enviado»—, a los que se llega con el
+# desplegable de la ficha, y las acciones los reconocen por su significado.
+PRESUPUESTO = registrar_maquina(
+    Maquina(
+        objeto="presupuesto",
+        inicial="borrador",
+        transiciones={
+            "borrador": frozenset({"en_aprobacion", "enviado", "sustituido", "caducado"}),
+            # Rechazar la aprobación lo devuelve a borrador, con el motivo.
+            "en_aprobacion": frozenset({"aprobado", "borrador"}),
+            "aprobado": frozenset({"enviado", "sustituido", "caducado"}),
+            "enviado": frozenset({"aceptado", "rechazado", "sustituido", "caducado"}),
+            "rechazado": frozenset({"sustituido"}),
+            "caducado": frozenset({"sustituido"}),
+        },
+        finales=frozenset({"aceptado", "sustituido"}),
+        # Por qué lo rechazó el cliente es lo que se pregunta después.
+        exigen_motivo=frozenset({"rechazado"}),
+        obligatorios=frozenset(
+            {"borrador", "en_aprobacion", "aprobado", "enviado", "aceptado", "sustituido"}
+        ),
+    )
+)
+
+# ── Contrato ──────────────────────────────────────────────────────────────
+#
+# Suspender y terminar no tenían ninguna acción: la tupla los declaraba y no
+# había forma de llegar. Ahora se llega desde el estado, con motivo. Renovar
+# sigue siendo de la revisión de renovaciones, que crea el contrato nuevo.
+CONTRATO = registrar_maquina(
+    Maquina(
+        objeto="contrato",
+        inicial="borrador",
+        transiciones={
+            "borrador": frozenset({"vigente", "terminado"}),
+            "vigente": frozenset({"suspendido", "terminado", "renovado"}),
+            "suspendido": frozenset({"vigente", "terminado"}),
+        },
+        finales=frozenset({"terminado", "renovado"}),
+        exigen_motivo=frozenset({"suspendido", "terminado"}),
+        obligatorios=frozenset({"borrador", "vigente", "terminado", "renovado"}),
+    )
+)

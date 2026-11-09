@@ -76,6 +76,12 @@
   quedan son actividad, presupuesto y contrato.
 - **Actividad, hecho el 09-11-2026**: máquina configurable; vencidas,
   recordatorios, abiertas de la cuenta y salud del cliente por significado.
+- **Presupuesto y contrato, hecho el 09-11-2026** (con estados propios,
+  decidido por formulario). De paso, la aprobación del presupuesto, que no se
+  podía resolver: ahora la abre orchestrator y sales aplica lo decidido.
+  **Pendiente de ver en vivo**: el viaje por el bus, porque la pila local de
+  procesos corre sin NATS. Con esto queda cerrada la entrada 2(a); la
+  entrada 1 (listas legibles) queda cubierta para los objetos de negocio.
 
 ### 3. Las gráficas se leen al pasar el ratón — hecho el 09-11-2026
 

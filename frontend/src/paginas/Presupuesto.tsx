@@ -208,6 +208,13 @@ export function Presupuesto() {
         nombre={presupuesto.titulo || presupuesto.numero}
         fila={presupuesto as unknown as Record<string, unknown>}
         volverA={{ a: "/m/oportunidades", titulo: modulo?.titulo ?? "", id }}
+        // Los estados propios de la empresa —«En negociación»— se alcanzan
+        // desde aquí; enviar, aceptar o la versión nueva siguen en sus botones.
+        cambioDeEstado={{
+          servicio: "sales",
+          ruta: `/api/v1/presupuestos/${id}`,
+          alCambiar: () => cargar(),
+        }}
         distintivos={
           <>
             <span className="chip-dato font-mono">{presupuesto.numero}</span>
@@ -228,6 +235,17 @@ export function Presupuesto() {
           ) : null
         }
       />
+
+      {/* Por qué volvió de la aprobación —rechazada, o sin nadie que pudiera
+          aprobarla—: se guardaba y no se enseñaba, y quien lo envió no sabía
+          qué hacer. Mientras sigue en aprobación no sale: los motivos ya los
+          dice el aviso de la política, más abajo, y dos veces sobra. */}
+      {presupuesto.motivo_aprobacion && presupuesto.estado !== "en_aprobacion" ? (
+        <p role="status" className="card mb-4 p-3 text-dato text-ink-muted">
+          <span className="section-label mr-2">{t("presupuesto.aprobacion")}</span>
+          {presupuesto.motivo_aprobacion}
+        </p>
+      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado

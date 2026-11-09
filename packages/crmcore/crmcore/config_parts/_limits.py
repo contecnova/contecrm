@@ -394,6 +394,18 @@ class _LimitsSettings(BaseSettings):
     # cuenta sin segundo factor es la que se usa para entrar.
     tcsec_mfa_minima_pct: int = Field(100, ge=0, le=100)
 
+    # ── Aprobación de presupuestos ─────────────────────────────────────────
+    # Quién aprueba un presupuesto que se pasa de la matriz de descuentos: las
+    # etapas del motor de aprobaciones (origen jerarquia, rol, usuario, campo o
+    # unidad). De serie, el superior directo de quien lo envía. Hasta el
+    # 09-11-2026 el presupuesto se quedaba en «en aprobación» para siempre: el
+    # aviso salía y nadie abría la aprobación.
+    aprobacion_presupuesto_etapas: list[dict[str, Any]] = Field(
+        default_factory=lambda: [
+            {"nombre": "Superior de quien lo envía", "origen": "jerarquia", "escalones": 1}
+        ]
+    )
+
     # ── Control de flujo en automatizaciones (CRM-00.03.03.04) ────────────
     # Vueltas máximas de un `para_cada`. Una automatización que recorre una
     # colección no puede colgar la petición que la disparó: guardar una

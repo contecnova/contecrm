@@ -1686,7 +1686,11 @@ def proximos_pasos_ia(oportunidad_id: UUID, db: DbDep, principal: AutenticadoDep
                 exists().where(
                     Presupuesto.oportunidad_id == oportunidad_id,
                     Presupuesto.deleted_at.is_(None),
-                    Presupuesto.estado.in_(("en_aprobacion", "aprobado", "enviado")),
+                    Presupuesto.estado.in_(
+                        con_significado("presupuesto", "en_aprobacion", db)
+                        | con_significado("presupuesto", "aprobado", db)
+                        | con_significado("presupuesto", "enviado", db)
+                    ),
                 )
             )
         ).scalar(),
