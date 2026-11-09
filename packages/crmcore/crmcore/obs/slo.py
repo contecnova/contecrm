@@ -225,8 +225,10 @@ async def latencias_de(
     if origen != "compartido":
         crudo = dict(_memoria.get(clave, {}))
     por_op: dict[str, list[int]] = {}
-    for campo, valor in crudo.items():
-        campo = bytes(campo).decode() if isinstance(campo, (bytes, bytearray)) else str(campo)
+    for bruto, valor in crudo.items():
+        # De Redis llega en bytes; de la memoria del proceso, en texto.
+        clave_cubo: Any = bruto
+        campo = clave_cubo.decode() if isinstance(clave_cubo, bytes) else str(clave_cubo)
         op, _, indice = campo.rpartition("|")
         try:
             i = int(indice)
