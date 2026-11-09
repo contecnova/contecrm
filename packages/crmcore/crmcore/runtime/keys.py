@@ -708,6 +708,14 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="automatizacion_pendientes_lote",
         ),
         _c(
+            "automatizacion_programada_max_registros",
+            "int",
+            "Registros que recorre como mucho una automatización programada en cada vuelta",
+            minimo=1,
+            maximo=100_000,
+            campo_settings="automatizacion_programada_max_registros",
+        ),
+        _c(
             "automatizacion_pendientes_max_intentos",
             "int",
             "Intentos antes de dar por fallida una automatización pendiente",

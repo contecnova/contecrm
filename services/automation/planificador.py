@@ -390,6 +390,25 @@ def _atender_una(tenant_id: UUID) -> tuple[str, UUID | None]:
                 # que se vaciara la cola.
                 fila.estado = "descartada"
                 fila.error = "La regla se apagó o se borró antes de que le llegara la hora"
+            elif (
+                fila.origen == "programada"
+                and not fila.registro_id
+                and (repartidas := _repartir(uow, regla, fila)) is not None
+            ):
+                # La hora de una programada sobre un objeto se convierte en una
+                # ejecución por registro que cumple: cada aviso dice de cuál.
+                if repartidas < 0:
+                    # Sin quién la activó no hay con qué permisos leer: falla
+                    # una vez, con el remedio, y no se reintenta —reintentarlo
+                    # no lo arregla y llenaría la cola cada día—.
+                    fila.estado = "fallida"
+                    fila.error = (
+                        "No consta quién activó esta regla y sin eso no se pueden "
+                        "leer sus registros: apágala y vuélvela a encender."
+                    )
+                else:
+                    fila.estado = "hecha"
+                    fila.error = f"Repartida en {repartidas} registros"
             else:
                 traza = motor.ejecutar(
                     uow.db,
@@ -409,6 +428,53 @@ def _atender_una(tenant_id: UUID) -> tuple[str, UUID | None]:
             # cuenta el intento aparte, fuera de ella.
             raise _FalloDeEjecucion(identificador, exc) from exc
     return "atendida", identificador
+
+
+def _repartir(uow: Any, regla: Automatizacion, fila: EjecucionPendiente) -> int | None:
+    """Encola una ejecución por registro del objetivo que cumpla. `None` si no aplica.
+
+    Devuelve -1 si no consta quién activó la regla.
+
+    No aplica —y corre una vez, como antes— si la regla no tiene condiciones
+    (es de calendario) o si su objetivo no es una colección de registros. Sin
+    identidad de quien la activó no se pueden pedir los registros: se dice en
+    vez de recorrerlos con permisos inventados.
+    """
+    from services.automation import registros_programados as rp
+
+    # Sin condiciones es una regla de calendario —«los lunes, recuerda revisar
+    # las oportunidades»— y corre una vez: repartirla mandaría un aviso por
+    # cada oportunidad. Con condiciones, lo que pide es «cuáles cumplen».
+    if not regla.condiciones:
+        return None
+    identidad = motor.identidad_de(regla)
+    if identidad is None:
+        return -1
+    registros = rp.registros_de(
+        regla.objetivo,
+        tenant_id=regla.tenant_id,
+        identidad=identidad,
+        maximo=int(_ajuste("automatizacion_programada_max_registros", uow.db)),
+    )
+    if registros is None:
+        return None
+    cuantas = 0
+    for registro in registros:
+        cumple, _ = motor.evaluar_condiciones(regla, registro)
+        if not cumple or not registro.get("id"):
+            continue
+        if encolar(
+            uow.db,
+            regla,
+            origen="programada_registro",
+            clave=f"{fila.clave}:{registro['id']}",
+            objeto=regla.objetivo,
+            registro_id=str(registro["id"]),
+            valores=registro,
+            ejecutar_at=ahora_utc(),
+        ):
+            cuantas += 1
+    return cuantas
 
 
 class _FalloDeEjecucion(Exception):

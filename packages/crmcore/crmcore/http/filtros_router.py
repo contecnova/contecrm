@@ -45,9 +45,21 @@ def crear_router_filtros(servicio: str) -> APIRouter:
         ),
     )
     def objetos_del_servicio(principal: AutenticadoDep) -> Any:
+        from crmcore.errors import NoEncontrado as _Ninguna
+        from crmcore.http.listados import ruta_de_objeto
         from crmcore.metamodelo import objetos_de_este_servicio
 
-        return {"servicio": servicio, "objetos": objetos_de_este_servicio(servicio)}
+        objetos = objetos_de_este_servicio(servicio)
+        # Y en qué colección vive cada uno: quien tiene que recorrer los
+        # registros de un objeto desde otro servicio —una automatización
+        # programada sobre «lead»— no puede adivinar la ruta.
+        colecciones: dict[str, str] = {}
+        for objeto in objetos:
+            try:
+                colecciones[objeto] = ruta_de_objeto(objeto)
+            except _Ninguna:
+                continue
+        return {"servicio": servicio, "objetos": objetos, "colecciones": colecciones}
 
     @router.get(
         "/{objeto}",

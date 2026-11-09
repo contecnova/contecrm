@@ -454,6 +454,10 @@ class _LimitsSettings(BaseSettings):
     # Cuántas ejecuciones pendientes atiende por tenant y vuelta. Con un tope,
     # un tenant con diez mil encoladas no deja esperando a los demás.
     automatizacion_pendientes_lote: int = Field(100, ge=1, le=10_000)
+    # Cuántos registros recorre como mucho una regla programada sobre un objeto
+    # («todos los leads sin atender») en cada vuelta. Pasado el tope se avisa
+    # en el registro; el resto entra en la siguiente.
+    automatizacion_programada_max_registros: int = Field(1000, ge=1, le=100_000)
     # Intentos antes de dar por fallida una ejecución pendiente. Lo que se
     # reintenta es un fallo de la base o de la red, no el de una acción —ése
     # queda en la traza a la primera, como en las inmediatas—.

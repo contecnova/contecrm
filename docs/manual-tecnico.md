@@ -906,6 +906,14 @@ pantallas:
   evento → `si_caduca` o falla). `esperando_humano` no pasa por aquí: lo
   reanuda `responder_tarea`. Tareas: `_le_toca(tarea, principal)` en
   `api.py` decide responder y delegar.
+- **Programadas por registro** (`services/automation/planificador.py:_repartir`,
+  `registros_programados.py`): una programada con condiciones pide los
+  registros de su objetivo a la colección que publica cada servicio en
+  `GET /{servicio}/filtros` (`colecciones`), con la identidad de quien la
+  activó, y encola una ejecución por registro que cumple (`origen
+  programada_registro`, clave `<clave de la hora>:<id>`). Tope
+  `automatizacion_programada_max_registros`. Operadores `hace_mas_de_horas` y
+  `hace_menos_de_horas` en `services/orchestrator/motor.py`.
 - **Presupuesto y contrato** (`services/sales/estados.py`): máquinas con
   `_CON_SU_CAMINO` en `servicio.py` para lo que tiene acción; entre dos
   estados del mismo significado no se exige el camino. Rutas `POST

@@ -528,6 +528,15 @@ su horario (`programacion`, una expresión cron como «0 8 * * 1», los lunes a 
 varias horas, corre una vez al volver, no tantas como se perdió. Al encender una
 programada, su ficha enseña cuándo correrá (`Próxima ejecución`).
 
+**Una programada con condiciones recorre sus registros.** Si tiene condiciones
+—«lead nuevo, sin dueño y creado hace más de 48 horas»— al llegar su hora mira
+los registros de su objeto y corre **una vez por cada uno que cumple**: cada
+aviso dice de qué lead es. Sin condiciones es de calendario —«los lunes, recuerda
+revisar las oportunidades»— y corre una vez. Recorre los registros con los
+permisos de quien la encendió; si no consta quién fue, en la cola sale «fallida»
+con el remedio: apágala y vuélvela a encender. Para la antigüedad de una fecha
+están los operadores «hace más de N horas» y «hace menos de N horas».
+
 **Qué la dispara.** Creación y modificación, como siempre; **eliminación**,
 cuando se borra un registro de ese objeto; **evento**, cualquier evento del
 catálogo (por ejemplo `contract.renewal.due`, un contrato a punto de vencer);

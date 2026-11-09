@@ -135,7 +135,25 @@ OPERADORES: dict[str, Callable[[Any, Any], bool]] = {
     "contiene": lambda a, b: b in (a or []),
     "vacio": lambda a, _b: a in (None, "", [], {}),
     "no_vacio": lambda a, _b: a not in (None, "", [], {}),
+    # Antigüedad de una fecha, en horas: «lead sin atender hace más de 48 h».
+    # Sin esto una regla programada no podía decir «desde cuándo», y la que se
+    # llamaba «Lead sin atender en 48 horas» avisaba de cualquier lead nuevo.
+    "hace_mas_de_horas": lambda a, b: _horas_desde(a) is not None and _horas_desde(a) > _num(b),  # type: ignore[operator]
+    "hace_menos_de_horas": lambda a, b: _horas_desde(a) is not None and _horas_desde(a) < _num(b),  # type: ignore[operator]
 }
+
+
+def _horas_desde(valor: Any) -> float | None:
+    """Horas transcurridas desde una fecha (ISO o datetime). `None` si no lo es."""
+    if valor in (None, ""):
+        return None
+    try:
+        momento = valor if isinstance(valor, datetime) else datetime.fromisoformat(str(valor))
+    except ValueError:
+        return None
+    if momento.tzinfo is None:
+        momento = momento.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - momento).total_seconds() / 3600
 
 
 def _num(valor: Any) -> float:

@@ -1251,11 +1251,15 @@ def sembrar_automatizacion(api: Api) -> None:
             "disparador": "programada",
             "objetivo": "lead",
             "programacion": "0 8 * * *",
+            # Las TRES a la vez: nuevo, sin dueño y con más de 48 horas. Antes
+            # eran «nuevo» O «sin dueño» y sin edad: avisaba de cualquier lead
+            # nuevo aunque tuviera dueño y se hubiera creado hace un minuto.
             "condiciones": [
                 {"atributo": "estado", "op": "=", "valor": "nuevo"},
                 {"atributo": "owner_id", "op": "vacio"},
+                {"atributo": "created_at", "op": "hace_mas_de_horas", "valor": 48},
             ],
-            "combinacion": "alguna",
+            "combinacion": "todas",
             "acciones": [
                 {
                     "tipo": "notificar",
