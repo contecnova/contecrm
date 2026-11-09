@@ -370,11 +370,15 @@ export function Grafica({
             </svg>
           </div>
 
-          {encima !== null ? (
+          {/* El detalle está SIEMPRE: con la primera categoría mientras no se
+              señala ninguna, y con la señalada al pasar. Sólo al pasar, la
+              tarjeta crecía y encogía con el ratón y no se leía nada sin
+              tocarla (pedido el 09-11-2026). */}
+          {categorias.length > 0 ? (
             <Emergente
-              categoria={categorias[encima] ?? ""}
+              categoria={categorias[encima ?? 0] ?? ""}
               series={series}
-              indice={encima}
+              indice={encima ?? 0}
               unidad={datos.unidad}
             />
           ) : null}
@@ -387,7 +391,10 @@ export function Grafica({
               método admite sólo con codificación secundaria. Sin leyenda, esta
               paleta deja de ser válida. */}
           {series.length > 1 ? (
-            <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+            <ul
+              className="mt-2 flex flex-wrap gap-x-3 gap-y-1"
+              aria-label={t("grafica.leyenda")}
+            >
               {series.map((s) => (
                 <li key={s.clave} className="inline-flex items-center gap-1.5">
                   <span

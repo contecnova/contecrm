@@ -91,6 +91,10 @@ ninguna; y la gráfica se dibujaba a 640 de ancho fijo, con lo que en una
 tarjeta la letra se veía de 8,6 px. Ahora cada fila es su zona —también con el
 teclado—, se resalta la señalada con su emergente y la gráfica mide su sitio.
 
+Y el 09-11-2026, pedido al verlo: el detalle de debajo de cada gráfica sale
+**siempre** —con la primera barra mientras no se señala ninguna, y con la
+señalada al pasar—. Sólo al pasar, la tarjeta crecía y encogía con el ratón.
+
 ### 4. Un GRC mucho más potente — hecho el 09-11-2026
 
 - **Pedido**: 09-11-2026 — «el GRC debe ser mucho más potente, pudiendo llegar

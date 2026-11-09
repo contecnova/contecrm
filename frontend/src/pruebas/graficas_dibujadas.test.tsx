@@ -38,19 +38,28 @@ describe("lo que se pinta", () => {
     // teal se separan ΔE 6,6 bajo deuteranopía, en la banda que sólo es legal
     // con codificación secundaria. Con una serie sobra: el título ya la nombra
     // y una leyenda de un elemento es una fila de ruido.
-    const { unmount } = render(<Grafica forma="lineas" datos={MESES} titulo="Por mes" />);
-    expect(screen.getByText("Ventas")).toBeInTheDocument();
-    expect(screen.getByText("Soporte")).toBeInTheDocument();
+    // Se busca DENTRO de la leyenda: desde el 09-11-2026 el detalle de abajo
+    // sale siempre (con la primera categoría) y también nombra las series.
+    const { unmount } = render(
+      <Grafica forma="lineas" datos={MESES} titulo="Por mes" />,
+    );
+    const leyenda = screen.getByRole("list", { name: /leyenda/i });
+    expect(within(leyenda).getByText("Ventas")).toBeInTheDocument();
+    expect(within(leyenda).getByText("Soporte")).toBeInTheDocument();
     unmount();
 
     render(<Grafica forma="lineas" datos={unaSerie()} titulo="Por mes" />);
-    expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", { name: /leyenda/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("el trazo se parte en el hueco y no lo cruza", () => {
     // Febrero no tiene dato. Una línea recta de enero a marzo dibuja una
     // tendencia que nadie midió, y es el error más caro de una serie temporal.
-    const { container } = render(<Grafica forma="lineas" datos={unaSerie()} titulo="Por mes" />);
+    const { container } = render(
+      <Grafica forma="lineas" datos={unaSerie()} titulo="Por mes" />,
+    );
     const trazos = container.querySelectorAll("path[stroke]");
     expect(trazos.length).toBe(2);
     for (const t of trazos) {
@@ -68,7 +77,9 @@ describe("lo que se pinta", () => {
       ],
       series: [{ clave: "ventas", rotulo: "Ventas" }],
     };
-    const { container } = render(<Grafica forma="lineas" datos={seguidos} titulo="Por mes" />);
+    const { container } = render(
+      <Grafica forma="lineas" datos={seguidos} titulo="Por mes" />,
+    );
     expect(container.querySelectorAll("path[stroke]").length).toBe(1);
   });
 
@@ -79,12 +90,18 @@ describe("lo que se pinta", () => {
     const { container: sola } = render(
       <Grafica forma="area" datos={unaSerie()} titulo="Una" />,
     );
-    expect(sola.querySelectorAll("path[fill-opacity]").length).toBeGreaterThan(0);
+    expect(sola.querySelectorAll("path[fill-opacity]").length).toBeGreaterThan(
+      0,
+    );
 
-    const { container: tres } = render(<Grafica forma="area" datos={MESES} titulo="Tres" />);
+    const { container: tres } = render(
+      <Grafica forma="area" datos={MESES} titulo="Tres" />,
+    );
     expect(tres.querySelectorAll("path[fill-opacity]")).toHaveLength(0);
     // Pero las tres líneas siguen ahí: se degrada, no se deja de dibujar.
-    expect(tres.querySelectorAll("path[stroke]").length).toBeGreaterThanOrEqual(3);
+    expect(tres.querySelectorAll("path[stroke]").length).toBeGreaterThanOrEqual(
+      3,
+    );
   });
 
   it("el embudo no lleva eje de valor ni rótulos abajo", () => {
@@ -101,13 +118,15 @@ describe("lo que se pinta", () => {
       ejeX: "etapa",
       series: [{ clave: "n", rotulo: "Oportunidades" }],
     };
-    const { container } = render(<Grafica forma="embudo" datos={embudo} titulo="Embudo" />);
+    const { container } = render(
+      <Grafica forma="embudo" datos={embudo} titulo="Embudo" />,
+    );
     // Ni una línea de rejilla.
     expect(container.querySelectorAll("line")).toHaveLength(0);
     // El nombre de cada etapa está, y alineado a la derecha contra su barra.
-    const rotulos = [...container.querySelectorAll('text[text-anchor="end"]')].map(
-      (e) => e.textContent,
-    );
+    const rotulos = [
+      ...container.querySelectorAll('text[text-anchor="end"]'),
+    ].map((e) => e.textContent);
     expect(rotulos).toContain("Contactado");
     expect(rotulos).toContain("Ganada");
     // Y el peso de cada etapa SOBRE EL TOTAL: 1.200 + 720 + 62 = 1.982, así
@@ -144,10 +163,12 @@ describe("lo que se pinta", () => {
       ejeX: "etapa",
       series: [{ clave: "n", rotulo: "Oportunidades" }],
     };
-    const { container } = render(<Grafica forma="embudo" datos={largas} titulo="Embudo" />);
-    const rotulos = [...container.querySelectorAll('text[text-anchor="end"]')].map(
-      (e) => e.textContent ?? "",
+    const { container } = render(
+      <Grafica forma="embudo" datos={largas} titulo="Embudo" />,
     );
+    const rotulos = [
+      ...container.querySelectorAll('text[text-anchor="end"]'),
+    ].map((e) => e.textContent ?? "");
     // Que se han mirado los tres: una lista vacía daría verde sin cortar nada.
     expect(rotulos).toHaveLength(3);
     expect(rotulos.filter((r) => r.includes("\u2026"))).toEqual([]);
@@ -171,7 +192,11 @@ describe("lo que se pinta", () => {
     // devuelve la clave, y una aserción sobre la copia se rompe el día que
     // alguien mejore la frase sin tocar el comportamiento.
     const { container } = render(
-      <Grafica forma="barras" datos={{ ...MESES, filas: [] }} titulo="Por mes" />,
+      <Grafica
+        forma="barras"
+        datos={{ ...MESES, filas: [] }}
+        titulo="Por mes"
+      />,
     );
     // Ni dibujo ni ejes: un marco vacío con la rejilla puesta parece una
     // gráfica cargando para siempre.
@@ -183,30 +208,41 @@ describe("lo que se pinta", () => {
 
   it("la gráfica se anuncia con su título a quien no la ve", () => {
     render(<Grafica forma="barras" datos={MESES} titulo="Ventas por mes" />);
-    expect(screen.getByRole("img", { name: "Ventas por mes" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Ventas por mes" }),
+    ).toBeInTheDocument();
   });
 
   it("a partir de la sexta serie se pliega la cola, no se inventan colores", () => {
     const muchas: DatosGrafica = {
       filas: [{ x: "a", s1: 1, s2: 2, s3: 3, s4: 4, s5: 5, s6: 6, s7: 7 }],
       ejeX: "x",
-      series: [1, 2, 3, 4, 5, 6, 7].map((n) => ({ clave: `s${n}`, rotulo: `S${n}` })),
+      series: [1, 2, 3, 4, 5, 6, 7].map((n) => ({
+        clave: `s${n}`,
+        rotulo: `S${n}`,
+      })),
     };
-    const { container } = render(<Grafica forma="barras" datos={muchas} titulo="Muchas" />);
-    expect(screen.getByText("S5")).toBeInTheDocument();
+    const { container } = render(
+      <Grafica forma="barras" datos={muchas} titulo="Muchas" />,
+    );
+    // En la leyenda: el detalle de abajo sale siempre y nombra también las series.
+    const leyenda = screen.getByRole("list", { name: /leyenda/i });
+    expect(within(leyenda).getByText("S5")).toBeInTheDocument();
     // S6 y S7 ya no tienen rótulo propio: van sumadas en una sola entrada.
     expect(screen.queryByText("S6")).not.toBeInTheDocument();
     expect(screen.queryByText("S7")).not.toBeInTheDocument();
     // Seis entradas de leyenda para siete series: cinco con color y la cola.
-    expect(container.querySelectorAll("ul li")).toHaveLength(6);
+    expect(within(leyenda).getAllByRole("listitem")).toHaveLength(6);
     // Y los colores usados son exactamente los cinco declarados más «otros»:
     // ni uno generado.
     const usados = new Set(
-      [...container.querySelectorAll("rect[fill^=\"rgb(var(--viz\"]")].map((r) =>
+      [...container.querySelectorAll('rect[fill^="rgb(var(--viz"]')].map((r) =>
         r.getAttribute("fill"),
       ),
     );
     expect(usados.size).toBeLessThanOrEqual(6);
-    expect([...usados].every((c) => /--viz-([1-5]|otros)\)/.test(c ?? ""))).toBe(true);
+    expect(
+      [...usados].every((c) => /--viz-([1-5]|otros)\)/.test(c ?? "")),
+    ).toBe(true);
   });
 });

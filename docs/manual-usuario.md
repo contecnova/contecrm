@@ -1605,7 +1605,8 @@ su lección.
 
 1. Arriba ves **lo que se repite**: los factores que más pesan en las perdidas y
    en las ganadas, y en qué etapa se pierde. Cada gráfica tiene «Ver como
-   tabla».
+   tabla», y debajo, siempre, el detalle de una barra: la primera, hasta que
+   pasas por encima de otra.
 2. Debajo, la lista. Es como la de oportunidades: **Filtrar** (por resultado,
    estado o motivo), buscar, elegir columnas y exportar. Para ver lo que te toca
    firmar, filtra por estado «pendiente».

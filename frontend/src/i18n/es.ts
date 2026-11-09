@@ -61,6 +61,7 @@ export default {
     faltan: "Objetivo {{objetivo}} — faltan {{falta}}",
   },
   grafica: {
+    leyenda: "Leyenda",
     verTabla: "Ver como tabla",
     verDibujo: "Ver como gráfica",
     sinDatos: "No hay datos que dibujar",
