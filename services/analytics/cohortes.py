@@ -199,6 +199,7 @@ def embudo(
     etapas: list[str],
     recorridos: list[dict[str, Any]],
     hoy: date | None = None,
+    contar_saltadas: bool = False,
 ) -> dict[str, Any]:
     """Conversión y tiempos entre etapas (CRM-05.01.03.05).
 
@@ -241,9 +242,16 @@ def embudo(
         if not pasos:
             continue
         alcanzadas = {e for e, _ in pasos}
+        ultima = max(alcanzadas, key=lambda e: indice[e])
+        # Con `contar_saltadas`, llegar a la etapa 4 cuenta como haber pasado
+        # por la 2 y la 3 aunque el historial no lo apunte: en un embudo real
+        # se salta etapas (una venta urgente va de «calificada» a «propuesta»),
+        # y sin esto la etapa saltada sale con MENOS llegadas que la siguiente
+        # y una conversión por encima del 100 %.
+        if contar_saltadas:
+            alcanzadas = {etapas[i] for i in range(indice[ultima] + 1)}
         for etapa in alcanzadas:
             llegadas[indice[etapa]] += 1
-        ultima = max(alcanzadas, key=lambda e: indice[e])
         if recorrido.get("abierto"):
             abiertos_en[indice[ultima]] += 1
         for (etapa, fecha), (siguiente, fecha_siguiente) in zip(pasos, pasos[1:], strict=False):

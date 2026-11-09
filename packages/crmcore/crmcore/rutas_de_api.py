@@ -163,6 +163,9 @@ PREFIJOS: dict[str, str] = {
     # Suites de productividad (CRM-06.01.03): perfiles, consentimiento,
     # suscripciones y reuniones en línea.
     "suites": "integration",
+    # Notas, ficheros y conversaciones de la suite vinculados a un registro por
+    # referencia (CRM-06.01.03.08, .09, .12).
+    "referencias-suite": "integration",
     # Motor externo de compensación (CRM-03.02.03.04).
     "compensacion": "integration",
     # Telefonía conectada: screen pop y transferencia con contexto

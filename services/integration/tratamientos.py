@@ -81,3 +81,50 @@ declarar(
         responsable=RESPONSABLE,
     )
 )
+
+# ── Lo que constaba hecho y sólo simulaba, ahora guardado (09-11-2026) ────
+
+declarar(
+    Tratamiento(
+        objeto="llamadas_telefonicas",
+        # El número, quién atendió, lo que tecleó en el IVR y el enlace a la
+        # grabación. La grabación vive en la centralita, no aquí.
+        finalidad=(
+            "Identificar a quien llama, atenderle con su contexto y dejar constancia "
+            "de cada llamada como actividad del cliente"
+        ),
+        base_legal="interes_legitimo",
+        plazo="Mientras exista la actividad que la registra; la grabación, el plazo de la centralita",
+        destinatarios=("Proveedor de telefonía configurado por el cliente",),
+        responsable=RESPONSABLE,
+    )
+)
+
+declarar(
+    Tratamiento(
+        objeto="hechos_compensacion",
+        finalidad=(
+            "Mandar al motor de compensación del cliente las ventas, cobros y "
+            "devoluciones de cada comercial y conciliar lo que calcula"
+        ),
+        base_legal="contrato",
+        plazo="4 años desde el periodo liquidado, por la obligación de justificar la nómina",
+        destinatarios=("Motor de compensación configurado por el cliente",),
+        responsable=RESPONSABLE,
+    )
+)
+
+declarar(
+    Tratamiento(
+        objeto="referencias_suite",
+        # Sólo la referencia y el nombre: el contenido se queda en el origen.
+        finalidad=(
+            "Enlazar a un registro del CRM notas, ficheros y conversaciones que "
+            "siguen en la suite del cliente, sin copiarlos"
+        ),
+        base_legal="interes_legitimo",
+        plazo="Mientras exista el registro al que cuelgan o hasta que se quite el vínculo",
+        destinatarios=("La suite de productividad que use el cliente",),
+        responsable=RESPONSABLE,
+    )
+)

@@ -1726,6 +1726,28 @@ Los sobres en sí, con sus firmantes y su evidencia, están en
 **Administrar › Operación › Sobres de firma**, y desde cada uno se puede
 mandar, recordar, cancelar o archivar el documento firmado.
 
+### Mandar a firmar desde la oportunidad
+
+En **Ventas › Oportunidades**, abre la oportunidad y baja a la tarjeta **«La
+firma»**. Pulsa **«Enviar a firma»**, elige qué se firma —por defecto, el último
+presupuesto vivo—, escribe el nombre y el correo de cada firmante y pulsa
+**«Crear el sobre»**. Con «Mandarlo ya» marcado sale al proveedor; sin marcar,
+queda preparado.
+
+La tarjeta dice en qué está la firma (con un enlace al sobre) y, **antes de
+mandar**, a qué etapa pasará la oportunidad cuando se firme. Si dice que sólo se
+marcará, es que su embudo no tiene etapa para una firma completada: se
+configura en **Administrar › Usuarios y empresa › Administración**, ajuste
+`firma_etapa_por_embudo`. Si la firma se completa y la etapa no puede moverse
+—faltan datos que la etapa exige—, la tarjeta dice por qué.
+
+### Las renovaciones se abren solas
+
+Cuando un contrato llega a su preaviso, aparece sola una oportunidad
+**«Renovación CTR-…»** en el embudo de renovaciones (o en el de por defecto),
+con el importe del contrato y su vencimiento como fecha de cierre. Se trabaja
+como cualquier otra oportunidad, en **Ventas › Oportunidades**.
+
 ### Si una firma se sostiene, o sólo lo parece
 
 Al abrir un sobre, lo primero que sale no es si está firmado: es **si esa firma
@@ -2020,6 +2042,27 @@ Devoluciones y sustituciones con su propio flujo, enlazadas al pedido y al activ
 Lo que se registra es qué volvió, por qué y en qué estado: sin el motivo, el mismo
 producto vuelve a fallar y nadie puede demostrar que es un patrón.
 
+### Reparar, sustituir o abonar, y anotar el abono
+
+En **Servicio › Postventa**, abre la devolución. Se resuelve con **«Reparar,
+sustituir o abonar»**, en las acciones de la cabecera. Un abono queda
+«solicitado» hasta que quien factura lo emite: cuando conteste, en la tarjeta
+**«Resoluciones»** pulsa **«Anotar lo que contestó quien factura»** y elige
+**«Abono emitido»** con su referencia, o **«Abono rechazado»** con el motivo.
+
+### Derivar un caso a otro nivel
+
+En **Servicio › Casos**, abre el caso y pulsa **Más › Derivar**. Elige la cola
+destino, escribe qué se espera del siguiente nivel y marca **«Interno»** si el
+cliente no debe verlo. El caso sigue siendo el mismo y su reloj no se reinicia.
+
+### Lo que prometemos frente a lo que sostiene el proveedor
+
+En **Servicio › SLA de proveedores**: arriba, qué derechos prometen lo que su
+proveedor no sostiene. En «Quién da cada derecho» eliges el proveedor de cada
+derecho de servicio, y en «Lo que sostiene cada proveedor» guardas su acuerdo
+(**«Añadir acuerdo»**: respuesta, resolución, disponibilidad y cobertura).
+
 ---
 
 ## Informes y cuadros de mando (sección 5.1)
@@ -2069,6 +2112,33 @@ registrada no se dice que el informe sea rápido: se dice que no consta ninguna.
   antes de ayer.
 - Si algo no se puede calcular, el informe lo dice — **una celda vacía y un cero
   significan cosas distintas** y aquí no se confunden.
+
+### Embudo, cohortes y actividad
+
+**Analítica → Embudo, cohortes y actividad.** Todo sale de los datos del CRM, con
+lo que tú puedes ver:
+
+- **Embudo de ventas**: elige el embudo en el desplegable de arriba a la
+  derecha. La gráfica dice cuántas oportunidades llegaron a cada etapa y la
+  tabla de al lado, qué parte pasó de la anterior, cuántas se quedaron y los
+  días que suelen tardar. Encima, en una frase, dónde se pierden más.
+- **Retención por cohorte**: elige *Semana*, *Mes* o *Trimestre*. Cada fila son
+  las cuentas dadas de alta en ese periodo; cada columna (+0, +1…), qué parte
+  tuvo actividad después. «…» es un periodo que aún no ha terminado y un número
+  suelto, una cohorte demasiado pequeña para dar porcentaje.
+- **Actividad frente a resultados**: actividades y oportunidades ganadas por
+  persona. Si no hay bastantes personas para que el número signifique algo, lo
+  dice en vez de darlo.
+- **Instantáneas programadas**: elige el informe, la frecuencia y la hora y
+  pulsa **Programar la instantánea**; **Tomar una ahora** guarda la de hoy. A la
+  derecha, la tendencia. **Quitar** deja de tomarlas sin borrar las tomadas.
+- **Consulta al lake del cliente**: elige la fuente y el objeto, los campos si
+  no los quieres todos y cuántas filas, y pulsa **Consultar**. El tope lo pone
+  la fuente; si hay más, se dice.
+
+Debajo de cada análisis, unas etiquetas dicen **de dónde salieron los datos**
+(del almacén o de la aplicación), cuántos se leyeron y si se recortó. En
+amarillo, lo que conviene mirar: recortado, sin permiso o que no se pudo leer.
 
 ---
 
@@ -2330,6 +2400,44 @@ Usuarios y empresa → Administración**, en los ajustes de la IA (`ia_…`).
   es el caso, que es parcial o que el listado filtraba algo por defecto (las
   oportunidades, por ejemplo, enseñan sólo las abiertas si no se dice otra
   cosa).
+- **Modo voz.** Marca **«Modo voz»** debajo de la pregunta y pulsa
+  **«Hablar»**: dicta la pregunta y, al terminar, se pregunta sola y la
+  respuesta se lee en voz alta (**«Dejar de leer»** la corta). Si tu navegador
+  no reconoce voz, aparece **«Terminar y preguntar»**: se graba, lo transcribe
+  el proveedor de la empresa y no se guarda la grabación. Lo que el asistente
+  proponga hacer se confirma igual, a mano.
+
+### Transcribir y resumir una llamada o reunión
+
+**Actividades → abre la llamada, reunión o visita → bloque «Transcripción y
+resumen»**, encima de las pestañas:
+
+1. En **«Qué transcribir»** elige *Fichero de audio* (la grabación queda como
+   documento de la actividad), *Enlace a la grabación* o *Texto ya transcrito*.
+2. Elige la **base para grabar** y marca **«Se avisó a todos los participantes
+   de que se grababa»**: sin eso no se manda nada a ningún sitio.
+3. Pulsa **«Transcribir y resumir»**. Sale el resumen, la confianza de la
+   transcripción y los **compromisos y próximos pasos**, cada uno con quién,
+   cuándo y la frase en que se apoya (si esa frase no está tal cual en lo
+   transcrito, te lo dice).
+4. En cada compromiso corrige el asunto y la fecha si hace falta y pulsa
+   **«Confirmar y crear la tarea»** —se crea con tu usuario, colgada de la
+   cuenta de la reunión, y aparece **«Abrir la tarea»**— o **«Descartar»**.
+
+Si dice que **no hay proveedor de transcripción**, quien administra la IA lo
+instala desde ese mismo bloque: elige la plantilla del proveedor, pulsa
+**«Instalar»** y pone su clave en **Integraciones → la conexión creada →
+Credenciales**. El texto pegado se resume sin proveedor.
+
+### Variantes de un asunto con IA
+
+**Marketing → Contenido y gobierno → Plantillas → abre una plantilla → bloque
+«Variantes con IA».** El texto base es el asunto; escribe el **objetivo**, elige
+el canal y cuántas, y pulsa **«Generar variantes»**. Cada una sale como
+*Propuesta*: corrígela si quieres y pulsa **«Aprobar»**, o escribe el motivo y
+**«Rechazar»**. De las aprobadas, **«Elegir como ganadora»** marca la que se usa.
+Lo marcado en «Comprobar antes de aprobar» —cifras, garantías, superlativos, un
+`{{marcador}}` que se ha perdido— es lo que hay que leer despacio.
 
 ## Correo, calendario y el resto de tus herramientas (sección 6.1)
 
@@ -2404,6 +2512,41 @@ Debajo, tres preguntas que se hacen en un momento concreto:
 | **¿De quién es esta cuenta?** | Antes de atribuir una conversación. Resuelve alias y buzones compartidos, y **no adivina**: adivinar le cuelga a alguien algo que no es suyo |
 | **¿Cuándo está libre?** | Antes de proponer una hora. Se lee **si está ocupado, no de qué**: el asunto puede ser «revisión médica» y para proponer una hora no hace falta |
 | **¿Qué entraría de este fichero?** | Antes de importar. Formatos estándar, con el recuento delante: deshacer una importación a mano no lo hace nadie |
+
+### Vincular una nota, un fichero o una conversación de la suite a una ficha
+
+Abre la ficha de cualquier registro (un contacto, una oportunidad, un caso…) y
+baja hasta **De la suite** › **Vincular**. Elige **Qué es** (nota, fichero o
+conversación), pega el **enlace o identificador en el origen**, ponle un
+**nombre** y, si la empresa tiene una suite conectada, el **perfil de suite** que
+sabe abrirlo. **Guardar el vínculo**.
+
+En el CRM queda sólo el enlace: el contenido sigue en su sitio. Al pulsar
+**Abrir** se pregunta al origen si existe y si tú puedes verlo, y la línea dice
+«disponible» (con **Ir al origen**), «no tienes acceso» o «ya no está». Si el
+perfil no sabe comprobarlo, lo dice: **no se puede comprobar**, y el origen
+decidirá al abrir el enlace. **Quitar el vínculo** sólo lo quita del CRM.
+
+### Las reuniones del calendario entran solas
+
+Si tu calendario está conectado (Usuarios y empresa › Aplicaciones conectadas),
+cada cita con alguien de fuera aparece como actividad **Reunión**, con sus
+asistentes: los que son contactos van ligados a su ficha y los que no, con su
+correo — son los que faltan por dar de alta.
+
+### Avisos y consultas en el chat del equipo
+
+En **Administrar › Operación › Canales de chat** se conecta un canal con su
+dirección de webhook. Marca **Recibe avisos** para que le lleguen los avisos de
+las automatizaciones. Desde la ficha del canal, **Qué se puede hacer con esto ›
+Mandar un aviso al canal de chat** manda uno a mano; la ficha enseña después si
+llegó (**Último aviso ok**). Para que los avisos lleven el enlace al registro,
+el administrador pone la dirección pública del CRM en el ajuste
+**chat_url_crm**.
+
+Cuando alguien pregunta desde el chat por un registro, se contesta con lo que
+**esa persona** puede ver en el CRM, identificada por su correo. Si su correo no
+es el de nadie del CRM, no se contesta con datos.
 
 ---
 
@@ -2515,6 +2658,33 @@ algo que se resuelve solo: el único que puede arreglarlo es el proveedor.
 Un proveedor solo ve lo suyo. Los papeles de otro le responden que no le
 corresponde.
 
+### Calidad del dato: la ficha buena, el proveedor y la misma persona
+
+Se entra por **Clientes › Duplicados** y el botón **Calidad del dato** de
+arriba a la derecha (o directamente en `/calidad-del-dato`). Hay cinco bloques:
+
+1. **Ficha buena (golden record)**: la lista enseña las fichas que tienen otra
+   versión fusionada o unida. Pulsa **Componer** en una y verás, campo a
+   campo, el valor que gana, de qué fuente sale, con qué regla y lo que dicen
+   las demás. Los campos con «!» tienen fuentes que no coinciden. Si estás de
+   acuerdo, pulsa **Aplicar a la ficha**.
+2. **Reglas de supervivencia**: elige el objeto, el campo (o «*» para todos),
+   la estrategia y la confianza de cada fuente, una por línea (`erp=90`), y
+   pulsa **Guardar la regla**. Para cambiar una, púlsala en la lista; **Quitar**
+   la devuelve a la regla por defecto.
+3. **La misma persona en cada canal**: salen las parejas de contactos que
+   comparten correo, teléfono u otro identificador. Pulsa **Unir** y la
+   primera queda como principal; no se borra ninguna ficha.
+4. **Proveedor de datos**: declara el proveedor (clave, nombre, conexión de
+   Integraciones, operación, parámetros y qué campo va a cada campo), elige
+   una ficha en **Pedir para** y pulsa **Pedir**. En **Propuestas por revisar**
+   marca los campos que quieres —vienen marcados los huecos— y pulsa
+   **Aplicar lo marcado**, o **Descartar**.
+5. **Cuánto tienen que parecerse dos fichas** y **Direcciones normalizadas**:
+   escribe el umbral propio de cada objeto (vacío = el general) y pulsa
+   **Guardar los umbrales**; en direcciones, **Ver qué cambiaría** y, si te
+   convence, **Aplicar**.
+
 ### Duplicados: el sistema los busca, tú decides
 
 Están en **Clientes → Duplicados**. Es el único sitio, y a
@@ -2598,7 +2768,17 @@ Tres cosas que conviene saber:
 - **Sólo se arrastra lo que se puede guardar.** Si ese campo no se puede
   cambiar después de crear el registro, la tarjeta no se coge. Dejarte cogerla
   para devolverla a su sitio sin decir por qué se lee como que algo falla.
-- **Si el servidor dice que no, la tarjeta vuelve** y se enseña su motivo. Hay
+- **La etapa de una oportunidad también se arrastra.** Ventas › Oportunidades
+  › botón «Por columnas» (arriba a la derecha de la lista): soltar una tarjeta
+  en otra columna la mueve de etapa con los mismos controles que el embudo
+  —criterios de salida, y cierre si la etapa es la final—. Hasta el 09-11-2026
+  esta vista no dejaba coger ninguna. Si hay dos embudos con una etapa que se
+  llama igual, va a la de su embudo; si no se puede saber cuál es, no se mueve
+  y te dice que lo hagas desde la ficha.
+- **Si el servidor dice que no, la tarjeta vuelve** y se enseña su motivo.
+  Cuando un rechazo trae varios motivos concretos —por ejemplo, un
+  presupuesto con dos productos que no se venden juntos— el aviso los lista
+  a la vista, uno por línea, con qué choca con qué. Hay
   cambios que el negocio no admite —una oportunidad perdida no vuelve a
   negociación— y dejarla donde la soltaste enseñaría un embudo que no existe.
 - **Sin ratón también se mueve.** Tabulando hasta la tarjeta aparece un
@@ -2964,7 +3144,10 @@ existían por API, es decir, que estaban hechas y no se podían ver:
   nadie vuelve a mirarlo. Y al lado, **quién puede hacer qué**, con los dos
   agujeros opuestos: permisos que alguna pantalla exige y no tiene ningún rol
   —funcionalidad muerta— y permisos concedidos que ninguna pantalla exige
-  —privilegios dados por si acaso—.
+  —privilegios dados por si acaso—. Debajo, **cada tratamiento** en una tabla:
+  el dato, para qué se trata, con qué base legal y cuánto se guarda. En el
+  servicio **integration** están los de la suite (consentimientos, buzones,
+  suscripciones y lo vinculado por referencia), las llamadas y la compensación.
 - **Qué se puede recuperar.** Lo que hay en la papelera, lo primero lo que menos
   tiempo le queda antes de purgarse, con cuántos registros se llevaría por
   delante al restaurarlo.
@@ -3652,6 +3835,26 @@ antes de contestar.
 Y si sale un aviso de que **algún servicio no ha contestado**, la lista puede
 estar incompleta: no lo leas como «no me han mencionado».
 
+### Trabajar sin conexión
+
+Si se va la red, sigues viendo lo que ya habías abierto y puedes seguir
+editando registros y dando de alta. Arriba sale una franja amarilla:
+**«Sin conexión: ves lo último que se consultó…»**. Al guardar, el aviso dice
+que **se ha guardado en este dispositivo y se enviará al volver la red**: no es
+un error.
+
+Cuando vuelve la red se envía solo. Para ver qué queda pendiente: tu nombre,
+arriba a la derecha → **Sin conexión** (o **Ver** en la franja).
+
+- **Pendiente de enviar**: lo que aún no ha subido. Lo que el servidor rechazó
+  se queda aquí con su motivo hasta que pulses **Descartar**.
+- **Conflictos por resolver**: otra persona cambió el mismo campo mientras
+  estabas sin red. Sale **lo tuyo** y **lo que hay en el servidor**; elige uno
+  en cada campo y pulsa **Aplicar lo elegido**, o **Quedarme con lo del
+  servidor** para olvidar tu cambio. Nada se elige solo.
+
+Al cerrar sesión se borra lo consultado de este dispositivo.
+
 ### Saber si una venta se puede cerrar
 
 En la ficha de la oportunidad, el panel **«Qué falta para poder cerrar»** no te
@@ -3859,6 +4062,46 @@ sala**. Se crea en la suite de tu empresa (Teams o Meet, la que esté conectada)
 y el enlace **Entrar en la reunión** queda en la actividad. Si el botón sale
 apagado, debajo dice por qué: normalmente, que no hay suite conectada o que no
 has autorizado las reuniones en **Consentimiento de suite**.
+
+### Llamar a un contacto o a una cuenta
+
+En la ficha de un **contacto** (bloque **Llamar**) o en la de una **cuenta**
+(«Lo que ha pasado» › **Llamar**), elige el número, marca **La persona consiente
+que se grabe** si te lo ha dicho y pulsa **Llamar**: la centralita de tu empresa
+marca. Si la persona pidió no ser llamada, el CRM no llama y te dice por qué.
+Al colgar, la llamada queda sola como actividad en la ficha, con su duración;
+tú sólo eliges **Cómo fue**, escribes **Qué se habló** y pulsas **Anotar y
+cerrar**. Con «Pide que no le llamen» la ficha queda marcada como «no
+contactar»; con «Reprogramar» pon la fecha y se crea la siguiente llamada.
+
+### Atender una llamada que entra
+
+Cuando te entra una llamada, abajo a la derecha sale **Llamada entrante** con
+quién es (o las fichas que comparten ese número), **lo que ya dijo en el IVR**
+—no se lo vuelvas a preguntar— y lo último que le pasó. **Abrir su ficha** te
+lleva a ella. Para pasarla, **Transferir**, escribe a quién y un resumen y pulsa
+**Transferir con el resumen**: quien la recibe lo lee. Al colgar se registra
+sola.
+
+### Conectar la centralita y ver las llamadas (administración)
+
+**Servicio › Telefonía.** En **Perfil de telefonía** elige la **Conexión** de
+Integraciones de tu centralita —con las operaciones `originar_llamada` y
+`transferir_llamada` declaradas— y ajusta **Cómo se lee el aviso de la
+centralita**; pulsa **Guardar el perfil**. Debajo dice qué falta. La centralita
+manda sus avisos a `POST /api/v1/telefonia/avisos` con una clave de API. En
+**Llamadas** se ve cada una: quién, cómo terminó, cuánto duró, el IVR,
+**Escuchar** la grabación y **Ver actividad**.
+
+### Mandar los hechos al motor de comisiones (administración)
+
+**Ventas › Compensación externa.** En **Motor**, elige la conexión del motor
+(con `enviar_hechos` y `leer_calculo`) y pulsa **Usar como motor**. En
+**Periodo**, pon las fechas y pulsa, en orden, **Recoger las ventas ganadas**,
+**Mandar lo pendiente**, **Traer el cálculo** y **Conciliar con la casa**. Los
+cobros, devoluciones y anulaciones se dan de alta en **Cobro, devolución o
+anulación**. En **Hechos** se ve cada uno con lo que calculó el motor, lo que
+calcula la casa y la **Diferencia** en rojo cuando no cuadra.
 
 ## Qué hacer cuando algo no sale
 

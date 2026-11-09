@@ -27,6 +27,10 @@ const RAIZ = join(__dirname, "..", "..", "src");
 
 /** Rutas que abren un registro y no ofrecen edición, y por qué. */
 const SIN_EDICION_PORQUE: Record<string, string> = {
+  AbrirRegistro:
+    "No enseña ningún registro: es el enlace de los avisos al chat " +
+    "(`/abrir/{objeto}/{id}`) y redirige a la ficha de su módulo, que es la " +
+    "que ofrece la edición.",
   RecorridoDeMarketing:
     "El recorrido se edita en su lienzo, que se guarda entero con " +
     "`PUT /recorridos/{id}/lienzo` y se valida como al crearlo: los nodos, sus " +

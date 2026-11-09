@@ -15,8 +15,12 @@
  *   dice si es parcial o si el listado filtraba algo por su cuenta.
  *
  * Verificado en el navegador el 09-11-2026 con el modelo de verdad.
+ *
+ * Y el modo voz (CRM-04.02.01.08): dictar la pregunta —reconocimiento del
+ * navegador o, si no lo tiene, grabación mandada al proveedor de transcripción
+ * de la empresa— y oír la respuesta con la síntesis del navegador.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -24,8 +28,13 @@ import { Error as Fallo } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
-import { llamar } from "@/lib/api";
-import { cifra, esIdentificadorTecnico, humanizar } from "@/lib/formato";
+import { llamar, subir } from "@/lib/api";
+import {
+  cifra,
+  esIdentificadorTecnico,
+  humanizar,
+  localizacion,
+} from "@/lib/formato";
 
 interface Fuente {
   n: number;
@@ -112,7 +121,10 @@ function Conocimiento() {
   const [fallo, setFallo] = useState<unknown>(null);
   const [trabajando, setTrabajando] = useState(false);
 
-  async function preguntar() {
+  const voz = useVoz();
+
+  async function preguntar(dicha?: string) {
+    const texto = (dicha ?? pregunta).trim();
     setTrabajando(true);
     setFallo(null);
     setR(null);
@@ -120,15 +132,42 @@ function Conocimiento() {
     try {
       const x = await llamar<Conversacion>("/api/v1/ia/asistencia/conversar", {
         metodo: "POST",
-        cuerpo: { pregunta },
+        cuerpo: { pregunta: texto },
       });
       setR(x.datos);
       setAccion(x.datos.accion_propuesta);
       setArgs({ ...(x.datos.accion_propuesta?.argumentos ?? {}) });
+      // En modo voz se lee la respuesta (y lo que propone hacer, que se
+      // confirma igual: a mano, viendo sus datos).
+      if (voz.activo) {
+        const propuesta = x.datos.accion_propuesta
+          ? " " +
+            t("asistente.propone", { accion: x.datos.accion_propuesta.nombre })
+          : "";
+        voz.leer(
+          (x.datos.respondida
+            ? x.datos.texto
+            : t("asistente.sinRespuesta")
+          ).replace(/\[\d+\]/g, "") + propuesta,
+        );
+      }
     } catch (e) {
       setFallo(e);
     } finally {
       setTrabajando(false);
+    }
+  }
+
+  async function dictar() {
+    setFallo(null);
+    try {
+      const texto = await voz.escuchar();
+      if (texto) {
+        setPregunta(texto);
+        await preguntar(texto);
+      }
+    } catch (e) {
+      setFallo(e);
     }
   }
 
@@ -172,7 +211,7 @@ function Conocimiento() {
           placeholder={t("asistente.ejemploConocimiento")}
           onChange={(e) => setPregunta(e.target.value)}
         />
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             className="btn-primary"
@@ -181,7 +220,55 @@ function Conocimiento() {
             <Icono nombre="send" tamano="sm" />
             {trabajando ? t("asistente.pensando") : t("asistente.preguntar")}
           </button>
+          <label className="flex items-center gap-2 text-rotulo text-ink-muted">
+            <input
+              type="checkbox"
+              checked={voz.activo}
+              onChange={(e) => voz.setActivo(e.target.checked)}
+            />
+            {t("asistente.voz.modo")}
+          </label>
+          {voz.activo ? (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={trabajando || voz.escuchando}
+                onClick={() => void dictar()}
+              >
+                <Icono nombre="mic" tamano="sm" />
+                {voz.escuchando
+                  ? t("asistente.voz.escuchando")
+                  : t("asistente.voz.hablar")}
+              </button>
+              {voz.escuchando && voz.via === "grabacion" ? (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => voz.terminar()}
+                >
+                  <Icono nombre="stop" tamano="sm" />
+                  {t("asistente.voz.terminar")}
+                </button>
+              ) : null}
+              {voz.leyendo ? (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => voz.callar()}
+                >
+                  <Icono nombre="volume_off" tamano="sm" />
+                  {t("asistente.voz.callar")}
+                </button>
+              ) : null}
+            </>
+          ) : null}
         </div>
+        {voz.activo ? (
+          <p className="text-rotulo text-ink-faint">
+            {t(`asistente.voz.via.${voz.via}`)}
+          </p>
+        ) : null}
       </form>
       <div role="status" className="mt-3 flex flex-col gap-3 text-dato">
         {fallo ? <Fallo error={fallo} /> : null}
@@ -463,4 +550,134 @@ function Datos() {
       </div>
     </section>
   );
+}
+
+// ── Modo voz (CRM-04.02.01.08) ────────────────────────────────────────────
+
+interface Reconocedor {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult:
+    | ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void)
+    | null;
+  onerror: ((e: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+/** El reconocimiento del navegador, si lo tiene (Chrome, Edge, Safari). */
+function reconocedorDelNavegador(): Reconocedor | null {
+  const w = window as unknown as Record<string, unknown>;
+  const Clase = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as
+    (new () => Reconocedor) | undefined;
+  return Clase ? new Clase() : null;
+}
+
+type ViaDeVoz = "navegador" | "grabacion" | "ninguna";
+
+/**
+ * Dictar y leer en voz alta.
+ *
+ * Dictado: el reconocimiento del navegador cuando existe —no sale nada hacia
+ * nuestro servidor hasta que se pregunta—; si no, se graba con el micrófono y
+ * se manda al proveedor de transcripción de la empresa (`POST /voz/dictado`,
+ * que no guarda la voz). Lectura: `speechSynthesis`, del propio navegador.
+ */
+function useVoz() {
+  const [activo, setActivo] = useState(false);
+  const [escuchando, setEscuchando] = useState(false);
+  const [leyendo, setLeyendo] = useState(false);
+  const grabadora = useRef<MediaRecorder | null>(null);
+  const via: ViaDeVoz =
+    typeof window !== "undefined" && reconocedorDelNavegador()
+      ? "navegador"
+      : typeof window !== "undefined" &&
+          typeof MediaRecorder !== "undefined" &&
+          Boolean(navigator.mediaDevices?.getUserMedia)
+        ? "grabacion"
+        : "ninguna";
+
+  function escuchar(): Promise<string> {
+    const rec = reconocedorDelNavegador();
+    if (rec) {
+      return new Promise((resolver, rechazar) => {
+        let dicho = "";
+        rec.lang = localizacion();
+        rec.interimResults = false;
+        rec.continuous = false;
+        rec.onresult = (e) => {
+          dicho = Array.from(e.results)
+            .map((r) => r[0]?.transcript ?? "")
+            .join(" ")
+            .trim();
+        };
+        rec.onerror = (e) => {
+          setEscuchando(false);
+          rechazar(new Error(e.error));
+        };
+        rec.onend = () => {
+          setEscuchando(false);
+          resolver(dicho);
+        };
+        setEscuchando(true);
+        rec.start();
+      });
+    }
+    if (via !== "grabacion") return Promise.resolve("");
+    return navigator.mediaDevices.getUserMedia({ audio: true }).then(
+      (flujo) =>
+        new Promise<string>((resolver, rechazar) => {
+          const trozos: Blob[] = [];
+          const g = new MediaRecorder(flujo);
+          grabadora.current = g;
+          g.ondataavailable = (e) => trozos.push(e.data);
+          g.onstop = () => {
+            flujo.getTracks().forEach((p) => p.stop());
+            setEscuchando(false);
+            const tipo = g.mimeType || "audio/webm";
+            const fichero = new File(trozos, "dictado.webm", { type: tipo });
+            subir<{ texto: string }>("/api/v1/voz/dictado", fichero, {
+              idioma: localizacion().split("-")[0] ?? "es",
+            })
+              .then((r) => resolver(r.texto))
+              .catch(rechazar);
+          };
+          setEscuchando(true);
+          g.start();
+        }),
+    );
+  }
+
+  function terminar() {
+    grabadora.current?.stop();
+  }
+
+  function leer(texto: string) {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const frase = new SpeechSynthesisUtterance(texto);
+    frase.lang = localizacion();
+    frase.onend = () => setLeyendo(false);
+    setLeyendo(true);
+    window.speechSynthesis.speak(frase);
+  }
+
+  function callar() {
+    window.speechSynthesis?.cancel();
+    setLeyendo(false);
+  }
+
+  return {
+    activo,
+    setActivo,
+    escuchando,
+    leyendo,
+    via,
+    escuchar,
+    terminar,
+    leer,
+    callar,
+  };
 }

@@ -118,6 +118,30 @@ export function Vacio({
 }
 
 /**
+ * Los problemas que el servidor manda en `detalle.problemas`, como frases.
+ *
+ * Cada uno puede ser un texto o un objeto con `motivo` y, si los hay, los
+ * elementos a los que se refiere (`producto`, `otro`, `campo`): se ponen
+ * delante para que se sepa de qué habla cada motivo.
+ */
+export function problemasDe(detalle: unknown): string[] {
+  const lista = (detalle as { problemas?: unknown } | null)?.problemas;
+  if (!Array.isArray(lista)) return [];
+  return lista
+    .map((p) => {
+      if (typeof p === "string") return p;
+      if (!p || typeof p !== "object") return "";
+      const o = p as Record<string, unknown>;
+      const motivo = typeof o.motivo === "string" ? o.motivo : "";
+      const quien = ["producto", "otro", "campo"]
+        .map((k) => o[k])
+        .filter((v): v is string => typeof v === "string" && v !== "");
+      return quien.length ? `${quien.join(" · ")}: ${motivo}` : motivo;
+    })
+    .filter(Boolean);
+}
+
+/**
  * Un error, traducido a algo que se pueda leer y con qué hacer.
  *
  * El detalle técnico se enseña aparte y plegado: quien puede usarlo lo
@@ -144,7 +168,11 @@ export function Error({
   // Ahora `llamar` marca los fallos de red con estado 0, así que aquí se
   // pueden distinguir, y lo que no es ninguno de los dos se dice como lo que
   // es —algo ha fallado en esta pantalla— con su mensaje debajo.
-  if (api?.estado === 0) mensaje = t("errores.sinRed");
+  // Guardado en el dispositivo sin red (CRM-06.02.01.04): no es un fallo, es
+  // un cambio pendiente de subir, y se dice así.
+  if (api?.codigo === "encolada_sin_conexion")
+    mensaje = t("errores.encoladaSinConexion");
+  else if (api?.estado === 0) mensaje = t("errores.sinRed");
   else if (!api) mensaje = t("errores.pantalla");
   else if (api.esPoliticaDeAcceso) mensaje = t("errores.politica");
   else if (api.estado === 403) mensaje = t("errores.sinPermiso");
@@ -156,6 +184,20 @@ export function Error({
   // pueda hacer; la segunda dice dónde mirar.
   else if (api.explicacion) mensaje = api.explicacion;
   else if (api.titulo) mensaje = api.titulo;
+
+  // Guardado sin red: es un aviso, no un fallo, y no se pinta en rojo.
+  if (api?.codigo === "encolada_sin_conexion")
+    return (
+      <div
+        className="rounded-xl border border-warning/40 bg-warning/5 p-4"
+        role="status"
+      >
+        <p className="flex items-center gap-2 text-warning">
+          <Icono nombre="cloud_off" tamano="sm" />
+          {mensaje}
+        </p>
+      </div>
+    );
 
   return (
     <div
@@ -170,6 +212,17 @@ export function Error({
           texto obliga a abrir la consola del navegador para saber qué pasó, y
           eso no lo hace quien está usando el producto: lo cuenta como «no
           funciona» y nadie puede arreglarlo. */}
+      {/* Los motivos concretos, a la vista. «Esa combinación de productos no
+          se puede vender junta» sin decir cuáles obliga a abrir el detalle
+          técnico y leer JSON; la lista `problemas` del servidor ya dice qué
+          choca con qué y por qué (CRM-03.03.02.02, medido el 09-11-2026). */}
+      {problemasDe(api?.detalle).length > 0 ? (
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-dato text-ink">
+          {problemasDe(api?.detalle).map((p, i) => (
+            <li key={i}>{p}</li>
+          ))}
+        </ul>
+      ) : null}
       {!api && error instanceof globalThis.Error ? (
         <details className="mt-3">
           <summary className="cursor-pointer text-dato text-ink-faint">

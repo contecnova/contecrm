@@ -99,12 +99,12 @@ class CandidatoDuplicado(Base, TimestampMixin):
     )
 
 
-def _umbral(db: Session) -> float:
-    from crmcore.runtime import settings as rt
+def _umbral(db: Session, objeto: str = "cuenta") -> float:
+    """El de ESTE objeto (CRM-01.01.04.02); si no lo tiene, el general."""
+    from services.party.duplicados import umbral_de
 
-    valor = rt.efectivo("duplicados_umbral_propuesta", db)
     try:
-        return float(valor) if valor is not None else _duplicados_umbral_defecto()
+        return umbral_de(db, objeto, "propuesta")
     except (TypeError, ValueError):
         return _duplicados_umbral_defecto()
 

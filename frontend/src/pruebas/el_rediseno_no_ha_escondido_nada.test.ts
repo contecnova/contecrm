@@ -32,7 +32,14 @@ import {
   pestanasDeTodas,
 } from "@/lib/aplicaciones";
 import { porGrupoVisible } from "@/lib/modulos";
-import { ACCESOS, AREAS, AYUDA, EN_LA_BARRA, TRANSVERSALES, menuDe } from "@/lib/navegacion";
+import {
+  ACCESOS,
+  AREAS,
+  AYUDA,
+  EN_LA_BARRA,
+  TRANSVERSALES,
+  menuDe,
+} from "@/lib/navegacion";
 
 /** El menú de quien lo puede ver todo: lo que se audita es el diseño, no un perfil. */
 function menuCompleto(ambito?: "trabajar" | "administrar") {
@@ -52,7 +59,9 @@ function alcanzableTrabajando(): Set<string> {
 
 /** Todo camino que se alcanza desde el árbol de configuración. */
 function alcanzableConfigurando(): Set<string> {
-  return new Set(menuCompleto("administrar").flatMap((a) => a.entradas.map((e) => e.a)));
+  return new Set(
+    menuCompleto("administrar").flatMap((a) => a.entradas.map((e) => e.a)),
+  );
 }
 
 /**
@@ -64,13 +73,22 @@ function alcanzableConfigurando(): Set<string> {
  */
 const TIENE_SU_PROPIO_SITIO: Record<string, string> = {
   "/": "Es la portada, y es pestaña de todas las aplicaciones.",
-  "/puesto": "Pestaña de todas las aplicaciones, y además está en el menú de la persona.",
-  "/chat": "Tiene su icono fijo en la barra de arriba: se habla de clientes, de ventas y de casos desde el mismo sitio, así que no es de un dominio.",
-  "/menciones": "Igual que el chat, con su icono en la barra de arriba: te mencionan en una cuenta, en una oportunidad y en un caso.",
-  "/lo-que-sigo": "Con las menciones, en la barra de arriba: se sigue una cuenta, una oportunidad y un caso, y es la vuelta del botón «Seguir» de la ficha.",
-  "/ayuda": "Está en la interrogación de la barra de arriba, donde la pone Salesforce: habla del producto, no del cliente ni de su ajuste.",
-  "/recorrido": "Con la ayuda, en la interrogación de la barra: es la visita guiada del producto, y dentro de la configuración se la encontraba quien no la buscaba.",
-  "/cobertura": "Con la ayuda, en la interrogación de la barra: cuenta qué sabe hacer el producto, que es una pregunta sobre el producto y no un ajuste.",
+  "/puesto":
+    "Pestaña de todas las aplicaciones, y además está en el menú de la persona.",
+  "/chat":
+    "Tiene su icono fijo en la barra de arriba: se habla de clientes, de ventas y de casos desde el mismo sitio, así que no es de un dominio.",
+  "/menciones":
+    "Igual que el chat, con su icono en la barra de arriba: te mencionan en una cuenta, en una oportunidad y en un caso.",
+  "/lo-que-sigo":
+    "Con las menciones, en la barra de arriba: se sigue una cuenta, una oportunidad y un caso, y es la vuelta del botón «Seguir» de la ficha.",
+  "/sin-conexion":
+    "En el menú de la persona de la barra de arriba, junto a «Puesto», y en la franja que sale en todas las pantallas sin red o con cambios sin subir: es de este dispositivo, no de un área.",
+  "/ayuda":
+    "Está en la interrogación de la barra de arriba, donde la pone Salesforce: habla del producto, no del cliente ni de su ajuste.",
+  "/recorrido":
+    "Con la ayuda, en la interrogación de la barra: es la visita guiada del producto, y dentro de la configuración se la encontraba quien no la buscaba.",
+  "/cobertura":
+    "Con la ayuda, en la interrogación de la barra: cuenta qué sabe hacer el producto, que es una pregunta sobre el producto y no un ajuste.",
 };
 
 describe("toda área está detrás de exactamente una puerta", () => {
@@ -85,18 +103,28 @@ describe("toda área está detrás de exactamente una puerta", () => {
     // decidiera, así que la prueba daba verde con un área huérfana.
     for (const id of areasDeTrabajo()) {
       const cuantas = APLICACIONES.filter((a) => a.areas.includes(id)).length;
-      expect(cuantas, `el área de trabajo «${id}» está en ${cuantas} aplicaciones`).toBe(1);
+      expect(
+        cuantas,
+        `el área de trabajo «${id}» está en ${cuantas} aplicaciones`,
+      ).toBe(1);
     }
 
     for (const area of AREAS) {
       const puertas =
-        (deAplicacion.includes(area.id) ? 1 : 0) + (deConfiguracion.includes(area.id) ? 1 : 0);
-      expect(puertas, `el área «${area.id}» sale por ${puertas} puertas, y tiene que ser una`).toBe(1);
+        (deAplicacion.includes(area.id) ? 1 : 0) +
+        (deConfiguracion.includes(area.id) ? 1 : 0);
+      expect(
+        puertas,
+        `el área «${area.id}» sale por ${puertas} puertas, y tiene que ser una`,
+      ).toBe(1);
     }
     // Y ninguna aplicación se queda sin área: una puerta que no lleva a
     // ninguna parte es peor que no tenerla.
     for (const app of APLICACIONES) {
-      expect(app.areas.length, `la aplicación «${app.id}» no tiene áreas`).toBeGreaterThan(0);
+      expect(
+        app.areas.length,
+        `la aplicación «${app.id}» no tiene áreas`,
+      ).toBeGreaterThan(0);
     }
   });
 });
@@ -105,7 +133,11 @@ describe("ninguna pantalla se ha quedado sin camino", () => {
   it("las del catálogo y las escritas a mano, todas", () => {
     const trabajando = alcanzableTrabajando();
     const configurando = alcanzableConfigurando();
-    const todas = [...ACCESOS, ...TRANSVERSALES, ...menuCompleto().flatMap((a) => a.entradas)];
+    const todas = [
+      ...ACCESOS,
+      ...TRANSVERSALES,
+      ...menuCompleto().flatMap((a) => a.entradas),
+    ];
     const caminos = [...new Set(todas.map((e) => e.a))];
 
     // Cuántas se han recorrido de verdad: sin esto, un fallo que dejara la
@@ -113,7 +145,10 @@ describe("ninguna pantalla se ha quedado sin camino", () => {
     expect(caminos.length).toBeGreaterThan(40);
 
     const perdidas = caminos.filter(
-      (a) => !trabajando.has(a) && !configurando.has(a) && !(a in TIENE_SU_PROPIO_SITIO),
+      (a) =>
+        !trabajando.has(a) &&
+        !configurando.has(a) &&
+        !(a in TIENE_SU_PROPIO_SITIO),
     );
     expect(perdidas, `sin ningún camino: ${perdidas.join(", ")}`).toEqual([]);
   });
@@ -126,7 +161,10 @@ describe("ninguna pantalla se ha quedado sin camino", () => {
     const enAyuda = new Set(AYUDA.map((e) => e.a));
     expect(enAyuda.size).toBe(AYUDA.length);
     for (const camino of ["/ayuda", "/recorrido", "/cobertura"]) {
-      expect(enAyuda.has(camino), `«${camino}» está exenta y no está en el menú de ayuda`).toBe(true);
+      expect(
+        enAyuda.has(camino),
+        `«${camino}» está exenta y no está en el menú de ayuda`,
+      ).toBe(true);
     }
   });
 
@@ -146,21 +184,28 @@ describe("ninguna pantalla se ha quedado sin camino", () => {
     // interrogación. Las dos listas se pintan recorriéndolas, así que lo que
     // esté en una está en la barra.
     const declarados = new Set([...EN_LA_BARRA, ...AYUDA].map((e) => e.a));
-    const dicenQueEstanArriba = Object.entries(TIENE_SU_PROPIO_SITIO).filter(([, motivo]) =>
-      motivo.includes("barra de arriba"),
+    const dicenQueEstanArriba = Object.entries(TIENE_SU_PROPIO_SITIO).filter(
+      ([, motivo]) => motivo.includes("barra de arriba"),
     );
     expect(dicenQueEstanArriba.length).toBeGreaterThan(0);
 
     // El chat y Nexus se pintan con componente propio, así que su enlace vive
     // en otro fichero: se miran los tres.
     const raiz = resolve(process.cwd(), "src", "componentes");
-    const fuente = ["BarraSuperior.tsx", "AvisoDeChat.tsx", "Notificaciones.tsx"]
+    const fuente = [
+      "BarraSuperior.tsx",
+      "AvisoDeChat.tsx",
+      "Notificaciones.tsx",
+    ]
       .map((f) => readFileSync(join(raiz, f), "utf-8"))
       .join("\n");
 
     for (const [camino, motivo] of dicenQueEstanArriba) {
-      const enlazado = fuente.includes(`to="${camino}"`) || declarados.has(camino);
-      expect(enlazado, `«${camino}» dice «${motivo}» y no está arriba`).toBe(true);
+      const enlazado =
+        fuente.includes(`to="${camino}"`) || declarados.has(camino);
+      expect(enlazado, `«${camino}» dice «${motivo}» y no está arriba`).toBe(
+        true,
+      );
     }
     // Y lo declarado se pinta: una lista que nadie recorre es otra promesa.
     expect(fuente).toContain("EN_LA_BARRA.map");
@@ -175,7 +220,10 @@ describe("ninguna pantalla se ha quedado sin camino", () => {
 
   it("y las excepciones no se escriben sin motivo", () => {
     for (const [camino, motivo] of Object.entries(TIENE_SU_PROPIO_SITIO)) {
-      expect(motivo.length, `«${camino}» está exenta sin explicar por qué`).toBeGreaterThan(30);
+      expect(
+        motivo.length,
+        `«${camino}» está exenta sin explicar por qué`,
+      ).toBeGreaterThan(30);
     }
   });
 });

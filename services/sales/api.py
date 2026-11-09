@@ -742,6 +742,76 @@ def duplicar_oportunidad(oportunidad_id: UUID, datos: DuplicarOportunidad, uow: 
     }
 
 
+class FirmanteIn(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=200)
+    email: str = Field(..., min_length=3, max_length=320)
+    papel: str = Field("firmante", description="firmante · aprobador · copia")
+
+
+class EnviarAFirma(BaseModel):
+    firmantes: list[FirmanteIn] = Field(..., min_length=1)
+    presupuesto_id: UUID | None = Field(
+        None, description="Vacío: el último presupuesto vivo de la oportunidad"
+    )
+    contrato_id: UUID | None = Field(None, description="Firmar el contrato en vez del presupuesto")
+    asunto: str = Field("", max_length=300)
+    mensaje: str = Field("", max_length=4000)
+    enviar: bool = Field(True, description="Falso: deja el sobre preparado sin mandarlo")
+
+
+@router_oportunidades.post(
+    "/{oportunidad_id}/enviar-a-firma",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Depends(exige_permiso("opportunity:write")),
+        Depends(exige_permiso("firma:write")),
+    ],
+    summary="Enviar a firma el presupuesto o el contrato de la oportunidad",
+    description=(
+        "Crea el sobre en integración **con el origen ya puesto** —la "
+        "oportunidad—, de modo que cuando se complete la firma vuelva a ella: "
+        "se marca y, si el embudo tiene configurada la etapa a la que lleva una "
+        "firma completada (`firma_etapa_por_embudo`), la oportunidad avanza a "
+        "ella por el camino de siempre, con sus criterios de salida."
+    ),
+)
+def enviar_a_firma(
+    oportunidad_id: UUID, datos: EnviarAFirma, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from services.sales import firma_oportunidad as fop
+
+    return fop.enviar_a_firma(
+        uow,
+        oportunidad_id,
+        principal_id=principal.id,
+        firmantes=[f.model_dump() for f in datos.firmantes],
+        presupuesto_id=datos.presupuesto_id,
+        contrato_id=datos.contrato_id,
+        asunto=datos.asunto,
+        mensaje=datos.mensaje,
+        enviar=datos.enviar,
+    )
+
+
+@router_oportunidades.get(
+    "/{oportunidad_id}/firma",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="En qué está la firma de la oportunidad",
+    description=(
+        "Pregunta al sobre por su estado y aplica lo mismo que el evento del "
+        "motor de firma: sin bus, o con el evento perdido, la ficha no se queda "
+        "con un estado viejo. Si integración no contesta, se enseña lo último "
+        "guardado y `consultado` es falso."
+    ),
+)
+def firma_de_la_oportunidad(oportunidad_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.sales import firma_oportunidad as fop
+
+    return fop.estado_de_la_firma(uow, oportunidad_id, principal_id=principal.id)
+
+
 @router_oportunidades.post(
     "/{oportunidad_id}/etapa",
     response_model=OportunidadOut,

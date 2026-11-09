@@ -46,7 +46,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
-from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.errors import CrmError, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -251,6 +251,21 @@ def pausar(uow: UnidadDeTrabajo, *, buzon_id: UUID, motivo: str) -> Buzon:
     return fila
 
 
+def _instante(valor: Any) -> datetime | None:
+    """La fecha del elemento, venga como objeto o como texto ISO.
+
+    Por HTTP llega siempre como texto: se guardaba la cadena tal cual en una
+    columna de fecha y la respuesta reventaba al formatearla (500 en cada
+    sincronización por la API, medido el 09-11-2026).
+    """
+    if valor is None or isinstance(valor, datetime):
+        return valor
+    try:
+        return datetime.fromisoformat(str(valor).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _relevante(elemento: dict[str, Any], criterio: str, conocidas: set[str]) -> tuple[bool, str]:
     """Si este elemento tiene que ver con el CRM, y por qué.
 
@@ -379,7 +394,7 @@ def sincronizar(
             externo_id=externo_id,
             tipo=buzon.ambito,
             asunto=str(elemento.get("asunto") or "")[:500],
-            ocurrido_at=elemento.get("ocurrido_at"),
+            ocurrido_at=_instante(elemento.get("ocurrido_at")),
             version_externa=str(elemento.get("version") or ""),
             asistentes=list(elemento.get("participantes") or []),
             resultado="registrado" if entra else "saltado_sin_relacion",
@@ -465,3 +480,144 @@ def panel(db: Session, tenant_id: UUID, *, horas: int = 24) -> dict[str, Any]:
             "falló."
         ),
     }
+
+
+# ── Las reuniones del calendario, registradas de verdad (CRM-06.01.01.04) ──
+#
+# Hasta el 09-11-2026 `sincronizar` devolvía `por_registrar_como_actividad` y
+# no lo usaba nadie: la reunión quedaba en esta tabla y en la ficha del cliente
+# no aparecía nunca. Ahora se crea la actividad en `party` con sus asistentes
+# vinculados a los contactos que son, preguntando por HTTP con la identidad de
+# quien sincroniza.
+
+
+def _correo_de(asistente: Any) -> str:
+    if isinstance(asistente, dict):
+        return str(asistente.get("email") or asistente.get("correo") or "").strip().lower()
+    return str(asistente or "").strip().lower()
+
+
+def _invocar(**kw: Any) -> dict[str, Any]:
+    from crmcore.http.interno import invocar
+
+    return invocar(**kw)
+
+
+def contactos_por_correo(
+    invocar: Any, *, identidad: dict[str, Any], correos: list[str]
+) -> dict[str, dict[str, Any]]:
+    """Qué contacto del CRM es cada dirección. Las que no casan no salen."""
+    if not correos:
+        return {}
+    r = invocar(
+        metodo="GET",
+        ruta="/api/v1/contacts",
+        parametros={"email__en": ",".join(sorted(set(correos))), "limite": 200},
+        **identidad,
+    )
+    if not r.get("ok"):
+        raise ErrorValidacion(
+            f"party no ha dicho quiénes son los asistentes (HTTP {r.get('estado')})",
+            error_code="buzon.asistentes_sin_respuesta",
+        )
+    salida: dict[str, dict[str, Any]] = {}
+    for c in (r.get("datos") or {}).get("items") or []:
+        correo = str(c.get("email") or "").strip().lower()
+        if correo:
+            salida[correo] = {"id": str(c.get("id")), "nombre": c.get("nombre_completo")}
+    return salida
+
+
+def registrar_reuniones(
+    uow: UnidadDeTrabajo,
+    *,
+    buzon_id: UUID,
+    identidad: dict[str, Any],
+    invocar: Any = None,
+) -> dict[str, Any]:
+    """Convierte en actividad `reunion` cada cita registrada que aún no la tiene.
+
+    Cada asistente va con su contacto si lo es; los que no están en el CRM se
+    quedan con su dirección (son los contactos que faltan por dar de alta). Una
+    cita que `party` no acepta queda en «error» con el motivo y se reintenta en
+    la siguiente vuelta: la actividad no se da por creada si no lo está.
+    """
+    invocar = invocar or _invocar
+    buzon = uow.db.get(Buzon, buzon_id)
+    if buzon is None or buzon.tenant_id != uow.tenant_id:
+        raise NoEncontrado("Ese buzón no existe", error_code="buzon.no_encontrado")
+    if buzon.ambito != "calendario":
+        return {"creadas": 0, "errores": 0, "porque": "El buzón es de correo, no de calendario."}
+    pendientes = (
+        uow.db.execute(
+            select(ElementoSincronizado).where(
+                ElementoSincronizado.tenant_id == uow.tenant_id,
+                ElementoSincronizado.buzon_id == buzon.id,
+                ElementoSincronizado.resultado.in_(("registrado", "error")),
+                ElementoSincronizado.actividad_id.is_(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    creadas, errores = 0, 0
+    detalle: list[dict[str, Any]] = []
+    for e in pendientes:
+        correos = [c for c in (_correo_de(a) for a in e.asistentes or []) if c]
+        try:
+            conocidos = contactos_por_correo(invocar, identidad=identidad, correos=correos)
+            asistentes = [
+                {
+                    "email": c,
+                    "contacto_id": (conocidos.get(c) or {}).get("id"),
+                    "nombre": (conocidos.get(c) or {}).get("nombre"),
+                }
+                for c in correos
+            ]
+            principal_id = next((a["contacto_id"] for a in asistentes if a["contacto_id"]), None)
+            r = invocar(
+                metodo="POST",
+                ruta="/api/v1/activities",
+                cuerpo={
+                    "tipo": "reunion",
+                    "asunto": (e.asunto or "Reunión")[:300],
+                    "objeto": "contacto" if principal_id else None,
+                    "objeto_id": principal_id,
+                    "contacto_id": principal_id,
+                    "asignada_a": str(buzon.usuario_id),
+                    "inicio_at": e.ocurrido_at.isoformat() if e.ocurrido_at else None,
+                    "detalles": {
+                        "asistentes": asistentes,
+                        "origen": "calendario",
+                        "externo_id": e.externo_id,
+                        "buzon_id": str(buzon.id),
+                    },
+                },
+                **identidad,
+            )
+            if not r.get("ok"):
+                datos = r.get("datos") or {}
+                raise ErrorValidacion(
+                    f"party no ha aceptado la reunión (HTTP {r.get('estado')}): "
+                    f"{datos.get('mensaje') or datos.get('detail') or datos}"[:400],
+                    error_code="buzon.reunion_rechazada",
+                )
+            e.actividad_id = UUID(str((r.get("datos") or {}).get("id")))
+            e.resultado = "registrado"
+            creadas += 1
+            detalle.append(
+                {
+                    "externo_id": e.externo_id,
+                    "actividad_id": str(e.actividad_id),
+                    "asistentes_en_el_crm": sum(1 for a in asistentes if a["contacto_id"]),
+                    "asistentes": len(asistentes),
+                }
+            )
+        except CrmError as exc:
+            # También si party no contesta: la cita queda en «error» y se
+            # reintenta en la siguiente vuelta, nunca se da por registrada.
+            e.resultado = "error"
+            e.porque = exc.mensaje[:1000]
+            errores += 1
+    uow.db.flush()
+    return {"creadas": creadas, "errores": errores, "reuniones": detalle}

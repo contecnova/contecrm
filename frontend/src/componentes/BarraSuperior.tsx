@@ -168,7 +168,10 @@ export function BarraSuperior({
   useEffect(() => {
     if (!ayudaAbierta) return;
     function fuera(evento: MouseEvent) {
-      if (ayudaRef.current && !ayudaRef.current.contains(evento.target as Node)) {
+      if (
+        ayudaRef.current &&
+        !ayudaRef.current.contains(evento.target as Node)
+      ) {
         setAyudaAbierta(false);
       }
     }
@@ -206,15 +209,15 @@ export function BarraSuperior({
   return (
     <header className="sticky top-0 z-popover flex h-[var(--barra-h)] items-center gap-3 border-b border-ink-dim/60 bg-paper pl-5 pr-6">
       {conPanel ? (
-      <button
-        type="button"
-        onClick={panel.alternar}
-        className="btn-icon shrink-0 text-ink-muted hover:bg-paper-light hover:text-ink"
-        aria-label={t("nav.alternarPanel")}
-        aria-expanded={panel.abierto}
-      >
-        <Icono nombre="menu" />
-      </button>
+        <button
+          type="button"
+          onClick={panel.alternar}
+          className="btn-icon shrink-0 text-ink-muted hover:bg-paper-light hover:text-ink"
+          aria-label={t("nav.alternarPanel")}
+          aria-expanded={panel.abierto}
+        >
+          <Icono nombre="menu" />
+        </button>
       ) : null}
 
       {/* `flex-1` y no sólo `shrink`: la miga tiene que poder **crecer** hasta
@@ -567,6 +570,17 @@ export function BarraSuperior({
               >
                 <Icono nombre="person" tamano="sm" />
                 {t("nav.puesto")}
+              </Link>
+              {/* Lo guardado sin red en ESTE dispositivo (CRM-06.02.01.04): es
+                  de la persona y de su navegador, no de un área. */}
+              <Link
+                role="menuitem"
+                to="/sin-conexion"
+                onClick={() => setMenuAbierto(false)}
+                className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-titulo text-ink hover:bg-paper-light"
+              >
+                <Icono nombre="cloud_off" tamano="sm" />
+                {t("nav.sinConexion")}
               </Link>
               <button
                 role="menuitem"

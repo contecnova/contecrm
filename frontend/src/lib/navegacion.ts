@@ -104,11 +104,36 @@ export const AMBITOS = [
 export type IdAmbito = (typeof AMBITOS)[number]["id"];
 
 export const AREAS = [
-  { id: "clientes", clave: "nav.areaClientes", icono: "groups", ambito: "trabajar" },
-  { id: "ventas", clave: "nav.areaVentas", icono: "trending_up", ambito: "trabajar" },
-  { id: "marketing", clave: "nav.areaMarketing", icono: "campaign", ambito: "trabajar" },
-  { id: "servicio", clave: "nav.areaServicio", icono: "support_agent", ambito: "trabajar" },
-  { id: "analisis", clave: "nav.areaAnalisis", icono: "insights", ambito: "trabajar" },
+  {
+    id: "clientes",
+    clave: "nav.areaClientes",
+    icono: "groups",
+    ambito: "trabajar",
+  },
+  {
+    id: "ventas",
+    clave: "nav.areaVentas",
+    icono: "trending_up",
+    ambito: "trabajar",
+  },
+  {
+    id: "marketing",
+    clave: "nav.areaMarketing",
+    icono: "campaign",
+    ambito: "trabajar",
+  },
+  {
+    id: "servicio",
+    clave: "nav.areaServicio",
+    icono: "support_agent",
+    ambito: "trabajar",
+  },
+  {
+    id: "analisis",
+    clave: "nav.areaAnalisis",
+    icono: "insights",
+    ambito: "trabajar",
+  },
   // ── Lo de administrar ───────────────────────────────────────────────────
   //
   // **Eran dos áreas y una era un cajón de sastre.** Medido el 03-11-2026:
@@ -122,11 +147,36 @@ export const AREAS = [
   // resto del rediseño: Administration (personas y empresa), Platform Tools
   // (lo que se modela y lo que se automatiza), Environments (lo que se
   // despliega) y lo de gobierno aparte.
-  { id: "usuarios", clave: "nav.areaUsuarios", icono: "manage_accounts", ambito: "administrar" },
-  { id: "plataforma", clave: "nav.areaPlataforma", icono: "handyman", ambito: "administrar" },
-  { id: "automatizacion", clave: "nav.areaAutomatizacion", icono: "bolt", ambito: "administrar" },
-  { id: "entornos", clave: "nav.areaEntornos", icono: "layers", ambito: "administrar" },
-  { id: "gobierno", clave: "nav.areaGobierno", icono: "gavel", ambito: "administrar" },
+  {
+    id: "usuarios",
+    clave: "nav.areaUsuarios",
+    icono: "manage_accounts",
+    ambito: "administrar",
+  },
+  {
+    id: "plataforma",
+    clave: "nav.areaPlataforma",
+    icono: "handyman",
+    ambito: "administrar",
+  },
+  {
+    id: "automatizacion",
+    clave: "nav.areaAutomatizacion",
+    icono: "bolt",
+    ambito: "administrar",
+  },
+  {
+    id: "entornos",
+    clave: "nav.areaEntornos",
+    icono: "layers",
+    ambito: "administrar",
+  },
+  {
+    id: "gobierno",
+    clave: "nav.areaGobierno",
+    icono: "gavel",
+    ambito: "administrar",
+  },
 ] as const;
 
 export type IdArea = (typeof AREAS)[number]["id"];
@@ -155,10 +205,10 @@ export const AREA_DE_GRUPO: Record<string, IdArea> = {
   Ventas: "ventas",
   Marketing: "marketing",
   Servicio: "servicio",
-  "Analítica": "analisis",
+  Analítica: "analisis",
   "Usuarios y empresa": "usuarios",
   "Herramientas de plataforma": "plataforma",
-  "Automatización": "automatizacion",
+  Automatización: "automatizacion",
   "Entornos y despliegue": "entornos",
   "Gobierno y cumplimiento": "gobierno",
 };
@@ -188,6 +238,9 @@ export const ACCESOS: Entrada[] = [
   // no se puede saber qué se sigue — que es como estaba, con la lista
   // escondida en una pestaña de administración y sin los nombres.
   { a: "/lo-que-sigo", clave: "nav.loQueSigo", icono: "notifications_active" },
+  // Lo guardado sin red y sus conflictos (CRM-06.02.01.04). Aquí arriba por lo
+  // mismo: un cambio sin subir puede ser de cualquier área.
+  { a: "/sin-conexion", clave: "nav.sinConexion", icono: "cloud_off" },
 ];
 
 /**
@@ -205,79 +258,278 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // Colocarla por donde está implementada en vez de por donde se usa es lo que
   // hace que no se encuentre — y además habría necesitado una excepción de
   // ámbito, que es justo la señal de que el sitio está mal elegido.
-  { area: "ventas", a: "/pendiente-de-firma", clave: "nav.firma", icono: "draw", permiso: "integracion:read" , recursos: ["firma"] },
-  { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" , recursos: ["pipeline"] },
-  { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" , recursos: ["coste"] },
+  {
+    area: "ventas",
+    a: "/pendiente-de-firma",
+    clave: "nav.firma",
+    icono: "draw",
+    permiso: "integracion:read",
+    recursos: ["firma"],
+  },
+  {
+    area: "ventas",
+    a: "/embudo",
+    clave: "nav.embudo",
+    icono: "view_kanban",
+    permiso: "opportunity:read",
+    recursos: ["pipeline"],
+  },
+  {
+    area: "ventas",
+    a: "/coste",
+    clave: "nav.coste",
+    icono: "payments",
+    permiso: "opportunity:read",
+    recursos: ["coste"],
+  },
   // En Ventas y sin `ambito` propio: quien decide un mapa de territorios es
   // quien lleva el equipo comercial, no quien administra el sistema, y Ventas
   // entera vive en «trabajar». Se probó marcarlo «administrar» y el gate de
   // las dos entradas lo rechazó con razón: un área que aparece en las dos
   // deja de significar nada, y la excepción de las aprobaciones —la única que
   // hay— está justificada porque aprobar un descuento ES trabajo diario.
-  { area: "ventas", a: "/territorios", clave: "nav.territorios", icono: "map", permiso: "forecast:read" , recursos: ["territorios"] },
+  {
+    area: "ventas",
+    a: "/territorios",
+    clave: "nav.territorios",
+    icono: "map",
+    permiso: "forecast:read",
+    recursos: ["territorios"],
+  },
   // Sin `recursos`: no lista cadencias ni plantillas, contesta cuáles
   // funcionan y a quién le toca la próxima reunión.
-  { area: "ventas", a: "/prospeccion", clave: "nav.prospeccion", icono: "forward_to_inbox", permiso: "lead:read" },
+  {
+    area: "ventas",
+    a: "/prospeccion",
+    clave: "nav.prospeccion",
+    icono: "forward_to_inbox",
+    permiso: "lead:read",
+  },
+  // Lo que se manda al motor externo de comisiones y lo que vuelve
+  // (CRM-03.02.03.04).
+  {
+    area: "analisis",
+    a: "/compensacion-externa",
+    clave: "nav.compensacionExterna",
+    icono: "currency_exchange",
+    permiso: "commission:read",
+  },
 
   // El mes de uno. Va en Clientes, al lado de «Actividades», porque es la
   // misma materia vista de otra forma: allí la lista, aquí los días unos al
   // lado de otros. En Salesforce el calendario es pestaña desde el primer
   // día, y aquí la capacidad decía «agenda» y lo que había eran tres
   // listados. Medido el 03-11-2026.
-  { area: "clientes", a: "/calendario", clave: "nav.calendario", icono: "calendar_month", permiso: "activity:read" },
+  {
+    area: "clientes",
+    a: "/calendario",
+    clave: "nav.calendario",
+    icono: "calendar_month",
+    permiso: "activity:read",
+  },
   // La biblioteca de documentos. En Clientes y no en Configuración: quien
   // busca un contrato es quien lo negoció, no quien administra el sistema.
   // En Salesforce «Archivos» es pestaña desde el primer día, y por lo mismo:
   // un adjunto que sólo se ve desde su ficha obliga a recordar de qué cuenta
   // cuelga, que es justo lo que no se recuerda.
-  { area: "clientes", a: "/archivos", clave: "nav.archivos", icono: "folder_open" },
+  {
+    area: "clientes",
+    a: "/archivos",
+    clave: "nav.archivos",
+    icono: "folder_open",
+  },
   // Las parejas que podrían ser la misma ficha, con los botones para
   // decidirlas. Va en Clientes y no en Configuración: quien resuelve un
   // duplicado es quien conoce a los dos clientes, no quien administra.
-  { area: "clientes", a: "/duplicados", clave: "nav.duplicados", icono: "join_inner", permiso: "account:write" },
+  {
+    area: "clientes",
+    a: "/duplicados",
+    clave: "nav.duplicados",
+    icono: "join_inner",
+    permiso: "account:write",
+  },
 
-  { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read"  },
+  {
+    area: "marketing",
+    a: "/marketing",
+    clave: "nav.marketing",
+    icono: "insights",
+    permiso: "campaign:read",
+  },
   // Sin `recursos`: no lista ninguna colección del módulo de canales, lo que
   // hace es contestar si se le puede escribir a alguien por uno de ellos.
-  { area: "marketing", a: "/canales", clave: "nav.canales", icono: "forum", permiso: "campaign:read" },
+  {
+    area: "marketing",
+    a: "/canales",
+    clave: "nav.canales",
+    icono: "forum",
+    permiso: "campaign:read",
+  },
 
-  { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read"  },
-  { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" , recursos: ["consola-agente"] },
-  { area: "servicio", a: "/conocimiento", clave: "nav.conocimiento", icono: "menu_book", permiso: "conocimiento:read" , recursos: ["conocimiento"] },
+  {
+    area: "servicio",
+    a: "/casos",
+    clave: "nav.casos",
+    icono: "confirmation_number",
+    permiso: "case:read",
+  },
+  {
+    area: "servicio",
+    a: "/consola-agente",
+    clave: "nav.consolaAgente",
+    icono: "headset_mic",
+    permiso: "case:read",
+    recursos: ["consola-agente"],
+  },
+  {
+    area: "servicio",
+    a: "/conocimiento",
+    clave: "nav.conocimiento",
+    icono: "menu_book",
+    permiso: "conocimiento:read",
+    recursos: ["conocimiento"],
+  },
   // En Servicio y no en Administración: quien mira si la trampa de un canal se
   // está comiendo correos de clientes es quien atiende, no quien configura.
-  { area: "servicio", a: "/canales-de-entrada", clave: "nav.canalesDeEntrada", icono: "inbox", permiso: "case:read" , recursos: ["canales-servicio"] },
+  {
+    area: "servicio",
+    a: "/canales-de-entrada",
+    clave: "nav.canalesDeEntrada",
+    icono: "inbox",
+    permiso: "case:read",
+    recursos: ["canales-servicio"],
+  },
+  // Lo que prometemos frente a lo que sostiene el proveedor que lo da
+  // (CRM-09.01.01.08). Sin `recursos`: no lista una colección, compara dos.
+  {
+    area: "servicio",
+    a: "/sla-de-proveedores",
+    clave: "nav.slaProveedores",
+    icono: "handshake",
+    permiso: "entitlement:read",
+  },
+  // La centralita conectada y cada llamada registrada (CRM-04.02.01.05).
+  {
+    area: "clientes",
+    a: "/telefonia",
+    clave: "nav.telefonia",
+    icono: "call",
+    permiso: "activity:read",
+  },
 
-  { area: "analisis", a: "/cuadros", clave: "nav.cuadros", icono: "dashboard", permiso: "informe:read" , recursos: ["cuadros-mando", "informes"] },
-  { area: "analisis", a: "/explotacion", clave: "nav.explotacion", icono: "query_stats", permiso: "informe:read" , recursos: ["explotacion"] },
-  { area: "analisis", a: "/rendimiento", clave: "nav.rendimiento", icono: "speed"  },
-  { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar"  },
+  {
+    area: "analisis",
+    a: "/cuadros",
+    clave: "nav.cuadros",
+    icono: "dashboard",
+    permiso: "informe:read",
+    recursos: ["cuadros-mando", "informes"],
+  },
+  {
+    area: "analisis",
+    a: "/explotacion",
+    clave: "nav.explotacion",
+    icono: "query_stats",
+    permiso: "informe:read",
+    recursos: ["explotacion"],
+  },
+  // Cohortes, embudo y actividad con los datos del CRM, instantáneas
+  // programadas de un informe y la consulta al lake del cliente.
+  {
+    area: "analisis",
+    a: "/analisis-crm",
+    clave: "nav.analisisCrm",
+    icono: "monitoring",
+    permiso: "informe:read",
+  },
+  {
+    area: "analisis",
+    a: "/rendimiento",
+    clave: "nav.rendimiento",
+    icono: "speed",
+  },
+  {
+    area: "analisis",
+    a: "/inteligencia",
+    clave: "nav.inteligencia",
+    icono: "neurology",
+    permiso: "ia:usar",
+  },
   // Los modelos entrenados con el histórico: entrenar, ver métricas y
   // versiones, programar el reentreno y segmentar por propensión.
-  { area: "analisis", a: "/modelos-predictivos", clave: "nav.modelosPredictivos", icono: "model_training", permiso: "ia:usar" },
+  {
+    area: "analisis",
+    a: "/modelos-predictivos",
+    clave: "nav.modelosPredictivos",
+    icono: "model_training",
+    permiso: "ia:usar",
+  },
   // El asistente que contesta con el conocimiento de la casa, propone acciones
   // que se confirman y ejecuta preguntas sobre los datos.
-  { area: "analisis", a: "/asistente", clave: "nav.asistente", icono: "support_agent", permiso: "ia:usar" },
+  {
+    area: "analisis",
+    a: "/asistente",
+    clave: "nav.asistente",
+    icono: "support_agent",
+    permiso: "ia:usar",
+  },
 
   // ── Automatización ──────────────────────────────────────────────────────
   // Los estados de cada objeto, como los llama y ordena la empresa
   // (CRM-00.04.01.07). Va con el modelado: es la misma clase de decisión.
   // Los embudos de venta y sus etapas: cuántas hay, cómo se llaman, su
   // probabilidad y qué hace falta para salir de cada una.
-  { area: "plataforma", a: "/embudos", clave: "nav.embudos", icono: "view_kanban", permiso: "pipeline:write" },
+  {
+    area: "plataforma",
+    a: "/embudos",
+    clave: "nav.embudos",
+    icono: "view_kanban",
+    permiso: "pipeline:write",
+  },
   // Cómo se vende: las preguntas que hay que tener contestadas —MEDDIC,
   // BANT…— por embudo, y qué hacer en cada etapa (CRM-03.01.02).
-  { area: "plataforma", a: "/metodologias", clave: "nav.metodologias", icono: "checklist", permiso: "opportunity:write" },
-  { area: "plataforma", a: "/estados", clave: "nav.estados", icono: "rule", permiso: "tenant:write" },
-  { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read"  },
+  {
+    area: "plataforma",
+    a: "/metodologias",
+    clave: "nav.metodologias",
+    icono: "checklist",
+    permiso: "opportunity:write",
+  },
+  {
+    area: "plataforma",
+    a: "/estados",
+    clave: "nav.estados",
+    icono: "rule",
+    permiso: "tenant:write",
+  },
+  {
+    area: "automatizacion",
+    a: "/procesos",
+    clave: "nav.procesos",
+    icono: "account_tree",
+    permiso: "proceso:read",
+  },
   // El código del tenant (CRM-00.04.02): estaba sólo dentro de «Procesos», en
   // el selector de vistas, y quien abría la herramienta no lo encontraba.
-  { area: "automatizacion", a: "/m/procesos?r=Extensiones", clave: "nav.extensiones", icono: "code_blocks", permiso: "automatizacion:read" },
+  {
+    area: "automatizacion",
+    a: "/m/procesos?r=Extensiones",
+    clave: "nav.extensiones",
+    icono: "code_blocks",
+    permiso: "automatizacion:read",
+  },
   // La única excepción de ámbito del producto: vive en Automatización, que es
   // de administrar, y es trabajo diario de cualquier responsable. Aprobar un
   // descuento no es configurar nada, y esconderlo detrás de «Administrar» es
   // garantizar que las aprobaciones se queden esperando.
-  { area: "automatizacion", ambito: "trabajar", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["documentos"] },
+  {
+    area: "automatizacion",
+    ambito: "trabajar",
+    a: "/aprobaciones",
+    clave: "nav.aprobacionesDoc",
+    icono: "approval",
+    recursos: ["documentos"],
+  },
 
   // ── Usuarios y empresa ──────────────────────────────────────────────────
   // Las personas, lo que pueden hacer y bajo qué empresa. Es el nodo
@@ -287,46 +539,132 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // porque no son tablas: quién no tiene segundo factor, qué certificado del
   // IdP caduca, quién tiene permisos incompatibles y por qué esta persona ve
   // esto. `user:read` porque es lo que exigen sus extremos.
-  { area: "usuarios", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
-  { area: "usuarios", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read"  },
+  {
+    area: "usuarios",
+    a: "/seguridad",
+    clave: "nav.seguridad",
+    icono: "shield_person",
+    permiso: "user:read",
+    recursos: ["factores", "sso-gobierno", "segregacion", "roles"],
+  },
+  {
+    area: "usuarios",
+    a: "/administracion",
+    clave: "nav.consola",
+    icono: "tune",
+    permiso: "tenant:read",
+  },
   // El árbol de empresas y lo que cada hija comparte con su matriz
   // (CRM-00.01.03.07), y el consumo hacia facturación (CRM-00.01.06.07).
-  { area: "usuarios", a: "/grupo-de-empresas", clave: "nav.grupoEmpresas", icono: "account_tree", permiso: "tenant:read" },
-  { area: "usuarios", a: "/consumo-a-facturacion", clave: "nav.consumoFacturacion", icono: "receipt_long", permiso: "tenant:read" },
+  {
+    area: "usuarios",
+    a: "/grupo-de-empresas",
+    clave: "nav.grupoEmpresas",
+    icono: "account_tree",
+    permiso: "tenant:read",
+  },
+  {
+    area: "usuarios",
+    a: "/consumo-a-facturacion",
+    clave: "nav.consumoFacturacion",
+    icono: "receipt_long",
+    permiso: "tenant:read",
+  },
   // Importar cuentas y contactos con su mapeo, la simulación fila a fila y la
   // reversión de una importación entera (CRM-07.01.01.08). Y el traspaso de la
   // cartera de quien se va (CRM-07.01.01.07). Las dos estaban sólo por API.
-  { area: "usuarios", a: "/importar", clave: "nav.importar", icono: "upload_file", permiso: "account:import" },
-  { area: "usuarios", a: "/transferir-propiedad", clave: "nav.transferirPropiedad", icono: "swap_horiz", permiso: "account:admin" },
+  {
+    area: "usuarios",
+    a: "/importar",
+    clave: "nav.importar",
+    icono: "upload_file",
+    permiso: "account:import",
+  },
+  {
+    area: "usuarios",
+    a: "/transferir-propiedad",
+    clave: "nav.transferirPropiedad",
+    icono: "swap_horiz",
+    permiso: "account:admin",
+  },
   // Los entornos de pruebas con la copia de los datos (CRM-07.02.01.02), que
   // sólo se alcanzaban desde el selector de vistas de «Empresas».
-  { area: "usuarios", a: "/m/tenants?r=Sandboxes", clave: "nav.sandboxes", icono: "science", permiso: "tenancy:read" },
+  {
+    area: "usuarios",
+    a: "/m/tenants?r=Sandboxes",
+    clave: "nav.sandboxes",
+    icono: "science",
+    permiso: "tenancy:read",
+  },
   // Quién entra en cada herramienta de la casa y qué falta por aplicar. Va con
   // las personas y no con la automatización, que es donde estaba: lo que se
   // mira aquí son accesos, no un motor. Y el rótulo decía «Suite» a secas,
   // que no contesta nada.
-  { area: "usuarios", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["suite"] },
+  {
+    area: "usuarios",
+    a: "/suite",
+    clave: "nav.suite",
+    icono: "sync_alt",
+    permiso: "integration:read",
+    recursos: ["suite"],
+  },
 
   // ── Herramientas de plataforma ──────────────────────────────────────────
   // Lo que se modela y lo que se publica: el nodo «Platform Tools».
 
   // ── Entornos y despliegue ───────────────────────────────────────────────
-  { area: "entornos", a: "/alm", clave: "nav.alm", icono: "swap_horiz", permiso: "metadata:read" , recursos: ["entornos"] },
-  { area: "entornos", a: "/entornos", clave: "nav.entornos", icono: "difference", permiso: "metadata:read" },
+  {
+    area: "entornos",
+    a: "/alm",
+    clave: "nav.alm",
+    icono: "swap_horiz",
+    permiso: "metadata:read",
+    recursos: ["entornos"],
+  },
+  {
+    area: "entornos",
+    a: "/entornos",
+    clave: "nav.entornos",
+    icono: "difference",
+    permiso: "metadata:read",
+  },
   // Qué cambió en la configuración, quién y cuándo, y volver atrás
   // (CRM-00.01.04.02): el historial se guardaba desde septiembre y no se veía.
   // Va con los entornos: es la otra mitad de «qué ha cambiado en esta
   // instalación», la que se cambia en caliente y no se despliega.
-  { area: "entornos", a: "/historial-de-ajustes", clave: "nav.historialAjustes", icono: "history", permiso: "tenant:read" },
+  {
+    area: "entornos",
+    a: "/historial-de-ajustes",
+    clave: "nav.historialAjustes",
+    icono: "history",
+    permiso: "tenant:read",
+  },
   // Un sandbox con datos sintéticos y una consola para probar la API contra
   // él (CRM-00.02.01.15): la pregunta de quien integra, no de quien vende.
-  { area: "entornos", a: "/sandbox-api", clave: "nav.sandboxApi", icono: "terminal", permiso: "integracion:write" },
+  {
+    area: "entornos",
+    a: "/sandbox-api",
+    clave: "nav.sandboxApi",
+    icono: "terminal",
+    permiso: "integracion:write",
+  },
   // En Configuración y con permiso de tenant: quien clona, fusiona o migra un
   // cliente no es quien vende ni quien atiende.
-  { area: "entornos", a: "/ciclo-de-vida", clave: "nav.cicloDeVida", icono: "swap_horiz", permiso: "tenant:read" },
+  {
+    area: "entornos",
+    a: "/ciclo-de-vida",
+    clave: "nav.cicloDeVida",
+    icono: "swap_horiz",
+    permiso: "tenant:read",
+  },
   // Si la plataforma responde, y desde cuándo no. No es configuración —no se
   // ajusta nada aquí—, pero sí es la pregunta de quien despliega.
-  { area: "entornos", a: "/estado", clave: "nav.estado", icono: "monitor_heart" },
+  {
+    area: "entornos",
+    a: "/estado",
+    clave: "nav.estado",
+    icono: "monitor_heart",
+  },
 
   // ── Gobierno y cumplimiento ─────────────────────────────────────────────
   // Las tres pantallas de cumplimiento, juntas por primera vez: estaban
@@ -339,7 +677,14 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // el primer día y a las que no se llegaba desde ninguna pantalla. Medido
   // sobre el contrato: 477 colecciones GET sin un solo botón, 170 de ellas la
   // misma ruta repetida en los catorce servicios.
-  { area: "gobierno", a: "/plataforma", clave: "nav.plataforma", icono: "shield_lock", permiso: "tenant:read" , recursos: ["grc"] },
+  {
+    area: "gobierno",
+    a: "/plataforma",
+    clave: "nav.plataforma",
+    icono: "shield_lock",
+    permiso: "tenant:read",
+    recursos: ["grc"],
+  },
   // Al lado del módulo «Riesgos y controles» y no en vez de él: aquel lista
   // los riesgos y los controles —los registros— y éste contesta si eso que
   // hay se puede medir y qué no cuadra hoy. Sin `recursos`, porque no enseña
@@ -348,9 +693,28 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // La segregación de funciones: existía por API y no tenía pantalla
   // (CRM-07.03.02.06).
   // La clasificación TCSEC de la instalación (CRM-07.03.02.11).
-  { area: "gobierno", a: "/tcsec", clave: "nav.tcsec", icono: "verified_user", permiso: "tenant:read" },
-  { area: "gobierno", a: "/segregacion", clave: "nav.segregacion", icono: "rule_settings", permiso: "user:read", recursos: ["segregacion"] },
-  { area: "gobierno", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
+  {
+    area: "gobierno",
+    a: "/tcsec",
+    clave: "nav.tcsec",
+    icono: "verified_user",
+    permiso: "tenant:read",
+  },
+  {
+    area: "gobierno",
+    a: "/segregacion",
+    clave: "nav.segregacion",
+    icono: "rule_settings",
+    permiso: "user:read",
+    recursos: ["segregacion"],
+  },
+  {
+    area: "gobierno",
+    a: "/cumplimiento",
+    clave: "nav.cumplimiento",
+    icono: "verified_user",
+    permiso: "tenant:read",
+  },
 ];
 
 /**
@@ -406,7 +770,10 @@ export function todasLasEntradas(): Entrada[] {
  * que el menú esconde es peor que no esconderla, porque parece que el sistema
  * se contradice.
  */
-export function entradaVisible(sesion: Sesion | null, entrada: Entrada): boolean {
+export function entradaVisible(
+  sesion: Sesion | null,
+  entrada: Entrada,
+): boolean {
   if (entrada.solo_plataforma && !sesion?.es_admin_plataforma) return false;
   return puede(sesion, entrada.permiso);
 }
@@ -418,10 +785,10 @@ export function iconoDeGrupo(grupo: string): string {
     Ventas: "trending_up",
     Marketing: "campaign",
     Servicio: "support_agent",
-    "Analítica": "insights",
+    Analítica: "insights",
     "Usuarios y empresa": "manage_accounts",
     "Herramientas de plataforma": "handyman",
-    "Automatización": "bolt",
+    Automatización: "bolt",
     "Entornos y despliegue": "layers",
     "Gobierno y cumplimiento": "gavel",
   };
@@ -531,7 +898,10 @@ export function ambitoDelCamino(
 }
 
 export function menuDe(
-  modulosPorGrupo: Map<string, { ruta: string; titulo: string; grupo: string }[]>,
+  modulosPorGrupo: Map<
+    string,
+    { ruta: string; titulo: string; grupo: string }[]
+  >,
   visible: (entrada: Entrada) => boolean,
   ambito?: IdAmbito,
 ): AreaPintada[] {
@@ -544,7 +914,11 @@ export function menuDe(
       // Sin icono por entrada: dentro de un área todas compartirían el icono
       // del área, que repetido doce veces no distingue nada y solo ensucia. El
       // icono va en la cabecera del área, que es donde sí orienta.
-      ...modulos.map((m) => ({ a: `/m/${m.ruta}`, clave: m.titulo, icono: "" })),
+      ...modulos.map((m) => ({
+        a: `/m/${m.ruta}`,
+        clave: m.titulo,
+        icono: "",
+      })),
     ]);
   }
   for (const entrada of TRANSVERSALES) {

@@ -310,16 +310,24 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
             "rastro de quién lo pidió."
         ),
     )
-    def descargar_con_enlace(objeto_tipo: str, token: str, db: DbDep, peticion: Request) -> Any:
+    def descargar_con_enlace(objeto_tipo: str, token: str, peticion: Request) -> Any:
+        # Sin `DbDep`: exige un tenant, y quien abre el enlace no trae ninguno
+        # —es la razón de ser del enlace—. Medido el 09-11-2026: respondía 401
+        # «auth.requerida» SIEMPRE, también con el token bien firmado. La firma
+        # se comprueba primero; después se lee como sistema, y el adjunto dice
+        # de qué tenant es (y con él se anota la descarga).
+        from crmcore.db.session import sesion
+
         adjunto_id, usuario_id = verificar_enlace(token)
-        fila = _traer(db, adjunto_id, objeto_tipo)
-        datos = leer(
-            db,
-            adjunto_id,
-            usuario_id=usuario_id,
-            ip=peticion.client.host if peticion.client else "",
-        )
-        return _respuesta(fila, datos)
+        with sesion(sistema=True) as db:
+            fila = _traer(db, adjunto_id, objeto_tipo)
+            datos = leer(
+                db,
+                adjunto_id,
+                usuario_id=usuario_id,
+                ip=peticion.client.host if peticion.client else "",
+            )
+            return _respuesta(fila, datos)
 
     @router.post(
         "/{objeto_tipo}/{adjunto_id}/enlace",

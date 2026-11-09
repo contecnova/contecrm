@@ -11,6 +11,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
+from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -20,6 +21,8 @@ from services.service import operacion as ope
 from services.service import servicio as svc
 from services.service.entitlements import CreditoServicio, Encuesta, Entitlement
 from services.service.operacion import AgenteServicio, ColaCasos, ReglaAsignacion, ReglaEscalada
+
+logger = get_logger(__name__)
 
 router_colas = APIRouter(prefix="/colas", tags=["casos"])
 router_agentes = APIRouter(prefix="/agentes", tags=["casos"])
@@ -433,6 +436,9 @@ class CrearEntitlement(BaseModel):
     producto_id: UUID | None = None
     plan: str | None = None
     sla_clave: str | None = None
+    proveedor_clave: str | None = Field(
+        None, max_length=60, description="Proveedor de servicio que lo da, si no lo damos nosotros"
+    )
     casos_incluidos: int | None = None
     horas_incluidas: float | None = None
     al_agotar: str = Field("avisar", description="avisar | bloquear | facturar")
@@ -797,8 +803,13 @@ router_sla_proveedores = APIRouter(prefix="/sla-proveedores", tags=["SLA"])
 
 class MaximoIn(BaseModel):
     del_proveedor: dict[str, Any] = Field(default_factory=dict)
-    horas_propias: float = Field(
-        1.0,
+    proveedor_clave: str | None = Field(
+        None,
+        max_length=60,
+        description="Con él se usa el acuerdo GUARDADO del proveedor y no el tecleado",
+    )
+    horas_propias: float | None = Field(
+        None,
         ge=0,
         description=(
             "Lo que tardamos NOSOTROS en lo nuestro: recibir el aviso, "
@@ -822,11 +833,180 @@ class MaximoIn(BaseModel):
         "es lo que se hace ahora y lo que este módulo existe para evitar."
     ),
 )
-def maximo_que_se_puede_prometer(cuerpo: MaximoIn, principal: AutenticadoDep) -> Any:
+def maximo_que_se_puede_prometer(cuerpo: MaximoIn, db: DbDep, principal: AutenticadoDep) -> Any:
     from services.service import proveedores_sla as psla
 
+    del_proveedor = dict(cuerpo.del_proveedor)
+    if cuerpo.proveedor_clave:
+        # El acuerdo GUARDADO, no el que teclea quien pregunta: lo tecleado es
+        # lo que el comercial cree que sostiene el proveedor, y esa creencia es
+        # justo lo que este módulo existe para comprobar.
+        proveedores = _proveedores_de_integracion(db, principal)
+        acuerdo = next(
+            (
+                a
+                for a in psla.acuerdos(db, principal.tenant_id)
+                if a.proveedor_clave == cuerpo.proveedor_clave
+            ),
+            None,
+        )
+        del_proveedor = psla.del_proveedor(acuerdo, (proveedores or {}).get(cuerpo.proveedor_clave))
     return psla.maximo_que_se_puede_prometer(
-        del_proveedor=cuerpo.del_proveedor, horas_propias=cuerpo.horas_propias
+        del_proveedor=del_proveedor,
+        horas_propias=psla._horas_propias(cuerpo.horas_propias, db),
+    )
+
+
+def _proveedores_de_integracion(db: Any, principal: Any) -> dict[str, dict[str, Any]] | None:
+    """Los proveedores de servicio que constan en `integration`, por clave.
+
+    Por HTTP: el proveedor vive allí y este servicio no lee su esquema. `None`
+    si no contesta, que no es lo mismo que «no hay ninguno»."""
+    from crmcore.errors import NoDisponible
+    from crmcore.http.interno import invocar
+    from crmcore.runtime import settings as rt
+
+    from services.service.ajustes import ajustes
+
+    espera = rt.efectivo("sla_proveedor_espera_s", db)
+    try:
+        respuesta = invocar(
+            metodo="GET",
+            ruta="/api/v1/proveedores-servicio",
+            parametros={"limite": 200},
+            tenant_id=principal.tenant_id,
+            principal_id=principal.id,
+            permisos=["integracion:read"],
+            timeout_s=float(espera if espera is not None else ajustes().sla_proveedor_espera_s),
+        )
+    except NoDisponible as exc:
+        logger.warning("service.sla_proveedor_integracion_sin_respuesta", error=str(exc)[:200])
+        return None
+    datos = respuesta.get("datos") if respuesta.get("ok") else None
+    items = datos.get("items") if isinstance(datos, dict) else None
+    if not isinstance(items, list):
+        logger.warning("service.sla_proveedor_integracion_rechazo", estado=respuesta.get("estado"))
+        return None
+    return {str(p.get("clave")): p for p in items if p.get("clave")}
+
+
+class AcuerdoIn(BaseModel):
+    respuesta_h: float | None = Field(None, ge=0)
+    resolucion_h: float | None = Field(
+        None, ge=0, description="Vacío: vale el plazo del proveedor en integración"
+    )
+    disponibilidad_pct: float | None = Field(None, ge=0, le=100)
+    cobertura_horaria: str | None = Field(None, max_length=40, examples=["24x7", "L-V 9-18"])
+    vigente_hasta: date | None = None
+    notas: str | None = Field(None, max_length=4000)
+
+
+@router_sla_proveedores.get(
+    "/acuerdos",
+    dependencies=[Depends(exige_permiso("entitlement:read"))],
+    summary="Los acuerdos de servicio guardados de cada proveedor",
+)
+def listar_acuerdos(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.service import proveedores_sla as psla
+
+    return [psla.acuerdo_como_dict(a) for a in psla.acuerdos(db, principal.tenant_id)]
+
+
+@router_sla_proveedores.put(
+    "/acuerdos/{proveedor_clave}",
+    dependencies=[Depends(exige_permiso("entitlement:write"))],
+    summary="Guardar lo que sostiene un proveedor",
+    description=(
+        "Respuesta, resolución, disponibilidad y cobertura **firmadas con el "
+        "proveedor**. Si la resolución se deja vacía vale el plazo que consta "
+        "del proveedor en integración."
+    ),
+)
+def guardar_acuerdo(
+    proveedor_clave: str, cuerpo: AcuerdoIn, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.service import proveedores_sla as psla
+
+    fila = psla.guardar_acuerdo(
+        db, principal.tenant_id, proveedor_clave, cuerpo.model_dump(exclude_unset=True)
+    )
+    return psla.acuerdo_como_dict(fila)
+
+
+@router_sla_proveedores.delete(
+    "/acuerdos/{proveedor_clave}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("entitlement:write"))],
+    summary="Quitar el acuerdo guardado de un proveedor",
+)
+def borrar_acuerdo(proveedor_clave: str, db: DbDep, principal: AutenticadoDep) -> None:
+    from services.service import proveedores_sla as psla
+
+    psla.borrar_acuerdo(db, principal.tenant_id, proveedor_clave)
+
+
+class ProveedorDelDerecho(BaseModel):
+    proveedor_clave: str | None = Field(None, max_length=60)
+
+
+@router_sla_proveedores.put(
+    "/entitlements/{entitlement_id}/proveedor",
+    dependencies=[Depends(exige_permiso("entitlement:write"))],
+    summary="Quién da este derecho al cliente",
+    description="Vacío: lo damos nosotros y no hay acuerdo de proveedor que comparar.",
+)
+def proveedor_del_derecho(
+    entitlement_id: UUID, cuerpo: ProveedorDelDerecho, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from crmcore.errors import NoEncontrado
+
+    fila = db.get(ent.Entitlement, entitlement_id)
+    if fila is None or fila.tenant_id != principal.tenant_id or fila.deleted_at is not None:
+        raise NoEncontrado("Ese derecho no existe", error_code="entitlement.no_encontrado")
+    fila.proveedor_clave = (cuerpo.proveedor_clave or "").strip() or None
+    db.flush()
+    return {"id": str(fila.id), "proveedor_clave": fila.proveedor_clave}
+
+
+@router_sla_proveedores.get(
+    "/revision",
+    dependencies=[Depends(exige_permiso("entitlement:read"))],
+    summary="Lo que prometemos al cliente frente a lo que sostiene su proveedor",
+    description=(
+        "Cada derecho activo con un proveedor detrás, comparado con el acuerdo "
+        "guardado de ese proveedor. Avisa de **todo** lo que no se puede "
+        "cumplir —y de los derechos cuyo proveedor no tiene acuerdo: no tenerlo "
+        "no es tenerlo bien—. Si integración no contesta, se compara con lo "
+        "guardado y se dice."
+    ),
+)
+def revision(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.service import proveedores_sla as psla
+
+    proveedores = _proveedores_de_integracion(db, principal)
+    salida = psla.revisar(db, principal.tenant_id, proveedores=proveedores)
+    return salida
+
+
+class CompararIn(BaseModel):
+    prometido_al_cliente: dict[str, Any] = Field(default_factory=dict)
+    del_proveedor: dict[str, Any] = Field(default_factory=dict)
+    horas_propias: float | None = Field(None, ge=0)
+
+
+@router_sla_proveedores.post(
+    "/comparar",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    summary="Comparar un pliego con lo que sostiene el proveedor",
+    description="Devuelve **todos** los incumplimientos, no el primero.",
+)
+def comparar(cuerpo: CompararIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.service import proveedores_sla as psla
+
+    return psla.comparar(
+        prometido_al_cliente=cuerpo.prometido_al_cliente,
+        del_proveedor=cuerpo.del_proveedor,
+        horas_propias=psla._horas_propias(cuerpo.horas_propias, db),
     )
 
 

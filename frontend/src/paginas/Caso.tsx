@@ -42,6 +42,7 @@ import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
+import { listar } from "@/lib/listados";
 import { fecha, fechaHora } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -112,6 +113,8 @@ interface Caso {
   estado: string;
   prioridad: string;
   severidad: string;
+  /** La cola en la que está. */
+  equipo?: string | null;
   /**
    * El camino de categorías, de la raíz a la hoja.
    *
@@ -149,6 +152,8 @@ export function Caso() {
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  // Derivar a otra cola o a otro nivel (CRM-04.01.01.08).
+  const [derivando, setDerivando] = useState(false);
   const navegar = useNavigate();
   // El mismo recurso que el listado: dos pantallas que enseñan el mismo
   // registro tienen que escribirlo por la misma ruta y el mismo contrato.
@@ -264,18 +269,45 @@ export function Caso() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
-              extra={acciones
-                .filter((a) => !esDeIA(a))
-                .map((a) => ({
-                  clave: a.ruta,
-                  nombre: a.nombre,
-                  alElegir: () => setAccionAbierta(a),
-                  destructiva: esIrreversible(a),
-                }))}
+              extra={[
+                // Derivar: a segundo nivel, a ingeniería o a una cola interna.
+                // La ruta existía y sólo se llegaba desde «Escalado»; la
+                // pregunta se hace delante del caso, no en otra pantalla.
+                ...(puedeEditar
+                  ? [
+                      {
+                        clave: "derivar",
+                        nombre: t("caso.derivar.boton"),
+                        alElegir: () => setDerivando(true),
+                        destructiva: false,
+                      },
+                    ]
+                  : []),
+                ...acciones
+                  .filter((a) => !esDeIA(a))
+                  .map((a) => ({
+                    clave: a.ruta,
+                    nombre: a.nombre,
+                    alElegir: () => setAccionAbierta(a),
+                    destructiva: esIrreversible(a),
+                  })),
+              ]}
             />
           ) : null
         }
       />
+
+      {derivando ? (
+        <DerivarCaso
+          casoId={id}
+          equipo={caso.equipo ?? null}
+          alTerminar={() => {
+            setDerivando(false);
+            cargar();
+          }}
+          alCancelar={() => setDerivando(false)}
+        />
+      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -700,6 +732,127 @@ function EscribirloEnConocimiento({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Derivar el caso a otra cola: segundo o tercer nivel, ingeniería, o una cola
+ * interna (CRM-04.01.01.08).
+ *
+ * El motivo es obligatorio —sin él quien lo recibe tiene que leerse el caso
+ * entero para saber qué se espera— y el caso sigue siendo del cliente: no se
+ * crea otro ni se reinicia el reloj. «Interno» lo marca para que no se le
+ * enseñe al cliente.
+ */
+function DerivarCaso({
+  casoId,
+  equipo,
+  alTerminar,
+  alCancelar,
+}: {
+  casoId: string;
+  equipo: string | null;
+  alTerminar: () => void;
+  alCancelar: () => void;
+}) {
+  const { t } = useTranslation();
+  const [colas, setColas] = useState<
+    { clave: string; nombre: string; nivel: number }[] | null
+  >(null);
+  const [cola, setCola] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [interno, setInterno] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    void listar<{ clave: string; nombre: string; nivel: number }>(
+      "/api/v1/colas?limite=200",
+    )
+      .then((filas) => setColas(filas.filter((c) => c.clave !== equipo)))
+      .catch((e) => {
+        setColas([]);
+        setFallo(e);
+      });
+  }, [equipo]);
+
+  async function derivar() {
+    setEnviando(true);
+    setFallo(null);
+    try {
+      await llamar(`/api/v1/escalado/derivar/${casoId}`, {
+        metodo: "POST",
+        cuerpo: { cola_destino: cola, motivo: motivo.trim(), interno },
+      });
+      alTerminar();
+    } catch (e) {
+      setFallo(e);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section className="card mb-4 p-4" aria-label={t("caso.derivar.titulo")}>
+      <h2 className="section-label mb-2">{t("caso.derivar.titulo")}</h2>
+      <p className="mb-3 text-dato text-ink-muted">
+        {t("caso.derivar.explicacion")}
+      </p>
+      {colas !== null && colas.length === 0 && !fallo ? (
+        <p className="mb-3 text-dato text-warning" role="status">
+          {t("caso.derivar.sinColas")}
+        </p>
+      ) : null}
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+          {t("caso.derivar.cola")}
+          <select
+            className="input-base"
+            value={cola}
+            onChange={(e) => setCola(e.target.value)}
+          >
+            <option value="">{t("caso.derivar.elige")}</option>
+            {(colas ?? []).map((c) => (
+              <option key={c.clave} value={c.clave}>
+                {t("caso.derivar.opcion", { nombre: c.nombre, nivel: c.nivel })}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 self-end text-dato text-ink">
+          <input
+            type="checkbox"
+            checked={interno}
+            onChange={(e) => setInterno(e.target.checked)}
+          />
+          {t("caso.derivar.interno")}
+        </label>
+        <label className="flex flex-col gap-1 text-rotulo text-ink-muted md:col-span-2">
+          {t("caso.derivar.motivo")}
+          <textarea
+            className="input-base"
+            rows={3}
+            value={motivo}
+            placeholder={t("caso.derivar.motivoAyuda")}
+            onChange={(e) => setMotivo(e.target.value)}
+          />
+        </label>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!cola || !motivo.trim() || enviando}
+          onClick={() => void derivar()}
+        >
+          {enviando ? t("caso.derivar.enviando") : t("caso.derivar.confirmar")}
+        </button>
+        <button type="button" className="btn-secondary" onClick={alCancelar}>
+          {t("caso.cancelar")}
+        </button>
+      </div>
+      {fallo ? <Fallo error={fallo} /> : null}
+    </section>
   );
 }
 

@@ -651,6 +651,7 @@ export function Oportunidad() {
               }}
             />
             <ElPlanConElCliente plan={plan} />
+            <LaFirma id={op.id} alCambiar={cargar} />
           </div>
         ) : (
           <DetallesDelRegistro
@@ -662,6 +663,250 @@ export function Oportunidad() {
         )}
       </div>
     </>
+  );
+}
+
+interface EstadoFirma {
+  sobre_id: string | null;
+  estado: string | null;
+  referencia: string | null;
+  motivo: string | null;
+  etapa_error: string | null;
+  etapa_tras_firma: string | null;
+  etapa_movida_a?: string | null;
+  consultado: boolean;
+}
+
+interface PresupuestoCorto {
+  id: string;
+  numero: string;
+  version: number;
+  estado: string;
+}
+
+/**
+ * Enviar a firma desde la oportunidad, y que la firma mueva la etapa
+ * (CRM-03.03.02.07).
+ *
+ * El sobre se crea en integración con el origen ya puesto —esta
+ * oportunidad—, y su estado se lee aquí. Al completarse, la oportunidad
+ * avanza a la etapa que el embudo tenga configurada para una firma completada
+ * (`firma_etapa_por_embudo`, en Admin › Ajustes); si no hay ninguna, sólo se
+ * marca. Se dice cuál es ANTES de mandar, para que nadie se sorprenda.
+ */
+function LaFirma({ id, alCambiar }: { id: string; alCambiar: () => void }) {
+  const { t } = useTranslation();
+  const [firma, setFirma] = useState<EstadoFirma | null>(null);
+  const [abierto, setAbierto] = useState(false);
+  const [presupuestos, setPresupuestos] = useState<PresupuestoCorto[]>([]);
+  const [presupuesto, setPresupuesto] = useState("");
+  const [firmantes, setFirmantes] = useState([{ nombre: "", email: "" }]);
+  const [mandarYa, setMandarYa] = useState(true);
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState("");
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const leer = useCallback(() => {
+    void llamar<EstadoFirma>(`/api/v1/opportunities/${id}/firma`)
+      .then((r) => {
+        setFirma(r.datos);
+        if (r.datos.etapa_movida_a) alCambiar();
+      })
+      .catch(() => setFirma(null));
+  }, [id, alCambiar]);
+  useEffect(leer, [leer]);
+
+  useEffect(() => {
+    if (!abierto) return;
+    void listar<PresupuestoCorto>(
+      `/api/v1/presupuestos?oportunidad_id=${id}&limite=50`,
+    )
+      .then(setPresupuestos)
+      .catch(() => setPresupuestos([]));
+  }, [abierto, id]);
+
+  const listos = firmantes.filter((f) => f.nombre.trim() && f.email.trim());
+
+  async function enviar() {
+    setEnviando(true);
+    setFallo(null);
+    setAviso("");
+    try {
+      const r = await llamar<{
+        referencia: string | null;
+        estado: string;
+        error_al_enviar: string | null;
+      }>(`/api/v1/opportunities/${id}/enviar-a-firma`, {
+        metodo: "POST",
+        cuerpo: {
+          firmantes: listos,
+          presupuesto_id: presupuesto || null,
+          enviar: mandarYa,
+        },
+      });
+      setAviso(
+        r.datos.error_al_enviar
+          ? t("oportunidad.firma.creadoSinMandar", {
+              motivo: r.datos.error_al_enviar,
+            })
+          : t("oportunidad.firma.creado", {
+              referencia: r.datos.referencia ?? "",
+              estado: r.datos.estado,
+            }),
+      );
+      setAbierto(false);
+      leer();
+    } catch (e) {
+      setFallo(e);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-2">{t("oportunidad.firma.titulo")}</h2>
+      {firma?.estado ? (
+        <p className="text-dato text-ink" role="status">
+          {t("oportunidad.firma.estado", {
+            estado: firma.estado,
+            referencia: firma.referencia ?? "",
+          })}
+          {firma.sobre_id ? (
+            <>
+              {" "}
+              <Link
+                className="btn-link"
+                to={`/m/operacion/sobre_firma/${firma.sobre_id}`}
+              >
+                {t("oportunidad.firma.verSobre")}
+              </Link>
+            </>
+          ) : null}
+        </p>
+      ) : (
+        <p className="text-dato text-ink-muted">
+          {t("oportunidad.firma.sinSobre")}
+        </p>
+      )}
+      {firma && firma.sobre_id && !firma.consultado ? (
+        <p className="mt-1 text-dato text-warning" role="status">
+          {t("oportunidad.firma.sinConsultar")}
+        </p>
+      ) : null}
+      <p className="mt-1 text-dato text-ink-muted">
+        {firma?.etapa_tras_firma
+          ? t("oportunidad.firma.llevaA", { etapa: firma.etapa_tras_firma })
+          : t("oportunidad.firma.soloMarca")}
+      </p>
+      {firma?.etapa_error ? (
+        <p className="mt-1 text-dato text-danger" role="status">
+          {t("oportunidad.firma.noMovio", { motivo: firma.etapa_error })}
+        </p>
+      ) : null}
+      {aviso ? (
+        <p className="mt-2 text-dato text-ink" role="status">
+          {aviso}
+        </p>
+      ) : null}
+      {!abierto ? (
+        <button
+          type="button"
+          className="btn-secondary mt-3"
+          onClick={() => setAbierto(true)}
+        >
+          {t("oportunidad.firma.enviar")}
+        </button>
+      ) : (
+        <div className="mt-3 flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("oportunidad.firma.presupuesto")}
+            <select
+              className="input-base"
+              value={presupuesto}
+              onChange={(e) => setPresupuesto(e.target.value)}
+            >
+              <option value="">{t("oportunidad.firma.elUltimo")}</option>
+              {presupuestos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {`${p.numero} v${p.version} · ${p.estado}`}
+                </option>
+              ))}
+            </select>
+          </label>
+          {firmantes.map((f, i) => (
+            <div key={i} className="grid gap-2 md:grid-cols-2">
+              <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+                {t("oportunidad.firma.nombre")}
+                <input
+                  className="input-base"
+                  value={f.nombre}
+                  onChange={(e) =>
+                    setFirmantes(
+                      firmantes.map((x, j) =>
+                        j === i ? { ...x, nombre: e.target.value } : x,
+                      ),
+                    )
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+                {t("oportunidad.firma.email")}
+                <input
+                  className="input-base"
+                  type="email"
+                  value={f.email}
+                  onChange={(e) =>
+                    setFirmantes(
+                      firmantes.map((x, j) =>
+                        j === i ? { ...x, email: e.target.value } : x,
+                      ),
+                    )
+                  }
+                />
+              </label>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn-link self-start"
+            onClick={() =>
+              setFirmantes([...firmantes, { nombre: "", email: "" }])
+            }
+          >
+            {t("oportunidad.firma.otroFirmante")}
+          </button>
+          <label className="flex items-center gap-2 text-dato text-ink">
+            <input
+              type="checkbox"
+              checked={mandarYa}
+              onChange={(e) => setMandarYa(e.target.checked)}
+            />
+            {t("oportunidad.firma.mandarYa")}
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!listos.length || enviando}
+              onClick={() => void enviar()}
+            >
+              {enviando
+                ? t("oportunidad.firma.enviando")
+                : t("oportunidad.firma.confirmar")}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setAbierto(false)}
+            >
+              {t("oportunidad.firma.cancelar")}
+            </button>
+          </div>
+        </div>
+      )}
+      {fallo ? <Fallo error={fallo} /> : null}
+    </section>
   );
 }
 

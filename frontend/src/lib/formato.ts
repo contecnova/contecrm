@@ -193,6 +193,12 @@ const MARCA_DE_TIEMPO = /_at$/;
 const CON_TILDE: Record<string, string> = {
   anadir: "añadir",
   engana: "engaña",
+  telefonia: "telefonía",
+  conservacion: "conservación",
+  garantias: "garantías",
+  compensacion: "compensación",
+  grabacion: "grabación",
+  erroneo: "erróneo",
   entro: "entró",
   imagenes: "imágenes",
   significacion: "significación",
@@ -213,6 +219,12 @@ const CON_TILDE: Record<string, string> = {
   tenian: "tenían",
   busqueda: "búsqueda",
   transicion: "transición",
+  correlacion: "correlación",
+  instantanea: "instantánea",
+  instantaneas: "instantáneas",
+  cuantas: "cuántas",
+  leidas: "leídas",
+  programacion: "programación",
   notificacion: "notificación",
   // `mencion_neutra` es uno de los tipos de lo que se recoge en redes, y el
   // humanizador lo pintaba «Mencion neutra». El producto escribe «menciones»
@@ -773,7 +785,9 @@ export function trozos(valor: unknown, campo = ""): Trozo[] {
 export function cifra(valor: unknown): string {
   const numero = Number(valor ?? 0);
   if (Number.isNaN(numero)) return String(valor ?? "");
-  return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 }).format(numero);
+  return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 }).format(
+    numero,
+  );
 }
 
 /**

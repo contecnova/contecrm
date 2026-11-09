@@ -118,9 +118,9 @@ async def consumir_firma(mensaje: Any) -> None:
 
     **Solo se mueve lo que el sobre demuestra.** Un sobre completado dice que
     está firmado, no que el negocio esté ganado: puede faltar el pedido, el pago
-    o la aprobación interna. Se marca la firma y se deja la etapa a quien la
-    gobierna; forzar «ganada» desde aquí se saltaría el motivo de cierre, la
-    aprobación de descuento y el forecast.
+    o la aprobación interna. Por eso la etapa a la que lleva la decide quien
+    gobierna el embudo (`firma_etapa_por_embudo`), y se mueve por el camino de
+    siempre, con sus criterios de salida; sin configurar, sólo se marca.
     """
     from uuid import UUID
 
@@ -159,18 +159,24 @@ async def consumir_firma(mensaje: Any) -> None:
             logger.warning("sales.firma_sobre_oportunidad_inexistente", oportunidad=str(origen_id))
             return
 
-        campos = dict(oportunidad.campos or {})
-        campos["firma_estado"] = tipo.rsplit(".", 1)[-1]
-        campos["firma_sobre_id"] = str(datos.get("sobre_id") or "")
-        campos["firma_referencia"] = str(datos.get("referencia") or "")
-        if datos.get("motivo"):
-            campos["firma_motivo"] = str(datos["motivo"])
-        oportunidad.campos = campos
-        uow.db.flush()
+        # El mismo camino que la ficha cuando pregunta al sobre: marca la firma
+        # y, si el embudo lo tiene configurado, lleva la oportunidad a su
+        # etapa (`firma_etapa_por_embudo`). Sin configurar, sólo se marca.
+        from services.sales.firma_oportunidad import aplicar_estado
+
+        aplicado = aplicar_estado(
+            uow,
+            oportunidad,
+            estado=tipo.rsplit(".", 1)[-1],
+            sobre_id=str(datos.get("sobre_id") or ""),
+            referencia=str(datos.get("referencia") or ""),
+            motivo=str(datos.get("motivo") or ""),
+        )
         logger.info(
             "sales.oportunidad_marcada_por_firma",
             oportunidad=str(origen_id),
-            estado=campos["firma_estado"],
+            estado=aplicado["estado"],
+            etapa=aplicado["etapa_movida_a"],
         )
 
 

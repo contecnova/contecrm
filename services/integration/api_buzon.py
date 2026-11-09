@@ -106,14 +106,23 @@ def pausar(buzon_id: UUID, cuerpo: Pausar, uow: UowDep) -> Any:
         "falta una reunión."
     ),
 )
-def sincronizar(buzon_id: UUID, cuerpo: Sincronizar, uow: UowDep) -> Any:
-    return buz.sincronizar(
+def sincronizar(buzon_id: UUID, cuerpo: Sincronizar, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.integration.api_telefonia import identidad_de
+
+    salida = buz.sincronizar(
         uow,
         buzon_id=buzon_id,
         elementos=cuerpo.elementos,
         marca_nueva=cuerpo.marca_nueva,
         direcciones_conocidas=cuerpo.direcciones_conocidas,
     )
+    # Las citas registradas se convierten en actividad de verdad, con sus
+    # asistentes vinculados a contactos (CRM-06.01.01.04). Con la identidad de
+    # quien sincroniza: si no puede escribir actividades, no se escriben.
+    salida["reuniones"] = buz.registrar_reuniones(
+        uow, buzon_id=buzon_id, identidad=identidad_de(principal)
+    )
+    return salida
 
 
 @router_buzon.get(
@@ -146,6 +155,28 @@ class DeclararCanalChat(BaseModel):
         ),
     )
     ordenes: list[str] | None = None
+    recibe_avisos: bool = Field(
+        False,
+        description=(
+            "Si le llegan los avisos de notificaciones y automatizaciones. Apagado "
+            "por defecto: un canal declarado para consultar no tiene por qué "
+            "llenarse de avisos"
+        ),
+    )
+
+
+class AvisoChat(BaseModel):
+    texto: str = Field(..., min_length=1, max_length=2_000)
+    objeto: str = Field("", max_length=60)
+    objeto_id: UUID | None = None
+    enlace: str = Field(
+        "",
+        max_length=1_000,
+        description=(
+            "Vacío: se pone solo con la dirección pública del CRM (ajuste "
+            "«chat_url_crm») si el aviso es de un registro"
+        ),
+    )
 
 
 class OrdenChat(BaseModel):
@@ -179,6 +210,7 @@ def declarar_canal_chat(cuerpo: DeclararCanalChat, uow: UowDep) -> Any:
         # en que alguien puede hacer algo al respecto; descubrirlo después exige
         # que a alguien se le ocurra preguntarlo.
         "reproducible": not fila.cabecera_momento,
+        "recibe_avisos": fila.recibe_avisos,
         "aviso": (
             ""
             if fila.cabecera_momento
@@ -206,7 +238,7 @@ async def orden_chat(clave: str, cuerpo: OrdenChat, request: Request, uow: UowDe
     canal = colab.canal_por_clave(uow.db, uow.tenant_id, clave)
     firma = request.headers.get(canal.cabecera_firma or "x-signature", "")
     momento = request.headers.get(canal.cabecera_momento, "") if canal.cabecera_momento else ""
-    return colab.atender(
+    salida = colab.atender(
         uow,
         clave=clave,
         cuerpo=crudo,
@@ -217,6 +249,46 @@ async def orden_chat(clave: str, cuerpo: OrdenChat, request: Request, uow: UowDe
         objeto_id=cuerpo.objeto_id,
         texto=cuerpo.texto,
         usuario_externo=cuerpo.usuario_externo,
+    )
+    if cuerpo.orden == "consultar" and salida.get("hecho"):
+        # Firma comprobada y orden admitida: ahora se contesta con el dato, con
+        # los permisos de la persona que pregunta y no con los del canal.
+        return colab.contestar_consulta(
+            uow.tenant_id,
+            objeto=cuerpo.objeto,
+            objeto_id=cuerpo.objeto_id,
+            usuario_externo=cuerpo.usuario_externo,
+        )
+    return salida
+
+
+@router_chat.post(
+    "/{clave}/aviso",
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="Mandar un aviso al canal de chat",
+    description=(
+        "Se manda de verdad al webhook entrante del canal, con la plantilla del "
+        "ajuste «chat_plantilla_aviso» y, si es de un registro, su enlace. Lo que "
+        "contesta el canal se guarda en él (último aviso, si llegó y el detalle)."
+    ),
+)
+def aviso_chat(clave: str, cuerpo: AvisoChat, db: DbDep, principal: AutenticadoDep) -> Any:
+    # Por clave o por identificador: la ficha del canal llama a sus acciones con
+    # el id del registro, y la integración que avisa conoce la clave.
+    try:
+        fila = db.get(colab.CanalChat, UUID(clave))
+    except ValueError:
+        fila = None
+    if fila is not None and fila.tenant_id == principal.tenant_id:
+        clave = fila.clave
+    return colab.mandar_aviso(
+        db,
+        principal.tenant_id,
+        clave=clave,
+        texto=cuerpo.texto,
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        enlace=cuerpo.enlace,
     )
 
 

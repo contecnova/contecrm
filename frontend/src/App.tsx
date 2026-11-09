@@ -22,6 +22,7 @@ import { Pipeline } from "@/paginas/Pipeline";
 import { Procesos } from "@/paginas/Procesos";
 import { Aprobaciones } from "@/paginas/Aprobaciones";
 import { Puesto } from "@/paginas/Puesto";
+import { LlamadaEntrante } from "@/componentes/LlamadaEntrante";
 import { llamar } from "@/lib/api";
 import { aplicarDensidad, densidadDelPerfil } from "@/lib/densidad";
 import { aplicarLocalizacion, aplicarMarcaDelTenant } from "@/lib/localizacion";
@@ -92,6 +93,11 @@ const Recorrido = pantalla(
   () => import("@/paginas/Recorrido"),
   (m) => m.Recorrido,
 );
+// El enlace de los avisos al chat: objeto e id, y el front pone el módulo.
+const AbrirRegistro = pantalla(
+  () => import("@/paginas/AbrirRegistro"),
+  (m) => m.AbrirRegistro,
+);
 const Alm = pantalla(
   () => import("@/paginas/Alm"),
   (m) => m.Alm,
@@ -124,6 +130,14 @@ const Duplicados = pantalla(
   () => import("@/paginas/Duplicados"),
   (m) => m.Duplicados,
 );
+const CalidadDelDato = pantalla(
+  () => import("@/paginas/CalidadDelDato"),
+  (m) => m.CalidadDelDato,
+);
+const SinConexion = pantalla(
+  () => import("@/paginas/SinConexion"),
+  (m) => m.SinConexion,
+);
 const ImportarDatos = pantalla(
   () => import("@/paginas/ImportarDatos"),
   (m) => m.ImportarDatos,
@@ -152,6 +166,10 @@ const SuiteGobierno = pantalla(
   () => import("@/paginas/Suite"),
   (m) => m.SuiteGobierno,
 );
+const AnalisisCrm = pantalla(
+  () => import("@/paginas/AnalisisCrm"),
+  (m) => m.AnalisisCrm,
+);
 const Explotacion = pantalla(
   () => import("@/paginas/Explotacion"),
   (m) => m.Explotacion,
@@ -176,9 +194,23 @@ const ConsumoAFacturacion = pantalla(
   () => import("@/paginas/ConsumoAFacturacion"),
   (m) => m.ConsumoAFacturacion,
 );
+const SlaProveedores = pantalla(
+  () => import("@/paginas/SlaProveedores"),
+  (m) => m.SlaProveedores,
+);
 const Segregacion = pantalla(
   () => import("@/paginas/Segregacion"),
   (m) => m.Segregacion,
+);
+// La telefonía conectada con sus llamadas (CRM-04.02.01.05) y el motor
+// externo de compensación (CRM-03.02.03.04).
+const Telefonia = pantalla(
+  () => import("@/paginas/Telefonia"),
+  (m) => m.Telefonia,
+);
+const CompensacionExterna = pantalla(
+  () => import("@/paginas/CompensacionExterna"),
+  (m) => m.CompensacionExterna,
 );
 const Metodologias = pantalla(
   () => import("@/paginas/Metodologias"),
@@ -476,6 +508,9 @@ export function App() {
 
   return (
     <Marco sesion={sesion}>
+      {/* La ficha emergente al entrar una llamada (CRM-04.02.01.05): en el
+          marco, para que salte en cualquier pantalla. */}
+      <LlamadaEntrante />
       {/* La frontera va DENTRO del marco: lo que se cae es el contenido de la
           pantalla, así que el menú y la barra siguen ahí y el usuario puede
           irse a otro sitio. Sin ella, un error al pintar cualquier pantalla
@@ -523,6 +558,12 @@ export function App() {
             <Route path="/embudos" element={<Embudos />} />
             <Route path="/metodologias" element={<Metodologias />} />
             <Route path="/segregacion" element={<Segregacion />} />
+            <Route path="/telefonia" element={<Telefonia />} />
+            <Route
+              path="/compensacion-externa"
+              element={<CompensacionExterna />}
+            />
+            <Route path="/sla-de-proveedores" element={<SlaProveedores />} />
             <Route path="/tcsec" element={<Tcsec />} />
             <Route
               path="/historial-de-ajustes"
@@ -581,6 +622,7 @@ export function App() {
             <Route path="/cobertura" element={<Cobertura />} />
             <Route path="/chat" element={<Chat sesion={sesion} />} />
             <Route path="/recorrido" element={<Recorrido />} />
+            <Route path="/abrir/:tipo/:id" element={<AbrirRegistro />} />
             <Route path="/territorios" element={<Territorios />} />
             {/* La liquidación tiene ficha propia: su detalle devuelve las
               líneas y las reclamaciones dentro del mismo objeto, y la ficha
@@ -690,6 +732,7 @@ export function App() {
             <Route path="/aprobaciones" element={<Aprobaciones />} />
             <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />
             <Route path="/explotacion" element={<Explotacion />} />
+            <Route path="/analisis-crm" element={<AnalisisCrm />} />
             <Route path="/cuadros" element={<Cuadros />} />
             <Route path="/embudo" element={<Pipeline sesion={sesion} />} />
             <Route path="/casos" element={<Casos />} />
@@ -714,7 +757,9 @@ export function App() {
             <Route path="/calendario" element={<Calendario />} />
             <Route path="/lo-que-sigo" element={<LoQueSigo />} />
             <Route path="/duplicados" element={<Duplicados />} />
+            <Route path="/calidad-del-dato" element={<CalidadDelDato />} />
             <Route path="/importar" element={<ImportarDatos />} />
+            <Route path="/sin-conexion" element={<SinConexion />} />
             <Route
               path="/transferir-propiedad"
               element={<TransferirPropiedad />}

@@ -9,6 +9,7 @@ cat > /usr/share/nginx/html/config.json <<JSON
   "nombre": "${APP_NAME:-contecrm}",
   "idioma": "${IDIOMA:-es}",
   "acento": "${MARCA_ACENTO:-}",
-  "logotipo": "${MARCA_LOGOTIPO:-}"
+  "logotipo": "${MARCA_LOGOTIPO:-}",
+  "sinConexionReintentoMs": ${SIN_CONEXION_REINTENTO_MS:-15000}
 }
 JSON

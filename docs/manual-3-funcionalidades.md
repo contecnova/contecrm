@@ -666,6 +666,12 @@ discusiones sobre una previsión.
   pipeline útil de una lista de colores: sin ellos una oportunidad llega a
   «negociación» sin importe ni fecha, y el pipeline suma números que nadie se
   cree. Se pueden saltar para cargar históricos, y queda constancia.
+- **Mover de etapa arrastrando, en las dos pantallas.** El embudo de ventas y
+  la vista «Por columnas» de la lista de oportunidades mueven por la misma
+  acción, con sus criterios de salida y el cierre en la etapa final. La vista
+  de la lista no dejaba arrastrar hasta el 09-11-2026: sólo sabía cambiar
+  campos editables y la etapa tiene su propia acción. Con dos embudos que
+  comparten nombre de etapa, la tarjeta va a la de su embudo.
 - **Líneas de producto** (CRM-03.01.01.05) con cantidad, precio y descuento. La
   descripción y el precio se **copian** del catálogo: si mañana sube el precio,
   esta oportunidad tiene que seguir diciendo lo que se ofreció. El importe de la
@@ -1596,6 +1602,43 @@ CRM se ve ficha a ficha.
 Queda declarado en el catálogo como el grupo **CRM-05.01.04**, de la fase 2 —
 junto con el resto de la explotación, que es cuando el CRM tiene datos que
 merezca la pena explotar.
+
+### Embudo, cohortes y actividad con los datos del CRM (`CRM-05.01.03.04`, `CRM-05.01.03.05`, `CRM-05.01.03.06`, `CRM-05.01.01.05`, `CRM-05.01.03.07`)
+
+Hasta el 09-11-2026 los cinco constaban hechos y ninguno se podía usar: las
+cohortes, el embudo y la actividad calculaban sobre lo que alguien tecleara;
+las instantáneas de un informe sólo se tomaban a mano; y la consulta al lake
+del cliente devolvía un plan que no ejecutaba nadie. Ahora, en la pantalla
+**Embudo, cohortes y actividad** (Analítica):
+
+- **Embudo de ventas.** Las etapas del embudo elegido, en su orden y sin las de
+  pérdida; cuántas oportunidades llegaron a cada una, qué parte pasó de la
+  anterior, cuántas se quedaron y la **mediana** de días que tardaron. Sale del
+  historial de etapas de cada oportunidad. Llegar a una etapa cuenta como haber
+  pasado por las anteriores aunque se saltaran —si no, la etapa saltada sale con
+  menos llegadas que la siguiente y una conversión por encima del 100 %— y lo
+  abierto no cuenta como perdido.
+- **Retención por cohorte.** Las cuentas agrupadas por cuándo se dieron de alta,
+  y qué parte tuvo una actividad o una oportunidad nueva en cada periodo
+  siguiente. Un periodo que no ha terminado no da porcentaje, ni una cohorte por
+  debajo del mínimo: se ve el recuento y el porqué.
+- **Actividad frente a resultados.** Por persona, actividades asignadas y
+  oportunidades ganadas en la misma ventana. El coeficiente sale sólo con
+  sujetos de sobra, y con el aviso de que correlación no es causa.
+- **Instantáneas programadas.** Una programación de un informe puede ser de
+  envío o de **instantánea**: cada día, semana o mes se guarda el resumen de lo
+  que dice, sin destino, y la pantalla dibuja su tendencia.
+- **Consulta al lake del cliente.** Se ejecuta contra la fuente federada
+  declarada, por su conexión del conector de la casa, en lectura, con su tope de
+  filas y su tiempo máximo. No se copia nada al CRM; lo que pasa del tope se
+  recorta y se dice.
+
+**De dónde salen los datos.** Del almacén analítico si hay una tabla de ese
+objeto cargada con las columnas que hacen falta; si no, de cada módulo por su
+API **con los permisos de quien mira**, así que nadie ve en un análisis lo que no
+vería en su lista. Cada análisis enseña de dónde salió cada objeto, cuántos
+registros leyó y si se recortó: un número que no dice de dónde sale no se puede
+discutir.
 
 ---
 
@@ -3132,6 +3175,49 @@ evento solo constaría en una tabla que nadie mira.
 ---
 
 ## 32. Calidad del dato: identificadores, relaciones y verificación externa
+
+### Calidad del dato sobre las fichas reales (09-11-2026)
+
+Cinco capacidades que calculaban sobre lo que se tecleaba, o que no llamaba
+nadie, trabajan ahora sobre las fichas del CRM y guardan lo que deciden. Se
+manejan en la pantalla **Calidad del dato**, a la que se llega desde
+**Clientes › Duplicados**.
+
+- **Ficha buena con reglas de supervivencia** (`CRM-01.01.04.06`). Las reglas
+  se guardan por objeto y campo —estrategia y confianza de cada fuente; el
+  campo `*` es la regla por defecto—. Los valores que compiten salen del CRM:
+  lo que dijo cada sistema según el linaje, lo que tiene hoy la ficha, la foto
+  de cada ficha **fusionada** en ella y, en contactos, cada ficha **unida** por
+  identidad. Componer guarda el resultado con la procedencia de cada valor
+  (qué fuente ganó, con qué regla y por qué) y lo que queda por revisar;
+  **aplicar** lo escribe en la ficha, marca el ganador en el linaje y deja el
+  antes en la auditoría.
+- **Enriquecimiento firmográfico** (`CRM-01.01.01.08`). Cada proveedor es un
+  **perfil** sobre el conector de Integraciones: conexión, operación, qué
+  campos de la ficha rellenan sus parámetros y qué campo de la respuesta va a
+  cada campo del CRM. Pedir llama al proveedor con la identidad de quien pide y
+  guarda la respuesta como **propuesta**, separando lo que rellena un hueco de
+  lo que contradice a la ficha. Aplicar escribe lo elegido —sin elegir, sólo
+  los huecos— con el perfil como fuente en el linaje. Ningún proveedor tiene
+  código propio.
+- **Identidad entre canales** (`CRM-01.01.05.02`). Las señales del contacto
+  —correo, teléfono, móvil y los canales que el ajuste
+  `identidad_canales_a_senal` declara (WhatsApp, id de app, id de ERP,
+  cookie)— se anotan solas al guardarlo, por cualquier vía: alta, ficha,
+  importación o sincronización sin conexión. Las de otros canales llegan por
+  `POST /calidad-dato/identidades/observar`. Las parejas que comparten señales
+  se proponen con sus señales y su puntuación, y se unen con un clic; unir no
+  borra ninguna ficha y se deshace con motivo. Al anonimizar un contacto, sus
+  señales se borran.
+- **Umbral de coincidencia por objeto** (`CRM-01.01.04.02`). Sugerir,
+  bloquear y proponer, por cuenta y por contacto; lo que no se fija sale del
+  umbral general. Lo usan el alta y la cola de duplicados.
+- **Direcciones normalizadas** (`CRM-01.01.04.04`). Al guardar una dirección
+  —por cualquier vía— se limpian los espacios, la abreviatura de vía de la
+  primera palabra pasa a su forma larga, el código postal recupera los ceros
+  según los dígitos de su país, el país va en ISO y ciudad y provincia con
+  mayúscula inicial. Abreviaturas y dígitos son ajustes. Para lo que ya estaba,
+  primero se ve qué cambiaría y después se aplica.
 
 Cuatro capacidades —`CRM-01.01.01.04`, `.05`, `.06` y `CRM-01.01.04.10`— que
 pedían lo mismo con palabras distintas: **mandar un dato fuera y guardar qué
@@ -7437,6 +7523,10 @@ reloj: el cliente no tiene por qué esperar otra vez desde cero porque nosotros
 hayamos movido su problema de mesa. Lo interno se marca para que no se le enseñe
 al cliente, no para que cuente distinto.
 
+Desde el 09-11-2026 se deriva **desde la ficha del caso** (Más › Derivar): cola
+destino en un desplegable —sin la cola en la que ya está—, motivo y la casilla
+«interno». Antes sólo se llegaba desde la API.
+
 ### Derechos de servicio (`CRM-04.01.02.01`, `CRM-04.01.02.06`)
 
 Gana el **más específico**: contrato sobre producto, producto sobre cuenta y
@@ -8818,6 +8908,18 @@ cliente sigue con nosotros, y mezclarlas hace que la tasa de bajas cuente como
 pérdidas las renovaciones. La fecha se calcula sumando **meses**, no días: un
 contrato que vence el 31 de enero y se renueva doce meses no puede convertirse en
 el 3 de marzo.
+
+**Desde el 09-11-2026 la revisión se hace sola y abre la renovación.** Antes
+sólo la hacía quien pulsara «revisar renovaciones», es decir: nadie. Ahora es
+una tarea de `sales` que corre cada `renovacion_revisar_s` (una hora), y un
+contrato que llega a su preaviso **abre una oportunidad de renovación** en el
+embudo de renovaciones (`renovacion_embudo`; vacío, el de por defecto), con el
+importe del contrato, el vencimiento como fecha de cierre y enlazada en los dos
+sentidos —el contrato guarda `oportunidad_renovacion_id` y la oportunidad,
+`renovacion_de_contrato_id`—. Una por contrato: la revisión siguiente no abre
+otra. Un embudo configurado que no existe no abre ninguna y lo dice
+(`embudo_no_encontrado`); `renovacion_crear_oportunidad` apagado deja sólo el
+aviso.
 
 ### Suscripciones (`CRM-03.03.02.09`)
 
@@ -10673,6 +10775,11 @@ tramitación que acaba en la factura del cliente, y aquí todavía se puede desh
 Y «a cargo de» va aparte del importe: cliente, garantía o cortesía es lo que
 decide si esto va a una factura o a una reclamación al fabricante.
 
+Lo que contesta quien factura se anota **en la ficha de la devolución**, en
+«Resoluciones»: cada abono pendiente lleva «Anotar lo que contestó quien
+factura», con la referencia del abono emitido o el motivo del rechazo. Hasta el
+09-11-2026 esa ruta colgaba de la resolución y ninguna pantalla llegaba.
+
 ### Reclamaciones con plazos legales (`CRM-04.05.01.03`)
 
 Un plazo de ley no es un SLA comercial: no se amplía porque haya mucho trabajo, y
@@ -11924,6 +12031,46 @@ a las dos semanas el canal está silenciado.
 - **Y el aviso lleva enlace.** Un mensaje que dice «oportunidad ganada» sin decir
   cuál obliga a buscarla, y a la tercera vez se deja de mirar el canal.
 
+### Lo que sale y lo que contesta, de verdad (09-11-2026)
+
+Hasta el 09-11-2026 el aviso se componía y no lo mandaba nadie, y «consultar»
+contestaba «pregúntale al servicio dueño». Ahora:
+
+- **El aviso llega al canal.** Se manda al webhook entrante del canal con la
+  plantilla del ajuste `chat_plantilla_aviso` (por defecto `{"text": "{{texto}}
+  {{enlace}}"}`, lo que aceptan los webhooks de las plataformas habituales). El
+  enlace al registro se pone solo con la dirección pública del CRM
+  (`chat_url_crm`); sin ella, un aviso sobre un registro se rechaza diciéndolo.
+  Cada envío deja en el canal cuándo fue, si llegó y qué contestó.
+- **Los avisos de las automatizaciones van a los canales que los reciben.** Un
+  canal marca «Recibe avisos» y la acción «notificar» le llega. Apagado por
+  defecto: un canal para consultar no tiene por qué llenarse de avisos.
+- **La consulta contesta con el dato, con los permisos de quien pregunta.** El
+  correo de quien escribe se resuelve a una persona del CRM y el registro se pide
+  con sus roles y sus permisos. Si no se sabe quién es, no se contesta con datos:
+  un canal lo lee todo el equipo. Se contesta lo que cabe en una línea —nombre,
+  estado, importe, etapa—, no la ficha entera.
+
+### Reuniones registradas con sus asistentes (`CRM-06.01.01.04`, 09-11-2026)
+
+Cada cita que entra de un calendario conectado se registra como actividad de
+tipo reunión, con la identidad de quien sincroniza. Cada asistente va con su
+contacto si lo es; el que no está en el CRM se queda con su dirección, que es la
+lista de contactos que faltan por dar de alta. Si la actividad no se puede crear,
+la cita queda en error y se reintenta en la siguiente vuelta: no se da por
+registrada.
+
+### Notas, ficheros y conversaciones por referencia (`CRM-06.01.03.08`, `CRM-06.01.03.09`, `CRM-06.01.03.12`)
+
+En la ficha de cualquier registro, «De la suite» vincula una nota de un cuaderno,
+un fichero del almacenamiento del cliente o un hilo de chat. Se guarda **el
+enlace y nada más**: copiar rompe «bórralo y desaparece» y enseñaría el
+contenido a quien en el origen no tiene acceso. Al pulsar «Abrir» se pregunta al
+origen —por el perfil de suite— si existe y si quien mira puede verlo, y se
+distingue «no tienes acceso» de «ya no está». Si el perfil no sabe comprobarlo,
+se dice que no se puede comprobar: nunca que es accesible. De una conversación se
+guarda, como mucho, un resumen escrito por una persona.
+
 ### Generación documental (`CRM-06.01.01.06`)
 
 El documento que se le manda a un cliente se hace casi siempre copiando el del
@@ -12444,6 +12591,21 @@ firmado, no que el negocio esté ganado: puede faltar el pedido, el pago o la
 aprobación interna. Se marca la firma y la etapa la sigue gobernando quien la
 gobierna; forzar «ganada» desde aquí se saltaría el motivo de cierre, la
 aprobación de descuento y el forecast.
+
+### Enviar a firma desde la oportunidad, y la etapa a la que lleva (`CRM-03.03.02.07`)
+
+Desde el 09-11-2026 se manda a firmar **desde la ficha de la oportunidad**:
+«Enviar a firma» crea el sobre en integración con el presupuesto vivo de la
+oportunidad (o el que se elija) y **el origen ya puesto**, y lo manda si se
+pide. La ficha enseña en qué está la firma y lo pregunta al sobre al abrirse,
+así que sin bus —o con el evento perdido— no se queda con un estado viejo.
+
+**A qué etapa lleva una firma completada lo decide quien gobierna cada embudo**:
+el ajuste `firma_etapa_por_embudo` ({clave del embudo: clave de la etapa}). Un
+embudo que no está en él sólo marca la firma, como antes. La etapa se mueve por
+el camino de siempre, con sus criterios de salida: si no se cumplen no se
+fuerza, se anota por qué no se movió y la ficha lo dice. Y una vez por sobre:
+el evento repetido no la vuelve a mover.
 
 ## Segundo factor: ciclo de vida, riesgo y sin contraseña (`CRM-00.05.01`)
 
@@ -13326,6 +13488,29 @@ dos horas y con lo que otra persona cambió mientras tanto.
   el importe. El dato lo enseña la aplicación después de identificar a quien la
   abre.
 
+### Trabajar sin conexión en la aplicación web (09-11-2026)
+
+Hasta el 09-11-2026 la sincronización sólo devolvía un plan y la aplicación web
+no tenía nada sin conexión: sin red, guardar decía «No se ha podido contactar
+con el servidor» y lo escrito se perdía. Ahora:
+
+- **Lo consultado se puede volver a ver sin red.** La aplicación y cada lectura
+  se guardan en el dispositivo, pero **con red se pide siempre al servidor
+  primero**: lo guardado sólo se enseña cuando la red falla. Al cerrar sesión se
+  olvida.
+- **Lo que guardas sin red se queda en el dispositivo** —editar un registro o
+  dar uno de alta—, con la versión sobre la que lo cambiaste y lo que había
+  antes. La pantalla dice «guardado en este dispositivo, se enviará al volver la
+  red», no un error. Una edición de la que no se sabe la versión **no se
+  encola**: sin ella no se podría detectar que otra persona la cambió.
+- **Al volver la red se envía solo**, y el servidor **aplica** lo que no choca
+  con la misma regla y el mismo permiso que una edición normal. Lo que choca
+  —otra persona cambió el mismo campo— no se escribe: va a **Sin conexión**, con
+  lo tuyo y lo que hay en el servidor lado a lado, y decides campo a campo.
+- **Una franja en todas las pantallas** dice cuándo no hay red y cuántos cambios
+  quedan por subir o en conflicto. La cola es de quien la hizo: otra persona que
+  entre en el mismo navegador no envía lo tuyo.
+
 ## Change Data Capture hacia el lago del cliente (`CRM-00.02.02.06`)
 
 Declarar el flujo, componer un cambio y avanzar la marca se piden por ruta. Lo
@@ -13906,6 +14091,18 @@ descubrirlo en la primera incidencia.
 adjudicado y sin entregar con ese proveedor —no la fecha sola—, y «puede servir»
 contesta con el alcance declarado y dice por qué no.
 
+**El acuerdo del proveedor, guardado y comparado solo (09-11-2026, `CRM-09.01.01.08`).**
+Hasta entonces la comparación era un cálculo al que se le tecleaba el SLA del
+proveedor: la creencia que había que comprobar. Ahora el acuerdo se guarda
+—respuesta, resolución, disponibilidad y cobertura de cada proveedor de servicio
+de integración, los mismos a los que se mandan los encargos; si la resolución
+no se declara vale su plazo de integración— y cada derecho de servicio dice qué
+proveedor lo da. La pantalla *Servicio → SLA de proveedores* compara cada derecho
+con proveedor contra su acuerdo y **avisa arriba de lo que no se puede cumplir**,
+con el porqué, y de los proveedores sin acuerdo: no tenerlo no es tenerlo bien.
+Las horas nuestras que se suman son el ajuste `sla_proveedor_horas_propias`, y
+si integración no contesta se compara con lo guardado y se dice.
+
 ## Lo que nos cuesta: tarifas, margen y comparación (`CRM-09.02.01.01`, `CRM-09.02.01.02`, `CRM-09.02.01.03`, `CRM-09.02.01.04`, `CRM-09.02.01.05`)
 
 Un CRM sabe poner precio a lo que se vende y, si no sabe lo que cuesta, **no puede
@@ -14140,6 +14337,21 @@ cuánto hay que corregir: por encima del 40 % no ahorra tiempo, lo cambia de sit
 —de escribir a revisar, que cansa más—. Transcribir, además, cuesta dinero por
 minuto: una biblioteca de tres años de llamadas es una factura, no un botón, y se
 dice antes.
+
+**De punta a punta desde el 09-11-2026** (antes recibía el texto ya transcrito y
+no resumía ni guardaba). En la ficha de una llamada, reunión o visita, el bloque
+«Transcripción y resumen» acepta el fichero de audio —queda como documento de la
+actividad—, el enlace a la grabación o el texto pegado. Transcribe el **proveedor
+que la empresa tenga configurado**, que es una conexión de Integraciones (URL,
+autenticación y forma de la petición y de la respuesta); hay dos plantillas
+instalables —una que descarga el audio de un enlace firmado y otra que lo recibe
+en la petición— y cambiar de proveedor es configuración. El resumen y los
+compromisos los saca el modelo de la casa; cada compromiso trae quién, cuándo y
+la cita, y se avisa si la cita **no aparece tal cual** en lo transcrito. Todo se
+guarda ligado a la actividad, y al confirmar un compromiso se crea la tarea con
+el usuario de quien confirma, colgada de lo mismo que la reunión (la cuenta, el
+contacto, la oportunidad).
+
 La **publicidad digital y el retargeting** (`CRM-02.03.02.04`) tienen ya la
 sincronización real de audiencias (`CRM-02.01.01.09`).
 
@@ -14163,6 +14375,16 @@ la diferencia entre un 4,1 % y un 4,4 % es ruido: declararla ganadora convierte 
 azar en una decisión de marca que luego se repite dos años porque «los datos lo
 decían». Y se mide cuánto se reescribe de lo propuesto: si es casi todo, el modelo
 da un punto de partida —que también vale— pero no es lo que se vendió.
+
+**Generadas con el modelo desde el 09-11-2026** (antes se registraban los textos
+que tecleaba quien llamaba). En la ficha de una plantilla de correo, el bloque
+«Variantes con IA» parte del asunto —o de lo que se escriba—, un objetivo y un
+canal, y pide N variantes al modelo de la casa. Se guardan como **propuesta**
+colgadas de la plantilla; cada una se aprueba (se puede reescribir antes),
+se rechaza con su motivo, y gana una aprobada. Además de las afirmaciones, se
+marca el **marcador `{{...}}` que la variante haya perdido**: medido con el
+modelo de verdad, de «Incidencia en tu pedido {{pedido.referencia}}» salieron
+tres variantes sin la referencia.
 
 De la **hora y el canal** por destinatario, lo importante es cuándo *no* se puede
 personalizar: con pocas interacciones, lo que se optimiza es el ruido. Concluir
@@ -14401,6 +14623,32 @@ retroactivo—; eso no es un cálculo, es un producto, y hay empresas que lo fab
   hecho perdido por el camino no da ningún error: esa venta simplemente no aparece
   en la comisión de nadie, y lo descubre el comercial al mirar su nómina.
 
+### El motor de verdad, desde el 09-11-2026
+
+Hasta esa fecha todo lo anterior eran funciones que componían el hecho y
+conciliaban dos listas tecleadas: **no salía nada hacia ningún motor ni se
+guardaba nada**. Ahora:
+
+- **El motor es una conexión de Integraciones** con dos operaciones declaradas
+  —la que recibe los hechos y la que devuelve el cálculo (sus nombres son los
+  ajustes `compensacion_op_enviar` y `compensacion_op_calculo`)—. Cambiar de motor
+  es declarar otras dos, no escribir otro módulo.
+- **Los hechos salen de donde viven.** Las ventas ganadas del periodo se piden a
+  ventas con la identidad de quien pulsa —quien no ve una venta no la manda— y se
+  guardan como hechos «venta ganada» por mandar. Cobros, devoluciones (clawback)
+  y anulaciones se dan de alta a mano con su referencia.
+- **Se manda el hecho, nunca la comisión**, en un lote, y se guarda lo enviado y lo
+  devuelto tal cual, hecho a hecho. Si el motor falla, los hechos quedan en
+  «error» con el motivo y se reintentan.
+- **Una venta ya mandada cuyo importe cambia no se reescribe**: se dice, y el
+  cambio se manda como su propio hecho. Es la conversación del clawback, no un
+  ajuste en silencio.
+- **Se concilia contra la casa**: al lado de cada cálculo del motor se pone la suma
+  de las líneas de las liquidaciones de ventas del periodo para esa venta, y se
+  enseña cada diferencia con su porqué (el motor no devolvió nada, la casa no la
+  liquidó o no coinciden). Por debajo de `compensacion_tolerancia` se da por
+  igual. No se corrige nada.
+
 ## Audiencias publicitarias, retargeting y canales offline (`CRM-02.01.01.09`, `CRM-02.03.02.04`, `CRM-02.03.02.05`)
 
 Sincronizar una audiencia con una plataforma de anuncios es de las cosas más
@@ -14579,6 +14827,51 @@ del que ya no se puede sacar. Y se mide por lo que importa:
 **resueltas sin persona y sin que el cliente vuelva a llamar en 48 horas** — una
 llamada que el asistente «resolvió» y que el cliente repite al día siguiente no se
 resolvió, se aplazó, y encima con el cliente ya molesto.
+
+**El modo voz del asistente, desde el 09-11-2026.** En la pantalla «Asistente IA»,
+la casilla «Modo voz» deja dictar la pregunta y oír la respuesta. El dictado usa
+el **reconocimiento de voz del navegador** cuando lo tiene (Chrome, Edge, Safari):
+no sale nada hacia el servidor hasta que se pregunta. Si no lo tiene, se graba con
+el micrófono y lo transcribe el **mismo proveedor de transcripción de la
+empresa** (`POST /voz/dictado`), **sin guardar la grabación** —por eso, si el
+proveedor sólo sabe descargar de un enlace, se niega en vez de guardar la voz como
+documento—. Contesta el asistente de siempre (busca en el conocimiento, cita y
+propone acciones que se confirman a mano) y la respuesta se lee con la síntesis
+del navegador, sin los números de cita. La telefonía y el IVR van aparte, en la
+centralita.
+
+### La telefonía y el marcador de verdad, desde el 09-11-2026
+
+Hasta esa fecha lo anterior eran funciones puras: identificaban contra una lista
+que traía quien llamaba, «registraban» devolviendo un diccionario y no sonaba
+ningún teléfono. **No se había registrado nunca una llamada.** Ahora:
+
+- **La telefonía es un perfil sobre una conexión de Integraciones.** Originar y
+  transferir son dos operaciones declaradas en ella (`telefonia_op_originar`,
+  `telefonia_op_transferir`), y el aviso que manda la centralita se lee con el
+  mismo mapeo del conector que lee un ERP —alternativas por campo y un `mapa` que
+  traduce sus nombres de evento a los de aquí—. Cambiar de proveedor es
+  configuración.
+- **Cada llamada se guarda** con su historia de eventos, lo que recogió el IVR,
+  sus transferencias y el enlace a la grabación del proveedor.
+- **El llamante se identifica contra los contactos y cuentas de verdad**,
+  preguntando a party por el número en todas sus formas y con la identidad de
+  quien manda el aviso. Una ficha, varias o ninguna, sin redondear.
+- **La ficha emergente** salta en cualquier pantalla mientras la llamada suena:
+  quién es (o los candidatos), lo que ya dijo en el IVR y lo último que le pasó;
+  desde ahí se abre su ficha o se transfiere con el resumen dentro, que viaja a la
+  centralita y queda en la llamada. Sólo pregunta si el tenant tiene telefonía.
+- **Al colgar, la llamada se registra sola como actividad** en la ficha, con su
+  duración, su resultado (contestada, perdida o abandonada, deducido de la
+  historia si la centralita no lo dice), el IVR y la grabación. Una sola vez
+  aunque la centralita repita el aviso, y si party no la acepta se dice en la
+  llamada en vez de darla por registrada.
+- **El marcador** comprueba antes de que suene lo que antes tecleaba quien
+  llamaba: el «no contactar» de la ficha y el último consentimiento por teléfono
+  se preguntan a party, y la grabación la decide el ajuste
+  `marcador_grabar_por_politica` junto con el consentimiento de la persona. Al
+  colgar, lo que obliga a algo se hace: «pide que no le llamen» marca la ficha
+  como «no contactar» y «reprogramar» crea la siguiente llamada con su fecha.
 
 ## Los dos manuales completos (`CRM-07.05.01.01`, `CRM-07.05.01.02`, `CRM-07.05.01.03`, `CRM-07.05.01.04`, `CRM-07.05.01.05`, `CRM-07.05.01.06`, `CRM-07.05.02.01`, `CRM-07.05.02.02`, `CRM-07.05.02.03`, `CRM-07.05.02.04`, `CRM-07.05.02.05`, `CRM-07.05.02.06`)
 

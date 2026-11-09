@@ -53,7 +53,27 @@ def _tareas() -> list[Any]:
             fila = resumen(uow, hoy=hoy(uow.db))
         return {"generado": fila is not None}
 
+    from services.sales.presupuestos import revisar_renovaciones, tenants_con_contratos
+
+    def _renovaciones(tenant_id: Any) -> dict[str, Any]:
+        # Los preavisos, las renovaciones automáticas y las oportunidades de
+        # renovación (CRM-03.03.02.10). Antes sólo lo hacía quien pulsara
+        # «revisar renovaciones», es decir: nadie.
+        with unidad_de_trabajo(tenant_id, sistema=True) as uow:
+            salida = revisar_renovaciones(uow, tenant_id)
+        return {
+            "avisados": len(salida["avisados"]),
+            "renovados": len(salida["renovados"]),
+            "oportunidades": len(salida["oportunidades"]),
+        }
+
     return [
+        Tarea(
+            "sales.renovaciones",
+            int(ajustes_sales().renovacion_revisar_s),
+            por_tenant(tenants_con_contratos, _renovaciones),
+            al_arrancar=False,
+        ),
         Tarea(
             "sales.resumen_lecciones",
             int(ajustes_sales().lecciones_resumen_revisar_s),

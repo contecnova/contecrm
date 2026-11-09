@@ -2,7 +2,7 @@
  * Lo que la plataforma hace por debajo, con puerta (CRM-00.05.04.01,
  * CRM-00.05.04.03, CRM-00.05.04.04, CRM-00.05.04.05, CRM-00.05.03.06,
  * CRM-07.03.01.04, CRM-07.03.01.07, CRM-07.03.02.09, CRM-00.06.02.03,
- * CRM-00.06.02.02, CRM-00.05.03.04, CRM-00.05.03.08).
+ * CRM-00.06.02.02, CRM-00.05.03.04, CRM-00.05.03.08, CRM-06.01.03.18).
  *
  * `CRM-00.05.03.08` —comportamiento anómalo— la enseña el panel de anomalías
  * de exportación, y la declara también la propia ruta del servidor. Estaba
@@ -58,6 +58,7 @@ import { ArchivoDelServicio } from "@/componentes/Archivo";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import {
   ErrorApi,
   filas as filasDe,
@@ -791,6 +792,36 @@ function Cumplimiento({
               </p>
             ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {/* Cada tratamiento con su finalidad, su base legal y su plazo
+          (CRM-07.03.01.04; en integración, los de la suite —CRM-06.01.03.18—).
+          Sólo se pintaba cuántos había: un registro de tratamiento que se
+          cuenta y no se lee no lo revisa nadie. */}
+      {rat && rat.actividades.length > 0 ? (
+        <div className="mt-4">
+          <Rejilla
+            compacta
+            titulo={t("plataforma.tratamientos", {
+              cuantos: rat.actividades.length,
+            })}
+            cabeceras={[
+              t("plataforma.tratamientoObjeto"),
+              t("plataforma.tratamientoFinalidad"),
+              t("plataforma.tratamientoBase"),
+              t("plataforma.tratamientoPlazo"),
+            ]}
+          >
+            {rat.actividades.map((a) => (
+              <tr key={a.objeto}>
+                <Casilla enUnaLinea>{a.objeto}</Casilla>
+                <Casilla>{a.finalidad}</Casilla>
+                <Casilla enUnaLinea>{a.base_legal}</Casilla>
+                <Casilla>{a.plazo}</Casilla>
+              </tr>
+            ))}
+          </Rejilla>
         </div>
       ) : null}
 

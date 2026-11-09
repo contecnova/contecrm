@@ -21,6 +21,137 @@
  */
 
 const pantallas = {
+  // La telefonía conectada y sus llamadas (CRM-04.02.01.05, CRM-03.03.01.05).
+  telefonia: {
+    titulo: "Telefonía",
+    entradilla:
+      "La centralita del tenant, conectada sobre una conexión de Integraciones, y cada llamada registrada: quién, cómo terminó, cuánto duró, lo que recogió el IVR, su grabación y la actividad que dejó en la ficha.",
+    perfil: "Perfil de telefonía",
+    conectada: "Conectada sobre «{{nombre}}».",
+    declarada: "declarada",
+    falta: "falta",
+    queFalta: "Falta: {{que}}",
+    conexion: "Conexión",
+    elige: "Elige una conexión",
+    webhook: "Cómo se lee el aviso de la centralita (mapeo del conector)",
+    ayudaWebhook:
+      "La centralita manda cada cambio de una llamada a POST /api/v1/telefonia/avisos con una clave de API del tenant. Originar y transferir son operaciones declaradas en la conexión (originar_llamada y transferir_llamada).",
+    jsonMal: "El mapeo no es un JSON válido.",
+    guardar: "Guardar el perfil",
+    guardado: "Perfil guardado.",
+    llamadas: "Llamadas",
+    sinLlamadas: "Todavía no hay ninguna llamada registrada.",
+    cuando: "Cuándo",
+    sentido: "Sentido",
+    quien: "Quién",
+    resultado: "Resultado",
+    duracion: "Duración",
+    ivr: "IVR",
+    grabacion: "Grabación",
+    actividad: "Actividad",
+    sentidos: { entrante: "Entrante", saliente: "Saliente" },
+    transferida: "Transferida a {{a}}",
+    segundos: "{{n}} s",
+    escuchar: "Escuchar",
+    verActividad: "Ver actividad",
+    sinActividad: "Aún no ha colgado",
+  },
+  // El motor externo de compensación (CRM-03.02.03.04).
+  compensacionExterna: {
+    titulo: "Compensación externa",
+    entradilla:
+      "Los hechos que se mandan al motor de comisiones —ventas ganadas, cobros, devoluciones y anulaciones, nunca la comisión—, lo que devuelve tal cual y lo que no cuadra con lo que calcula la casa.",
+    motor: "Motor",
+    conectado: "Conectado sobre «{{nombre}}».",
+    declarada: "declarada",
+    falta: "falta",
+    conexion: "Conexión",
+    elige: "Elige una conexión",
+    usarComoMotor: "Usar como motor",
+    motorGuardado: "Motor conectado.",
+    periodo: "Periodo",
+    desde: "Desde",
+    hasta: "Hasta",
+    recoger: "Recoger las ventas ganadas",
+    recogidas:
+      "{{nuevas}} nuevas, {{ya}} ya estaban, {{cambios}} cambiaron después de mandarlas.",
+    enviar: "Mandar lo pendiente",
+    enviados:
+      "{{n}} mandados, {{calculados}} ya con cálculo, {{errores}} con error.",
+    traer: "Traer el cálculo",
+    conciliar: "Conciliar con la casa",
+    conciliado:
+      "{{cuadran}} de {{hechos}} cuadran con {{liquidaciones}} liquidaciones de la casa.",
+    manual: "Cobro, devolución o anulación",
+    tipo: "Tipo",
+    referencia: "Referencia",
+    fecha: "Fecha",
+    importe: "Importe",
+    motivo: "Motivo",
+    darDeAlta: "Dar de alta",
+    hechosTit: "Hechos",
+    sinHechos: "Todavía no hay hechos para el motor.",
+    estado: "Estado",
+    delMotor: "Del motor",
+    deLaCasa: "De la casa",
+    diferencia: "Diferencia",
+    provisional: "provisional",
+    hechos: {
+      cierre: "Venta ganada",
+      anulacion: "Anulación",
+      modificacion_importe: "Cambio de importe",
+      cobro: "Cobro",
+      devolucion: "Devolución (clawback)",
+    },
+    estados: {
+      pendiente: "Pendiente",
+      enviado: "Mandado",
+      calculado: "Calculado",
+      error: "Error",
+    },
+    que: {
+      nuevo: "Dado de alta: queda pendiente de mandar.",
+      actualizado: "Actualizado: queda pendiente de mandar.",
+      ya_estaba: "Ya estaba mandado con el mismo importe.",
+      cambio_tras_enviar:
+        "Ya se mandó con otro importe: no se reescribe. Da de alta el cambio como su propio hecho.",
+    },
+  },
+  sinConexion: {
+    titulo: "Sin conexión",
+    entradilla:
+      "Lo que guardaste sin red está en este dispositivo y se envía solo al volver. Si otra persona cambió el mismo campo entre medias, decides tú qué valor se queda.",
+    enviar: "Enviar ahora",
+    conRed: "Hay conexión.",
+    sinRed: "No hay conexión: lo pendiente se enviará al volver la red.",
+    resultado:
+      "Enviados: {{enviadas}} · en conflicto: {{conflictos}} · rechazados: {{rechazadas}}",
+    conflictos: "Conflictos por resolver",
+    conflictosAyuda:
+      "Otra persona cambió el mismo campo mientras estabas sin red. Elige en cada campo qué valor se queda: nada se elige solo.",
+    sinConflictos: "No hay conflictos.",
+    cola: "Pendiente de enviar",
+    colaAyuda:
+      "Lo rechazado se queda aquí con su motivo hasta que lo descartes: nada se tira solo.",
+    colaVacia: "No hay nada pendiente.",
+    cuando: "Guardado",
+    que: "Qué",
+    campos: "Campos",
+    estado: "Estado",
+    campo: "Campo",
+    loMio: "Lo mío",
+    loSuyo: "Lo que hay en el servidor",
+    aplicar: "Aplicar lo elegido",
+    quedarmeConLoSuyo: "Quedarme con lo del servidor",
+    descartar: "Descartar",
+    tipos: { crear: "Alta", actualizar: "Cambio" },
+    estados: {
+      pendiente: "Pendiente",
+      enviando: "Enviando",
+      rechazada: "Rechazado",
+      conflicto: "En conflicto",
+    },
+  },
   alm: {
     paquete: {
       titulo: "Llevarse esta configuración a otro entorno",
@@ -72,6 +203,132 @@ const pantallas = {
     escondidoIntro:
       "Es la lista de potencia escondida en la API: capacidades construidas, probadas y documentadas que quien mira el producto concluye que no están.",
     todoEnsenado: "Todo lo publicado tiene pantalla.",
+  },
+  calidadDelDato: {
+    titulo: "Calidad del dato",
+    entradilla:
+      "La ficha buena de cada cliente con de dónde sale cada valor, lo que dice el proveedor de datos, quién es la misma persona en cada canal, cuánto tienen que parecerse dos fichas y las direcciones en su forma normal.",
+    irDuplicados: "Duplicados",
+    objetos: { cuenta: "Cuentas", contacto: "Contactos" },
+    // Golden record
+    golden: "Ficha buena (golden record)",
+    goldenAyuda:
+      "Las fichas con más de una versión de la verdad —fusionadas o unidas por identidad—. Componer aplica las reglas y guarda el resultado con su procedencia; aplicar lo escribe en la ficha.",
+    sinCandidatas:
+      "Ninguna ficha tiene todavía otra versión fusionada o unida: componerla devolvería lo que ya tiene.",
+    ficha: "Ficha",
+    fusionadas: "Fusionadas",
+    unidas: "Unidas",
+    compuesta: "Compuesta",
+    nunca: "nunca",
+    componer: "Componer",
+    aplicar: "Aplicar a la ficha",
+    campo: "Campo",
+    valor: "Valor que gana",
+    fuente: "Fuente",
+    regla: "Regla",
+    porque: "Por qué",
+    otrasFuentes: "Lo que dicen las demás",
+    aRevisar_one: "{{count}} campo por revisar: las fuentes no coinciden",
+    aRevisar_other: "{{count}} campos por revisar: las fuentes no coinciden",
+    aplicados_one: "Aplicado: {{count}} campo cambiado en la ficha",
+    aplicados_other: "Aplicado: {{count}} campos cambiados en la ficha",
+    sinCambios: "La ficha ya tenía los valores que ganan.",
+    reglas: "Reglas de supervivencia",
+    reglasAyuda:
+      "Por campo: qué estrategia decide y cuánto se fía de cada fuente (0 a 100). El campo «*» es la regla por defecto del objeto; una fuente que no aparece vale 50.",
+    objeto: "Objeto",
+    estrategia: "Estrategia",
+    confianzas: "Confianza por fuente",
+    confianzasAyuda: "Una por línea: fuente=número. Por ejemplo erp=90",
+    porDefecto: "* (por defecto del objeto)",
+    guardarRegla: "Guardar la regla",
+    quitar: "Quitar",
+    sinReglas:
+      "Sin reglas: gana la fuente de mayor confianza, y todas valen 50.",
+    estrategias: {
+      mayor_confianza: "La fuente más fiable",
+      mas_reciente: "La que cambió después",
+      mas_completo: "La más completa",
+      solo_si_falta: "Sólo si falta",
+      decide_una_persona: "Lo decide una persona",
+    },
+    // Identidad entre canales
+    identidad: "La misma persona en cada canal",
+    identidadAyuda:
+      "Las señales —correo, teléfono, cookie, identificador de la app o del ERP— se anotan solas al guardar el contacto o cuando las trae otro canal. Aquí se proponen las parejas y se unen; unir no borra ninguna ficha y se puede deshacer.",
+    barrer: "Anotar las señales de los contactos existentes",
+    barrido: "{{senales}} señales anotadas de {{contactos}} contactos.",
+    sinPropuestas:
+      "Ninguna pareja de contactos comparte señales por encima del umbral.",
+    pareja: "Pareja",
+    senales: "Señales que coinciden",
+    puntuacion: "Puntuación",
+    unir: "Unir (se queda la primera)",
+    unida:
+      "Unidas: desde ahora una señal de cualquiera de las dos lleva a la primera.",
+    umbralIdentidad: "Umbral para proponer: {{umbral}}",
+    // Enriquecimiento
+    enriquecimiento: "Proveedor de datos (enriquecimiento)",
+    enriquecimientoAyuda:
+      "Cada proveedor es una conexión y una operación del conector de Integraciones. Pedir guarda lo que contesta como propuesta; aplicar escribe lo elegido con el proveedor como procedencia. Sin elegir, sólo se rellenan huecos.",
+    perfiles: "Proveedores declarados",
+    sinPerfiles: "No hay ningún proveedor declarado.",
+    nuevoPerfil: "Declarar un proveedor",
+    clave: "Clave",
+    nombre: "Nombre",
+    conexion: "Conexión",
+    sinConexionesInt:
+      "No hay conexiones en Integraciones: declara primero la del proveedor.",
+    operacion: "Operación",
+    parametros: "Parámetros de la operación",
+    parametrosAyuda:
+      "Uno por línea: parámetro=campo de la ficha. Por ejemplo dominio=dominio",
+    mapeo: "Qué campo de la respuesta va a cada campo",
+    mapeoAyuda:
+      "Uno por línea: campo de la ficha=campo de la respuesta. Por ejemplo sector_codigo=industria",
+    confianza: "Confianza",
+    coste: "Coste por consulta",
+    guardarPerfil: "Guardar el proveedor",
+    pedir: "Pedir",
+    pedirPara: "Pedir para",
+    elegirCuenta: "Elige una ficha",
+    propuestas: "Propuestas por revisar",
+    sinPropuestasEnr: "No hay propuestas pendientes.",
+    actual: "Ahora",
+    propuesto: "Propone",
+    tipos: {
+      hueco: "rellena un hueco",
+      discrepancia: "contradice",
+      igual: "igual",
+    },
+    aplicarElegidos: "Aplicar lo marcado",
+    descartar: "Descartar",
+    aplicada: "Aplicada a la ficha.",
+    descartada: "Descartada.",
+    // Umbrales
+    umbrales: "Cuánto tienen que parecerse dos fichas",
+    umbralesAyuda:
+      "Por objeto. «Sugerir» avisa al dar de alta, «bloquear» impide el alta y «proponer» mete la pareja en la cola de duplicados. Vacío: sale del umbral general.",
+    tiposUmbral: {
+      sugerencia: "Sugerir",
+      bloqueo: "Bloquear",
+      propuesta: "Proponer",
+    },
+    general: "del general",
+    propio: "propio",
+    guardarUmbrales: "Guardar los umbrales",
+    umbralesGuardados: "Umbrales guardados.",
+    // Direcciones
+    direcciones: "Direcciones normalizadas",
+    direccionesAyuda:
+      "Lo que entra se normaliza solo al guardarlo: espacios, abreviatura de vía, código postal con sus dígitos, país en ISO. Para lo que ya estaba, primero se mira qué cambiaría y después se aplica.",
+    verCambios: "Ver qué cambiaría",
+    aplicarCambios: "Aplicar a {{n}} direcciones",
+    revisadas: "{{revisadas}} revisadas, {{n}} cambiarían.",
+    aplicadas: "{{n}} direcciones normalizadas.",
+    antes: "Antes",
+    despues: "Después",
   },
   duplicados: {
     // El número en el botón: «ver más» a secas no dice si queda una o ochenta.
@@ -213,6 +470,101 @@ const pantallas = {
     },
     origenes: { historico: "Histórico del CRM", declarado: "Declarado" },
   },
+  // Transcripción y resumen de una llamada o reunión, con sus compromisos
+  // (CRM-01.02.01.05, CRM-01.02.01.06).
+  transcripcionReunion: {
+    titulo: "Transcripción y resumen",
+    ayuda:
+      "Sube la grabación (queda como documento de la actividad), da el enlace o pega el texto. El modelo resume y propone los compromisos; cada uno se convierte en tarea cuando lo confirmas.",
+    conProveedor:
+      "Transcribe el proveedor de la empresa ({{envio}}); hasta {{mb}} MB.",
+    envios: {
+      enlace: "descarga el audio de un enlace firmado",
+      contenido: "recibe el audio en la petición",
+    },
+    plantilla: "Proveedor de transcripción",
+    urlBase: "Dirección (opcional, si no es la del proveedor)",
+    instalar: "Instalar",
+    instalarAyuda:
+      "Da de alta la conexión en Integraciones con la forma de petición del proveedor. Su clave se pone después en la ficha de la conexión.",
+    fuente: "Qué transcribir",
+    fuentes: {
+      audio: "Fichero de audio",
+      enlace: "Enlace a la grabación",
+      texto: "Texto ya transcrito",
+    },
+    base: "Base para grabar",
+    bases: {
+      consentimiento_de_todos: "Lo han aceptado todos",
+      aviso_y_no_oposicion: "Se avisó y nadie se opuso",
+      obligacion_legal: "Obligación legal de grabar",
+    },
+    fichero: "Grabación",
+    enlace: "Enlace a la grabación",
+    texto: "Transcripción",
+    idioma: "Idioma",
+    avisados: "Se avisó a todos los participantes de que se grababa",
+    transcribir: "Transcribir y resumir",
+    trabajando: "Transcribiendo y resumiendo…",
+    minutos: "{{n}} min",
+    confianza: "confianza {{pct}} %",
+    sinConfianza: "confianza sin medir",
+    compromisos: "Compromisos y próximos pasos",
+    tipos: {
+      compromiso: "Compromiso",
+      proximo_paso: "Próximo paso",
+      riesgo: "Riesgo",
+      objecion: "Objeción",
+      dato_del_cliente: "Dato del cliente",
+    },
+    citaNoLiteral: "Esta cita no aparece tal cual en lo transcrito.",
+    asuntoTarea: "Asunto",
+    vence: "Vence",
+    crearTarea: "Confirmar y crear la tarea",
+    confirmar: "Confirmar",
+    descartar: "Descartar",
+    descartada: "Descartado.",
+    confirmada: "Confirmado.",
+    tareaCreada: "Tarea creada con tu usuario.",
+    abrirTarea: "Abrir la tarea",
+    descartados: "{{n}} sin proponer (sin dueño o tipo desconocido)",
+    verTexto: "Ver la transcripción",
+  },
+  // Variantes de copy generadas y revisadas (CRM-02.04.01.04).
+  variantesCopy: {
+    titulo: "Variantes con IA",
+    ayuda:
+      "El modelo propone versiones del texto; ninguna sale sin que alguien la apruebe. Las cifras, garantías y superlativos se marcan para comprobarlos.",
+    base: "Texto base",
+    objetivo: "Objetivo",
+    ejemploObjetivo: "Que abran el correo los que no compraron este año",
+    canal: "Canal",
+    canales: {
+      asunto: "Asunto de correo",
+      email: "Cuerpo de correo",
+      sms: "SMS",
+      push: "Notificación",
+      anuncio: "Anuncio",
+      web: "Web",
+      redes: "Redes sociales",
+    },
+    cuantas: "Cuántas",
+    generar: "Generar variantes",
+    generando: "Generando…",
+    estados: {
+      propuesta: "Propuesta",
+      aprobada: "Aprobada",
+      rechazada: "Rechazada",
+    },
+    ganadora: "Ganadora",
+    reescrita: "Reescrita al aprobarla",
+    texto: "Texto",
+    afirmaciones: "Comprobar antes de aprobar:",
+    aprobar: "Aprobar",
+    motivo: "Motivo",
+    rechazar: "Rechazar",
+    elegir: "Elegir como ganadora",
+  },
   asistente: {
     titulo: "Asistente IA",
     entradilla:
@@ -268,6 +620,21 @@ const pantallas = {
     valor: "Valor",
     filas: "Filas",
     filasDeEjemplo: "Filas devueltas",
+    voz: {
+      modo: "Modo voz",
+      hablar: "Hablar",
+      escuchando: "Escuchando…",
+      terminar: "Terminar y preguntar",
+      callar: "Dejar de leer",
+      via: {
+        navegador:
+          "Dictado con el reconocimiento de voz del navegador; la respuesta se lee en voz alta.",
+        grabacion:
+          "Este navegador no reconoce voz: se graba y lo transcribe el proveedor de la empresa, sin guardar la grabación.",
+        ninguna:
+          "Este navegador no puede dictar ni grabar: escribe la pregunta y la respuesta se leerá en voz alta.",
+      },
+    },
   },
   preguntar: {
     titulo: "Nexus",
@@ -1030,6 +1397,99 @@ const pantallas = {
       abierto: "Periodo en curso",
     },
   },
+  analisisCrm: {
+    titulo: "Embudo, cohortes y actividad",
+    entradilla:
+      "Análisis calculados con los datos del CRM —del almacén analítico si está cargado, si no de cada módulo con tus permisos—, las fotos periódicas de un informe y la consulta al lake del cliente sin copiarlo.",
+    objetos: {
+      cuenta: "Cuentas",
+      actividad: "Actividades",
+      oportunidad: "Oportunidades",
+      historial_etapas: "Historial de etapas",
+      embudos: "Embudos",
+    },
+    deLaApi: "{{n}} leídas de la aplicación",
+    delAlmacen: "{{n}} del almacén analítico",
+    sinPermiso: "sin permiso para leerlas",
+    noLeido: "no se han podido leer (respuesta {{codigo}})",
+    recortado: "recortado al tope",
+    embudo: "Embudo de ventas",
+    embudoAyuda:
+      "Cuántas oportunidades llegaron a cada etapa, qué parte pasó de la anterior y la mediana de días que tardaron. Llegar a una etapa cuenta como haber pasado por las anteriores; lo abierto no cuenta como perdido.",
+    elegirEmbudo: "Embudo",
+    sinEmbudo: "No hay ningún embudo de ventas que se pueda leer.",
+    embudoResumen:
+      "{{n}} oportunidades creadas desde el {{desde}}, {{abiertos}} siguen abiertas.",
+    mayorCaida: "Donde más se pierde: «{{etapa}}» ({{pct}} % pasa).",
+    etapa: "Etapa",
+    llegaron: "Llegaron",
+    conversion: "Pasan de la anterior",
+    caidos: "Se quedaron",
+    diasMediana: "Días (mediana)",
+    cohortes: "Retención por cohorte",
+    cohortesAyuda:
+      "Cuentas agrupadas por cuándo se dieron de alta, y qué parte tuvo actividad u oportunidades en cada periodo siguiente.",
+    periodo: "Agrupar por",
+    periodos: { semana: "Semana", mes: "Mes", trimestre: "Trimestre" },
+    periodoN: "+{{n}}",
+    cohorte: "Cohorte",
+    cuentas: "Cuentas",
+    sinCohortes: "No hay cuentas con fecha de alta.",
+    inmaduro: "El periodo aún no ha terminado",
+    pocoSignificativo: "Menos de {{n}} cuentas: no da porcentaje",
+    cohortesLeyenda:
+      "Sin porcentaje: «…» es un periodo que no ha terminado; un número suelto es una cohorte de menos de {{n}} cuentas, que no da un porcentaje fiable.",
+    actividad: "Actividad frente a resultados",
+    actividadAyuda:
+      "Por persona: actividades asignadas y oportunidades ganadas en la misma ventana de tiempo.",
+    coeficiente:
+      "Correlación {{fuerza}} ({{r}}) entre actividad y oportunidades ganadas, con {{n}} personas.",
+    persona: "Persona",
+    actividades: "Actividades",
+    ganadas: "Ganadas",
+    ventana: "Del {{desde}} al {{hasta}}.",
+    sinPersonas:
+      "Nadie tiene actividades ni oportunidades asignadas en la ventana.",
+    instantaneas: "Instantáneas programadas",
+    instantaneasAyuda:
+      "Una foto de lo que dice el informe cada día, semana o mes, para poder contestar «¿cómo íbamos entonces?». Se guarda el resumen, no las filas.",
+    sinInformes: "No hay informes definidos todavía.",
+    informe: "Informe",
+    cada: "Cada",
+    periodicidades: {
+      diaria: "Cada día",
+      semanal: "Cada semana",
+      mensual: "Cada mes",
+    },
+    hora: "Hora",
+    aLas: "a las {{h}} h",
+    programar: "Programar la instantánea",
+    tomarAhora: "Tomar una ahora",
+    programada: "Instantánea programada.",
+    tomada: "Instantánea tomada.",
+    quitada: "Programación quitada. Las instantáneas ya tomadas se quedan.",
+    quitar: "Quitar",
+    proxima: "Próxima: {{cuando}}",
+    sinProgramar: "Este informe no tiene ninguna instantánea programada.",
+    tendencia: "Tendencia",
+    dia: "Día",
+    filas: "Filas",
+    puntos: "{{n}} instantáneas.",
+    sinInstantaneas: "Sin instantáneas todavía.",
+    federada: "Consulta al lake del cliente",
+    federadaAyuda:
+      "Se pregunta a la fuente declarada por su conexión, en lectura, con su tope de filas y su tiempo máximo. No se copia nada al CRM.",
+    sinFuentes:
+      "No hay ninguna fuente federada declarada. Se declaran en Informes › Fuentes federadas.",
+    fuente: "Fuente",
+    objeto: "Objeto",
+    campos: "Campos",
+    camposAyuda: "todos, o separados por comas",
+    limite: "Filas (tope {{tope}})",
+    consultar: "Consultar",
+    resultadoFederado: "{{n}} filas en {{ms}} ms, consultadas el {{cuando}}.",
+    recortadoA: "Recortado a {{n}}: la fuente tiene más.",
+  },
   segregacion: {
     titulo: "Segregación de funciones",
     entradilla:
@@ -1694,7 +2154,103 @@ const pantallas = {
     fallos: "{{cuantos}} fallos",
     pendientesAhora: "{{cuantas}} pendientes ahora",
   },
+  // El SLA del proveedor frente al prometido (CRM-09.01.01.08).
+  slaProveedores: {
+    titulo: "SLA de proveedores",
+    entradilla:
+      "Lo que prometemos al cliente en cada derecho de servicio, contra lo que sostiene por contrato el proveedor que lo da. A sus tiempos se suman {{horas}} h nuestras de coordinar y desplazar: prometer su mismo tiempo es prometer uno que sólo existiría si nosotros no hiciéramos nada.",
+    sinIntegracion:
+      "Integración no ha contestado: no se sabe qué proveedores hay ni su plazo, y se compara sólo con los acuerdos guardados aquí.",
+    nadaQueRevisar:
+      "Ningún derecho de servicio tiene un proveedor detrás. Elige quién da cada uno en «Quién da cada derecho».",
+    avisos:
+      "Derechos con proveedor: {{n}}. Prometen lo que su proveedor no sostiene: {{no}}. Con un proveedor sin acuerdo guardado: {{sin}}.",
+    todoBien: "Derechos con proveedor: {{n}}. Todos se sostienen con margen.",
+    revision: "Lo prometido frente a lo que sostiene el proveedor",
+    sinFilas: "Ningún derecho con proveedor",
+    quienDa: "Quién da cada derecho",
+    quienDaEste: "Quién da «{{derecho}}»",
+    nosotros: "Lo damos nosotros",
+    sinDerechos: "No hay derechos de servicio dados de alta",
+    acuerdos: "Lo que sostiene cada proveedor",
+    sinProveedores: "No hay proveedores de servicio",
+    sinProveedoresDetalle:
+      "Los proveedores se dan de alta en integración, con los encargos.",
+    sinAcuerdo: "Sin acuerdo guardado",
+    noExiste: "No consta en integración",
+    sinDeclarar:
+      "El proveedor no declara {{que}}: no es que lo tenga bien, es que no lo ha dicho.",
+    horas: "{{v}} h",
+    cambiar: "Cambiar",
+    anadir: "Añadir acuerdo",
+    quitar: "Quitar",
+    editar: "Acuerdo de {{proveedor}}",
+    resolucionVacia:
+      "Si dejas la resolución vacía, vale el plazo que consta del proveedor en integración.",
+    guardar: "Guardar",
+    cancelar: "Cancelar",
+    col: {
+      derecho: "Derecho",
+      proveedor: "Proveedor",
+      prometido: "Prometido al cliente",
+      sostiene: "Sostiene el proveedor",
+      veredicto: "Veredicto",
+      porque: "Por qué",
+      sla: "SLA",
+      plazo: "Plazo en integración",
+    },
+    veredicto: {
+      se_sostiene: "Se sostiene",
+      no_se_sostiene: "No se sostiene",
+      sin_acuerdo: "Sin acuerdo",
+      sin_compromiso: "Sin tiempos prometidos",
+    },
+    metrica: {
+      respuesta_h: "respuesta {{v}} h",
+      resolucion_h: "resolución {{v}} h",
+      disponibilidad_pct: "disponibilidad {{v}} %",
+      cobertura_horaria: "cobertura {{v}}",
+    },
+    nombre: {
+      respuesta_h: "su tiempo de respuesta",
+      resolucion_h: "su tiempo de resolución",
+      disponibilidad_pct: "su disponibilidad",
+      cobertura_horaria: "su cobertura horaria",
+    },
+    campo: {
+      respuesta_h: "Respuesta (h)",
+      resolucion_h: "Resolución (h)",
+      disponibilidad_pct: "Disponibilidad (%)",
+      cobertura_horaria: "Cobertura horaria",
+    },
+  },
   oportunidad: {
+    // Enviar a firma desde la oportunidad (CRM-03.03.02.07).
+    firma: {
+      titulo: "La firma",
+      sinSobre: "Todavía no se ha mandado nada a firmar.",
+      estado: "Sobre {{referencia}}: {{estado}}",
+      verSobre: "Ver el sobre",
+      sinConsultar:
+        "No se ha podido preguntar al sobre ahora: se enseña el último estado guardado.",
+      llevaA:
+        "Cuando se complete la firma, la oportunidad pasará a «{{etapa}}».",
+      soloMarca:
+        "Este embudo no tiene etapa para una firma completada: se marcará la firma y la etapa no se moverá. Se configura en Administrar › Usuarios y empresa › Administración (firma_etapa_por_embudo).",
+      noMovio: "La firma se completó y la etapa no se movió: {{motivo}}",
+      enviar: "Enviar a firma",
+      presupuesto: "Qué se firma",
+      elUltimo: "El último presupuesto vivo",
+      nombre: "Nombre del firmante",
+      email: "Correo del firmante",
+      otroFirmante: "Añadir otro firmante",
+      mandarYa: "Mandarlo ya (si no, queda preparado sin mandar)",
+      confirmar: "Crear el sobre",
+      enviando: "Creando…",
+      cancelar: "Cancelar",
+      creado: "Sobre {{referencia}} creado: {{estado}}.",
+      creadoSinMandar: "El sobre se ha creado y NO se ha mandado: {{motivo}}",
+    },
     // La sección de la oportunidad cerrada que lleva a su lección.
     porQue: {
       titulo: "Por qué se cerró así",
@@ -2006,6 +2562,22 @@ const pantallas = {
     sinResolver: "Sin resolver todavía.",
   },
   caso: {
+    derivar: {
+      boton: "Derivar",
+      titulo: "Derivar el caso",
+      explicacion:
+        "Pásalo a otro nivel, a ingeniería o a una cola interna. Sigue siendo el mismo caso del cliente: no se crea otro ni se reinicia el reloj.",
+      cola: "Cola destino",
+      elige: "Elige una cola…",
+      opcion: "{{nombre}} · nivel {{nivel}}",
+      sinColas:
+        "No hay otra cola a la que derivarlo. Las colas se crean en Casos › Colas.",
+      motivo: "Motivo",
+      motivoAyuda: "Qué se espera del siguiente nivel",
+      interno: "Interno: no se le enseña al cliente",
+      confirmar: "Derivar",
+      enviando: "Derivando…",
+    },
     escribirArticulo: "Escribir esto en la base de conocimiento",
     avisoResolucion:
       "La resolución viene copiada tal cual, y casi siempre lleva el nombre del cliente, su configuración y a veces sus credenciales. Quítalo ANTES de guardar: el artículo nace en borrador e interno, pero lo que escribas aquí es lo que alguien publicará.",
@@ -2158,6 +2730,10 @@ const pantallas = {
       "El registro de tratamiento de este servicio y quién puede hacer qué en " +
       "él, derivado de las rutas montadas y de los permisos reales.",
     tratamientos: "{{cuantos}} tratamientos declarados",
+    tratamientoObjeto: "Dato",
+    tratamientoFinalidad: "Finalidad",
+    tratamientoBase: "Base legal",
+    tratamientoPlazo: "Plazo de conservación",
     sinTratamiento:
       "{{cuantos}} objetos con datos personales y sin tratamiento declarado",
     ratCompleto:

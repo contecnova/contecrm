@@ -117,10 +117,108 @@ class AjustesParty(Settings):
     # podía afinar cuándo se propone y no cuándo se fusiona, que es la
     # destructiva.
     identidad_umbral_automatico: int = Field(150, ge=0, le=1_000)
+    # Qué clave de `contacto.canales` es qué señal de identidad. El WhatsApp
+    # es un teléfono; el identificador de la app o del ERP, el suyo. Una clave
+    # que no está aquí no se observa: no se adivina qué es un «canal_7».
+    identidad_canales_a_senal: dict[str, str] = Field(
+        default_factory=lambda: {
+            "whatsapp": "telefono",
+            "telegram": "telefono",
+            "sms": "telefono",
+            "id_app": "id_app",
+            "id_erp": "id_erp",
+            "cookie": "cookie",
+        }
+    )
+
+    # ── Umbral de coincidencia por objeto (CRM-01.01.04.02) ───────────────
+    # `{"cuenta": {"sugerencia": 0.8, "bloqueo": 0.97, "propuesta": 0.7},
+    # "contacto": {...}}`. Lo que no se dice para un objeto sale del umbral
+    # general: un tenant con miles de autónomos quiere a los contactos más
+    # exigentes que a las empresas, y un solo número para todo obliga a elegir.
+    dedupe_umbral_por_objeto: dict[str, dict[str, float]] = Field(default_factory=dict)
+
+    # ── Direcciones (CRM-01.01.04.04) ─────────────────────────────────────
+    # Abreviaturas de vía y su forma larga. Se comparan sin mayúsculas y sólo
+    # como PRIMERA palabra de la línea: «C/ Mayor» es «Calle Mayor», pero una
+    # «c.» en medio puede ser cualquier cosa.
+    direcciones_abreviaturas: dict[str, str] = Field(
+        default_factory=lambda: {
+            "c/": "Calle",
+            "c.": "Calle",
+            "cl": "Calle",
+            "avda": "Avenida",
+            "avda.": "Avenida",
+            "av.": "Avenida",
+            "pza": "Plaza",
+            "pza.": "Plaza",
+            "pl.": "Plaza",
+            "pº": "Paseo",
+            "ctra": "Carretera",
+            "ctra.": "Carretera",
+        }
+    )
+    # Dígitos del código postal por país. Con él, un «8001» que perdió el
+    # cero en una hoja de cálculo vuelve a ser «08001»; un país que no está
+    # aquí se deja como viene, sin inventarle formato.
+    direcciones_cp_digitos: dict[str, int] = Field(
+        default_factory=lambda: {"ES": 5, "FR": 5, "DE": 5, "IT": 5, "US": 5, "MX": 5}
+    )
+
+    # ── Enriquecimiento firmográfico (CRM-01.01.01.08) ────────────────────
+    # Plazo de la llamada al proveedor por el conector. Quien espera es la
+    # pantalla: más de esto y la persona cree que se ha colgado.
+    enriquecimiento_timeout_s: float = Field(20.0, ge=1.0, le=120.0)
+    # Cuántas fichas se piden de una vez en «pedir para varias». Cada una es
+    # una consulta que se paga.
+    enriquecimiento_max_lote: int = Field(25, ge=1, le=500)
 
 
 registrar_claves(
     [
+        ClaveAjuste(
+            clave="identidad_canales_a_senal",
+            tipo="json",
+            descripcion="Qué canal del contacto es qué señal de identidad (whatsapp → teléfono…)",
+            campo_settings="identidad_canales_a_senal",
+        ),
+        ClaveAjuste(
+            clave="dedupe_umbral_por_objeto",
+            tipo="json",
+            descripcion=(
+                "Umbrales de duplicado por objeto: {cuenta|contacto: {sugerencia, bloqueo, "
+                "propuesta}}; lo que falte sale del general"
+            ),
+            campo_settings="dedupe_umbral_por_objeto",
+        ),
+        ClaveAjuste(
+            clave="direcciones_abreviaturas",
+            tipo="json",
+            descripcion="Abreviaturas de vía y su forma larga al normalizar direcciones",
+            campo_settings="direcciones_abreviaturas",
+        ),
+        ClaveAjuste(
+            clave="direcciones_cp_digitos",
+            tipo="json",
+            descripcion="Dígitos del código postal por país, para recuperar ceros perdidos",
+            campo_settings="direcciones_cp_digitos",
+        ),
+        ClaveAjuste(
+            clave="enriquecimiento_timeout_s",
+            tipo="float",
+            descripcion="Plazo de la llamada al proveedor de enriquecimiento, en segundos",
+            minimo=1.0,
+            maximo=120.0,
+            campo_settings="enriquecimiento_timeout_s",
+        ),
+        ClaveAjuste(
+            clave="enriquecimiento_max_lote",
+            tipo="int",
+            descripcion="Cuántas fichas se piden al proveedor de una vez",
+            minimo=1,
+            maximo=500,
+            campo_settings="enriquecimiento_max_lote",
+        ),
         ClaveAjuste(
             clave="identidad_umbral",
             tipo="int",

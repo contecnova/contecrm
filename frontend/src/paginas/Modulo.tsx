@@ -41,6 +41,7 @@ import {
   esVocabulario,
   vistaPorDefecto,
   vistaRecordada,
+  idDeLaColumna,
   type Vista,
 } from "@/componentes/Vistas";
 import { Formulario, candidatosDe } from "@/componentes/Formulario";
@@ -702,6 +703,15 @@ function RecursoVista({
   const [esquemaEditable, setEsquemaEditable] = useState<
     Map<string, CampoEsquema>
   >(() => new Map());
+  // Los campos que NO se cambian con el PATCH sino con su propia acción:
+  // `POST /opportunities/{id}/etapa` con `{etapa_id}`. La etapa no se edita
+  // —pasar de una a otra comprueba criterios de salida y cierra si es
+  // terminal—, y por eso el tablero «Por columnas» de Oportunidades no dejaba
+  // arrastrar nada (medido el 09-11-2026). Se descubre del contrato: la ruta
+  // `{ficha}/{campo}` con `{campo}_id` en el cuerpo.
+  const [accionesDeCampo, setAccionesDeCampo] = useState<Map<string, string>>(
+    () => new Map(),
+  );
   // El lote de la colección (CRM-00.02.01.11): dónde está y qué admite, leído
   // del contrato. Sin él la tabla no ofrece casillas: elegir filas para no
   // poder hacer nada con ellas es peor que no poder elegirlas.
@@ -816,18 +826,50 @@ function RecursoVista({
     };
   }, [plantillaFicha, camposEditables]);
 
+  // `cargar` se declara más abajo; el tablero la llama por aquí.
+  const recargar = useRef<(() => void) | null>(null);
   // El tablero sigue pidiendo lo suyo: mover por el campo de agrupación.
   const mover = useMemo(() => {
-    if (
-      !editarCampo ||
-      !campoAgrupacion ||
-      !camposEditables.has(campoAgrupacion)
-    ) {
-      return undefined;
+    if (!campoAgrupacion) return undefined;
+    if (editarCampo && camposEditables.has(campoAgrupacion)) {
+      return (fila: Record<string, unknown>, valor: string) =>
+        editarCampo(fila, campoAgrupacion, valor);
     }
-    return (fila: Record<string, unknown>, valor: string) =>
-      editarCampo(fila, campoAgrupacion, valor);
-  }, [editarCampo, campoAgrupacion, camposEditables]);
+    const accion = accionesDeCampo.get(campoAgrupacion);
+    if (!accion) return undefined;
+    const campoId = `${campoAgrupacion}_id`;
+    return async (fila: Record<string, unknown>, valor: string) => {
+      const id = fila.id;
+      if (typeof id !== "string") return;
+      const destino = idDeLaColumna(filas ?? [], fila, campoAgrupacion, valor);
+      if (!destino) {
+        throw new Error(
+          `No se sabe a qué «${valor}» corresponde: hay varias con ese nombre y ninguna es claramente la suya. Muévela desde su ficha.`,
+        );
+      }
+      const antes = {
+        [campoAgrupacion]: fila[campoAgrupacion],
+        [campoId]: fila[campoId],
+      };
+      const cambiar = (v: Record<string, unknown>) =>
+        setFilas((actuales) =>
+          (actuales ?? []).map((f) => (f.id === id ? { ...f, ...v } : f)),
+        );
+      cambiar({ [campoAgrupacion]: valor, [campoId]: destino });
+      try {
+        await llamar(accion.replace(/\{[a-z_]+\}/, encodeURIComponent(id)), {
+          metodo: "POST",
+          cuerpo: { [campoId]: destino },
+        });
+        // Mover puede cambiar más cosas (una etapa terminal cierra): se
+        // vuelve a pedir la lista para no enseñar un estado que no es.
+        recargar.current?.();
+      } catch (error) {
+        cambiar(antes);
+        throw error;
+      }
+    };
+  }, [editarCampo, campoAgrupacion, camposEditables, accionesDeCampo, filas]);
   /**
    * Número de la última petición lanzada.
    *
@@ -1069,6 +1111,7 @@ function RecursoVista({
       filtros,
     ],
   );
+  recargar.current = () => void cargar();
 
   useEffect(() => {
     setFilas(null);
@@ -1145,6 +1188,21 @@ function RecursoVista({
         : [];
       setCamposEditables(new Set(editables.map((c) => c.nombre)));
       setEsquemaEditable(new Map(editables.map((c) => [c.nombre, c])));
+      const propias = new Map<string, string>();
+      if (plantillaFicha) {
+        for (const ruta of Object.keys(documento.paths ?? {})) {
+          if (!ruta.startsWith(`${plantillaFicha}/`)) continue;
+          const campo = ruta.slice(plantillaFicha.length + 1);
+          if (!/^[a-z_]+$/.test(campo)) continue;
+          if (
+            camposDe(documento, ruta, "post").some(
+              (c) => c.nombre === `${campo}_id`,
+            )
+          )
+            propias.set(campo, ruta);
+        }
+      }
+      setAccionesDeCampo(propias);
       const parametro = plantillaFicha?.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
       // `{cuenta_id}` es el identificador de siempre; `{clave}` es otro campo
       // de la fila, y hay que mandar ese.

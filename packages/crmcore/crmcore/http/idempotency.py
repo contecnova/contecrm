@@ -230,7 +230,21 @@ async def dependencia(request: Request, principal: "PrincipalDep") -> None:
         # con la de otro cliente. Se sigue sin idempotencia antes que eso.
         return
 
-    cuerpo = await request.body()
+    try:
+        cuerpo = await request.body()
+    except RuntimeError:
+        # Un formulario (multipart): FastAPI ya lo ha leído para resolver los
+        # campos y el flujo no se puede leer dos veces. Medido el 09-11-2026:
+        # TODA subida de fichero desde la interfaz —que siempre manda la clave—
+        # respondía 500 «Stream consumed». La huella sale del formulario ya
+        # leído: nombres, valores y, de cada fichero, su nombre y su tamaño.
+        formulario = await request.form()
+        cuerpo = repr(
+            sorted(
+                (k, v if isinstance(v, str) else f"{v.filename}:{v.size}")
+                for k, v in formulario.multi_items()
+            )
+        ).encode()
 
     from crmcore.db.session import nueva_sesion
 

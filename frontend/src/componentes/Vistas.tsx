@@ -154,6 +154,38 @@ export function campoDeAgrupacion(filas: Record<string, unknown>[]): string {
   return "";
 }
 
+/**
+ * El identificador de la columna a la que se suelta, sacado de las filas que
+ * ya están en ella.
+ *
+ * Las columnas se agrupan por el NOMBRE (`etapa`), y la acción que mueve
+ * pide el identificador (`etapa_id`). Dos embudos pueden tener una etapa que
+ * se llame igual con identificadores distintos, así que sólo valen las filas
+ * que comparten con la arrastrada las demás referencias a catálogo —las que
+ * vienen con id y nombre, como `pipeline_id` y `pipeline`—. Si aun así queda
+ * más de un candidato, `null`: mejor «no sé» que mover a la etapa de otro
+ * embudo.
+ */
+export function idDeLaColumna(
+  filas: Record<string, unknown>[],
+  arrastrada: Record<string, unknown>,
+  campo: string,
+  valor: string,
+): string | null {
+  const campoId = `${campo}_id`;
+  const referencias = Object.keys(arrastrada).filter(
+    (k) => k !== campoId && k.endsWith("_id") && k.slice(0, -3) in arrastrada,
+  );
+  const ids = new Set<string>();
+  for (const f of filas) {
+    if (String(f[campo] ?? "—") !== valor) continue;
+    const id = f[campoId];
+    if (typeof id !== "string") continue;
+    if (referencias.every((k) => f[k] === arrastrada[k])) ids.add(id);
+  }
+  return ids.size === 1 ? ([...ids][0] ?? null) : null;
+}
+
 export function SelectorVista({
   vista,
   alCambiar,

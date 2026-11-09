@@ -28,8 +28,8 @@ en el teléfono de todo el mundo.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import date, datetime, timezone
+from typing import Any, Callable
 from uuid import UUID
 
 from crmcore.errors import ErrorValidacion, Prohibido
@@ -247,3 +247,230 @@ def politica_de_grabacion(*, grabar: bool, avisar: bool, dias_conservacion: int)
             "nunca existe."
         )
     return {"valido": not problemas, "problemas": problemas}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# El marcador de verdad (09-11-2026)
+#
+# Hasta aquí, decisiones puras sobre datos tecleados: la exclusión la decía
+# quien llamaba (`en_lista_de_exclusion`), la política de grabación también, no
+# sonaba ningún teléfono y «registrar al colgar» devolvía un diccionario que no
+# se guardaba. Ahora:
+#
+# * la exclusión **se pregunta a `party`** —el «no contactar» de la ficha y el
+#   último consentimiento por teléfono—, con la identidad de quien pulsa;
+# * la política de grabación **es un ajuste** del tenant;
+# * la llamada **la origina la telefonía conectada** (`integration`), que la
+#   guarda y la registra sola como actividad al colgar;
+# * y al colgar, lo que obliga a algo **se hace**: quien pide que no le llamen
+#   queda marcado en su ficha, y un «reprogramar» crea la siguiente llamada.
+# ══════════════════════════════════════════════════════════════════════════
+
+Invocador = Callable[..., dict[str, Any]]
+
+
+def _invocar(**kw: Any) -> dict[str, Any]:
+    from crmcore.http.interno import invocar
+
+    return invocar(**kw)
+
+
+def _ajuste(clave: str) -> Any:
+    from crmcore.config import get_settings
+    from crmcore.runtime.settings import efectivo
+
+    return efectivo(clave, default=getattr(get_settings(), clave, None))
+
+
+def _error_de(r: dict[str, Any]) -> str:
+    datos = r.get("datos") or {}
+    if isinstance(datos, dict):
+        return str(datos.get("mensaje") or datos.get("detail") or datos)[:400]
+    return str(datos)[:400]
+
+
+def excluido_en_party(
+    invocar: Invocador, *, identidad: dict[str, Any], contacto_id: UUID
+) -> tuple[bool, str]:
+    """Si esta persona pidió no ser llamada, según `party`.
+
+    Dos cosas, y basta una: el «no contactar» de la ficha, que manda sobre todo,
+    y que su último consentimiento por teléfono sea una negativa. La ausencia de
+    consentimiento **no** es exclusión: un B2B llama a quien no ha dicho nada, y
+    lo que no se puede es llamar a quien dijo que no.
+    """
+    r = invocar(metodo="GET", ruta=f"/api/v1/contacts/{contacto_id}", **identidad)
+    if r.get("estado") == 404:
+        raise ErrorValidacion(
+            "Ese contacto no existe o no lo puedes ver.", error_code="marcador.contacto_no_visible"
+        )
+    if not r.get("ok"):
+        # Sin respuesta no se llama: no poder preguntar no es un «no se opone».
+        raise Prohibido(
+            "No se ha podido comprobar en party si esta persona pidió no ser llamada; "
+            "sin esa respuesta no se llama.",
+            error_code="marcador.exclusion_sin_respuesta",
+        )
+    if (r.get("datos") or {}).get("no_contactar"):
+        return True, "La ficha está marcada como «no contactar»."
+    c = invocar(metodo="GET", ruta=f"/api/v1/contacts/{contacto_id}/consentimientos", **identidad)
+    if c.get("ok"):
+        datos = c.get("datos")
+        filas = datos.get("items") if isinstance(datos, dict) else datos
+        por_telefono = [
+            x for x in (filas or []) if str(x.get("canal") or "") in ("telefono", "llamada")
+        ]
+        por_telefono.sort(key=lambda x: str(x.get("fecha") or ""), reverse=True)
+        if por_telefono and por_telefono[0].get("concedido") is False:
+            return True, "Su último consentimiento por teléfono es una negativa."
+    return False, ""
+
+
+def llamar(
+    *,
+    identidad: dict[str, Any],
+    numero: str,
+    contacto_id: UUID | None,
+    cuenta_id: UUID | None,
+    consiente_grabacion: bool,
+    excluido_declarado: bool = False,
+    invocar: Invocador | None = None,
+) -> dict[str, Any]:
+    """Comprueba, y si se puede, pide a la telefonía que marque.
+
+    Lo que se comprueba antes de que suene: la exclusión (en `party`) y la
+    grabación (la política del tenant y el consentimiento de la persona). Si la
+    telefonía no está conectada se dice, con el porqué, y no se finge una
+    llamada.
+    """
+    invocar = invocar or _invocar
+    excluido, porque = (excluido_declarado, "Declarado por quien llama.")
+    if contacto_id is not None and not excluido:
+        excluido, porque = excluido_en_party(invocar, identidad=identidad, contacto_id=contacto_id)
+    if excluido and contacto_id is None:
+        raise Prohibido(porque, error_code="marcador.en_exclusion")
+    preparada = preparar_llamada(
+        contacto_id=contacto_id or cuenta_id or UUID(int=0),
+        numero=numero,
+        consiente_grabacion=consiente_grabacion,
+        grabar_por_politica=bool(_ajuste("marcador_grabar_por_politica")),
+        en_lista_de_exclusion=excluido,
+    )
+    r = invocar(
+        metodo="POST",
+        ruta="/api/v1/telefonia/llamar",
+        cuerpo={
+            "numero": numero,
+            "contacto_id": str(contacto_id) if contacto_id else None,
+            "cuenta_id": str(cuenta_id) if cuenta_id else None,
+            "grabar": preparada["se_graba"],
+        },
+        timeout_s=float(_ajuste("marcador_espera_s") or 20.0),
+        **identidad,
+    )
+    if not r.get("ok"):
+        raise ErrorValidacion(
+            f"La telefonía no ha podido llamar: {_error_de(r)}",
+            error_code="marcador.telefonia_no_llama",
+            detalle={"estado": r.get("estado"), "respuesta": r.get("datos")},
+        )
+    preparada["contacto_id"] = str(contacto_id) if contacto_id else None
+    preparada["cuenta_id"] = str(cuenta_id) if cuenta_id else None
+    return {"preparada": preparada, "llamada": r.get("datos")}
+
+
+def colgar(
+    *,
+    identidad: dict[str, Any],
+    llamada_id: UUID,
+    resultado: str,
+    nota: str,
+    proxima_fecha: date | None,
+    invocar: Invocador | None = None,
+) -> dict[str, Any]:
+    """Anota cómo fue y hace lo que el resultado obliga a hacer.
+
+    La actividad la creó la telefonía al colgar (con duración y resultado de la
+    centralita). Aquí se le pone lo que sólo sabe la persona —la nota— y se
+    aplican las obligaciones: quien pidió que no le llamen queda marcado en su
+    ficha ese mismo día, y un «reprogramar» crea la siguiente llamada con fecha.
+    """
+    invocar = invocar or _invocar
+    r = invocar(metodo="GET", ruta=f"/api/v1/telefonia/llamadas/{llamada_id}", **identidad)
+    if not r.get("ok"):
+        raise ErrorValidacion(
+            f"No se encuentra la llamada: {_error_de(r)}",
+            error_code="marcador.llamada_no_encontrada",
+        )
+    llamada = dict(r.get("datos") or {})
+    contacto = llamada.get("contacto_id")
+    registro = registrar_al_colgar(
+        contacto_id=UUID(contacto) if contacto else UUID(int=0),
+        duracion_s=int(llamada.get("duracion_s") or 0),
+        resultado=resultado,
+        nota=nota,
+        grabacion_ref=str(llamada.get("grabacion_url") or ""),
+        proxima_fecha=proxima_fecha,
+    )
+    a = invocar(
+        metodo="POST",
+        ruta=f"/api/v1/telefonia/llamadas/{llamada_id}/resultado",
+        cuerpo={"resultado_comercial": resultado, "nota": nota},
+        **identidad,
+    )
+    aplicadas: list[str] = []
+    pendientes: list[str] = []
+    if not a.get("ok"):
+        pendientes.append(f"La nota no se ha guardado: {_error_de(a)}")
+    if resultado == "pide_que_no_le_llamen":
+        if contacto:
+            p = invocar(
+                metodo="PATCH",
+                ruta=f"/api/v1/contacts/{contacto}",
+                cuerpo={"no_contactar": True},
+                **identidad,
+            )
+            (aplicadas if p.get("ok") else pendientes).append(
+                "Ficha marcada como «no contactar»"
+                if p.get("ok")
+                else f"No se ha podido marcar «no contactar»: {_error_de(p)}"
+            )
+        else:
+            pendientes.append("La llamada no está ligada a un contacto: márcalo a mano.")
+    if resultado == "reprogramar" and proxima_fecha:
+        quien = (llamada.get("identificacion") or {}).get("nombre") or llamada.get("numero")
+        s = invocar(
+            metodo="POST",
+            ruta="/api/v1/activities",
+            cuerpo={
+                "tipo": "llamada",
+                "asunto": f"Volver a llamar a {quien}"[:300],
+                "objeto": "contacto" if contacto else None,
+                "objeto_id": contacto,
+                "contacto_id": contacto,
+                "cuenta_id": llamada.get("cuenta_id"),
+                "vence_at": datetime.combine(
+                    proxima_fecha, datetime.min.time(), tzinfo=timezone.utc
+                ).isoformat(),
+                "cuerpo": nota or None,
+                "detalles": {"numero": llamada.get("numero"), "de_la_llamada": str(llamada_id)},
+            },
+            **identidad,
+        )
+        (aplicadas if s.get("ok") else pendientes).append(
+            "Siguiente llamada creada con fecha"
+            if s.get("ok")
+            else f"No se ha podido crear la siguiente llamada: {_error_de(s)}"
+        )
+    if resultado == "numero_erroneo":
+        # El estado del teléfono es de la ficha y su vocabulario lo decide
+        # party; aquí no se inventa uno. Se dice qué hay que hacer.
+        pendientes.append("Marca el teléfono como erróneo en la ficha del contacto.")
+    return {
+        **registro,
+        "contacto_id": contacto,
+        "llamada_id": str(llamada_id),
+        "actividad_id": llamada.get("actividad_id"),
+        "aplicadas": aplicadas,
+        "pendientes": pendientes,
+    }

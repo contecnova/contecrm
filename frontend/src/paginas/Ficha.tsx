@@ -33,8 +33,13 @@ import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { CredencialesDeConexion } from "@/componentes/CredencialesDeConexion";
 import { ReunionEnLinea } from "@/componentes/ReunionEnLinea";
+import { ReferenciasDeSuite } from "@/componentes/ReferenciasDeSuite";
+import { Marcador } from "@/componentes/Marcador";
+import { TranscripcionDeReunion } from "@/componentes/TranscripcionDeReunion";
+import { VariantesDeCopy } from "@/componentes/VariantesDeCopy";
 import { AtribucionDeLead } from "@/componentes/AtribucionDeLead";
 import { VistaPreviaCorreo } from "@/componentes/VistaPreviaCorreo";
+import { ResolucionesDeDevolucion } from "@/componentes/ResolucionesDeDevolucion";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { SubColecciones } from "@/componentes/SubColecciones";
@@ -355,11 +360,24 @@ export function Ficha() {
       {!editando && tipo === "lead" && id ? (
         <PrediccionDelRegistro objeto="lead" id={id} />
       ) : null}
+      {/* Las resoluciones de la devolución y anotar el abono, que cuelga de
+          la resolución y no de la devolución (CRM-04.05.01.02). */}
+      {!editando && tipo === "devolucion" && id ? (
+        <ResolucionesDeDevolucion devolucionId={id} />
+      ) : null}
       {!editando && tipo === "conexion" && id ? (
         <CredencialesDeConexion conexionId={id} />
       ) : null}
       {!editando && tipo === "actividad" && id && fila?.tipo === "reunion" ? (
         <ReunionEnLinea actividadId={id} actividad={fila} alCrear={cargar} />
+      ) : null}
+      {/* Transcribir y resumir la llamada o la reunión, con sus compromisos
+          convertidos en tareas al confirmarlos (CRM-01.02.01.05, .06). */}
+      {!editando &&
+      tipo === "actividad" &&
+      id &&
+      ["llamada", "reunion", "visita"].includes(String(fila?.tipo ?? "")) ? (
+        <TranscripcionDeReunion actividadId={id} />
       ) : null}
       {/* La atribución de la venta del lead, con el importe de su oportunidad
           (CRM-02.02.01.06), y la plantilla montada con los datos de un contacto
@@ -367,12 +385,36 @@ export function Ficha() {
       {!editando && tipo === "lead" && id ? (
         <AtribucionDeLead leadId={id} lead={fila} />
       ) : null}
+      {/* Notas, ficheros y conversaciones de la suite vinculados por
+          referencia (CRM-06.01.03.08, .09, .12). En cualquier registro: el
+          vínculo es al registro, no a un tipo concreto. */}
+      {/* Llamar al contacto con la telefonía conectada (CRM-03.03.01.05). */}
+      {!editando && tipo === "contacto" && id && fila ? (
+        <Marcador
+          contactoId={id}
+          telefonos={[String(fila.telefono ?? ""), String(fila.movil ?? "")]}
+        />
+      ) : null}
+      {!editando && tipo && id && fila ? (
+        <ReferenciasDeSuite objeto={tipo} objetoId={id} />
+      ) : null}
       {!editando &&
       recurso?.listar === "/api/v1/correo/plantillas" &&
       typeof fila?.clave === "string" ? (
         <VistaPreviaCorreo
           clave={fila.clave}
           idioma={typeof fila.idioma === "string" ? fila.idioma : "es"}
+        />
+      ) : null}
+      {/* Variantes del asunto generadas con el modelo y revisadas por una
+          persona (CRM-02.04.01.04). */}
+      {!editando &&
+      recurso?.listar === "/api/v1/correo/plantillas" &&
+      typeof fila?.clave === "string" ? (
+        <VariantesDeCopy
+          objeto="plantilla_correo"
+          objetoRef={fila.clave}
+          textoBase={typeof fila.asunto === "string" ? fila.asunto : ""}
         />
       ) : null}
 

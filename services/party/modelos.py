@@ -798,6 +798,11 @@ from crmcore.authz.jerarquia import (  # noqa: E402,F401
 )
 from crmcore.datos import rollups as _rollups  # noqa: E402
 
+# Golden record guardado, enriquecimiento por el conector (CRM-01.01.04.06,
+# CRM-01.01.01.08) y lo que se hace solo al guardar: las señales de identidad
+# del contacto (CRM-01.01.05.02) y la dirección normalizada (CRM-01.01.04.04).
+from services.party import direcciones as _direcciones  # noqa: E402
+from services.party import identidad as _identidad  # noqa: E402
 from services.party import tratamientos  # noqa: E402,F401
 from services.party.actividades_extra import (  # noqa: E402,F401
     PlantillaActividades,
@@ -828,11 +833,19 @@ from services.party.cuenta_360 import (  # noqa: E402,F401
     PlanCuenta,
     RelacionPersona,
 )
+from services.party.enriquecimiento import (  # noqa: E402,F401
+    PerfilEnriquecimiento,
+    PropuestaEnriquecimiento,
+)
+from services.party.golden import GoldenRecord, ReglaSupervivencia  # noqa: E402,F401
 from services.party.identidad import Senal, Union  # noqa: E402,F401
 from services.party.limitacion import LimitacionTratamiento  # noqa: E402,F401
 
 # Golden record y linaje del dato (CRM-01.01.04.06, .07).
 from services.party.mdm import LinajeValor  # noqa: E402,F401
+
+_identidad.enganchar()
+_direcciones.enganchar()
 
 # Métricas del cliente traídas de otros sistemas (CRM-01.01.05.06).
 from services.party.metricas_embebidas import MetricaCuenta  # noqa: E402,F401

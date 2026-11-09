@@ -209,6 +209,12 @@ class _LimitsSettings(BaseSettings):
     # Abandono máximo tolerado en el marcador, en porcentaje. Lo fija la ley en
     # varios países; por eso se puede ajustar pero no quitar.
     marcador_abandono_maximo_pct: float = Field(3.0, ge=0.0, le=100.0)
+    # Si la política del tenant es grabar las llamadas del marcador. Apagado
+    # por defecto: grabar exige avisar y un plazo de borrado, y eso lo decide
+    # quien opera, no el producto.
+    marcador_grabar_por_politica: bool = False
+    # Segundos que el marcador espera a la telefonía (integration) al llamar.
+    marcador_espera_s: float = Field(20.0, ge=1.0, le=120.0)
     # Puntuación a partir de la cual un riesgo de GRC es alto.
     grc_umbral_riesgo_alto: int = Field(12, ge=1, le=1_000)
     # Intentos de sincronización de la suite antes de rendirse.

@@ -76,6 +76,10 @@ class Entitlement(Base, TimestampMixin, SoftDeleteMixin):
     # El SLA que concede. Es el enlace entre lo contratado y lo que corre el
     # reloj: sin él, el entitlement sería un papel y el SLA se elegiría aparte.
     sla_clave: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Quién lo da cuando no lo damos nosotros (CRM-09.01.01.08): la clave del
+    # proveedor de servicio de `integration`. Con ella se compara lo que se le
+    # promete al cliente con lo que ese proveedor sostiene.
+    proveedor_clave: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
     # Bolsas (CRM-04.01.02.06). Nulo = sin límite, que no es lo mismo que cero:
     # cero significa «no tienes derecho a ninguno» y nulo «no se cuentan».

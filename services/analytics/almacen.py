@@ -804,3 +804,102 @@ def plan_federado(
             "nombre. Para cruzarlas, carga lo que necesites en el almacén analítico."
         ),
     }
+
+
+def consultar_federada(
+    db: Session,
+    principal: Any,
+    *,
+    fuente: str,
+    objeto: str,
+    campos: list[str] | None = None,
+    filtros: list[dict[str, Any]] | None = None,
+    limite: int | None = None,
+) -> dict[str, Any]:
+    """Ejecuta de verdad la consulta contra el lake del cliente (CRM-05.01.03.07).
+
+    Hasta el 09-11-2026 esto era sólo el plan: nadie lo traducía, así que la
+    consulta federada «hecha» no consultaba nada. Ahora se ejecuta **por el
+    conector de la casa** —`integration`, por HTTP y con la identidad de quien
+    pregunta— con la conexión y la operación que declara la fuente en su
+    `config`: `{"conexion_id": …, "operaciones": {"<objeto>": "<clave>"}}`.
+    Ningún proveedor tiene código aquí: un Snowflake, un BigQuery o un lake
+    propio son una conexión y una operación declaradas en integration.
+
+    **En lectura y acotado.** Sólo los objetos declarados, con el tope de filas
+    de la fuente —se recorta aquí aunque la operación devuelva más, y se dice—
+    y su tiempo máximo como plazo de la llamada. Que la operación sea de lectura
+    lo garantiza quien la declara: `integration` no publica la definición de una
+    operación, así que desde aquí no se puede comprobar su método.
+    """
+    plan = plan_federado(
+        db,
+        principal.tenant_id,
+        fuente=fuente,
+        objeto=objeto,
+        campos=campos,
+        filtros=filtros,
+        limite=limite,
+    )
+    fila = db.execute(
+        select(FuenteFederada).where(
+            FuenteFederada.tenant_id == principal.tenant_id, FuenteFederada.clave == fuente
+        )
+    ).scalar_one()
+    config = dict(fila.config or {})
+    conexion_id = str(config.get("conexion_id") or "")
+    operacion = str((config.get("operaciones") or {}).get(objeto) or config.get("operacion") or "")
+    if not conexion_id or not operacion:
+        raise ErrorValidacion(
+            "La fuente no dice con qué conexión y qué operación se consulta este "
+            "objeto: declara en su configuración `conexion_id` y `operaciones`.",
+            error_code="almacen.federada_sin_conector",
+            detalle={"objeto": objeto, "config_esperada": ["conexion_id", "operaciones"]},
+        )
+    from crmcore.http.interno import invocar
+
+    inicio = _ahora()
+    respuesta = invocar(
+        metodo="POST",
+        ruta=f"/api/v1/integraciones/conexiones/{conexion_id}/operaciones/{operacion}/invocar",
+        cuerpo={
+            "parametros": {
+                "objeto": objeto,
+                "campos": plan["campos"],
+                "filtros": plan["filtros"],
+                "limite": plan["limite"],
+            }
+        },
+        tenant_id=principal.tenant_id,
+        principal_id=principal.id,
+        permisos=sorted(getattr(principal, "permisos", None) or []),
+        roles=sorted(getattr(principal, "roles", None) or []),
+        tipo="usuario",
+        timeout_s=float(fila.timeout_s),
+    )
+    if not respuesta.get("ok"):
+        datos = respuesta.get("datos") or {}
+        from crmcore.errors import ErrorDependencia
+
+        raise ErrorDependencia(
+            "El lake no ha contestado a la consulta: "
+            + str(datos.get("detail") or datos.get("mensaje") or datos.get("title") or "")[:300],
+            error_code="almacen.federada_fallo",
+            detalle={"estado_http": respuesta.get("estado"), "fuente": fuente},
+        )
+    registros = [r for r in (respuesta["datos"].get("registros") or []) if isinstance(r, dict)]
+    recortado = len(registros) > plan["limite"]
+    registros = registros[: plan["limite"]]
+    if plan["campos"]:
+        registros = [{c: r.get(c) for c in plan["campos"]} for r in registros]
+    columnas = list(plan["campos"]) or sorted({c for r in registros for c in r})
+    return {
+        **plan,
+        "filas": registros,
+        "columnas": columnas,
+        "cuantas": len(registros),
+        "recortado": bool(plan["recortado"] or recortado),
+        "consultado_at": inicio.isoformat(),
+        "duracion_ms": int((_ahora() - inicio).total_seconds() * 1000),
+        "copiado": False,
+    }

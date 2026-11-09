@@ -273,14 +273,50 @@ def aplicar_sla(db: Session, caso: Caso, *, tier_cliente: str = "") -> Definicio
 
 
 def _siguiente_codigo(db: Session, tenant_id: UUID) -> str:
+    """Código legible correlativo: `CAS-2026-00123`.
+
+    **Se contaba, y contar repetía números.** El recuento no ve los casos
+    borrados —el guardián de borrados los quita de toda consulta—, así que
+    borrar un caso hacía que el siguiente pidiera el código del borrado y la
+    restricción única tumbaba el alta con un 409: medido el 09-11-2026, tras
+    borrar un caso de prueba nadie podía abrir ninguno. Ahora lo lleva el
+    contador común (`crmcore.numeracion`), bajo cerrojo, como la oportunidad;
+    la primera vez se declara arrancando por el mayor código ya emitido este
+    año, borrados incluidos.
+    """
+    from crmcore import numeracion
+    from crmcore.datos.guard_borrados import con_borrados
+
+    codigo = numeracion.siguiente(db, tenant_id, objeto="caso")
+    if codigo is not None:
+        return codigo
     anio = hoy(db).year
-    cuantos = int(
-        db.execute(
-            select(func.count()).select_from(Caso).where(Caso.tenant_id == tenant_id)
-        ).scalar_one()
-        or 0
+    prefijo = f"CAS-{anio}-"
+    with con_borrados(db):
+        codigos = (
+            db.execute(
+                select(Caso.codigo).where(
+                    Caso.tenant_id == tenant_id, Caso.codigo.like(f"{prefijo}%")
+                )
+            )
+            .scalars()
+            .all()
+        )
+    ya = max(
+        (int(c[len(prefijo) :]) for c in codigos if c and c[len(prefijo) :].isdigit()), default=0
     )
-    return f"CAS-{anio}-{cuantos + 1:05d}"
+    numeracion.declarar(
+        db,
+        tenant_id,
+        objeto="caso",
+        patron="CAS-{anio}-{secuencia}",
+        relleno=5,
+        reinicio="anual",
+        empezar_en=ya,
+    )
+    emitido = numeracion.siguiente(db, tenant_id, objeto="caso")
+    assert emitido is not None  # se acaba de declarar
+    return emitido
 
 
 def _anotar(db: Session, caso: Caso, tipo: str, **detalle: Any) -> EventoCaso:

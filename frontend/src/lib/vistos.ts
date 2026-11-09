@@ -62,6 +62,8 @@ export function anotarVisto(
   void llamar("/api/v1/vistos", {
     metodo: "POST",
     cuerpo: { objeto_tipo: objetoTipo, objeto_id: objetoId, nombre },
+    // Se apunta solo: sin red se pierde, no se encola como un cambio tuyo.
+    encolable: false,
   }).catch(() => undefined);
 }
 

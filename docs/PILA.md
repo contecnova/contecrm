@@ -160,7 +160,7 @@ a ellas. Se recorren una a una, como se hizo con lecciones.
     en el gateway). En la pila local el correo no llega: el bus no lo entrega a
     identidad.
 
-### 6. Las 82 capacidades sin pantalla
+### 6. Las 82 capacidades sin pantalla (quedan 2)
 
 El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.
 
@@ -191,28 +191,54 @@ El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.
   o no guardan—. Decidido por formulario **construirlas todas**:
   - [x] IA: modelos predictivos entrenados con el histórico (scoring, cierre,
     importe, fecha, propensión, siguiente oferta, segmentación).
-  - [ ] IA: transcripción y resumen de llamadas y reuniones, con compromisos.
+  - [x] IA: transcripción y resumen de llamadas y reuniones, con compromisos.
   - [x] IA: asistente que busca en el conocimiento y ejecuta acciones; preguntas
     en lenguaje natural que se ejecutan.
-  - [ ] IA: variantes de copy generadas, con revisión; asistente de voz.
+  - [x] IA: variantes de copy generadas, con revisión; asistente de voz.
   - [x] Marketing: audiencias a plataformas publicitarias.
   - [x] Marketing: mejor hora y canal aplicados al envío y a los recorridos.
   - [x] Marketing: recomendaciones en la personalización; previsualización en
     varios clientes y spam score real.
   - [x] Marketing: transaccional por su dominio, separado del promocional.
-  - [ ] Telefonía/CTI y marcador sobre la telefonía del tenant.
-  - [ ] Analítica de cohortes, embudo y actividad con datos del CRM;
+  - [x] Telefonía/CTI y marcador sobre la telefonía del tenant.
+  - [x] Analítica de cohortes, embudo y actividad con datos del CRM;
     instantáneas programadas; consulta al lake del cliente.
-  - [ ] Suite: avisos y consultas en Teams/Slack, reuniones y asistentes
+  - [x] Suite: avisos y consultas en Teams/Slack, reuniones y asistentes
     registrados, notas/ficheros/chats por referencia guardados.
-  - [ ] Compensación externa y SLA de proveedor frente al prometido.
+  - [x] Compensación externa y SLA de proveedor frente al prometido.
   - [x] Historial de configuración con diff y vuelta atrás; jerarquía de
     empresas completa; consumo exportable a facturación.
-  - [ ] Calidad del dato: golden record, enriquecimiento externo, identidad
+  - [x] Calidad del dato: golden record, enriquecimiento externo, identidad
     entre canales, umbral por objeto, direcciones.
-  - [ ] Archivado consultable (hecho) y modo sin conexión (pendiente).
+  - [x] Archivado consultable y modo sin conexión.
   - [x] Sandbox de API con datos sintéticos y consola; MFA por proveedor.
-  - [ ] Las 11 pantallas que faltan y declarar las ~19 alcanzables.
+  - [x] Las 11 pantallas que faltan y declarar las ~19 alcanzables.
+- **Hecho el 09-11-2026, segunda tanda (33 → 2)**: todo lo anterior construido
+  y visto en el navegador. Quedan sin pantalla declarada las renovaciones
+  (CRM-03.03.02.10: verlas abriría oportunidades sobre contratos reales; está
+  en pruebas) y CRM-00.04.04.06, que necesita el bus.
+- **Pendiente de lo de la segunda tanda**:
+  - [ ] Probar contra proveedores reales: transcripción, centralita, motor de
+    compensación, Teams/Slack, enriquecimiento. Todo está probado contra dobles
+    locales; falta la credencial de cada uno en Integraciones y, para la
+    transcripción por enlace, un `PUBLIC_BASE_URL` público.
+  - [ ] Integration debe mandar a party las señales de identidad de otros
+    canales (`POST /calidad-dato/identidades/observar`) y la respuesta que
+    detecta el buzón a las cadencias.
+  - [ ] Golden record y umbral por objeto para leads (hoy cuentas y contactos).
+  - [ ] Sin conexión: formularios que no se abrieron con red, borrar sin red.
+  - [ ] `numero_erroneo` de la telefonía no marca el teléfono de la ficha.
+  - [ ] Al recoger ventas para la compensación, el reparto sale vacío: la lista
+    de oportunidades no trae `owner_id` con esa identidad. Sin investigar.
+  - [ ] El embudo de la analítica se limita a 100 historiales; un listado en
+    bloque en sales quitaría el tope.
+- **Arreglado de paso en la segunda tanda**: toda subida de fichero desde la
+  pantalla daba 500 (la idempotencia releía un cuerpo multipart ya leído); los
+  enlaces firmados a adjuntos daban 401 siempre; tras borrar un caso nadie
+  podía abrir otro (el código salía de contar casos sin los borrados); una
+  línea libre de presupuesto sin precio daba 500; la vista «Por columnas» de
+  Oportunidades no dejaba arrastrar (la etapa tiene su propia acción); el
+  rechazo de una combinación de productos no decía cuáles chocaban.
 - **Arreglado al medir (09-11-2026)**: el inicio de sesión web no mandaba nunca
   el código del segundo factor —con él exigido, nadie entraba—; el consumo de
   un tenant lo leía cualquiera con sesión, también el de otra empresa; la ruta

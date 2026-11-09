@@ -68,6 +68,68 @@ class Candidato:
         }
 
 
+# Qué ajuste general responde a cada umbral cuando el objeto no dice el suyo.
+_UMBRAL_GENERAL = {
+    "sugerencia": "dedupe_umbral_sugerencia",
+    "bloqueo": "dedupe_umbral_bloqueo",
+    "propuesta": "duplicados_umbral_propuesta",
+}
+
+
+def umbral_de(db: Session | None, objeto: str, tipo: str) -> float:
+    """El umbral de coincidencia de ESTE objeto (CRM-01.01.04.02).
+
+    Hasta el 09-11-2026 había uno por tenant para todo: cuentas y contactos se
+    medían con el mismo listón, y un tenant con miles de autónomos —donde dos
+    «Juan García» son casi siempre dos personas— no podía exigir más a los
+    contactos sin dejar pasar duplicados de empresa. Ahora el ajuste
+    `dedupe_umbral_por_objeto` lo dice por objeto, y lo que no diga sale del
+    general de siempre.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.party.ajustes import ajustes
+
+    por_objeto = rt.efectivo("dedupe_umbral_por_objeto", db)
+    if not isinstance(por_objeto, dict):
+        por_objeto = ajustes().dedupe_umbral_por_objeto
+    propio = (por_objeto or {}).get(objeto) or {}
+    if isinstance(propio, dict) and propio.get(tipo) is not None:
+        try:
+            valor = float(propio[tipo])
+            if 0.0 <= valor <= 1.0:
+                return valor
+        except (TypeError, ValueError):
+            pass
+    clave = _UMBRAL_GENERAL[tipo]
+    general = rt.efectivo(clave, db)
+    if general is None:
+        general = getattr(ajustes(), clave)
+    return float(general)
+
+
+def umbrales_por_objeto(db: Session | None) -> dict[str, dict[str, Any]]:
+    """Los umbrales que valen ahora para cada objeto, y si son propios o del general."""
+    from crmcore.runtime import settings as rt
+
+    from services.party.ajustes import ajustes
+
+    por_objeto = rt.efectivo("dedupe_umbral_por_objeto", db)
+    if not isinstance(por_objeto, dict):
+        por_objeto = ajustes().dedupe_umbral_por_objeto
+    salida: dict[str, dict[str, Any]] = {}
+    for objeto in ("cuenta", "contacto"):
+        propio = (por_objeto or {}).get(objeto) or {}
+        salida[objeto] = {
+            tipo: {
+                "valor": umbral_de(db, objeto, tipo),
+                "propio": isinstance(propio, dict) and propio.get(tipo) is not None,
+            }
+            for tipo in _UMBRAL_GENERAL
+        }
+    return salida
+
+
 def buscar_cuentas_duplicadas(
     db: Session,
     *,
@@ -84,8 +146,8 @@ def buscar_cuentas_duplicadas(
     from services.party.ajustes import ajustes
 
     a = ajustes()
-    umbral = float(rt.efectivo("dedupe_umbral_sugerencia", db) or a.dedupe_umbral_sugerencia)
-    bloqueo = float(rt.efectivo("dedupe_umbral_bloqueo", db) or a.dedupe_umbral_bloqueo)
+    umbral = umbral_de(db, "cuenta", "sugerencia")
+    bloqueo = umbral_de(db, "cuenta", "bloqueo")
     usar_nif = bool(rt.efectivo("dedupe_bloquear_por_nif", db))
     maximo = a.dedupe_max_candidatos
 
@@ -213,13 +275,12 @@ def buscar_contactos_duplicados(
     capturar (CRM-01.01.03.03), que decide con sus propias reglas qué es
     concluyente para un lead.
     """
-    from crmcore.runtime import settings as rt
 
     from services.party.ajustes import ajustes
 
     a = ajustes()
-    umbral = float(rt.efectivo("dedupe_umbral_sugerencia", db) or a.dedupe_umbral_sugerencia)
-    bloqueo = float(rt.efectivo("dedupe_umbral_bloqueo", db) or a.dedupe_umbral_bloqueo)
+    umbral = umbral_de(db, "contacto", "sugerencia")
+    bloqueo = umbral_de(db, "contacto", "bloqueo")
 
     clave = norm.clave_canonica_persona(nombre, apellidos)
     correo = norm.normalizar_email(email)

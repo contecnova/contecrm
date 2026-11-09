@@ -167,6 +167,17 @@ export function Duplicados() {
         titulo={t("duplicados.titulo")}
         entradilla={t("duplicados.entradilla")}
         icono="join_inner"
+        acciones={
+          // La ficha buena, el proveedor de datos, la misma persona en cada
+          // canal, los umbrales por objeto y las direcciones (CRM-01.01.04.06,
+          // CRM-01.01.01.08, CRM-01.01.05.02, CRM-01.01.04.02,
+          // CRM-01.01.04.04). Desde aquí y no con su propia entrada: el área
+          // de Clientes ya está en el techo de lo que se lee de un vistazo.
+          <Link to="/calidad-del-dato" className="btn-secondary">
+            <Icono nombre="verified" tamano="sm" />
+            {t("nav.calidadDelDato")}
+          </Link>
+        }
       />
 
       {fallo ? <Fallo error={fallo} /> : null}

@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { AvisoSinConexion } from "@/componentes/AvisoSinConexion";
 import { BarraDeAplicacion } from "@/componentes/BarraDeAplicacion";
 import { BarraLateral } from "@/componentes/BarraLateral";
 import { BarraSuperior } from "@/componentes/BarraSuperior";
@@ -93,6 +94,11 @@ export function Marco({ sesion, children }: Props) {
     await llamar("/api/v1/sesion/salir", { metodo: "POST" }).catch(
       () => undefined,
     );
+    // Lo consultado se queda en el dispositivo para trabajar sin red; al salir
+    // se olvida, porque el siguiente que entre no tiene por qué verlo.
+    await import("@/lib/sinConexion")
+      .then((m) => m.olvidarLoConsultado())
+      .catch(() => undefined);
     window.location.assign("/");
   }, []);
 
@@ -224,6 +230,7 @@ function Armazon({
             administrador que olvida que está viendo el CRM en nombre de otra
             persona toma decisiones sobre datos que no son los que cree. */}
         {sesion?.suplantado_por ? <FranjaDeSoporte sesion={sesion} /> : null}
+        <AvisoSinConexion usuario={sesion?.usuario_id ?? ""} />
 
         <BarraSuperior
           sesion={sesion}

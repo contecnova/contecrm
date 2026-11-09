@@ -25,11 +25,29 @@ pagada: eso se llama clawback y es una conversación, no un ajuste.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from decimal import Decimal
-from typing import Any
+from decimal import Decimal, InvalidOperation
+from typing import Any, Callable
+from uuid import UUID
 
-from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.errors import Conflicto, CrmError, ErrorValidacion, NoEncontrado
+from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    select,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
@@ -253,3 +271,553 @@ def exigir_periodo_abierto(*, periodo_cerrado: bool, referencia: str) -> None:
             "configurado—, y las dos cosas pasan en silencio.",
             error_code="compensacion.periodo_cerrado",
         )
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# El envío de verdad (09-11-2026)
+#
+# Lo de arriba componía el hecho, conciliaba dos listas que traía quien llamaba
+# y «recibía» un cálculo devolviéndolo: no salía nada hacia ningún motor ni se
+# guardaba nada. Lo de abajo es la otra mitad:
+#
+# * **el motor es una conexión de integración** con dos operaciones declaradas
+#   —recibir hechos y devolver el cálculo—. Cambiar de motor es declarar otras
+#   dos, no escribir otro módulo;
+# * **los hechos salen de donde viven**: las ventas ganadas se piden a `sales`
+#   por HTTP con la identidad de quien pulsa; los cobros, las devoluciones y
+#   las anulaciones se dan de alta a mano o por API con su referencia;
+# * **se guarda lo enviado y lo devuelto**, hecho a hecho;
+# * **y se concilia contra lo que calcula la casa** —las liquidaciones de
+#   `sales`—, enseñando cada diferencia.
+# ══════════════════════════════════════════════════════════════════════════
+
+CLASE_PERFIL = "compensacion"
+ESTADOS_ENVIO = ("pendiente", "enviado", "calculado", "error")
+
+
+class HechoCompensacion(Base, TimestampMixin):
+    """Un hecho mandado (o por mandar) al motor externo, con lo que volvió."""
+
+    __tablename__ = "hechos_compensacion"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    conexion_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    tipo: Mapped[str] = mapped_column(String(30), nullable=False, info={"opciones": HECHOS})
+    referencia: Mapped[str] = mapped_column(String(200), nullable=False)
+    # De dónde salió: una oportunidad ganada de `sales`, o dado de alta a mano.
+    origen: Mapped[str] = mapped_column(String(30), nullable=False, default="manual")
+    origen_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # A quién se le atribuye: es lo que convierte el hecho en dato de una persona.
+    usuario_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"sensibilidad": "personal"}
+    )
+    fecha: Mapped[date] = mapped_column(Date, nullable=False)
+    importe: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
+    moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pendiente", info={"opciones": ESTADOS_ENVIO}
+    )
+    # Lo que se mandó, tal cual, y lo que contestó el motor, tal cual.
+    enviado: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    respuesta: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    enviado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # El cálculo del motor, sin tocar.
+    comision_motor: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    periodo: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    provisional: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    calculado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Lo que calcula la casa para la misma referencia, y la diferencia.
+    comision_casa: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    diferencia: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    conciliado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "tipo", "referencia", name="uq_hecho_compensacion"),
+        Index("ix_hechos_compensacion_estado", "tenant_id", "estado"),
+    )
+
+
+Invocador = Callable[..., dict[str, Any]]
+
+
+def _invocar(**kw: Any) -> dict[str, Any]:
+    from crmcore.http.interno import invocar
+
+    return invocar(**kw)
+
+
+def _ajuste(clave: str, db: Session | None) -> Any:
+    from services.integration.ajustes import valor
+
+    return valor(clave, db)
+
+
+def _decimal(valor: Any) -> Decimal | None:
+    if valor is None or valor == "":
+        return None
+    try:
+        return Decimal(str(valor).replace(",", "."))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def declarar_perfil(db: Session, tenant_id: UUID, *, conexion_id: UUID) -> Any:
+    """Marca una conexión de integración como el motor de compensación."""
+    from services.integration.modelos import Conexion
+
+    fila = db.get(Conexion, conexion_id)
+    if fila is None or fila.tenant_id != tenant_id:
+        raise NoEncontrado(
+            "La conexión no existe", error_code="compensacion.conexion_no_encontrada"
+        )
+    clase = dict(fila.config or {}).get("clase")
+    if clase and clase != CLASE_PERFIL:
+        raise Conflicto(
+            f"La conexión «{fila.nombre}» ya es de otra clase ({clase}).",
+            error_code="compensacion.conexion_de_otra_clase",
+        )
+    fila.config = {**dict(fila.config or {}), "clase": CLASE_PERFIL}
+    db.flush()
+    return fila
+
+
+def perfil(db: Session, tenant_id: UUID) -> Any:
+    from services.integration.modelos import Conexion
+
+    candidatos = [
+        c
+        for c in db.execute(
+            select(Conexion).where(Conexion.tenant_id == tenant_id, Conexion.activa.is_(True))
+        )
+        .scalars()
+        .all()
+        if dict(c.config or {}).get("clase") == CLASE_PERFIL
+    ]
+    if not candidatos:
+        raise ErrorValidacion(
+            "No hay motor de compensación conectado: márcalo en Compensación externa "
+            "› Motor, sobre una conexión de Integraciones.",
+            error_code="compensacion.sin_motor",
+        )
+    if len(candidatos) > 1:
+        raise ErrorValidacion(
+            "Hay más de una conexión marcada como motor de compensación.",
+            error_code="compensacion.motor_ambiguo",
+            detalle={"perfiles": sorted(c.nombre for c in candidatos)},
+        )
+    return candidatos[0]
+
+
+def estado_del_perfil(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    from services.integration.operar import operacion_declarada
+
+    try:
+        conexion = perfil(db, tenant_id)
+    except ErrorValidacion as exc:
+        return {"conectado": False, "porque": exc.mensaje}
+    ops = {
+        str(_ajuste("compensacion_op_enviar", db)): False,
+        str(_ajuste("compensacion_op_calculo", db)): False,
+    }
+    for clave in ops:
+        ops[clave] = operacion_declarada(db, conexion.id, clave)
+    return {
+        "conectado": True,
+        "conexion_id": str(conexion.id),
+        "nombre": conexion.nombre,
+        "sistema": conexion.sistema,
+        "operaciones": ops,
+        "falta": [f"la operación «{k}»" for k, v in ops.items() if not v],
+    }
+
+
+# ── Recoger los hechos ────────────────────────────────────────────────────
+
+
+def ventas_ganadas(
+    invocar: Invocador, *, identidad: dict[str, Any], desde: date, hasta: date
+) -> list[dict[str, Any]]:
+    """Las oportunidades ganadas en el periodo, preguntadas a `sales`.
+
+    Con la identidad de quien pulsa: quien no ve una venta no la manda.
+    """
+    salida: list[dict[str, Any]] = []
+    cursor = ""
+    for _ in range(50):
+        parametros: dict[str, Any] = {
+            "estado": "ganada",
+            "fecha_cierre_real__desde": desde.isoformat(),
+            "fecha_cierre_real__hasta": hasta.isoformat(),
+            "limite": 200,
+        }
+        if cursor:
+            parametros["cursor"] = cursor
+        r = invocar(metodo="GET", ruta="/api/v1/opportunities", parametros=parametros, **identidad)
+        if not r.get("ok"):
+            datos = r.get("datos") or {}
+            raise ErrorValidacion(
+                f"sales no ha dado las ventas ganadas (HTTP {r.get('estado')}): "
+                f"{datos.get('mensaje') or datos.get('detail') or datos}"[:500],
+                error_code="compensacion.ventas_sin_respuesta",
+            )
+        datos = r.get("datos") or {}
+        salida.extend(datos.get("items") or [])
+        cursor = str(datos.get("siguiente") or "")
+        if not cursor:
+            break
+    return salida
+
+
+def registrar_hecho(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    tipo: str,
+    referencia: str,
+    fecha: date,
+    importe: Decimal,
+    moneda: str,
+    usuario_id: UUID | None,
+    origen: str = "manual",
+    origen_id: UUID | None = None,
+    datos: dict[str, Any] | None = None,
+) -> tuple[HechoCompensacion, str]:
+    """Guarda un hecho por mandar. Devuelve el hecho y qué se hizo con él.
+
+    Un hecho ya mandado cuyo importe cambia **no se reescribe**: se dice. Es la
+    conversación del clawback, no un ajuste en silencio; el cambio se manda como
+    su propio hecho (`modificacion_importe` o `devolucion`).
+    """
+    reparto = [{"usuario_id": str(usuario_id), "porcentaje": 100}] if usuario_id else []
+    carga = componer_hecho(
+        tipo=tipo,
+        referencia=referencia,
+        fecha=fecha,
+        importe=importe,
+        moneda=moneda,
+        reparto=reparto,
+        datos=datos,
+    )
+    fila = db.execute(
+        select(HechoCompensacion).where(
+            HechoCompensacion.tenant_id == tenant_id,
+            HechoCompensacion.tipo == tipo,
+            HechoCompensacion.referencia == referencia,
+        )
+    ).scalar_one_or_none()
+    if fila is not None and fila.estado in ("enviado", "calculado"):
+        if Decimal(str(fila.importe)) != Decimal(str(importe)):
+            return fila, "cambio_tras_enviar"
+        return fila, "ya_estaba"
+    if fila is None:
+        fila = HechoCompensacion(tenant_id=tenant_id, tipo=tipo, referencia=referencia)
+        db.add(fila)
+        que = "nuevo"
+    else:
+        que = "actualizado"
+    fila.origen = origen
+    fila.origen_id = origen_id
+    fila.usuario_id = usuario_id
+    fila.fecha = fecha
+    fila.importe = importe
+    fila.moneda = moneda
+    fila.estado = "pendiente"
+    fila.enviado = carga
+    fila.error = None
+    db.flush()
+    return fila, que
+
+
+def recoger_ventas(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    desde: date,
+    hasta: date,
+    identidad: dict[str, Any],
+    invocar: Invocador | None = None,
+) -> dict[str, Any]:
+    """Convierte las ventas ganadas del periodo en hechos `cierre` por mandar."""
+    invocar = invocar or _invocar
+    cuenta = {"nuevo": 0, "actualizado": 0, "ya_estaba": 0, "cambio_tras_enviar": 0}
+    cambios: list[dict[str, Any]] = []
+    for o in ventas_ganadas(invocar, identidad=identidad, desde=desde, hasta=hasta):
+        oid = UUID(str(o.get("id")))
+        fecha = date.fromisoformat(str(o.get("fecha_cierre_real") or o.get("fecha_cierre"))[:10])
+        importe = _decimal(o.get("importe")) or Decimal(0)
+        owner = o.get("owner_id")
+        fila, que = registrar_hecho(
+            db,
+            tenant_id,
+            tipo="cierre",
+            referencia=str(oid),
+            fecha=fecha,
+            importe=importe,
+            moneda=str(o.get("moneda") or "EUR"),
+            usuario_id=UUID(str(owner)) if owner else None,
+            origen="oportunidad",
+            origen_id=oid,
+            datos={"nombre": o.get("nombre"), "cuenta_id": o.get("cuenta_id")},
+        )
+        cuenta[que] += 1
+        if que == "cambio_tras_enviar":
+            cambios.append(
+                cambio_despues_de_pagar(
+                    referencia=str(oid),
+                    importe_original=Decimal(str(fila.importe)),
+                    importe_nuevo=importe,
+                    ya_pagada=fila.estado == "calculado" and not fila.provisional,
+                    motivo="El importe de la venta cambió en el CRM después de mandarla",
+                )
+            )
+    return {**cuenta, "cambios": cambios}
+
+
+# ── Mandar y traer ────────────────────────────────────────────────────────
+
+
+def _aplicar_calculo(fila: HechoCompensacion, registro: dict[str, Any]) -> None:
+    comision = _decimal(registro.get("comision"))
+    if comision is not None:
+        fila.comision_motor = comision
+        fila.estado = "calculado"
+        fila.calculado_at = datetime.now(timezone.utc)
+    if registro.get("periodo"):
+        fila.periodo = str(registro.get("periodo"))[:40]
+    if "cerrado" in registro:
+        fila.provisional = not bool(registro.get("cerrado"))
+
+
+def enviar_pendientes(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Manda al motor los hechos pendientes, en un lote, y guarda lo que contesta.
+
+    Si el motor contesta ya con el cálculo de alguna referencia, se guarda tal
+    cual. Si falla, los hechos quedan en «error» con el motivo y se pueden
+    reintentar: un envío que falla sin dejar rastro es una venta que no aparece
+    en la comisión de nadie.
+    """
+    from services.integration import operar
+
+    conexion = perfil(db, tenant_id)
+    filas = list(
+        db.execute(
+            select(HechoCompensacion)
+            .where(
+                HechoCompensacion.tenant_id == tenant_id,
+                HechoCompensacion.estado.in_(("pendiente", "error")),
+            )
+            .order_by(HechoCompensacion.fecha)
+        )
+        .scalars()
+        .all()
+    )
+    if not filas:
+        return {"enviados": 0, "calculados": 0, "errores": 0, "porque": "No hay nada pendiente."}
+    ahora = datetime.now(timezone.utc)
+    try:
+        respuesta = operar.ejecutar(
+            db,
+            conexion=conexion,
+            clave=str(_ajuste("compensacion_op_enviar", db)),
+            parametros={"hechos": [dict(f.enviado or {}) for f in filas]},
+            timeout_s=float(_ajuste("compensacion_espera_s", db)),
+            codigo_error="compensacion.operacion_no_declarada",
+        )
+    except CrmError as exc:
+        for f in filas:
+            f.estado = "error"
+            f.error = f"{exc.error_code}: {exc.mensaje}"[:1000]
+        db.flush()
+        return {"enviados": 0, "calculados": 0, "errores": len(filas), "error": exc.mensaje}
+    por_ref = {
+        str(r.get("referencia")): r for r in respuesta.get("registros") or [] if r.get("referencia")
+    }
+    calculados = 0
+    for f in filas:
+        f.conexion_id = conexion.id
+        f.enviado_at = ahora
+        f.estado = "enviado"
+        f.error = None
+        registro = por_ref.get(f.referencia)
+        if registro:
+            f.respuesta = registro
+            _aplicar_calculo(f, registro)
+            calculados += f.estado == "calculado"
+    db.flush()
+    return {"enviados": len(filas), "calculados": calculados, "errores": 0}
+
+
+def traer_calculo(db: Session, tenant_id: UUID, *, desde: date, hasta: date) -> dict[str, Any]:
+    """Pide al motor lo calculado en el periodo y lo guarda junto a cada hecho."""
+    from services.integration import operar
+
+    conexion = perfil(db, tenant_id)
+    respuesta = operar.ejecutar(
+        db,
+        conexion=conexion,
+        clave=str(_ajuste("compensacion_op_calculo", db)),
+        parametros={"desde": desde.isoformat(), "hasta": hasta.isoformat()},
+        timeout_s=float(_ajuste("compensacion_espera_s", db)),
+        codigo_error="compensacion.operacion_no_declarada",
+    )
+    registros = [r for r in respuesta.get("registros") or [] if r.get("referencia")]
+    filas = {
+        f.referencia: f
+        for f in db.execute(
+            select(HechoCompensacion).where(HechoCompensacion.tenant_id == tenant_id)
+        )
+        .scalars()
+        .all()
+    }
+    sin_hecho: list[str] = []
+    for r in registros:
+        fila = filas.get(str(r.get("referencia")))
+        if fila is None:
+            sin_hecho.append(str(r.get("referencia")))
+            continue
+        fila.respuesta = {**dict(fila.respuesta or {}), **r}
+        _aplicar_calculo(fila, r)
+    db.flush()
+    enviados = [
+        {"referencia": f.referencia}
+        for f in filas.values()
+        if f.estado in ("enviado", "calculado") and desde <= f.fecha <= hasta
+    ]
+    return {
+        "recibidos": len(registros),
+        **conciliar(hechos_enviados=enviados, calculos_recibidos=registros),
+        "calculados_sin_hecho": sorted(set(sin_hecho)),
+    }
+
+
+def conciliar_con_la_casa(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    desde: date,
+    hasta: date,
+    identidad: dict[str, Any],
+    invocar: Invocador | None = None,
+) -> dict[str, Any]:
+    """Pone al lado de cada cálculo del motor lo que calcula la casa.
+
+    La casa son las liquidaciones de `sales` que caen en el periodo: cada línea
+    con su origen. Se suman por oportunidad y se comparan con lo que devolvió
+    el motor para esa venta. No se corrige nada: se enseña la diferencia.
+    """
+    invocar = invocar or _invocar
+    r = invocar(metodo="GET", ruta="/api/v1/liquidaciones", parametros={"limite": 200}, **identidad)
+    if not r.get("ok"):
+        raise ErrorValidacion(
+            f"sales no ha dado las liquidaciones (HTTP {r.get('estado')})",
+            error_code="compensacion.liquidaciones_sin_respuesta",
+        )
+    casa: dict[str, Decimal] = {}
+    liquidaciones = 0
+    for liq in (r.get("datos") or {}).get("liquidaciones") or []:
+        try:
+            l_desde = date.fromisoformat(str(liq.get("desde"))[:10])
+            l_hasta = date.fromisoformat(str(liq.get("hasta"))[:10])
+        except ValueError:
+            continue
+        if l_hasta < desde or l_desde > hasta:
+            continue
+        d = invocar(metodo="GET", ruta=f"/api/v1/liquidaciones/{liq.get('id')}", **identidad)
+        if not d.get("ok"):
+            continue
+        liquidaciones += 1
+        for linea in (d.get("datos") or {}).get("lineas") or []:
+            if not linea.get("origen_id"):
+                continue
+            casa[str(linea["origen_id"])] = casa.get(str(linea["origen_id"]), Decimal(0)) + (
+                _decimal(linea.get("importe")) or Decimal(0)
+            )
+    tolerancia = Decimal(str(_ajuste("compensacion_tolerancia", db)))
+    ahora = datetime.now(timezone.utc)
+    diferencias: list[dict[str, Any]] = []
+    cuadran = 0
+    filas = (
+        db.execute(
+            select(HechoCompensacion).where(
+                HechoCompensacion.tenant_id == tenant_id,
+                HechoCompensacion.fecha >= desde,
+                HechoCompensacion.fecha <= hasta,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for f in filas:
+        clave = str(f.origen_id) if f.origen_id else f.referencia
+        f.comision_casa = casa.get(clave)
+        f.conciliado_at = ahora
+        if f.comision_motor is None or f.comision_casa is None:
+            f.diferencia = None
+        else:
+            f.diferencia = Decimal(str(f.comision_motor)) - Decimal(str(f.comision_casa))
+        if f.diferencia is not None and abs(f.diferencia) <= tolerancia:
+            cuadran += 1
+        else:
+            diferencias.append(
+                {
+                    "referencia": f.referencia,
+                    "tipo": f.tipo,
+                    "comision_motor": str(f.comision_motor)
+                    if f.comision_motor is not None
+                    else None,
+                    "comision_casa": str(f.comision_casa) if f.comision_casa is not None else None,
+                    "diferencia": str(f.diferencia) if f.diferencia is not None else None,
+                    "porque": (
+                        "El motor no ha devuelto cálculo para este hecho."
+                        if f.comision_motor is None
+                        else (
+                            "La casa no tiene liquidación con esta venta en el periodo."
+                            if f.comision_casa is None
+                            else "Los dos cálculos no coinciden."
+                        )
+                    ),
+                }
+            )
+    db.flush()
+    return {
+        "hechos": len(filas),
+        "liquidaciones_de_la_casa": liquidaciones,
+        "cuadran": cuadran,
+        "diferencias": diferencias,
+        "medible": bool(filas),
+        "tolerancia": str(tolerancia),
+    }
+
+
+def a_dict(f: HechoCompensacion) -> dict[str, Any]:
+    def _s(v: Any) -> str | None:
+        return str(v) if v is not None else None
+
+    return {
+        "id": str(f.id),
+        "tipo": f.tipo,
+        "referencia": f.referencia,
+        "origen": f.origen,
+        "origen_id": _s(f.origen_id),
+        "usuario_id": _s(f.usuario_id),
+        "fecha": f.fecha.isoformat(),
+        "importe": str(f.importe),
+        "moneda": f.moneda,
+        "estado": f.estado,
+        "enviado": f.enviado or {},
+        "respuesta": f.respuesta or {},
+        "enviado_at": f.enviado_at.isoformat() if f.enviado_at else None,
+        "error": f.error,
+        "comision_motor": _s(f.comision_motor),
+        "periodo": f.periodo,
+        "provisional": f.provisional,
+        "comision_casa": _s(f.comision_casa),
+        "diferencia": _s(f.diferencia),
+        "conciliado_at": f.conciliado_at.isoformat() if f.conciliado_at else None,
+    }

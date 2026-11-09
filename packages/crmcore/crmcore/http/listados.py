@@ -959,6 +959,9 @@ def montar_ficha(
     # formulario —el estado, «bloqueada», quién la creó— y 10 que se guardaban.
     if not _ya_montada(router, ruta_registro, "PATCH"):
         _OPERACIONES_DE_FICHA.setdefault(objeto, {})["actualizar"] = _editar_en_lote
+        # Y con qué permiso: la sincronización sin conexión (CRM-06.02.01.04)
+        # escribe por esta misma función y tiene que exigir lo mismo que el PATCH.
+        _OPERACIONES_DE_FICHA[objeto]["permiso_actualizar"] = permiso_escribir
         router.patch(
             ruta_registro,
             response_model=dict,

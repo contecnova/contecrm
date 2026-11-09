@@ -1,6 +1,10 @@
 /**
  * La conversación, con todo lo que el cliente ha hablado con nosotros
- * (CRM-04.02.02.01, CRM-04.02.02.02, CRM-04.02.01.03).
+ * (CRM-04.02.02.01, CRM-04.02.02.02, CRM-04.02.01.03, CRM-04.03.02.03).
+ *
+ * «Escalar a una persona» (CRM-04.03.02.03) pasa la conversación con su
+ * motivo y su resumen, sin perder lo hablado. Visto el botón en una
+ * conversación abierta el 09-11-2026.
  *
  * **Existía el destino y no existía la pantalla.** La cola de la consola de
  * agente enlazaba a `/m/conversaciones/conversacion/{id}` desde el primer día,

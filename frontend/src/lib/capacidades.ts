@@ -23,7 +23,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // qué bloquearon las guardias. La trazabilidad por registro
   // (CRM-05.02.02.08) NO está declarada: su extremo cuelga de un registro y su
   // sitio es la ficha, que todavía no lo pinta.
-  "ia": [
+  ia: [
     // Sacar los datos de un contacto de un texto, y aceptarlos o rechazarlos uno a uno.
     "CRM-05.02.02.05",
     "CRM-05.02.01.04",
@@ -58,7 +58,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // negocio, los ajustes jerárquicos, el catálogo de planes y capacidades,
   // la localización del tenant y su consumo contra el límite. Todo cuelga de
   // la ficha del tenant, que se abre porque la fila lleva `objeto`.
-  "tenants": [
+  tenants: [
     // Sandboxes: se crean, se copian anonimizados y se apagan desde su ficha.
     "CRM-07.02.01.02",
     // La copia anonimizada: «Anonimizar» sale marcada (es lo que hace el
@@ -100,17 +100,13 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // La superficie publicada entera —cada operación con su método, su ruta y
   // el permiso que exige— y la salud de cada servicio enrutado, que es el
   // catálogo interno con su dueño y su estado.
-  "contrato": [
-    "CRM-00.02.01.01",
-    "CRM-00.02.01.04",
-    "CRM-00.03.01.04",
-  ],
+  contrato: ["CRM-00.02.01.01", "CRM-00.02.01.04", "CRM-00.03.01.04"],
   // El lienzo de procesos y sus instancias, la bandeja de tareas humanas, las
   // tablas de decisión, las automatizaciones, los webhooks, las conexiones
   // con su prueba y su rotación, el monitor de ejecuciones, el registro de
   // conectores instalables, los trabajos largos y el progreso de convivencia
   // con el CRM heredado.
-  "procesos": [
+  procesos: [
     // Integraciones › Nuevo, «Declarar una operación» con `transformar` y
     // `validar`, y «Probar la conectividad»: cuatro registros de un JSON
     // local, dos pasan recortados, en mayúsculas, con número, fecha ISO y
@@ -185,7 +181,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-01.01.05.04",
   ],
   // Los objetos propios del tenant y el grafo de relaciones con sus tipos.
-  "modelo": [
+  modelo: [
     // El código legible que la gente dice por teléfono: su patrón, su relleno,
     // cuándo reinicia y qué saldría el siguiente.
     "CRM-00.04.01.11",
@@ -210,7 +206,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // Proveedores de identidad por tenant, credenciales de máquina con ámbito y
   // caducidad, sesiones revocables, dispositivos de confianza, roles y las
   // políticas de acceso editables desde aquí.
-  "acceso": [
+  acceso: [
     // Políticas de acceso › «Descargar en formato neutro»: baja la política
     // entera (formato, tenant, semántica, políticas). Pulsado el 09-11-2026.
     "CRM-00.05.02.06",
@@ -243,7 +239,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // El modelo canónico de intercambio, los conflictos de sincronización, el
   // catálogo de eventos publicado, la cola de fallidos con su reenvío y el
   // archivo desde el que se reproduce lo histórico.
-  "operacion": [
+  operacion: [
     "CRM-00.02.02.03",
     "CRM-00.02.02.07",
     "CRM-00.02.02.09",
@@ -258,6 +254,13 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-00.04.05.09",
     "CRM-00.04.05.10",
     "CRM-06.01.01.06",
+    // Canales de chat › la ficha del canal › «Qué se puede hacer con esto» ›
+    // «Mandar un aviso al canal de chat»: el POST llegó al webhook entrante (un
+    // doble local) con el texto, y la ficha enseña «Último aviso ok: sí». La
+    // orden «consultar» firmada contestó con nombre, estado y moneda de una
+    // cuenta real con la identidad del correo que pregunta, y con un correo
+    // de fuera contestó «no se contesta con datos». Verificado el 09-11-2026.
+    "CRM-06.01.01.03",
     "CRM-06.01.02.09",
     "CRM-06.01.02.13",
     "CRM-06.01.02.14",
@@ -281,7 +284,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // reverificación, las visitas, el mapa de personas e influencia, la cola de
   // calidad del dato con sus duplicados y su fusión, los derechos del
   // interesado y la papelera con restauración en cascada.
-  "cuentas": [
+  cuentas: [
     // Comprobadas en el navegador el 09-11-2026: «Lo que ha pasado» en la
     // ficha de la cuenta, el historial unificado (.02.08), y el «Historial de
     // consentimientos» en la ficha del contacto, con su alta (02.04.02.01).
@@ -333,7 +336,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // El proveedor como cuenta con rol, su homologación por categoría y la
   // documentación obligatoria con vigencia que avisa de lo que caduca.
-  "proveedores": [
+  proveedores: [
     // «Los contactos declarados de este proveedor», por función y con alta,
     // en su ficha. Comprobado en el navegador el 09-11-2026.
     "CRM-09.01.01.06",
@@ -363,7 +366,13 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // El modelo común de actividad —tareas, eventos, llamadas, notas y
   // visitas—, sus plantillas y secuencias por tipo de proceso, y las
   // recurrencias con su reprogramación.
-  "actividades": [
+  actividades: [
+    // Una cita sincronizada del calendario se registra sola como actividad
+    // «reunion» con sus asistentes: el que es contacto va con su ficha y el de
+    // fuera con su correo. Sincronizado por la API, la actividad abierta en su
+    // ficha (tipo Reunión) y los asistentes leídos en sus `detalles` por la
+    // API el 09-11-2026; borrada después.
+    "CRM-06.01.01.04",
     "CRM-01.02.01.01",
     "CRM-01.02.01.02",
     "CRM-01.02.01.07",
@@ -376,13 +385,26 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // Verificado en el navegador el 09-11-2026 con una suite doble local (sin
     // suite, el botón sale deshabilitado con el motivo).
     "CRM-06.01.03.10",
+    // «Transcripción y resumen» en la ficha de una llamada, reunión o visita:
+    // el audio subido queda como documento, lo transcribe el proveedor de la
+    // empresa (conexión de Integraciones), el modelo resume y propone los
+    // compromisos, y confirmar uno crea la tarea colgada de la cuenta.
+    // Verificado en el navegador el 09-11-2026 con un doble local del
+    // proveedor y el modelo de verdad.
+    "CRM-01.02.01.05",
+    "CRM-01.02.01.06",
   ],
   // La oportunidad con su pipeline y sus etapas, los presupuestos con
   // versiones y vigencia, el motor de precios, los pedidos y su traspaso al
   // ERP, los contratos con su renovación, las suscripciones, el catálogo de
   // producto, las metodologías de venta, la cola priorizada del comercial y
   // la papelera.
-  "oportunidades": [
+  oportunidades: [
+    // Oportunidades › Productos: «Declarar qué va con qué» (requiere, excluye,
+    // incluye, sugiere) y «¿Se pueden vender juntos?». Un presupuesto con una
+    // combinación prohibida se rechaza y el aviso dice qué choca con qué.
+    // Visto el 09-11-2026.
+    "CRM-03.03.02.02",
     // «Duplicar la oportunidad con sus líneas» en el menú de la ficha: la
     // copia sale con las dos líneas, 500 € y en la primera etapa, y el
     // resultado enlaza a ella. Y «Duplicar» en una cuenta abre el alta con sus
@@ -428,7 +450,12 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // recepciones, el enrutamiento por reglas, los motivos de descarte
   // normalizados, la trazabilidad de origen con sus campañas y toques, y las
   // cadencias con sus plantillas de correo.
-  "leads": [
+  leads: [
+    // Candidatos › Cadencias › «Alguien ha contestado»: saca a la persona de
+    // todas sus cadencias, por cualquier canal. Visto el formulario el
+    // 09-11-2026; la detección desde el buzón no está (integration no emite
+    // la respuesta).
+    "CRM-03.03.01.04",
     // Comprobado en el navegador el 09-11-2026: «Nuevo» con el correo de un
     // candidato que ya estaba → el formulario enseña con quién coincide y en
     // qué, y «Es otro, crearlo igual» lo crea. Por API, el 409 trae también
@@ -458,10 +485,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // resumen del pipeline con las oportunidades estancadas.
   // Las lecciones aprendidas: el expediente de cada cierre comparado con las
   // ganadas del mismo embudo, el post-mortem firmado y lo que se repite.
-  "lecciones": [
-    "CRM-03.01.01.15",
-  ],
-  "prevision": [
+  lecciones: ["CRM-03.01.01.15"],
+  prevision: [
     // El panel «Por jerarquía» en la ficha del periodo, con el organigrama
     // de los territorios o de mando, el total aparte y lo que queda fuera con
     // su dueño. Visto el 09-11-2026 en 2026-T4.
@@ -483,7 +508,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // El registro de partners con sus niveles y certificaciones, el portal de
   // partner con el registro de oportunidades, los fondos de marketing con sus
   // solicitudes y liquidaciones, y los planes de comisión.
-  "canal": [
+  canal: [
     "CRM-03.02.03.01",
     "CRM-03.04.01.01",
     "CRM-03.04.01.02",
@@ -499,7 +524,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // Las órdenes de trabajo, los activos instalados con sus garantías, los
   // técnicos, los planes preventivos con sus vencimientos, los repuestos y su
   // reposición, y los dispositivos con su telemetría.
-  "campo": [
+  campo: [
     "CRM-04.04.01.01",
     "CRM-04.04.01.04",
     "CRM-04.04.01.05",
@@ -509,16 +534,12 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // Las devoluciones con su autorización y disposición, los expedientes con
   // sus plazos legales y los problemas con su correlación de casos.
-  "postventa": [
-    "CRM-04.01.01.11",
-    "CRM-04.05.01.01",
-    "CRM-04.05.01.03",
-  ],
+  postventa: ["CRM-04.01.01.11", "CRM-04.05.01.01", "CRM-04.05.01.03"],
   // El estado del enlace con contecintelligence, las consultas con su
   // auditoría, la correspondencia entre tenant y organización, las métricas
   // certificadas, la frescura del almacén analítico y sus destinos de
   // exportación.
-  "explotacion": [
+  explotacion: [
     "CRM-05.01.03.01",
     "CRM-05.01.03.02",
     "CRM-05.01.03.03",
@@ -529,7 +550,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // El registro de riesgos y el catálogo de controles, las reglas de
   // segregación de funciones, las políticas de retención con sus bloqueos
   // legales y las clases de dato con su sensibilidad.
-  "gobierno": [
+  gobierno: [
     "CRM-07.03.01.01",
     "CRM-07.03.01.05",
     "CRM-07.03.01.06",
@@ -543,7 +564,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // dinámico o congelado, el tamaño con su fecha y sus supresiones, el
   // solapamiento contra otro segmento, los dos ejes del score por separado con
   // su desglose, el decaimiento y los umbrales que disparan MQL y SQL.
-  "segmentos": [
+  segmentos: [
     "CRM-02.01.01.01",
     "CRM-02.01.01.02",
     "CRM-02.01.01.03",
@@ -563,7 +584,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // La jerarquía de campañas con su presupuesto, las reglas de presión y
   // frecuencia de contacto, los rebotes duros y blandos, y la papelera.
-  "campanas": [
+  campanas: [
     "CRM-02.02.01.01",
     "CRM-02.02.02.06",
     "CRM-02.03.01.04",
@@ -579,7 +600,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // reglas de escalado, los SLA con sus relojes, los entitlements, los
   // agentes disponibles con su capacidad, las encuestas de satisfacción y la
   // papelera.
-  "casos": [
+  casos: [
     // Los casos en riesgo de incumplir el SLA, encima de los acuerdos en la
     // vista SLA. Estaba declarado como resumen y NO se pintaba —era una lista
     // y el resumen sólo pintaba cifras—; desde el 09-11-2026 sale como lista.
@@ -601,7 +622,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-04.01.02.08",
   ],
   // Los canales de servicio y las macros con sus acciones compuestas.
-  "omnicanal": [
+  omnicanal: [
     // En la conversación: resumirla, qué quiere el cliente y traducirle.
     "CRM-04.02.02.06",
     "CRM-04.02.02.07",
@@ -610,7 +631,7 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // Los artículos con sus versiones y su flujo de aprobación, los accesos al
   // portal de autoservicio y los hilos de la comunidad.
-  "conocimiento": [
+  conocimiento: [
     // Preguntar a la base de conocimiento: contesta sólo con los artículos, citándolos.
     "CRM-05.02.02.03",
     "CRM-04.03.01.01",
@@ -624,19 +645,21 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // Los canales de marketing, las landings y formularios alojados, y los
   // dominios de envío con su entregabilidad.
-  "canales": [
-    "CRM-02.03.01.03",
-    "CRM-02.03.02.06",
-  ],
+  canales: ["CRM-02.03.01.03", "CRM-02.03.02.06"],
   // Las reglas de contenido por marca, país e idioma, el consentimiento de
   // cookies, la renovación del opt-in, las plantillas de correo con sus
   // bloques reutilizables, las categorías del centro de preferencias y las
   // supresiones.
-  "contenido": [
+  contenido: [
     "CRM-02.03.01.01",
     "CRM-02.03.01.05",
     "CRM-02.04.01.03",
     "CRM-02.04.02.02",
     "CRM-07.03.01.08",
+    // «Variantes con IA» en la ficha de una plantilla: el modelo propone N
+    // versiones del asunto, se guardan, se aprueban o rechazan de una en una y
+    // gana una aprobada. Verificado en el navegador el 09-11-2026 con el
+    // modelo de verdad.
+    "CRM-02.04.01.04",
   ],
 };

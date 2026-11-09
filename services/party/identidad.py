@@ -204,6 +204,10 @@ def normalizar(tipo: str, valor: str) -> tuple[str, str]:
     else:
         limpio = crudo.lower()
         pista = limpio[:6] + "…" if len(limpio) > 6 else limpio
+    # La columna es de 20: un dominio largo la desbordaba, y como nadie llamaba
+    # a `observar`, el desborde no lo había visto nadie hasta el 09-11-2026.
+    if len(pista) > 20:
+        pista = pista[:19] + "…"
     return hashlib.sha256(f"{tipo}:{limpio}".encode()).hexdigest(), pista
 
 
@@ -321,6 +325,32 @@ def resolver(
             )
             if fila.cuenta_id and not entrada["cuenta_id"]:
                 entrada["cuenta_id"] = str(fila.cuenta_id)
+
+    # Lo ya unido cuenta como UNA persona: el secundario suma en su principal.
+    # Sin esto, dos fichas declaradas la misma persona salían como dos
+    # candidatos casi empatados y la resolución se declaraba ambigua justo
+    # cuando más clara estaba.
+    if coincidencias:
+        principal_de = {
+            str(u.secundario_id): str(u.principal_id)
+            for u in db.execute(
+                select(Union).where(Union.tenant_id == tenant_id, Union.deshecha_at.is_(None))
+            ).scalars()
+        }
+        for secundario, principal in principal_de.items():
+            if secundario not in coincidencias:
+                continue
+            datos = coincidencias.pop(secundario)
+            destino = coincidencias.setdefault(
+                principal,
+                {"contacto_id": principal, "puntuacion": 0, "senales": [], "cuenta_id": None},
+            )
+            vistas = {(x["tipo"], x["pista"]) for x in destino["senales"]}
+            for senal in datos["senales"]:
+                if (senal["tipo"], senal["pista"]) not in vistas:
+                    destino["puntuacion"] += senal["peso"]
+                    destino["senales"].append(senal)
+            destino["cuenta_id"] = destino["cuenta_id"] or datos["cuenta_id"]
 
     candidatos = sorted(coincidencias.values(), key=lambda c: -c["puntuacion"])
     mejor = candidatos[0] if candidatos else None
@@ -604,3 +634,196 @@ def identidades_de(db: Session, tenant_id: UUID, contacto_id: UUID) -> dict[str,
         # va a seguir apareciendo sin atribuir.
         "cruzable": len({s.tipo for s in senales}) > 1,
     }
+
+
+# ── Las señales se registran solas (09-11-2026) ───────────────────────────
+#
+# Medido el 09-11-2026: `observar` y `unir` no los llamaba nadie. La tabla de
+# señales estaba vacía, así que «proponer uniones» contestaba siempre que no
+# había nada que proponer —exactamente lo mismo que si no hubiera duplicados— y
+# la ficha de identidades de un contacto salía en blanco.
+#
+# Ahora las señales se anotan **al guardar el contacto**, por cualquier vía: el
+# alta, la corrección desde la ficha, la importación, la sincronización sin
+# conexión. Engancharlo a una ruta concreta dejaba fuera las demás, y la primera
+# que se queda fuera es la importación, que es por donde entran los duplicados.
+#
+# Lo que llega de fuera —la cookie de la web, el id de la app o del ERP, el
+# interlocutor de una interacción entrante— se anota por
+# `POST /calidad-dato/identidades/observar`, que es lo que llama quien lo trae.
+
+# Campos del contacto que son señal, y de qué tipo.
+CAMPOS_SENAL: dict[str, str] = {
+    "email": "email",
+    "email_secundario": "email",
+    "telefono": "telefono",
+    "movil": "telefono",
+}
+
+
+def _canales_a_senal(db: Session | None) -> dict[str, str]:
+    from services.party.ajustes import ajustes
+
+    valor = rt.efectivo("identidad_canales_a_senal", db)
+    if not isinstance(valor, dict):
+        valor = ajustes().identidad_canales_a_senal
+    return {str(k): str(v) for k, v in (valor or {}).items() if str(v) in PESOS}
+
+
+def _anotar(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    tipo: str,
+    valor: str,
+    contacto_id: UUID | None,
+    origen: str,
+    vistas: set[tuple[str, str, Any]] | None = None,
+) -> Senal | None:
+    """Anota una señal sin pasar por la unidad de trabajo (sirve dentro de un flush)."""
+    if tipo not in PESOS or not str(valor or "").strip():
+        return None
+    huella, pista = normalizar(tipo, str(valor))
+    clave = (tipo, huella, contacto_id)
+    if vistas is not None:
+        if clave in vistas:
+            return None
+        vistas.add(clave)
+    with db.no_autoflush:
+        fila = db.execute(
+            select(Senal).where(
+                Senal.tenant_id == tenant_id,
+                Senal.tipo == tipo,
+                Senal.huella == huella,
+                Senal.contacto_id == contacto_id if contacto_id else Senal.contacto_id.is_(None),
+            )
+        ).scalar_one_or_none()
+    if fila is not None:
+        fila.veces += 1
+        fila.vista_at = _ahora()
+        return fila
+    fila = Senal(
+        id=nuevo_id(),
+        tenant_id=tenant_id,
+        tipo=tipo,
+        huella=huella,
+        pista=pista,
+        contacto_id=contacto_id,
+        origen=origen[:40],
+        peso=PESOS[tipo],
+        veces=1,
+        vista_at=_ahora(),
+    )
+    db.add(fila)
+    return fila
+
+
+def senales_del_contacto(contacto: Any, db: Session | None = None) -> list[tuple[str, str]]:
+    """(tipo, valor) de cada señal que lleva la ficha de un contacto."""
+    salida: list[tuple[str, str]] = []
+    for campo, tipo in CAMPOS_SENAL.items():
+        valor = getattr(contacto, campo, None)
+        if valor:
+            salida.append((tipo, str(valor)))
+    canales = getattr(contacto, "canales", None) or {}
+    if isinstance(canales, dict):
+        mapa = _canales_a_senal(db)
+        for clave, valor in canales.items():
+            tipo = mapa.get(str(clave))
+            if tipo and isinstance(valor, (str, int)) and str(valor).strip():
+                salida.append((tipo, str(valor)))
+    return salida
+
+
+def _al_guardar(session: Session, _contexto: Any, _instancias: Any) -> None:
+    """Anota las señales de los contactos nuevos o con canal cambiado."""
+    from sqlalchemy import delete
+    from sqlalchemy import inspect as inspeccionar
+
+    from services.party.modelos import Contacto
+
+    vistas: set[tuple[str, str, Any]] = set()
+    for obj in list(session.new) + list(session.dirty):
+        if not isinstance(obj, Contacto) or obj.tenant_id is None:
+            continue
+        if obj.id is None:
+            obj.id = nuevo_id()
+        # Anonimizado: sus huellas también se van. Una tabla de identidades que
+        # conserva el correo de alguien que pidió que se le olvidara es
+        # justamente lo que no puede quedar.
+        if obj.anonimizado_at is not None:
+            session.execute(
+                delete(Senal).where(Senal.tenant_id == obj.tenant_id, Senal.contacto_id == obj.id)
+            )
+            continue
+        if obj in session.dirty:
+            estado = inspeccionar(obj)
+            tocados = [
+                c
+                for c in (*CAMPOS_SENAL, "canales")
+                if estado.attrs[c].history.has_changes()  # type: ignore[index]
+            ]
+            if not tocados:
+                continue
+        for tipo, valor in senales_del_contacto(obj, session):
+            _anotar(
+                session,
+                tenant_id=obj.tenant_id,
+                tipo=tipo,
+                valor=valor,
+                contacto_id=obj.id,
+                origen="ficha",
+                vistas=vistas,
+            )
+
+
+_ENGANCHADO = False
+
+
+def enganchar() -> None:
+    """Registra la anotación al guardar. Idempotente."""
+    global _ENGANCHADO
+    if _ENGANCHADO:
+        return
+    from sqlalchemy import event
+
+    event.listen(Session, "before_flush", _al_guardar)
+    _ENGANCHADO = True
+
+
+def barrer(uow: UnidadDeTrabajo, *, limite: int = 2000) -> dict[str, Any]:
+    """Anota las señales de los contactos que ya estaban antes de engancharlo.
+
+    Repetible: una señal ya vista suma una vez más, no se duplica.
+    """
+    from services.party.modelos import Contacto
+
+    contactos = list(
+        uow.db.execute(
+            select(Contacto)
+            .where(
+                Contacto.tenant_id == uow.tenant_id,
+                Contacto.deleted_at.is_(None),
+                Contacto.fusionado_en_id.is_(None),
+                Contacto.anonimizado_at.is_(None),
+            )
+            .order_by(Contacto.created_at)
+            .limit(limite)
+        ).scalars()
+    )
+    vistas: set[tuple[str, str, Any]] = set()
+    anotadas = 0
+    for contacto in contactos:
+        for tipo, valor in senales_del_contacto(contacto, uow.db):
+            if _anotar(
+                uow.db,
+                tenant_id=uow.tenant_id,
+                tipo=tipo,
+                valor=valor,
+                contacto_id=contacto.id,
+                origen="barrido",
+                vistas=vistas,
+            ):
+                anotadas += 1
+    uow.db.flush()
+    return {"contactos": len(contactos), "senales": anotadas, "recortado": len(contactos) >= limite}

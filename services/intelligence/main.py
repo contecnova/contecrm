@@ -13,6 +13,7 @@ from services.intelligence import (
 from services.intelligence.api import ROUTERS
 from services.intelligence.api_indice import ROUTERS_INDICE
 from services.intelligence.api_modelos import ROUTERS_MODELOS
+from services.intelligence.api_reuniones import ROUTERS_REUNIONES
 from services.intelligence.indice import consumir_cerrado, consumir_publicado
 
 _relevo: object | None = None
@@ -115,7 +116,7 @@ app = crear_servicio(
         "se escribe, lo que responde cita sus fuentes, y cada llamada queda "
         "registrada con su coste y su resultado."
     ),
-    routers=[*ROUTERS, *ROUTERS_MODELOS, *ROUTERS_INDICE],
+    routers=[*ROUTERS, *ROUTERS_MODELOS, *ROUTERS_REUNIONES, *ROUTERS_INDICE],
     # El índice de conocimiento se llena solo: cada artículo que se publica y
     # cada caso que se cierra con su resolución entran en él.
     consumidores=[

@@ -679,6 +679,105 @@ def _repartir_argumentos(
     return ruta, consulta, cuerpo
 
 
+def _resumir_reunion(
+    *,
+    proveedor: str,
+    modelo: str,
+    texto: str,
+    idioma: str,
+    tipos: list[str],
+    opt_out: bool,
+) -> dict[str, Any]:
+    """Resumen de una llamada o reunión y lo que se dijo que se haría.
+
+    Cada elemento lleva `quien` y una `cita` LITERAL: sin dueño no es un
+    compromiso, y sin cita no se puede comprobar contra lo transcrito.
+    """
+    import json
+
+    peticion = [
+        {
+            "role": "system",
+            "content": (
+                "Resumes la transcripción de una llamada o reunión comercial para "
+                "quien la tuvo. Devuelve SOLO un JSON con `resumen` (5-8 frases, en "
+                f"el idioma «{idioma}») y `elementos`: lista de {{tipo, texto, quien, "
+                "cuando, cita}}. `tipo` es uno de " + ", ".join(tipos) + ". `quien` "
+                "es la persona que se comprometió tal como se la nombra; si habla "
+                "en primera persona quien tuvo la reunión y no se dice su nombre, "
+                "«quien registra la reunión»; si no se sabe, vacío. `cuando` en ISO 8601 si se dijo una fecha, o vacío. "
+                "`cita` es un fragmento LITERAL de la transcripción. No inventes "
+                "compromisos: «si me la mandas, la miro» no compromete a nadie."
+            ),
+        },
+        {"role": "user", "content": f"Hoy es {_hoy_iso()}.\n\nTranscripción:\n{texto}"},
+    ]
+    salida = _llamar(
+        proveedor=proveedor, modelo=modelo, mensajes=peticion, opt_out=opt_out, formato_json=True
+    )
+    try:
+        datos = json.loads(salida.get("texto") or "{}")
+    except json.JSONDecodeError:
+        datos = {}
+    if not isinstance(datos, dict):
+        datos = {}
+    elementos = datos.get("elementos")
+    return {
+        **salida,
+        "resumen": str(datos.get("resumen") or ""),
+        "elementos": [e for e in elementos if isinstance(e, dict)]
+        if isinstance(elementos, list)
+        else [],
+    }
+
+
+def _redactar_variantes(
+    *,
+    proveedor: str,
+    modelo: str,
+    base: str,
+    objetivo: str,
+    canal: str,
+    cuantas: int,
+    idioma: str,
+    opt_out: bool,
+) -> dict[str, Any]:
+    """N versiones distintas de un texto de marketing, para que alguien elija."""
+    import json
+
+    peticion = [
+        {
+            "role": "system",
+            "content": (
+                f"Escribes {cuantas} variantes DISTINTAS de un texto de marketing para "
+                f"el canal «{canal}», en el idioma «{idioma}». Mantén el sentido y los "
+                "datos del texto base; no añadas cifras, garantías ni superlativos que "
+                "no estén en él. Conserva TAL CUAL los marcadores entre llaves "
+                "dobles ({{...}}): se rellenan al enviar. Devuelve SOLO un JSON con `variantes`: lista de "
+                "textos."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Objetivo: {objetivo or '(no dicho)'}\n\nTexto base:\n{base}",
+        },
+    ]
+    salida = _llamar(
+        proveedor=proveedor, modelo=modelo, mensajes=peticion, opt_out=opt_out, formato_json=True
+    )
+    try:
+        datos = json.loads(salida.get("texto") or "{}")
+    except json.JSONDecodeError:
+        datos = {}
+    variantes = datos.get("variantes") if isinstance(datos, dict) else None
+    return {
+        **salida,
+        "variantes": [str(v) for v in variantes if isinstance(v, str)]
+        if isinstance(variantes, list)
+        else [],
+    }
+
+
 def conectar() -> None:
     """Registra los puertos en sus módulos."""
     from services.intelligence import (
@@ -689,9 +788,13 @@ def conectar() -> None:
         generacion,
         indice,
         rag,
+        reuniones,
+        variantes_copy,
     )
 
     generacion.registrar_generador(_generar)
+    reuniones.registrar_resumidor(_resumir_reunion)
+    variantes_copy.registrar_redactor(_redactar_variantes)
     rag.registrar_respondedor(_responder)
     rag.registrar_traductor(_traducir_a_plan)
     extraccion.registrar_extractor(_extraer)

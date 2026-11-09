@@ -439,6 +439,9 @@ def leer(caso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
         **presentar(maquina_efectiva("caso", db), caso.estado),
         "prioridad": caso.prioridad,
         "severidad": caso.severidad,
+        # La cola en la que está: la ficha la quita de los destinos al derivar
+        # (CRM-04.01.01.08), porque derivar a donde ya está no mueve nada.
+        "equipo": caso.equipo,
         "clasificacion": svc.ruta_de_categoria(db, principal.tenant_id, caso.categoria_id)
         if caso.categoria_id
         else [],
@@ -686,16 +689,38 @@ from services.service.api_operacion import ROUTERS_OPERACION  # noqa: E402
 router_marcador = APIRouter(prefix="/marcador", tags=["marcador"])
 
 
+def _identidad(principal: Any) -> dict[str, Any]:
+    """Con quién se pregunta a party y a la telefonía: con quien pulsa."""
+    return {
+        "tenant_id": principal.tenant_id,
+        "principal_id": principal.id,
+        "permisos": sorted(principal.permisos),
+        "roles": sorted(principal.roles),
+        "tipo": "usuario",
+    }
+
+
 class LlamadaIn(BaseModel):
-    contacto_id: UUID
+    # Opcionales desde el 09-11-2026: se llama también desde la ficha de una
+    # cuenta, que no tiene contacto.
+    contacto_id: UUID | None = None
+    cuenta_id: UUID | None = None
     numero: str
     consiente_grabacion: bool = False
+    # Ya no decide: la política de grabación es el ajuste
+    # `marcador_grabar_por_politica` del tenant. Se admite para no romper a
+    # quien la mandaba, y se ignora.
     grabar_por_politica: bool = False
+    # Ya no hace falta: la exclusión se pregunta a party. Si alguien la declara
+    # igualmente, se respeta —nunca se llama de más—.
     en_lista_de_exclusion: bool = False
 
 
 class ColgarIn(BaseModel):
-    contacto_id: UUID
+    # La llamada que guardó la telefonía. Con ella, la nota va a su actividad y
+    # se aplican las obligaciones del resultado.
+    llamada_id: UUID | None = None
+    contacto_id: UUID | None = None
     duracion_s: int = 0
     resultado: str
     nota: str = ""
@@ -705,46 +730,74 @@ class ColgarIn(BaseModel):
 
 @router_marcador.post(
     "/llamar",
-    dependencies=[Depends(exige_permiso("service:write"))],
-    summary="Comprobar lo que hay que comprobar antes de que suene",
+    dependencies=[Depends(exige_permiso("activity:write"))],
+    summary="Llamar: comprobar lo que hay que comprobar y pedir a la centralita que marque",
     description=(
         "Llamar a alguien que pidió no ser llamado no es un descuido: es una "
-        "sanción y una conversación desagradable. Se comprueba aquí, no al "
-        "registrar.\n\n"
-        "Y si la política dice grabar pero la persona no consiente, **la llamada "
-        "se hace igual sin grabar**: bloquearla convertiría una cuestión de "
-        "privacidad en un cliente que no puede hablar con nadie."
+        "sanción y una conversación desagradable. Se pregunta a party —el «no "
+        "contactar» de la ficha y su último consentimiento por teléfono— antes de "
+        "que suene.\n\n"
+        "La grabación la decide la política del tenant (ajuste "
+        "`marcador_grabar_por_politica`) y el consentimiento de la persona: si no "
+        "consiente, **la llamada se hace igual sin grabar**.\n\n"
+        "Si todo cuadra, la telefonía conectada (`POST /telefonia/llamar`) origina "
+        "la llamada y la guarda; al colgar se registra sola como actividad."
     ),
 )
 def marcar(cuerpo: LlamadaIn, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import ErrorValidacion
+
     from services.service import marcador
 
-    return marcador.preparar_llamada(
-        contacto_id=cuerpo.contacto_id,
+    if cuerpo.contacto_id is None and cuerpo.cuenta_id is None:
+        raise ErrorValidacion(
+            "Di a quién se llama: un contacto o una cuenta. Una llamada sin ficha no "
+            "se puede registrar en ningún sitio.",
+            error_code="marcador.sin_destino",
+        )
+    return marcador.llamar(
+        identidad=_identidad(principal),
         numero=cuerpo.numero,
+        contacto_id=cuerpo.contacto_id,
+        cuenta_id=cuerpo.cuenta_id,
         consiente_grabacion=cuerpo.consiente_grabacion,
-        grabar_por_politica=cuerpo.grabar_por_politica,
-        en_lista_de_exclusion=cuerpo.en_lista_de_exclusion,
+        excluido_declarado=cuerpo.en_lista_de_exclusion,
     )
 
 
 @router_marcador.post(
     "/colgar",
-    dependencies=[Depends(exige_permiso("service:write"))],
-    summary="Registrar la llamada al colgar",
+    dependencies=[Depends(exige_permiso("activity:write"))],
+    summary="Anotar la llamada al colgar y hacer lo que el resultado obliga",
     description=(
-        "La actividad se crea **sola** con lo que el sistema sabe: a quién, "
-        "cuánto y cómo terminó. Pedirle al comercial que anote cada llamada es "
-        "pedirle el 20 % de su día, no lo hace, y entonces el CRM dice que ese "
-        "cliente lleva tres meses sin contacto cuando se habló el martes.\n\n"
-        "Lo que **no** se inventa es qué se dijo: «contestada, 3 minutos» no es "
-        "información comercial, y rellenar la nota con una frase genérica es peor "
-        "que dejarla vacía porque parece que hay contenido."
+        "La actividad la crea **sola** la telefonía al colgar, con lo que el "
+        "sistema sabe: a quién, cuánto y cómo terminó. Aquí se anota lo que sólo "
+        "sabe la persona: cómo fue comercialmente y qué se dijo. «Contestada, 3 "
+        "minutos» no es información comercial, y rellenar la nota con una frase "
+        "genérica es peor que dejarla vacía.\n\n"
+        "Con `llamada_id`, se aplican las obligaciones del resultado: quien pide "
+        "que no le llamen queda marcado como «no contactar» en su ficha, y un "
+        "«reprogramar» crea la siguiente llamada con su fecha."
     ),
 )
 def colgar(cuerpo: ColgarIn, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import ErrorValidacion
+
     from services.service import marcador
 
+    if cuerpo.llamada_id is not None:
+        return marcador.colgar(
+            identidad=_identidad(principal),
+            llamada_id=cuerpo.llamada_id,
+            resultado=cuerpo.resultado,
+            nota=cuerpo.nota,
+            proxima_fecha=cuerpo.proxima_fecha,
+        )
+    if cuerpo.contacto_id is None:
+        raise ErrorValidacion(
+            "Hace falta la llamada (o, para sólo comprobar el registro, el contacto).",
+            error_code="marcador.sin_llamada",
+        )
     return marcador.registrar_al_colgar(
         contacto_id=cuerpo.contacto_id,
         duracion_s=cuerpo.duracion_s,

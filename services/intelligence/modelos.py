@@ -54,8 +54,10 @@ from services.intelligence.guardias import BloqueoIA, ReglaGuardia  # noqa: F401
 from services.intelligence.indice import FragmentoIndice  # noqa: F401
 from services.intelligence.prediccion import Prediccion  # noqa: F401
 from services.intelligence.predictivo import ProgramacionEntreno  # noqa: F401
+from services.intelligence.reuniones import TranscripcionReunion  # noqa: F401
 from services.intelligence.salud import SaludCuenta  # noqa: F401
 from services.intelligence.uso import LlamadaIA  # noqa: F401
+from services.intelligence.variantes_copy import VarianteCopy  # noqa: F401
 
 __all__ = [
     "Agente",

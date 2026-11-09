@@ -38,6 +38,7 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "@/App";
 import { iniciarI18n } from "@/i18n";
 import { aplicarMarca, cargarConfig } from "@/lib/config";
+import { iniciarSinConexion } from "@/lib/sinConexion";
 
 async function arrancar() {
   // La configuración se lee ANTES de montar nada: si la aplicación se monta
@@ -62,6 +63,10 @@ async function arrancar() {
   //
   // Un error que sale siempre y no significa nada es donde se esconde el que
   // sí importa: es la misma razón por la que el 404 de la marca dejó de serlo.
+
+  // Trabajar sin conexión (CRM-06.02.01.04): el service worker es de red
+  // primero, así que con red no cambia nada de lo que se ve.
+  iniciarSinConexion();
 
   const raiz = document.getElementById("root");
   if (!raiz) throw new Error("Falta el elemento #root");

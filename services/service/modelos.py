@@ -411,3 +411,4 @@ from services.service.problemas import (  # noqa: E402,F401
     ComunicacionProblema,
     Problema,
 )
+from services.service.proveedores_sla import AcuerdoProveedor  # noqa: E402,F401

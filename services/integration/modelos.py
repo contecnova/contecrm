@@ -275,6 +275,10 @@ from services.integration.canonico import (  # noqa: E402,F401
     Vinculo,
 )
 from services.integration.colaboracion import CanalChat  # noqa: E402,F401
+
+# Las llamadas de la telefonía, la compensación externa y las referencias de la
+# suite (09-11-2026): hasta entonces eran funciones puras y no guardaban nada.
+from services.integration.compensacion import HechoCompensacion  # noqa: E402,F401
 from services.integration.convivencia import (  # noqa: E402,F401
     ProgresoMigracion,
     ReglaConvivencia,
@@ -311,6 +315,7 @@ from services.integration.mcp import (  # noqa: E402,F401
     Herramienta,
     LlamadaAgente,
 )
+from services.integration.referencias_suite import ReferenciaSuite  # noqa: E402,F401
 
 # Suites de productividad: consentimiento por persona y suscripción a cambios
 # (CRM-06.01.03.02, .05).
@@ -318,6 +323,7 @@ from services.integration.suites import (  # noqa: E402,F401
     ConsentimientoSuite,
     SuscripcionSuite,
 )
+from services.integration.telefonia import LlamadaTelefonica  # noqa: E402,F401
 from services.integration.telemetria import (  # noqa: E402,F401
     Dispositivo,
     EstadoRegla,

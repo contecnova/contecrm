@@ -22,6 +22,13 @@ export default {
     reintentar: "Reintentar",
     cerrarSesion: "Cerrar sesión",
     suplantado: "Estás viendo esto en nombre de otra persona",
+    sinConexionAviso:
+      "Sin conexión: ves lo último que se consultó y lo que guardes se enviará al volver la red.",
+    sinConexionPendientes_one: "{{n}} cambio pendiente de enviar",
+    sinConexionPendientes_other: "{{n}} cambios pendientes de enviar",
+    sinConexionConflictos_one: "{{n}} conflicto por resolver",
+    sinConexionConflictos_other: "{{n}} conflictos por resolver",
+    sinConexionVer: "Ver",
     // «Entrar como» de soporte (CRM-00.01.02.06).
     suplantadoComo: "Estás dentro como {{quien}} por soporte: «{{motivo}}»",
     suplantadoPor: "(entraste tú, {{soporte}})",
@@ -135,10 +142,13 @@ export default {
     caso: "Caso de soporte",
   },
   nav: {
+    telefonia: "Telefonía",
+    compensacionExterna: "Compensación externa",
     estados: "Estados de los objetos",
     embudos: "Embudos y etapas",
     metodologias: "Metodologías y playbooks",
     segregacion: "Segregación de funciones",
+    slaProveedores: "SLA de proveedores",
     tcsec: "Clasificación TCSEC",
     historialAjustes: "Historial de la configuración",
     grupoEmpresas: "Grupo de empresas",
@@ -183,6 +193,7 @@ export default {
     sandboxes: "Entornos de pruebas (sandboxes)",
     aprobacionesDoc: "Aprobar documentos",
     explotacion: "Preguntas publicadas",
+    analisisCrm: "Embudo, cohortes y actividad",
     cuadros: "Paneles",
     casos: "Bandeja de casos",
     consolaAgente: "Consola de agente",
@@ -215,6 +226,8 @@ export default {
     asistente: "Asistente IA",
     nexus: "Nexus",
     duplicados: "Duplicados",
+    calidadDelDato: "Calidad del dato",
+    sinConexion: "Sin conexión",
     importar: "Importar datos",
     transferirPropiedad: "Traspasar cartera",
     // «Calendario», como lo llama Salesforce. Al lado de «Actividades», que
@@ -537,7 +550,8 @@ export default {
     codigo: "Código del segundo factor",
     recordarEquipo:
       "Recordar este equipo, si tu empresa lo permite: no volverá a pedir el código aquí salvo que cambie algo (la red, el país o el tiempo sin entrar)",
-    codigoPorQue: "Tu empresa exige el segundo factor: escribe el código de tu aplicación de autenticación.",
+    codigoPorQue:
+      "Tu empresa exige el segundo factor: escribe el código de tu aplicación de autenticación.",
     olvidada: "¿No la recuerdas?",
     recuperarTitulo: "Recuperar el acceso",
     recuperarAyuda:
@@ -788,6 +802,8 @@ export default {
     conflicto: "Alguien ha cambiado este registro mientras lo editabas",
     noEncontrado: "No existe",
     sinRed: "No se ha podido contactar con el servidor",
+    encoladaSinConexion:
+      "Sin conexión: el cambio se ha guardado en este dispositivo y se enviará al volver la red. Lo ves en «Sin conexión».",
     // Un fallo al PINTAR no es un fallo de red, y decirlo así manda a
     // mirar al sitio equivocado. El mensaje dice lo que se sabe —esta
     // pantalla— y lo que NO se ha perdido: el dato está, y lo demás del
@@ -957,6 +973,30 @@ export default {
     },
   },
   // La reunión en línea de una actividad o de un registro (CRM-06.01.03.10).
+  // Las resoluciones de una devolución y el abono (CRM-04.05.01.02).
+  devolucion: {
+    resoluciones: "Resoluciones: reparar, sustituir o abonar",
+    sinResoluciones:
+      "Todavía no hay ninguna. Se resuelve con «Reparar, sustituir o abonar», en las acciones de arriba.",
+    col: {
+      tipo: "Qué se hace",
+      aCargo: "A cargo de",
+      importe: "Importe",
+      abono: "Estado del abono",
+    },
+    tipo: {
+      reparacion: "Reparar",
+      sustitucion: "Sustituir",
+      abono: "Abonar",
+      sin_accion: "Sin acción",
+    },
+    anotarAbono: "Anotar lo que contestó quien factura",
+    referencia: "Referencia del abono emitido",
+    motivoRechazo: "Motivo, si se rechazó",
+    confirmarAbono: "Abono emitido",
+    rechazarAbono: "Abono rechazado",
+    abonoAnotado: "Anotado: el abono queda «{{estado}}».",
+  },
   reunionEnLinea: {
     titulo: "Reunión en línea",
     crear: "Crear reunión en línea",
@@ -976,6 +1016,87 @@ export default {
     organizador: "Cuenta que organiza (si la suite la pide)",
     ayuda:
       "La sala se crea ahora en la suite y el enlace queda guardado en la actividad.",
+  },
+  // Llamar desde la ficha y anotar al colgar (CRM-03.03.01.05).
+  marcador: {
+    titulo: "Llamar",
+    numero: "Número",
+    consiente: "La persona consiente que se grabe",
+    llamar: "Llamar",
+    enCurso:
+      "Llamando a {{numero}}. Al colgar, la llamada se registra sola como actividad; anota aquí cómo fue.",
+    noSalio: "La centralita no ha podido marcar: {{error}}",
+    seGraba: "Se graba: avisa al empezar.",
+    noSeGraba: "No se graba.",
+    resultado: "Cómo fue",
+    proxima: "Volver a llamar el",
+    nota: "Qué se habló",
+    anotar: "Anotar y cerrar",
+    anotada: "Anotada.",
+    resultados: {
+      hablado: "Hablado",
+      buzon: "Buzón de voz",
+      no_contesta: "No contesta",
+      numero_erroneo: "Número erróneo",
+      persona_equivocada: "Persona equivocada",
+      pide_que_no_le_llamen: "Pide que no le llamen",
+      reprogramar: "Reprogramar",
+    },
+  },
+  // La ficha emergente al entrar una llamada (CRM-04.02.01.05). En el marco.
+  llamadaEntrante: {
+    titulo: "Llamada entrante",
+    cerrar: "Cerrar el aviso de llamada",
+    ivr: "Lo que ya dijo en el IVR (no se lo vuelvas a preguntar)",
+    ultimoCaso: "Último caso: {{asunto}} ({{estado}})",
+    ultimaInteraccion: "Lo último: {{asunto}}",
+    abrirFicha: "Abrir su ficha",
+    transferir: "Transferir",
+    a: "A quién (persona, extensión o cola)",
+    resumen: "Resumen para quien la recibe",
+    pasar: "Transferir con el resumen",
+    transferida: "Transferida a {{a}} con el resumen.",
+  },
+  // Notas, ficheros y conversaciones de la suite vinculados por referencia
+  // (CRM-06.01.03.08, .09, .12). En la ficha, que va de una pieza.
+  referenciasSuite: {
+    titulo: "De la suite",
+    ayuda:
+      "Notas, ficheros y conversaciones que siguen en su sitio: aquí sólo se guarda el enlace, y al abrirlo se pregunta al origen si existe y si puedes verlo.",
+    vincular: "Vincular",
+    cancelar: "Cancelar",
+    guardar: "Guardar el vínculo",
+    tipo: "Qué es",
+    tipos: {
+      nota: "Nota",
+      fichero: "Fichero",
+      conversacion: "Conversación",
+    },
+    referencia: "Enlace o identificador en el origen",
+    nombre: "Nombre",
+    perfil: "Perfil de suite que sabe abrirla",
+    sinPerfil: "Ninguno (no se podrá comprobar)",
+    resumen: "Resumen escrito por ti (sólo conversaciones)",
+    exportable: "El canal deja exportar el hilo",
+    abrir: "Abrir",
+    quitar: "Quitar el vínculo",
+    vacio: "Nada vinculado todavía.",
+    estados: {
+      disponible: "Disponible: puedes verlo en el origen.",
+      sin_acceso: "Existe, pero no tienes acceso en el origen.",
+      no_existe: "Ya no está en el origen.",
+      desaparecido: "Ya no está en el origen.",
+      no_comprobable: "No se puede comprobar en el origen.",
+      error: "El origen no ha contestado.",
+    },
+    irAlOrigen: "Ir al origen",
+  },
+  // `/abrir/:tipo/:id`: el enlace que llevan los avisos del chat.
+  abrirRegistro: {
+    titulo: "Abrir un registro",
+    entradilla:
+      "El enlace de un aviso lleva aquí y de aquí a la ficha del registro, en el módulo que lo enseña.",
+    sinModulo: "No hay ninguna pantalla que enseñe «{{tipo}}».",
   },
   // El archivo de histórico (CRM-07.03.01.02). Aquí y no en las pantallas
   // diferidas porque lo pinta también la ficha, que va de una pieza.

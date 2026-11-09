@@ -1030,6 +1030,22 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="licencias_maximas",
             sensible=True,
         ),
+        _c(
+            "marcador_grabar_por_politica",
+            "bool",
+            "Grabar las llamadas del marcador (con aviso y si la persona consiente)",
+            campo_settings="marcador_grabar_por_politica",
+            # Grabar voz de terceros: tiene consecuencias legales.
+            sensible=True,
+        ),
+        _c(
+            "marcador_espera_s",
+            "float",
+            "Segundos que el marcador espera a la telefonía al llamar",
+            minimo=1.0,
+            maximo=120.0,
+            campo_settings="marcador_espera_s",
+        ),
     )
 }
 

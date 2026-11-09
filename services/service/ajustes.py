@@ -36,6 +36,17 @@ class AjustesService(Settings):
     # avisar con cuatro horas es avisar cuando ya no da tiempo a nada.
     sla_riesgo_horas: float = Field(4.0, ge=0.25, le=168.0)
 
+    # ── SLA del proveedor frente al prometido (CRM-09.01.01.08) ───────────
+    # Lo que tardamos NOSOTROS entre que el cliente avisa y el proveedor se
+    # entera: recibir, diagnosticar, abrirle el parte. Se suma a los tiempos
+    # del proveedor; prometer su mismo tiempo es prometer uno que solo
+    # existiría si nosotros no hiciéramos nada. Una hora era la constante que
+    # había escrita; cada soporte tiene la suya.
+    sla_proveedor_horas_propias: float = Field(1.0, ge=0.0, le=168.0)
+    # Cuánto se espera a que `integration` diga qué proveedores hay. Si no
+    # contesta, la revisión sigue con los acuerdos guardados y lo dice.
+    sla_proveedor_espera_s: float = Field(5.0, ge=0.5, le=60.0)
+
 
 registrar_claves(
     [
@@ -48,6 +59,25 @@ registrar_claves(
             minimo=0.25,
             maximo=168.0,
             campo_settings="sla_riesgo_horas",
+        ),
+        ClaveAjuste(
+            clave="sla_proveedor_horas_propias",
+            tipo="float",
+            descripcion=(
+                "Horas nuestras que se suman a los tiempos del proveedor al "
+                "compararlos con lo prometido al cliente"
+            ),
+            minimo=0.0,
+            maximo=168.0,
+            campo_settings="sla_proveedor_horas_propias",
+        ),
+        ClaveAjuste(
+            clave="sla_proveedor_espera_s",
+            tipo="float",
+            descripcion="Segundos que se espera la lista de proveedores de integración",
+            minimo=0.5,
+            maximo=60.0,
+            campo_settings="sla_proveedor_espera_s",
         ),
     ]
 )

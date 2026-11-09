@@ -27,6 +27,12 @@ export interface Config {
   acento: string;
   /** URL del logotipo. Vacío = se enseña el nombre. */
   logotipo: string;
+  /**
+   * Cada cuánto se reintenta enviar lo guardado sin conexión cuando la red ha
+   * vuelto pero el envío falla (CRM-06.02.01.04). Por instalación, en
+   * `config.json`: detrás de un proxy lento conviene más espaciado.
+   */
+  sinConexionReintentoMs: number;
 }
 
 const POR_DEFECTO: Config = {
@@ -35,6 +41,9 @@ const POR_DEFECTO: Config = {
   idioma: "es",
   acento: "",
   logotipo: "",
+  // Quince segundos: lo que tarda un servicio en reiniciarse en la pila local,
+  // medido el 09-11-2026; menos sólo multiplica peticiones que van a fallar.
+  sinConexionReintentoMs: 15000,
 };
 
 let actual: Config = POR_DEFECTO;

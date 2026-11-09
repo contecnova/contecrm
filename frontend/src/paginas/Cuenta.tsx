@@ -64,6 +64,7 @@ import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
+import { MarcadorDeCuenta } from "@/componentes/Marcador";
 import { ReunionEnLinea } from "@/componentes/ReunionEnLinea";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import {
@@ -678,6 +679,9 @@ export function Cuenta() {
 
               {/* Apuntar va ARRIBA de la línea de tiempo, no en otra pantalla: se
               apunta justo después de hablar con el cliente, mirándolo. */}
+              {/* Llamar desde aquí, con la telefonía conectada
+                  (CRM-03.03.01.05): la llamada se registra sola al colgar. */}
+              <MarcadorDeCuenta cuentaId={id} />
               <RegistrarActividad
                 objeto="cuenta"
                 objetoId={id}

@@ -207,6 +207,17 @@ class ProgramacionInforme(Base, TimestampMixin):
     # deja de llegar no se echa de menos, y el silencio se lee como «no pasa
     # nada» en vez de como «no se ejecutó».
     omitir_si_vacio: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Qué hace al tocarle: `enviar` el informe o tomar su `instantanea`
+    # (CRM-05.01.01.05). Las instantáneas sólo se tomaban a mano, y una serie
+    # que depende de que alguien se acuerde cada lunes tiene huecos justo las
+    # semanas que más importan.
+    accion: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="enviar",
+        server_default="enviar",
+        info={"opciones": ("enviar", "instantanea")},
+    )
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     proxima_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
@@ -1151,14 +1162,23 @@ def programar(
     destino_externo: str = "",
     omitir_si_vacio: bool = False,
     nombre: str = "",
+    accion: str = "enviar",
 ) -> ProgramacionInforme:
-    """Programa el envío. Exige al menos un destino."""
+    """Programa el envío —o la instantánea—. Un envío exige al menos un destino."""
     if periodicidad not in ("diaria", "semanal", "mensual"):
         raise ErrorValidacion(
             f"Periodicidad «{periodicidad}» no válida.",
             error_code="informe.periodicidad_no_valida",
         )
-    if not destinatarios and not destino_externo:
+    if accion not in ("enviar", "instantanea"):
+        raise ErrorValidacion(
+            f"Acción «{accion}» no válida.",
+            error_code="informe.accion_no_valida",
+            detalle={"validas": ["enviar", "instantanea"]},
+        )
+    # Una instantánea no va a ninguna parte: se guarda aquí. Exigirle destino
+    # obligaría a inventarse uno para poder programarla.
+    if accion == "enviar" and not destinatarios and not destino_externo:
         raise ErrorValidacion(
             "Una programación sin destino no manda el informe a ninguna parte.",
             error_code="informe.programacion_sin_destino",
@@ -1176,6 +1196,7 @@ def programar(
         destinatarios=list(destinatarios or []),
         destino_externo=destino_externo or None,
         omitir_si_vacio=omitir_si_vacio,
+        accion=accion,
     )
     fila.proxima_at = _siguiente_ejecucion(fila, _ahora())
     uow.db.add(fila)
@@ -1213,6 +1234,12 @@ def correr_programadas(
 
     for programacion in pendientes:
         try:
+            if programacion.accion == "instantanea":
+                foto = tomar_instantanea(uow, programacion.informe_id)
+                programacion.ultimo_error = None
+                programacion.fallos_seguidos = 0
+                mandados.append({"programacion": str(programacion.id), "instantanea": foto["dia"]})
+                continue
             salida = ejecutar(
                 uow,
                 programacion.informe_id,

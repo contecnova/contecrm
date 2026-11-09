@@ -335,6 +335,32 @@ def plan_federado(
     return alm.plan_federado(db, principal.tenant_id, fuente=fuente, objeto=objeto, limite=limite)
 
 
+class ConsultaFederada(BaseModel):
+    objeto: str = Field(..., min_length=1)
+    campos: list[str] = Field(default_factory=list)
+    filtros: list[dict[str, Any]] = Field(default_factory=list)
+    limite: int | None = Field(None, ge=1)
+
+
+@router.post(
+    "/federadas/{fuente}/consultar",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Consultar el lake del cliente sin copiarlo",
+    description=(
+        "Ejecuta la consulta **de verdad** por el conector de la casa —la conexión "
+        "y la operación que declara la fuente en su configuración— con la "
+        "identidad de quien pregunta. Sólo los objetos declarados, con el tope "
+        "de filas y el tiempo máximo de la fuente; lo que pase del tope se "
+        "recorta y se dice. Nada se guarda en el CRM: la respuesta es lo único "
+        "que existe del dato, y lleva cuándo se consultó."
+    ),
+)
+def consultar_federada(
+    fuente: str, datos: ConsultaFederada, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    return alm.consultar_federada(db, principal, fuente=fuente, **datos.model_dump())
+
+
 # ── Modelo semántico ──────────────────────────────────────────────────────
 
 
@@ -505,6 +531,77 @@ def embudo(datos: Embudo) -> Any:
 )
 def actividad(datos: Correlacion) -> Any:
     return coh.correlacion_actividad(**datos.model_dump())
+
+
+# ── Los mismos tres análisis, con los datos del CRM ───────────────────────
+#
+# Los tres POST de arriba reciben los hechos tecleados: sirven a quien ya los
+# tiene. Estos los LEEN —del almacén si está cargado, si no de cada servicio
+# por su API con la identidad de quien pregunta— y dicen de dónde salieron.
+
+
+@router_analisis.get(
+    "/crm/cohortes",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Retención de las cuentas por cohorte de alta, con los datos del CRM",
+    description=(
+        "Cohorte = cuándo se dio de alta la cuenta; activa en un periodo = tuvo "
+        "una actividad o se le abrió una oportunidad. Lee lo que ve quien "
+        "pregunta, y devuelve `procedencia` con de dónde salió cada objeto y si "
+        "se recortó."
+    ),
+)
+def cohortes_crm(
+    db: DbDep,
+    principal: AutenticadoDep,
+    periodo: str = Query("mes"),
+    periodos: int = Query(6, ge=1, le=36),
+) -> Any:
+    from services.analytics import datos_crm
+
+    return datos_crm.cohortes_crm(db, principal, periodo=periodo, periodos=periodos)
+
+
+@router_analisis.get(
+    "/crm/embudo",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Conversión y tiempos entre las etapas de un embudo de ventas real",
+    description=(
+        "Las etapas del embudo elegido —o el de por defecto— en su orden, sin "
+        "las de pérdida. Los pasos salen del historial de etapas de cada "
+        "oportunidad; llegar a una etapa cuenta como haber pasado por las "
+        "anteriores aunque se saltaran."
+    ),
+)
+def embudo_crm(
+    db: DbDep,
+    principal: AutenticadoDep,
+    pipeline_id: UUID | None = Query(None),
+    desde: date | None = Query(None),
+) -> Any:
+    from services.analytics import datos_crm
+
+    return datos_crm.embudo_crm(db, principal, pipeline_id=pipeline_id, desde=desde)
+
+
+@router_analisis.get(
+    "/crm/actividad",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Actividad de cada comercial frente a lo que gana, con los datos del CRM",
+    description=(
+        "Por persona: actividades asignadas en la ventana y oportunidades ganadas "
+        "en la misma ventana. El coeficiente sale con el aviso de que "
+        "correlación no es causa, y por debajo del mínimo de sujetos no sale."
+    ),
+)
+def actividad_crm(
+    db: DbDep,
+    principal: AutenticadoDep,
+    desde: date | None = Query(None),
+) -> Any:
+    from services.analytics import datos_crm
+
+    return datos_crm.actividad_crm(db, principal, desde=desde)
 
 
 @router_analisis.post(

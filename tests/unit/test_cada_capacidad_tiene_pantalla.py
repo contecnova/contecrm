@@ -1028,7 +1028,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # vista previa y spam, transaccional separado, atribución, lienzo y A/B;
 # historial de ajustes, grupo de empresas, consumo a facturación, archivado,
 # sandbox de API, segundo factor por proveedor; y declaradas las alcanzables.
-TOPE_SIN_PANTALLA = 33
+# 09-11-2026, cuarta: 33 → 2. La segunda tanda: transcripción con resumen y
+# compromisos, variantes generadas con revisión y modo voz; telefonía con ficha
+# emergente y marcador que registra, avisos y consultas desde el chat,
+# reuniones del calendario, referencias de la suite y su RAT, motor externo de
+# compensación; SLA del proveedor guardado, firma desde la oportunidad y
+# derivar el caso; ficha buena, enriquecimiento, identidad entre canales,
+# umbral por objeto y direcciones; analítica sobre el CRM con instantáneas y
+# consulta al lake; modo sin conexión. Y declaradas tras verlas: «Alguien ha
+# contestado», qué va con qué en productos, escalar a una persona y abonos.
+# Quedan las renovaciones (verlas abriría oportunidades sobre contratos
+# reales) y CRM-00.04.04.06, que necesita el bus.
+TOPE_SIN_PANTALLA = 2
 
 
 def _es_pantalla(p: Path) -> bool:

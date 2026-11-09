@@ -219,6 +219,12 @@ class Contrato(EntidadBase, SoftDeleteMixin):
     # Se avisó del preaviso. Sin esta marca, el aviso se manda cada noche hasta
     # que alguien lo silencia apagando la alerta entera.
     preaviso_dado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # La oportunidad de renovación que se abrió al llegar el preaviso
+    # (CRM-03.03.02.10). Una por contrato: la revisión corre cada hora, y sin
+    # este enlace abriría una oportunidad nueva en cada pasada.
+    oportunidad_renovacion_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"calculado": True}
+    )
 
     importe: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
     moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
@@ -506,7 +512,9 @@ def _volcar_lineas(
             # porque en la práctica siempre hay uno —«portes», «puesta en
             # marcha»— y prohibirlo lleva a crear productos basura para
             # colarlos.
-            tarifa = Decimal(str(entrada.get("precio_unitario", 0)))
+            # `or 0` y no `.get(…, 0)`: la API manda la clave con `None` cuando
+            # no se teclea precio, y `Decimal("None")` era un 500.
+            tarifa = Decimal(str(entrada.get("precio_unitario") or 0))
             catalogo_precio = tarifa
             coste = (
                 Decimal(str(entrada["coste_unitario"]))
@@ -1129,9 +1137,13 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
     )
     avisados: list[dict[str, Any]] = []
     renovados: list[dict[str, Any]] = []
+    oportunidades: list[dict[str, Any]] = []
+    embudo, sin_embudo = _embudo_de_renovaciones(uow.db, tenant_id)
 
     for contrato in vigentes:
         aviso = contrato.fin - timedelta(days=contrato.preaviso_dias)
+        if embudo is not None and dia >= aviso and contrato.oportunidad_renovacion_id is None:
+            oportunidades.append(_abrir_renovacion(uow, contrato, embudo))
         if not contrato.preaviso_dado and dia >= aviso:
             contrato.preaviso_dado = True
             avisados.append(
@@ -1186,9 +1198,91 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
         "revisados": len(vigentes),
         "avisados": avisados,
         "renovados": renovados,
+        "oportunidades": oportunidades,
+        # Configurado un embudo que no existe: no se abre ninguna y se dice,
+        # en vez de dejarlas caer en otro embudo que nadie mira para esto.
+        "embudo_no_encontrado": sin_embudo,
         # Sin contratos con fecha de fin no se dice que todo está al día.
         "medible": bool(vigentes),
     }
+
+
+def _embudo_de_renovaciones(db: Session, tenant_id: UUID) -> tuple[Any, str | None]:
+    """El embudo donde nacen las renovaciones, o `None` si no se crean.
+
+    Devuelve también la clave configurada que no existe, para decirlo."""
+    from crmcore.runtime import settings as rt
+
+    from services.sales.ajustes import ajustes
+    from services.sales.modelos import Pipeline
+    from services.sales.servicio import pipeline_por_defecto
+
+    crear = rt.efectivo("renovacion_crear_oportunidad", db)
+    if crear is None:
+        crear = ajustes().renovacion_crear_oportunidad
+    if not crear:
+        return None, None
+    clave = rt.efectivo("renovacion_embudo", db)
+    clave = str(clave if clave is not None else ajustes().renovacion_embudo).strip()
+    if not clave:
+        try:
+            return pipeline_por_defecto(db, tenant_id), None
+        except NoEncontrado:
+            return None, None
+    embudo = db.execute(
+        select(Pipeline).where(
+            Pipeline.tenant_id == tenant_id,
+            Pipeline.clave == clave,
+            Pipeline.deleted_at.is_(None),
+        )
+    ).scalar_one_or_none()
+    return (embudo, None) if embudo is not None else (None, clave)
+
+
+def _abrir_renovacion(uow: UnidadDeTrabajo, contrato: Contrato, embudo: Any) -> dict[str, Any]:
+    """La oportunidad de renovación de un contrato que llega a su preaviso.
+
+    Con el importe del contrato —lo que se renueva— y su vencimiento como fecha
+    de cierre: es la fecha en la que la renovación se gana o se pierde. Queda
+    enlazada en las dos direcciones: el contrato sabe su oportunidad y la
+    oportunidad sabe de qué contrato viene.
+    """
+    from services.sales.servicio import crear_oportunidad_nueva
+
+    oportunidad = crear_oportunidad_nueva(
+        uow,
+        nombre=f"Renovación {contrato.numero}"
+        + (f" · {contrato.titulo}" if contrato.titulo else ""),
+        cuenta_id=contrato.cuenta_id,
+        pipeline_id=embudo.id,
+        importe=contrato.importe,
+        moneda=contrato.moneda,
+        fecha_cierre=contrato.fin,
+        campos={
+            "renovacion_de_contrato_id": str(contrato.id),
+            "renovacion_de_contrato": contrato.numero,
+        },
+    )
+    contrato.oportunidad_renovacion_id = oportunidad.id
+    return {
+        "contrato_id": str(contrato.id),
+        "numero": contrato.numero,
+        "oportunidad_id": str(oportunidad.id),
+        "importe": str(contrato.importe),
+    }
+
+
+def tenants_con_contratos() -> list[Any]:
+    """Los tenants con algún contrato con fecha de fin, de la propia tabla."""
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        return [
+            t
+            for (t,) in db.execute(
+                select(Contrato.tenant_id).where(Contrato.fin.isnot(None)).distinct()
+            ).all()
+        ]
 
 
 # ── Suscripciones (CRM-03.03.02.09) ───────────────────────────────────────

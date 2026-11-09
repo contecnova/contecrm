@@ -12,11 +12,16 @@ del móvil lleva operaciones sobre objetos de varios servicios, y cada uno
 resuelve los suyos contra sus propios registros. Un único punto central tendría
 que leer las tablas de los catorce.
 
-Lo que esta ruta **no** hace: no escribe. Devuelve el **plan** —qué se puede
-aplicar, qué choca y con qué, y qué se queda esperando—, y quien escribe es la
-ruta de siempre de cada objeto, con sus permisos y sus validaciones. Hacerlo
-aquí sería una segunda puerta de escritura sin las comprobaciones de la primera,
-que es exactamente como se cuela un dato que la pantalla no habría dejado poner.
+Por defecto devuelve el **plan** —qué se puede aplicar, qué choca y con qué, y
+qué se queda esperando— sin escribir. Con `aplicar: true` (09-11-2026) **aplica
+lo que no choca** —y lo resuelto por una persona— y devuelve los conflictos;
+medido antes: el front no tenía modo sin conexión y la ruta sólo planificaba,
+así que lo hecho sin red no llegaba a ningún sitio. No es una segunda puerta de
+escritura: escribe con la MISMA función que el PATCH de la ficha genérica
+(`operacion_de_ficha`), exigiendo el mismo permiso, con sus mismas reglas de
+qué campo es editable. Un objeto con PATCH escrito a mano —con su bloqueo, su
+política— no se escribe aquí: sale como `aplicar_por_su_ruta` con la versión
+actual, y el cliente lo repite por esa ruta con `If-Match`.
 """
 
 from __future__ import annotations
@@ -47,7 +52,16 @@ class Operacion(BaseModel):
         ),
     )
     tipo: str = Field("actualizar", description="crear · actualizar")
-    objeto: str = Field(..., min_length=1, examples=["contacto"])
+    objeto: str = Field("", examples=["contacto"])
+    recurso: str = Field(
+        "",
+        description=(
+            "La colección de la API (`accounts`, `contacts`) cuando el cliente no "
+            "sabe el objeto de negocio: el front encola la petición que hizo, y "
+            "lo que tiene es su ruta. Se traduce con el mismo registro que usan "
+            "los informes; deducirlo del plural acierta casi siempre, que es peor"
+        ),
+    )
     registro_id: UUID | None = None
     version_base: int | None = Field(
         None,
@@ -85,6 +99,13 @@ class Sincronizar(BaseModel):
             "mientras reconstruir lo perdido cuesta una mañana y a veces no se puede"
         ),
     )
+    aplicar: bool = Field(
+        False,
+        description=(
+            "Escribir lo que no choca, además de planificar. Sin él la ruta "
+            "sólo devuelve el plan, que es lo que hacía siempre"
+        ),
+    )
 
 
 def crear_router_movil(servicio: str) -> APIRouter:
@@ -117,9 +138,13 @@ def crear_router_movil(servicio: str) -> APIRouter:
     )
     def sincronizar(datos: Sincronizar, db: DbDep, principal: AutenticadoDep) -> Any:
         from crmcore import movil
+        from crmcore.http.listados import objeto_del_recurso
         from crmcore.metamodelo import es_de_este_servicio, modelo_del_objeto
 
         operaciones = [op.model_dump() for op in datos.operaciones]
+        for op in operaciones:
+            if not op.get("objeto") and op.get("recurso"):
+                op["objeto"] = objeto_del_recurso(str(op["recurso"]))
         # Las dos comprobaciones de forma van ANTES de tocar la base: una cola
         # sin identificadores no se arregla mirando registros.
         preparado = movil.preparar_envio(operaciones=operaciones)
@@ -180,6 +205,10 @@ def crear_router_movil(servicio: str) -> APIRouter:
                 for c in entrantes
                 if c in base and getattr(fila, c, None) != base[c]
             }
+            # Lo que se escribirá si no choca: SÓLO lo que cambió el móvil.
+            # Escribir todo lo que trae pisaría con valores viejos los campos
+            # que otra persona cambió y él ni tocó.
+            op["_cambios"] = cambio_el_cliente
             choque = movil.detectar_conflicto(
                 version_base=int(op.get("version_base") or 0),
                 version_servidor=int(getattr(fila, "version", 0) or 0),
@@ -192,6 +221,7 @@ def crear_router_movil(servicio: str) -> APIRouter:
                         "id_cliente": op["id_cliente"],
                         "accion": "aplicar",
                         "porque": choque["porque"],
+                        "version_actual": int(getattr(fila, "version", 0) or 0),
                     }
                 )
                 continue
@@ -200,6 +230,12 @@ def crear_router_movil(servicio: str) -> APIRouter:
                 "id_cliente": op["id_cliente"],
                 "accion": "conflicto",
                 **choque,
+                # Lo que hay AHORA en los campos que chocan: es lo que enseña la
+                # pantalla de conflictos al lado de lo del móvil. Sin ello, «lo
+                # suyo» es una palabra y no un valor que se pueda comparar.
+                "valores_servidor": {
+                    c: _a_json(getattr(fila, c, None)) for c in (choque.get("campos") or [])
+                },
             }
             if datos.estrategia:
                 entrada["resolucion"] = movil.resolver(
@@ -210,14 +246,22 @@ def crear_router_movil(servicio: str) -> APIRouter:
                 )
             plan.append(entrada)
 
+        if datos.aplicar:
+            _aplicar_plan(db, principal, operaciones, plan)
+
         pendientes = [
             {
-                **op,
+                **{k: v for k, v in op.items() if k != "_cambios"},
                 "en_conflicto": any(
                     p["id_cliente"] == op["id_cliente"] and p["accion"] == "conflicto" for p in plan
                 ),
             }
             for op in operaciones
+            # Lo ya escrito sale de la cola: contarlo como pendiente haría que el
+            # aviso de «tienes cambios sin subir» no se apagara nunca.
+            if not any(
+                p["id_cliente"] == op["id_cliente"] and p["accion"] == "aplicada" for p in plan
+            )
         ]
         return {
             "servicio": servicio,
@@ -230,3 +274,76 @@ def crear_router_movil(servicio: str) -> APIRouter:
         }
 
     return router
+
+
+def _a_json(valor: Any) -> Any:
+    """Un valor de columna como lo devolvería la API."""
+    from datetime import date, datetime
+    from decimal import Decimal
+
+    if isinstance(valor, (datetime, date)):
+        return valor.isoformat()
+    if isinstance(valor, (Decimal, UUID)):
+        return str(valor)
+    return valor
+
+
+def _aplicar_plan(
+    db: Any, principal: Any, operaciones: list[dict[str, Any]], plan: list[dict[str, Any]]
+) -> None:
+    """Escribe lo que el plan dice que se puede aplicar (CRM-06.02.01.04).
+
+    Por la MISMA función que el PATCH de la ficha genérica y con su permiso:
+    una segunda puerta de escritura con menos comprobaciones es como se cuela
+    un dato que la pantalla no habría dejado poner. Cada operación va en su
+    propio punto de guardado: que una falle (un campo que no valida) no tira
+    las otras ni deja la transacción rota a medias.
+
+    Lo que no se puede escribir aquí —una creación, o un objeto con su PATCH
+    escrito a mano— no se pierde: sale como `aplicar_por_su_ruta` con la versión
+    actual, y el cliente lo repite por la ruta de siempre con `If-Match`.
+    """
+    from pydantic import ValidationError
+
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.errors import CrmError
+    from crmcore.http.listados import operacion_de_ficha
+    from crmcore.metamodelo import modelo_del_objeto
+    from crmcore.resiliencia import exigir_escritura
+
+    exigir_escritura()
+    uow = UnidadDeTrabajo(db=db, tenant_id=principal.tenant_id)
+    por_id = {op["id_cliente"]: op for op in operaciones}
+    for entrada in plan:
+        if entrada.get("accion") != "aplicar":
+            continue
+        op = por_id[entrada["id_cliente"]]
+        objeto = str(op.get("objeto") or "")
+        escribir = operacion_de_ficha(objeto, "actualizar")
+        if op.get("tipo") == "crear" or not op.get("registro_id") or escribir is None:
+            entrada["accion"] = "aplicar_por_su_ruta"
+            entrada["porque"] = (
+                "Se escribe por la ruta de siempre del objeto, que tiene sus propias "
+                "reglas: aquí se escribiría sin ellas."
+            )
+            continue
+        permiso = operacion_de_ficha(objeto, "permiso_actualizar") or f"{objeto}:write"
+        if not principal.tiene(permiso):
+            entrada["accion"] = "rechazada"
+            entrada["porque"] = f"No tienes el permiso «{permiso}» para escribir esto."
+            continue
+        punto = db.begin_nested()
+        try:
+            escribir(uow, op["registro_id"], dict(op.get("_cambios", op.get("campos")) or {}))
+            punto.commit()
+        except (CrmError, ValidationError) as error:
+            punto.rollback()
+            entrada["accion"] = "rechazada"
+            entrada["porque"] = str(error)
+            entrada["error_code"] = getattr(error, "error_code", "")
+            continue
+        modelo = modelo_del_objeto(objeto)
+        fila = db.get(modelo, op["registro_id"]) if modelo is not None else None
+        entrada["accion"] = "aplicada"
+        entrada["version"] = int(getattr(fila, "version", 0) or 0)
+    uow._volcar_eventos()

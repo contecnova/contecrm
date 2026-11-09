@@ -224,6 +224,14 @@ class Programar(BaseModel):
         ),
     )
     nombre: str = ""
+    accion: str = Field(
+        "enviar",
+        description=(
+            "enviar · instantanea. Con `instantanea` no se manda a nadie: se "
+            "guarda lo que dice el informe ese día para su tendencia, y no hace "
+            "falta destino"
+        ),
+    )
 
 
 @router.post(
@@ -412,6 +420,14 @@ def listar_programaciones(db: DbDep, principal: AutenticadoDep) -> Any:
                 "destinatarios": destinatarios,
                 "cuantos_destinatarios": len(destinatarios),
                 "destino_externo": f.destino_externo,
+                # Qué hace —mandarlo o fotografiarlo— y cómo le va: sin
+                # `proxima_at` y `ultimo_error` una programación de
+                # instantáneas que falla cada lunes parece viva.
+                "accion": f.accion,
+                "activa": f.activa,
+                "proxima_at": f.proxima_at.isoformat() if f.proxima_at else None,
+                "ultima_at": f.ultima_at.isoformat() if f.ultima_at else None,
+                "ultimo_error": f.ultimo_error,
             }
         )
     return {
@@ -457,6 +473,33 @@ def historial_de_ejecuciones(
         solo_fallidas=solo_fallidas,
         limite=limite,
     )
+
+
+@router.delete(
+    "/programaciones/{programacion_informe_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("informe:write"))],
+    summary="Quitar una programación",
+    description=(
+        "Se podía programar y no desprogramar: un envío o una instantánea que ya "
+        "no quiere nadie seguía corriendo cada semana. Quitarla no toca el "
+        "informe ni las instantáneas ya tomadas: la serie se queda como estaba."
+    ),
+)
+def quitar_programacion(
+    programacion_informe_id: UUID, uow: UowDep, principal: AutenticadoDep
+) -> None:
+    from crmcore.errors import NoEncontrado
+
+    from services.analytics.informes import ProgramacionInforme
+
+    fila = uow.db.get(ProgramacionInforme, programacion_informe_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado(
+            "Esa programación no existe", error_code="informe.programacion_no_encontrada"
+        )
+    uow.db.delete(fila)
+    uow.db.flush()
 
 
 @router.patch(

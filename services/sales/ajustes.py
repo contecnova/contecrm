@@ -140,6 +140,25 @@ class AjustesSales(Settings):
     # reloj de siete días se reiniciaría con cada despliegue y no saldría nunca.
     lecciones_resumen_revisar_s: int = Field(3_600, ge=60, le=86_400)
 
+    # ── Firma desde la oportunidad (CRM-03.03.02.07) ──────────────────────
+    # A qué etapa lleva una firma completada, por embudo: {clave del embudo:
+    # clave de la etapa}. Un embudo que no está aquí sólo marca la firma —un
+    # sobre firmado dice que está firmado, no que el negocio esté ganado—, y
+    # es lo que había: moverla es una decisión de quien gobierna el embudo.
+    firma_etapa_por_embudo: dict[str, str] = Field(default_factory=dict)
+    # Cuánto se espera a `integration` al crear el sobre o leer su estado.
+    firma_espera_s: float = Field(10.0, ge=0.5, le=60.0)
+
+    # ── Renovaciones (CRM-03.03.02.10) ────────────────────────────────────
+    # Cada cuántos segundos se revisan los contratos que vencen. Mirar a menudo
+    # y actuar sólo cuando toca lo hace inmune a los reinicios.
+    renovacion_revisar_s: int = Field(3_600, ge=60, le=86_400)
+    # Crear una oportunidad de renovación al llegar el preaviso. Apagado, el
+    # preaviso sólo avisa, como antes.
+    renovacion_crear_oportunidad: bool = True
+    # En qué embudo nace (su clave). Vacío: el embudo por defecto.
+    renovacion_embudo: str = ""
+
 
 registrar_claves(
     [
@@ -376,6 +395,35 @@ registrar_claves(
             minimo=1,
             maximo=90,
             campo_settings="lecciones_resumen_dias",
+        ),
+        ClaveAjuste(
+            clave="firma_etapa_por_embudo",
+            tipo="json",
+            descripcion=(
+                "A qué etapa lleva una firma completada, por embudo: "
+                "{clave del embudo: clave de la etapa}. Sin embudo, sólo se marca"
+            ),
+            campo_settings="firma_etapa_por_embudo",
+        ),
+        ClaveAjuste(
+            clave="firma_espera_s",
+            tipo="float",
+            descripcion="Segundos que se espera a integración al crear o leer el sobre de firma",
+            minimo=0.5,
+            maximo=60,
+            campo_settings="firma_espera_s",
+        ),
+        ClaveAjuste(
+            clave="renovacion_crear_oportunidad",
+            tipo="bool",
+            descripcion="Crear una oportunidad de renovación al llegar el preaviso del contrato",
+            campo_settings="renovacion_crear_oportunidad",
+        ),
+        ClaveAjuste(
+            clave="renovacion_embudo",
+            tipo="str",
+            descripcion="Clave del embudo donde nacen las renovaciones (vacío: el de por defecto)",
+            campo_settings="renovacion_embudo",
         ),
         ClaveAjuste(
             clave="dias_estancamiento_defecto",

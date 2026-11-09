@@ -198,6 +198,26 @@ class AjustesIntelligence(Settings):
     # Horas que vale una acción propuesta antes de poder confirmarla.
     ia_asistente_caducidad_horas: int = Field(24, ge=1, le=720)
 
+    # ── Transcripción de llamadas y reuniones (CRM-01.02.01.05, .06) ──────
+    # La conexión de `integration` que transcribe, y su operación. Vacía no
+    # transcribe nada y lo dice: el proveedor es configuración (perfil sobre el
+    # conector de la casa), no un módulo por casa.
+    ia_transcripcion_conexion: str = ""
+    ia_transcripcion_operacion: str = "transcribir"
+    # Cómo le llega el audio al proveedor: un enlace firmado que descarga él, o
+    # el contenido en base64 dentro de la petición. Lo decide el perfil.
+    ia_transcripcion_envio: str = "enlace"
+    # Tamaño máximo del audio que se acepta, en MB.
+    ia_transcripcion_max_mb: int = Field(25, ge=1, le=500)
+    # Caracteres de la transcripción que se mandan al modelo para resumir. Lo
+    # que pasa de ahí no se resume, y el resumen lo dice.
+    ia_transcripcion_caracteres_modelo: int = Field(60_000, ge=1_000, le=1_000_000)
+
+    # ── Variantes de copy (CRM-02.04.01.04) ───────────────────────────────
+    # Cuántas variantes se pueden pedir de una vez. Más de un puñado no se
+    # revisan con cuidado, y revisar es lo que hace que esto valga.
+    ia_variantes_maximas: int = Field(5, ge=1, le=20)
+
 
 # ── Cuáles se pueden afinar POR CLIENTE y cuáles no ───────────────────────
 #
@@ -302,6 +322,49 @@ registrar_claves(
             minimo=50,
             maximo=100_000,
             campo_settings="ia_consulta_tope_filas",
+        ),
+        ClaveAjuste(
+            clave="ia_transcripcion_conexion",
+            tipo="str",
+            descripcion="Conexión de integración que transcribe audio (su id)",
+            campo_settings="ia_transcripcion_conexion",
+        ),
+        ClaveAjuste(
+            clave="ia_transcripcion_operacion",
+            tipo="str",
+            descripcion="Operación de esa conexión que transcribe",
+            campo_settings="ia_transcripcion_operacion",
+        ),
+        ClaveAjuste(
+            clave="ia_transcripcion_envio",
+            tipo="str",
+            descripcion="Cómo le llega el audio al proveedor de transcripción",
+            opciones=("enlace", "contenido"),
+            campo_settings="ia_transcripcion_envio",
+        ),
+        ClaveAjuste(
+            clave="ia_transcripcion_max_mb",
+            tipo="int",
+            descripcion="Tamaño máximo del audio que se transcribe (MB)",
+            minimo=1,
+            maximo=500,
+            campo_settings="ia_transcripcion_max_mb",
+        ),
+        ClaveAjuste(
+            clave="ia_transcripcion_caracteres_modelo",
+            tipo="int",
+            descripcion="Caracteres de la transcripción que se mandan al modelo para resumir",
+            minimo=1_000,
+            maximo=1_000_000,
+            campo_settings="ia_transcripcion_caracteres_modelo",
+        ),
+        ClaveAjuste(
+            clave="ia_variantes_maximas",
+            tipo="int",
+            descripcion="Variantes de copy que se pueden pedir de una vez",
+            minimo=1,
+            maximo=20,
+            campo_settings="ia_variantes_maximas",
         ),
         ClaveAjuste(
             clave="ia_asistente_parecido_minimo",

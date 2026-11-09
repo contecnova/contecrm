@@ -1681,6 +1681,64 @@ Un objeto que no es de ese servicio **se queda en la cola** y se dice; un
 registro borrado no se recrea, porque recrearlo devolvería a la vida algo que
 alguien borró a propósito y sin su historia.
 
+#### Aplicar, y el front sin conexión (09-11-2026)
+
+Con `aplicar: true` la ruta **escribe** lo que no choca y deja los conflictos.
+No es una segunda puerta: escribe con `operacion_de_ficha(objeto, "actualizar")`
+—la misma función del PATCH de la ficha genérica, con su esquema de campos
+editables— y exige el permiso que ese PATCH registró
+(`operacion_de_ficha(objeto, "permiso_actualizar")`, apuntado en
+`crmcore/http/listados.py`). Cada operación va en su punto de guardado: una que no
+valida queda `rechazada` con su motivo sin tirar las demás. Acciones nuevas en
+el plan:
+
+| `accion` | Qué significa |
+|---|---|
+| `aplicada` | Escrita; trae la `version` nueva. Sale de `cola.pendientes` |
+| `conflicto` | Trae `campos`, `version_servidor` y `valores_servidor` (lo que hay ahora en esos campos) |
+| `aplicar_por_su_ruta` | Una creación, o un objeto con PATCH escrito a mano: el cliente lo repite por esa ruta con `If-Match` = `version_actual` |
+| `rechazada` | Sin permiso o no valida; con `porque` |
+
+La operación admite `recurso` (`contacts`) en vez de `objeto`: se traduce con
+`objeto_del_recurso`, el mismo registro que usan los informes.
+
+El front (`frontend/src/lib/sinConexion.ts`, `frontend/public/sw.js`):
+
+- **Service worker de red primero** para todo `GET` del mismo origen; guarda
+  la aplicación (`crm-app-v1`) y las lecturas JSON de la API
+  (`crm-consultado-v1`, clave con `X-CRM-Tenant-Mirado`). No guarda flujos SSE
+  ni descargas. En desarrollo guarda también `/@vite/client` y
+  `/@react-refresh`: cada módulo los importa y sin ellos la aplicación no
+  arranca sin red; con red no cambia nada. Lo servido del caché lleva
+  `X-CRM-Sin-Conexion: 1`. Al salir se borra el caché de lecturas.
+- Lo que se apunta solo (un «visto») se llama con `encolable: false`: sin red
+  se pierde en vez de encolarse como un cambio de la persona.
+- Se encola **sólo lo que cambió** frente a la lectura guardada: un formulario
+  manda el registro entero, y reenviarlo pisaría lo que otra persona cambió en
+  los demás campos. El servidor, igual: escribe sólo lo que el móvil cambió
+  frente a `campos_base`.
+- Si el envío falla con la red ya de vuelta (la conexión aún no está, o el
+  servicio contesta 5xx), se reintenta cada `sinConexionReintentoMs` de
+  `config.json` (la variable de entorno SIN_CONEXION_REINTENTO_MS del
+  contenedor del front, que lee `entrada.sh`; 15 s por defecto). Un 5xx no es un rechazo: lo pendiente sigue pendiente.
+- **La cola** está en IndexedDB (`contecrm-sin-conexion`/`cola`), por usuario.
+  `llamar()` encola un `PATCH`/`PUT` a `/api/v1/<recurso>/<uuid>` o un `POST` a
+  `/api/v1/<recurso>` cuando `fetch` falla por red, y lanza
+  `ErrorApi(0, "encolada_sin_conexion")`. La versión sale del `If-Match` de la
+  pantalla o del `ETag` de la lectura guardada; sin ninguna, no se encola.
+- **Al volver la red** (`online`, o al entrar) se agrupa por servicio —sale de
+  la tabla de recursos del front (`lib/recursos.ts`)— y se llama a esta ruta con `aplicar: true`. Sin
+  servicio conocido, o para las altas, se repite la petición por su ruta con
+  `Idempotency-Key` = `id_cliente` e `If-Match`; un 409/412 se convierte en
+  conflicto leyendo el registro. Resolver un conflicto reenvía lo elegido sobre
+  `version_servidor` con `valores_servidor` como base, y ya no choca.
+- Pantalla: `/sin-conexion`. Pruebas:
+  `tests/unit/test_sincronizar_sin_conexion_aplica.py` (por HTTP) y
+  `frontend/src/lib/sinConexion.test.ts`.
+
+En producción `sw.js` debe servirse sin caché larga (va en la raíz, fuera de
+`/assets/`).
+
 ### 3.6.4 El modo solo lectura
 
 Se aplica en la **unidad de trabajo**, que es por donde pasan todas las
@@ -1727,6 +1785,34 @@ Hoy el que puntúa es determinista —similitud de nombre, dominio, NIF—, y ah
 está a propósito: la señal es explicable («ha coincidido el dominio»), que es lo
 que permite decidir. Si algún día se quiere un clasificador, el sitio donde
 entra es la puntuación, dejando intactos el barrido, la cola y la decisión.
+
+### 3.7.1 Calidad del dato sobre los registros reales (09-11-2026)
+
+Router `services/party/api_calidad_real.py` (prefijo `/calidad-dato`):
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /golden/reglas/{objeto}`, `PUT`/`DELETE /golden/reglas/{objeto}/{campo}` | Reglas de supervivencia (tabla `reglas_supervivencia`; `*` = por defecto) |
+| `GET /golden/candidatas` | Fichas con fusionadas o unidas |
+| `POST /golden/{objeto}/{id}/componer` (`aplicar`) · `GET /golden/{objeto}/{id}` | Compone desde linaje, ficha, `fusiones.estado_previo` y uniones; guarda en `golden_records` |
+| `GET`/`PUT`/`DELETE /enriquecimiento/perfiles[/{clave}]` | Perfiles sobre el conector (`perfiles_enriquecimiento`) |
+| `POST /enriquecimiento/{perfil}/pedir` · `GET /enriquecimiento/propuestas` · `POST .../propuestas/{id}/aplicar|descartar` | Llama a `integraciones/conexiones/{id}/operaciones/{op}/invocar` con `interno.invocar` (tipo usuario); propuestas en `propuestas_enriquecimiento` |
+| `POST /identidades/observar`, `/resolver`, `/barrer`, `/unir`, `/deshacer` · `GET /identidades/propuestas` | Identidad entre canales |
+| `GET`/`PUT /umbrales-duplicado` | Ajuste `dedupe_umbral_por_objeto` (ámbito tenant) |
+| `POST /direcciones/normalizar` (`aplicar`, `objeto`, `objeto_id`) | Barrido de direcciones |
+
+Migración `alembic/versions/party/20261109_1900_calidad_del_dato_real.py`
+(`9d2e4c7b1a60`). Dos oyentes `before_flush` sobre `Session`, enganchados al
+importar `services.party.modelos`: `identidad._al_guardar` anota las señales
+de los contactos nuevos o con correo, teléfono o canales cambiados (y borra
+las de un contacto anonimizado), y `direcciones._al_guardar` normaliza la
+dirección nueva o corregida. Van en el flush y no en una ruta para cubrir el
+alta, el PATCH genérico, la importación y la sincronización sin conexión.
+`duplicados.umbral_de(db, objeto, tipo)` resuelve el umbral del objeto y cae al
+general. Ajustes nuevos de `party`: `identidad_canales_a_senal`,
+`dedupe_umbral_por_objeto`, `direcciones_abreviaturas`,
+`direcciones_cp_digitos`, `enriquecimiento_timeout_s`,
+`enriquecimiento_max_lote`. Pruebas: `tests/unit/test_calidad_del_dato_real.py`.
 
 ### 3.8 La cola de calidad del dato
 
@@ -4783,8 +4869,6 @@ tenant mirado. Pruebas: `tests/unit/test_sandbox_de_api.py`.
 - `SANDBOX_API_OBJETOS` sin `opportunities` de serie: un tenant recién creado
   no tiene embudo.
 
-## 5. Operación
-
 ### 4.6.46 Modelos entrenados con el histórico, asistente con acciones y preguntas que se ejecutan (CRM-02.01.02.02, CRM-05.02.01.02, CRM-05.02.01.03, CRM-02.01.01.08, CRM-04.03.02.02, CRM-05.02.02.04)
 
 **Modelos.** `services/intelligence/predictivo.py`. Lee por HTTP
@@ -4855,6 +4939,312 @@ llevan clave): `IA_AUC_MINIMO_PUBLICAR`, `IA_MEJORA_MINIMA_REGRESION_PCT`,
 Pruebas: `tests/unit/test_ia_predictivo_entrenado.py`,
 `tests/unit/test_ia_predictivo_por_http.py`,
 `frontend/src/pruebas/modelos_predictivos_y_asistente.test.tsx`.
+
+### 4.6.47 SLA del proveedor guardado, firma desde la oportunidad, renovaciones solas y derivar desde el caso (CRM-09.01.01.08, CRM-03.03.02.07, CRM-03.03.02.10, CRM-04.01.01.08, CRM-04.05.01.02)
+
+**SLA del proveedor** (`services/service/proveedores_sla.py`). Tabla nueva
+`acuerdos_proveedor` (por `proveedor_clave`, la clave de
+`integration.proveedores_servicio`) y columna `entitlements.proveedor_clave`;
+migración `alembic/versions/service/20261109_1900_acuerdo_del_proveedor.py`.
+`revisar()` compara cada derecho activo con proveedor —lo prometido sale de la
+versión activa de su `DefinicionSLA`: primera respuesta y resolución— con
+`del_proveedor()` (acuerdo guardado; resolución vacía = `plazo_horas` de
+integración). Los proveedores se leen por HTTP (`GET /api/v1/proveedores-servicio`
+con `crmcore.http.interno.invocar`, espera `SLA_PROVEEDOR_ESPERA_S`); si no
+contesta, `integracion_respondio=false` y `proveedor_existe=null`. Rutas bajo
+`/api/v1/sla-proveedores`: `GET /revision`, `GET|PUT|DELETE /acuerdos[/{clave}]`,
+`PUT /entitlements/{id}/proveedor`, `POST /comparar` y
+`POST /maximo-que-se-puede-prometer` (con `proveedor_clave` usa lo guardado).
+La constante de una hora pasa a `SLA_PROVEEDOR_HORAS_PROPIAS`. Pantalla:
+`paginas/SlaProveedores.tsx`, ruta `/sla-de-proveedores`.
+
+**Firma desde la oportunidad** (`services/sales/firma_oportunidad.py`).
+`POST /api/v1/opportunities/{id}/enviar-a-firma` crea el sobre en integración
+(`POST /api/v1/firma/sobres`, `objeto_origen=oportunidad`,
+`documento_id=presupuesto:<id>` o `contrato:<id>`) y lo manda si `enviar`.
+`GET /api/v1/opportunities/{id}/firma` pregunta al sobre
+(`/firma/sobres/{id}/evidencia`) y aplica lo mismo que el consumidor
+`consumir_firma`: los dos llaman a `aplicar_estado()`, que escribe
+`campos.firma_*` y, si el estado es `completado` y el embudo está en
+`FIRMA_ETAPA_POR_EMBUDO` (json, `{clave embudo: clave etapa}`), mueve la etapa
+con `cambiar_etapa` —con criterios de salida; si fallan, `firma_etapa_error`—.
+Idempotente por sobre (`firma_etapa_aplicada`). Espera: `FIRMA_ESPERA_S`.
+
+**Renovaciones** (`services/sales/presupuestos.py`). `revisar_renovaciones`
+abre una oportunidad por contrato al llegar el preaviso, en `RENOVACION_EMBUDO`
+(vacío: el embudo por defecto), con el importe del contrato y `fecha_cierre` =
+fin; enlace en `contratos.oportunidad_renovacion_id` (migración
+`alembic/versions/sales/20261109_1900_oportunidad_de_renovacion.py`) y
+`campos.renovacion_de_contrato_id`. Apagado con
+`RENOVACION_CREAR_OPORTUNIDAD=false`. Corre sola: tarea `sales.renovaciones` en
+`services/sales/main.py:_tareas()`, cada `RENOVACION_REVISAR_S`, sin correr al
+arrancar.
+
+**Derivar y abono.** `paginas/Caso.tsx` (Más › Derivar) llama a
+`POST /api/v1/escalado/derivar/{caso_id}`; la ficha del caso devuelve ahora
+`equipo`. `componentes/ResolucionesDeDevolucion.tsx`, pintado por `Ficha.tsx`
+para `devolucion`, lista `resoluciones` y llama a
+`POST /api/v1/devoluciones/resoluciones/{id}/abono`. Arreglado de paso: una
+línea libre de presupuesto sin precio daba 500 (`Decimal("None")`).
+Pruebas: `tests/unit/test_sla_proveedor_firma_y_renovaciones.py`.
+
+### 4.6.48 Transcripción de reuniones, variantes generadas y modo voz (CRM-01.02.01.05, CRM-01.02.01.06, CRM-02.04.01.04, CRM-04.02.01.08)
+
+Hasta el 09-11-2026 las tres simulaban: `POST /transcripciones` recibía el
+texto ya transcrito, `POST /variantes` los textos ya escritos y `/voz/*` eran
+reglas sobre texto ya reconocido. Las funciones puras siguen (`transcripcion.py`,
+`variantes.py`, `voz.py`) y ahora las usa esto:
+
+**Transcripción** (`services/intelligence/reuniones.py`, rutas en
+`api_reuniones.py`). El proveedor es una **conexión de `integration`** (perfil
+sobre `services/integration/conector.py`): `POST /transcripciones/proveedor`
+instala una plantilla (`PLANTILLAS`: `deepgram` —envío por enlace— y
+`google_stt` —audio en base64 en la petición—) dando de alta la conexión y su
+operación por `POST /integraciones/conexiones` y `/operaciones`, con la
+identidad de quien lo pide, y fija por tenant `ia_transcripcion_conexion` y
+`ia_transcripcion_envio`. La credencial se pone en la ficha de la conexión;
+`url_base` admite otra dirección (un compatible, un proxy, un doble). La
+respuesta se mapea a `texto`, `confianza` y `segundos`; varios registros se
+juntan. `POST /transcripciones/reuniones/transcribir` (multipart: `fichero` | `enlace` |
+`texto`, `objeto`, `objeto_id`, `base_para_grabar`, `participantes_avisados`)
+comprueba la base para grabar ANTES de nada, sube el audio como adjunto del
+registro (`POST /adjuntos/{objeto}`, multipart firmado con
+`crmcore.http.interno.cabeceras_de`), pide el enlace firmado si el envío es por
+enlace, invoca la operación (`/integraciones/conexiones/{id}/operaciones/{op}/invocar`),
+resume y extrae con el puerto (`puerto._resumir_reunion`, uso `resumen`,
+anotado en `llamadas_ia` como `resumen_reunion`), filtra con
+`transcripcion.proponer_extraidos` y guarda en `transcripciones_reunion`
+(`cita_literal` dice si la cita está en lo transcrito). Si el resumen falla, la
+transcripción se guarda igual con estado `sin_resumen`. `GET
+/transcripciones/reuniones?objeto=&objeto_id=` lista; `POST
+/transcripciones/reuniones/{id}/compromisos/{n}` confirma (crea la tarea en
+`POST /activities` con la identidad de quien confirma, colgada del
+`objeto`/`cuenta_id`/`contacto_id` de la actividad madre, con
+`detalles.transcripcion_id`) o descarta. Pantalla:
+`frontend/src/componentes/TranscripcionDeReunion.tsx`, en la ficha de las
+actividades `llamada`, `reunion` y `visita`.
+
+**Variantes** (`variantes_copy.py`): `POST /variantes/generar` (base, objetivo,
+canal, cuántas ≤ `IA_VARIANTES_MAXIMAS`) llama a `puerto._redactar_variantes`
+(uso `redaccion`), quita repetidas y la base, marca afirmaciones y los
+`{{marcadores}}` perdidos, y guarda en `variantes_copy` por lote. `GET
+/variantes/generadas?objeto=&objeto_ref=`, `POST
+/variantes/generadas/{id}/decidir` (de una en una, con `texto_final` y
+`motivo`) y `POST /variantes/generadas/{id}/ganadora` (sólo aprobadas; desmarca
+las del lote). Pantalla: `componentes/VariantesDeCopy.tsx`, en la ficha de una
+plantilla de correo (`objeto=plantilla_correo`, `objeto_ref` = su clave).
+
+**Voz**: `POST /voz/dictado` (multipart) transcribe con el mismo proveedor y no
+guarda nada; con envío por enlace contesta 409 `voz.proveedor_por_enlace`
+(habría que guardar la voz). El front (`paginas/Asistente.tsx`, `useVoz`) usa
+`SpeechRecognition`/`webkitSpeechRecognition` si existe, si no `MediaRecorder` +
+`/voz/dictado`, pregunta a `POST /ia/asistencia/conversar` y lee con
+`speechSynthesis`.
+
+**Arreglado al construirlo (crmcore, afecta a todos los servicios):**
+`crmcore/http/idempotency.py` leía el cuerpo crudo de un formulario que FastAPI
+ya había leído — **toda subida de fichero desde la interfaz** (que siempre manda
+`Idempotency-Key`) daba 500 «Stream consumed»; ahora la huella sale del
+formulario. Y `GET /adjuntos/{objeto}/enlace/{token}` pedía `DbDep`, que exige
+tenant: el enlace firmado respondía 401 siempre; ahora comprueba la firma y lee
+como sistema. Prueba: `tests/unit/test_adjuntos_enlace_y_formulario_por_http.py`.
+
+Ajustes nuevos: `IA_TRANSCRIPCION_CONEXION`, `IA_TRANSCRIPCION_OPERACION`,
+`IA_TRANSCRIPCION_ENVIO` (`enlace` | `contenido`), `IA_TRANSCRIPCION_MAX_MB`,
+`IA_TRANSCRIPCION_CARACTERES_MODELO`, `IA_VARIANTES_MAXIMAS`, todos con clave por
+tenant. Migración
+`alembic/versions/intelligence/20261109_1831_transcripciones_de_reunion_y_variantes_.py`.
+Pruebas: `tests/unit/test_reuniones_y_variantes_ia.py`,
+`frontend/src/pruebas/reuniones_variantes_y_voz.test.tsx`. Visto en el
+navegador contra un doble local del proveedor (forma Deepgram y Google) y el
+modelo de verdad; falta verlo contra un proveedor de transcripción real.
+
+### 4.6.49 Análisis sobre los datos del CRM, instantáneas programadas y consulta federada (CRM-05.01.03.04, CRM-05.01.03.05, CRM-05.01.03.06, CRM-05.01.01.05, CRM-05.01.03.07)
+
+Pantalla `/analisis-crm` (`frontend/src/paginas/AnalisisCrm.tsx`). Servidor en
+`services/analytics`:
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /analisis/crm/cohortes?periodo=&periodos=` | Retención de cuentas por cohorte de alta |
+| `GET /analisis/crm/embudo?pipeline_id=&desde=` | Conversión y mediana de días por etapa |
+| `GET /analisis/crm/actividad?desde=` | Actividades frente a ganadas por persona, con coeficiente |
+| `POST /informes/{id}/programar` con `accion: instantanea` | Programa la instantánea; sin destino |
+| `DELETE /informes/programaciones/{id}` | Quita una programación (no toca las instantáneas) |
+| `POST /almacen/federadas/{fuente}/consultar` | Ejecuta la consulta federada por el conector |
+
+**De dónde se leen los hechos** (`datos_crm.py`, clase `Lector`): del almacén
+(`tablas_analiticas` con `objeto` = `cuenta`, `actividad` u `oportunidad`,
+cargada y con las columnas de `COLUMNAS`), o si no por la API pública de
+`party` y `sales` con `crmcore.http.interno.invocar` y **la identidad de quien
+pregunta** (`tipo="usuario"`). El historial de etapas se pide oportunidad a
+oportunidad (`/opportunities/{id}/historial-etapas`): no hay listado en bloque,
+y cada llamada cuenta contra el límite de peticiones del usuario, por eso el
+tope `ANALISIS_MAX_HISTORIALES` (100). Cada respuesta trae `procedencia` por
+objeto: `fuente`, `leidos`, `recortado`, `sin_permiso`, `no_leido` y
+`estado_http`.
+
+**Ajustes** (`services/analytics/ajustes.py`, editables en Admin):
+`analisis_max_registros` (2000), `analisis_max_historiales` (100),
+`analisis_minimo_correlacion` (8), `analisis_dias_ventana` (365).
+
+**Instantáneas programadas.** Migración
+`alembic/versions/analytics/20261109_1200_instantaneas_programadas.py`: columna
+`accion` (`enviar` | `instantanea`, por defecto `enviar`) en
+`programaciones_informe`. `correr_programadas` —el barrido que ya corría cada
+`TAREA_INFORMES_INTERVALO_S`— llama a `tomar_instantanea` cuando toca una de
+instantánea. Ejecutar el informe sigue siendo de contecintelligence (RT-4): sin
+el CRM registrado como fuente, la instantánea falla con su 409 y la programación
+apunta el error y cuenta el fallo como un envío.
+
+**Consulta federada.** La fuente declara en su `config`
+`{"conexion_id": "<id de integration>", "operaciones": {"<objeto>": "<clave>"}}`.
+Se invoca `POST /integraciones/conexiones/{id}/operaciones/{clave}/invocar` con
+`parametros = {objeto, campos, filtros, limite}`, plazo `timeout_s` de la
+fuente, y se recorta a `tope_filas`. Que la operación sea de lectura lo
+garantiza quien la declara: integration no publica la definición de una
+operación, así que analytics no puede comprobar su método.
+
+---
+
+### 4.6.50 La suite de verdad: avisos y consultas en el chat, reuniones registradas, referencias guardadas y el RAT pintado (CRM-06.01.01.03, CRM-06.01.01.04, CRM-06.01.03.08, CRM-06.01.03.09, CRM-06.01.03.12, CRM-06.01.03.18)
+
+Hasta el 09-11-2026 eran funciones que componían un diccionario y no llamaban a
+nadie. Lo que hay ahora, todo en `services/integration`:
+
+- **Avisos al chat** (`colaboracion.mandar_aviso`, `POST
+  /api/v1/canales-chat/{clave|id}/aviso`). POST al `url_entrante` del canal por
+  `crmcore.red.cliente_seguro` (guard de SSRF), cuerpo renderizado con
+  `conector._renderizar` sobre el ajuste `chat_plantilla_aviso` (`{{texto}}`,
+  `{{enlace}}`, `{{objeto}}`, `{{objeto_id}}`). El enlace es
+  `{chat_url_crm}/abrir/{objeto}/{id}`; la ruta del front `/abrir/:tipo/:id`
+  (`paginas/AbrirRegistro.tsx`) resuelve el módulo con `moduloDeObjeto`. El
+  resultado queda en `canales_chat.ultimo_aviso_at/ok/detalle`. La ruta acepta
+  la clave o el id porque la ficha genérica llama a las acciones con el id.
+  `canales_chat.recibe_avisos` marca a qué canales va el evento
+  `automatizacion.aviso` (consumidor `colaboracion.consumir_aviso`, grupo
+  `integration-avisos-chat`); **sin bus no llega**, y entonces el aviso sólo
+  sale por la ruta.
+- **Consulta desde el chat** (`colaboracion.contestar_consulta`). Tras la firma y
+  la orden admitida, `usuario_externo` (correo) se resuelve con
+  `GET /api/v1/interno/usuarios/{tenant}/por-correo/{correo}/alcance` (firma
+  interna) y el registro se pide con `crmcore.http.interno.invocar` con ese
+  `principal_id`, sus `roles` y sus `permisos`, `tipo=usuario`. La colección del
+  objeto sale de `/{servicio}/filtros` de cada servicio (cacheada en proceso).
+  Se devuelven sólo los campos de `CAMPOS_RESPUESTA` y los tapados se anuncian.
+- **Reuniones** (`buzon.registrar_reuniones`, llamado por `POST
+  /buzones/{id}/sincronizar`). Para buzones de calendario: `GET
+  /api/v1/contacts?email__en=` y `POST /api/v1/activities` (tipo `reunion`,
+  `detalles.asistentes` con `email`/`contacto_id`/`nombre`), con la identidad de
+  quien sincroniza; `elementos_buzon.actividad_id` evita repetirla y un fallo
+  deja `resultado=error` para reintentar. Arreglado de paso: `ocurrido_at` llega
+  como texto por HTTP y se guardaba tal cual (500 al responder).
+- **Referencias** (`referencias_suite.py`, `api_referencias.py`, tabla
+  `referencias_suite`): `GET/POST /api/v1/referencias-suite`, `POST
+  /{id}/abrir`, `DELETE /{id}` (borrado lógico). Abrir ejecuta la operación del
+  ajuste `suite_op_resolver_referencia` (por defecto `resolver_referencia`) de
+  la conexión del perfil de suite con `{referencia, tipo, usuario_id}` y lee
+  `existe` y `tiene_acceso` del primer registro; sin perfil u operación,
+  `estado=no_comprobable`. La ruta `referencias-suite` está en
+  `crmcore/rutas_de_api.py`. Pantalla: `componentes/ReferenciasDeSuite.tsx` en
+  `Ficha.tsx`.
+- **RAT** (`tratamientos.py`): declarados `llamadas_telefonicas`,
+  `hechos_compensacion` y `referencias_suite`; `Plataforma.tsx` pinta cada
+  tratamiento con finalidad, base legal y plazo.
+
+Ajustes nuevos (`services/integration/ajustes.py`, con clave en caliente):
+`CHAT_PLANTILLA_AVISO`, `CHAT_ESPERA_S`, `CHAT_URL_CRM`,
+`SUITE_OP_RESOLVER_REFERENCIA`. Migraciones
+`alembic/versions/integration/20261109_1833_telefonia_compensacion_y_referencias_de_.py`
+y `20261109_1838_ultimo_aviso_del_canal_de_chat.py`. Pruebas:
+`tests/unit/test_suite_de_verdad.py` (webhook y origen como servidores HTTP de
+verdad en un puerto). Visto en el navegador contra un webhook local; falta verlo
+contra Teams/Slack y contra un almacenamiento real que resuelva permisos.
+
+### 4.6.51 Telefonía, marcador y compensación externa de verdad (CRM-04.02.01.05, CRM-03.03.01.05, CRM-03.02.03.04)
+
+Hasta el 09-11-2026, `/telefonia/*`, `/marcador/*` y `/compensacion/*` eran
+funciones puras. Las rutas puras siguen (son calculadoras del contrato); lo
+nuevo:
+
+- **Tablas** (migración
+  `alembic/versions/integration/20261109_1833_telefonia_compensacion_y_referencias_de_.py`):
+  `llamadas_telefonicas` (única por `tenant_id, id_externo`; eventos, IVR,
+  transferencias, grabación, `actividad_id`, `registro_error`) y
+  `hechos_compensacion` (única por `tenant_id, tipo, referencia`; `enviado`,
+  `respuesta`, `comision_motor`, `comision_casa`, `diferencia`).
+- **Perfil** = una `Conexion` con `config.clase` `telefonia` o `compensacion`
+  (`PUT /telefonia/perfil {conexion_id, webhook}`, `PUT /compensacion/motor
+  {conexion_id}`). Las operaciones se invocan con `services/integration/operar.py`
+  (busca la operación declarada, ejecuta el conector y apunta la traza en el
+  monitor también si falla).
+- **Telefonía** (`services/integration/telefonia.py`, `api_telefonia.py`):
+  `POST /telefonia/avisos` (webhook; `integracion:write`) traduce con
+  `conector.mapear` el `webhook` del perfil a `CAMPOS_AVISO` y aplica `ingerir`:
+  idempotente por `id_externo`; en «entrante» identifica con `GET
+  /api/v1/contacts?telefono__en=` / `movil__en` y `GET /api/v1/accounts?telefono__en=`
+  (variantes del número) y lee la última actividad y el último caso, con la
+  identidad de quien manda el aviso; en `colgada`/`perdida` crea la actividad
+  `llamada` (`POST /api/v1/activities` + `completar`) una sola vez. `POST
+  /telefonia/llamar`, `GET /telefonia/sonando` (la ficha emergente, con
+  `telefonia_ficha_emergente_s` y `telefonia_sondeo_s`), `GET /telefonia/llamadas`,
+  `GET /telefonia/llamadas/{llamada_telefonica_id}`, `POST
+  …/{id}/transferir` y `…/{id}/resultado`.
+- **Marcador** (`services/service/marcador.py`, bloque `/marcador` de
+  `services/service/api.py`): `POST /marcador/llamar` pregunta a party
+  (`GET /contacts/{id}` y `/consentimientos`), aplica `marcador_grabar_por_politica`
+  y llama a `POST /api/v1/telefonia/llamar`; `POST /marcador/colgar` con
+  `llamada_id` anota y aplica las obligaciones (`PATCH /contacts/{id}
+  {no_contactar}`, `POST /activities` con `vence_at`). Los dos con `activity:write`.
+- **Compensación** (`compensacion.py`, `api_compensacion.py`): `POST
+  /compensacion/envios/recoger` (`GET /api/v1/opportunities?estado=ganada&fecha_cierre_real__desde…`),
+  `/envios/manual`, `/envios/enviar` (operación `compensacion_op_enviar` con
+  `{"hechos": [...]}`; la respuesta se casa por `referencia`), `/envios/calculo`
+  (`compensacion_op_calculo` con `desde`/`hasta`), `/envios/conciliar` (suma por
+  `origen_id` las líneas de `GET /api/v1/liquidaciones/{id}` del periodo) y `GET
+  /compensacion/envios`. El mapeo de la operación debe dar `referencia`,
+  `comision`, `periodo` y `cerrado`.
+- **Ajustes** (`services/integration/ajustes.py` y `config_parts/_limits.py`):
+  `telefonia_op_originar`, `telefonia_op_transferir`, `telefonia_espera_s`,
+  `telefonia_ficha_emergente_s`, `telefonia_sondeo_s`, `compensacion_op_enviar`,
+  `compensacion_op_calculo`, `compensacion_tolerancia`, `compensacion_espera_s`,
+  `marcador_grabar_por_politica`, `marcador_espera_s`.
+- **Front**: `paginas/Telefonia.tsx` (`/telefonia`), `paginas/CompensacionExterna.tsx`
+  (`/compensacion-externa`), `componentes/Marcador.tsx` (ficha de contacto y de
+  cuenta) y `componentes/LlamadaEntrante.tsx` (en el marco).
+- **Pruebas**: `tests/unit/test_telefonia_de_verdad.py` y
+  `tests/unit/test_compensacion_de_verdad.py`, con la centralita y el motor como
+  servidores HTTP de verdad en un puerto.
+- **Contra un proveedor real** falta conectarlo: declarar sus dos operaciones con
+  su URL y su autenticación, el mapeo de su aviso, y darle una clave de API con
+  `integracion:write` para `POST /telefonia/avisos`.
+
+### 4.6.52 El tablero mueve por la acción propia del campo, y el rechazo dice sus motivos
+
+- **Qué fallaba.** La vista «Por columnas» de Oportunidades agrupa por `etapa`
+  (el nombre) y sólo dejaba arrastrar si el `PATCH` del registro admitía ese
+  campo. La etapa no se edita: se mueve con `POST /opportunities/{id}/etapa`
+  `{etapa_id}`, que comprueba criterios de salida y cierra si es terminal. Así
+  que ninguna tarjeta se podía coger. El embudo (`Pipeline.tsx`) sí movía.
+- **Cómo se resuelve, sin listas.** `Modulo.tsx` descubre del contrato las
+  rutas `{ficha}/{campo}` con `POST` cuyo cuerpo lleva `{campo}_id`
+  (`accionesDeCampo`). Si el campo de agrupación no es editable por `PATCH`
+  pero tiene acción propia, el tablero mueve con ella y vuelve a pedir la
+  lista (una etapa terminal cambia también el estado).
+- **El identificador de la columna** sale de las filas que ya están en ella
+  (`idDeLaColumna` en `Vistas.tsx`): sólo valen las que comparten con la
+  arrastrada las demás referencias a catálogo —los pares `x_id` + `x`, como
+  `pipeline_id` + `pipeline`—, para no mover a la etapa homónima de otro
+  embudo. Si queda más de un candidato no se mueve y se dice por qué.
+- **Los motivos del rechazo a la vista.** `Estados.Error` pinta
+  `detalle.problemas` (textos u objetos con `motivo` y `producto`/`otro`/
+  `campo`) como lista, además del detalle técnico plegado. Lo usa, por ejemplo,
+  `presupuesto.configuracion_invalida` (CRM-03.03.02.02).
+- **Pruebas**: `frontend/src/pruebas/tablero_mueve_por_su_accion.test.ts` y
+  `el_error_ensena_sus_problemas.test.ts`. Visto en el navegador el
+  09-11-2026: 50 tarjetas arrastrables y `POST …/etapa` 200 al soltar.
+
+## 5. Operación
 
 ### 5.1 Copias y restauración
 
@@ -5079,8 +5469,6 @@ los cinco minutos ya no pasa.
 Las políticas que **solo** caducan por tiempo se pueden listar, y conviene
 mirarlas: una que se creyó invalidada por evento y no lo está es la que sirve
 datos viejos sin que nadie lo sepa.
-
----
 
 ## Apéndices
 

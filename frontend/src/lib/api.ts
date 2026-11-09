@@ -88,6 +88,12 @@ export interface Opciones {
   /** Reutilizar una clave concreta al reintentar la MISMA operación. */
   idempotencia?: string;
   signal?: AbortSignal;
+  /**
+   * `false` para lo que se hace solo, sin que nadie lo pida —apuntar un
+   * «visto»—: sin red se pierde y ya, en vez de encolarse como si fuera un
+   * cambio de la persona (CRM-06.02.01.04).
+   */
+  encolable?: boolean;
 }
 
 /** Métodos que crean o cambian algo, y por tanto necesitan protección. */
@@ -131,11 +137,12 @@ export interface Respuesta<T> {
  */
 export async function subir<T = unknown>(
   ruta: string,
-  fichero: File,
+  fichero: File | Blob | null,
   campos: Record<string, string> = {},
 ): Promise<T> {
   const cuerpo = new FormData();
-  cuerpo.append("fichero", fichero);
+  // Sin fichero también: un formulario que admite el audio O su texto.
+  if (fichero) cuerpo.append("fichero", fichero);
   for (const [clave, valor] of Object.entries(campos))
     cuerpo.append(clave, valor);
 
@@ -228,7 +235,29 @@ export async function llamar<T = unknown>(
       credentials: "include",
       signal: opciones.signal,
     }),
-  );
+  ).catch(async (error: unknown) => {
+    // Sin red, crear o editar un registro se guarda en el dispositivo y se
+    // envía al volver (CRM-06.02.01.04). Se dice con su propio código: no es
+    // «no hay servidor», es «guardado aquí, pendiente de subir».
+    if (
+      error instanceof ErrorApi &&
+      error.codigo === "sin_red" &&
+      ESCRITURAS.has(metodo) &&
+      opciones.encolable !== false
+    ) {
+      const { encolar } = await import("@/lib/sinConexion");
+      const encolada = await encolar({
+        metodo,
+        ruta,
+        cuerpo: opciones.cuerpo,
+        version: opciones.version,
+        idempotencia: cabeceras["Idempotency-Key"] ?? crypto.randomUUID(),
+        mirado,
+      });
+      if (encolada) throw new ErrorApi(0, "encolada_sin_conexion", "", null);
+    }
+    throw error;
+  });
 
   if (respuesta.status === 204) {
     return {
