@@ -167,6 +167,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         principal: true,
         listar: "/api/v1/procesos/definiciones",
         servicio: "orchestrator",
+        // Con la versión a la vista: sin ella, las seis versiones de un mismo
+        // proceso salían como seis filas idénticas.
+        columnas: ["nombre", "clave", "version", "estado"],
       },
       {
         nombre: "Instancias",
@@ -367,12 +370,21 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // no solo la bandeja de quien entra. «Aprobaciones» en la navegación
       // llevaba a la bandeja documental, que es otra cosa: estas son las del
       // proceso, con su delegación, su plazo y su decisión por enlace firmado.
+      // Lo que me toca decidir A MÍ (CRM-00.03.05.13). Iba como resumen de la
+      // pestaña de abajo y no se veía nunca: la bandeja es una lista y el
+      // resumen sólo pinta cifras sueltas. Cada fila abre su aprobación, que
+      // es donde se decide.
+      {
+        nombre: "Me toca decidir",
+        listar: "/api/v1/aprobaciones/bandeja",
+        servicio: "orchestrator",
+        permiso: "aprobacion:read",
+        columnas: ["titulo", "etapa", "vence_at", "va_tarde", "por_delegacion", "esperando_dias"],
+        abre: { modulo: "procesos", objeto: "aprobaciones", campo: "solicitud_id" },
+      },
       {
         nombre: "Aprobaciones",
         listar: "/api/v1/aprobaciones",
-        // Lo que me toca decidir A MÍ, encima de todas las aprobaciones: la
-        // lista entera dice qué hay parado y la bandeja, qué está parado por mí.
-        resumen: ["/api/v1/aprobaciones/bandeja"],
         servicio: "orchestrator",
         permiso: "aprobacion:read",
         acciones: [

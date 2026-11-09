@@ -31,6 +31,7 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { moduloDe } from "@/lib/modulos";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { nombreDe, usePersonas } from "@/lib/personas";
 import { Diagrama } from "@/componentes/Diagrama";
 import { colocar, type Definicion } from "@/lib/grafo";
 
@@ -82,6 +83,9 @@ interface Analitica {
   ciclo_horas_medio: number | null;
   ciclo_horas_mediana: number | null;
   cuello_de_botella: string | null;
+  // Quién tarda más en responder sus tareas, con tres o más: lo calculaba la
+  // API y la pantalla no lo pintaba (CRM-00.03.05.16).
+  personas_mas_lentas?: { usuario_id: string; tareas: number; horas_medias: number }[];
   pasos: {
     paso: string;
     tipo: string;
@@ -523,6 +527,7 @@ function Rescate({
  */
 function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
   const { t } = useTranslation();
+  const personas = usePersonas();
   if (!analitica) return null;
 
   return (
@@ -548,6 +553,21 @@ function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
           {analitica.cuello_de_botella ? (
             <p className="mt-1 text-dato text-ink">
               {t("instancia.cuello", { paso: analitica.cuello_de_botella })}
+            </p>
+          ) : null}
+          {analitica.personas_mas_lentas?.length ? (
+            <p className="mt-1 text-dato text-ink">
+              {t("instancia.quienFrena")}{" "}
+              {analitica.personas_mas_lentas
+                .slice(0, 3)
+                .map((q) =>
+                  t("instancia.quienFrenaUno", {
+                    quien: nombreDe(personas, q.usuario_id),
+                    horas: q.horas_medias,
+                    tareas: q.tareas,
+                  }),
+                )
+                .join(" · ")}
             </p>
           ) : null}
           {/* La mediana AL LADO de la media: con una espera de tres días en una

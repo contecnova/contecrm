@@ -192,6 +192,8 @@ const MARCA_DE_TIEMPO = /_at$/;
  */
 const CON_TILDE: Record<string, string> = {
   tardio: "tardío",
+  decidio: "decidió",
+  mayoria: "mayoría",
   leccion: "lección",
   hariamos: "haríamos",
   movio: "movió",
@@ -743,6 +745,17 @@ export function trozos(valor: unknown, campo = ""): Trozo[] {
     });
   }
   return [{ texto: escalar(valor, campo) }];
+}
+
+/**
+ * Una cifra sin unidad, con los separadores de la empresa. Para sumar una
+ * columna que no se sabe si es dinero: «48 €» sumando horas de plazo dice algo
+ * que no es.
+ */
+export function cifra(valor: unknown): string {
+  const numero = Number(valor ?? 0);
+  if (Number.isNaN(numero)) return String(valor ?? "");
+  return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 }).format(numero);
 }
 
 /**

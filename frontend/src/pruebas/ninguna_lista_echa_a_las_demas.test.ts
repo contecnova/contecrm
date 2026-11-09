@@ -43,6 +43,10 @@ const NO_ES_UNA_LISTA: Record<string, string> = {
     "sobre un lienzo, con una capa de `div` encima para poder arrastrarlos. " +
     "El tamaño lo decide el lienzo, no cuántos haya, y acotarlo cortaría el " +
     "dibujo por la mitad.",
+  "Procesos.tsx:guardadas":
+    "Son las opciones de un desplegable («Abrir una versión guardada»): el " +
+    "navegador las pinta dentro del propio control, que ocupa una línea " +
+    "tenga las que tenga, y no empuja nada.",
 };
 
 /**

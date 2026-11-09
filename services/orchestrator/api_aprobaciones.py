@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
@@ -21,7 +21,9 @@ router_analitica = APIRouter(prefix="/analitica-procesos", tags=["procesos"])
 
 class EtapaEntrada(BaseModel):
     nombre: str = ""
-    origen: str = Field(
+    # Listas cerradas, como en el motor: escritas a mano, el formulario pedía
+    # teclear «jerarquia» sin tilde y un error de una letra era un 422.
+    origen: Literal["jerarquia", "rol", "usuario", "campo", "unidad"] = Field(
         ...,
         description=(
             "De dónde sale el aprobador: jerarquia, rol, usuario, campo o unidad. "
@@ -34,7 +36,7 @@ class EtapaEntrada(BaseModel):
     rol: str = ""
     usuarios: list[UUID] = Field(default_factory=list)
     campo: str = Field("", description="Con `campo`: qué clave del contexto trae el aprobador")
-    quorum: str = Field(
+    quorum: Literal["todos", "mayoria", "cualquiera", "n_de_m"] = Field(
         "todos", description="todos · mayoria · cualquiera · n_de_m", examples=["mayoria"]
     )
     minimo: int = Field(1, ge=1, description="Con `n_de_m`: cuántos hacen falta")
@@ -109,7 +111,8 @@ def crear(datos: CrearSolicitud, uow: UowDep, principal: AutenticadoDep) -> Any:
 
 
 class Decidir(BaseModel):
-    decision: str = Field(..., description="aprobar · rechazar · pedir_cambios")
+    # Lista cerrada: era texto libre y el formulario pedía escribir la palabra.
+    decision: Literal["aprobar", "rechazar", "pedir_cambios"]
     comentario: str = ""
 
 
@@ -312,8 +315,10 @@ def comprobar_vigencia(aprobacion_id: UUID, datos: Vigencia, uow: UowDep) -> Any
 
 
 class CrearDelegacion(BaseModel):
-    titular_id: UUID
-    suplente_id: UUID
+    # A quién apuntan, para que el formulario busque por nombre: sin esto se
+    # tecleaban dos UUID que nadie se sabe.
+    titular_id: UUID = Field(..., json_schema_extra={"referencia": "usuario"})
+    suplente_id: UUID = Field(..., json_schema_extra={"referencia": "usuario"})
     desde: datetime
     hasta: datetime = Field(
         ...,
@@ -341,7 +346,7 @@ def delegar(datos: CrearDelegacion, uow: UowDep) -> Any:
 
 class PedirEnlace(BaseModel):
     solicitud_id: UUID
-    titular_id: UUID
+    titular_id: UUID = Field(..., json_schema_extra={"referencia": "usuario"})
     validez_horas: int = Field(72, ge=1, le=720)
 
 
@@ -387,7 +392,7 @@ def pedir_enlace(datos: PedirEnlace, uow: UowDep, principal: AutenticadoDep) -> 
 
 class DecidirConEnlace(BaseModel):
     token: str = Field(..., min_length=10)
-    decision: str
+    decision: Literal["aprobar", "rechazar", "pedir_cambios"]
     comentario: str = ""
 
 

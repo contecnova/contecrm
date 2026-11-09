@@ -214,6 +214,12 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "integration"
     },
     {
+      "r": "/api/v1/aprobaciones/bandeja",
+      "p": "aprobacion:read",
+      "o": "aprobaciones",
+      "s": "orchestrator"
+    },
+    {
       "r": "/api/v1/aprobaciones",
       "p": "aprobacion:read",
       "s": "orchestrator"

@@ -67,6 +67,7 @@ export default {
     otras: "Otras {{count}}",
   },
   formulario: {
+    separadoPorComas: "Separado por comas",
     suma: "Suma",
     quitarLinea: "Quitar la línea",
     // Estaba escrito en el código, en castellano y sin pasar por aquí: una
@@ -529,6 +530,11 @@ export default {
     simular: "Simular",
     guardarBorrador: "Guardar como borrador",
     publicar: "Publicar",
+    abrir: "Abrir una versión guardada",
+    nueva: "Nueva definición",
+    guardada: "Guardada como versión {{version}}: {{estado}}.",
+    publicarVersion: "Publicar la versión {{version}}",
+    archivarVersion: "Archivar la versión {{version}}",
     valida: "La definición es válida.",
     lienzo: "Diagrama",
     codigo: "Definición",

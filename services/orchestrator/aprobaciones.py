@@ -274,8 +274,27 @@ def huella_de(datos: dict[str, Any], campos: list[str]) -> str:
     tocado, y a la tercera vez la gente aprueba sin mirar — que es peor que no
     tener reaprobación.
     """
-    recorte = {c: datos.get(c) for c in sorted(campos)}
+    recorte = {c: _canonico(datos.get(c)) for c in sorted(campos)}
     return _hash(json.dumps(recorte, sort_keys=True, default=str))
+
+
+def _canonico(valor: Any) -> Any:
+    """El mismo dato escrito de dos formas tiene que dar la misma huella.
+
+    `18` y `"18"` —o `18.0`— son el mismo descuento: un formulario manda texto
+    y una integración manda número. Comparados tal cual, comprobar desde la
+    pantalla un valor idéntico reabría lo aprobado (medido el 09-11-2026).
+    """
+    if isinstance(valor, bool) or valor is None:
+        return valor
+    if isinstance(valor, (int, float, Decimal)) or (isinstance(valor, str) and valor.strip() != ""):
+        try:
+            numero = Decimal(str(valor).strip())
+        except Exception:
+            return valor
+        if numero.is_finite():
+            return format(numero.normalize(), "f")
+    return valor
 
 
 def _num(valor: Any) -> Decimal:
@@ -857,12 +876,43 @@ def _estado(db: Session, solicitud: SolicitudAprobacion) -> dict[str, Any]:
         .scalars()
         .all()
     )
+    # Quién decidió y en nombre de quién (CRM-00.03.05.08): se guardaba en
+    # cada decisión y no lo devolvía nadie, así que una delegación dejaba la
+    # traza en la base y ninguna pantalla podía enseñarla.
+    nombres = {e.id: e.nombre or f"Etapa {e.orden + 1}" for e in etapas}
+    decisiones = (
+        db.execute(
+            select(DecisionAprobacion)
+            .where(DecisionAprobacion.etapa_id.in_(list(nombres)))
+            .order_by(DecisionAprobacion.decidida_at)
+        )
+        .scalars()
+        .all()
+        if nombres
+        else []
+    )
     return {
         "solicitud_id": str(solicitud.id),
         "estado": solicitud.estado,
         "etapa_actual": solicitud.etapa_actual,
         "automatica": solicitud.automatica,
+        # Y si fue automática, por qué y a quién le habría tocado: es lo que
+        # hace que «registrada como tal» se pueda leer (CRM-00.03.05.11).
+        "motivo_automatica": solicitud.motivo_automatica or None,
+        "habria_aprobado": solicitud.habria_aprobado or None,
         "reaprobaciones": solicitud.reaprobaciones,
+        "decisiones": [
+            {
+                "etapa": nombres.get(d.etapa_id, ""),
+                "decision": d.decision,
+                "decidio_id": str(d.decidio_id),
+                "en_nombre_de": str(d.titular_id) if d.titular_id != d.decidio_id else None,
+                "comentario": d.comentario,
+                "via": d.via,
+                "at": d.decidida_at.isoformat() if d.decidida_at else None,
+            }
+            for d in decisiones
+        ],
         "etapas": [
             {
                 "orden": e.orden,
@@ -903,14 +953,17 @@ def comprobar_vigencia(
     if solicitud is None or solicitud.tenant_id != tenant_id:
         raise NoEncontrado("La solicitud no existe", error_code="aprobacion.no_encontrada")
 
-    nueva = huella_de(datos_actuales, list(solicitud.campos_vigilados or []))
-    if nueva == solicitud.huella:
+    campos = list(solicitud.campos_vigilados or [])
+    nueva = huella_de(datos_actuales, campos)
+    # Contra lo guardado y contra el contexto aprobado, normalizado: las
+    # abiertas antes del 09-11-2026 guardaron la huella sin normalizar.
+    if nueva in (solicitud.huella, huella_de(solicitud.contexto or {}, campos)):
         return {"cambiado": False, "estado": solicitud.estado}
 
     cambios = {
         c: {"antes": solicitud.contexto.get(c), "ahora": datos_actuales.get(c)}
         for c in (solicitud.campos_vigilados or [])
-        if solicitud.contexto.get(c) != datos_actuales.get(c)
+        if _canonico(solicitud.contexto.get(c)) != _canonico(datos_actuales.get(c))
     }
     solicitud.contexto = {**solicitud.contexto, **datos_actuales}
     solicitud.huella = nueva

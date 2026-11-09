@@ -1321,6 +1321,8 @@ const pantallas = {
     ejecuciones:
       "{{cuantas}} ejecuciones · {{terminadas}} terminadas · {{falladas}} falladas",
     cuello: "Donde más se espera: «{{paso}}»",
+    quienFrena: "Quién tarda más en responder:",
+    quienFrenaUno: "{{quien}}, {{horas}} h de media en {{tareas}} tareas",
     ciclo: "De principio a fin: {{media}} h de media, {{mediana}} h de mediana",
     veces: "{{veces}} veces",
     espera: "espera {{media}} h de media, {{mediana}} de mediana",

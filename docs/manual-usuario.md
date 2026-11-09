@@ -382,6 +382,18 @@ En el **editor de procesos**, dos botones que no tocan nada:
 Un error descubierto aquí es un mensaje. Descubierto en marcha, es un proceso a
 medias en producción.
 
+Para **seguir con un proceso guardado**, elige su versión en «Abrir una versión
+guardada»: se carga en el diagrama, y si es un borrador sale «Publicar la versión
+N»; si está publicada, «Archivar la versión N» —deja de arrancar procesos
+nuevos, y los que van en marcha terminan con ella—.
+
+### Lo que me toca aprobar
+
+En **Administrar › Automatización › Procesos y orquestación**, la vista **«Me toca
+decidir»**: lo vencido primero, con lo que hace falta para decidir. Abre una
+fila para aprobar, rechazar o pedir cambios. En la aprobación ves quién decidió
+cada etapa y, si alguien lo hizo por otro, en nombre de quién.
+
 ---
 
 ### Código propio: extensiones y endpoints

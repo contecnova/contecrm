@@ -8365,10 +8365,38 @@ Solo de los campos vigilados, no del registro entero: si entrara todo, un cambio
 en la descripción obligaría a volver a aprobar un importe que nadie ha tocado, y a
 la tercera vez la gente aprueba sin mirar, que es peor que no tener reaprobación.
 
+El mismo dato escrito de dos formas da la misma huella: `18`, `"18"` y `18.0`
+son el mismo descuento. Hasta el 09-11-2026 se comparaban tal cual, y como el
+formulario manda texto, comprobar desde la pantalla un valor idéntico reabría
+lo ya aprobado. La reaprobación **no es automática para cualquier objeto**:
+la dispara quien sabe que el registro cambió —«¿Lo aprobado sigue siendo lo
+que se aprobó?» en la ficha, o la integración que lo llama—. En el
+presupuesto no hace falta: cambiarlo es hacer otra versión, que vuelve a pasar
+por la matriz.
+
 Los votos anteriores **no se borran**: son la prueba de que aquella versión sí se
 aprobó. Cada reapertura abre una **vuelta** nueva, y los votos solo cuentan en la
 suya. Sin ese número, un descuento reabierto se aprobaría solo con las firmas de
 lo que ya no es — que es un fallo silencioso, no un error.
+
+### Lo que se ve de cada aprobación (09-11-2026)
+
+- **«Me toca decidir»** es una pestaña propia de Procesos y orquestación, con
+  lo vencido primero; cada fila abre su aprobación. Antes iba como resumen de
+  la pestaña Aprobaciones y no se pintaba nunca, porque es una lista.
+- La ficha de una aprobación dice **quién decidió y en nombre de quién** —la
+  delegación queda a la vista—, y si fue automática, **por qué y a quién le
+  habría tocado**.
+- El formulario de alta funciona: el origen del aprobador y el quórum son
+  desplegables, la autoaprobación una casilla, y los usuarios de una etapa se
+  escriben separados por comas. Antes ninguna aprobación se podía crear desde
+  la pantalla (422 siempre). Titular y suplente de una delegación se buscan por
+  nombre.
+- En el **Editor de procesos** se abre cualquier versión guardada, y desde ahí
+  se publica un borrador o se archiva una publicada. La lista de definiciones
+  enseña la versión.
+- En la instancia, «Dónde se atasca» dice también **quién tarda más en
+  responder** (con tres tareas o más).
 
 ### Aprobación automática bajo umbral (`CRM-00.03.05.11`)
 

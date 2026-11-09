@@ -45,7 +45,7 @@ import { Icono } from "@/componentes/Icono";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
-import { importe, nombreDelRegistro, rotuloDeOpcion } from "@/lib/formato";
+import { cifra, nombreDelRegistro, rotuloDeOpcion } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
 import { recursoDeReferencia } from "@/lib/referencias";
 import { cn } from "@/lib/utiles";
@@ -634,9 +634,16 @@ function Lineas({
     : [];
   const columnas = campo.subcampos;
 
+  // Una celda vacía no se manda: `""` donde el servicio espera un número o
+  // una lista es un 422, y lo que no se rellena debe tomar su valor por defecto.
   const cambiar = (indice: number, nombre: string, nuevo: unknown) =>
     alCambiar(
-      filas.map((f, i) => (i === indice ? { ...f, [nombre]: nuevo } : f)),
+      filas.map((f, i) => {
+        if (i !== indice) return f;
+        const resto = { ...f };
+        delete resto[nombre];
+        return nuevo === "" ? resto : { ...resto, [nombre]: nuevo };
+      }),
     );
 
   const sumas = columnas.map((c) =>
@@ -668,7 +675,7 @@ function Lineas({
                       ? i === 0
                         ? t("formulario.suma")
                         : ""
-                      : importe(sumas[i] as number)}
+                      : cifra(sumas[i] as number)}
                   </Casilla>
                 ))}
                 <Casilla />
@@ -691,7 +698,47 @@ function Lineas({
             <tr key={indice} className="border-t border-ink-dim/30">
               {columnas.map((c) => (
                 <td key={c.nombre} className="px-2 py-1">
-                  {c.opciones.length > 0 ? (
+                  {c.tipo === "booleano" ? (
+                    // Sí o no es una casilla: escrito a mano llegaba como
+                    // texto y el servicio lo rechazaba.
+                    <input
+                      type="checkbox"
+                      aria-label={`${c.titulo}, línea ${indice + 1}`}
+                      checked={fila[c.nombre] === true}
+                      onChange={(e) =>
+                        cambiar(indice, c.nombre, e.target.checked)
+                      }
+                    />
+                  ) : c.tipo === "lista_multiple" ? (
+                    <Opciones
+                      campo={c}
+                      valor={fila[c.nombre]}
+                      alCambiar={(v) => cambiar(indice, c.nombre, v)}
+                    />
+                  ) : c.tipo === "etiquetas" ? (
+                    // Una lista de textos, separada por comas, y se manda como
+                    // lista: un texto donde va una lista daba 422 siempre.
+                    <input
+                      aria-label={`${c.titulo}, línea ${indice + 1}`}
+                      className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
+                      value={
+                        Array.isArray(fila[c.nombre])
+                          ? (fila[c.nombre] as unknown[]).join(", ")
+                          : String(fila[c.nombre] ?? "")
+                      }
+                      placeholder={t("formulario.separadoPorComas")}
+                      onChange={(e) =>
+                        cambiar(
+                          indice,
+                          c.nombre,
+                          e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                    />
+                  ) : c.opciones.length > 0 ? (
                     <select
                       aria-label={`${c.titulo}, línea ${indice + 1}`}
                       className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
@@ -760,7 +807,12 @@ function Lineas({
         onClick={() =>
           alCambiar([
             ...filas,
-            Object.fromEntries(columnas.map((c) => [c.nombre, ""])),
+            // Vacía de verdad: sólo las casillas, que valen «no».
+            Object.fromEntries(
+              columnas
+                .filter((c) => c.tipo === "booleano")
+                .map((c) => [c.nombre, false]),
+            ),
           ])
         }
       >

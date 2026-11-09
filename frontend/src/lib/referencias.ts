@@ -81,6 +81,11 @@ export function recursoDeReferencia(
   declarado = "",
   propio?: Recurso | null,
 ): Recurso | null {
+  // `objeto_id` no apunta a un tipo fijo: apunta a lo que diga su campo
+  // hermano `objeto` (una aprobación de una oportunidad, de un presupuesto…).
+  // Por el sufijo se tomaba por «objeto del modelo» y el buscador pedía esa
+  // lista, que no es la buena y además contestaba 422.
+  if (!declarado && campo === "objeto_id") return null;
   // Del mismo tipo: se devuelve el recurso desde el que se está editando.
   if (!declarado && propio && SON_DEL_MISMO_TIPO.has(campo)) return propio;
   // Lo que diga el servidor manda: hay campos que apuntan a un objeto que no

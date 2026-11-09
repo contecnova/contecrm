@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 
 import { Error as Fallo } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { rotuloDeOpcion } from "@/lib/formato";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Diagrama } from "@/componentes/Diagrama";
 import {
@@ -52,10 +53,26 @@ const EJEMPLO: Definicion = {
       operacion: "sales.crear_oportunidad",
       siguiente: "aprobar",
     },
-    aprobar: { tipo: "humano", rutas: { si: "terminar", no: "terminar" } },
+    // Con a quién le toca: el ejemplo de partida tiene que pasar su propia
+    // validación, o lo primero que ve quien abre el editor es un error.
+    aprobar: {
+      tipo: "humano",
+      asignada_rol: "responsable_ventas",
+      rutas: { si: "terminar", no: "terminar" },
+    },
     terminar: { tipo: "fin" },
   },
 };
+
+/** Una versión guardada de una definición. */
+interface Guardada {
+  id: string;
+  clave: string;
+  version: number;
+  nombre: string;
+  estado: string;
+  definicion: Definicion;
+}
 
 /** Quién aprobaría y cuánto tardaría el camino simulado (CRM-00.03.05.04). */
 interface Resumen {
@@ -80,6 +97,74 @@ export function Procesos() {
   const [variables, setVariables] = useState("{}");
   const [respuestas, setRespuestas] = useState("{}");
   const [fallo, setFallo] = useState<unknown>(null);
+  // Las versiones guardadas, para abrir una y publicarla o archivarla
+  // (CRM-00.03.05.05): la API lo hacía y ninguna pantalla llegaba.
+  const [guardadas, setGuardadas] = useState<Guardada[]>([]);
+  const [abierta, setAbierta] = useState<Guardada | null>(null);
+  const [aviso, setAviso] = useState("");
+
+  const cargarGuardadas = useCallback(() => {
+    llamar<Guardada[]>("/api/v1/procesos/definiciones")
+      .then((r) => setGuardadas(Array.isArray(r.datos) ? r.datos : []))
+      .catch(() => setGuardadas([]));
+  }, []);
+  useEffect(cargarGuardadas, [cargarGuardadas]);
+
+  function abrir(id: string) {
+    const d = guardadas.find((g) => g.id === id);
+    if (!d) return;
+    setAbierta(d);
+    setClave(d.clave);
+    setNombre(d.nombre);
+    setTexto(JSON.stringify(d.definicion, null, 2));
+    setProblemas(null);
+    setRecorrido(null);
+    setResumen(null);
+    setAviso("");
+  }
+
+  async function guardar(estado: "borrador" | "publicada") {
+    if (!definicion) return;
+    setFallo(null);
+    try {
+      const { datos } = await llamar<Guardada>("/api/v1/procesos/definiciones", {
+        metodo: "POST",
+        cuerpo: { clave, nombre, definicion, estado },
+      });
+      setAbierta(datos);
+      setProblemas(null);
+      setAviso(
+        t("procesos.guardada", {
+          version: datos.version,
+          estado: rotuloDeOpcion(datos.estado),
+        }),
+      );
+      cargarGuardadas();
+    } catch (error) {
+      setFallo(error);
+    }
+  }
+
+  async function cambiarEstado(estado: "publicada" | "archivada") {
+    if (!abierta) return;
+    setFallo(null);
+    try {
+      const { datos } = await llamar<Guardada>(
+        `/api/v1/procesos/definiciones/${abierta.clave}/${abierta.version}/estado`,
+        { metodo: "POST", cuerpo: { estado } },
+      );
+      setAbierta(datos);
+      setAviso(
+        t("procesos.guardada", {
+          version: datos.version,
+          estado: rotuloDeOpcion(datos.estado),
+        }),
+      );
+      cargarGuardadas();
+    } catch (error) {
+      setFallo(error);
+    }
+  }
 
   // El JSON puede estar a medias mientras se teclea; eso no es un error que
   // haya que gritar, es el estado normal de un editor de texto.
@@ -144,7 +229,22 @@ export function Procesos() {
         icono="account_tree"
       />
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+          {t("procesos.abrir")}
+          <select
+            className="input-base w-72"
+            value={abierta?.id ?? ""}
+            onChange={(e) => abrir(e.target.value)}
+          >
+            <option value="">{t("procesos.nueva")}</option>
+            {guardadas.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.nombre} · v{g.version} · {rotuloDeOpcion(g.estado)}
+              </option>
+            ))}
+          </select>
+        </label>
         <Campo
           etiqueta={t("procesos.clave")}
           valor={clave}
@@ -197,19 +297,31 @@ export function Procesos() {
         />
         <Boton
           texto={t("procesos.guardarBorrador")}
-          onClick={() =>
-            void accion("/api/v1/procesos/definiciones", { estado: "borrador" })
-          }
+          onClick={() => void guardar("borrador")}
         />
         <Boton
           texto={t("procesos.publicar")}
           destacado
-          onClick={() =>
-            void accion("/api/v1/procesos/definiciones", {
-              estado: "publicada",
-            })
-          }
+          onClick={() => void guardar("publicada")}
         />
+        {/* La versión abierta: un borrador se publica tal cual, una publicada
+            se archiva —deja de arrancar instancias; las que van en vuelo
+            terminan con ella—. */}
+        {abierta?.estado === "borrador" ? (
+          <Boton
+            texto={t("procesos.publicarVersion", { version: abierta.version })}
+            onClick={() => void cambiarEstado("publicada")}
+          />
+        ) : null}
+        {abierta?.estado === "publicada" ? (
+          <Boton
+            texto={t("procesos.archivarVersion", { version: abierta.version })}
+            onClick={() => void cambiarEstado("archivada")}
+          />
+        ) : null}
+      </div>
+      <div role="status" className="mt-2">
+        {aviso ? <p className="text-dato text-success">{aviso}</p> : null}
       </div>
 
       {fallo ? (

@@ -329,9 +329,12 @@ export function camposDe(
       obligatorio: obligatorios.has(nombre),
       // «Contacto», no «Contacto ID»: el campo se rellena eligiendo a alguien
       // por su nombre, y el identificador no lo ve nunca quien lo rellena.
-      titulo: nombre.endsWith("_id")
-        ? humanizar(p.title ?? nombre).replace(/\s+ID$/, "")
-        : humanizar(p.title ?? nombre),
+      // Salvo que haya un campo hermano que ya se llame así —`objeto` y
+      // `objeto_id`—: quitarle el «ID» dejaba dos campos «Objeto» seguidos.
+      titulo:
+        nombre.endsWith("_id") && !(nombre.slice(0, -3) in propiedades)
+          ? humanizar(p.title ?? nombre).replace(/\s+ID$/, "")
+          : humanizar(p.title ?? nombre),
       descripcion: p.description ?? "",
       // Las opciones salen del propio campo o de los elementos de la lista: en
       // un array de enum, el `enum` está en `items`, y mirándolo solo en el
