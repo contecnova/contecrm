@@ -322,6 +322,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // hay se puede medir y qué no cuadra hoy. Sin `recursos`, porque no enseña
   // ninguna de sus dos colecciones: decir que sí lo contaría como enseñado y
   // mandaría aquí a quien busca un riesgo concreto.
+  // La segregación de funciones: existía por API y no tenía pantalla
+  // (CRM-07.03.02.06).
+  { area: "gobierno", a: "/segregacion", clave: "nav.segregacion", icono: "rule_settings", permiso: "user:read", recursos: ["segregacion"] },
   { area: "gobierno", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
 ];
 

@@ -579,6 +579,9 @@ export function humanizar(campo: string | null | undefined): string {
  */
 export function rotuloDeOpcion(valor: string): string {
   if (!valor || valor === valor.toUpperCase()) return valor;
+  // «opportunity:write» es un permiso, código: ponerle mayúscula y quitarle el
+  // guion bajo lo convierte en otro texto que nadie encuentra en un rol.
+  if (valor.includes(":")) return valor;
   const palabras = valor
     .split(/[_\s]+/)
     .filter(Boolean)

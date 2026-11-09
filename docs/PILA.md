@@ -90,6 +90,14 @@ teclado—, se resalta la señalada con su emergente y la gráfica mide su sitio
   instalación por nivel** (D, C1, C2, B1…), **los controles exigidos por
   nivel** con sus evidencias y su comprobación automática donde se pueda, y
   **un informe exportable para auditoría**.
+- **Hecho el 09-11-2026, la matriz de segregación**: pantalla en Administrar ›
+  Gobierno y cumplimiento › Segregación de funciones con la matriz de reglas
+  contra roles, el editor de reglas, quién está en conflicto con su excepción,
+  el simulador «qué pasa si le doy este rol» y siete reglas de serie. Quitados
+  los dos trozos que contestaban lo mismo (Seguridad y la pestaña de
+  Cumplimiento); el de Seguridad no marcaba nunca la excepción.
+- **Pendiente: TCSEC** —nivel de la instalación, controles por nivel con su
+  comprobación automática y el informe para auditoría—.
 
 ### 5. Las 41 capacidades críticas, alcanzables desde una pantalla
 

@@ -201,3 +201,69 @@ def test_una_excepcion_caducada_deja_de_tapar(
     salida = sod.violaciones(db, tenant_id)
     assert salida["sin_exceptuar"] == 1
     assert salida["excepciones_vigentes"] == 0
+
+
+@pytest.mark.db
+def test_la_matriz_dice_que_rol_da_los_dos_lados(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Un rol que da los dos lados es el conflicto que se arregla en el rol."""
+    _regla(db, tenant_id)
+    usuario = _usuario_con(db, tenant_id, ["user:write", "role:write"])
+    m = sod.matriz(db, tenant_id)
+    rol = f"rol-{usuario.hex[:8]}"
+    fila = next(f for f in m["reglas"] if f["regla"] == "SOD-1")
+    assert fila["celdas"][rol] == "ambos"
+    assert rol in fila["roles_en_conflicto"]
+    assert fila["personas_en_conflicto"] == 1
+    # Y el rol de solo lectura no da ninguno.
+    assert fila["celdas"]["solo_lectura"] == ""
+
+
+@pytest.mark.db
+def test_simular_avisa_antes_de_asignar_y_no_cambia_nada(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    from sqlalchemy import select
+
+    from services.identity.modelos import Membresia, RolTenant
+
+    _regla(db, tenant_id)
+    usuario = _usuario_con(db, tenant_id, ["user:write"])
+    db.add(RolTenant(tenant_id=tenant_id, nombre="gestor-roles", permisos=["role:write"]))
+    db.flush()
+
+    salida = sod.simular(db, tenant_id, usuario, ["gestor-roles"])
+    assert [c["regla"] for c in salida["conflictos_nuevos"]] == ["SOD-1"]
+    assert salida["limpio"] is False
+    # No ha asignado nada: es una pregunta, no una acción.
+    membresia = db.execute(select(Membresia).where(Membresia.usuario_id == usuario)).scalar_one()
+    assert "gestor-roles" not in membresia.roles
+    # Un conflicto que ya tenía no se cuenta como nuevo.
+    assert sod.simular(db, tenant_id, usuario, ["solo_lectura"])["limpio"] is True
+
+
+@pytest.mark.db
+def test_las_reglas_de_serie_se_cargan_una_vez_y_hablan_de_permisos_reales(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    primera = sod.cargar_de_serie(db, tenant_id)
+    assert primera["anadidas"] == len(sod.REGLAS_DE_SERIE)
+    assert sod.cargar_de_serie(db, tenant_id)["anadidas"] == 0
+    # Cada permiso de las reglas lo exige de verdad alguna ruta: una regla con
+    # un permiso que no existe no se dispara nunca y parece cumplirse.
+    import re
+    from pathlib import Path
+
+    # En los servicios y en el núcleo: la retención la exige una ruta de crmcore.
+    raiz = Path(__file__).resolve().parents[2]
+    exigidos = {
+        m
+        for carpeta in ("services", "packages")
+        for f in (raiz / carpeta).rglob("*.py")
+        for m in re.findall(r'exige_permiso\("([a-z_]+:[a-z_]+)"\)', f.read_text())
+    }
+    assert len(exigidos) > 50, "no está leyendo las rutas"
+    for regla in sod.REGLAS_DE_SERIE:
+        for permiso in regla["permisos_a"] + regla["permisos_b"]:
+            assert permiso in exigidos, f"{regla['codigo']}: {permiso}"

@@ -103,6 +103,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -132,15 +133,6 @@ interface Garantias {
   capas: CapaDeAislamiento[];
   todo_puesto: boolean;
   que_significa: string;
-}
-
-interface Excepcion {
-  id: string;
-  regla_codigo: string;
-  usuario_id: string;
-  motivo: string;
-  caduca_at: string;
-  vigente: boolean;
 }
 
 interface Descubrimiento {
@@ -188,7 +180,7 @@ interface Violacion {
   nivel: string;
   por_el_lado_a: string[];
   por_el_lado_b: string[];
-  exento?: boolean;
+  exceptuado?: boolean;
 }
 
 /** `GET /factores/nivel`: con qué ha entrado esta sesión. */
@@ -294,12 +286,11 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
       <ComoSeEntra />
       <MiSegundoFactor />
       <Certificados filas={certificados} />
+      {/* La segregación tiene su pantalla (Administrar › Gobierno): aquí sólo
+          cuántos conflictos hay y el camino. Antes estaba entera aquí y en
+          Cumplimiento a la vez, y este trozo no marcaba nunca la excepción
+          porque leía `exento` y la API manda `exceptuado`. */}
       <Segregacion datos={sod} />
-      {/* Y, justo debajo, por qué algunos de esos conflictos están
-          permitidos: el informe de arriba los marca «con excepción» y hasta
-          ahora no había forma de leer ni el motivo ni hasta cuándo. Una
-          excepción que no se puede leer no es un control. */}
-      <ExcepcionesAprobadas />
       {/* A qué proveedor le toca un correo. Es la primera pregunta cuando
           alguien «no puede entrar», y la que el propio usuario no sabe
           contestar: él sabe su correo, no si su empresa usa Entra ID o Ping. */}
@@ -925,67 +916,31 @@ function Certificados({ filas }: { filas: Certificado[] }) {
   );
 }
 
-/** Quién tiene hoy permisos incompatibles. */
+/** Cuántos conflictos de segregación hay hoy, y dónde se resuelven. */
 function Segregacion({
   datos,
 }: {
-  datos: { violaciones: Violacion[]; reglas: number };
+  datos: { violaciones: Violacion[]; reglas: number } | null;
 }) {
   const { t } = useTranslation();
+  if (!datos) return null;
+  const sinExceptuar = datos.violaciones.filter((v) => !v.exceptuado).length;
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-titulin font-semibold text-ink">
         {t("seguridad.sod.titulo")}
       </h2>
-      <p className="text-rotulo text-ink-faint">
-        {t("seguridad.sod.porQue", { reglas: datos.reglas })}
+      <p className="text-dato text-ink-muted">
+        {datos.reglas === 0
+          ? t("seguridad.sod.sinReglas")
+          : t("seguridad.sod.resumen", {
+              conflictos: sinExceptuar,
+              reglas: datos.reglas,
+            })}{" "}
+        <Link to="/segregacion" className="btn-link">
+          {t("seguridad.sod.irA")}
+        </Link>
       </p>
-      {datos.violaciones.length === 0 ? (
-        <Vacio
-          compacto
-          titulo={t(
-            datos.reglas === 0
-              ? "seguridad.sod.sinReglas"
-              : "seguridad.sod.ninguna",
-          )}
-          detalle={t(
-            datos.reglas === 0
-              ? "seguridad.sod.sinReglasDetalle"
-              : "seguridad.sod.ningunaDetalle",
-          )}
-        />
-      ) : (
-        <ul className="divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40">
-          {datos.violaciones.map((v, i) => (
-            <li key={`${v.usuario_id}:${v.regla}:${i}`} className="px-3 py-2">
-              <div className="flex flex-wrap items-baseline gap-x-3">
-                <span className="badge">{v.nivel}</span>
-                <span className="min-w-0 flex-1 truncate text-dato text-ink">
-                  {v.nombre}
-                </span>
-                {/* La excepción no esconde el conflicto: lo marca. Esconderlo
-                    haría que una excepción caducada pasara de «aprobado» a «no
-                    existe» sin que nadie lo viera. */}
-                {v.exento ? (
-                  <span className="badge badge-warning">
-                    {t("seguridad.sod.conExcepcion")}
-                  </span>
-                ) : null}
-                <span className="font-mono text-rotulo text-ink-faint">
-                  {v.usuario_id.slice(0, 8)}
-                </span>
-              </div>
-              {/* `<code>` y no un `span` con `font-mono`: son permisos, que
-                  son código. El elemento lo dice, así que un lector de
-                  pantalla lo anuncia como tal y el barrido lo distingue de
-                  una frase sin necesitar una lista de excepciones. */}
-              <code className="mt-0.5 block text-rotulo text-ink-muted">
-                {v.por_el_lado_a.join(", ")} ↔ {v.por_el_lado_b.join(", ")}
-              </code>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   );
 }
@@ -1250,102 +1205,6 @@ function Explicador() {
 }
 
 /**
- * Los conflictos que alguien aprobó, con su motivo y su caducidad
- * (`CRM-07.03.02.06`).
- *
- * El informe de arriba marca «con excepción» los conflictos permitidos, y eso
- * está bien —esconderlos haría que una excepción caducada pasara de «aprobado»
- * a «no existe» sin que nadie lo viera—. Lo que faltaba es poder contestar la
- * pregunta siguiente, que es la que hace un auditor: **¿y éstos por qué están
- * permitidos?**
- *
- * El alta exige motivo escrito y caducidad. Si no se pueden leer, esos dos
- * requisitos son papeleo: la prueba se genera y se archiva donde nadie puede
- * recuperarla.
- *
- * Por defecto sólo las vigentes. Una lista con las de hace tres años obliga a
- * filtrar a mano justo cuando se está revisando.
- */
-function ExcepcionesAprobadas() {
-  const { t } = useTranslation();
-  const [filas, setFilas] = useState<Excepcion[] | null>(null);
-  const [caducadas, setCaducadas] = useState(false);
-  const [fallo, setFallo] = useState<unknown>(null);
-
-  useEffect(() => {
-    const control = new AbortController();
-    setFallo(null);
-    llamar<Excepcion[]>(
-      `/api/v1/segregacion/excepciones?incluir_caducadas=${caducadas}`,
-      {
-        signal: control.signal,
-      },
-    )
-      .then((r) => setFilas(filas_(r.datos)))
-      .catch(salvoCancelacion(setFallo));
-    return () => control.abort();
-  }, [caducadas]);
-
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-titulin font-semibold text-ink">
-        {t("seguridad.excepciones.titulo")}
-      </h2>
-      <p className="text-rotulo text-ink-faint">
-        {t("seguridad.excepciones.porQue")}
-      </p>
-      <label className="flex items-center gap-2 text-rotulo text-ink-muted">
-        <input
-          type="checkbox"
-          checked={caducadas}
-          onChange={(e) => setCaducadas(e.target.checked)}
-        />
-        {t("seguridad.excepciones.verCaducadas")}
-      </label>
-      {fallo ? <Fallo error={fallo} /> : null}
-      {filas === null ? null : filas.length === 0 ? (
-        <Vacio
-          titulo={t("seguridad.excepciones.ninguna")}
-          detalle={t("seguridad.excepciones.ningunaDetalle")}
-          compacto
-        />
-      ) : (
-        <ul className="lista-acotada divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40">
-          {filas.map((e) => (
-            <li key={e.id} className="px-3 py-2">
-              <div className="flex flex-wrap items-baseline gap-x-3">
-                <span className="font-mono text-dato text-ink">
-                  {e.regla_codigo}
-                </span>
-                <span className="font-mono text-rotulo text-ink-faint">
-                  {e.usuario_id.slice(0, 8)}
-                </span>
-                {/* Caducada se marca y no se esconde: una excepción vencida
-                    sigue explicando por qué alguien tuvo ese permiso. */}
-                <span
-                  className={`badge ${e.vigente ? "badge-warning" : "badge-muted"}`}
-                >
-                  {e.vigente
-                    ? t("seguridad.excepciones.hasta", {
-                        fecha: e.caduca_at.slice(0, 10),
-                      })
-                    : t("seguridad.excepciones.caducada", {
-                        fecha: e.caduca_at.slice(0, 10),
-                      })}
-                </span>
-              </div>
-              {/* El motivo, siempre: sin él la lista dice que hay excepciones
-                  y no por qué, que es justo lo que hay que revisar. */}
-              <p className="mt-0.5 text-rotulo text-ink-muted">{e.motivo}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-/**
  * A qué proveedor le toca este correo (`CRM-00.05.01.14`).
  *
  * «No puedo entrar» es la incidencia más común y la más cara de diagnosticar a
@@ -1436,9 +1295,4 @@ function AQuienLeToca() {
       </div>
     </section>
   );
-}
-
-/** El servidor devuelve la lista tal cual; esto la deja en array pase lo que pase. */
-function filas_(datos: unknown): Excepcion[] {
-  return Array.isArray(datos) ? (datos as Excepcion[]) : [];
 }

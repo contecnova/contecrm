@@ -1895,14 +1895,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         columnas: ["codigo", "nombre", "tipo", "frecuencia", "activo"],
         permiso: "tenant:read",
       },
-      {
-        nombre: "Segregación",
-        listar: "/api/v1/segregacion/reglas",
-      // Las excepciones aprobadas, con la regla al lado: una regla de segregación
-        // sin ver sus excepciones dice lo contrario de lo que pasa de verdad.
-      resumen: ["/api/v1/segregacion/excepciones"],
-        servicio: "identity",
-      },
+      // La segregación de funciones tiene pantalla propia (/segregacion, en
+      // Administrar › Gobierno): matriz, reglas, conflictos y excepciones.
       // Las tres apuntaban a `party` y se llamaban «Retención», «Bloqueos
       // legales» y «Clases de dato»: quien las abría creía ver las de todo el
       // sistema y veía las de clientes. Las de identidad y las de ventas no

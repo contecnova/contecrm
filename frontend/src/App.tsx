@@ -123,6 +123,10 @@ const Cuadros = pantalla(
   () => import("@/paginas/Cuadros"),
   (m) => m.Cuadros,
 );
+const Segregacion = pantalla(
+  () => import("@/paginas/Segregacion"),
+  (m) => m.Segregacion,
+);
 const Metodologias = pantalla(
   () => import("@/paginas/Metodologias"),
   (m) => m.Metodologias,
@@ -399,6 +403,7 @@ export function App() {
           <Route path="/estados" element={<Estados />} />
           <Route path="/embudos" element={<Embudos />} />
           <Route path="/metodologias" element={<Metodologias />} />
+          <Route path="/segregacion" element={<Segregacion />} />
           {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
               —ajustes, fotos, desglose, deslizamiento— se dirigen por su
               clave, y pasarles el identificador las deja en 404. */}

@@ -105,6 +105,7 @@ export default {
     estados: "Estados de los objetos",
     embudos: "Embudos y etapas",
     metodologias: "Metodologías y playbooks",
+    segregacion: "Segregación de funciones",
     queCliente: "Cliente que estás mirando",
     crear: "Crear",
     crearQue: "Qué quieres dar de alta",

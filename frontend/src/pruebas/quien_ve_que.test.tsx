@@ -15,11 +15,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 
 import { Seguridad } from "@/paginas/Seguridad";
 
 let simulacion: unknown = null;
-let campos: unknown = { campos: [], cuantas: 0, que_significa: "No hay ninguna excepción." };
+let campos: unknown = {
+  campos: [],
+  cuantas: 0,
+  que_significa: "No hay ninguna excepción.",
+};
 
 const SALUD = {
   "/factores/adopcion": {
@@ -55,7 +60,8 @@ const SALUD = {
 
 vi.mock("@/lib/api", () => ({
   llamar: vi.fn(async (ruta: string) => {
-    if (ruta.includes("/politicas-acceso/simular")) return { datos: simulacion };
+    if (ruta.includes("/politicas-acceso/simular"))
+      return { datos: simulacion };
     if (ruta.includes("/politicas-acceso/campos")) return { datos: campos };
     if (ruta.includes("/roles/explicar")) return { datos: { ok: true } };
     for (const [trozo, datos] of Object.entries(SALUD)) {
@@ -80,8 +86,15 @@ vi.mock("react-i18next", () => ({
 }));
 
 async function preguntarPor(sesion: null = null) {
-  render(<Seguridad sesion={sesion} />);
-  const usuario = await screen.findByLabelText(/seguridad\.explicador\.usuario/);
+  render(
+    // Con router: la pantalla enlaza a la de segregación de funciones.
+    <MemoryRouter>
+      <Seguridad sesion={sesion} />
+    </MemoryRouter>,
+  );
+  const usuario = await screen.findByLabelText(
+    /seguridad\.explicador\.usuario/,
+  );
   await userEvent.type(usuario, "u-1");
   await userEvent.type(
     screen.getByLabelText(/seguridad\.explicador\.objeto/),
@@ -104,7 +117,11 @@ describe("quién ve qué", () => {
         contexto: { hora: 23, dia_semana: 6 },
       },
     };
-    campos = { campos: [], cuantas: 0, que_significa: "No hay ninguna excepción." };
+    campos = {
+      campos: [],
+      cuantas: 0,
+      que_significa: "No hay ninguna excepción.",
+    };
   });
 
   it("dice CUÁL de las dos capas niega, no sólo que niega", async () => {
@@ -132,13 +149,31 @@ describe("quién ve qué", () => {
   it("lista las excepciones de campo, que antes no se podían leer", async () => {
     campos = {
       cuantas: 2,
-      que_significa: "Cada línea es un campo que NO se comporta como dice su clasificación.",
+      que_significa:
+        "Cada línea es un campo que NO se comporta como dice su clasificación.",
       campos: [
-        { objeto: "oportunidad", campo: "margen", rol: "*", nivel: "oculto", para_todos: true },
-        { objeto: "contacto", campo: "movil", rol: "soporte", nivel: "claro", para_todos: false },
+        {
+          objeto: "oportunidad",
+          campo: "margen",
+          rol: "*",
+          nivel: "oculto",
+          para_todos: true,
+        },
+        {
+          objeto: "contacto",
+          campo: "movil",
+          rol: "soporte",
+          nivel: "claro",
+          para_todos: false,
+        },
       ],
     };
-    render(<Seguridad sesion={null} />);
+    render(
+      // Con router: la pantalla enlaza a la de segregación de funciones.
+      <MemoryRouter>
+        <Seguridad sesion={null} />
+      </MemoryRouter>,
+    );
     const lista = await screen.findByTestId("excepciones-de-campo");
     expect(lista.textContent).toContain("oportunidad.margen");
     expect(lista.textContent).toContain("contacto.movil");
@@ -147,7 +182,14 @@ describe("quién ve qué", () => {
   });
 
   it("sin excepciones dice qué significa, no deja el hueco", async () => {
-    render(<Seguridad sesion={null} />);
-    expect(await screen.findByText("No hay ninguna excepción.")).toBeInTheDocument();
+    render(
+      // Con router: la pantalla enlaza a la de segregación de funciones.
+      <MemoryRouter>
+        <Seguridad sesion={null} />
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByText("No hay ninguna excepción."),
+    ).toBeInTheDocument();
   });
 });

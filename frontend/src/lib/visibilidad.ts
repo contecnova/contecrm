@@ -1000,10 +1000,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "tenancy"
     },
     {
-      "r": "/api/v1/segregacion/reglas",
-      "s": "identity"
-    },
-    {
       "r": "/api/v1/party/retencion/politicas",
       "s": "party"
     },

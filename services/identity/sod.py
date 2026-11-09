@@ -287,6 +287,164 @@ def violaciones(db: Session, tenant_id: UUID) -> dict[str, Any]:
     }
 
 
+# Las reglas que trae el producto: conflictos típicos de un CRM, escritos con
+# los permisos que de verdad exigen sus rutas. Se cargan a petición —no al dar
+# de alta el tenant— porque cada empresa decide cuáles aplica; y se traen hechas
+# porque una matriz de segregación que empieza vacía no la rellena nadie.
+REGLAS_DE_SERIE: tuple[dict[str, Any], ...] = (
+    {
+        "codigo": "SOD-COM",
+        "nombre": "Calcular comisiones y aprobarlas",
+        "descripcion": "Quien calcula una liquidación no puede ser quien la aprueba.",
+        "permisos_a": ["commission:write"],
+        "permisos_b": ["commission:approve"],
+        "nivel": "alto",
+    },
+    {
+        "codigo": "SOD-USR",
+        "nombre": "Dar de alta usuarios y asignarles roles",
+        "descripcion": "Quien crea una cuenta no puede darle además los permisos.",
+        "permisos_a": ["user:write"],
+        "permisos_b": ["role:write"],
+        "nivel": "critico",
+    },
+    {
+        "codigo": "SOD-RET",
+        "nombre": "Configurar la retención y purgar",
+        "descripcion": "Quien decide cuánto se guarda no puede ejecutar el borrado definitivo.",
+        "permisos_a": ["retencion:configurar"],
+        "permisos_b": ["retencion:purgar"],
+        "nivel": "alto",
+    },
+    {
+        "codigo": "SOD-EXP",
+        "nombre": "Exportar la empresa y purgar cuentas",
+        "descripcion": "Llevarse los datos y borrar su rastro no puede estar en una mano.",
+        "permisos_a": ["tenant:exportar"],
+        "permisos_b": ["account:purge"],
+        "nivel": "critico",
+    },
+    {
+        "codigo": "SOD-IDP",
+        "nombre": "Claves de API y configuración de la identidad",
+        "descripcion": "Quien emite credenciales de máquina no configura cómo se entra.",
+        "permisos_a": ["apikey:write"],
+        "permisos_b": ["idp:configurar"],
+        "nivel": "alto",
+    },
+    {
+        "codigo": "SOD-AUD",
+        "nombre": "Auditar y restaurar datos",
+        "descripcion": "Quien revisa lo que pasó no puede cambiar lo que hay.",
+        "permisos_a": ["analitica:auditar"],
+        "permisos_b": ["datos:restaurar"],
+        "nivel": "medio",
+    },
+    {
+        "codigo": "SOD-INT",
+        "nombre": "Credenciales de integración y roles",
+        "descripcion": "Quien guarda los secretos de una integración no reparte permisos.",
+        "permisos_a": ["integracion:credenciales"],
+        "permisos_b": ["role:write"],
+        "nivel": "alto",
+    },
+)
+
+
+def cargar_de_serie(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Añade las reglas de serie que este tenant no tenga. Se puede repetir."""
+    tiene = set(
+        db.execute(select(ReglaSoD.codigo).where(ReglaSoD.tenant_id == tenant_id)).scalars()
+    )
+    nuevas = 0
+    for regla in REGLAS_DE_SERIE:
+        if regla["codigo"] in tiene:
+            continue
+        db.add(ReglaSoD(tenant_id=tenant_id, activa=True, **regla))
+        nuevas += 1
+    db.flush()
+    return {"anadidas": nuevas, "ya_estaban": len(REGLAS_DE_SERIE) - nuevas}
+
+
+def _roles_con_permisos(db: Session, tenant_id: UUID) -> dict[str, frozenset[str]]:
+    from crmcore.authz.rbac import ROLES_BASE
+
+    from services.identity import servicio as svc
+    from services.identity.modelos import RolTenant
+
+    nombres = set(ROLES_BASE) | set(
+        db.execute(select(RolTenant.nombre).where(RolTenant.tenant_id == tenant_id)).scalars()
+    )
+    return {n: svc.permisos_de_rol(db, n, tenant_id) for n in sorted(nombres)}
+
+
+def matriz(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Cada regla contra cada rol: qué rol da un lado, el otro, o los dos.
+
+    Un rol que da **los dos lados** es el conflicto que se arregla en el rol y
+    no persona a persona: cualquiera que lo tenga está en conflicto. Es lo
+    primero que se mira, y por eso va marcado aparte.
+    """
+    roles = _roles_con_permisos(db, tenant_id)
+    reglas = list(
+        db.execute(
+            select(ReglaSoD).where(ReglaSoD.tenant_id == tenant_id, ReglaSoD.activa.is_(True))
+        ).scalars()
+    )
+    vivas = violaciones(db, tenant_id)["violaciones"] if reglas else []
+    por_regla: dict[str, int] = {}
+    for v in vivas:
+        if not v["exceptuado"]:
+            por_regla[v["regla"]] = por_regla.get(v["regla"], 0) + 1
+    filas = []
+    for regla in reglas:
+        celdas = {}
+        for nombre, permisos in roles.items():
+            a = any(_concede(permisos, x) for x in regla.permisos_a)
+            b = any(_concede(permisos, x) for x in regla.permisos_b)
+            celdas[nombre] = "ambos" if a and b else "a" if a else "b" if b else ""
+        filas.append(
+            {
+                "regla": regla.codigo,
+                "nombre": regla.nombre,
+                "nivel": regla.nivel,
+                "celdas": celdas,
+                "roles_en_conflicto": sorted(r for r, c in celdas.items() if c == "ambos"),
+                "personas_en_conflicto": por_regla.get(regla.codigo, 0),
+            }
+        )
+    return {"roles": sorted(roles), "reglas": filas}
+
+
+def simular(
+    db: Session, tenant_id: UUID, usuario_id: UUID, roles_nuevos: list[str]
+) -> dict[str, Any]:
+    """Qué conflictos aparecerían si esta persona recibe estos roles.
+
+    Es la parte preventiva: se mira ANTES de asignar. Sigue sin impedir nada
+    —la decisión es de quien administra—, pero ya no se descubre después.
+    """
+    from services.identity import servicio as svc
+
+    actuales = svc.permisos_efectivos(db, usuario_id, tenant_id)
+    con_nuevos = set(actuales)
+    for rol in roles_nuevos:
+        con_nuevos |= svc.permisos_de_rol(db, rol, tenant_id)
+    nuevos: list[dict[str, Any]] = []
+    for regla in db.execute(
+        select(ReglaSoD).where(ReglaSoD.tenant_id == tenant_id, ReglaSoD.activa.is_(True))
+    ).scalars():
+
+        def choca(permisos: set[str] | frozenset[str], regla: ReglaSoD = regla) -> bool:
+            return any(_concede(permisos, x) for x in regla.permisos_a) and any(
+                _concede(permisos, x) for x in regla.permisos_b
+            )
+
+        if choca(con_nuevos) and not choca(actuales):
+            nuevos.append({"regla": regla.codigo, "nombre": regla.nombre, "nivel": regla.nivel})
+    return {"conflictos_nuevos": nuevos, "limpio": not nuevos}
+
+
 def _concede(permisos: frozenset[str] | set[str], permiso: str) -> bool:
     """Si el conjunto concede el permiso, expandiendo comodines.
 

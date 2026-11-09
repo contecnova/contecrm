@@ -260,7 +260,8 @@ const pantallas = {
     // Al propietario se le silencia en vez de desuscribirle: no puede dejar
     // de ser responsable de su registro. Sin decirlo, el botón parece que no
     // hace caso.
-    eresPropietario: "Eres el responsable: dejas de recibir avisos, pero sigues saliendo como su responsable.",
+    eresPropietario:
+      "Eres el responsable: dejas de recibir avisos, pero sigues saliendo como su responsable.",
     noSePudo: "No se ha podido cambiar",
     // Lo que uno sigue, desde la barra de arriba.
     loQueSigo: "Lo que sigo",
@@ -665,6 +666,55 @@ const pantallas = {
     },
   },
   // Lecciones aprendidas de las oportunidades cerradas (05-11-2026).
+  segregacion: {
+    titulo: "Segregación de funciones",
+    entradilla:
+      "Qué permisos no pueden coincidir en una misma persona, qué roles los juntan, quién está hoy en conflicto y qué pasaría si se le da un rol a alguien.",
+    deSerie: "Cargar las reglas de serie",
+    cargadas: "Se han añadido {{n}} reglas.",
+    matriz: "Reglas contra roles",
+    matrizAyuda:
+      "A: el rol da un lado de la regla. B: el otro. A+B: el rol da los dos, y cualquiera que lo tenga está en conflicto; se arregla en el rol.",
+    sinReglas: "No hay reglas de segregación. Carga las de serie para empezar.",
+    regla: "Regla",
+    personas: "Personas en conflicto",
+    celda: { a: "Da el lado A", b: "Da el lado B", ambos: "Da los dos lados" },
+    niveles: { bajo: "Bajo", medio: "Medio", alto: "Alto", critico: "Crítico" },
+    conflictos: "Quién está en conflicto hoy",
+    sinConflictos: "Nadie tiene hoy permisos incompatibles.",
+    exceptuado: "Con excepción vigente",
+    exceptuar: "Aprobar una excepción",
+    porQue: "Por {{a}} y por {{b}}",
+    motivo: "Por qué se acepta",
+    caduca: "Hasta cuándo",
+    aprobar: "Aprobar",
+    simulador: "Antes de dar un rol",
+    simuladorAyuda:
+      "Elige a la persona y los roles que le darías: dice qué reglas pasaría a incumplir. No cambia nada.",
+    persona: "Persona",
+    roles: "Roles que se le darían",
+    comprobar: "Comprobar",
+    limpio: "No aparece ningún conflicto nuevo.",
+    nueva: "Nueva regla",
+    editar: "Editar la regla",
+    guardar: "Guardar la regla",
+    cancelar: "Cancelar",
+    guardada: "Regla {{codigo}} guardada.",
+    campos: {
+      codigo: "Código",
+      nombre: "Nombre",
+      descripcion: "Por qué no pueden coincidir",
+      permisos_a: "Lado A: permisos",
+      permisos_b: "Lado B: permisos que no pueden ir con los del lado A",
+      nivel: "Gravedad",
+      activa: "Activa",
+    },
+    excepciones: "Excepciones aprobadas",
+    verCaducadas: "Ver también las caducadas",
+    sinExcepciones: "No hay excepciones aprobadas.",
+    hasta: "Hasta el {{fecha}}",
+    caducada: "Caducó el {{fecha}}",
+  },
   metodologias: {
     titulo: "Metodologías y playbooks",
     entradilla:
@@ -672,14 +722,21 @@ const pantallas = {
     lista: "Metodologías",
     nombreNueva: "Nombre de la metodología nueva",
     familia: "Basada en",
-    familias: { meddic: "MEDDIC", bant: "BANT", spin: "SPIN", challenger: "Challenger", custom: "Propia, en blanco" },
+    familias: {
+      meddic: "MEDDIC",
+      bant: "BANT",
+      spin: "SPIN",
+      challenger: "Challenger",
+      custom: "Propia, en blanco",
+    },
     embudo: "Embudo",
     todos: "Todos los embudos",
     crear: "Crear metodología",
     nombre: "Nombre",
     activa: "Activa",
     criterios: "Lo que hay que tener contestado",
-    pesoTotal: "Los pesos suman {{total}}; la puntuación es el porcentaje cubierto.",
+    pesoTotal:
+      "Los pesos suman {{total}}; la puntuación es el porcentaje cubierto.",
     pregunta: "Pregunta o criterio",
     peso: "Peso",
     desdeEtapa: "Se pide desde",
@@ -689,10 +746,12 @@ const pantallas = {
     guardar: "Guardar la metodología",
     guardada: "Metodología guardada.",
     playbooks: "Qué hacer en cada etapa",
-    playbooksAyuda: "Un paso por línea. Sale en la ficha de cada oportunidad que esté en esa etapa.",
+    playbooksAyuda:
+      "Un paso por línea. Sale en la ficha de cada oportunidad que esté en esa etapa.",
     playbookDe: "Qué hacer en {{etapa}}",
     pasosDe: "Pasos de {{etapa}}",
-    pasosEjemplo: "Confirmar quién firma\nEnviar el caso de un cliente parecido",
+    pasosEjemplo:
+      "Confirmar quién firma\nEnviar el caso de un cliente parecido",
     guardarPasos: "Guardar los pasos",
     playbookGuardado: "Pasos de «{{etapa}}» guardados.",
   },
@@ -705,7 +764,8 @@ const pantallas = {
     nuevoNombre: "Nombre del embudo nuevo",
     crear: "Crear embudo",
     etapasDe: "Etapas de {{embudo}}",
-    ayuda: "Una etapa final cierra la venta: ganada o perdida. El embudo tiene que conservar una de cada.",
+    ayuda:
+      "Una etapa final cierra la venta: ganada o perdida. El embudo tiene que conservar una de cada.",
     orden: "Orden",
     nombre: "Nombre",
     probabilidad: "Probabilidad %",
@@ -727,7 +787,8 @@ const pantallas = {
     anadir: "Añadir etapa",
     anadida: "Etapa añadida.",
     quitada: "Se ha quitado «{{etapa}}».",
-    conOportunidades: "«{{etapa}}» tiene {{n}} oportunidades. ¿A qué etapa pasan?",
+    conOportunidades:
+      "«{{etapa}}» tiene {{n}} oportunidades. ¿A qué etapa pasan?",
     moverA: "Elegir etapa",
     moverYQuitar: "Moverlas y quitar la etapa",
     cancelar: "Cancelar",
@@ -749,7 +810,8 @@ const pantallas = {
     estadosDe: "Estados de {{objeto}}",
     deFabrica: "Los de fábrica",
     propia: "Configuración de tu empresa",
-    obligatorios: "Tiene que quedar al menos un estado activo que signifique: {{lista}}.",
+    obligatorios:
+      "Tiene que quedar al menos un estado activo que signifique: {{lista}}.",
     orden: "Orden",
     clave: "Clave",
     nombre: "Nombre",
@@ -769,7 +831,8 @@ const pantallas = {
     anadir: "Añadir un estado",
     inicial: "Estado inicial",
     transiciones: "A qué se puede pasar desde cada estado",
-    transicionesAyuda: "Cada fila es el estado de partida; marca los estados a los que se puede ir desde él.",
+    transicionesAyuda:
+      "Cada fila es el estado de partida; marca los estados a los que se puede ir desde él.",
     desdeHasta: "Desde → a",
     deA: "De {{desde}} a {{hasta}}",
     guardar: "Guardar",
@@ -779,17 +842,25 @@ const pantallas = {
   },
   consejos: {
     titulo: "Lo que dicen las lecciones",
-    ninguna: "Ninguna lección firmada viene a cuento todavía: ni de este cliente ni de ventas parecidas.",
+    ninguna:
+      "Ninguna lección firmada viene a cuento todavía: ni de este cliente ni de ventas parecidas.",
     conIA: "Qué hacer y qué no, con IA",
     pidiendo: "Leyendo las lecciones…",
-    iaSinNada: "La IA no ha sacado ningún consejo que pueda atribuir a una lección.",
-    descartados: "{{n}} consejos de la IA se han descartado porque no salían de ninguna lección.",
+    iaSinNada:
+      "La IA no ha sacado ningún consejo que pueda atribuir a una lección.",
+    descartados:
+      "{{n}} consejos de la IA se han descartado porque no salían de ninguna lección.",
     mismoCliente: "Del mismo cliente",
     parecidas: "Parecidas, de otros clientes",
     parecido: "se parece un {{n}} %",
     deLaLeccion: "de «{{titulo}}»",
-    sinBusqueda: "No se han podido buscar las parecidas por significado: {{porque}}",
-    momento: { creacion: "Al crearla", etapa: "Al cambiar de etapa", presupuesto: "Al mandar el presupuesto" },
+    sinBusqueda:
+      "No se han podido buscar las parecidas por significado: {{porque}}",
+    momento: {
+      creacion: "Al crearla",
+      etapa: "Al cambiar de etapa",
+      presupuesto: "Al mandar el presupuesto",
+    },
     tipo: { haz: "Haz", no_hagas: "No hagas" },
   },
   leccion: {
@@ -1262,7 +1333,8 @@ const pantallas = {
     margen: "Margen conocido: {{pct}} %",
     margenSinCoste:
       "Ninguna línea tiene coste: no se puede hablar de margen, y no es un cero.",
-    margenIncompleto: "Sin contar {{cuales}}, que no tienen coste: el margen real no se sabe.",
+    margenIncompleto:
+      "Sin contar {{cuales}}, que no tienen coste: el margen real no se sabe.",
     sinLineas: "Todavía no tiene líneas",
     porUnidad: "{{cantidad}} × {{precio}}",
     metricas: "Lo que esto vale",
@@ -1581,17 +1653,6 @@ const pantallas = {
     capaPuesta: "(puesta)",
     capaNoPuesta: "(NO está haciendo su trabajo)",
     noSeMideAqui: "no se mide desde aquí",
-    excepciones: {
-      titulo: "Y éstos, ¿por qué están permitidos?",
-      porQue:
-        "Los conflictos que alguien aprobó, con el motivo que escribió y hasta cuándo valen. El alta los exige: si no se pueden leer, son papeleo.",
-      verCaducadas: "Ver también las caducadas",
-      ninguna: "No hay ninguna excepción aprobada",
-      ningunaDetalle:
-        "Todo conflicto que aparezca arriba lo es de verdad: nadie lo ha autorizado.",
-      hasta: "Vale hasta el {{fecha}}",
-      caducada: "Caducó el {{fecha}}",
-    },
     aQuienLeToca: {
       titulo: "«No puedo entrar»: ¿por dónde le toca entrar?",
       porQue:
@@ -1689,13 +1750,10 @@ const pantallas = {
       porQue:
         "Calculado en vivo sobre {{reglas}} reglas y no guardado: una lista de " +
         "conflictos vieja es peor que ninguna, porque se actúa sobre ella.",
-      sinReglas: "No hay reglas de incompatibilidad",
-      sinReglasDetalle:
-        "Sin reglas no hay conflictos que encontrar. Se declaran en segregación de funciones.",
-      ninguna: "Nadie tiene hoy permisos incompatibles",
-      ningunaDetalle:
-        "Con las reglas declaradas hoy, y sobre los permisos efectivos de ahora.",
-      conExcepcion: "con excepción vigente",
+      sinReglas: "No hay reglas de incompatibilidad declaradas.",
+      resumen:
+        "{{conflictos}} conflictos sin excepción, sobre {{reglas}} reglas y los permisos de ahora.",
+      irA: "Ver la segregación de funciones",
     },
     explicador: {
       titulo: "Por qué esta persona puede hacer esto",

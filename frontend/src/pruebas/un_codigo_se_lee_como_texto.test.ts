@@ -31,6 +31,8 @@ describe("escalar", () => {
   it("las siglas se quedan como vienen", () => {
     expect(rotuloDeOpcion("B2B")).toBe("B2B");
     expect(rotuloDeOpcion("EUR")).toBe("EUR");
+    // Un permiso es código: «Opportunity:write» no está en ningún rol.
+    expect(rotuloDeOpcion("opportunity:write")).toBe("opportunity:write");
   });
 });
 

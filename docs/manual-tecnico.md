@@ -892,6 +892,17 @@ pantallas:
   criterios y recalcula. Rutas: `GET /opportunities/{id}/metodologia` y
   `PUT /metodologias/{id}/oportunidad/{oid}`. Los playbooks se buscan por la
   etapa normalizada (clave o nombre). Pantalla: `paginas/Metodologias.tsx`.
+- **Segregación de funciones** (`services/identity/sod.py`,
+  `api_sod.py`, prefijo `/segregacion`). Además de reglas, excepciones y
+  violaciones: `GET /matriz` cruza cada regla activa con los permisos de cada
+  rol (celda `a`, `b` o `ambos`, con los comodines expandidos) y cuenta las
+  personas en conflicto; `POST /simular` (`usuario_id`, `roles`) devuelve las
+  reglas que pasaría a incumplir **sin** guardar nada; `POST /reglas/de-serie`
+  (`role:write`) carga `REGLAS_DE_SERIE` sin pisar las que ya existen — siete
+  conflictos típicos escritos con permisos que exigen rutas reales (la prueba
+  `test_sod.py` lo comprueba buscándolos en el código). Detecta, no bloquea:
+  ninguna asignación de rol consulta estas reglas. Pantalla:
+  `paginas/Segregacion.tsx`; `Seguridad.tsx` sólo enseña el recuento y enlaza.
 - **Etapas del embudo**: `PATCH /pipelines/{id}/etapas/{etapa}`,
   `PUT /pipelines/{id}/etapas/orden` y `DELETE …/etapas/{etapa}?mover_a=`,
   con `_exigir_cierres` (una final ganada y una perdida). Pantalla:

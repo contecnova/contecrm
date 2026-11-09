@@ -169,4 +169,52 @@ def violaciones(db: DbDep, principal: AutenticadoDep) -> Any:
     return sod.violaciones(db, principal.tenant_id)
 
 
+@router_sod.get(
+    "/matriz",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Cada regla contra cada rol",
+    description=(
+        "Qué rol da un lado de la regla, el otro, o **los dos** —ése es el "
+        "conflicto que se arregla en el rol y no persona a persona—, y cuántas "
+        "personas están hoy en conflicto sin excepción."
+    ),
+)
+def matriz(db: DbDep, principal: AutenticadoDep) -> Any:
+    return sod.matriz(db, principal.tenant_id)
+
+
+class SimularIn(BaseModel):
+    usuario_id: UUID
+    roles: list[str] = Field(..., min_length=1, description="Los roles que se le darían")
+
+
+@router_sod.post(
+    "/simular",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Qué conflictos aparecerían si se le dan estos roles",
+    description=(
+        "Lo preventivo: se mira antes de asignar. No cambia nada ni impide "
+        "nada; dice qué reglas pasaría a incumplir esa persona."
+    ),
+)
+def simular(datos: SimularIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    return sod.simular(db, principal.tenant_id, datos.usuario_id, datos.roles)
+
+
+@router_sod.post(
+    "/reglas/de-serie",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("role:write"))],
+    summary="Cargar las reglas de serie",
+    description=(
+        "Los conflictos típicos de un CRM, con los permisos que de verdad "
+        "exigen sus rutas. Sólo se añaden las que falten: se puede repetir."
+    ),
+)
+def de_serie(db: DbDep, principal: AutenticadoDep) -> Any:
+    return sod.cargar_de_serie(db, principal.tenant_id)
+
+
 ROUTERS_SOD = [router_sod]

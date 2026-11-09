@@ -15,6 +15,7 @@
 
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 
 import { Seguridad } from "@/paginas/Seguridad";
 
@@ -90,7 +91,8 @@ const CON_EL_ROL_MAL = {
       titulo: "El rol de conexión no se salta la red",
       ok: false,
       cuantas: null,
-      detalle: "Conecta como «postgres» — SUPERUSER, así que las políticas NO filtran nada.",
+      detalle:
+        "Conecta como «postgres» — SUPERUSER, así que las políticas NO filtran nada.",
       porque: "Es la línea que decide si las de arriba sirven.",
     },
     {
@@ -100,7 +102,8 @@ const CON_EL_ROL_MAL = {
       cuantas: null,
       medible_aqui: false,
       detalle: "Corre en el gate de pre-push.",
-      porque: "Una prueba de RLS como superusuario pasa siempre y no demuestra nada.",
+      porque:
+        "Una prueba de RLS como superusuario pasa siempre y no demuestra nada.",
     },
   ],
 };
@@ -111,14 +114,24 @@ describe("las garantías de aislamiento", () => {
   });
 
   it("no tranquiliza cuando el rol se salta la red", async () => {
-    render(<Seguridad sesion={null} />);
+    render(
+      // Con router: la pantalla enlaza a la de segregación de funciones.
+      <MemoryRouter>
+        <Seguridad sesion={null} />
+      </MemoryRouter>,
+    );
     const veredicto = await screen.findByTestId("aislamiento-veredicto");
     expect(veredicto.className).toContain("text-warning");
     expect(veredicto.className).not.toContain("text-success");
   });
 
   it("dice CUÁL de las capas falla, no sólo que algo falla", async () => {
-    render(<Seguridad sesion={null} />);
+    render(
+      // Con router: la pantalla enlaza a la de segregación de funciones.
+      <MemoryRouter>
+        <Seguridad sesion={null} />
+      </MemoryRouter>,
+    );
     expect(
       await screen.findByText(/El rol de conexión no se salta la red/),
     ).toBeInTheDocument();
@@ -126,15 +139,27 @@ describe("las garantías de aislamiento", () => {
   });
 
   it("cada capa dice de dónde sale su número", async () => {
-    render(<Seguridad sesion={null} />);
+    render(
+      // Con router: la pantalla enlaza a la de segregación de funciones.
+      <MemoryRouter>
+        <Seguridad sesion={null} />
+      </MemoryRouter>,
+    );
     expect(
       await screen.findByText(/44 tablas con `tenant_id` en el esquema/),
     ).toBeInTheDocument();
   });
 
   it("lo que no se mide aquí lo dice en vez de darlo por bueno", async () => {
-    render(<Seguridad sesion={null} />);
-    expect(await screen.findByText("seguridad.noSeMideAqui")).toBeInTheDocument();
+    render(
+      // Con router: la pantalla enlaza a la de segregación de funciones.
+      <MemoryRouter>
+        <Seguridad sesion={null} />
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByText("seguridad.noSeMideAqui"),
+    ).toBeInTheDocument();
   });
 
   it("con las capas puestas sí sale en verde", async () => {
@@ -146,7 +171,12 @@ describe("las garantías de aislamiento", () => {
       que_significa: "Las capas que el producto promete están puestas.",
       capas: CON_EL_ROL_MAL.capas.map((c) => ({ ...c, ok: true })),
     };
-    render(<Seguridad sesion={null} />);
+    render(
+      // Con router: la pantalla enlaza a la de segregación de funciones.
+      <MemoryRouter>
+        <Seguridad sesion={null} />
+      </MemoryRouter>,
+    );
     const veredicto = await screen.findByTestId("aislamiento-veredicto");
     expect(veredicto.className).toContain("text-success");
   });

@@ -100,7 +100,7 @@ cuál mirar sin leerlos todos.
 | **Herramientas de plataforma** | lo que se modela y lo que se publica: Gestor de objetos, Contrato de la API |
 | **Automatización** | Procesos y orquestación, y el Editor de procesos |
 | **Entornos y despliegue** | Operación, Promoción entre entornos, Despliegues y desvíos, Ciclo de vida del cliente, Estado |
-| **Gobierno y cumplimiento** | Riesgos y controles, Plataforma y cumplimiento, Panel de cumplimiento |
+| **Gobierno y cumplimiento** | Riesgos y controles, Plataforma y cumplimiento, Panel de cumplimiento, Segregación de funciones |
 
 Hasta el 03-11-2026 eran dos: «Automatización», con dos entradas, y
 «Configuración», con dieciocho —entre ellas «Ayuda» y «Estado», que no ajustan
@@ -2468,14 +2468,35 @@ Con **Apagar** el sandbox deja de dejar entrar, con el motivo que escribas.
 - Y **lo que se borra, se borra también donde se copió**: en el lago de datos del
   cliente, en las audiencias de las plataformas y en las proyecciones internas.
 
+### Segregación de funciones: quién no debería poder hacer las dos cosas
+
+En **Administrar › Gobierno y cumplimiento › Segregación de funciones**. Una regla dice qué
+dos grupos de permisos no deben coincidir en la misma persona: quien calcula
+las comisiones no las aprueba, quien da de alta usuarios no les asigna roles.
+
+- **Para empezar**, pulsa **«Cargar las reglas de serie»**: trae siete reglas
+  habituales. Las que ya tengas no se tocan.
+- **La tabla de reglas contra roles** dice, para cada regla, qué roles dan el
+  lado A, cuáles el B, y cuáles **los dos (A+B, en rojo)**. Si un rol da los
+  dos, cualquiera que lo tenga está en conflicto: eso se arregla en el rol.
+  La columna «Personas en conflicto» dice a cuántas afecta hoy.
+- **Para crear una regla**, «Nueva regla»; para cambiarla, pulsa su nombre en
+  la tabla. Eliges los permisos de cada lado en los desplegables, la gravedad
+  y si está activa.
+- **«Quién está en conflicto hoy»** lista cada persona con la regla que
+  incumple y por qué permisos. Si el conflicto es inevitable —en una empresa
+  pequeña una persona es todo el departamento—, **«Aprobar una excepción»**
+  pide el motivo y hasta cuándo vale. El conflicto sigue saliendo, marcado.
+- **«Antes de dar un rol»**: elige la persona y los roles que le darías, y
+  «Comprobar» te dice qué reglas pasaría a incumplir. No cambia nada.
+- **«Excepciones aprobadas»**, abajo, con el motivo y la fecha; marca «Ver
+  también las caducadas» para distinguir «no hay ninguna» de «todas vencieron».
+
 ### Dos preguntas que se hacen en «Identidad y seguridad»
 
-- **«Y éstos, ¿por qué están permitidos?»** El informe de segregación marca los
-  conflictos que alguien autorizó. Justo debajo están esas autorizaciones **con
-  el motivo que se escribió y hasta cuándo valen** — que es lo que el alta
-  exige y lo que hasta ahora no se podía leer. Una excepción que no se puede
-  leer no es un control, es papeleo. Se pueden ver también las caducadas, que
-  es lo que distingue «no hay ninguna» de «todas vencieron».
+- **«¿Hay alguien con permisos incompatibles?»** Sale el recuento, y el enlace
+  a **Segregación de funciones**, donde se ve quién y por qué (apartado
+  anterior).
 - **«No puedo entrar»: ¿por dónde le toca entrar?** Se escribe el correo y dice
   si le toca SSO —con qué proveedor— o contraseña del CRM, y avisa si su
   dominio tiene el SSO forzado y por tanto no hay vía de escape. El usuario no

@@ -4044,6 +4044,26 @@ lados no segrega nada —prohíbe, y para eso se quita del rol—, y el comodín
 expande al comparar, porque un rol con `*:*` los tiene todos y una regla que no
 lo viera daría por limpio justo al usuario más peligroso.
 
+**La pantalla** (Administrar › Gobierno y cumplimiento › Segregación de funciones, desde el
+09-11-2026) junta lo que antes estaba repartido entre Seguridad y
+Cumplimiento, y añade tres cosas que piden las herramientas de control
+interno tipo Infor:
+
+- **La matriz de reglas contra roles.** Cada celda dice si el rol da el lado A
+  de la regla, el B o los dos. Un rol con los dos es el conflicto que se
+  arregla en el rol y no persona a persona; por eso salen delante. Sólo se
+  pintan los roles que tocan alguna regla.
+- **El simulador.** Antes de darle un rol a alguien, se elige la persona y los
+  roles: dice qué reglas pasaría a incumplir. No cambia nada.
+- **Las reglas de serie.** Siete conflictos típicos de un CRM (calcular y
+  aprobar comisiones, dar de alta usuarios y asignarles roles, exportar la
+  empresa y purgar cuentas…), cargables con un botón y editables después.
+  Una matriz que empieza vacía no la rellena nadie.
+
+Las reglas se crean y se editan en la misma pantalla. Los permisos que se
+ofrecen son los que dan los roles de la empresa: una regla con un permiso que
+no tiene nadie no se incumple nunca y parece un control que pasa.
+
 ---
 
 ## 42. El front oficial, y la consola que se construye sola
