@@ -443,12 +443,13 @@ def fijar_mi_preferencia(
 @router.get(
     "/{tenant_id}/consumo",
     response_model=list[ConsumoOut],
+    dependencies=[Depends(exige_permiso("tenant:read"))],
     summary="Consumo del periodo frente a los topes",
     description=(
         "Alimenta el panel de consumo del tenant y los avisos de aproximación " "al límite."
     ),
 )
-def consumo(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
+def consumo(tenant_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     """El consumo **medido**, no el apuntado en una tabla que nadie escribía.
 
     Esto leía una tabla de contadores (`consumos`) que sólo escribía una función
@@ -462,6 +463,12 @@ def consumo(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     entonces el cliente ve una cuota agotada que no se corresponde con lo que
     tiene.
     """
+    # Sólo el de la propia empresa (o la plataforma), y 404 para el ajeno como
+    # en la ficha: hasta el 09-11-2026 esta ruta no pedía permiso ni miraba de
+    # quién era el tenant, así que cualquiera con sesión leía el consumo de
+    # cualquier empresa sabiendo su identificador.
+    if not principal.es_admin_plataforma and principal.tenant_id != tenant_id:
+        raise NoEncontrado("El tenant no existe", error_code="tenant.no_encontrado")
     from crmcore.consumo import medido_aqui
 
     salida = []

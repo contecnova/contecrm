@@ -511,6 +511,8 @@ export default {
     vecesUsada: "Usada {{veces}} veces",
   },
   entrar: {
+    codigo: "Código del segundo factor",
+    codigoPorQue: "Tu empresa exige el segundo factor: escribe el código de tu aplicación de autenticación.",
     olvidada: "¿No la recuerdas?",
     recuperarTitulo: "Recuperar el acceso",
     recuperarAyuda:

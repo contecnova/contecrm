@@ -174,3 +174,28 @@ def test_publicar_una_version_desde_el_editor(
         for campo in ("id", "clave", "version", "nombre", "estado", "definicion"):
             assert campo in r.json(), (campo, sorted(r.json()))
         assert r.json()["estado"] == "publicada"
+
+
+def test_el_consumo_de_otra_empresa_no_se_ve(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Medido el 09-11-2026: la ruta no pedía permiso ni miraba de quién era el
+    tenant, así que cualquiera con sesión leía el consumo de otra empresa."""
+    with _cliente("tenancy", monkeypatch) as cli:
+        propio = cli.get(f"/api/v1/tenants/{tenant_id}/consumo", headers=_cabeceras(tenant_id))
+        assert propio.status_code == 200, propio.text[:300]
+        ajeno = cli.get(f"/api/v1/tenants/{uuid4()}/consumo", headers=_cabeceras(tenant_id))
+        assert ajeno.status_code == 404, ajeno.text[:300]
+
+
+def test_las_identidades_de_un_contacto_no_revientan(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """La ruta pasaba `objeto=` a una función que recibe el contacto: 500 siempre."""
+    with _cliente("party", monkeypatch) as cli:
+        cab = _cabeceras(tenant_id)
+        r = cli.get(f"/api/v1/calidad-dato/identidades/contacto/{uuid4()}", headers=cab)
+        assert r.status_code == 200, r.text[:300]
+        assert {"senales", "cruzable"} <= set(r.json())
+        r = cli.get(f"/api/v1/calidad-dato/identidades/cuenta/{uuid4()}", headers=cab)
+        assert r.status_code == 404, r.text[:300]

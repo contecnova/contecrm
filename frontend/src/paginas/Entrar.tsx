@@ -30,7 +30,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { llamar } from "@/lib/api";
+import { ErrorApi, llamar } from "@/lib/api";
 import { config } from "@/lib/config";
 import { cn } from "@/lib/utiles";
 import { admitePasskeys, firmarConPasskey } from "@/lib/webauthn";
@@ -204,6 +204,17 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // El segundo paso: el servidor pide el código del segundo factor (porque la
+  // empresa o el rol lo exigen, o porque el contexto de la entrada cambió).
+  // Hasta el 09-11-2026 esta pantalla no mandaba nunca el código: con el
+  // segundo factor exigido, nadie podía entrar desde el navegador.
+  const [pideCodigo, setPideCodigo] = useState(false);
+  const [codigo, setCodigo] = useState("");
+  const [porQueCodigo, setPorQueCodigo] = useState("");
+  // Al pedirlo, el foco va al campo: es lo único que queda por hacer.
+  useEffect(() => {
+    if (pideCodigo) document.getElementById("entrar-codigo")?.focus();
+  }, [pideCodigo]);
   const [conLlave, setConLlave] = useState(false);
   const [nueva, setNueva] = useState("");
   const hayPasskeys = admitePasskeys();
@@ -232,10 +243,32 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
       // integración y lo peor posible para un navegador.
       await llamar("/api/v1/sesion/entrar", {
         metodo: "POST",
-        cuerpo: { email, contrasena, tenant },
+        cuerpo: {
+          email,
+          contrasena,
+          tenant,
+          huella_dispositivo: huellaDelNavegador(),
+          ...(pideCodigo && codigo.trim() ? { codigo_mfa: codigo.trim() } : {}),
+        },
       });
       alEntrar();
     } catch (fallo) {
+      const cod = fallo instanceof ErrorApi ? fallo.codigo : "";
+      if (
+        cod === "auth.mfa_requerida" ||
+        cod === "auth.factor_requerido_por_riesgo"
+      ) {
+        const det = (fallo as ErrorApi).detalle as {
+          explicacion?: string;
+        } | null;
+        setPideCodigo(true);
+        setPorQueCodigo(
+          cod === "auth.factor_requerido_por_riesgo" && det?.explicacion
+            ? det.explicacion
+            : t("entrar.codigoPorQue"),
+        );
+        return;
+      }
       setError(comoTexto(fallo, t("entrar.noSePudo")));
     } finally {
       setEnviando(false);
@@ -528,6 +561,29 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                   </div>
                 </div>
 
+                {pideCodigo ? (
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="entrar-codigo"
+                      className="text-rotulo text-ink-muted"
+                    >
+                      {t("entrar.codigo")}
+                    </label>
+                    <p role="status" className="text-rotulo text-ink-faint">
+                      {porQueCodigo}
+                    </p>
+                    <input
+                      id="entrar-codigo"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      required
+                      value={codigo}
+                      onChange={(e) => setCodigo(e.target.value)}
+                      className={cl.campo}
+                    />
+                  </div>
+                ) : null}
+
                 {error ? (
                   <div className={cl.avisoError} role="alert">
                     <span>⚠</span>
@@ -571,4 +627,23 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Una huella estable de este navegador, para que el servidor pueda recordar
+ * un dispositivo de confianza y notar cuándo se entra desde otro. No es un
+ * secreto ni identifica a la persona: un número al azar guardado aquí. Si el
+ * navegador no deja guardar nada, se manda vacía y el servidor lo trata como
+ * dispositivo nuevo.
+ */
+function huellaDelNavegador(): string {
+  try {
+    const guardada = localStorage.getItem("crm.huella_dispositivo");
+    if (guardada) return guardada;
+    const nueva = crypto.randomUUID();
+    localStorage.setItem("crm.huella_dispositivo", nueva);
+    return nueva;
+  } catch {
+    return "";
+  }
 }

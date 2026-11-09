@@ -638,7 +638,16 @@ def uniones_propuestas(
 def identidades_de(objeto: str, objeto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     from services.party import identidad
 
-    return identidad.identidades_de(db, principal.tenant_id, objeto=objeto, objeto_id=objeto_id)
+    # La resolución de identidad es de contactos: la función recibe el
+    # contacto y la ruta le pasaba `objeto=`/`objeto_id=`, así que daba 500
+    # siempre (09-11-2026). Otro objeto se dice, no revienta.
+    if objeto != "contacto":
+        raise NoEncontrado(
+            "La identidad entre canales se resuelve para contactos",
+            error_code="identidad.objeto_no_soportado",
+            detalle={"objeto": objeto},
+        )
+    return identidad.identidades_de(db, principal.tenant_id, contacto_id=objeto_id)
 
 
 # ── El contacto que cambia de empresa ─────────────────────────────────────
