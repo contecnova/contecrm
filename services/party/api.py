@@ -92,15 +92,6 @@ class ConMotivo(BaseModel):
     motivo: str = Field(..., min_length=1, max_length=1000)
 
 
-class TransferirPropiedad(BaseModel):
-    """El traspaso de todo lo de una persona a otra, cuando alguien se va."""
-
-    de_usuario: UUID
-    a_usuario: UUID
-    motivo: str = Field("", max_length=1000)
-    simular: bool = Field(True, description="Cuenta sin mover nada")
-
-
 router_cuentas = APIRouter(prefix="/accounts", tags=["cuentas"])
 # El listado de cuentas está escrito a mano, así que el montador no puede
 # apuntarlo: se declara aquí, junto al router. El import va en esta línea y no
@@ -539,6 +530,38 @@ def duplicados_cuenta(
         identificadores=[nif] if nif else None,
         email=email or None,
         web=web or None,
+    )
+    return [c.a_dict() for c in candidatos]
+
+
+@router_calidad.get(
+    "/contacts/duplicates",
+    response_model=list[CandidatoOut],
+    dependencies=[Depends(exige_permiso("contact:read"))],
+    summary="Buscar contactos que podrían ser esta persona",
+    description=(
+        "Lo mismo que hace el alta de un contacto, sin crear nada. Admite "
+        "además el teléfono, que **no** bloquea —una centralita la comparten "
+        "muchas personas— pero sí se devuelve como señal: lo usa la "
+        "deduplicación de leads al capturar (CRM-01.01.03.03), que decide con "
+        "sus reglas qué es concluyente para un lead."
+    ),
+)
+def duplicados_contacto(
+    db: DbDep,
+    principal: AutenticadoDep,
+    nombre: str = Query(""),
+    apellidos: str = Query(""),
+    email: str = Query(""),
+    telefono: str = Query(""),
+) -> Any:
+    candidatos = duplicados.buscar_contactos_duplicados(
+        db,
+        tenant_id=principal.tenant_id,
+        nombre=nombre,
+        apellidos=apellidos or None,
+        email=email or None,
+        telefono=telefono or None,
     )
     return [c.a_dict() for c in candidatos]
 
@@ -1646,38 +1669,9 @@ def purgar_papelera(datos: ConMotivo, db: DbDep, principal: AutenticadoDep) -> A
     return {"purgados": admin.purgar_vencidos(db, principal.tenant_id, motivo=motivo)}
 
 
-@router_admin.post(
-    "/transferir-propiedad",
-    response_model=dict,
-    dependencies=[Depends(exige_permiso("account:admin"))],
-    summary="Traspasar todo lo de una persona a otra",
-    description=(
-        "La operación que hace falta cuando alguien deja la empresa. Con "
-        "`simular=true` cuenta sin tocar nada: quien la ejecuta necesita ver "
-        "cuánto va a mover antes de moverlo."
-    ),
-)
-def transferir_propiedad(
-    datos: TransferirPropiedad,
-    db: DbDep,
-    principal: AutenticadoDep,
-) -> Any:
-    de_usuario, a_usuario = datos.de_usuario, datos.a_usuario
-    motivo, simular = datos.motivo, datos.simular
-    if not simular and len(motivo.strip()) < 5:
-        raise ErrorValidacion(
-            "La transferencia exige un motivo escrito",
-            error_code="party.transferencia_sin_motivo",
-        )
-    movidos = admin.transferir(
-        db,
-        tenant_id=principal.tenant_id,
-        de_usuario=de_usuario,
-        a_usuario=a_usuario,
-        motivo=motivo,
-        simular=simular,
-    )
-    return {"simulado": simular, "movidos": movidos, "total": sum(movidos.values())}
+# El traspaso de propiedad lo monta la fábrica común (CRM-07.01.01.07): la
+# misma ruta existe en `sales` para leads y oportunidades, y la pantalla llama a
+# las dos. Ver `crmcore.http.propiedad_router`.
 
 
 @router_admin.post(
@@ -1695,12 +1689,129 @@ def transferir_propiedad(
 def importar_cuentas(
     filas: list[dict[str, Any]],
     db: DbDep,
-    _: AutenticadoDep,
+    principal: AutenticadoDep,
     simular: bool = Query(True),
     actualizar: bool = Query(False),
 ) -> Any:
-    informe = admin.importar_cuentas(db, filas, simular=simular, actualizar=actualizar)
-    return informe.a_dict()
+    # Con el plan del tenant, y no el de fábrica: sin él, las columnas de los
+    # campos propios se separaban de la fila y no las escribía nadie
+    # (CRM-00.04.03.08).
+    return admin.importar_objeto(
+        db,
+        tenant_id=principal.tenant_id,
+        objeto="cuenta",
+        filas=filas,
+        simular=simular,
+        actualizar=actualizar,
+        por=principal.id,
+    )
+
+
+# ── Importar con validación previa y reversión (CRM-07.01.01.08) ──────────
+
+
+class PeticionImportacion(BaseModel):
+    objeto: str = Field(..., description="cuenta | contacto")
+    filas: list[dict[str, Any]] = Field(
+        ...,
+        description=(
+            "Las filas ya mapeadas: cada clave es un campo de serie o un campo "
+            "propio del objeto (ver `GET /party-admin/importaciones/campos`)"
+        ),
+    )
+    simular: bool = Field(True, description="Valida y dice qué haría con cada fila, sin escribir")
+    actualizar: bool = Field(
+        False, description="Las que ya existen se completan (sin pisar lo que tienen)"
+    )
+    fichero: str = Field("", max_length=300, description="Nombre del fichero, para el historial")
+
+
+class PeticionReversion(BaseModel):
+    simular: bool = Field(True, description="Dice qué se borraría y qué se devolvería")
+    forzar: bool = Field(
+        False, description="Revertir también lo que se ha cambiado después de importarlo"
+    )
+    motivo: str = Field("", max_length=1000)
+
+
+@router_admin.get(
+    "/importaciones/campos",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:import"))],
+    summary="A qué campos se puede llevar cada columna del fichero",
+    description=(
+        "Los de serie del objeto y **los campos propios** que este cliente le ha "
+        "añadido (CRM-00.04.03.08): sin ellos, el importador perdía justo las "
+        "columnas que el cliente creó porque le importaban."
+    ),
+)
+def campos_importables(db: DbDep, principal: AutenticadoDep, objeto: str = Query(...)) -> Any:
+    return admin.campos_importables(db, principal.tenant_id, objeto)
+
+
+@router_admin.post(
+    "/importaciones",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:import"))],
+    summary="Importar cuentas o contactos, simulando antes",
+    description=(
+        "**Simula por defecto**: valida cada fila y dice qué haría —crear, "
+        "actualizar, omitir porque ya existe— y qué filas fallan y por qué, sin "
+        "escribir nada. Al importar de verdad guarda la importación con lo que "
+        "tocó, y se puede **revertir entera** después."
+    ),
+)
+def importar(datos: PeticionImportacion, db: DbDep, principal: AutenticadoDep) -> Any:
+    return admin.importar_objeto(
+        db,
+        tenant_id=principal.tenant_id,
+        objeto=datos.objeto,
+        filas=datos.filas,
+        simular=datos.simular,
+        actualizar=datos.actualizar,
+        fichero=datos.fichero,
+        por=principal.id,
+    )
+
+
+@router_admin.get(
+    "/importaciones",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("account:import"))],
+    summary="Las importaciones hechas, la última primero",
+)
+def listar_importaciones(
+    db: DbDep, principal: AutenticadoDep, limite: int = Query(50, ge=1, le=200)
+) -> Any:
+    from crmcore.datos import importaciones
+
+    return importaciones.listar(db, principal.tenant_id, limite=limite)
+
+
+@router_admin.post(
+    "/importaciones/{importacion_id}/revertir",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:import"))],
+    summary="Deshacer una importación entera",
+    description=(
+        "Lo creado va a la papelera —con lo que colgara de ello— y lo "
+        "actualizado vuelve a como estaba, sólo en los campos que la importación "
+        "cambió. **Simula por defecto.** Si algo se ha cambiado después de "
+        "importarlo responde 409 con la lista, y no revierte nada: con "
+        "`forzar=true` lo revierte igual. Queda en la auditoría."
+    ),
+)
+def revertir_importacion(
+    importacion_id: UUID, datos: PeticionReversion, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    return admin.revertir_importacion(
+        db,
+        importacion_id,
+        simular=datos.simular,
+        forzar=datos.forzar,
+        por=principal.id,
+        motivo=datos.motivo,
+    )
 
 
 # ── Asignación, delegación y vencidas (CRM-01.02.01.02) ───────────────────
@@ -2018,7 +2129,7 @@ from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
 
 from services.party.masivo import RECURSOS as _RECURSOS_MASIVOS  # noqa: E402
 
-routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
+# Los routers del lote se montan al final del módulo: ver allí.
 
 # Ver los trabajos exige el permiso de administrar el maestro y no uno genérico:
 # la ficha de un trabajo guarda la entrada completa, que en una importación son
@@ -2046,7 +2157,6 @@ ROUTERS = [
     router_busqueda,
     router_documental,
     router_trabajos,
-    *routers_masivos,
 ]
 
 
@@ -2271,3 +2381,25 @@ def extraer_de_texto(contacto_id: UUID, datos: ExtraerDeTextoIn, principal: Aute
         },
         principal,
     )
+
+
+# ── Lotes (CRM-00.02.01.11) ───────────────────────────────────────────────
+# Al final, y no junto a su importación: los lotes toman «actualizar» y
+# «borrar» de las fichas genéricas montadas arriba, y la lista cerrada de
+# operaciones que publica el contrato sale de ahí. Montados antes, el contrato
+# decía que sólo se podía crear y la pantalla no ofrecía nada más.
+routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
+ROUTERS.extend(routers_masivos)
+
+
+# ── Traspaso de propiedad (CRM-07.01.01.07) ───────────────────────────────
+from crmcore.http.propiedad_router import crear_router_transferencia  # noqa: E402
+
+ROUTERS.append(
+    crear_router_transferencia(
+        prefijo="/party-admin",
+        modelos=admin.MODELOS_CON_PROPIETARIO,
+        permiso="account:admin",
+        que="cuentas, contactos y actividades",
+    )
+)

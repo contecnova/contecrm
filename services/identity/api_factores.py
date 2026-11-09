@@ -310,6 +310,32 @@ def adopcion(db: DbDep, principal: AutenticadoDep) -> Any:
     return factores.adopcion_mfa(db, principal.tenant_id)
 
 
+class MfaPorRol(BaseModel):
+    roles: list[str] = Field(
+        default_factory=list,
+        max_length=200,
+        description="Roles a los que se exige segundo factor. Vacía: manda el interruptor global",
+    )
+
+
+@router_factores.put(
+    "/obligatoria-por-rol",
+    dependencies=[Depends(exige_permiso("tenant:write"))],
+    summary="A qué roles se exige segundo factor (CRM-00.05.01.06)",
+    description=(
+        "Guarda la lista **en identidad, que es quien la aplica al entrar**, y "
+        "devuelve el panel de adopción recalculado: a quién se le va a pedir y "
+        "cuántos de ellos no tienen todavía con qué, que son los que se "
+        "quedarían fuera.\n\n"
+        "Los factores que cumplen son TOTP (una aplicación de códigos) y "
+        "passkey; el SMS y el correo cuentan si la empresa los tiene "
+        "encendidos. No hay notificación push."
+    ),
+)
+def fijar_obligatoria_por_rol(datos: MfaPorRol, uow: UowDep, principal: AutenticadoDep) -> Any:
+    return factores.fijar_mfa_por_rol(uow.db, principal.tenant_id, datos.roles, por=principal.id)
+
+
 # ── Dispositivos de confianza (CRM-00.05.01.20) ───────────────────────────
 
 

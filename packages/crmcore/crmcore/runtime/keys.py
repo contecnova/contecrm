@@ -140,6 +140,16 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="maquinas_de_estado",
             sensible=True,
         ),
+        # Latencia p95/p99 por tipo de operación (CRM-08.01.01.01)
+        _c(
+            "slo_objetivos_operacion",
+            "json",
+            (
+                "Objetivo de latencia p95 y p99 (ms) por tipo de operación: "
+                "lectura, escritura, búsqueda, exportación"
+            ),
+            campo_settings="slo_objetivos_operacion",
+        ),
         _c(
             "tcsec_mfa_minima_pct",
             "int",
@@ -491,6 +501,16 @@ CLAVES: dict[str, ClaveAjuste] = {
             "bool",
             "Exigir MFA a todos los usuarios del tenant",
             campo_settings="mfa_obligatoria",
+            sensible=True,
+        ),
+        _c(
+            "mfa_obligatoria_roles",
+            "json",
+            (
+                "Roles a los que se exige segundo factor al entrar con contraseña. "
+                "Vacío: se aplica el interruptor «mfa_obligatoria»"
+            ),
+            campo_settings="mfa_obligatoria_roles",
             sensible=True,
         ),
         # Segundo factor y gobierno del SSO (CRM-00.05.01.13 .. .25). Todos

@@ -147,6 +147,41 @@ def _renderizar(valor: Any, parametros: dict[str, Any]) -> Any:
 # ── Autenticación ─────────────────────────────────────────────────────────
 
 
+# Qué secretos pide cada tipo de autenticación, en el orden en que se piden.
+#
+# Es la otra mitad de `cabeceras_auth`, y vive a su lado para que no puedan
+# divergir: la pantalla que fija la credencial pregunta aquí qué campos enseñar,
+# y si se añadiera un tipo allí sin añadirlo aquí, la pantalla pediría cero
+# campos y la credencial se guardaría vacía. `ninguna` no pide nada a
+# propósito: no hay credencial que fijar.
+SECRETOS_POR_AUTH: dict[str, tuple[str, ...]] = {
+    "ninguna": (),
+    "api_key": ("api_key",),
+    "basica": ("usuario", "contrasena"),
+    "bearer": ("token",),
+    "oauth2_client_credentials": ("client_id", "client_secret"),
+}
+
+# De los anteriores, los que **no** son secretos: se piden igual, pero se pueden
+# escribir sin ocultar. Un `client_id` o un usuario se teclean mirando.
+NO_SECRETOS = frozenset({"usuario", "client_id"})
+
+
+def secretos_que_pide(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Los campos que hay que rellenar para esta conexión, con si son secretos.
+
+    El tipo desconocido no devuelve una lista vacía, que se leería como «no
+    pide nada»: lanza, igual que `cabeceras_auth` al llamar.
+    """
+    tipo = str(config.get("auth_tipo", "ninguna"))
+    if tipo not in SECRETOS_POR_AUTH:
+        raise ErrorValidacion(
+            f"Tipo de autenticación no admitido: «{tipo}»",
+            error_code="conector.auth_no_admitida",
+        )
+    return [{"clave": c, "secreto": c not in NO_SECRETOS} for c in SECRETOS_POR_AUTH[tipo]]
+
+
 async def cabeceras_auth(
     config: dict[str, Any], secretos: dict[str, str], *, tenant_id: str
 ) -> dict[str, str]:

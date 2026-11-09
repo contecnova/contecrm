@@ -642,6 +642,48 @@ def provisionar_tenant(db: Session, tenant_id: UUID) -> dict[str, Any]:
     }
 
 
+def estado_alta_tenant(db: Session, tenant_id: UUID) -> list[dict[str, Any]]:
+    """En qué quedó el alta del tenant en cada herramienta (CRM-00.01.07.02).
+
+    Una fila por herramienta conectada que gobierna el tenant, **también las
+    que no tienen alta todavía**: que no salgan sería leer «todo aplicado»
+    donde lo que hay es «nunca se pidió».
+    """
+    filas = {
+        f.herramienta: f
+        for f in db.execute(
+            select(SincronizacionSuite).where(
+                SincronizacionSuite.tenant_id == tenant_id,
+                SincronizacionSuite.objeto == "tenant",
+                SincronizacionSuite.objeto_id == str(tenant_id),
+            )
+        ).scalars()
+    }
+    salida = []
+    for herramienta in herramientas(db, tenant_id, solo_activas=False):
+        if "tenant" not in (herramienta.objetos or list(OBJETOS)):
+            continue
+        fila = filas.get(herramienta.nombre)
+        salida.append(
+            {
+                "herramienta": herramienta.nombre,
+                "activa": herramienta.activa,
+                "estado": fila.estado if fila else "sin_alta",
+                "operacion": fila.operacion if fila else None,
+                "intentos": fila.intentos if fila else 0,
+                "ultimo_error": fila.ultimo_error if fila else None,
+                "aplicado_at": (
+                    fila.aplicado_at.isoformat() if fila and fila.aplicado_at else None
+                ),
+                "reintentar_at": (
+                    fila.reintentar_at.isoformat() if fila and fila.reintentar_at else None
+                ),
+                "identificador_externo": fila.identificador_externo if fila else None,
+            }
+        )
+    return salida
+
+
 def cerrar_tenant(db: Session, tenant_id: UUID) -> dict[str, Any]:
     """Encola la **baja** del tenant en cada herramienta conectada (CRM-00.01.07.13).
 

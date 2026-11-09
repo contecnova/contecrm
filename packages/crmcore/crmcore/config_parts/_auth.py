@@ -59,6 +59,12 @@ class _AuthSettings(BaseSettings):
     # por tenant); esto es el interruptor global para instalaciones que la
     # quieren obligatoria sin excepciones.
     mfa_obligatoria: bool = False
+    # MFA obligatoria **por rol** (CRM-00.05.01.06): a quién se le exige el
+    # segundo factor aunque no lo haya activado. Vacío = manda el interruptor de
+    # arriba, como antes. Con roles, se exige a quien tenga alguno de ellos en
+    # la empresa en la que entra; el interruptor global sigue sumando, nunca
+    # restando. Se cambia por empresa desde Identidad y seguridad.
+    mfa_obligatoria_roles: list[str] = Field(default_factory=list)
     # Ventana de códigos TOTP aceptados hacia atrás y adelante, para absorber
     # relojes desajustados. Cada paso son 30 s; 1 = ±30 s.
     totp_ventana_pasos: int = Field(1, ge=0, le=10)

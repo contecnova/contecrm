@@ -13,6 +13,8 @@ subirlo es una decisión de negocio con coste, que es como debe tomarse.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -51,6 +53,67 @@ class _ServicioSettings(BaseSettings):
     latencia_p95_ms_estandar: int = Field(2_000, ge=50, le=60_000)
     latencia_p95_ms_premium: int = Field(1_000, ge=50, le=60_000)
     latencia_p95_ms_enterprise: int = Field(500, ge=50, le=60_000)
+
+    # ── Latencia por tipo de operación (CRM-08.01.01.01) ─────────────────
+    # Un único p95 mezcla una lectura de ficha con una exportación de diez mil
+    # filas: la media de las dos no describe ninguna, y el objetivo que vale
+    # para una incumple siempre la otra. Se clasifica cada petición en un tipo
+    # de operación y se mide p95 y p99 por tipo y por empresa.
+    #
+    # Las reglas se recorren en orden y gana la primera: una regla casa si el
+    # método está en `metodos` (vacío = cualquiera) y la plantilla de ruta
+    # contiene alguno de los trozos de `rutas` (vacío = cualquiera). Lo que no
+    # casa con ninguna cae en «otra», que se enseña igual: esconderla haría que
+    # una ruta mal clasificada no se viera nunca.
+    slo_operaciones_reglas: list[dict[str, Any]] = Field(
+        default_factory=lambda: [
+            {
+                "operacion": "exportacion",
+                "metodos": [],
+                "rutas": ["export", "volcado", ".csv", ".jsonl", "descargar"],
+            },
+            {"operacion": "busqueda", "metodos": [], "rutas": ["buscar", "busqueda", "search"]},
+            {"operacion": "escritura", "metodos": ["POST", "PUT", "PATCH", "DELETE"], "rutas": []},
+            {"operacion": "lectura", "metodos": ["GET", "HEAD"], "rutas": []},
+        ]
+    )
+    # Objetivo de p95 y p99, en milisegundos, por tipo de operación. Editable en
+    # caliente por tier y por empresa (`slo_objetivos_operacion`): el
+    # compromiso es una decisión de negocio, y un cliente que exporta a diario
+    # puede tener uno distinto del que no lo hace nunca.
+    slo_objetivos_operacion: dict[str, dict[str, int]] = Field(
+        default_factory=lambda: {
+            "lectura": {"p95_ms": 500, "p99_ms": 1_500},
+            "escritura": {"p95_ms": 1_000, "p99_ms": 3_000},
+            "busqueda": {"p95_ms": 1_000, "p99_ms": 3_000},
+            "exportacion": {"p95_ms": 10_000, "p99_ms": 30_000},
+        }
+    )
+    # Límites de los cubos con los que se cuentan las duraciones, en ms. El
+    # percentil sale de ellos, así que su resolución es la del resultado: con
+    # pocos cubos un p95 de 600 ms y uno de 900 ms son el mismo número.
+    slo_latencia_cubos_ms: list[int] = Field(
+        default_factory=lambda: [
+            5,
+            10,
+            25,
+            50,
+            100,
+            250,
+            500,
+            750,
+            1_000,
+            1_500,
+            2_500,
+            5_000,
+            10_000,
+            30_000,
+            60_000,
+        ]
+    )
+    # Por debajo de estas peticiones, el percentil se enseña marcado como poco
+    # fiable: un p99 de veinte peticiones es la segunda más lenta, no una cola.
+    slo_muestras_minimas: int = Field(100, ge=1, le=1_000_000)
 
     # Días del periodo sobre el que se cuenta el presupuesto de error. Mensual
     # por defecto porque es el periodo en el que se firman los compromisos.

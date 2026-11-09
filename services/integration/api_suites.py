@@ -8,7 +8,7 @@ discutiéndose en el comité de empresa.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -63,12 +63,29 @@ class SuscripcionIn(BaseModel):
 
 
 class ReunionIn(BaseModel):
-    perfil: str
-    asunto: str
-    inicio: datetime
-    fin: datetime
+    perfil: str = Field(
+        "",
+        description=(
+            "El perfil de suite. Vacío: el que el tenant tenga conectado con "
+            "reuniones —Microsoft 365 o Google, según lo que haya—"
+        ),
+    )
+    asunto: str = Field("", max_length=300, description="Vacío: el de la actividad")
+    inicio: datetime | None = Field(None, description="Vacío: el de la actividad")
+    fin: datetime | None = Field(None, description="Vacío: el de la actividad")
     confirmada: bool = False
     asistentes: list[str] = Field(default_factory=list)
+    organizador: str = Field(
+        "",
+        description="Con qué cuenta de la suite se crea, si el endpoint la pide (`{{organizador}}`)",
+    )
+    actividad_id: UUID | None = Field(
+        None, description="La actividad en la que se guarda el enlace"
+    )
+    objeto: str = Field(
+        "", max_length=60, description="Sin actividad: el registro del que cuelga la reunión nueva"
+    )
+    objeto_id: UUID | None = None
 
 
 @router_suites.post(
@@ -213,29 +230,195 @@ def suscripciones_por_renovar(db: DbDep, principal: AutenticadoDep) -> Any:
     return su.por_renovar(db, principal.tenant_id)
 
 
+@router_suites.get(
+    "/reuniones/proveedor",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Con qué suite se crearía una reunión en línea, si hay alguna",
+    description=(
+        "Lo pregunta la ficha antes de ofrecer «Crear reunión en línea»: un botón "
+        "que siempre falla enseña a no pulsarlo. Si no hay ninguna suite con "
+        "reuniones, o hay varias y no se sabe cuál, **se dice por qué**."
+    ),
+)
+def proveedor_de_reuniones(db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import CrmError
+
+    try:
+        fila = su.perfil_de_reuniones(db, principal.tenant_id, usuario_id=principal.id)
+    except CrmError as exc:
+        return {"disponible": False, "motivo": exc.mensaje, "codigo": exc.error_code}
+    return {"disponible": True, "perfil": fila.nombre, "sistema": fila.sistema}
+
+
+def _en_party(
+    principal: Any, metodo: str, ruta: str, cuerpo: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Una llamada a `party` **con la identidad de quien pulsa**.
+
+    Las actividades son de `party` y ningún servicio lee el esquema de otro:
+    se piden por HTTP. Con sus permisos y no con los de «la casa», para que
+    guardar el enlace en una actividad que no puede tocar falle igual que si
+    la editara él.
+    """
+    from crmcore.http.interno import invocar
+
+    return invocar(
+        metodo=metodo,
+        ruta=ruta,
+        cuerpo=cuerpo,
+        tenant_id=principal.tenant_id,
+        principal_id=principal.id,
+        permisos=sorted(principal.permisos),
+        roles=sorted(principal.roles),
+        tipo="usuario",
+    )
+
+
 @router_suites.post(
     "/reuniones",
     dependencies=[Depends(exige_permiso("integration:write"))],
-    summary="Preparar una reunión en línea con el proveedor del tenant",
+    summary="Crear una reunión en línea con la suite del tenant y guardar su enlace",
     description=(
+        "Crea **de verdad** la sala en el proveedor que el tenant tenga conectado "
+        "—Microsoft 365/Teams o Google Meet, según lo declarado en su perfil—, "
+        "por el conector declarativo y con la credencial de la conexión. No hay "
+        "código por proveedor: la forma del cuerpo y de dónde sale el enlace son "
+        "configuración del perfil.\n\n"
+        "Con `actividad_id`, el enlace se guarda en esa actividad (y lo que falte "
+        "—asunto, inicio, fin— se toma de ella). Con `objeto` y `objeto_id`, se "
+        "crea una actividad de tipo reunión colgada de ese registro.\n\n"
         "No se crea la sala hasta que la reunión está **confirmada**: crearla al "
-        "proponer la hora deja salas abiertas de todas las que no cuajaron, y "
-        "alguien acaba entrando a una vacía convencido de que le han dado "
-        "plantón.\n\n"
-        "El enlace **es una credencial**: quien lo tiene entra. Por eso la "
-        "respuesta dice dónde puede ir y dónde no — y un push no es uno de los "
-        "sitios donde puede ir."
+        "proponer la hora deja salas abiertas de todas las que no cuajaron.\n\n"
+        "El enlace **es una credencial**: quien lo tiene entra. Va a la ficha y a "
+        "la cita, nunca a un push ni a una página pública."
     ),
 )
 def reunion(cuerpo: ReunionIn, db: DbDep, principal: AutenticadoDep) -> Any:
-    return sur.crear_reunion(
-        perfil_config=su.perfil(db, principal.tenant_id, cuerpo.perfil),
-        asunto=cuerpo.asunto,
-        inicio=cuerpo.inicio,
-        fin=cuerpo.fin,
+    from crmcore.audit.chain import registrar
+    from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+
+    from services.integration.api import _secretos
+
+    actividad: dict[str, Any] = {}
+    if cuerpo.actividad_id is not None:
+        leida = _en_party(principal, "GET", f"/api/v1/activities/{cuerpo.actividad_id}")
+        if not leida["ok"]:
+            raise NoEncontrado(
+                "Esa actividad no existe o no la puedes ver",
+                error_code="suite.reunion_actividad_no_encontrada",
+            )
+        actividad = dict(leida["datos"] or {})
+        if dict(dict(actividad.get("detalles") or {}).get("reunion") or {}).get("enlace"):
+            # Una segunda sala para la misma reunión es una sala huérfana: la
+            # mitad de los asistentes entra en una y la otra mitad en la otra.
+            raise Conflicto(
+                "Esta actividad ya tiene su reunión en línea.",
+                error_code="suite.reunion_ya_creada",
+            )
+    elif not (cuerpo.objeto and cuerpo.objeto_id):
+        raise ErrorValidacion(
+            "Di dónde se guarda el enlace: una actividad, o el registro del que cuelga.",
+            error_code="suite.reunion_sin_destino",
+        )
+
+    def _fecha(valor: Any) -> datetime | None:
+        if valor is None or isinstance(valor, datetime):
+            return valor
+        return datetime.fromisoformat(str(valor))
+
+    asunto = cuerpo.asunto or str(actividad.get("asunto") or "")
+    inicio = cuerpo.inicio or _fecha(actividad.get("inicio_at"))
+    fin = cuerpo.fin or _fecha(actividad.get("fin_at"))
+    if not asunto or inicio is None or fin is None:
+        raise ErrorValidacion(
+            "Hacen falta el asunto, el inicio y el fin de la reunión.",
+            error_code="suite.reunion_incompleta",
+        )
+
+    conexion = su.perfil_de_reuniones(
+        db, principal.tenant_id, usuario_id=principal.id, nombre=cuerpo.perfil
+    )
+    # Autoriza la persona, no el administrador: crear una reunión escribe en
+    # su calendario.
+    su.exigir_consentimiento(
+        db,
+        principal.tenant_id,
+        usuario_id=principal.id,
+        perfil_nombre=conexion.nombre,
+        recurso="reuniones",
+        sentido="escribir",
+    )
+    preparada = sur.crear_reunion(
+        perfil_config=dict(conexion.config or {}),
+        asunto=asunto,
+        inicio=inicio,
+        fin=fin,
         confirmada=cuerpo.confirmada,
         asistentes=cuerpo.asistentes,
     )
+    sala = sur.pedir_reunion(
+        preparada=preparada,
+        perfil_config=dict(conexion.config or {}),
+        secretos=_secretos(db, conexion.id),
+        tenant_id=str(principal.tenant_id),
+        organizador=cuerpo.organizador,
+    )
+    reunion_guardada = {
+        "enlace": sala["enlace"],
+        "id_externo": sala["id_externo"],
+        "perfil": conexion.nombre,
+        "sistema": conexion.sistema,
+        "creada_at": datetime.now(UTC).isoformat(),
+    }
+
+    # La sala ya existe en el proveedor. Si guardarla en la actividad falla, el
+    # enlace se devuelve igual —perderlo dejaría una sala que nadie encuentra—
+    # y se dice que no quedó guardado.
+    if cuerpo.actividad_id is not None:
+        detalles = {**dict(actividad.get("detalles") or {}), "reunion": reunion_guardada}
+        escrita = _en_party(
+            principal, "PATCH", f"/api/v1/activities/{cuerpo.actividad_id}", {"detalles": detalles}
+        )
+        actividad_id = str(cuerpo.actividad_id)
+    else:
+        escrita = _en_party(
+            principal,
+            "POST",
+            "/api/v1/activities",
+            {
+                "tipo": "reunion",
+                "asunto": asunto,
+                "objeto": cuerpo.objeto,
+                "objeto_id": str(cuerpo.objeto_id),
+                "inicio_at": inicio.isoformat(),
+                "fin_at": fin.isoformat(),
+                "detalles": {
+                    "reunion": reunion_guardada,
+                    "asistentes": preparada["cuerpo"]["asistentes"],
+                },
+            },
+        )
+        actividad_id = str(dict(escrita.get("datos") or {}).get("id") or "") or None
+
+    registrar(
+        db,
+        accion="suite.reunion_creada",
+        objeto="actividad",
+        objeto_id=actividad_id,
+        # Sin el enlace: es una credencial y la auditoría la lee mucha gente.
+        datos={"perfil": conexion.nombre, "guardada": bool(escrita["ok"])},
+    )
+    salida: dict[str, Any] = {
+        **reunion_guardada,
+        "actividad_id": actividad_id,
+        "guardada": bool(escrita["ok"]),
+    }
+    if not escrita["ok"]:
+        salida["aviso"] = (
+            "La sala se ha creado pero el enlace no se ha podido guardar en la "
+            "actividad: cópialo ahora, o se quedará una sala que nadie encuentra."
+        )
+    return salida
 
 
 class HuecosIn(BaseModel):

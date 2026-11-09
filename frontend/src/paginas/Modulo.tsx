@@ -42,7 +42,8 @@ import {
   vistaRecordada,
   type Vista,
 } from "@/componentes/Vistas";
-import { Formulario } from "@/componentes/Formulario";
+import { Formulario, candidatosDe } from "@/componentes/Formulario";
+import { AccionesMasivas } from "@/componentes/AccionesMasivas";
 import { Filtros } from "@/componentes/Filtros";
 import { Tabla, leerElegidas, leerOrden } from "@/componentes/Tabla";
 import {
@@ -258,7 +259,7 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
       setVistas(suyas);
       const entrada = vistaDeEntrada(suyas);
       const yaHayFiltros = [...parametros.keys()].some(
-        (k) => k !== "r" && k !== "nuevo",
+        (k) => k !== "r" && k !== "nuevo" && k !== "duplicar",
       );
       if (entrada && !yaHayFiltros) aplicarVista(entrada);
     });
@@ -290,7 +291,8 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const recorteActual = useCallback(() => {
     const filtrosActuales: Record<string, string> = {};
     for (const [k, v] of parametros.entries()) {
-      if (k !== "r" && k !== "nuevo") filtrosActuales[k] = v;
+      if (k !== "r" && k !== "nuevo" && k !== "duplicar")
+        filtrosActuales[k] = v;
     }
     return filtrosActuales;
   }, [parametros]);
@@ -698,6 +700,21 @@ function RecursoVista({
   const [esquemaEditable, setEsquemaEditable] = useState<
     Map<string, CampoEsquema>
   >(() => new Map());
+  // El lote de la colección (CRM-00.02.01.11): dónde está y qué admite, leído
+  // del contrato. Sin él la tabla no ofrece casillas: elegir filas para no
+  // poder hacer nada con ellas es peor que no poder elegirlas.
+  const [lote, setLote] = useState<{
+    ruta: string;
+    operaciones: string[];
+  } | null>(null);
+  const [elegidos, setElegidos] = useState<Set<string>>(() => new Set());
+  const [loteAbierto, setLoteAbierto] = useState(false);
+  // Duplicar desde la ficha (CRM-07.01.01.07): `?duplicar=<id>` abre el alta
+  // con los valores de ese registro. Lo que se copia lo decide el contrato del
+  // alta —sus campos—, no una lista por objeto.
+  const [valoresDeAlta, setValoresDeAlta] = useState<Record<string, unknown>>(
+    {},
+  );
   // La clave con la que se recuerdan columnas y orden. La trae la pantalla
   // porque incluye la VISTA de lista, que es suya.
   const recuerdaComo = recuerdaColumnasComo;
@@ -1054,6 +1071,7 @@ function RecursoVista({
   useEffect(() => {
     setFilas(null);
     setSiguiente(null);
+    setElegidos(new Set());
     void cargar();
   }, [cargar]);
 
@@ -1105,6 +1123,20 @@ function RecursoVista({
       // la ficha y sin abrirla no se alcanza nada de eso.
       const plantillaFicha = fichaDe(documento, recurso.listar);
       setPlantillaFicha(plantillaFicha);
+      // El lote vive junto a la colección: `/accounts` → `/accounts/masivo`.
+      // Las operaciones salen de la lista cerrada del contrato, y sólo cuenta
+      // lo que se hace con filas que ya existen: crear en lote es importar.
+      const rutaLote = `${recurso.listar.split("?")[0]?.replace(/\/$/, "")}/masivo`;
+      const operacionesLote = admite(documento, rutaLote, "post")
+        ? (camposDe(documento, rutaLote, "post").find(
+            (c) => c.nombre === "operacion",
+          )?.opciones ?? [])
+        : [];
+      setLote(
+        operacionesLote.some((o) => o === "actualizar" || o === "borrar")
+          ? { ruta: rutaLote, operaciones: operacionesLote }
+          : null,
+      );
       // Lo que el PATCH del registro admite. Si el campo por el que se agrupa
       // no está, el tablero no deja arrastrar: ofrecer un gesto que el
       // servidor va a rechazar es peor que no ofrecerlo.
@@ -1133,6 +1165,37 @@ function RecursoVista({
     recurso.objeto,
     recurso.nombre,
   ]);
+
+  // Duplicar: se lee el registro por su ficha y se rellenan con él los campos
+  // del alta. Sólo cuando la ficha se abre por identificador —con una clave,
+  // la copia chocaría con el original al guardar—.
+  const duplicarDe = parametros.get("duplicar") ?? "";
+  useEffect(() => {
+    if (!duplicarDe || !plantillaFicha || !campos || campoFicha !== "id")
+      return;
+    let vivo = true;
+    const ruta = plantillaFicha.replace(
+      /\{[a-z_]+\}$/,
+      encodeURIComponent(duplicarDe),
+    );
+    llamar<Record<string, unknown>>(ruta)
+      .then((r) => {
+        if (!vivo) return;
+        setValoresDeAlta(
+          valoresParaDuplicar(r.datos, campos, t("duplicar.sufijo")),
+        );
+        setCreando(true);
+      })
+      .catch((error) => {
+        if (vivo) setFallo(error);
+      });
+    return () => {
+      vivo = false;
+    };
+    // `t` fuera a propósito: es una función nueva en cada pintado y volvería
+    // a pedir el registro en cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duplicarDe, plantillaFicha, campos, campoFicha]);
 
   if (!puedeVer) {
     // Con el mismo lenguaje que el resto de estados. Una línea de texto suelta
@@ -1180,6 +1243,14 @@ function RecursoVista({
         : { ruta: rutaDeAlta!, cuerpo: valores, metodo: "POST" };
       await llamar(ruta, { metodo, cuerpo });
       setCreando(false);
+      setFallo(null);
+      if (parametros.has("duplicar")) {
+        // La copia ya está: el parámetro no puede seguir abriendo el alta.
+        const siguientes = new URLSearchParams(parametros);
+        siguientes.delete("duplicar");
+        setParametros(siguientes, { replace: true });
+        setValoresDeAlta({});
+      }
       await cargar();
     } catch (error) {
       setFallo(error);
@@ -1215,7 +1286,19 @@ function RecursoVista({
   const formularioDeAlta =
     creando && campos ? (
       <div className="mb-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
+        {duplicarDe ? (
+          <p className="mb-2 text-rotulo text-ink-faint" role="status">
+            {t("duplicar.desde")}
+          </p>
+        ) : null}
         <Formulario
+          key={
+            duplicarDe
+              ? `duplicar-${duplicarDe}-${Object.keys(valoresDeAlta).length}`
+              : "alta"
+          }
+          valores={valoresDeAlta}
+          forzarTrasElAviso
           fallo={fallo}
           recurso={recurso}
           campos={campos}
@@ -1330,7 +1413,11 @@ function RecursoVista({
         />
       ) : null}
 
-      {fallo ? <Fallo error={fallo} reintentar={() => void cargar()} /> : null}
+      {/* Un 409 por duplicado no es un fallo de la pantalla: lo explica el
+          propio formulario, con los candidatos y «Es otro, crearlo igual». */}
+      {fallo && !candidatosDe(fallo) ? (
+        <Fallo error={fallo} reintentar={() => void cargar()} />
+      ) : null}
 
       {busqueda && !terminoValido ? (
         <p className="text-dato text-ink-faint" role="status">
@@ -1464,6 +1551,17 @@ function RecursoVista({
               // pantalla vacía es peor que no tener enlace, porque el usuario
               // cree que se ha roto algo.
               enlace={aLaFicha}
+              seleccion={
+                lote
+                  ? {
+                      elegidos,
+                      alCambiar: (nuevos) => {
+                        setElegidos(nuevos);
+                        if (nuevos.size > 0) setLoteAbierto(true);
+                      },
+                    }
+                  : undefined
+              }
               encabezado={
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
                   {botonDeAlta}
@@ -1490,6 +1588,28 @@ function RecursoVista({
               antes={
                 <>
                   {formularioDeAlta}
+                  {lote && loteAbierto ? (
+                    <AccionesMasivas
+                      ruta={lote.ruta}
+                      operaciones={lote.operaciones}
+                      ids={[...elegidos]}
+                      nombres={Object.fromEntries(
+                        (filas ?? []).map((f) => [
+                          String(f.id ?? ""),
+                          nombreDelRegistro(f),
+                        ]),
+                      )}
+                      campos={[...esquemaEditable.values()]}
+                      alTerminar={() => {
+                        setElegidos(new Set());
+                        void cargar();
+                      }}
+                      alQuitar={() => {
+                        setElegidos(new Set());
+                        setLoteAbierto(false);
+                      }}
+                    />
+                  ) : null}
                   {/* Lo que se ha elegido en el menú de una fila sin ficha. */}
                   <div ref={panelDeFila}>
                     {(edicionDeFila || accionDeFila) && filaElegida ? (
@@ -1599,6 +1719,46 @@ function RecursoVista({
       )}
     </div>
   );
+}
+
+/**
+ * Qué valores de un registro sirven para dar de alta su copia.
+ *
+ * Los campos los pone **el contrato del alta**, no una lista por objeto: se
+ * copia lo que el alta admite y el registro tiene, con su tipo. Se dejan fuera
+ * `forzar` —la copia de algo que existe es justo lo que la deduplicación tiene
+ * que ver— y las líneas, que se copian con su propia operación en el
+ * servidor cuando el objeto la tiene. Al nombre se le añade el sufijo, para
+ * que en la lista no haya dos iguales sin saber cuál es cuál.
+ */
+export function valoresParaDuplicar(
+  registro: Record<string, unknown>,
+  campos: CampoEsquema[],
+  sufijo: string,
+): Record<string, unknown> {
+  const salida: Record<string, unknown> = {};
+  for (const campo of campos) {
+    if (campo.nombre === "forzar" || campo.tipo === "lineas") continue;
+    const valor = registro[campo.nombre];
+    if (valor === null || valor === undefined || valor === "") continue;
+    if (campo.tipo === "numero") {
+      const n = Number(valor);
+      if (Number.isFinite(n)) salida[campo.nombre] = n;
+    } else if (campo.tipo === "booleano") {
+      if (typeof valor === "boolean") salida[campo.nombre] = valor;
+    } else if (campo.tipo === "lista_multiple" || campo.tipo === "etiquetas") {
+      if (Array.isArray(valor) && valor.every((v) => typeof v !== "object"))
+        salida[campo.nombre] = valor;
+    } else if (campo.tipo === "objeto") {
+      if (typeof valor === "object" && !Array.isArray(valor))
+        salida[campo.nombre] = valor;
+    } else if (typeof valor === "string" || typeof valor === "number") {
+      salida[campo.nombre] = String(valor);
+    }
+  }
+  if (typeof salida.nombre === "string" && sufijo)
+    salida.nombre = `${salida.nombre} ${sufijo}`;
+  return salida;
 }
 
 /**

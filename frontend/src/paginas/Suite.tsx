@@ -23,10 +23,11 @@
  * puede aprobar— y, al cerrar, si de verdad se puede firmar la destrucción o
  * qué queda abierto. Se firma lo que consta; si no consta, se dice que no.
  *
- * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.01.07.02`, el
- * alta del tenant en cascada. Aquí se ve lo que se aplicaría y lo aplicado,
- * pero el alta se dispara por API y no desde aquí, y declarar un botón que no
- * existe es justo lo que la traza impide.
+ * Y desde el 09-11-2026 **el alta del tenant en cascada** (CRM-00.01.07.02):
+ * «Dar de alta en las herramientas» la encola, la empuja sólo a ella —no la
+ * cola entera— y enseña en qué quedó en cada herramienta, también las que
+ * fallaron. Comprobado en el navegador: el botón, la rejilla por herramienta
+ * con su estado e intentos, y el error de la que no contestó.
  *
  * Y las dos preguntas del momento malo
  * (CRM-06.01.03.20, CRM-06.01.03.17): «esto no conecta, ¿qué falta
@@ -192,6 +193,8 @@ export function SuiteGobierno() {
               </tr>
             ))}
           </Rejilla>
+
+          <AltaEnCascada alTerminar={() => setRecargar((n) => n + 1)} />
 
           {datos.cuarentena > 0 ? (
             <>
@@ -1165,6 +1168,150 @@ export function QueSabeHacerCadaSuite() {
           ) : null}
         </>
       )}
+    </section>
+  );
+}
+
+/** Lo que `GET|POST /suite/provisionar/tenant` dice de cada herramienta. */
+interface AltaEnHerramienta {
+  herramienta: string;
+  activa: boolean;
+  estado: string;
+  intentos: number;
+  ultimo_error: string | null;
+  aplicado_at: string | null;
+  reintentar_at: string | null;
+}
+
+/**
+ * Dar de alta a esta empresa en las herramientas conectadas
+ * (CRM-00.01.07.02).
+ *
+ * La ruta estaba servida y sin botón: el alta se pedía por API o no se pedía.
+ * Lo que se enseña después **no es un «hecho»**: es el estado de cada
+ * herramienta, porque un alta que dejó dos de tres sin el cliente es peor que
+ * una que falla — se descubre el día que alguien abre un documento.
+ */
+export function AltaEnCascada({ alTerminar }: { alTerminar: () => void }) {
+  const { t } = useTranslation();
+  const puedeOperar = usePuedeOperar();
+  const [filas, setFilas] = useState<AltaEnHerramienta[] | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [resumen, setResumen] = useState<string>("");
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<{ estado: AltaEnHerramienta[] }>(
+      "/api/v1/suite/provisionar/tenant",
+      {
+        signal: control.signal,
+      },
+    )
+      .then((r) => setFilas(r.datos.estado ?? []))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, []);
+
+  async function darDeAlta() {
+    setEnviando(true);
+    setFallo(null);
+    try {
+      const r = await llamar<{
+        estado: AltaEnHerramienta[];
+        sin_herramientas: boolean;
+      }>("/api/v1/suite/provisionar/tenant?aplicar=true", { metodo: "POST" });
+      const estado = r.datos.estado ?? [];
+      setFilas(estado);
+      // Se cuenta sobre el ESTADO de cada herramienta y no sobre lo empujado
+      // ahora: una que ya la tenía no se vuelve a empujar, y contarla como
+      // «0 aplicadas» diría que no la tiene.
+      setResumen(
+        r.datos.sin_herramientas
+          ? t("suite.alta.ninguna")
+          : t("suite.alta.resumen", {
+              aplicadas: estado.filter((f) => f.estado === "aplicado").length,
+              fallidas: estado.filter(
+                (f) => f.estado === "fallido" || f.estado === "cuarentena",
+              ).length,
+              total: estado.length,
+            }),
+      );
+      alTerminar();
+    } catch (e) {
+      setFallo(e);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const puede = puedeOperar("POST", "/api/v1/suite/provisionar/tenant");
+
+  return (
+    <section className="card mt-4 p-4">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="section-label">{t("suite.alta.titulo")}</h2>
+          <p className="mt-0.5 text-rotulo text-ink-faint">
+            {t("suite.alta.ayuda")}
+          </p>
+        </div>
+        {puede ? (
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={enviando}
+            onClick={() => void darDeAlta()}
+          >
+            {enviando ? t("suite.alta.enviando") : t("suite.alta.boton")}
+          </button>
+        ) : null}
+      </div>
+      {resumen ? (
+        <p className="mb-2 text-dato text-ink-muted" role="status">
+          {resumen}
+        </p>
+      ) : null}
+      {fallo ? <Fallo error={fallo} /> : null}
+      {!filas && !fallo ? <Cargando /> : null}
+      {filas && filas.length === 0 ? (
+        <Vacio compacto titulo={t("suite.alta.ninguna")} />
+      ) : null}
+      {filas && filas.length > 0 ? (
+        <Rejilla
+          cabeceras={[
+            t("suite.herramienta"),
+            t("suite.estado"),
+            t("suite.intentos"),
+            t("suite.ultimoError"),
+          ]}
+        >
+          {filas.map((f) => (
+            <tr
+              key={f.herramienta}
+              className="border-b border-ink-dim/30 last:border-0"
+            >
+              <Casilla className="text-ink">{f.herramienta}</Casilla>
+              <Casilla
+                className={
+                  f.estado === "aplicado"
+                    ? "text-success"
+                    : f.estado === "fallido" || f.estado === "cuarentena"
+                      ? "text-danger"
+                      : "text-ink-muted"
+                }
+              >
+                {t(`suite.alta.estado.${f.estado}`, { defaultValue: f.estado })}
+                {!f.activa ? ` · ${t("suite.alta.inactiva")}` : ""}
+              </Casilla>
+              <Casilla className="text-ink-muted">{f.intentos}</Casilla>
+              <Casilla className="text-rotulo text-ink-faint">
+                {f.ultimo_error ?? "—"}
+              </Casilla>
+            </tr>
+          ))}
+        </Rejilla>
+      ) : null}
     </section>
   );
 }

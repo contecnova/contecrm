@@ -7,11 +7,11 @@ comprada, un formulario que descarga mil registros de golpe— y es exactamente
 donde se pierde el enrutamiento, la puntuación y la trazabilidad de origen si el
 camino masivo escribe por su cuenta.
 
-**Ni leads ni oportunidades ofrecen borrado, y no por olvido.** Un lead se
-descarta con motivo (`POST /leads/{id}/descartar`) y una oportunidad se cierra
-como perdida; ninguno de los dos se borra, porque su valor está justamente en
-que consten los que no salieron. Ofrecer un borrado masivo que la API individual
-no tiene sería abrir por el lote la puerta que el diseño cerró.
+**Actualizar y borrar salen de la ficha** (`montar_ficha`): son el PATCH y el
+DELETE de un registro —el borrado, a la papelera y sólo si nada depende de él—,
+y el lote no puede hacer ni más ni menos que ellos. Descartar un lead con motivo
+o cerrar una oportunidad como perdida siguen siendo sus acciones propias: lo que
+se borra es lo que se metió por error, no lo que no salió.
 """
 
 from __future__ import annotations
@@ -52,16 +52,24 @@ def _actualizar_oportunidad(
 LEADS = RecursoMasivo(
     recurso="leads",
     objeto="lead",
-    permisos={"crear": "lead:write"},
+    permisos={"crear": "lead:write", "actualizar": "lead:write", "borrar": "lead:write"},
     crear=_crear_lead,
+    coleccion="/leads",
+    ficha="lead",
 )
 
 OPORTUNIDADES = RecursoMasivo(
     recurso="oportunidades",
     objeto="oportunidad",
-    permisos={"crear": "opportunity:write", "actualizar": "opportunity:write"},
+    permisos={
+        "crear": "opportunity:write",
+        "actualizar": "opportunity:write",
+        "borrar": "opportunity:write",
+    },
     crear=_crear_oportunidad,
     actualizar=_actualizar_oportunidad,
+    coleccion="/opportunities",
+    ficha="oportunidad",
 )
 
 RECURSOS = (LEADS, OPORTUNIDADES)

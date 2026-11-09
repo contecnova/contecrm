@@ -735,6 +735,21 @@ def _con_parametro(funcion: Any, parametro: str, cuerpo: type | None = None) -> 
     return envoltorio
 
 
+# Lo que la ficha genérica sabe hacer con un registro, por objeto, para que el
+# camino masivo (CRM-00.02.01.11) lo haga **igual**: el mismo esquema del PATCH
+# y el mismo borrado a la papelera con su comprobación de dependencias. Sin
+# esto, «actualizar cien leads» tendría que escribirse aparte, y un camino
+# masivo escrito aparte es cómo acaba pudiendo más —o menos— que el individual.
+# Sólo se apunta lo que la ficha genérica monta de verdad: si el recurso tiene
+# su PATCH o su DELETE escrito a mano, ése manda y no se apunta nada.
+_OPERACIONES_DE_FICHA: dict[str, dict[str, Any]] = {}
+
+
+def operacion_de_ficha(objeto: str, operacion: str) -> Any:
+    """La función de la ficha genérica para `actualizar` o `borrar`, o `None`."""
+    return _OPERACIONES_DE_FICHA.get(objeto, {}).get(operacion)
+
+
 def montar_ficha(
     router: Any,
     *,
@@ -901,12 +916,33 @@ def montar_ficha(
         # integra sin mandarlo. Quien lo manda queda protegido; quien no, se
         # comporta como hasta ahora, y eso es visible en el contrato.
         comprobar_if_match(fila, if_match)
+        _aplicar_edicion(db, fila, datos)
+        return proyectar_para(principal, db, objeto=objeto, modelo=modelo)(fila)
+
+    def _aplicar_edicion(db: Any, fila: Any, datos: Any) -> None:
         # `exclude_unset`: distingue «no lo toco» de «déjalo vacío». Sin esto,
         # editar el nombre borraría todos los demás campos del registro.
         for campo, valor in datos.model_dump(exclude_unset=True).items():
             setattr(fila, campo, valor)
         db.flush()
-        return proyectar_para(principal, db, objeto=objeto, modelo=modelo)(fila)
+
+    def _editar_en_lote(uow: Any, registro_id: Any, campos_lote: dict[str, Any]) -> None:
+        # Lo mismo que el PATCH, para el camino masivo: el mismo esquema y la
+        # misma escritura. Ver `_OPERACIONES_DE_FICHA`.
+        #
+        # Con una diferencia a propósito: un campo que el PATCH no admite es un
+        # fallo de esa fila. Uno a uno, el esquema lo ignora y quien edita ve
+        # que no cambió; en un lote de cuarenta, ignorarlo diría «40
+        # actualizados» sin haber escrito nada.
+        from crmcore.errors import ErrorValidacion
+
+        sobran = sorted(set(campos_lote) - set(Parche.model_fields))
+        if sobran:
+            raise ErrorValidacion(
+                f"Estos campos no se pueden editar aquí: {', '.join(sobran)}",
+                error_code="masivo.campo_no_editable",
+            )
+        _aplicar_edicion(uow.db, _buscar(uow.db, registro_id), Parche.model_validate(campos_lote))
 
     # El tipo del cuerpo se asigna y la ruta se registra después, en vez de
     # escribirlo en la firma con un decorador: este módulo usa anotaciones
@@ -922,6 +958,7 @@ def montar_ficha(
     # al guardar. Medido el 05-11-2026 en la oportunidad: 22 campos en el
     # formulario —el estado, «bloqueada», quién la creó— y 10 que se guardaban.
     if not _ya_montada(router, ruta_registro, "PATCH"):
+        _OPERACIONES_DE_FICHA.setdefault(objeto, {})["actualizar"] = _editar_en_lote
         router.patch(
             ruta_registro,
             response_model=dict,
@@ -946,6 +983,9 @@ def montar_ficha(
         registrar_objeto(objeto, modelo)
 
         def borrar(registro_id: Any, uow: UowDep, principal: AutenticadoDep) -> None:
+            _borrar_registro(uow, registro_id, por=principal.id)
+
+        def _borrar_registro(uow: Any, registro_id: Any, *, por: Any) -> None:
             from crmcore.datos import integridad, papelera
 
             db = uow.db
@@ -964,7 +1004,7 @@ def montar_ficha(
                 fila,
                 objeto=objeto,
                 etiqueta=str(getattr(fila, "nombre", "") or getattr(fila, "clave", "")),
-                por=principal.id,
+                por=por,
             )
             db.flush()
             # Y se cuenta. El hecho estaba declarado en el catálogo y con
@@ -983,8 +1023,15 @@ def montar_ficha(
             )
 
         borrar.__name__ = f"borrar_{objeto.replace('-', '_').replace('.', '_')}"
+
+        def _borrar_en_lote(uow: Any, registro_id: Any) -> None:
+            from crmcore.authz.principal import principal_actual
+
+            _borrar_registro(uow, registro_id, por=principal_actual().id)
+
         # Lo mismo con el borrado: si el recurso tiene el suyo, ése manda.
         if not _ya_montada(router, ruta_registro, "DELETE"):
+            _OPERACIONES_DE_FICHA.setdefault(objeto, {})["borrar"] = _borrar_en_lote
             router.delete(
                 ruta_registro,
                 status_code=204,

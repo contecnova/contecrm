@@ -433,12 +433,40 @@ def aplicar_pendientes(
     de una petición HTTP: se procesa un lote y se vuelve. Sin tope, el primer
     tenant grande que reconcilie deja el servicio sin hilos.
     """
+    resultado = aplicar_filas(
+        db, tenant_id, pendientes(db, tenant_id, herramienta=herramienta, limite=tope)
+    )
+    return {
+        **resultado,
+        "quedan": len(pendientes(db, tenant_id, herramienta=herramienta, limite=tope + 1)),
+    }
+
+
+def aplicar_alta_tenant(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Aplica **sólo** el alta del propio tenant, herramienta a herramienta
+    (CRM-00.01.07.02).
+
+    No la cola entera: quien pulsa «dar de alta en las herramientas» está
+    pidiendo eso, y vaciar de paso las bajas y los cambios de usuario
+    pendientes haría algo que no ha pedido —por bueno que sea— sin haberlo
+    simulado antes.
+    """
+    filas = [
+        f
+        for f in pendientes(db, tenant_id, limite=10_000)
+        if f.objeto == "tenant" and f.objeto_id == str(tenant_id)
+    ]
+    return aplicar_filas(db, tenant_id, filas)
+
+
+def aplicar_filas(db: Session, tenant_id: UUID, filas: list[Any]) -> dict[str, Any]:
+    """Empuja estas filas con su conector y anota cómo fue cada una."""
     from services.tenancy.suite import herramientas as _herramientas
 
     por_nombre = {h.nombre: h for h in _herramientas(db, tenant_id, solo_activas=False)}
     aplicadas, fallidas, saltadas = 0, 0, 0
 
-    for fila in pendientes(db, tenant_id, herramienta=herramienta, limite=tope):
+    for fila in filas:
         conectada = por_nombre.get(fila.herramienta)
         if conectada is None or not conectada.activa:
             # Una herramienta desactivada no es un fallo del objeto: se salta sin
@@ -467,7 +495,6 @@ def aplicar_pendientes(
         "aplicadas": aplicadas,
         "fallidas": fallidas,
         "saltadas_por_herramienta_inactiva": saltadas,
-        "quedan": len(pendientes(db, tenant_id, herramienta=herramienta, limite=tope + 1)),
     }
 
 

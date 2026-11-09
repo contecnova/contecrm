@@ -769,7 +769,13 @@ def enviar(uow: UnidadDeTrabajo, sobre_id: UUID) -> dict[str, Any]:
     # preguntar por este sobre. Sin guardarlo, consultar el estado, descargar lo
     # firmado o cancelarlo no tienen a qué referirse. Se aceptan los dos nombres
     # habituales porque el mapeo de campos es del conector, no de aquí.
-    externa = str((respuesta or {}).get("id") or (respuesta or {}).get("id_externo") or "")
+    #
+    # **Y se lee del registro, no sólo de la raíz.** El operador de verdad
+    # (`main._operador_de_firma`) pasa por el conector declarativo, que
+    # devuelve `{"registros": [...]}`: leyendo sólo la raíz, el identificador no
+    # se guardaba NUNCA en producción, y la prueba no lo veía porque su doble
+    # devolvía `{"id": …}` pelado. Medido el 09-11-2026.
+    externa = _id_externo(respuesta)
     if externa:
         sobre.referencia_externa = externa
 
@@ -797,6 +803,20 @@ def enviar(uow: UnidadDeTrabajo, sobre_id: UUID) -> dict[str, Any]:
         "estado": sobre.estado,
         "caduca_at": sobre.caduca_at.isoformat(),
     }
+
+
+def _id_externo(respuesta: Any) -> str:
+    """El identificador que el proveedor dio al sobre, venga como venga.
+
+    Del primer registro mapeado si viene por el conector (`registros`), o de la
+    raíz si quien llama devolvió el objeto pelado. Los dos nombres habituales,
+    porque el mapeo de campos es del conector y no de aquí.
+    """
+    datos = dict(respuesta or {}) if isinstance(respuesta, dict) else {}
+    registros = datos.get("registros")
+    if isinstance(registros, list) and registros and isinstance(registros[0], dict):
+        datos = {**datos, **registros[0]}
+    return str(datos.get("id") or datos.get("id_externo") or "")
 
 
 def _firmantes(db: Session, sobre: Sobre) -> list[Firmante]:
@@ -1473,8 +1493,9 @@ def probar_conexion(uow: UnidadDeTrabajo, *, clave: str, en_vacio: bool = True) 
             # Los dos nombres, igual que al enviar: leyendo sólo «id», un
             # conector que devuelva «id_externo» dejaba el sobre de prueba sin
             # cancelar en el proveedor, cada vez que alguien probaba las
-            # credenciales.
-            referencia = str((creado or {}).get("id") or (creado or {}).get("id_externo") or "")
+            # credenciales. Y del registro del conector, no sólo de la raíz:
+            # ver `_id_externo`.
+            referencia = _id_externo(creado)
             if referencia:
                 _puerto_llamada(
                     uow.db,

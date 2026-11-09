@@ -905,6 +905,50 @@ def seguimiento_para_cliente(
     }
 
 
+def encargos_para_cliente(
+    db: Session, tenant_id: UUID, cuenta_id: UUID, *, limite: int = 100
+) -> list[dict[str, Any]]:
+    """Los encargos de una cuenta, tal como se le enseñan al cliente.
+
+    La misma regla que `seguimiento_para_cliente`: **ni coste, ni proveedor
+    alternativo, ni notas internas**, y se decide aquí. La lista lleva lo
+    justo para elegir cuál mirar —referencia, estado, cuándo se prometió y si
+    vamos tarde—; lo demás, en su seguimiento.
+
+    `cuenta_id` es obligatorio a propósito: sin él esto sería la lista de los
+    encargos de todos los clientes, y el portal no tiene que poder pedirla ni
+    por error.
+    """
+    filas = (
+        db.execute(
+            select(Encargo)
+            .where(Encargo.tenant_id == tenant_id, Encargo.cuenta_id == cuenta_id)
+            .order_by(Encargo.created_at.desc())
+            .limit(limite)
+        )
+        .scalars()
+        .all()
+    )
+    ahora = _ahora()
+    return [
+        {
+            "id": str(e.id),
+            "referencia": e.referencia_propia,
+            "referencia_transportista": e.referencia_externa,
+            "proveedor": e.proveedor,
+            "estado": e.estado,
+            "prometido_para": e.prometido_para.isoformat() if e.prometido_para else None,
+            "completado_at": e.completado_at.isoformat() if e.completado_at else None,
+            "va_tarde": bool(
+                e.prometido_para
+                and e.estado not in TERMINALES
+                and _con_tz(e.prometido_para) < ahora
+            ),
+        }
+        for e in filas
+    ]
+
+
 # ── Conciliación y cumplimiento (CRM-00.04.05.08, .09) ────────────────────
 
 

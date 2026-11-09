@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useInRouterContext, useLocation, useNavigate } from "react-router-dom";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Formulario } from "@/componentes/Formulario";
@@ -28,6 +29,8 @@ import {
 } from "@/lib/contrato";
 import { llamar } from "@/lib/api";
 import type { Recurso } from "@/lib/modulos";
+import { moduloDe } from "@/lib/modulos";
+import { recursoDe } from "@/lib/recursos";
 import { comoRotulo } from "@/lib/formato";
 import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
 import { operacionDe } from "@/lib/superficie";
@@ -48,7 +51,9 @@ export function useEdicion(recurso: Recurso | undefined, id: string) {
   const { superficie } = useSuperficie();
   const ruta = recurso ? `${recurso.listar}/${id}` : "";
   const puedeBorrar =
-    Boolean(ruta) && !recurso?.borrado_oculto_porque && puedeOperar("DELETE", ruta);
+    Boolean(ruta) &&
+    !recurso?.borrado_oculto_porque &&
+    puedeOperar("DELETE", ruta);
   return {
     ruta,
     puedeEditar: Boolean(ruta) && puedeOperar("PATCH", ruta),
@@ -58,7 +63,9 @@ export function useEdicion(recurso: Recurso | undefined, id: string) {
     // «Revocar una clave», «Cerrar una sesión», «Dar de baja a un usuario». Con
     // «Eliminar» para todas, quien da de baja a alguien cree que lo está
     // borrando, y quien manda una cuenta a la papelera no sabe que se recupera.
-    borrado: puedeBorrar ? comoRotulo(operacionDe(superficie, "DELETE", ruta)?.resumen) : "",
+    borrado: puedeBorrar
+      ? comoRotulo(operacionDe(superficie, "DELETE", ruta)?.resumen)
+      : "",
   };
 }
 
@@ -76,14 +83,7 @@ export function useEdicion(recurso: Recurso | undefined, id: string) {
  *
  * `extra` son las acciones del contrato, que las decide quien pinta la barra.
  */
-export function BotonesDeRegistro({
-  puedeEditar,
-  puedeBorrar,
-  borrado = "",
-  alEditar,
-  alBorrar,
-  extra = [],
-}: {
+type PropsDeBotones = {
   puedeEditar: boolean;
   puedeBorrar: boolean;
   /** Lo que hace el DELETE de este registro, de `useEdicion`. */
@@ -91,10 +91,36 @@ export function BotonesDeRegistro({
   alEditar: () => void;
   alBorrar: () => void;
   extra?: OpcionDeMenu[];
-}) {
+};
+
+export function BotonesDeRegistro(props: PropsDeBotones) {
+  // Fuera de un router —una prueba que pinta sólo los botones— no hay ficha
+  // de la que duplicar, y `useLocation` no se puede llamar. Se decide qué
+  // componente pintar, no qué hooks llamar.
+  return useInRouterContext() ? (
+    <BotonesEnLaFicha {...props} />
+  ) : (
+    <Botones {...props} duplicar={[]} />
+  );
+}
+
+function BotonesEnLaFicha(props: PropsDeBotones) {
+  return <Botones {...props} duplicar={useDuplicar()} />;
+}
+
+function Botones({
+  puedeEditar,
+  puedeBorrar,
+  borrado = "",
+  alEditar,
+  alBorrar,
+  extra = [],
+  duplicar,
+}: PropsDeBotones & { duplicar: OpcionDeMenu[] }) {
   const { t } = useTranslation();
   const opciones: OpcionDeMenu[] = [
     ...extra,
+    ...duplicar,
     ...(puedeBorrar
       ? [
           {
@@ -116,6 +142,50 @@ export function BotonesDeRegistro({
       ) : null}
     </MenuDeAcciones>
   );
+}
+
+/**
+ * «Duplicar» en cualquier ficha (CRM-07.01.01.07), sin que cada pantalla lo
+ * tenga que pedir.
+ *
+ * Abre el alta del listado con los valores de este registro
+ * (`?duplicar=<id>`): lo que se copia lo decide el contrato del alta, y pasa
+ * por todo lo que pasa un alta —la deduplicación incluida, que con una copia
+ * casi siempre salta y ofrece «Es otro, crearlo igual»—.
+ *
+ * Sale de la dirección de la ficha (`/m/<módulo>/<tipo>/<id>`) porque es lo
+ * único que todas las fichas comparten: hay doce pantallas de registro
+ * escritas a mano, y pedirles a todas que pasen el recurso es cómo se queda
+ * alguna sin el botón. **No se ofrece** cuando el servidor tiene su propio
+ * duplicar —la oportunidad, que copia también sus líneas—, que ya sale entre
+ * las acciones: dos «Duplicar» que hacen cosas distintas no se sabe cuál
+ * pulsar. Ni cuando el alta va por clave: la copia chocaría con el original.
+ */
+function useDuplicar(): OpcionDeMenu[] {
+  const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const navegar = useNavigate();
+  const puedeOperar = usePuedeOperar();
+  const { superficie } = useSuperficie();
+  const partes = /^\/m\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(pathname);
+  if (!partes || !superficie) return [];
+  const [, rutaModulo = "", tipo = "", id = ""] = partes;
+  const modulo = moduloDe(rutaModulo);
+  const recurso = modulo ? recursoDe(modulo, tipo) : undefined;
+  if (!recurso || recurso.crear?.includes("{")) return [];
+  const listar = recurso.listar.split("?")[0] ?? "";
+  if (operacionDe(superficie, "POST", `${listar}/${id}/duplicar`)) return [];
+  if (!puedeOperar("POST", recurso.crear ?? listar)) return [];
+  return [
+    {
+      clave: "__duplicar",
+      nombre: t("ficha.duplicar"),
+      alElegir: () =>
+        navegar(
+          `/m/${rutaModulo}?r=${encodeURIComponent(recurso.nombre)}&duplicar=${encodeURIComponent(id)}`,
+        ),
+    },
+  ];
 }
 
 export function ConfirmarBorrado({
@@ -229,7 +299,7 @@ export function FormularioDeEdicion({
       {campos ? (
         campos.length ? (
           <Formulario
-          fallo={fallo}
+            fallo={fallo}
             recurso={recurso}
             campos={campos}
             valores={valores}

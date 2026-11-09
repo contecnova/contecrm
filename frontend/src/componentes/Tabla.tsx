@@ -161,6 +161,18 @@ export interface Props {
     campo: string,
     valor: unknown,
   ) => Promise<void>;
+  /**
+   * Elegir filas para hacer algo con todas a la vez (CRM-00.02.01.11).
+   *
+   * Lo da quien coloca la tabla, y sólo cuando el servidor admite operaciones
+   * en lote sobre ese recurso: una casilla que no lleva a ninguna acción es
+   * peor que no tenerla. La tabla pinta las casillas y avisa de lo elegido;
+   * qué se hace con ello lo decide la pantalla.
+   */
+  seleccion?: {
+    elegidos: ReadonlySet<string>;
+    alCambiar: (elegidos: Set<string>) => void;
+  };
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -311,6 +323,7 @@ export function Tabla({
   ordenInicial,
   esquemaDeCampo,
   alEditarCelda,
+  seleccion,
 }: Props) {
   const { t } = useTranslation();
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
@@ -422,6 +435,26 @@ export function Tabla({
   );
 
   const hayQueElegir = disponibles.length > cabeceras.length || elegidas;
+
+  // Las casillas eligen por identificador, y sólo lo que está a la vista: «todas»
+  // es lo que hay en pantalla tras buscar, no lo que hubiera sin buscar.
+  const idsVisibles = seleccion
+    ? filasOrdenadas.map((f) => String(f.id ?? "")).filter(Boolean)
+    : [];
+  const todasElegidas =
+    idsVisibles.length > 0 &&
+    idsVisibles.every((id) => seleccion?.elegidos.has(id));
+  function alternarFila(id: string) {
+    if (!seleccion) return;
+    const siguiente = new Set(seleccion.elegidos);
+    if (siguiente.has(id)) siguiente.delete(id);
+    else siguiente.add(id);
+    seleccion.alCambiar(siguiente);
+  }
+  function alternarTodas() {
+    if (!seleccion) return;
+    seleccion.alCambiar(todasElegidas ? new Set() : new Set(idsVisibles));
+  }
 
   return (
     <div>
@@ -554,6 +587,18 @@ export function Tabla({
           pegada={pegada}
           titulo={titulo}
           cabeceras={[
+            ...(seleccion
+              ? [
+                  <input
+                    key="__elegir"
+                    type="checkbox"
+                    checked={todasElegidas}
+                    onChange={alternarTodas}
+                    aria-label={t("tabla.elegirTodas")}
+                    className="h-3.5 w-3.5 rounded border-ink-dim accent-accent"
+                  />,
+                ]
+              : []),
             ...cabeceras.map((c) => (
               <button
                 key={c}
@@ -608,6 +653,23 @@ export function Tabla({
                 key={clave(fila, i)}
                 className="border-b border-ink-dim/30 last:border-0 hover:bg-paper-light"
               >
+                {seleccion ? (
+                  <Casilla enUnaLinea>
+                    {fila.id ? (
+                      <input
+                        type="checkbox"
+                        checked={seleccion.elegidos.has(String(fila.id))}
+                        onChange={() => alternarFila(String(fila.id))}
+                        aria-label={t("tabla.elegirFila", {
+                          nombre: String(
+                            fila.nombre ?? fila.titulo ?? fila.email ?? fila.id,
+                          ),
+                        })}
+                        className="h-3.5 w-3.5 rounded border-ink-dim accent-accent"
+                      />
+                    ) : null}
+                  </Casilla>
+                ) : null}
                 {cabeceras.map((c, columna) => {
                   const destino = columna === 0 && enlace ? enlace(fila) : null;
                   const editable = esquemaDeCampo?.(c);
@@ -623,7 +685,10 @@ export function Tabla({
                           esquema={editable}
                           alGuardar={(v) => alEditarCelda(fila, c, v)}
                         >
-                          <Celda valor={fila[`${c}_nombre`] ?? fila[c]} campo={c} />
+                          <Celda
+                            valor={fila[`${c}_nombre`] ?? fila[c]}
+                            campo={c}
+                          />
                         </CeldaEditable>
                       </Casilla>
                     );
@@ -638,10 +703,16 @@ export function Tabla({
                           to={destino}
                           className="text-accent hover:underline"
                         >
-                          <Celda valor={fila[`${c}_nombre`] ?? fila[c]} campo={c} />
+                          <Celda
+                            valor={fila[`${c}_nombre`] ?? fila[c]}
+                            campo={c}
+                          />
                         </Link>
                       ) : (
-                        <Celda valor={fila[`${c}_nombre`] ?? fila[c]} campo={c} />
+                        <Celda
+                          valor={fila[`${c}_nombre`] ?? fila[c]}
+                          campo={c}
+                        />
                       )}
                     </Casilla>
                   );

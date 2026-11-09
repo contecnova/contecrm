@@ -103,13 +103,35 @@ def crear_router_estado(servicio: str) -> APIRouter:
             "que nadie ha usado no ha demostrado nada."
         ),
     )
-    async def slo_del_servicio(principal: AutenticadoDep, tier: str = "estandar") -> Any:
+    async def slo_del_servicio(
+        request: Request, db: DbDep, principal: AutenticadoDep, tier: str = "estandar"
+    ) -> Any:
         from crmcore.config import get_settings
+        from crmcore.http.deps import tenant_mirado
         from crmcore.obs import slo
 
+        # **De la empresa que se mira**: quien opera la plataforma elige un
+        # cliente en la barra y esto tiene que hablar de ése, no del suyo.
+        tenant = tenant_mirado(request, principal)
         objetivo = slo.objetivo_de(servicio, tier)
-        consumo = await slo.consumo_de(servicio, principal.tenant_id, tier=objetivo.tier)
-        return slo.presupuesto(objetivo, consumo, dias_del_periodo=get_settings().slo_dias_periodo)
+        consumo = await slo.consumo_de(servicio, tenant, tier=objetivo.tier)
+        salida = slo.presupuesto(
+            objetivo, consumo, dias_del_periodo=get_settings().slo_dias_periodo
+        )
+        # p95 y p99 por tipo de operación frente a su objetivo
+        # (CRM-08.01.01.01). Los cubos van en la respuesta para que quien
+        # junte varios servicios pueda sumarlos: un percentil no se promedia.
+        from crmcore.tenancy.context import con_contexto
+
+        por_op, origen = await slo.latencias_de(servicio, tenant)
+        # Los objetivos, también los de ESA empresa: el ajuste puede estar
+        # fijado por cliente, y el contexto de la petición es el de quien mira.
+        with con_contexto(tenant_id=tenant):
+            objetivos = slo.objetivos_por_operacion(db)
+        salida["operaciones"] = slo.resumen_por_operacion(por_op, objetivos)
+        salida["cubos_ms"] = slo.cubos_ms()
+        salida["latencias_contadas_en"] = origen
+        return salida
 
     @router.get(
         "/ui-referencia",

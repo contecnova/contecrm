@@ -62,6 +62,7 @@ import { listar, listarPagina } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
+import { ReunionEnLinea } from "@/componentes/ReunionEnLinea";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import {
   accionesDeLaCuenta,
@@ -487,15 +488,17 @@ export function Cuenta() {
               <BotonesDeRegistro
                 puedeEditar={puedeEditar}
                 puedeBorrar={puedeBorrar}
-              borrado={borrado}
+                borrado={borrado}
                 alEditar={() => setEditando(true)}
                 alBorrar={() => setConfirmando(true)}
-                extra={acciones.filter((a) => !esDeIA(a)).map((a) => ({
-                  clave: a.ruta,
-                  nombre: a.nombre,
-                  alElegir: () => setAccionAbierta(a),
-                  destructiva: esIrreversible(a),
-                }))}
+                extra={acciones
+                  .filter((a) => !esDeIA(a))
+                  .map((a) => ({
+                    clave: a.ruta,
+                    nombre: a.nombre,
+                    alElegir: () => setAccionAbierta(a),
+                    destructiva: esIrreversible(a),
+                  }))}
               />
               <Link
                 to={`/m/oportunidades?r=Oportunidades&nuevo=1`}
@@ -531,13 +534,11 @@ export function Cuenta() {
       ) : null}
 
       <AsistenteIA
-
         acciones={acciones}
 
         abierta={accionAbierta}
 
         alElegir={setAccionAbierta}
-
       />
 
       <Acciones
@@ -662,6 +663,14 @@ export function Cuenta() {
                 objeto="cuenta"
                 objetoId={id}
                 alRegistrar={() => cargar()}
+              />
+              {/* Y la reunión en línea de verdad, con la suite del tenant
+                  (CRM-06.01.03.10): crea la sala y la actividad con su enlace. */}
+              <ReunionEnLinea
+                objeto="cuenta"
+                objetoId={id}
+                alCrear={() => cargar()}
+                compacta
               />
               {timeline.length === 0 ? (
                 <Vacio

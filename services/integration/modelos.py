@@ -79,6 +79,10 @@ class Credencial(Base, TimestampMixin):
     caduca_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rotada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Quién la fijó o la rotó. El secreto no se enseña nunca, así que lo único
+    # que la pantalla puede contestar es cuándo y quién: sin esto, «¿quién ha
+    # cambiado la clave del ERP?» se contestaba buscando en la auditoría.
+    fijada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
     __table_args__ = (Index("ix_credenciales_conexion", "conexion_id", "activa"),)
 

@@ -130,6 +130,188 @@ async def _conectar() -> Any:
     return await cliente()
 
 
+# ── Latencia por tipo de operación (CRM-08.01.01.01) ─────────────────────
+
+
+def operacion_de(metodo: str, ruta: str) -> str:
+    """Qué tipo de operación es una petición, según las reglas configuradas.
+
+    Gana la primera regla que casa. Lo que no casa con ninguna es «otra», y se
+    enseña igual: esconderla haría que una ruta mal clasificada no se viera.
+    """
+    from crmcore.config import get_settings
+
+    metodo = (metodo or "").upper()
+    ruta = (ruta or "").lower()
+    for regla in get_settings().slo_operaciones_reglas or []:
+        try:
+            metodos = [str(m).upper() for m in (regla.get("metodos") or [])]
+            trozos = [str(t).lower() for t in (regla.get("rutas") or [])]
+            if metodos and metodo not in metodos:
+                continue
+            if trozos and not any(t in ruta for t in trozos):
+                continue
+            return str(regla.get("operacion") or "otra")
+        except AttributeError:
+            # Una regla mal escrita en el `.env` no puede tumbar la medición
+            # de todas las demás: se salta.
+            continue
+    return "otra"
+
+
+def cubos_ms() -> list[int]:
+    from crmcore.config import get_settings
+
+    return sorted({int(c) for c in (get_settings().slo_latencia_cubos_ms or []) if int(c) > 0})
+
+
+def _indice_de_cubo(ms: float, limites: list[int]) -> int:
+    """El primer cubo cuyo límite cubre la duración; `len` es «por encima»."""
+    for i, limite in enumerate(limites):
+        if ms <= limite:
+            return i
+    return len(limites)
+
+
+def _clave_op(servicio: str, tenant_id: UUID | str | None, mes: str) -> str:
+    return f"slo_op:{servicio}:{tenant_id or 'sin_tenant'}:{mes}"
+
+
+def percentil(conteos: list[int], limites: list[int], q: float) -> dict[str, Any]:
+    """El percentil `q` (0–1) a partir de cubos, interpolando dentro del cubo.
+
+    Es la misma cuenta que hace Prometheus con un histograma: se busca el cubo
+    donde cae la posición `q·N` y se reparte linealmente entre su límite
+    inferior y el superior. **Si cae en el último cubo —por encima del mayor
+    límite— no se inventa un número**: se dice que es mayor que ese límite.
+    """
+    total = sum(conteos)
+    if total <= 0:
+        return {"ms": None, "por_encima_de_ms": None}
+    objetivo = q * total
+    acumulado = 0
+    for i, n in enumerate(conteos):
+        if n <= 0:
+            continue
+        if acumulado + n >= objetivo:
+            if i >= len(limites):
+                return {"ms": None, "por_encima_de_ms": limites[-1] if limites else None}
+            inferior = limites[i - 1] if i > 0 else 0
+            superior = limites[i]
+            fraccion = (objetivo - acumulado) / n
+            return {
+                "ms": round(inferior + (superior - inferior) * fraccion),
+                "por_encima_de_ms": None,
+            }
+        acumulado += n
+    return {"ms": None, "por_encima_de_ms": limites[-1] if limites else None}
+
+
+async def latencias_de(
+    servicio: str, tenant_id: UUID | str | None, *, mes: str | None = None
+) -> tuple[dict[str, list[int]], str]:
+    """Los cubos de cada operación en el periodo, y de dónde salen."""
+    limites = cubos_ms()
+    clave = _clave_op(servicio, tenant_id, mes or periodo())
+    crudo: dict[str, Any] = {}
+    origen = "memoria_del_proceso"
+    try:
+        r = await _conectar()
+        if r:
+            crudo = await r.hgetall(clave) or {}
+            origen = "compartido"
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("slo.latencias_no_leidas", motivo=str(exc)[:120])
+    if origen != "compartido":
+        crudo = dict(_memoria.get(clave, {}))
+    por_op: dict[str, list[int]] = {}
+    for campo, valor in crudo.items():
+        campo = campo.decode() if isinstance(campo, bytes) else str(campo)
+        op, _, indice = campo.rpartition("|")
+        try:
+            i = int(indice)
+        except ValueError:
+            continue
+        if not op or i < 0 or i > len(limites):
+            # Un cubo de una configuración anterior —se cambiaron los límites a
+            # mitad de mes— no se reparte en los nuevos: se ignora.
+            continue
+        fila = por_op.setdefault(op, [0] * (len(limites) + 1))
+        fila[i] += int(valor or 0)
+    return por_op, origen
+
+
+def objetivos_por_operacion(db: Any = None) -> dict[str, dict[str, int]]:
+    """Los objetivos p95/p99 que aplican, con la jerarquía de ajustes."""
+    from crmcore.runtime import settings as rt
+
+    crudo = rt.efectivo("slo_objetivos_operacion", db)
+    if not isinstance(crudo, dict):
+        return {}
+    salida: dict[str, dict[str, int]] = {}
+    for op, obj in crudo.items():
+        if isinstance(obj, dict):
+            salida[str(op)] = {
+                k: int(v) for k, v in obj.items() if k in ("p95_ms", "p99_ms") and v is not None
+            }
+    return salida
+
+
+def resumen_por_operacion(
+    por_op: dict[str, list[int]],
+    objetivos: dict[str, dict[str, int]],
+    limites: list[int] | None = None,
+) -> list[dict[str, Any]]:
+    """p95 y p99 medidos frente a su objetivo, una fila por operación.
+
+    Salen también las operaciones con objetivo y sin tráfico, como «no
+    medible»: que no aparezcan se leería como «todo dentro» cuando es «nadie
+    ha exportado este mes».
+    """
+    from crmcore.config import get_settings
+
+    limites = limites if limites is not None else cubos_ms()
+    minimas = get_settings().slo_muestras_minimas
+    filas = []
+    for op in sorted(set(por_op) | set(objetivos)):
+        conteos = por_op.get(op, [0] * (len(limites) + 1))
+        n = sum(conteos)
+        objetivo = objetivos.get(op, {})
+        p95 = percentil(conteos, limites, 0.95)
+        p99 = percentil(conteos, limites, 0.99)
+        filas.append(
+            {
+                "operacion": op,
+                "peticiones": n,
+                "medible": n > 0,
+                # El N al lado: un p99 de veinte peticiones es la segunda más
+                # lenta, no una cola, y sin el N se leen igual.
+                "pocas_muestras": 0 < n < minimas,
+                "p95_ms": p95["ms"],
+                "p95_por_encima_de_ms": p95["por_encima_de_ms"],
+                "p99_ms": p99["ms"],
+                "p99_por_encima_de_ms": p99["por_encima_de_ms"],
+                "objetivo_p95_ms": objetivo.get("p95_ms"),
+                "objetivo_p99_ms": objetivo.get("p99_ms"),
+                "cumple_p95": _cumple(p95, objetivo.get("p95_ms")) if n else None,
+                "cumple_p99": _cumple(p99, objetivo.get("p99_ms")) if n else None,
+                "cubos": conteos,
+            }
+        )
+    return filas
+
+
+def _cumple(medido: dict[str, Any], objetivo: int | None) -> bool | None:
+    if objetivo is None:
+        return None
+    if medido["ms"] is None:
+        # Por encima del último cubo: si el objetivo es menor que ese límite,
+        # seguro que no se cumple; si es mayor, no se sabe.
+        tope = medido["por_encima_de_ms"]
+        return False if tope is not None and objetivo <= tope else None
+    return bool(medido["ms"] <= objetivo)
+
+
 async def anotar(
     servicio: str,
     tenant_id: UUID | str | None,
@@ -137,6 +319,7 @@ async def anotar(
     ok: bool,
     ms: float,
     mes: str | None = None,
+    operacion: str = "",
 ) -> None:
     """Apunta una petición contra el presupuesto.
 
@@ -155,6 +338,11 @@ async def anotar(
     porque no se pudo apuntar— sería que la medición del SLO gastara SLO.
     """
     clave = _clave(servicio, tenant_id, mes or periodo())
+    # La duración, en su cubo y con su tipo de operación (CRM-08.01.01.01).
+    # Se cuentan también las fallidas: una exportación que revienta a los 30 s
+    # tardó 30 s para quien la esperaba.
+    clave_op = _clave_op(servicio, tenant_id, mes or periodo())
+    campo_op = f"{operacion}|{_indice_de_cubo(ms, cubos_ms())}" if operacion else ""
     incrementos: list[str] = ["peticiones"]
     if not ok:
         incrementos.append("fallidas")
@@ -172,6 +360,9 @@ async def anotar(
             # Dos periodos de vida: el actual se necesita entero y el anterior
             # sigue sirviendo para comparar mientras dura el actual.
             pipe.expire(clave, 62 * 24 * 3600)
+            if campo_op:
+                pipe.hincrby(clave_op, campo_op, 1)
+                pipe.expire(clave_op, 62 * 24 * 3600)
             await pipe.execute()
             return
     except Exception as exc:  # noqa: BLE001
@@ -180,6 +371,9 @@ async def anotar(
     fila = _memoria.setdefault(clave, {})
     for campo in incrementos:
         fila[campo] = fila.get(campo, 0) + 1
+    if campo_op:
+        fila_op = _memoria.setdefault(clave_op, {})
+        fila_op[campo_op] = fila_op.get(campo_op, 0) + 1
 
 
 async def consumo_de(

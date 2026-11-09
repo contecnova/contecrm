@@ -126,8 +126,38 @@ def identidad(db: DbDep, principal: AutenticadoDep) -> Any:
         "descubre el día que alguien intenta abrir un documento."
     ),
 )
-def provisionar_tenant(uow: UowDep, principal: AutenticadoDep) -> Any:
-    return suite.provisionar_tenant(uow.db, principal.tenant_id)
+def provisionar_tenant(
+    uow: UowDep,
+    principal: AutenticadoDep,
+    aplicar: bool = Query(
+        False,
+        description=(
+            "Empujar ya el alta a cada herramienta, en vez de dejarla en la "
+            "cola. Sólo el alta del tenant: el resto de la cola no se toca"
+        ),
+    ),
+) -> Any:
+    salida = suite.provisionar_tenant(uow.db, principal.tenant_id)
+    if aplicar and salida["herramientas"]:
+        salida["aplicado"] = suite_conector.aplicar_alta_tenant(uow.db, principal.tenant_id)
+    # Y en qué ha quedado cada una: la cascada no se da por buena, se enseña
+    # herramienta a herramienta (CRM-00.01.07.02).
+    salida["estado"] = suite.estado_alta_tenant(uow.db, principal.tenant_id)
+    return salida
+
+
+@router_suite.get(
+    "/provisionar/tenant",
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="En qué quedó el alta de este tenant en cada herramienta",
+    description=(
+        "Una fila por herramienta conectada, **también las que no tienen alta "
+        "todavía**: que no salieran se leería como «todo aplicado» donde lo "
+        "que hay es «nunca se pidió»."
+    ),
+)
+def estado_alta_tenant(db: DbDep, principal: AutenticadoDep) -> Any:
+    return {"estado": suite.estado_alta_tenant(db, principal.tenant_id)}
 
 
 class UsuarioSuite(BaseModel):

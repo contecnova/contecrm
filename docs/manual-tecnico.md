@@ -4430,6 +4430,160 @@ avanza sobre lo confirmado.
 
 ---
 
+### 4.6.42 Credenciales, sobres, encargos en el portal y reuniones en línea (CRM-00.01.04.08, CRM-06.01.02.11, CRM-00.04.05.06, CRM-06.01.03.10)
+
+Cuatro capacidades que estaban en la API sin un botón, y lo que salió al
+ponérselo.
+
+**Credenciales de una conexión.** `GET /integraciones/conexiones/{id}/credenciales`
+(`services/integration/api.py`, permiso `integracion:read`) devuelve los campos
+que pide el tipo de autenticación (`conector.SECRETOS_POR_AUTH`, al lado de
+`cabeceras_auth` para que no diverjan), la versión activa con `fijada_at`,
+`fijada_por`, `caduca_at` y **sólo las claves** —`cifrar_dict` deja las claves en
+claro; los valores no se descifran ni salen—, las anteriores y si se puede
+probar. El `PUT` rechaza (422 `integracion.credencial_incompleta`) una
+credencial a la que le falta un campo de su tipo y guarda `fijada_por`
+(migración `20261109_1600_quien_fijo_la_credencial`, columna
+`credenciales.fijada_por`). La pantalla es `componentes/CredencialesDeConexion.tsx`,
+montada por `Ficha.tsx` cuando el objeto es `conexion`. Arreglado de paso:
+`OperacionOut.estado_transporte` era `str` y la fila trae `{}`, así que
+**declarar una operación por la API daba 500 siempre**.
+
+**Acciones del sobre.** `SobreDeFirma.tsx` ofrece por estado `enviar` /
+`recordar` / `cancelar` / `archivar-firmado`. El hallazgo: el operador real
+(`main._operador_de_firma`) devuelve lo del conector, `{"registros": [...]}`, y
+`firma.enviar` leía el `id` de la raíz, así que **el identificador del proveedor
+no se guardaba nunca** fuera de la prueba, cuyo doble devolvía `{"id": …}`.
+`firma._id_externo` lee de los dos sitios; lo usan `enviar` y
+`probar_conexion`. No hay código por proveedor: cualquier proveedor que se
+declare con su conexión y la operación `crear_sobre` (y las otras cuatro de
+`firma.OPERACIONES`) vale.
+
+**Encargos en el portal.** `GET /portal/mi/encargos` y
+`GET /portal/mi/encargos/{id}/seguimiento` (`api_encargos.router_portal`), con
+`PortalDep` y la guarda `exige_seccion_portal("encargos")`. La cuenta sale del
+token del portal (`sesion.exigir_cuenta()`), nunca de la consulta; lo de otra
+cuenta da 404. La sección se anuncia en `service/portal.py` (niveles `cuenta` y
+`admin`) y el gateway la manda a `integration` por `SECCIONES_PORTAL` en
+`crmcore/rutas_de_api.py` — hay que reiniciar el gateway y `service` al tocarlo.
+
+**Reunión en línea.** `POST /suites/reuniones` crea la sala de verdad: elige el
+perfil con `suites.perfil_de_reuniones` (el nombrado, o el único conectado con
+`recursos.reuniones.endpoint`, o el que la persona autorizó), exige el
+consentimiento `reuniones`/`escribir` de quien pulsa, y llama por el conector
+declarativo con la credencial de la conexión del perfil
+(`suites_recursos.pedir_reunion`). La forma del cuerpo es configuración del
+perfil:
+
+```json
+"reuniones": {
+  "endpoint": "/users/{{organizador}}/onlineMeetings",
+  "incremento": "completo",
+  "cuerpo": {"subject": "{{asunto}}", "startDateTime": "{{inicio}}",
+             "endDateTime": "{{fin}}", "participants": {"attendees": "{{asistentes}}"}},
+  "asistente": {"upn": "{{email}}"},
+  "campos": {"enlace": "joinWebUrl", "id_externo": "id"}
+}
+```
+
+Para Google Meet el mismo bloque apunta a `/calendars/primary/events` con
+`query: {"conferenceDataVersion": "1"}`, un cuerpo con `summary`, `start.dateTime`
+y `conferenceData.createRequest`, y `campos.enlace: "hangoutLink"`. El enlace
+se guarda en `detalles.reunion` de la actividad **llamando a `party` por HTTP**
+(`crmcore.http.interno.invocar`) con la identidad de quien pulsa: `PATCH` si se
+dio `actividad_id`, `POST /activities` de tipo `reunion` si se dio
+`objeto`/`objeto_id`. Si `party` falla, la sala ya existe: se devuelve el enlace
+con `guardada: false` y un aviso. `GET /suites/reuniones/proveedor` dice si hay
+con qué y, si no, por qué (la ficha deshabilita el botón con ese motivo). La
+auditoría no guarda el enlace: es una credencial.
+
+**Lo que falta para verlo en vivo**: declarar el perfil de la suite real
+(Microsoft Graph o Google Calendar) con su `url_base` y `auth_tipo`, fijar su
+credencial en la ficha de la conexión, y que cada persona conceda
+`reuniones`/`escribir`. Con `oauth2_client_credentials` contra Graph hace falta
+además la política de acceso a aplicaciones de Teams para el organizador; Google
+no admite reuniones con credencial de aplicación sin delegación de dominio, así
+que ahí va `bearer` con el token delegado. Se probó contra un doble HTTP local.
+
+Pruebas: `tests/unit/test_integracion_cuatro_pantallas.py` (proveedores doblados
+en el transporte con `httpx.MockTransport`) y
+`frontend/src/pruebas/integracion_cuatro_pantallas.test.tsx`,
+`frontend/src/pruebas/portal_encargos.test.tsx`.
+
+
+### 4.6.43 Lote desde la tabla, duplicar, importar con reversión, traspaso y jerarquía (CRM-00.02.01.11, CRM-01.01.03.03, CRM-07.01.01.07, CRM-07.01.01.08, CRM-00.04.03.08, CRM-03.02.01.02)
+
+Cinco capacidades declaradas hechas cuyo servidor existía a medias y no tenían
+pantalla.
+
+**Deduplicar leads al capturar.** `services/sales/dedupe_leads.py` busca por
+índice —correo normalizado, teléfono sin separadores (`regexp_replace` contra
+la columna cruda y confirmación normalizando), empresa canónica— y pregunta a
+`party` por HTTP (`GET /data-quality/contacts/duplicates`, con identidad de
+máquina y sólo `contact:read`). Correo y teléfono son concluyentes en un lead;
+empresa + nombre lo son por encima de `lead_dedupe_umbral_bloqueo`. El alta
+(`POST /leads`) responde `409 sales.lead_duplicado` con `candidatos`,
+`contactos_consultados` y `como_continuar`; `forzar=true` crea y audita
+`lead.creado_forzado`. La captura usa `lead_dedupe_captura`
+(`marcar | fusionar | nada`): marca con `leads.duplicado_de_id` y
+`duplicado_detalle`, o fusiona en el existente (resultado de recepción
+`fusionado`, que cuenta para el tope por hora). La normalización se subió a
+`crmcore/normalizacion.py`; `services/party/normalizacion.py` la reexporta.
+Ajustes: `lead_dedupe_umbral_sugerencia`, `lead_dedupe_umbral_bloqueo`,
+`lead_dedupe_contactos`, `lead_dedupe_espera_s`, `lead_dedupe_max_candidatos`,
+`lead_dedupe_captura`. Migración `sales/20261109_1700_lead_posible_duplicado`.
+
+En el front, `Formulario` reconoce cualquier 409 cuyo `detalle` traiga
+`candidatos` (`candidatosDe`) —cuentas, contactos o leads— y, si el alta tiene
+el campo `forzar`, ofrece «Es otro, crearlo igual». El alta del módulo
+(`forzarTrasElAviso`) no enseña `forzar` como casilla.
+
+**Lote desde la tabla.** `RecursoMasivo` admite `coleccion` (se monta también
+`POST /<colección>/masivo`: `/accounts`, `/contacts`, `/opportunities`) y
+`ficha` (toma `actualizar`/`borrar` de `montar_ficha`, registrados en
+`crmcore.http.listados._OPERACIONES_DE_FICHA`; en lote, un campo que el PATCH
+no admite falla la fila). La lista de operaciones admitidas va en el contrato
+como `enum` del campo `operacion` —sin validar en la entrada, para conservar
+el 422 que dice cuáles sí—, y por eso los routers de lote se montan **al final**
+de `api.py`, después de las fichas. `Tabla` acepta `seleccion` y
+`AccionesMasivas` llama al lote; borrar exige reverificación
+(`stepup.requerido`).
+
+**Duplicar.** `POST /opportunities/{id}/duplicar` copia cabecera y líneas por
+`crear_oportunidad_nueva` (primera etapa, abierta) y devuelve
+`oportunidad_id`. El resto de objetos se duplican en el front: «Duplicar» en
+`BotonesDeRegistro` (`useDuplicar`, por la dirección `/m/<módulo>/<tipo>/<id>`)
+abre `?duplicar=<id>` en el módulo, que lee la ficha y rellena el alta con
+`valoresParaDuplicar` (los campos del contrato del alta, sin `forzar` ni
+líneas). No se ofrece si el servidor tiene su propio `…/duplicar`.
+
+**Traspaso.** `crmcore/http/propiedad_router.py` monta
+`POST {prefijo}/transferir-propiedad` en `party-admin` (cuentas, contactos,
+actividades) y en `sales-admin` (leads, oportunidades; prefijo nuevo en
+`rutas_de_api`). Pantalla `/transferir-propiedad`.
+
+**Importar y revertir.** `crmcore/datos/importaciones.py`: tabla
+`importaciones` (en `party`, migración
+`party/20261109_1700_importaciones_reversibles`) con la foto de antes y de
+después de cada registro tocado; `importar(..., registro=[])` la rellena.
+`revertir()` planifica primero y, si hay registros cambiados después, responde
+`409 importacion.cambiados_despues` sin tocar nada salvo `forzar`. Rutas:
+`GET /party-admin/importaciones/campos?objeto=`, `POST /party-admin/importaciones`
+(simula por defecto), `GET /party-admin/importaciones`,
+`POST /party-admin/importaciones/{id}/revertir`. Los campos propios se validan
+también al simular. Pantalla `/importar`.
+
+**Jerarquía.** `GET /forecast/periodos/{clave}/organigrama?fuente=territorios|mando`
+(`forecast.previsión_por_organigrama`): árbol desde `territorios` +
+`miembros_territorio` (el responsable cuenta) o desde `mando_replicado`, con
+`compania`, `fuera_del_organigrama`, `sin_dueno` y `aviso` si la réplica está
+vacía. Panel «Por jerarquía» en `PeriodoDePrevision`.
+
+Pruebas: `tests/unit/test_dedupe_leads_al_capturar.py`,
+`test_importar_y_revertir.py`, `test_party_importar_traspasar_lote_por_http.py`,
+`test_sales_duplicar_jerarquia_lote_por_http.py`,
+`frontend/src/pruebas/lote_duplicado_e_importar.test.tsx`.
+
 ## 5. Operación
 
 ### 5.1 Copias y restauración
@@ -4461,6 +4615,57 @@ Una cadena por servicio en `alembic/versions/<servicio>/`. Reglas:
   prometido. Sin tráfico se responde «no medible» en vez de 100 %.
 - **Página de estado** por tenant, compuesta por el gateway a partir de lo que
   publica cada servicio. Un servicio que no contesta **no cuenta como verde**.
+- **Latencia p95/p99 por tipo de operación y por empresa** (`CRM-08.01.01.01`).
+  `TiemposMiddleware` clasifica cada petición con `slo.operacion_de(método,
+  plantilla de ruta)` según `SLO_OPERACIONES_REGLAS` (lista ordenada de
+  `{operacion, metodos, rutas}`; gana la primera, lo demás es «otra») y suma
+  uno al cubo de `SLO_LATENCIA_CUBOS_MS` en Redis
+  (`slo_op:<servicio>:<tenant>:<AAAA-MM>`, campo `<operacion>|<cubo>`, 62 días
+  de vida; sin Redis, en memoria del proceso y se dice). `GET
+  /<servicio>/estado/slo` devuelve `operaciones` con p95/p99 interpolados por
+  cubo, su objetivo (`slo_objetivos_operacion`, ajuste en caliente por tier y
+  por tenant) y los `cubos`; el gateway (`GET /estado/slo`) **suma cubos** de
+  los servicios con los mismos límites y recalcula —nunca promedia
+  percentiles—, tomando los objetivos de `tenancy` primero. Con
+  `X-CRM-Tenant-Mirado`, de la empresa mirada. Por debajo de
+  `SLO_MUESTRAS_MINIMAS` se marca `pocas_muestras`.
+- **Un solo `X-Request-Id` de punta a punta** (`CRM-00.02.04.07`). El gateway
+  manda el suyo al servicio (antes el servicio generaba otro y el navegador
+  recibía dos) y no copia el del servicio a la respuesta. El front lo lee del
+  cuerpo del problema o de la cabecera (`ErrorApi.requestId`) y la pantalla de
+  error lo enseña con «Copiar». El audit trail de cada servicio se consulta
+  en `GET /<servicio>/cumplimiento/auditoria?request_id=…` (permiso
+  `tenant:read`, empresa mirada) y el de `tenancy` en `GET
+  /grc/auditoria?request_id=…`. No hay índice por `request_id`: la consulta va
+  acotada por tenant y con límite.
+
+#### MFA por rol y «entrar como» de soporte
+
+- **`mfa_obligatoria_roles`** (`MFA_OBLIGATORIA_ROLES`, JSON; ajuste sensible por
+  tenant). `servicio.mfa_exigida(db, roles, tenant_id)`: el interruptor
+  `mfa_obligatoria` suma, los roles añaden. Se lee con el tenant puesto en el
+  contexto (`con_contexto`), porque en el login todavía no lo hay. Se escribe
+  con `PUT /factores/obligatoria-por-rol` en **identidad** (`tenant:write`), que
+  valida los roles contra los de serie, los del tenant y los que llevan las
+  membresías (`mfa.rol_desconocido`) y devuelve el panel de adopción con
+  `exigida_sin_factor`. Se replica a los demás servicios por el bus como
+  cualquier ajuste.
+- **Suplantación desde el navegador.** Gateway: `POST /sesion/suplantar` reenvía
+  a `POST /sesiones/suplantar` de identidad con `Authorization: Bearer <cookie
+  propia>` y `X-CRM-Tenant-Mirado`; pone la de soporte en la cookie de acceso y
+  su refresco en `<cookie>_suplantacion_refresco` (ruta de renovar). El refresco
+  propio no se toca. `POST /sesion/renovar` renueva primero la de soporte; si
+  ya no se puede, borra su cookie, renueva la propia y devuelve
+  `suplantacion_terminada: true`. `POST /sesion/volver` cierra la de soporte en
+  identidad (sólo si `/auth/me` dice que lo es; si no, 409
+  `gateway.sin_suplantacion`) y el front llama después a `/sesion/renovar`.
+  Identidad exige membresía activa del objetivo en la empresa
+  (`auth.suplantacion_sin_membresia`) y `/auth/me` devuelve
+  `suplantado_por_email`, `motivo_suplantacion` y `suplantacion_caduca_at`.
+- **Alta del tenant en cascada.** `POST /suite/provisionar/tenant?aplicar=true`
+  encola y empuja **sólo** las filas `objeto=tenant` del propio tenant
+  (`suite_conector.aplicar_alta_tenant`); `GET /suite/provisionar/tenant` da el
+  estado por herramienta, con `sin_alta` para las que nunca se pidieron.
 
 ### 5.4 Cuando algo va mal
 

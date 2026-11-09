@@ -55,6 +55,42 @@ def _nombre_refresco() -> str:
     return f"{get_settings().sesion_cookie_nombre}_refresco"
 
 
+def _nombre_refresco_suplantacion() -> str:
+    """El refresco de la sesión de soporte (CRM-00.01.02.06).
+
+    Va **aparte** del propio y en la misma ruta: el refresco propio no se toca
+    mientras se está dentro como otra persona —es lo que permite volver sin
+    escribir la contraseña— y el de la suplantación es lo que la mantiene viva
+    más allá de los quince minutos del token de acceso. Si fuera el mismo, o
+    volver costaría la contraseña o entrar como otro borraría la sesión propia.
+    """
+    return f"{get_settings().sesion_cookie_nombre}_suplantacion_refresco"
+
+
+def poner_refresco_suplantacion(respuesta: Response, token: str, *, segundos: int) -> None:
+    s = get_settings()
+    respuesta.set_cookie(
+        _nombre_refresco_suplantacion(),
+        token,
+        max_age=segundos,
+        httponly=True,
+        secure=s.sesion_cookie_secure,
+        samesite=s.sesion_cookie_samesite,
+        path=RUTA_REFRESCO,
+    )
+
+
+def quitar_refresco_suplantacion(respuesta: Response) -> None:
+    s = get_settings()
+    respuesta.delete_cookie(
+        _nombre_refresco_suplantacion(),
+        path=RUTA_REFRESCO,
+        httponly=True,
+        secure=s.sesion_cookie_secure,
+        samesite=s.sesion_cookie_samesite,
+    )
+
+
 def poner_refresco(respuesta: Response, token: str, *, segundos: int) -> None:
     """Guarda el token de refresco, acotado a la ruta que lo canjea."""
     s = get_settings()
@@ -90,9 +126,15 @@ def poner_cookie(respuesta: Response, token: str, *, segundos: int) -> None:
 
 
 def quitar_cookie(respuesta: Response) -> None:
-    """Borra las DOS cookies. Dejar la de refresco sería no cerrar la sesión."""
+    """Borra las cookies de sesión. Dejar la de refresco sería no cerrar la
+    sesión, y dejar la de soporte haría que la siguiente renovación volviera a
+    meter a quien sale dentro de la cuenta de otra persona."""
     s = get_settings()
-    for nombre, camino in ((s.sesion_cookie_nombre, "/api"), (_nombre_refresco(), RUTA_REFRESCO)):
+    for nombre, camino in (
+        (s.sesion_cookie_nombre, "/api"),
+        (_nombre_refresco(), RUTA_REFRESCO),
+        (_nombre_refresco_suplantacion(), RUTA_REFRESCO),
+    ):
         respuesta.delete_cookie(
             nombre,
             path=camino,
@@ -100,6 +142,36 @@ def quitar_cookie(respuesta: Response) -> None:
             secure=s.sesion_cookie_secure,
             samesite=s.sesion_cookie_samesite,
         )
+
+
+async def _renovar_suplantacion(
+    cliente: Any, destinos: dict[str, Any], timeout_s: float, refresco: str, respuesta: Response
+) -> dict[str, Any] | None:
+    """Renueva la sesión de soporte. `None` si ya no se puede (caducó o se
+    revocó): entonces se vuelve a la propia."""
+    s = get_settings()
+    try:
+        salida = await cliente.post(
+            f"{_identidad(destinos)}/api/v1/auth/refresh",
+            json={"refresh_token": refresco},
+            timeout=timeout_s,
+        )
+    except httpx.HTTPError as exc:
+        raise NoDisponible(
+            "No se ha podido contactar con el servicio de identidad",
+            error_code="gateway.identidad_no_responde",
+        ) from exc
+    if salida.status_code != 200:
+        return None
+    cuerpo = salida.json()
+    nuevo = str(cuerpo.get("access_token") or "")
+    if not nuevo:
+        return None
+    poner_cookie(respuesta, nuevo, segundos=s.access_token_minutos * 60)
+    rotado = str(cuerpo.get("refresh_token") or "")
+    if rotado:
+        poner_refresco_suplantacion(respuesta, rotado, segundos=s.access_token_minutos * 60 * 8)
+    return {"caduca_en_s": s.access_token_minutos * 60, "suplantando": True}
 
 
 def crear_router_sesion(obtener: Callable[[], tuple[Any, dict[str, Any], float]]) -> APIRouter:
@@ -194,6 +266,20 @@ def crear_router_sesion(obtener: Callable[[], tuple[Any, dict[str, Any], float]]
     async def renovar(request: Request, respuesta: Response) -> Any:
         s = get_settings()
         cliente, destinos, timeout_s = obtener()
+        # **Si hay una sesión de soporte abierta, se renueva ÉSA** y no la
+        # propia (CRM-00.01.02.06). Renovar la propia sacaría a quien está
+        # dentro como otra persona sin decírselo, a mitad de lo que estuviera
+        # mirando, y la de soporte se quedaría viva sin nadie usándola.
+        de_soporte = request.cookies.get(_nombre_refresco_suplantacion())
+        if de_soporte:
+            renovada = await _renovar_suplantacion(
+                cliente, destinos, timeout_s, de_soporte, respuesta
+            )
+            if renovada is not None:
+                return renovada
+            # Caducada o revocada: se vuelve a la sesión propia, que es lo que
+            # tiene que pasar al acabarse el tiempo de soporte, y se dice.
+            quitar_refresco_suplantacion(respuesta)
         refresco = request.cookies.get(_nombre_refresco())
         if not refresco:
             raise NoAutenticado(
@@ -234,7 +320,133 @@ def crear_router_sesion(obtener: Callable[[], tuple[Any, dict[str, Any], float]]
         rotado = str(cuerpo.get("refresh_token") or "")
         if rotado:
             poner_refresco(respuesta, rotado, segundos=s.refresh_token_dias * 86400)
+        return {
+            "caduca_en_s": s.access_token_minutos * 60,
+            # Para que la interfaz recargue: la franja de soporte ya no es
+            # verdad y lo que hay en pantalla es de la otra persona.
+            "suplantacion_terminada": bool(de_soporte),
+        }
+
+    @router_sesion.post(
+        "/suplantar",
+        response_model=dict,
+        summary="Entrar como otra persona, por soporte (CRM-00.01.02.06)",
+        description=(
+            "El navegador no puede quedarse los tokens de la suplantación —es "
+            "la misma razón por la que no se queda los propios—, así que el "
+            "gateway los pide a identidad y los pone en la cookie. **El "
+            "refresco propio no se toca**: es lo que permite volver a la "
+            "sesión de uno sin escribir la contraseña.\n\n"
+            "Identidad decide si se puede: sólo personal de plataforma, con "
+            "motivo escrito y reverificado hace poco. La empresa es la que se "
+            "está mirando (`X-CRM-Tenant-Mirado`)."
+        ),
+    )
+    async def suplantar(datos: dict[str, Any], request: Request, respuesta: Response) -> Any:
+        from crmcore.http.deps import H_TENANT_MIRADO
+
+        s = get_settings()
+        cliente, destinos, timeout_s = obtener()
+        propio = request.cookies.get(s.sesion_cookie_nombre)
+        if not propio:
+            raise NoAutenticado("No hay sesión abierta", error_code="gateway.sin_sesion")
+        cabeceras = {"Authorization": f"Bearer {propio}"}
+        mirado = request.headers.get(H_TENANT_MIRADO)
+        if mirado:
+            cabeceras[H_TENANT_MIRADO] = mirado
+        try:
+            salida = await cliente.post(
+                f"{_identidad(destinos)}/api/v1/sesiones/suplantar",
+                json={"usuario_id": datos.get("usuario_id"), "motivo": datos.get("motivo")},
+                headers=cabeceras,
+                timeout=timeout_s,
+            )
+        except httpx.HTTPError as exc:
+            raise NoDisponible(
+                "No se ha podido contactar con el servicio de identidad",
+                error_code="gateway.identidad_no_responde",
+            ) from exc
+        if salida.status_code != 200:
+            # Lo que diga identidad, tal cual: «vuelve a verificarte», «falta
+            # el motivo», «esa persona no está en esta empresa».
+            return Response(
+                content=salida.content,
+                status_code=salida.status_code,
+                media_type=salida.headers.get("content-type", "application/json"),
+            )
+        cuerpo = salida.json()
+        token = str(cuerpo.get("access_token") or "")
+        if not token:
+            raise NoAutenticado(
+                "Identidad no ha devuelto un token de acceso", error_code="gateway.sin_token"
+            )
+        poner_cookie(respuesta, token, segundos=s.access_token_minutos * 60)
+        refresco = str(cuerpo.get("refresh_token") or "")
+        if refresco:
+            # Vive lo que la sesión de soporte y no catorce días: identidad la
+            # corta antes, y una cookie que dura más que la sesión que guarda
+            # sólo sirve para intentar renovar algo que ya no existe.
+            poner_refresco_suplantacion(
+                respuesta, refresco, segundos=s.access_token_minutos * 60 * 8
+            )
+        logger.warning("gateway.suplantacion_abierta")
         return {"caduca_en_s": s.access_token_minutos * 60}
+
+    @router_sesion.post(
+        "/volver",
+        status_code=status.HTTP_204_NO_CONTENT,
+        summary="Salir de la suplantación y volver a la sesión propia",
+        description=(
+            "Cierra en identidad la sesión de soporte —no basta con olvidarla: "
+            "seguiría viva hasta caducar— y borra sus cookies. La sesión propia "
+            "se recupera con `/sesion/renovar`, que es la única ruta a la que "
+            "el navegador manda el refresco propio."
+        ),
+    )
+    async def volver(request: Request) -> Response:
+        s = get_settings()
+        cliente, destinos, timeout_s = obtener()
+        token = request.cookies.get(s.sesion_cookie_nombre)
+        if not token:
+            # Sin sesión no hay de qué volver, y contestar 204 a quien no ha
+            # entrado le diría que ha hecho algo.
+            raise NoAutenticado("No hay sesión abierta", error_code="gateway.sin_sesion")
+        try:
+            yo = await cliente.get(
+                f"{_identidad(destinos)}/api/v1/auth/me",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=timeout_s,
+            )
+            # Sólo se cierra si ES una suplantación. Sin esto, «volver»
+            # pulsado por error en la sesión propia la cerraría.
+            if yo.status_code == 200 and yo.json().get("suplantado_por"):
+                await cliente.post(
+                    f"{_identidad(destinos)}/api/v1/auth/logout",
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=timeout_s,
+                )
+            elif yo.status_code == 200:
+                from crmcore.errors import Conflicto
+
+                raise Conflicto(
+                    "No estás dentro como otra persona",
+                    error_code="gateway.sin_suplantacion",
+                )
+        except httpx.HTTPError:
+            # La cookie se borra igual: quedarse dentro como otra persona
+            # porque identidad no responde es el peor resultado posible.
+            logger.error("gateway.volver_sin_identidad")
+        salida = Response(status_code=status.HTTP_204_NO_CONTENT)
+        salida.delete_cookie(
+            s.sesion_cookie_nombre,
+            path="/api",
+            httponly=True,
+            secure=s.sesion_cookie_secure,
+            samesite=s.sesion_cookie_samesite,
+        )
+        quitar_refresco_suplantacion(salida)
+        logger.info("gateway.suplantacion_cerrada")
+        return salida
 
     @router_sesion.post(
         "/salir",

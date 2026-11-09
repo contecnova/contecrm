@@ -1015,7 +1015,14 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 # 09-11-2026: 82 → 78. Comprobadas en el navegador y declaradas: el historial
 # de la cuenta, los consentimientos del contacto, los contactos del proveedor
 # y los casos en riesgo de SLA, que no se pintaban por ser una lista.
-TOPE_SIN_PANTALLA = 78
+# 09-11-2026, segunda: 78 → 63. Las quince construidas o enchufadas en el
+# bloque de las críticas: MFA por rol, «Entrar como» de soporte, el
+# identificador de petición en errores y auditoría, latencia p95/p99 por
+# operación, alta del tenant en las herramientas, credenciales de la conexión,
+# encargos en el portal, acciones del sobre de firma, reunión en línea,
+# deduplicar leads, duplicar y traspasar, importar con reversión, lote desde la
+# tabla y previsión por jerarquía. Cada una vista en el navegador.
+TOPE_SIN_PANTALLA = 63
 
 
 def _es_pantalla(p: Path) -> bool:

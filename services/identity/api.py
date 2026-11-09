@@ -455,12 +455,28 @@ def yo(db: DbDep, principal: AutenticadoDep) -> Any:
             Membresia.usuario_id == principal.id, Membresia.tenant_id == principal.tenant_id
         )
     ).scalar_one_or_none()
+    soporte_email: str | None = None
+    motivo: str | None = None
+    caduca: datetime | None = None
+    if principal.actor_real_id is not None:
+        # Quién y por qué, para la franja de «estás dentro por soporte»
+        # (CRM-00.01.02.06). El motivo sale de la sesión, que es donde se
+        # guardó al abrirla: no se pide al front que lo recuerde.
+        soporte = db.get(Usuario, principal.actor_real_id)
+        soporte_email = soporte.email if soporte else None
+        fila = db.get(Sesion, principal.sesion_id) if principal.sesion_id else None
+        if fila is not None:
+            motivo = fila.motivo_suplantacion
+            caduca = fila.expira_at
     return YoOut(
         usuario=UsuarioOut.model_validate(usuario),
         tenant_id=principal.tenant_id,
         roles=list(membresia.roles or []) if membresia else [],
         permisos=sorted(principal.permisos),
         suplantado_por=principal.actor_real_id,
+        suplantado_por_email=soporte_email,
+        motivo_suplantacion=motivo,
+        suplantacion_caduca_at=caduca,
     )
 
 
@@ -552,15 +568,20 @@ def activar_mfa(datos: ActivarMfa, db: DbDep, principal: AutenticadoDep) -> Any:
     dependencies=[exige_reverificacion("cambio_mfa")],
 )
 def desactivar_mfa(db: DbDep, principal: AutenticadoDep) -> Any:
-    from crmcore.runtime import settings as rt
-
     usuario = db.get(Usuario, principal.id)
     if usuario is None:
         raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
     # Si el tenant lo exige, quitarlo dejaría a esta persona sin poder entrar:
     # el acceso pediría un código y no habría con qué generarlo. Se dice, en vez
-    # de dejar que lo descubra en el siguiente inicio de sesión.
-    if bool(rt.efectivo("mfa_obligatoria", db)):
+    # de dejar que lo descubra en el siguiente inicio de sesión. Con los roles
+    # de ESTA persona (CRM-00.05.01.06): si la empresa lo exige sólo a quien
+    # administra, un comercial sí puede quitárselo.
+    membresia = db.execute(
+        select(Membresia).where(
+            Membresia.usuario_id == principal.id, Membresia.tenant_id == principal.tenant_id
+        )
+    ).scalar_one_or_none()
+    if svc.mfa_exigida(db, list(membresia.roles or []) if membresia else []):
         raise Prohibido(
             "Esta empresa exige doble factor: no se puede quitar. Para cambiar "
             "de autenticador, vuelve a configurarlo desde cero.",
@@ -893,15 +914,20 @@ def cerrar_sesion(sesion_id: UUID, db: DbDep, principal: AutenticadoDep) -> None
         "Queda en la auditoría del tenant con quién suplantó a quién y por qué."
     ),
 )
-def suplantar(datos: Suplantar, db: DbDep, principal: AutenticadoDep) -> Any:
+def suplantar(datos: Suplantar, request: Request, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.http.deps import tenant_mirado
+
     soporte = db.get(Usuario, principal.id)
     if soporte is None:
         raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
+    # La empresa es **la que se está mirando** (CRM-00.01.02.06): la sesión de
+    # esta petición ya va atada a ella, y entrar en otra distinta de la que se
+    # ve en pantalla sería entrar a ciegas. Sin cabecera, la propia.
     _s, acceso, refresco = svc.suplantar(
         db,
         soporte=soporte,
         usuario_id=datos.usuario_id,
-        tenant_id=principal.tenant_id,
+        tenant_id=tenant_mirado(request, principal),
         motivo=datos.motivo,
     )
     return Tokens(

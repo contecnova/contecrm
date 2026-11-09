@@ -283,6 +283,11 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // esto. `user:read` porque es lo que exigen sus extremos.
   { area: "usuarios", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
   { area: "usuarios", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read"  },
+  // Importar cuentas y contactos con su mapeo, la simulación fila a fila y la
+  // reversión de una importación entera (CRM-07.01.01.08). Y el traspaso de la
+  // cartera de quien se va (CRM-07.01.01.07). Las dos estaban sólo por API.
+  { area: "usuarios", a: "/importar", clave: "nav.importar", icono: "upload_file", permiso: "account:import" },
+  { area: "usuarios", a: "/transferir-propiedad", clave: "nav.transferirPropiedad", icono: "swap_horiz", permiso: "account:admin" },
   // Los entornos de pruebas con la copia de los datos (CRM-07.02.01.02), que
   // sólo se alcanzaban desde el selector de vistas de «Empresas».
   { area: "usuarios", a: "/m/tenants?r=Sandboxes", clave: "nav.sandboxes", icono: "science", permiso: "tenancy:read" },

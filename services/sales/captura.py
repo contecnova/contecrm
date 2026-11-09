@@ -29,10 +29,13 @@ robot qué tiene que cambiar para la próxima.
 en el HTML de una página pública— el daño está acotado a lo que el tenant haya
 declarado que es razonable recibir.
 
-Lo que **no** hace, dicho: no deduplica contra los leads existentes en el
-momento de la captura. Eso lo hace el flujo de calidad después, y meterlo aquí
-convertiría cada envío de formulario en una consulta de similitud contra toda la
-tabla — un formulario que tarda dos segundos es un formulario que se abandona.
+**Y deduplica al entrar** (CRM-01.01.03.03), contra los leads y contra los
+contactos del maestro, por índice —correo, teléfono, empresa— y no contra toda
+la tabla: un formulario que tarda dos segundos es un formulario que se
+abandona. Como aquí no hay nadie a quien preguntar, no se responde 409: según
+`lead_dedupe_captura` se **marca** el lead nuevo como posible duplicado, se
+**fusiona** lo que llega en el lead que ya existía o se deja pasar. Nunca se
+pierde lo que llegó. Ver `dedupe_leads`.
 """
 
 from __future__ import annotations
@@ -133,7 +136,7 @@ class RecepcionCaptura(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     canal_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     lead_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    # creado | descartado_trampa | descartado_incompleto | descartado_tope
+    # creado | fusionado | descartado_trampa | descartado_incompleto | descartado_tope
     resultado: Mapped[str] = mapped_column(String(30), nullable=False)
     detalle: Mapped[str] = mapped_column(
         String(300), nullable=False, default="", info={"anonimizar_en_copias": True}
@@ -294,15 +297,65 @@ def recibir_por_canal(uow: Any, canal: CanalCaptura, entrada: dict[str, Any]) ->
     mapeados = set((canal.mapeo or {}).values()) | {canal.campo_trampa, "utm"}
     extras = {k: v for k, v in entrada.items() if k not in mapeados}
 
+    from services.sales import dedupe_leads
     from services.sales import servicio as svc
 
+    modo = _modo_dedupe(db)
+    duplicado: dedupe_leads.CandidatoLead | None = None
+    if modo != "nada":
+        # El principal de la consulta a los contactos es el propio canal: aquí
+        # no hay persona, y una llamada interna sin identidad no puede leer
+        # datos de nadie.
+        encontrados = dedupe_leads.buscar(db, canal.tenant_id, datos, principal_id=canal.id)
+        duplicado = next(iter(encontrados.concluyentes), None)
+        if duplicado is not None and modo == "fusionar" and duplicado.objeto == "lead":
+            from services.sales.modelos import Lead
+
+            existente = db.get(Lead, UUID(duplicado.id))
+            if existente is not None:
+                dedupe_leads.fusionar_en(db, existente, datos, canal=canal.clave)
+                return _anotar(
+                    db,
+                    canal,
+                    entrada,
+                    "fusionado",
+                    f"mismo lead por {', '.join(duplicado.senales)}",
+                    lead_id=existente.id,
+                )
+        if not encontrados.contactos_consultados:
+            logger.warning("captura.dedupe_sin_contactos", canal=canal.clave)
+
+    marca: dict[str, Any] = {}
+    if duplicado is not None:
+        # «Fusionar» contra un contacto no tiene sentido —un contacto no es un
+        # lead—, así que también se marca: entra, y una persona decide.
+        marca = {
+            "duplicado_de_id": UUID(duplicado.id),
+            "duplicado_detalle": duplicado.a_dict(),
+        }
     lead = svc.crear_lead(
         uow,
         **datos,
+        **marca,
         utm=dict(entrada.get("utm") or {}),
         campos=extras,
+        comprobar_duplicados=False,
     )
-    return _anotar(db, canal, entrada, "creado", "", lead_id=lead.id)
+    detalle = (
+        f"posible duplicado de {duplicado.objeto} por {', '.join(duplicado.senales)}"
+        if duplicado is not None
+        else ""
+    )
+    return _anotar(db, canal, entrada, "creado", detalle, lead_id=lead.id)
+
+
+def _modo_dedupe(db: Session) -> str:
+    """Qué hacer con un duplicado al capturar: marcar, fusionar o nada."""
+    from crmcore.runtime import settings as rt
+
+    from services.sales.ajustes import ajustes
+
+    return str(rt.efectivo("lead_dedupe_captura", db) or ajustes().lead_dedupe_captura)
 
 
 def _pasados_de_tope(db: Session, canal: CanalCaptura) -> bool:
@@ -313,7 +366,9 @@ def _pasados_de_tope(db: Session, canal: CanalCaptura) -> bool:
         .where(
             RecepcionCaptura.canal_id == canal.id,
             RecepcionCaptura.created_at >= desde,
-            RecepcionCaptura.resultado == "creado",
+            # Lo fusionado también cuenta: un robot que repite el mismo envío
+            # no crea leads, pero sí escribe, y el tope es para eso.
+            RecepcionCaptura.resultado.in_(("creado", "fusionado")),
         )
     ).scalar_one()
     return bool(recibidos >= canal.max_por_hora)
@@ -338,7 +393,7 @@ def _anotar(
         )
     )
     canal.ultimo_at = datetime.now(timezone.utc)
-    if resultado == "creado":
+    if resultado in ("creado", "fusionado"):
         canal.recibidos += 1
     else:
         canal.descartados += 1
@@ -361,7 +416,7 @@ def recepciones(
     if canal_id is not None:
         consulta = consulta.where(RecepcionCaptura.canal_id == canal_id)
     if solo_descartadas:
-        consulta = consulta.where(RecepcionCaptura.resultado != "creado")
+        consulta = consulta.where(RecepcionCaptura.resultado.notin_(("creado", "fusionado")))
     filas = (
         db.execute(consulta.order_by(RecepcionCaptura.created_at.desc()).limit(limite))
         .scalars()

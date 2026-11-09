@@ -137,9 +137,11 @@ const NO_SON_FILTROS = new Set([
   "total",
   "formato",
   "vista",
-  // Las dos de la pantalla de módulo: qué pestaña y si se abre el alta.
+  // Las de la pantalla de módulo: qué pestaña, si se abre el alta y de qué
+  // registro es copia (CRM-07.01.01.07).
   "r",
   "nuevo",
+  "duplicar",
 ]);
 
 export function leerFiltros(params: URLSearchParams, buscar?: string): Filtro[] {

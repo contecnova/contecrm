@@ -409,7 +409,22 @@ def auditoria(
     accion: str = Query("", max_length=80),
     objeto: str = Query("", max_length=80),
     limite: int = Query(100, ge=1, le=1000),
+    request_id: str = Query(
+        "",
+        max_length=64,
+        description=(
+            "El identificador de petición que enseña la pantalla de error "
+            "(CRM-00.02.04.07): lo que escribió esa petición, y nada más"
+        ),
+    ),
 ) -> Any:
     from crmcore.seguridad.siem import consultar
 
-    return consultar(db, principal.tenant_id, accion=accion, objeto=objeto, limite=limite)
+    return consultar(
+        db,
+        principal.tenant_id,
+        accion=accion,
+        objeto=objeto,
+        limite=limite,
+        request_id=request_id,
+    )

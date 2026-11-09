@@ -201,11 +201,17 @@ def buscar_contactos_duplicados(
     apellidos: str | None = None,
     email: str | None = None,
     excluir_id: UUID | None = None,
+    telefono: str | None = None,
 ) -> list[Candidato]:
     """Candidatos a duplicado de un contacto.
 
     El correo es aquí lo que el NIF en las cuentas: dos personas no comparten
     buzón. Es la señal concluyente.
+
+    El teléfono se mira sólo si se pide, y **no** bloquea: una centralita la
+    comparten cincuenta personas. Lo pide la deduplicación de leads al
+    capturar (CRM-01.01.03.03), que decide con sus propias reglas qué es
+    concluyente para un lead.
     """
     from crmcore.runtime import settings as rt
 
@@ -240,6 +246,32 @@ def buscar_contactos_duplicados(
                 similitud=1.0,
                 senales=("email",),
                 concluyente=True,
+            )
+
+    movil = norm.normalizar_telefono(telefono) if telefono else ""
+    if movil:
+        for contacto in (
+            db.execute(
+                select(Contacto)
+                .where(
+                    Contacto.tenant_id == tenant_id,
+                    or_(Contacto.telefono == movil, Contacto.movil == movil),
+                    Contacto.deleted_at.is_(None),
+                    Contacto.fusionado_en_id.is_(None),
+                )
+                .limit(50)
+            )
+            .scalars()
+            .all()
+        ):
+            if (excluir_id and contacto.id == excluir_id) or contacto.id in candidatos:
+                continue
+            candidatos[contacto.id] = Candidato(
+                id=contacto.id,
+                nombre=contacto.nombre_completo,
+                similitud=1.0,
+                senales=("telefono",),
+                concluyente=False,
             )
 
     primera = clave.split()[0] if clave else ""

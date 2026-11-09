@@ -57,7 +57,7 @@ import {
 } from "@/lib/navegacion";
 import { ProveedorPanel } from "@/lib/panel";
 import { ProveedorPermisos, useVisibilidad } from "@/lib/permisos";
-import type { Sesion } from "@/lib/sesion";
+import { volverASesionPropia, type Sesion } from "@/lib/sesion";
 
 /**
  * La paleta se carga cuando se abre, no al arrancar.
@@ -223,14 +223,7 @@ function Armazon({
         {/* La suplantación se dice SIEMPRE y en todas las pantallas. Un
             administrador que olvida que está viendo el CRM en nombre de otra
             persona toma decisiones sobre datos que no son los que cree. */}
-        {sesion?.suplantado_por ? (
-          <p
-            className="bg-warning px-4 py-1 text-center text-dato text-ink"
-            role="status"
-          >
-            {t("app.suplantado")}
-          </p>
-        ) : null}
+        {sesion?.suplantado_por ? <FranjaDeSoporte sesion={sesion} /> : null}
 
         <BarraSuperior
           sesion={sesion}
@@ -282,6 +275,59 @@ function Armazon({
             alCerrar={() => setLanzador(false)}
           />
         </Suspense>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * «Estás dentro como X por soporte: motivo», y el botón para salir
+ * (CRM-00.01.02.06).
+ *
+ * Con nombre y motivo, no un aviso genérico: quien entra en la cuenta de otra
+ * persona para un ticket tiene que ver EN CADA PANTALLA de quién es y para
+ * qué, porque lo que se olvida a mitad de trabajo es exactamente eso.
+ */
+function FranjaDeSoporte({ sesion }: { sesion: Sesion }) {
+  const { t } = useTranslation();
+  const [saliendo, setSaliendo] = useState(false);
+  const [fallo, setFallo] = useState(false);
+  const datos = sesion.suplantacion;
+  return (
+    <div
+      className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-warning px-4 py-1 text-center text-dato text-ink"
+      role="status"
+    >
+      <span>
+        {datos?.motivo
+          ? t("app.suplantadoComo", {
+              quien: sesion.nombre || sesion.email,
+              motivo: datos.motivo,
+            })
+          : t("app.suplantado")}
+      </span>
+      {datos?.por_email ? (
+        <span className="text-rotulo">
+          {t("app.suplantadoPor", { soporte: datos.por_email })}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        className="rounded border border-ink/40 px-2 py-0.5 text-rotulo font-medium hover:bg-ink/10"
+        disabled={saliendo}
+        onClick={() => {
+          setSaliendo(true);
+          setFallo(false);
+          volverASesionPropia().catch(() => {
+            setSaliendo(false);
+            setFallo(true);
+          });
+        }}
+      >
+        {t("app.salirDeSuplantacion")}
+      </button>
+      {fallo ? (
+        <span className="text-rotulo">{t("app.salirDeSuplantacionFallo")}</span>
       ) : null}
     </div>
   );

@@ -375,6 +375,76 @@ def perfil(db: Session, tenant_id: UUID, nombre: str) -> dict[str, Any]:
     return dict(fila.config)
 
 
+def perfil_de_reuniones(
+    db: Session, tenant_id: UUID, *, usuario_id: UUID | None, nombre: str = ""
+) -> "Conexion":
+    """Con qué perfil se crea la reunión en línea de esta persona.
+
+    Si se nombra, ése. Si no, el que el tenant tenga conectado **con
+    reuniones**: Microsoft 365 o Google, según lo que haya, sin elegir por
+    marca. Con varios, el que esta persona haya autorizado; y si sigue
+    habiendo más de uno se pregunta, porque elegir a ciegas manda a la gente a
+    la sala del otro producto.
+    """
+    from services.integration.modelos import Conexion
+
+    if nombre:
+        fila = db.execute(
+            select(Conexion).where(Conexion.tenant_id == tenant_id, Conexion.nombre == nombre)
+        ).scalar_one_or_none()
+        if fila is None or dict(fila.config or {}).get("clase") != "suite_productividad":
+            raise NoEncontrado(
+                f"No hay ningún perfil de suite llamado «{nombre}»",
+                error_code="suite.perfil_no_encontrado",
+            )
+        return fila
+
+    candidatos = [
+        c
+        for c in db.execute(
+            select(Conexion).where(Conexion.tenant_id == tenant_id, Conexion.activa.is_(True))
+        )
+        .scalars()
+        .all()
+        if dict(c.config or {}).get("clase") == "suite_productividad"
+        and str(
+            dict(dict(dict(c.config or {}).get("recursos") or {}).get("reuniones") or {}).get(
+                "endpoint"
+            )
+            or ""
+        ).strip()
+    ]
+    if len(candidatos) > 1 and usuario_id is not None:
+        autorizados = {
+            p
+            for (p,) in db.execute(
+                select(ConsentimientoSuite.perfil).where(
+                    ConsentimientoSuite.tenant_id == tenant_id,
+                    ConsentimientoSuite.usuario_id == usuario_id,
+                    ConsentimientoSuite.recurso == "reuniones",
+                    ConsentimientoSuite.concedido_at.is_not(None),
+                    ConsentimientoSuite.revocado_at.is_(None),
+                )
+            ).all()
+        }
+        suyos = [c for c in candidatos if c.nombre in autorizados]
+        candidatos = suyos or candidatos
+    if not candidatos:
+        raise ErrorValidacion(
+            "Este tenant no tiene conectada ninguna suite con reuniones en línea. No se "
+            "inventa una: mandar a la gente a una sala de otro producto es justo lo "
+            "que el cliente no quiere.",
+            error_code="suite.sin_proveedor_de_reuniones",
+        )
+    if len(candidatos) > 1:
+        raise ErrorValidacion(
+            "Hay más de una suite con reuniones y no se sabe cuál es la tuya: elige el perfil.",
+            error_code="suite.reuniones_ambiguo",
+            detalle={"perfiles": sorted(c.nombre for c in candidatos)},
+        )
+    return candidatos[0]
+
+
 def capacidades_de(config: dict[str, Any]) -> dict[str, Any]:
     """Qué sabe hacer este perfil, para poder enseñarlo antes de conectar nada.
 

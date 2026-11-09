@@ -30,6 +30,13 @@ class CrearLead(BaseModel):
         None, description="Si se omite, queda sin asignar y el SLA corre igual"
     )
     campos: dict[str, Any] = Field(default_factory=dict)
+    forzar: bool = Field(
+        False,
+        description=(
+            "Crearlo aunque se parezca a un lead o a un contacto que ya existe. "
+            "Sin él, un duplicado concluyente responde 409 con los candidatos"
+        ),
+    )
 
 
 class LeadOut(BaseModel):
@@ -74,6 +81,9 @@ class LeadOut(BaseModel):
     cuenta_id: UUID | None = None
     oportunidad_id: UUID | None = None
     convertido_at: datetime | None = None
+    # Si la captura lo dejó señalado como posible duplicado, de qué y por qué.
+    duplicado_de_id: UUID | None = None
+    duplicado_detalle: dict[str, Any] = {}
     created_at: datetime
 
     model_config = {"from_attributes": True}

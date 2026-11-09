@@ -123,6 +123,7 @@ CUENTAS = RecursoMasivo(
     actualizar=_actualizar_cuenta,
     borrar=_borrar_cuenta,
     buscar=_buscar_cuenta,
+    coleccion="/accounts",
 )
 
 # Los contactos no ofrecen `upsert`: no hay una clave que identifique a una
@@ -130,16 +131,20 @@ CUENTAS = RecursoMasivo(
 # correo se comparte (info@, el del jefe), cambia de empresa y se reutiliza. Un
 # upsert por correo acabaría pisando la ficha de otra persona, y ese error no se
 # ve hasta que alguien recibe la comunicación equivocada.
-# Tampoco ofrece borrado, y no por olvido: **la API no tiene borrado de
-# contacto de uno en uno**. `administracion.borrar_contacto` existe y se usa
-# desde la baja del tenant, pero ninguna ruta lo expone. Ofrecerlo aquí daría al
-# camino masivo una capacidad que el individual no tiene, que es justo lo que
-# este módulo dice no hacer. Cuando exista `DELETE /contactos/{id}`, se añade.
+# Actualizar y borrar se toman de la ficha genérica del contacto
+# (`montar_ficha`): son el PATCH y el DELETE de un contacto, con su esquema y su
+# borrado a la papelera, y el lote no puede hacer ni más ni menos que ellos.
 CONTACTOS = RecursoMasivo(
     recurso="contactos",
     objeto="contacto",
-    permisos={"crear": "contact:write"},
+    permisos={
+        "crear": "contact:write",
+        "actualizar": "contact:write",
+        "borrar": "contact:delete",
+    },
     crear=_crear_contacto,
+    coleccion="/contacts",
+    ficha="contacto",
 )
 
 RECURSOS = (CUENTAS, CONTACTOS)

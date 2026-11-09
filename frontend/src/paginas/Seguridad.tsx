@@ -55,10 +55,12 @@
  * revisa al año siguiente», y sin lectura la excepción vivía igual de
  * escondida, sólo que en una tabla.
  *
- * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.05.01.06` —MFA
- * obligatoria configurable por rol— porque aquí se ve si está puesta y no se
- * configura, y declarar lo que no se hace es justo lo que esta traza existe
- * para impedir.
+ * Y desde el 09-11-2026, **la MFA obligatoria por rol** (CRM-00.05.01.06):
+ * a qué roles se les exige segundo factor se elige aquí, en desplegable, y al
+ * guardarlo se ve a quién se le va a pedir y cuántos se quedarían fuera.
+ * Comprobado en el navegador: elegir un rol, guardar, ver la marca «se le
+ * exige» en quien no tiene factor, y el login pidiendo el código a quien lleva
+ * ese rol. Los factores que cumplen son TOTP y passkey; no hay push.
  *
  * El módulo genérico «Identidad y acceso» ya lista lo que es una colección:
  * usuarios, roles, políticas, claves de API, sesiones, dispositivos y
@@ -150,6 +152,8 @@ interface UsuarioMfa {
   ultimo_acceso_at: string | null;
   factor?: string;
   fuerza?: number;
+  /** Si se le exige segundo factor por rol o por el interruptor global. */
+  exigida?: boolean;
 }
 
 interface Adopcion {
@@ -159,6 +163,11 @@ interface Adopcion {
   adopcion_pct: number | null;
   medible: boolean;
   mfa_obligatoria: boolean;
+  /** Roles a los que se exige (CRM-00.05.01.06). Vacío: manda el interruptor. */
+  mfa_obligatoria_roles?: string[];
+  /** Se les exige y no tienen con qué: se quedarían fuera al entrar. */
+  exigida_sin_factor?: number;
+  roles_disponibles?: string[];
   usuarios_sin_factor: UsuarioMfa[];
   canales_debiles_activos: string[];
   aviso: string;
@@ -271,7 +280,11 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
           con un rol que se salta la RLS, contar tablas protegidas da verde
           sobre una red desarmada. */}
       <Aislamiento />
-      <SegundoFactor datos={adopcion} />
+      <SegundoFactor
+        datos={adopcion}
+        puedeCambiar={puede(sesion, "tenant:write")}
+        alCambiar={setAdopcion}
+      />
       {/* Y lo de UNA persona, que es lo que no contesta el porcentaje: el
           administrador ve quién no tiene factor; quien entra necesita saber
           qué le falta a él, qué operaciones le van a pedir verificarse otra
@@ -788,9 +801,28 @@ function MiSegundoFactor() {
   );
 }
 
-/** Quién no tiene segundo factor. El trabajo es hablar con ellos. */
-function SegundoFactor({ datos }: { datos: Adopcion }) {
+/**
+ * Quién no tiene segundo factor. El trabajo es hablar con ellos.
+ *
+ * Y **a quién se le exige** (CRM-00.05.01.06): la MFA obligatoria por rol se
+ * configura aquí, junto a la lista de quién no la tiene, porque es la lista
+ * que hay que mirar antes de apretar. Al guardar, el servidor devuelve cuántas
+ * personas se quedarían fuera —se les exige y no tienen con qué— y eso se
+ * dice en aviso: quien aprieta la política no tiene que enterarse por las
+ * llamadas del lunes.
+ */
+function SegundoFactor({
+  datos,
+  puedeCambiar,
+  alCambiar,
+}: {
+  datos: Adopcion;
+  puedeCambiar: boolean;
+  alCambiar: (datos: Adopcion) => void;
+}) {
   const { t } = useTranslation();
+  const exigidos = datos.mfa_obligatoria_roles ?? [];
+  const sinFactorExigida = datos.exigida_sin_factor ?? 0;
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-titulin font-semibold text-ink">
@@ -807,11 +839,30 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
             })
           : t("seguridad.mfa.sinUsuarios")}
       </p>
-      {!datos.mfa_obligatoria ? (
+      {!datos.mfa_obligatoria && exigidos.length === 0 ? (
         <p className="text-rotulo text-warning">
           {t("seguridad.mfa.noObligatoria")}
         </p>
       ) : null}
+      {datos.mfa_obligatoria ? (
+        <p className="text-rotulo text-ink-muted">
+          {t("seguridad.mfa.obligatoriaParaTodos")}
+        </p>
+      ) : null}
+      {sinFactorExigida > 0 ? (
+        <p className="text-rotulo text-danger" role="status">
+          {t("seguridad.mfa.seQuedanFuera", {
+            count: sinFactorExigida,
+            cuantas: sinFactorExigida,
+          })}
+        </p>
+      ) : null}
+      <ExigirPorRol
+        exigidos={exigidos}
+        disponibles={datos.roles_disponibles ?? []}
+        puedeCambiar={puedeCambiar}
+        alGuardar={alCambiar}
+      />
       {datos.canales_debiles_activos.length > 0 ? (
         <p className="text-rotulo text-warning">
           {t("seguridad.mfa.canalesDebiles", {
@@ -841,11 +892,137 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
               <span className="text-rotulo text-ink-faint">
                 {u.roles.join(", ")}
               </span>
+              {u.exigida ? (
+                <span className="badge badge-warning">
+                  {t("seguridad.mfa.seLeExige")}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * Los roles a los que se exige segundo factor, y el sitio donde se cambian.
+ *
+ * Se eligen de un desplegable con los roles que existen en la empresa —los
+ * definidos y los que alguien lleva—: escrito a mano, un rol mal tecleado no
+ * se cumpliría nunca y se leería como protección puesta. El servidor lo
+ * comprueba igual.
+ */
+export function ExigirPorRol({
+  exigidos,
+  disponibles,
+  puedeCambiar,
+  alGuardar,
+}: {
+  exigidos: string[];
+  disponibles: string[];
+  puedeCambiar: boolean;
+  alGuardar: (datos: Adopcion) => void;
+}) {
+  const { t } = useTranslation();
+  const [borrador, setBorrador] = useState<string[]>(exigidos);
+  const [guardando, setGuardando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [hecho, setHecho] = useState(false);
+
+  useEffect(() => setBorrador(exigidos), [exigidos]);
+
+  const cambiado =
+    [...borrador].sort().join("|") !== [...exigidos].sort().join("|");
+  const quedan = disponibles.filter((r) => !borrador.includes(r));
+
+  async function guardar() {
+    setGuardando(true);
+    setFallo(null);
+    setHecho(false);
+    try {
+      const r = await llamar<Adopcion>("/api/v1/factores/obligatoria-por-rol", {
+        metodo: "PUT",
+        cuerpo: { roles: borrador },
+      });
+      alGuardar(r.datos);
+      setHecho(true);
+    } catch (e) {
+      setFallo(e);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="card mt-1 flex flex-col gap-2 p-4">
+      <h3 className="section-label">{t("seguridad.mfa.porRolTitulo")}</h3>
+      <p className="text-rotulo text-ink-faint">
+        {t("seguridad.mfa.porRolAyuda")}
+      </p>
+      <div className="lista-acotada flex flex-wrap items-center gap-2">
+        {borrador.length === 0 ? (
+          <span className="text-dato text-ink-muted">
+            {t("seguridad.mfa.porRolNinguno")}
+          </span>
+        ) : (
+          borrador.map((r) => (
+            <span key={r} className="chip-dato inline-flex items-center gap-1">
+              {r}
+              {puedeCambiar ? (
+                <button
+                  type="button"
+                  className="text-ink-faint hover:text-ink"
+                  aria-label={t("seguridad.mfa.quitarRol", { rol: r })}
+                  onClick={() => setBorrador(borrador.filter((x) => x !== r))}
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
+          ))
+        )}
+      </div>
+      {puedeCambiar ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="campo"
+            aria-label={t("seguridad.mfa.anadirRol")}
+            value=""
+            onChange={(e) => {
+              if (e.target.value) setBorrador([...borrador, e.target.value]);
+            }}
+            disabled={quedan.length === 0}
+          >
+            <option value="">{t("seguridad.mfa.anadirRol")}</option>
+            {quedan.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!cambiado || guardando}
+            onClick={() => void guardar()}
+          >
+            {guardando
+              ? t("seguridad.mfa.guardando")
+              : t("seguridad.mfa.guardar")}
+          </button>
+          {hecho && !cambiado ? (
+            <span className="text-rotulo text-success" role="status">
+              {t("seguridad.mfa.porRolGuardado")}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      <p className="text-rotulo text-ink-faint">
+        {t("seguridad.mfa.factoresQueCumplen")}
+      </p>
+      {fallo ? <Fallo error={fallo} /> : null}
+    </div>
   );
 }
 

@@ -28,6 +28,25 @@ class AjustesSales(Settings):
     # propia carga y enrutar 50.000 filas una a una sería absurdo.
     lead_enrutar_al_crear: bool = True
 
+    # ── Deduplicar al capturar (CRM-01.01.03.03) ──────────────────────────
+    # Parecido de empresa + nombre (0 a 1) a partir del cual un lead existente
+    # se propone como candidato, y a partir del cual bloquea el alta. El correo
+    # y el teléfono bloquean siempre: quien deja los suyos en un formulario
+    # deja los suyos, no los de una centralita.
+    lead_dedupe_umbral_sugerencia: float = Field(0.85, ge=0.0, le=1.0)
+    lead_dedupe_umbral_bloqueo: float = Field(0.97, ge=0.0, le=1.0)
+    # Preguntar también a los contactos del maestro (`party`, por HTTP). Si no
+    # contesta, el alta sigue y se dice que no se miró.
+    lead_dedupe_contactos: bool = True
+    # Cuánto se espera esa respuesta. Corto a propósito: el formulario de la
+    # web espera detrás, y uno que tarda se abandona.
+    lead_dedupe_espera_s: float = Field(2.0, ge=0.2, le=30.0)
+    lead_dedupe_max_candidatos: int = Field(5, ge=1, le=50)
+    # Qué hace la captura automática con un duplicado concluyente, donde no hay
+    # nadie a quien preguntar: `marcar` lo crea señalado, `fusionar` lo anota
+    # en el que ya había, `nada` lo deja pasar.
+    lead_dedupe_captura: str = Field("marcar", pattern="^(marcar|fusionar|nada)$")
+
     # ── Trazabilidad de origen (CRM-01.01.03.06) ──────────────────────────
     # Cuánto se remonta la búsqueda de toques anónimos al identificar a un
     # visitante. 90 días vale para una venta de ciclo medio; en obra o industria
@@ -175,6 +194,51 @@ registrar_claves(
             tipo="bool",
             descripcion="Aplicar las reglas de enrutamiento al dar de alta un lead",
             campo_settings="lead_enrutar_al_crear",
+        ),
+        ClaveAjuste(
+            clave="lead_dedupe_umbral_sugerencia",
+            tipo="float",
+            descripcion="Parecido (0 a 1) desde el que un lead existente se propone como duplicado",
+            minimo=0,
+            maximo=1,
+            campo_settings="lead_dedupe_umbral_sugerencia",
+        ),
+        ClaveAjuste(
+            clave="lead_dedupe_umbral_bloqueo",
+            tipo="float",
+            descripcion="Parecido (0 a 1) desde el que un duplicado de lead bloquea el alta",
+            minimo=0,
+            maximo=1,
+            campo_settings="lead_dedupe_umbral_bloqueo",
+        ),
+        ClaveAjuste(
+            clave="lead_dedupe_contactos",
+            tipo="bool",
+            descripcion="Buscar también entre los contactos del maestro al dar de alta un lead",
+            campo_settings="lead_dedupe_contactos",
+        ),
+        ClaveAjuste(
+            clave="lead_dedupe_espera_s",
+            tipo="float",
+            descripcion="Segundos que se espera a los contactos al deduplicar un lead",
+            minimo=0.2,
+            maximo=30,
+            campo_settings="lead_dedupe_espera_s",
+        ),
+        ClaveAjuste(
+            clave="lead_dedupe_max_candidatos",
+            tipo="int",
+            descripcion="Candidatos a duplicado que se enseñan al dar de alta un lead",
+            minimo=1,
+            maximo=50,
+            campo_settings="lead_dedupe_max_candidatos",
+        ),
+        ClaveAjuste(
+            clave="lead_dedupe_captura",
+            tipo="str",
+            descripcion="Qué hace la captura automática con un lead duplicado",
+            opciones=("marcar", "fusionar", "nada"),
+            campo_settings="lead_dedupe_captura",
         ),
         ClaveAjuste(
             clave="origen_ventana_dias",

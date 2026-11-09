@@ -1773,6 +1773,13 @@ hace falta para defenderlo.
 - **Por dónde entra**: el desglose por producto, familia o tipo de ingreso. Si
   algún grupo se queda fuera por un tipo de cambio que falta, se dice — si no,
   se leería como que ese grupo no vendió nada.
+- **Por jerarquía**: comercial, equipo, región y compañía. En el panel **Por
+  jerarquía** eliges de dónde sale el organigrama —**los territorios** o **la
+  jerarquía de mando**— y sale el árbol con lo que suma cada rama. El total de
+  la compañía va arriba y aparte: lo que no cuelga de ninguna rama sale debajo
+  con el nombre de quien lo lleva, y lo que no es de nadie, con su importe. Si
+  la jerarquía de mando sale vacía, el panel lo dice: no es que nadie tenga a
+  nadie a su cargo, es que no ha llegado ningún cambio de organigrama.
 
 ---
 
@@ -1798,6 +1805,22 @@ hace falta para defenderlo.
   salir mal y qué falta por saber. Queda registrada para poder compararla con lo
   que pasó — si lo que se revisa al 80 % se gana la mitad de las veces, ese 80 % no
   significa 80 %.
+
+### Un candidato que ya existe
+
+**Ventas › Candidatos › Nuevo.** Si lo que escribes se parece a un candidato
+que ya está —el mismo correo, el mismo teléfono aunque lo escribas con otros
+espacios, o la misma persona en la misma empresa— o a un contacto que ya es
+cliente, al pulsar **Guardar** el formulario no se cierra: enseña con quién
+coincide y en qué, con un enlace a cada uno. Si es el mismo, ábrelo y trabaja
+sobre ése. Si de verdad es otro —dos personas que comparten la centralita—,
+pulsa **Es otro, crearlo igual**: se crea y queda apuntado que lo decidiste tú.
+
+Los que entran solos por un formulario de la web o por el chat no te
+preguntan: según cómo lo haya dejado tu administrador, el nuevo entra
+señalado como **posible duplicado** —en su ficha, en «Detalles», dice de qué
+y por qué— o lo que llega se añade al candidato que ya existía. No se pierde
+nada de lo que llegó.
 
 ---
 
@@ -2564,6 +2587,59 @@ que el sistema sí sabe hacer.
 Las que solo se miran son las que **no tienen nada que dar de alta**: un resumen
 del pipeline, una lista de contratos que vencen pronto, una cola de trabajo. Ahí
 lo que se ve se calcula a partir de otra cosa, y se cambia yendo a esa otra cosa.
+
+### Varios registros a la vez
+
+En **Clientes › Cuentas**, **Contactos**, **Ventas › Candidatos** y
+**Oportunidades**, la lista en vista de tabla lleva una casilla en cada fila y
+otra en la cabecera para elegir todas las que se ven. En cuanto eliges una
+aparece encima **Con los elegidos**:
+
+- **Actualizar un campo**: eliges el campo en el desplegable, escribes el valor
+  y pulsas **Aplicar a N**.
+- **Borrar**: confirma y los manda a la papelera. Pide volver a verificar tu
+  identidad, como exportar en masa.
+
+Al terminar te dice cuántos se han hecho y, de los que no, **cuál era y por
+qué** —por ejemplo, uno que otro registro está usando y no se puede borrar—.
+
+### Duplicar un registro
+
+En la ficha, menú **Más › Duplicar**: se abre el alta de su lista con los
+datos de ése, y el nombre con «(copia)» detrás. Revisa y **Guardar**. Si la
+copia se parece demasiado al original, te avisará como cualquier alta, y
+**Es otro, crearlo igual** la crea. En una oportunidad la opción es **Duplicar
+la oportunidad con sus líneas**: copia también lo que se ofertó, y la copia
+empieza en la primera etapa; el resultado trae el enlace para abrirla.
+
+### Importar cuentas o contactos
+
+**Administrar › Usuarios y empresa › Importar datos.**
+
+1. Elige qué importas —cuentas o contactos— y sube el CSV. Vale el de Excel
+   en español, con `;`.
+2. En **A qué campo va cada columna**, cada columna del fichero con su primera
+   fila y un desplegable. Lo que se llama igual que un campo ya viene puesto;
+   los campos propios de tu empresa salen con «(propio)». Lo que dejes en «No
+   importar» no se manda.
+3. **Simular**: no escribe nada y te dice fila a fila qué haría —crear,
+   completar, omitir porque ya existe— y por qué falla la que falla.
+4. **Importar**. Si marcas «Completar las que ya existan», las que ya están se
+   rellenan donde tengan huecos, sin pisar lo que tienen.
+
+Abajo, **Importaciones hechas**: cada una con su fichero, quién y cuándo. **Revertir**
+te dice primero cuántos se mandarían a la papelera y cuántos volverían a como
+estaban; escribe el motivo y **Revertir la importación**. Si alguno se ha
+tocado después de importarlo, te lo avisa y no revierte nada salvo que
+marques «Revertirlos igualmente».
+
+### Traspasar la cartera de una persona
+
+**Administrar › Usuarios y empresa › Traspasar cartera.** Elige **De** y **A**,
+pulsa **Simular el traspaso** y verás cuántas cuentas, contactos,
+actividades, candidatos y oportunidades pasarían. Escribe el motivo y pulsa
+**Traspasar N registros**. Si cambias la pareja después de simular, vuelve a
+simular: sólo se confirma lo que se ha visto.
 
 ### Borrar: lo que se puede y lo que no
 
@@ -3491,6 +3567,93 @@ de repartir igualmente: una reunión asignada a nadie se queda sin proponer y
 sin que nadie se entere.
 
 ---
+
+### Exigir segundo factor a unos roles y no a otros
+
+**Administrar › Identidad y seguridad › «Quién no tiene segundo factor» › «A
+quién se le exige».** Elige un rol en el desplegable «Añadir un rol…» —se
+pueden poner varios— y pulsa **Guardar**. A quien lleve alguno de esos roles se
+le pedirá el código al entrar con contraseña; quien aún no lo tenga configurado
+no podrá entrar hasta hacerlo. Por eso, al guardar, la pantalla dice en rojo
+cuántas personas se quedarían fuera, y en la lista de abajo las marca con «se
+le exige»: habla con ellas antes. Para quitar un rol, pulsa la × de su
+etiqueta y guarda. Cumplen una aplicación de códigos (TOTP) o una passkey; el
+SMS y el correo cuentan si tu empresa los tiene encendidos. No hay
+notificación push.
+
+### Entrar como otra persona para resolver un ticket (personal de plataforma)
+
+1. Elige la empresa en el selector de la barra superior.
+2. **Administrar › Plataforma y cumplimiento › «Entrar como otra persona, por
+   soporte».** Elige a la persona en el desplegable y escribe el motivo —por
+   ejemplo, el número de ticket y qué no le funciona—.
+3. Pulsa **Entrar como esta persona**. Si hace rato que no usas tu segundo
+   factor, la pantalla te pide que te verifiques primero.
+4. Arriba de todas las pantallas verás «Estás dentro como … por soporte:
+   «motivo»». Ves lo que esa persona ve.
+5. Al terminar, pulsa **Salir y volver a mi sesión** en esa misma franja. Si te
+   olvidas, la sesión de soporte caduca sola y vuelves a la tuya.
+
+El acceso queda en **Plataforma y cumplimiento › Quién tocó qué**, eligiendo
+«identity» o «Todos los servicios», con tu motivo.
+
+### Si te sale un error, copia su identificador
+
+Debajo de cada mensaje de error hay un **«Identificador de la petición»** con
+un botón **Copiar**. Pégalo cuando escribas a soporte. Quien administra lo
+pega en **Plataforma y cumplimiento › Quién tocó qué**, en el campo
+«Identificador de petición», y ve lo que esa petición escribió, en cualquier
+servicio.
+
+### Cuánto tarda cada tipo de operación
+
+**Estado › «Cuánto tarda cada tipo de operación».** Para lectura, escritura,
+búsqueda y exportación, el percentil 95 y el 99 de este mes frente a su
+objetivo, en verde si se cumple y en rojo si no. El 95 dice cuánto espera casi
+todo el mundo; el 99, cuánto espera el que peor lo pasa. Junto a las
+peticiones, «pocas para fiarse» avisa cuando el número es demasiado pequeño
+para sacar conclusiones. El desplegable «Servicio» enseña uno solo.
+
+### Dar de alta a tu empresa en las herramientas de la suite
+
+**Administrar › Aplicaciones conectadas › «Alta de la empresa en las
+herramientas» › Dar de alta en las herramientas.** Debajo sale cada
+herramienta con su estado —dada de alta, ha fallado (se reintentará) o
+apartada— y el último error. Si una ha fallado, el error dice por qué; se
+reintenta sola, o desde la cuarentena si se aparta.
+
+### Fijar o rotar la clave de una integración
+
+**Administrar › Procesos y orquestación › Integraciones › (la conexión) ›
+Fijar credenciales** (o **Rotar credenciales** si ya tenía). Pide los campos
+que necesita esa conexión —un token, un usuario y una contraseña, o el
+identificador y el secreto de cliente— y, si quieres, cuándo caduca. Al
+guardar se crea una versión nueva y la anterior se desactiva. Lo que escribes
+no se vuelve a enseñar nunca: la ficha dice qué versión hay, cuándo se fijó y
+quién. **Probar la conexión**, al lado, dice si responde.
+
+### Mandar un contrato a firmar, recordarlo o cancelarlo
+
+**Operación › Sobres de firma › (el sobre)**. Arriba, «Qué hacer con el sobre»
+ofrece lo que toca según su estado: **Enviar a firmar** (pide confirmar, porque
+al cliente le llega un correo), **Recordar a quien le toca**, **Cancelar el
+sobre** (con el motivo) o, cuando está completado, **Archivar el firmado**.
+Debajo sale lo que contestó: hasta cuándo vale, a quién se recordó.
+
+### Ver tus envíos desde el portal (para el cliente)
+
+En **tu área de cliente**, «Vuestros envíos y encargos» lista los de tu
+empresa con su referencia y si van con retraso. **Ver por dónde va** abre los
+pasos y las incidencias.
+
+### Crear una reunión en línea
+
+En la ficha de una **actividad de reunión**, o en la de una **cuenta** («Lo que
+ha pasado»), pulsa **Crear reunión en línea**, añade los asistentes y **Crear la
+sala**. Se crea en la suite de tu empresa (Teams o Meet, la que esté conectada)
+y el enlace **Entrar en la reunión** queda en la actividad. Si el botón sale
+apagado, debajo dice por qué: normalmente, que no hay suite conectada o que no
+has autorizado las reuniones en **Consentimiento de suite**.
 
 ## Qué hacer cuando algo no sale
 

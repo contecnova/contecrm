@@ -555,6 +555,21 @@ prueba**.
 - Solo **el identificador fiscal** (en cuentas) y **el correo** (en contactos)
   bloquean un alta. El resto se propone, con **por qué** se propone: «mismo NIF»
   y «nombre parecido» llevan a decisiones distintas.
+- **Los leads se deduplican al entrar** (CRM-01.01.03.03), contra los leads y
+  contra los contactos del maestro —éstos por HTTP a `party`, que es su
+  dueño—. Bloquean el mismo correo, el mismo teléfono escrito de otra forma
+  («600 111 222» y «+34 600-111-222» son uno) y empresa más nombre por encima
+  del umbral de bloqueo; por encima del de sugerencia salen como candidatos. En
+  el alta manual se responde **409 con los candidatos**, como cuentas y
+  contactos, y la pantalla ofrece **«Es otro, crearlo igual»**, que repite con
+  `forzar` y queda en la auditoría. La captura automática —formularios, chat,
+  componente embebido— no tiene a quién preguntar: según
+  `lead_dedupe_captura` **marca** el lead nuevo como posible duplicado
+  (`duplicado_de_id` y por qué), **fusiona** lo que llega en el lead que ya
+  había —rellena huecos y anota la captura en `campos.capturas_fusionadas`— o
+  lo deja pasar. Nunca se pierde lo que llegó. Si el maestro no contesta, el
+  alta sigue y se dice (`contactos_consultados: false`): un «no hay duplicados»
+  sobre la mitad de las fuentes no es el mismo dato.
 - Y **dos formas jurídicas distintas no son un duplicado concluyente**. La clave
   de comparación quita la forma jurídica —y tiene que quitarla, para que «García
   SL» y «García, S.L.» se reconozcan—, lo que deja «García SL» y «García SA» con
@@ -750,7 +765,18 @@ listados, apuntando a algo que ya no está.
 
 La **transferencia de propiedad** (CRM-07.01.01.07) mueve de golpe todo lo de
 una persona a otra: es lo que se ejecuta cuando alguien se va de la empresa, y
-hacerlo a mano garantiza que algo se queda sin dueño.
+hacerlo a mano garantiza que algo se queda sin dueño. Cada servicio mueve lo
+suyo con la misma ruta —`party-admin` las cuentas, contactos y actividades;
+`sales-admin` los leads y las oportunidades— y la pantalla **Traspasar
+cartera** llama a las dos: simula primero —cuántos de cada tipo, servicio a
+servicio— y sólo deja confirmar, con motivo, la pareja que se ha simulado.
+
+**Duplicar** un registro está en el menú de su ficha. Abre el alta con los
+valores del registro —los que el contrato del alta admite— y pasa por todo lo
+que pasa un alta, deduplicación incluida. La oportunidad tiene su propio
+`POST /opportunities/{id}/duplicar`, que copia también **sus líneas** con su
+precio y su coste; la copia empieza en la primera etapa y abierta, porque lo
+que dice cómo le fue a la original no se copia.
 
 La **importación** (CRM-07.01.01.08) **simula por defecto**. Primero valida
 todas las filas y enseña qué va a pasar —cuántas altas, cuántas
@@ -761,6 +787,16 @@ mitad deja un maestro de clientes en un estado que nadie sabe describir.
 Se devuelven como mucho 200 errores. No es pereza: un informe con 40.000
 errores no lo lee nadie y sí revienta el navegador. Con los doscientos primeros
 se ve el patrón, que es lo que hay que corregir.
+
+La pantalla **Importar datos** hace el recorrido entero para cuentas y
+contactos: subir el CSV —con el `;` de Excel o la `,`—, llevar cada columna a
+un campo —los de serie **y los propios** del objeto—, simular con el informe
+fila a fila e importar. Y **cada importación se puede revertir entera**: queda
+guardado qué creó y, de lo que actualizó, cómo estaba antes. Revertir manda lo
+creado a la papelera —con su cascada— y devuelve lo completado a su valor, sólo
+en los campos que la importación cambió. Se simula también, y si algo se ha
+tocado después de importarlo **no se revierte nada** hasta que se pida
+expresamente: una reversión a medias es peor que ninguna.
 
 ### Usuarios, licencias y bajas
 
@@ -2178,6 +2214,17 @@ promesa: **operaciones masivas** (`CRM-00.02.01.11`) y **API asíncrona**
 Un lote de diez mil filas con noventa mal no es un fallo: es un martes. Lo que
 no puede pasar es que esas noventa impidan escribir las 9.910 buenas, ni que el
 informe diga una cosa y la base tenga otra.
+
+**Desde la tabla.** Los listados de cuentas, contactos, leads y oportunidades
+llevan casillas para elegir filas, y con lo elegido se puede **actualizar un
+campo** —elegido de un desplegable con los que la ficha deja editar— o
+**borrar** —a la papelera, y pidiendo volver a verificarse—. El informe dice
+cuántos sí y, de cada uno que falló, **cuál era** y por qué. El lote se publica
+también junto a la colección que usa la pantalla (`/accounts/masivo`, además de
+`/cuentas/masivo`), con la lista cerrada de operaciones que admite en el
+contrato; lo que un recurso no declara lo toma de su ficha, así que hace
+exactamente lo que el PATCH y el DELETE de un registro. Un campo que el PATCH
+no admite es un fallo de esa fila, no una escritura silenciosa.
 
 ```
 POST /api/v1/cuentas/masivo
@@ -6562,9 +6609,13 @@ nadie lo cuestiona. El aviso va pegado al número, no en un campo que nadie mira
 
 ### Por jerarquía, y el agujero que se ve (`CRM-03.02.01.02`)
 
-La jerarquía llega **resuelta** —nodo → comerciales— porque el organigrama vive
-en `identity`. Tiene además la ventaja de que la misma llamada sirve para agrupar
-por territorio, por canal o por lo que el cliente use, sin tocar nada.
+La jerarquía puede llegar **resuelta** —nodo → comerciales— porque el
+organigrama vive en `identity`, y así la misma llamada sirve para agrupar por
+territorio, por canal o por lo que el cliente use, sin tocar nada. Y la ficha
+del periodo la **resuelve sola** con lo que `sales` tiene sin leer a nadie: el
+**mapa de territorios** —un territorio sin hijos es un equipo, uno con hijos
+una región, y su responsable cuenta como suyo— o la **jerarquía de mando** que
+replica de identidad. Cada rama suma lo de todo lo que cuelga de ella.
 
 El total de la compañía se calcula **aparte y no sumando los nodos**. Una
 oportunidad cuyo dueño no esté en ninguna rama —alguien recién incorporado, un
@@ -15896,3 +15947,132 @@ no en la primera importación de un cliente, donde ya hay registros a medio
 traducir y nadie sabe cuáles. Lo mismo con una regla que valide un campo que el
 mapeo no produce: rechazaría todos los registros y el motivo señalaría a un
 campo que no existe.
+
+## Cinco que estaban servidas a medias (`CRM-00.05.01.06`, `CRM-00.01.02.06`, `CRM-00.02.04.07`, `CRM-08.01.01.01`, `CRM-00.01.07.02`)
+
+Medidas el 09-11-2026 en la pila local, en el navegador y contra el tenant real.
+
+### MFA obligatoria por rol (`CRM-00.05.01.06`)
+
+Hasta ahora la MFA obligatoria era un interruptor para toda la empresa
+(`mfa_obligatoria`), y el comentario del ajuste decía que «lo normal es exigirla
+por rol» sin que hubiera forma de hacerlo. Ahora la empresa elige **a qué roles**
+se les exige (`mfa_obligatoria_roles`): a quien lleve alguno, el login con
+contraseña le pide el código; si todavía no lo tiene configurado, no entra hasta
+hacerlo.
+
+- **El interruptor suma y nunca resta.** Encendido, se exige a todo el mundo;
+  con la lista vacía, todo sigue como antes. La misma regla la aplican el login,
+  el «quitar mi segundo factor» —un comercial puede quitárselo si la empresa
+  sólo lo exige a quien administra— y el panel de adopción.
+- **Se guarda en identidad, que es quien la aplica.** Los ajustes viven en el
+  esquema de cada servicio y se replican por el bus; escrita desde la consola
+  general, sin bus el login seguía leyendo el valor de antes. Y al entrar el
+  contexto todavía no lleva empresa: el valor fijado para ella no se leía nunca
+  en la entrada —tampoco el del interruptor— hasta este cambio.
+- **Un rol inventado se rechaza** (`mfa.rol_desconocido`): una regla que no casa
+  con nadie se lee como protección puesta. Se elige entre los roles de serie,
+  los que la empresa ha definido y los que alguien lleva.
+- **Al guardarla se dice quién se quedaría fuera**: a cuántas personas se les
+  exige y no tienen todavía factor.
+- **Factores que cumplen:** una aplicación de códigos (TOTP) o una passkey; el
+  SMS y el correo cuentan si la empresa los tiene encendidos. No hay
+  notificación push en este producto.
+
+### «Entrar como» de soporte, con motivo (`CRM-00.01.02.06`)
+
+`POST /sesiones/suplantar` devolvía los tokens en el cuerpo y el navegador no
+puede quedárselos —la sesión vive en una cookie que ningún script lee—, así que
+no había forma de usarlo desde la interfaz. Ahora el gateway hace de puente
+(`POST /sesion/suplantar`): pide la sesión a identidad con la cookie propia y
+deja la de soporte en su lugar, **sin tocar el refresco propio**, que es lo que
+permite volver sin escribir la contraseña.
+
+- **La empresa es la que se está mirando** en el selector de la barra. Y la
+  persona tiene que pertenecer a ella: antes se podía abrir una sesión «como»
+  alguien sin membresía en esa empresa, que salía con los roles vacíos.
+- Se exige **motivo escrito** (diez caracteres mínimo) y **haberse verificado
+  hace poco** con el segundo factor; sin factor, la pantalla lo dice en vez de
+  enseñar un error.
+- Mientras se está dentro, **cada pantalla** lleva arriba «Estás dentro como X
+  por soporte: motivo» y quién entró. La renovación silenciosa renueva la sesión
+  de soporte, no la propia; cuando la de soporte caduca, se vuelve sola a la
+  propia y la interfaz recarga.
+- **«Salir y volver a mi sesión»** cierra en identidad la de soporte —no basta
+  con olvidarla: seguiría viva hasta caducar— y recupera la propia.
+- El apunte `soporte.acceso_tenant`, con su motivo, se ve en «Quién tocó qué»
+  eligiendo «identity» o «Todos los servicios».
+
+### El identificador de petición, de la pantalla de error al audit trail (`CRM-00.02.04.07`)
+
+Toda respuesta lleva `X-Request-Id` y todo error lo trae en el cuerpo; el front
+lo tiraba. Ahora **la pantalla de error lo enseña con un botón de copiar**, y
+«Quién tocó qué» se filtra por él (`?request_id=`) y lo enseña en cada apunte.
+
+Al medirlo salió que **no era el mismo número**: el gateway ponía el suyo en la
+respuesta, el servicio generaba otro para su log y su audit trail, y el
+navegador recibía los dos. Ahora el gateway se lo manda al servicio y la
+respuesta lleva uno solo. Y que **el audit trail de cada servicio vive en su
+esquema**: la consulta de `tenancy` no veía lo que apuntan identidad o party.
+Cada servicio publica ahora `GET /<servicio>/cumplimiento/auditoria` con los
+mismos filtros, y con un identificador de petición la pantalla pregunta a todos.
+
+### Latencia p95 y p99 por tipo de operación y por empresa (`CRM-08.01.01.01`)
+
+Un único p95 por tier mezclaba una lectura de ficha con una exportación. Ahora
+cada petición se clasifica en un **tipo de operación** —lectura, escritura,
+búsqueda, exportación u «otra»— según reglas configurables
+(`SLO_OPERACIONES_REGLAS`, por método y trozo de la plantilla de ruta), se
+cuenta en cubos por servicio, empresa y mes, y `GET /estado/slo` devuelve por
+operación el **p95 y el p99 medidos frente a su objetivo**
+(`slo_objetivos_operacion`, editable por tier y por empresa).
+
+- **Un percentil no se promedia**: el gateway suma los cubos de todos los
+  servicios y calcula sobre el total.
+- **Con el N al lado**: por debajo de `SLO_MUESTRAS_MINIMAS` peticiones el
+  percentil se marca «pocas para fiarse».
+- **Por encima del último cubo no se inventa un número**: se dice «más de
+  60000 ms».
+- **De la empresa que se mira**: quien opera la plataforma elige el cliente en la
+  barra y la pantalla Estado habla de ése.
+
+### Alta del tenant en cascada, desde su botón (`CRM-00.01.07.02`)
+
+`POST /suite/provisionar/tenant` no tenía botón. En **Aplicaciones conectadas**,
+«Dar de alta en las herramientas» la encola y, con `?aplicar=true`, **empuja sólo
+el alta de la empresa** —no la cola entera: las bajas y los cambios de usuario
+pendientes van por su lado—. Después enseña el estado de cada herramienta
+(`GET /suite/provisionar/tenant`): dada de alta, pendiente, ha fallado con su
+error y cuándo se reintenta, o apartada. También las que no tienen alta: no
+salir se leería como «todo aplicado».
+
+## Cuatro que estaban en la API y sin botón (`CRM-00.01.04.08`, `CRM-06.01.02.11`, `CRM-00.04.05.06`, `CRM-06.01.03.10`)
+
+### Credenciales de una conexión (`CRM-00.01.04.08`)
+
+La ficha de la conexión fija y rota la credencial con **los campos que pide su
+tipo de autenticación**, la guarda cifrada y versionada, y de la guardada dice
+cuándo, quién y qué claves lleva — **nunca el valor**, ni enmascarado. Una
+credencial incompleta no se guarda. «Probar la conexión» ejecuta su primera
+operación y deja el resultado a la vista.
+
+### Las acciones del sobre (`CRM-06.01.02.11`)
+
+Enviar, recordar, cancelar con motivo y archivar el firmado, desde la ficha y
+**según el estado**. Enviar sale por el conector declarativo de la conexión del
+proveedor —sin código por proveedor— y ahora guarda el identificador que el
+proveedor da al sobre, que con el operador real se perdía.
+
+### Los encargos en el portal (`CRM-00.04.05.06`)
+
+El cliente ve en su portal los encargos de su empresa y el seguimiento de cada
+uno, con su propia sesión: ni coste, ni proveedor alternativo, ni notas
+internas, y lo de otra empresa no existe para él.
+
+### Reunión en línea de verdad (`CRM-06.01.03.10`)
+
+«Crear reunión en línea» crea la sala en la suite conectada (Microsoft 365 o
+Google, lo que declare su perfil) con la credencial de la conexión y el
+consentimiento de quien la crea, y guarda el enlace en la actividad; desde una
+cuenta, crea la actividad de reunión con él. La forma de la petición es
+configuración del perfil. Sin suite conectada, el botón dice por qué no.

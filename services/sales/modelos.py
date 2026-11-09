@@ -117,6 +117,22 @@ class Lead(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # la tabla entera en la fase 4.
     puntuacion: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # ── Posible duplicado (CRM-01.01.03.03) ───────────────────────────────
+    # Lo marca la captura automática cuando lo que llega se parece a un lead o
+    # a un contacto que ya existía y no hay nadie a quien preguntar: el lead se
+    # crea —no se pierde nada— y queda señalado para que una persona decida.
+    # `duplicado_de_id` apunta al registro parecido; el detalle dice si es un
+    # lead o un contacto y por qué señales.
+    duplicado_de_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Lo escribe la captura, no una persona: no se ofrece en el PATCH.
+    duplicado_detalle: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"calculado": True},
+    )
+
     __table_args__ = (
         Index("ix_leads_tenant_estado", "tenant_id", "estado", "created_at"),
         Index("ix_leads_owner", "tenant_id", "owner_id", "estado"),

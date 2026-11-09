@@ -208,12 +208,18 @@ def test_el_upsert_sin_clave_falla_en_vez_de_crear_un_duplicado(
 
 @pytest.mark.db
 def test_un_recurso_que_no_declara_buscar_no_admite_upsert() -> None:
-    """Y se dice, en vez de hacer un alta y llamarla actualización."""
+    """Y se dice, en vez de hacer un alta y llamarla actualización.
+
+    Actualizar y borrar los toma de la ficha genérica del contacto
+    (CRM-00.02.01.11): son su PATCH y su DELETE, que existen de uno en uno. Se
+    importa la API para que las fichas estén montadas, como en el servicio.
+    """
+    import services.party.api  # noqa: F401 — monta las fichas
     from services.party.masivo import CONTACTOS
 
     assert CONTACTOS.admite("crear")
     assert not CONTACTOS.admite("upsert")
-    assert not CONTACTOS.admite("borrar")
+    assert CONTACTOS.admite("actualizar") and CONTACTOS.admite("borrar")
 
 
 def test_el_upsert_exige_el_permiso_de_crear_y_no_el_de_actualizar() -> None:
@@ -810,10 +816,10 @@ def test_una_operacion_que_el_recurso_no_admite_dice_cuales_si(api_party: Any) -
     respuesta = api_party.llamar(
         "POST",
         "/contactos/masivo",
-        json={"operacion": "borrar", "elementos": [{"id": str(uuid4())}]},
+        json={"operacion": "upsert", "elementos": [{"id": str(uuid4())}]},
     )
     assert respuesta.status_code == 422
-    assert respuesta.json()["detalle"]["admitidas"] == ["crear"]
+    assert respuesta.json()["detalle"]["admitidas"] == ["crear", "actualizar", "borrar"]
 
 
 @pytest.mark.db

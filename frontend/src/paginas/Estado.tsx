@@ -2,6 +2,11 @@
  * La página de estado del tenant (CRM-00.06.01.06, CRM-00.01.06.03,
  * CRM-00.01.06.04, CRM-00.01.06.05).
  *
+ * Y CRM-08.01.01.01: la latencia p95 y p99 por tipo de operación —lectura,
+ * escritura, búsqueda, exportación— frente a su objetivo, de la empresa que se
+ * mira. Comprobado en el navegador: la rejilla con lo medido en la pila local,
+ * el objetivo al lado y el desplegable por servicio.
+ *
  * Enseña además CRM-00.06.01.04 (el objetivo de servicio comprometido por tier
  * y el presupuesto de error gastado), CRM-00.06.01.05 (el alertado con su
  * runbook enlazado) y CRM-00.06.02.07 (si el sistema está en modo degradado:
@@ -78,7 +83,7 @@ interface Compromisos {
 }
 
 /** `GET /estado/slo`: el objetivo por servicio y el presupuesto de error. */
-interface Slo {
+export interface Slo {
   tier: string;
   servicios_medibles: number;
   sin_medicion: string[];
@@ -91,7 +96,26 @@ interface Slo {
     latencia_objetivo_ms: number;
     presupuesto_minutos: number;
     aviso?: string;
+    operaciones?: Operacion[];
   }[];
+  /** p95 y p99 por tipo de operación, sumando todos los servicios. */
+  operaciones?: Operacion[];
+}
+
+/** Una fila de latencia por tipo de operación (CRM-08.01.01.01). */
+interface Operacion {
+  operacion: string;
+  peticiones: number;
+  medible: boolean;
+  pocas_muestras: boolean;
+  p95_ms: number | null;
+  p95_por_encima_de_ms: number | null;
+  p99_ms: number | null;
+  p99_por_encima_de_ms: number | null;
+  objetivo_p95_ms: number | null;
+  objetivo_p99_ms: number | null;
+  cumple_p95: boolean | null;
+  cumple_p99: boolean | null;
 }
 
 /** `GET /estado/consumo`: cuánto se lleva gastado de lo contratado. */
@@ -366,6 +390,7 @@ export function Estado() {
               </li>
             ))}
           </ul>
+          <LatenciaPorOperacion slo={slo} />
         </>
       ) : null}
 
@@ -452,6 +477,115 @@ export function Estado() {
  * Y un servicio que no contesta no cuenta como holgado: sale aparte, porque
  * «nadie va apretado» y «no he podido preguntar a tres» se leen igual.
  */
+/**
+ * p95 y p99 por tipo de operación, frente a su objetivo, de la empresa que se
+ * mira (CRM-08.01.01.01).
+ *
+ * Un único p95 mezclaba una lectura de ficha con una exportación de diez mil
+ * filas: la media de las dos no describe ninguna. Aquí cada operación con su
+ * objetivo —que es un ajuste, por tier y por empresa— y **el N al lado**: un
+ * p99 de veinte peticiones es la segunda más lenta, no una cola, y se marca.
+ * Por defecto, todos los servicios juntos (lo que nota el cliente); el
+ * desplegable deja ver uno solo, que es por donde se empieza a arreglar.
+ */
+export function LatenciaPorOperacion({ slo }: { slo: Slo }) {
+  const { t } = useTranslation();
+  const [servicio, setServicio] = useState("");
+  const conDatos = (slo.servicios ?? []).filter((s) =>
+    (s.operaciones ?? []).some((o) => o.peticiones > 0),
+  );
+  const filas = servicio
+    ? (slo.servicios.find((s) => s.servicio === servicio)?.operaciones ?? [])
+    : (slo.operaciones ?? []);
+  if (!slo.operaciones) return null;
+
+  const valor = (ms: number | null, encima: number | null) =>
+    ms !== null
+      ? t("estado.latencia.ms", { ms })
+      : encima !== null
+        ? t("estado.latencia.masDe", { ms: encima })
+        : "—";
+  const color = (cumple: boolean | null) =>
+    cumple === false
+      ? "text-danger"
+      : cumple === true
+        ? "text-success"
+        : "text-ink-muted";
+
+  return (
+    <section className="card mt-4 p-4">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="section-label">{t("estado.latencia.titulo")}</h3>
+          <p className="mt-0.5 text-rotulo text-ink-faint">
+            {t("estado.latencia.ayuda")}
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-rotulo text-ink-muted">
+          {t("estado.latencia.servicio")}
+          <select
+            className="campo"
+            value={servicio}
+            onChange={(e) => setServicio(e.target.value)}
+          >
+            <option value="">{t("estado.latencia.todos")}</option>
+            {conDatos.map((s) => (
+              <option key={s.servicio} value={s.servicio}>
+                {s.servicio}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <Rejilla
+        cabeceras={[
+          t("estado.latencia.operacion"),
+          t("estado.latencia.peticiones"),
+          t("estado.latencia.p95"),
+          t("estado.latencia.p99"),
+        ]}
+      >
+        {filas.map((o) => (
+          <tr
+            key={o.operacion}
+            className="border-b border-ink-dim/30 last:border-0"
+          >
+            <Casilla className="text-ink">
+              {t(`estado.latencia.tipo.${o.operacion}`, {
+                defaultValue: o.operacion,
+              })}
+            </Casilla>
+            <Casilla className="text-ink-muted">
+              {o.peticiones}
+              {o.pocas_muestras ? (
+                <span className="ml-2 text-rotulo text-warning">
+                  {t("estado.latencia.pocas")}
+                </span>
+              ) : null}
+            </Casilla>
+            <Casilla className={color(o.cumple_p95)}>
+              {o.medible ? valor(o.p95_ms, o.p95_por_encima_de_ms) : "—"}
+              {o.objetivo_p95_ms !== null ? (
+                <span className="ml-1 text-rotulo text-ink-faint">
+                  {t("estado.latencia.objetivo", { ms: o.objetivo_p95_ms })}
+                </span>
+              ) : null}
+            </Casilla>
+            <Casilla className={color(o.cumple_p99)}>
+              {o.medible ? valor(o.p99_ms, o.p99_por_encima_de_ms) : "—"}
+              {o.objetivo_p99_ms !== null ? (
+                <span className="ml-1 text-rotulo text-ink-faint">
+                  {t("estado.latencia.objetivo", { ms: o.objetivo_p99_ms })}
+                </span>
+              ) : null}
+            </Casilla>
+          </tr>
+        ))}
+      </Rejilla>
+    </section>
+  );
+}
+
 function LaPresion({ presion }: { presion: Presion | null }) {
   const { t } = useTranslation();
   if (!presion) return null;

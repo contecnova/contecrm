@@ -29,6 +29,8 @@ import { nombreDelRegistro } from "@/lib/formato";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
+import { CredencialesDeConexion } from "@/componentes/CredencialesDeConexion";
+import { ReunionEnLinea } from "@/componentes/ReunionEnLinea";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { SubColecciones } from "@/componentes/SubColecciones";
@@ -339,6 +341,18 @@ export function Ficha() {
         </>
       ) : null}
 
+      {/* Lo que un objeto concreto necesita y la ficha genérica no puede
+          deducir del contrato: el PUT de las credenciales de una conexión
+          (CRM-00.01.04.08) y la sala de una reunión (CRM-06.01.03.10). Va
+          encima de las pestañas para que se vea en cualquiera: escondido en
+          una que no es la de entrada, cuenta como no hecho. */}
+      {!editando && tipo === "conexion" && id ? (
+        <CredencialesDeConexion conexionId={id} />
+      ) : null}
+      {!editando && tipo === "actividad" && id && fila?.tipo === "reunion" ? (
+        <ReunionEnLinea actividadId={id} actividad={fila} alCrear={cargar} />
+      ) : null}
+
       {confirmando ? (
         <ConfirmarBorrado
           borrado={borrado}
@@ -427,6 +441,7 @@ export function Ficha() {
                   objetoId={id}
                   alRegistrar={cargar}
                 />
+                <ReunionEnLinea objeto={tipo} objetoId={id} alCrear={cargar} />
                 <PreguntarSobreEsto objeto={tipo} objetoId={id} />
               </>
             ) : null}

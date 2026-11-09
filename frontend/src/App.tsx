@@ -124,6 +124,14 @@ const Duplicados = pantalla(
   () => import("@/paginas/Duplicados"),
   (m) => m.Duplicados,
 );
+const ImportarDatos = pantalla(
+  () => import("@/paginas/ImportarDatos"),
+  (m) => m.ImportarDatos,
+);
+const TransferirPropiedad = pantalla(
+  () => import("@/paginas/TransferirPropiedad"),
+  (m) => m.TransferirPropiedad,
+);
 const Preguntar = pantalla(
   () => import("@/paginas/Preguntar"),
   (m) => m.Preguntar,
@@ -382,9 +390,17 @@ export function App() {
   useEffect(() => {
     if (!sesion) return;
     const reloj = window.setInterval(() => {
-      void llamar("/api/v1/sesion/renovar", { metodo: "POST" }).catch(
-        () => undefined,
-      );
+      void llamar<{ suplantacion_terminada?: boolean }>(
+        "/api/v1/sesion/renovar",
+        { metodo: "POST" },
+      )
+        .then((r) => {
+          // Se acabó el tiempo de soporte y el gateway ha vuelto a la sesión
+          // propia (CRM-00.01.02.06): lo que hay en pantalla es de la otra
+          // persona, así que se recarga entero.
+          if (r.datos?.suplantacion_terminada) window.location.assign("/");
+        })
+        .catch(() => undefined);
     }, MINUTOS_ENTRE_RENOVACIONES * 60_000);
     return () => window.clearInterval(reloj);
   }, [sesion]);
@@ -637,6 +653,11 @@ export function App() {
             <Route path="/calendario" element={<Calendario />} />
             <Route path="/lo-que-sigo" element={<LoQueSigo />} />
             <Route path="/duplicados" element={<Duplicados />} />
+            <Route path="/importar" element={<ImportarDatos />} />
+            <Route
+              path="/transferir-propiedad"
+              element={<TransferirPropiedad />}
+            />
             <Route path="/puesto" element={<Puesto />} />
             <Route path="/alm" element={<Alm />} />
             <Route path="/rendimiento" element={<Rendimiento />} />

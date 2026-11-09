@@ -22,6 +22,12 @@ export default {
     reintentar: "Reintentar",
     cerrarSesion: "Cerrar sesión",
     suplantado: "Estás viendo esto en nombre de otra persona",
+    // «Entrar como» de soporte (CRM-00.01.02.06).
+    suplantadoComo: "Estás dentro como {{quien}} por soporte: «{{motivo}}»",
+    suplantadoPor: "(entraste tú, {{soporte}})",
+    salirDeSuplantacion: "Salir y volver a mi sesión",
+    salirDeSuplantacionFallo:
+      "No se ha podido salir. Cierra la sesión si tienes prisa: la de soporte caduca sola.",
     tema: "Cambiar tema",
     densidad: "Densidad de la interfaz",
     // Dos textos y no uno: el botón dice A DÓNDE va, no dónde está. «Densidad
@@ -68,6 +74,14 @@ export default {
     otras: "Otras {{count}}",
   },
   formulario: {
+    // El 409 por duplicado y su salida (CRM-01.01.03.03).
+    pareceDuplicado: "Ya existe algo que parece lo mismo.",
+    coincide: "coincide en {{senales}} · {{parecido}} %",
+    concluyente: "Casi seguro",
+    sinMirarContactos:
+      "No se ha podido mirar entre los contactos: el maestro de clientes no " +
+      "ha contestado. Lo de arriba son sólo los leads.",
+    esOtroCrearIgual: "Es otro, crearlo igual",
     separadoPorComas: "Separado por comas",
     suma: "Suma",
     quitarLinea: "Quitar la línea",
@@ -178,6 +192,8 @@ export default {
     inteligencia: "Inteligencia",
     nexus: "Nexus",
     duplicados: "Duplicados",
+    importar: "Importar datos",
+    transferirPropiedad: "Traspasar cartera",
     // «Calendario», como lo llama Salesforce. Al lado de «Actividades», que
     // es la misma materia en lista.
     calendario: "Calendario",
@@ -293,6 +309,9 @@ export default {
 
   tabla: {
     columnas: "Columnas ({{visibles}} de {{total}})",
+    // Las casillas para elegir filas y hacer algo con todas (CRM-00.02.01.11).
+    elegirTodas: "Elegir todas las que se ven",
+    elegirFila: "Elegir «{{nombre}}»",
     elegirColumnas: "Qué columnas se ven",
     masColumnas_one: "Hay 1 columna más, sin ningún dato en estas filas.",
     masColumnas_other:
@@ -746,6 +765,13 @@ export default {
     pantalla:
       "Esta pantalla no se ha podido pintar. No es un problema de tus datos: siguen guardados, y el resto del producto funciona.",
     detalleTecnico: "Detalle técnico",
+    // El identificador de la petición (CRM-00.02.04.07): lo que se pega a
+    // soporte y lo que busca el audit trail.
+    peticion: "Identificador de la petición",
+    copiar: "Copiar",
+    copiado: "Copiado",
+    peticionAyuda:
+      "Si escribes a soporte, pega este identificador: con él se encuentra esta petición en el registro.",
   },
   noExiste: {
     titulo: "Esa dirección no existe",
@@ -859,5 +885,66 @@ export default {
       elCodigo: "El código de seis cifras",
       confirmar: "Confirmar",
     },
+  },
+  // Las credenciales de una conexión (CRM-00.01.04.08). Del secreto se dice
+  // cuándo y quién, nunca el valor.
+  credenciales: {
+    titulo: "Credenciales de la conexión",
+    tipo: "Autenticación: {{tipo}}.",
+    sinCampos: "Este tipo no lleva credencial.",
+    fijar: "Fijar credenciales",
+    rotar: "Rotar credenciales",
+    probar: "Probar la conexión",
+    guardar: "Guardar cifradas",
+    cancelar: "Cancelar",
+    ninguna:
+      "Todavía no se ha fijado ninguna credencial: la conexión no podrá llamar a nadie.",
+    actual: "Versión {{version}}, fijada el {{cuando}} por {{quien}}.",
+    nadie: "alguien que no consta",
+    caduca: "Caduca el {{cuando}}.",
+    sinCaducidad: "Sin caducidad declarada: nadie avisará de rotarla.",
+    claves: "Lleva: {{claves}}. Los valores no se enseñan nunca.",
+    ultimaPrueba: "Última prueba, {{cuando}}: {{detalle}}",
+    pruebaBien: "La conexión responde: {{detalle}}",
+    pruebaMal: "La conexión falla: {{detalle}}",
+    fijada: "Credencial guardada, cifrada.",
+    rotada:
+      "Credencial rotada: la versión {{version}} sustituye a la anterior, que queda desactivada.",
+    anteriores: "Versiones anteriores ({{n}})",
+    anterior:
+      "Versión {{version}}: fijada el {{cuando}} por {{quien}}, rotada el {{rotada}}.",
+    caducaCampo: "Caduca el (opcional)",
+    ayudaRotar:
+      "Al guardar se crea una versión nueva y la anterior se desactiva. Lo que " +
+      "escribas aquí no se vuelve a enseñar.",
+    campos: {
+      api_key: "Clave de API",
+      usuario: "Usuario",
+      contrasena: "Contraseña",
+      token: "Token",
+      client_id: "Identificador de cliente (client_id)",
+      client_secret: "Secreto de cliente (client_secret)",
+    },
+  },
+  // La reunión en línea de una actividad o de un registro (CRM-06.01.03.10).
+  reunionEnLinea: {
+    titulo: "Reunión en línea",
+    crear: "Crear reunión en línea",
+    confirmar: "Crear la sala",
+    cancelar: "Cancelar",
+    entrar: "Entrar en la reunión",
+    creadaCon: "Creada con {{perfil}} el {{cuando}}.",
+    credencial:
+      "Quien tenga este enlace entra: compártelo en la cita, no en un aviso ni en una página pública.",
+    noDisponible: "No se puede crear: {{motivo}}",
+    conQue: "Se creará con {{perfil}}.",
+    asunto: "Asunto",
+    inicio: "Empieza",
+    fin: "Termina",
+    asistentes: "Asistentes (correos)",
+    ejemploAsistentes: "ana@cliente.com, luis@cliente.com",
+    organizador: "Cuenta que organiza (si la suite la pide)",
+    ayuda:
+      "La sala se crea ahora en la suite y el enlace queda guardado en la actividad.",
   },
 };

@@ -157,8 +157,6 @@ def autenticar(
 
     exigir_sso_si_toca(db, usuario, tenant_id)
 
-    from crmcore.runtime import settings as rt
-
     # `MFA_ENABLED` manda sobre las dos formas de exigirla, y es lo que impedía
     # que apagarla dejara a todo el mundo fuera: un usuario con `mfa_activo` ya
     # puesto seguiría necesitando un código, y las rutas para conseguirlo
@@ -167,7 +165,9 @@ def autenticar(
     #
     # El ajuste existía, estaba en `.env.example`, estaba en el manual y **no lo
     # leía nadie** (medido el 06-10-2026).
-    exige_mfa = s.mfa_enabled and (usuario.mfa_activo or bool(rt.efectivo("mfa_obligatoria", db)))
+    exige_mfa = s.mfa_enabled and (
+        usuario.mfa_activo or mfa_exigida(db, list(membresia.roles or []), tenant_id)
+    )
     # Un dispositivo de confianza vivo salta el segundo factor (CRM-00.05.01.20).
     # No salta la contraseña: recordar el equipo ahorra el factor, no la
     # credencial, y confundir las dos cosas convierte un portátil robado en una
@@ -195,6 +195,54 @@ def autenticar(
     usuario.bloqueado_hasta = None
     usuario.ultimo_acceso_at = datetime.now(timezone.utc)
     return usuario
+
+
+def roles_con_mfa_obligatoria(db: Session, tenant_id: UUID | None = None) -> list[str]:
+    """Los roles a los que esta empresa exige segundo factor (CRM-00.05.01.06).
+
+    Se limpia lo que llega: el ajuste es JSON y lo escribe una persona, así que
+    una cadena con comas o un valor que no es lista no puede convertirse en
+    «no se exige a nadie» por un error de forma. Lo ilegible se ignora entrada
+    a entrada, no entero.
+    """
+    crudo = _ajuste_del_tenant("mfa_obligatoria_roles", db, tenant_id)
+    if isinstance(crudo, str):
+        crudo = crudo.split(",")
+    if not isinstance(crudo, (list, tuple)):
+        return []
+    return sorted({str(r).strip() for r in crudo if str(r).strip()})
+
+
+def _ajuste_del_tenant(clave: str, db: Session, tenant_id: UUID | None) -> Any:
+    """Un ajuste leído **con el tenant puesto en el contexto**.
+
+    En la entrada todavía no hay nadie autenticado, así que el contexto de la
+    petición no lleva tenant y `efectivo` saltaba del usuario al tier: el valor
+    fijado para la empresa no se leía nunca al entrar, que es justo donde se
+    aplica. Medido el 09-11-2026 con la MFA por rol.
+    """
+    from crmcore.runtime import settings as rt
+    from crmcore.tenancy.context import con_contexto, contexto_actual
+
+    if tenant_id is None or contexto_actual().tenant_id == tenant_id:
+        return rt.efectivo(clave, db)
+    with con_contexto(tenant_id=tenant_id):
+        return rt.efectivo(clave, db)
+
+
+def mfa_exigida(db: Session, roles: list[str], tenant_id: UUID | None = None) -> bool:
+    """¿Se le exige segundo factor a quien tiene estos roles en esta empresa?
+
+    El interruptor global **suma y nunca resta**: con él encendido se exige a
+    todo el mundo, tenga el rol que tenga. Los roles añaden a quién se le exige
+    cuando el interruptor está apagado, que es lo normal —exigirlo a quien
+    administra y a quien ve datos de salud, no a toda la plantilla el primer
+    día—. Con la lista vacía, todo queda como antes: manda el interruptor.
+    """
+    if bool(_ajuste_del_tenant("mfa_obligatoria", db, tenant_id)):
+        return True
+    exigidos = roles_con_mfa_obligatoria(db, tenant_id)
+    return bool(exigidos) and bool(set(exigidos) & set(roles or []))
 
 
 def _verificar_segundo_factor(
@@ -603,6 +651,15 @@ def suplantar(
     objetivo = db.get(Usuario, usuario_id)
     if objetivo is None:
         raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
+    # Y que pertenezca a ESA empresa. No se comprobaba: se podía abrir una
+    # sesión «como» alguien en un tenant donde no tiene membresía, que salía
+    # con los roles vacíos y no reproducía nada de lo que esa persona ve.
+    membresia = _membresia(db, objetivo.id, tenant_id)
+    if membresia is None or not membresia.activa:
+        raise NoEncontrado(
+            "Esa persona no tiene acceso a esta empresa",
+            error_code="auth.suplantacion_sin_membresia",
+        )
 
     sesion, acceso, refresco = crear_sesion(
         db,

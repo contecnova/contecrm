@@ -446,6 +446,204 @@ def previsión_por_jerarquía(
     }
 
 
+def previsión_por_organigrama(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    periodo_clave: str,
+    fuente: str = "territorios",
+    moneda: str | None = None,
+) -> dict[str, Any]:
+    """La previsión por jerarquía con el organigrama **resuelto aquí**
+    (CRM-03.02.01.02).
+
+    `previsión_por_jerarquía` pide los nodos ya resueltos —qué comerciales hay
+    en cada uno—, y nadie los tenía: la pantalla habría tenido que pedir
+    identificadores a mano. Pero `sales` sí tiene las dos formas en que una
+    empresa agrupa a sus comerciales, sin leer el esquema de nadie:
+
+    * `territorios`: el mapa de territorios de ventas, que es suyo. Un
+      territorio sin hijos es un **equipo**; uno con hijos, una **región**.
+    * `mando`: la jerarquía de mando que `identity` publica por evento y este
+      servicio replica (`crmcore.authz.jerarquia`). Quien tiene a otros a su
+      cargo es jefe de **equipo**; quien tiene jefes a su cargo, de **región**.
+
+    Cada nodo suma lo de **todos** los comerciales que cuelgan de él, y el total
+    de la compañía se calcula aparte: lo que no cuelga de ninguna rama sale
+    como «fuera del organigrama» con su importe y sus dueños, que es el agujero
+    que explica por qué las ramas no suman el total.
+    """
+    from crmcore.authz.jerarquia import MandoReplicado, frescura
+
+    from services.sales.territorios import MiembroTerritorio, Territorio
+
+    if fuente not in ("territorios", "mando"):
+        raise ErrorValidacion(
+            f"No se sabe agrupar por «{fuente}»",
+            error_code="forecast.fuente_desconocida",
+            detalle={"validas": ["territorios", "mando"]},
+        )
+
+    hijos: dict[str, list[str]] = {}
+    datos_nodo: dict[str, dict[str, Any]] = {}
+    miembros: dict[str, set[UUID]] = {}
+    aviso = ""
+
+    if fuente == "territorios":
+        territorios = (
+            db.execute(
+                select(Territorio).where(
+                    Territorio.tenant_id == tenant_id,
+                    Territorio.deleted_at.is_(None),
+                    Territorio.activo.is_(True),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        ids = {str(t.id) for t in territorios}
+        for t in territorios:
+            clave = str(t.id)
+            datos_nodo[clave] = {"id": clave, "nombre": t.nombre, "usuario_id": None}
+            padre = str(t.padre_id) if t.padre_id and str(t.padre_id) in ids else ""
+            hijos.setdefault(padre, []).append(clave)
+            # El responsable del territorio cuenta como suyo: es el dueño del
+            # trozo de mercado, y un mapa que lo dejara fuera sacaría sus
+            # ventas del árbol en cuanto no estuviera además como miembro.
+            miembros[clave] = {t.responsable_id} if t.responsable_id else set()
+        for m in db.execute(
+            select(MiembroTerritorio).where(MiembroTerritorio.tenant_id == tenant_id)
+        ).scalars():
+            if str(m.territorio_id) in miembros:
+                miembros[str(m.territorio_id)].add(m.usuario_id)
+        if not territorios:
+            aviso = "No hay territorios activos: el desglose sale por comercial."
+    else:
+        filas = (
+            db.execute(select(MandoReplicado).where(MandoReplicado.tenant_id == tenant_id))
+            .scalars()
+            .all()
+        )
+        personas = {str(f.usuario_id) for f in filas}
+        for f in filas:
+            clave = str(f.usuario_id)
+            datos_nodo[clave] = {"id": clave, "nombre": "", "usuario_id": clave}
+            superior = str(f.superior_id) if f.superior_id else ""
+            if superior and superior not in personas:
+                # El jefe no consta en la réplica: se le pone igual, como raíz,
+                # para no perder la rama entera.
+                personas.add(superior)
+                datos_nodo[superior] = {"id": superior, "nombre": "", "usuario_id": superior}
+                hijos.setdefault("", []).append(superior)
+                miembros[superior] = {UUID(superior)}
+            hijos.setdefault(superior, []).append(clave)
+            miembros[clave] = {f.usuario_id}
+        estado = frescura(db, tenant_id)
+        if estado.get("vacia"):
+            aviso = str(estado.get("que_significa") or "")
+
+    # Lo de cada nodo es lo suyo más lo de todo lo que cuelga, sin ciclos.
+    def bajo(clave: str, vistos: frozenset[str] = frozenset()) -> set[UUID]:
+        if clave in vistos:
+            return set()
+        todos = set(miembros.get(clave, set()))
+        for hijo in hijos.get(clave, []):
+            todos |= bajo(hijo, vistos | {clave})
+        return todos
+
+    # Los dueños con oportunidades en el periodo, para la rama «por comercial» y
+    # para saber quién queda fuera.
+    per = periodo(db, tenant_id, periodo_clave)
+    con_ventas = {
+        o
+        for o in db.execute(
+            select(Oportunidad.owner_id)
+            .where(
+                Oportunidad.tenant_id == tenant_id,
+                Oportunidad.fecha_cierre >= per.desde,
+                Oportunidad.fecha_cierre <= per.hasta,
+                Oportunidad.deleted_at.is_(None),
+                Oportunidad.owner_id.is_not(None),
+            )
+            .distinct()
+        ).scalars()
+    }
+
+    def resumen(owners: set[UUID]) -> dict[str, Any]:
+        if not owners:
+            vacio = a_dict(Previsión(periodo=periodo_clave, moneda=(moneda or "").upper()))
+            return {k: vacio[k] for k in ("total", "ponderado", "compromiso", "oportunidades")}
+        calculado = a_dict(
+            calcular(
+                db, tenant_id, periodo_clave=periodo_clave, owners=sorted(owners), moneda=moneda
+            )
+        )
+        return {k: calculado[k] for k in ("total", "ponderado", "compromiso", "oportunidades")}
+
+    def montar(clave: str, profundidad: int, vistos: frozenset[str]) -> dict[str, Any]:
+        sub = [
+            montar(h, profundidad + 1, vistos | {clave})
+            for h in hijos.get(clave, [])
+            if h not in vistos
+        ]
+        if fuente == "territorios":
+            # Los comerciales del territorio van debajo, como hojas.
+            sub += [
+                {
+                    "id": f"{clave}:{u}",
+                    "nombre": "",
+                    "usuario_id": str(u),
+                    "nivel": "comercial",
+                    **resumen({u}),
+                    "hijos": [],
+                }
+                for u in sorted(miembros.get(clave, set()), key=str)
+            ]
+        altura = 1 + max((_altura(n) for n in sub), default=-1)
+        if fuente == "territorios":
+            # Un territorio es como poco un equipo, aunque hoy no tenga a nadie.
+            altura = max(altura, 1)
+        nivel = (
+            "comercial"
+            if altura == 0
+            else "equipo"
+            if altura == 1
+            else "region"
+            if altura == 2
+            else "direccion"
+        )
+        return {**datos_nodo[clave], "nivel": nivel, **resumen(bajo(clave)), "hijos": sub}
+
+    raices = [montar(c, 0, frozenset()) for c in hijos.get("", [])]
+    en_el_organigrama: set[UUID] = set()
+    for c in hijos.get("", []):
+        en_el_organigrama |= bajo(c)
+
+    global_ = calcular(db, tenant_id, periodo_clave=periodo_clave, moneda=moneda)
+    fuera = sorted(con_ventas - en_el_organigrama, key=str)
+    dentro_total = Decimal(resumen(en_el_organigrama)["total"]) if en_el_organigrama else CERO
+    de_fuera = [{"usuario_id": str(u), **resumen({u})} for u in fuera]
+    # Lo que no es de nadie: oportunidades sin dueño. Sin esta línea, la lista
+    # de «fuera» no sumaba el agujero y parecía que faltaba dinero.
+    sin_dueno = global_.total - dentro_total - sum((Decimal(f["total"]) for f in de_fuera), CERO)
+    return {
+        "periodo": periodo_clave,
+        "fuente": fuente,
+        "moneda": global_.moneda,
+        "compania": a_dict(global_),
+        "nodos": raices,
+        "fuera_del_organigrama": de_fuera,
+        "sin_dueno": str(sin_dueno),
+        "sin_asignar": str(global_.total - dentro_total),
+        "cuadra": global_.total == dentro_total,
+        "aviso": aviso,
+    }
+
+
+def _altura(nodo: dict[str, Any]) -> int:
+    return 1 + max((_altura(h) for h in nodo.get("hijos", [])), default=-1)
+
+
 def desglose(
     db: Session,
     tenant_id: UUID,

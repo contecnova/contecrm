@@ -28,10 +28,13 @@ import {
   useEdicion,
 } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { fechaHora } from "@/lib/formato";
+import { useSuperficie } from "@/lib/permisos";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 
@@ -143,6 +146,10 @@ export function SobreDeFirma() {
           ) : null
         }
       />
+
+      {!editando ? (
+        <AccionesDelSobre id={id} estado={evidencia.estado} alHacer={cargar} />
+      ) : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -313,6 +320,258 @@ export function SobreDeFirma() {
         )}
       </div>
     </>
+  );
+}
+
+/** Lo que se puede hacer con el sobre en su estado, y en ninguno más. */
+const ACCIONES_POR_ESTADO: Record<string, Accion[]> = {
+  borrador: ["enviar", "cancelar"],
+  enviado: ["recordar", "cancelar"],
+  en_curso: ["recordar", "cancelar"],
+  completado: ["archivar"],
+};
+
+type Accion = "enviar" | "recordar" | "cancelar" | "archivar";
+
+/**
+ * Mandar, recordar, cancelar y archivar el firmado (CRM-06.01.02.11).
+ *
+ * Las cuatro rutas existían y la ficha sólo cargaba la evidencia: un sobre
+ * preparado se quedaba en borrador para siempre salvo que alguien llamara a la
+ * API. Se ofrecen **según el estado**, que es lo que decide el servidor: un
+ * «Enviar» sobre un sobre ya enviado contesta 409, y ofrecerlo enseña a
+ * desconfiar de los botones.
+ *
+ * Mandar pide confirmar: le llega un correo al cliente y no se deshace. Y lo
+ * que contesta cada acción se dice aquí —a quién se recordó, hasta cuándo
+ * vale—, porque «hecho» sin más no deja saber si salió.
+ */
+function AccionesDelSobre({
+  id,
+  estado,
+  alHacer,
+}: {
+  id: string;
+  estado: string;
+  alHacer: () => void;
+}) {
+  const { t } = useTranslation();
+  const { tiene } = useSuperficie();
+  const [abierta, setAbierta] = useState<Accion | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const [firmado, setFirmado] = useState("");
+  const [certificado, setCertificado] = useState("");
+  const [sello, setSello] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState("");
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const posibles = ACCIONES_POR_ESTADO[estado] ?? [];
+  if (!tiene("firma:write") || (posibles.length === 0 && !resultado)) {
+    return null;
+  }
+
+  const ICONOS: Record<Accion, string> = {
+    enviar: "send",
+    recordar: "notifications_active",
+    cancelar: "cancel",
+    archivar: "inventory_2",
+  };
+
+  async function hacer(accion: Accion) {
+    setEnviando(true);
+    setFallo(null);
+    setResultado("");
+    const base = `/api/v1/firma/sobres/${id}`;
+    try {
+      if (accion === "enviar") {
+        const r = await llamar<{ estado: string; caduca_at: string }>(
+          `${base}/enviar`,
+          { metodo: "POST" },
+        );
+        setResultado(
+          t("sobre.acciones.enviado", {
+            estado: r.datos.estado,
+            caduca: fechaHora(r.datos.caduca_at),
+          }),
+        );
+      } else if (accion === "recordar") {
+        const r = await llamar<{ recordados: string[]; medible: boolean }>(
+          `${base}/recordar`,
+          { metodo: "POST", cuerpo: {} },
+        );
+        setResultado(
+          r.datos.recordados.length
+            ? t("sobre.acciones.recordado", {
+                quienes: r.datos.recordados.join(", "),
+              })
+            : t("sobre.acciones.nadieQueRecordar"),
+        );
+      } else if (accion === "cancelar") {
+        await llamar(`${base}/cancelar`, {
+          metodo: "POST",
+          cuerpo: { motivo: motivo.trim() },
+        });
+        setResultado(t("sobre.acciones.cancelado"));
+      } else {
+        const r = await llamar<{ enlazados: string[]; sin_origen: boolean }>(
+          `${base}/archivar-firmado`,
+          {
+            metodo: "POST",
+            cuerpo: {
+              documento_firmado_id: firmado.trim(),
+              certificado_id: certificado.trim(),
+              sello_tiempo: sello.trim(),
+            },
+          },
+        );
+        setResultado(
+          r.datos.sin_origen
+            ? t("sobre.acciones.archivadoSinOrigen")
+            : t("sobre.acciones.archivado", { n: r.datos.enlazados.length }),
+        );
+      }
+      setAbierta(null);
+      setMotivo("");
+      alHacer();
+    } catch (error) {
+      setFallo(error);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section className="card mb-4 p-4" aria-labelledby="acciones-sobre">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="acciones-sobre" className="section-label">
+          {t("sobre.acciones.titulo")}
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          {posibles.map((accion) => (
+            <button
+              key={accion}
+              type="button"
+              className={
+                accion === "cancelar" ? "btn-secondary" : "btn-primary"
+              }
+              disabled={enviando}
+              onClick={() =>
+                // Recordar no pide nada más; el resto se confirma o se rellena.
+                accion === "recordar" ? void hacer(accion) : setAbierta(accion)
+              }
+            >
+              <Icono nombre={ICONOS[accion]} tamano="sm" />
+              {t(`sobre.acciones.${accion}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {abierta === "enviar" ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <p className="text-dato text-ink">
+            {t("sobre.acciones.confirmarEnvio")}
+          </p>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={enviando}
+            onClick={() => void hacer("enviar")}
+          >
+            {t("sobre.acciones.siEnviar")}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setAbierta(null)}
+          >
+            {t("sobre.acciones.volver")}
+          </button>
+        </div>
+      ) : null}
+
+      {abierta === "cancelar" ? (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("sobre.acciones.motivo")}
+            <input
+              className="input-base w-72"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!motivo.trim() || enviando}
+            onClick={() => void hacer("cancelar")}
+          >
+            {t("sobre.acciones.siCancelar")}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setAbierta(null)}
+          >
+            {t("sobre.acciones.volver")}
+          </button>
+        </div>
+      ) : null}
+
+      {abierta === "archivar" ? (
+        <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("sobre.acciones.documentoFirmado")}
+            <input
+              className="input-base"
+              value={firmado}
+              onChange={(e) => setFirmado(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("sobre.acciones.certificado")}
+            <input
+              className="input-base"
+              value={certificado}
+              onChange={(e) => setCertificado(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("sobre.acciones.sello")}
+            <input
+              className="input-base"
+              value={sello}
+              onChange={(e) => setSello(e.target.value)}
+            />
+          </label>
+          <div className="flex gap-2 md:col-span-3">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!firmado.trim() || enviando}
+              onClick={() => void hacer("archivar")}
+            >
+              {t("sobre.acciones.archivar")}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setAbierta(null)}
+            >
+              {t("sobre.acciones.volver")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div role="status" className="mt-2">
+        {resultado ? (
+          <p className="text-dato text-success">{resultado}</p>
+        ) : null}
+      </div>
+      {fallo ? <Fallo error={fallo} /> : null}
+    </section>
   );
 }
 

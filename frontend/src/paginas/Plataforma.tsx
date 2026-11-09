@@ -26,6 +26,17 @@
  * «qué datos personales trata esto», «qué se puede recuperar». Un volcado de
  * todo lo que hay obliga a buscar el problema; esto lo pone delante.
  *
+ * Y dos del 09-11-2026. **«Entrar como» de soporte con motivo**
+ * (CRM-00.01.02.06): quien opera la plataforma elige a una persona de la
+ * empresa que está mirando, escribe el motivo y entra con su sesión; arriba
+ * queda una franja en cada pantalla con quién y por qué, y «Salir» vuelve a
+ * la sesión propia. Comprobado en el navegador: elegir, escribir el motivo,
+ * entrar, ver la franja, salir, y el apunte con su motivo en «Quién tocó
+ * qué». Y **la trazabilidad por identificador de petición**
+ * (CRM-00.02.04.07): el audit trail se filtra por `request_id` y lo enseña en
+ * cada apunte, el mismo que la pantalla de error deja copiar. Comprobado con
+ * una escritura real: su `X-Request-Id` encuentra su apunte.
+ *
  * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.05.04.06`
  * —event sourcing para reconstruir un agregado—, porque reconstruir pide el
  * identificador de un registro concreto y su sitio es la ficha de ese
@@ -39,7 +50,12 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { llamar, salvoCancelacion } from "@/lib/api";
+import {
+  ErrorApi,
+  filas as filasDe,
+  llamar,
+  salvoCancelacion,
+} from "@/lib/api";
 import { escalar } from "@/lib/formato";
 import { puede, type Sesion } from "@/lib/sesion";
 
@@ -109,6 +125,10 @@ interface Apunte {
   origen: string | null;
   ip: string | null;
   motivo: string | null;
+  /** La petición que lo escribió (CRM-00.02.04.07). */
+  request_id?: string | null;
+  /** Qué servicio lo apuntó: cada uno guarda el suyo. */
+  servicio?: string;
 }
 
 interface Anomalia {
@@ -210,6 +230,9 @@ export function Plataforma({ sesion }: { sesion: Sesion | null }) {
           tenant: no se mueven con el selector, y por eso van primero y
           separados de lo que sí es de un servicio. Mezclarlos haría creer que
           cambiando de servicio cambia también lo que enseñan. */}
+      {sesion?.es_admin_plataforma && !sesion.suplantado_por ? (
+        <EntrarComo />
+      ) : null}
       <Auditoria puedeVer={puede(sesion, "tenant:read")} />
       <Anomalias puedeVer={puede(sesion, "tenant:read")} />
 
@@ -270,12 +293,154 @@ function Panel({
   );
 }
 
+/**
+ * Entrar como otra persona, por soporte (CRM-00.01.02.06).
+ *
+ * La ruta existía y devolvía tokens que la interfaz no sabía adoptar: había
+ * que copiarlos a mano en otro cliente. Ahora el gateway los pone en la
+ * cookie —igual que al entrar— sin tocar el refresco propio, que es lo que
+ * deja volver sin escribir la contraseña.
+ *
+ * La empresa es **la que se está mirando** en el selector de la barra: es la
+ * que va en color de aviso, y entrar en otra distinta de la que se ve sería
+ * entrar a ciegas. El motivo es obligatorio y queda en la auditoría del
+ * cliente; el servidor pide además haberse verificado hace poco.
+ */
+function EntrarComo() {
+  const { t } = useTranslation();
+  const [personas, setPersonas] = useState<
+    { id: string; email: string; nombre: string }[] | null
+  >(null);
+  const [quien, setQuien] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState("");
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<unknown>("/api/v1/usuarios?limite=200", { signal: control.signal })
+      .then((r) =>
+        setPersonas(
+          filasDe<{ id: string; email: string; nombre: string }>(r.datos),
+        ),
+      )
+      .catch(salvoCancelacion(() => setPersonas([])));
+    return () => control.abort();
+  }, []);
+
+  const motivoValido = motivo.trim().length >= 10;
+
+  async function entrar() {
+    setEnviando(true);
+    setAviso("");
+    setFallo(null);
+    try {
+      await llamar("/api/v1/sesion/suplantar", {
+        metodo: "POST",
+        cuerpo: { usuario_id: quien, motivo: motivo.trim() },
+      });
+      // Recarga entera: lo que hay en memoria es de la sesión propia.
+      window.location.assign("/");
+    } catch (e) {
+      // «Vuelve a verificarte» no es un fallo que enseñar en rojo: es el paso
+      // que falta, y se dice con sus palabras.
+      if (e instanceof ErrorApi && e.codigo === "stepup.requerido") {
+        const d = (e.detalle ?? {}) as { tiene_factor?: boolean };
+        setAviso(
+          d.tiene_factor
+            ? t("plataforma.entrarComo.reverificar")
+            : t("plataforma.entrarComo.sinFactor"),
+        );
+      } else {
+        setFallo(e);
+      }
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Panel
+      titulo={t("plataforma.entrarComo.titulo")}
+      ayuda={t("plataforma.entrarComo.ayuda")}
+    >
+      <div className="flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+          {t("plataforma.entrarComo.persona")}
+          <select
+            className="campo"
+            value={quien}
+            onChange={(e) => setQuien(e.target.value)}
+            disabled={!personas?.length}
+          >
+            <option value="">
+              {personas === null
+                ? t("app.cargando")
+                : t("plataforma.entrarComo.elige")}
+            </option>
+            {(personas ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre ? `${p.nombre} · ${p.email}` : p.email}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+          {t("plataforma.entrarComo.motivo")}
+          <textarea
+            className="input-base min-h-[5rem]"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder={t("plataforma.entrarComo.motivoEjemplo")}
+            maxLength={500}
+          />
+        </label>
+        {motivo && !motivoValido ? (
+          <p className="text-rotulo text-ink-faint">
+            {t("plataforma.entrarComo.motivoCorto")}
+          </p>
+        ) : null}
+        <div>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!quien || !motivoValido || enviando}
+            onClick={() => void entrar()}
+          >
+            {t("plataforma.entrarComo.entrar")}
+          </button>
+        </div>
+        {aviso ? (
+          <p className="text-dato text-warning" role="status">
+            {aviso}
+          </p>
+        ) : null}
+        {fallo ? <Fallo error={fallo} /> : null}
+      </div>
+    </Panel>
+  );
+}
+
 /** Quién tocó qué, y desde dónde. */
 function Auditoria({ puedeVer }: { puedeVer: boolean }) {
   const { t } = useTranslation();
   const [accion, setAccion] = useState("");
   const [objeto, setObjeto] = useState("");
+  // El identificador que la pantalla de error deja copiar
+  // (CRM-00.02.04.07). Se puede traer en la dirección —`?peticion=…`— para
+  // que el enlace que se pasa a soporte abra ya filtrado.
+  const [peticion, setPeticion] = useState(
+    () => new URLSearchParams(window.location.search).get("peticion") ?? "",
+  );
+  // **Dónde se mira.** Cada servicio guarda su audit trail en su esquema, y
+  // esta lista enseñaba sólo el de `tenancy`: la entrada de soporte —que
+  // apunta identidad— o el cambio de una cuenta —que apunta party— no salían.
+  // Por defecto, el de la empresa (como antes); «todos» pregunta a cada
+  // servicio y junta. Con un identificador de petición se pregunta a todos
+  // siempre: no se sabe de antemano qué servicio escribió.
+  const [donde, setDonde] = useState<string>("tenancy");
   const [filas, setFilas] = useState<Apunte[] | null>(null);
+  const [sinRespuesta, setSinRespuesta] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
@@ -284,12 +449,42 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
     const q = new URLSearchParams();
     if (accion) q.set("accion", accion);
     if (objeto) q.set("objeto", objeto);
+    if (peticion.trim()) q.set("request_id", peticion.trim());
     q.set("limite", "100");
-    llamar<Apunte[]>(`/api/v1/grc/auditoria?${q}`, { signal: control.signal })
-      .then((r) => setFilas(r.datos))
-      .catch(salvoCancelacion(setFallo));
+    const deTodos = donde === "todos" || Boolean(peticion.trim());
+    const servicios = deTodos ? [...SERVICIOS] : [donde];
+    const ruta = (svc: string) =>
+      svc === "tenancy"
+        ? `/api/v1/grc/auditoria?${q}`
+        : `/api/v1/${svc}/cumplimiento/auditoria?${q}`;
+    void Promise.allSettled(
+      servicios.map((svc) =>
+        llamar<Apunte[]>(ruta(svc), { signal: control.signal }).then((r) =>
+          (r.datos ?? []).map((a) => ({ ...a, servicio: svc })),
+        ),
+      ),
+    ).then((resultados) => {
+      if (control.signal.aborted) return;
+      const caidos = servicios.filter(
+        (_, i) => resultados[i]?.status === "rejected",
+      );
+      // Si no contesta ninguno, es un fallo; si faltan algunos, se dice
+      // cuáles: una lista a la que le falta un servicio no es la lista.
+      if (caidos.length === servicios.length) {
+        const r = resultados[0];
+        setFallo(r && r.status === "rejected" ? r.reason : null);
+        return;
+      }
+      setSinRespuesta(deTodos ? caidos : []);
+      setFilas(
+        resultados
+          .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
+          .sort((a, b) => b.cuando.localeCompare(a.cuando))
+          .slice(0, 200),
+      );
+    });
     return () => control.abort();
-  }, [accion, objeto, puedeVer]);
+  }, [accion, objeto, peticion, donde, puedeVer]);
 
   useEffect(cargar, [cargar]);
 
@@ -312,6 +507,20 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
       }
     >
       <div className="mb-3 flex flex-wrap gap-2">
+        <select
+          className="campo"
+          aria-label={t("plataforma.auditoriaDonde")}
+          value={peticion.trim() ? "todos" : donde}
+          disabled={Boolean(peticion.trim())}
+          onChange={(e) => setDonde(e.target.value)}
+        >
+          <option value="todos">{t("plataforma.auditoriaTodos")}</option>
+          {SERVICIOS.map((svc) => (
+            <option key={svc} value={svc}>
+              {svc}
+            </option>
+          ))}
+        </select>
         <input
           className="campo"
           placeholder={t("plataforma.filtroAccion")}
@@ -326,9 +535,23 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
           value={objeto}
           onChange={(e) => setObjeto(e.target.value)}
         />
+        <input
+          className="campo font-mono"
+          placeholder={t("plataforma.filtroPeticion")}
+          aria-label={t("plataforma.filtroPeticion")}
+          value={peticion}
+          onChange={(e) => setPeticion(e.target.value)}
+        />
       </div>
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!filas && !fallo ? <Cargando /> : null}
+      {sinRespuesta.length ? (
+        <p className="mb-2 text-rotulo text-warning" role="status">
+          {t("plataforma.auditoriaSinRespuesta", {
+            servicios: sinRespuesta.join(", "),
+          })}
+        </p>
+      ) : null}
       {filas && filas.length === 0 ? (
         <Vacio titulo={t("plataforma.sinApuntes")} compacto />
       ) : null}
@@ -336,11 +559,14 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
         <ul className="lista-acotada divide-y divide-ink-dim/30 pr-1">
           {filas.map((a) => (
             <li
-              key={a.secuencia}
+              key={`${a.servicio ?? ""}:${a.secuencia}`}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
               <span className="text-dato font-medium text-ink">{a.accion}</span>
               <span className="text-rotulo text-ink-muted">{a.objeto}</span>
+              {a.servicio ? (
+                <span className="chip-dato">{a.servicio}</span>
+              ) : null}
               <span className="text-rotulo text-ink-faint">
                 {escalar(a.cuando, "cuando")}
               </span>
@@ -350,11 +576,28 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
               {a.en_nombre_de ? (
                 <span className="chip-dato">{t("plataforma.enNombreDe")}</span>
               ) : null}
+              {/* El motivo, cuando lo hay: en una entrada de soporte es lo que
+                  hace defendible el acceso, y sin verlo no se puede revisar. */}
+              {a.motivo ? (
+                <span className="text-rotulo text-ink-muted">«{a.motivo}»</span>
+              ) : null}
               {a.origen ? (
                 <span className="text-rotulo text-ink-faint">{a.origen}</span>
               ) : null}
               {a.ip ? (
                 <span className="text-rotulo text-ink-faint">{a.ip}</span>
+              ) : null}
+              {/* La petición, para poder seguir el hilo a los logs: un clic
+                  la deja como filtro y salen sus hermanos. */}
+              {a.request_id ? (
+                <button
+                  type="button"
+                  className="font-mono text-rotulo text-ink-faint hover:text-ink"
+                  title={t("plataforma.filtrarPorPeticion")}
+                  onClick={() => setPeticion(a.request_id ?? "")}
+                >
+                  {a.request_id}
+                </button>
               ) : null}
             </li>
           ))}

@@ -212,6 +212,10 @@ _DEL_GATEWAY = {
     "/api/v1/sesion/entrar",
     "/api/v1/sesion/renovar",
     "/api/v1/sesion/salir",
+    # «Entrar como» de soporte y volver (CRM-00.01.02.06): el gateway pone y
+    # quita las cookies, igual que al entrar y al salir.
+    "/api/v1/sesion/suplantar",
+    "/api/v1/sesion/volver",
     "/api/v1/superficie",
     "/api/v1/servicios",
     "/api/v1/estado",

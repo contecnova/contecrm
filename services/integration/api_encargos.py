@@ -11,6 +11,7 @@ from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso, montar_ficha
 from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
+from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -431,6 +432,51 @@ def seguimiento(
     return enc.seguimiento_para_cliente(db, principal.tenant_id, encargo_id, cuenta_id=cuenta_id)
 
 
+# ── Y en el portal del cliente, con su sesión (CRM-00.04.05.06) ──────────
+#
+# El seguimiento de arriba lo llama un empleado y recibe la cuenta por la
+# consulta: sirve para un portal headless que monta otro, pero el cliente no
+# podía usarlo —no tiene sesión de empleado—. Aquí la cuenta **no se pide**:
+# sale del token del portal, firmada, y lo que no es suyo da 404.
+#
+# Lo sirve este servicio y no `service`, que es el dueño del portal, por lo
+# mismo que los contratos los sirve `sales`: traer los encargos allí sería
+# copiar la tabla, y la copia es la que se queda vieja.
+
+router_portal = APIRouter(prefix="/portal", tags=["portal del cliente"])
+
+
+@router_portal.get(
+    "/mi/encargos",
+    response_model=list[dict],
+    dependencies=[Depends(exige_seccion_portal("encargos"))],
+    summary="Mis encargos",
+    description=(
+        "Los envíos y servicios de **su** empresa, con la referencia que puede "
+        "reclamar y si vamos tarde. Sin coste, sin proveedor alternativo y sin "
+        "notas internas: lo decide el servidor."
+    ),
+)
+def mis_encargos(db: DbDep, sesion: PortalDep, limite: int = Query(100, ge=1, le=500)) -> Any:
+    return enc.encargos_para_cliente(db, sesion.tenant_id, sesion.exigir_cuenta(), limite=limite)
+
+
+@router_portal.get(
+    "/mi/encargos/{encargo_id}/seguimiento",
+    dependencies=[Depends(exige_seccion_portal("encargos"))],
+    summary="El seguimiento de uno de mis encargos",
+    description=(
+        "Los hitos que entendimos, las incidencias sin decir de quién fue la "
+        "culpa y si vamos tarde. Un encargo de otra empresa da **404 y no 403**: "
+        "un 403 confirmaría que existe."
+    ),
+)
+def mi_seguimiento(encargo_id: UUID, db: DbDep, sesion: PortalDep) -> Any:
+    return enc.seguimiento_para_cliente(
+        db, sesion.tenant_id, encargo_id, cuenta_id=sesion.exigir_cuenta()
+    )
+
+
 # ── Conciliación y cumplimiento ───────────────────────────────────────────
 
 
@@ -588,7 +634,7 @@ def entregados_sin_prueba(
     return enc.entregados_sin_prueba(db, principal.tenant_id, dias=dias)
 
 
-ROUTERS_ENCARGOS = [router_proveedores, router]
+ROUTERS_ENCARGOS = [router_proveedores, router, router_portal]
 
 
 # Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas

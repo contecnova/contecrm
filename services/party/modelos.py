@@ -741,6 +741,7 @@ from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
 from crmcore.datos.archivado import FilaArchivada  # noqa: E402,F401
 from crmcore.datos.comentarios import Comentario  # noqa: E402
+from crmcore.datos.importaciones import Importacion  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 from crmcore.datos.trabajos import Trabajo  # noqa: E402
@@ -771,6 +772,7 @@ __all__ = [
     "BloqueoLegal",
     "DocumentoIndexado",
     "EntradaPapelera",
+    "Importacion",
     "PoliticaCampo",
     "PoliticaRetencion",
     "Trabajo",

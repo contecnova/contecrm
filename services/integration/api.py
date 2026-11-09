@@ -121,7 +121,10 @@ class OperacionOut(BaseModel):
     pausada_hasta: datetime | None = None
     intentos: int = 0
     ultimo_error: str | None = None
-    estado_transporte: str | None = None
+    # Un objeto, como en la tabla: estaba tipado como texto y **crear una
+    # operación por la API contestaba 500 siempre** —la fila nueva trae `{}`—.
+    # Medido el 09-11-2026 al montar la prueba de la pantalla de credenciales.
+    estado_transporte: dict[str, Any] | None = None
     marca: str | None = None
     created_at: datetime | None = None
 
@@ -237,6 +240,21 @@ def fijar_credencial(
     conexion = _conexion(db, principal.tenant_id, conexion_id)
     from crmcore.security.cifrado import cifrar_dict
 
+    # Los campos que pide su tipo de autenticación, y no vacíos. Una credencial
+    # guardada sin `client_secret` se descubre en la primera llamada, cuando ya
+    # hay un proceso de negocio esperando; aquí se descubre al guardar.
+    faltan = [
+        c["clave"]
+        for c in conector.secretos_que_pide(dict(conexion.config or {}))
+        if not str(datos.valores.get(c["clave"], "")).strip()
+    ]
+    if faltan:
+        raise ErrorValidacion(
+            f"Faltan campos de la credencial: {', '.join(faltan)}",
+            error_code="integracion.credencial_incompleta",
+            detalle={"faltan": faltan},
+        )
+
     anteriores = list(
         db.execute(
             select(Credencial).where(
@@ -256,6 +274,7 @@ def fijar_credencial(
         valores=cifrar_dict(datos.valores),
         version=(max((c.version for c in anteriores), default=0) + 1),
         caduca_at=datos.caduca_at,
+        fijada_por=principal.id,
     )
     db.add(credencial)
     # El token cacheado de la credencial vieja deja de valer al rotar.
@@ -268,6 +287,79 @@ def fijar_credencial(
         datos={"version": credencial.version, "claves": sorted(datos.valores)},
     )
     return {"version": credencial.version, "rotada": bool(anteriores)}
+
+
+@router.get(
+    "/conexiones/{conexion_id}/credenciales",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Qué pide la credencial de una conexión, cuándo se guardó y quién, sin el secreto",
+    description=(
+        "Los campos que pide su tipo de autenticación, y de la credencial "
+        "guardada **sólo cuándo se guardó, quién y qué claves lleva**. El valor no "
+        "sale nunca: ni enmascarado, porque un valor tapado tiene la forma de un "
+        "dato y alguien acaba copiándolo como si fuera la clave.\n\n"
+        "Dice también si la conexión se puede probar —si tiene alguna operación "
+        "declarada— y cómo fue la última prueba."
+    ),
+)
+def ver_credencial(
+    conexion_id: UUID,
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(10, ge=1, le=100, description="Cuántas versiones anteriores"),
+) -> Any:
+    conexion = _conexion(db, principal.tenant_id, conexion_id)
+    config = dict(conexion.config or {})
+    versiones = list(
+        db.execute(
+            select(Credencial)
+            .where(Credencial.conexion_id == conexion.id)
+            .order_by(Credencial.version.desc())
+            .limit(limite + 1)
+        )
+        .scalars()
+        .all()
+    )
+
+    def _version(c: Credencial) -> dict[str, Any]:
+        # Las CLAVES sí, los valores no: saber que la credencial lleva
+        # `client_id` y `client_secret` es lo que permite ver que falta uno sin
+        # ver ninguno. `cifrar_dict` deja las claves en claro justo para esto,
+        # así que no se descifra nada para contestar.
+        claves = sorted(str(k) for k in dict(c.valores or {}))
+        return {
+            "version": c.version,
+            "activa": c.activa,
+            "fijada_at": c.created_at,
+            "fijada_por": str(c.fijada_por) if c.fijada_por else None,
+            "rotada_at": c.rotada_at,
+            "caduca_at": c.caduca_at,
+            "claves": claves,
+        }
+
+    activa = next((c for c in versiones if c.activa), None)
+    se_puede_probar = (
+        db.execute(
+            select(Operacion.id)
+            .where(Operacion.conexion_id == conexion.id, Operacion.activa.is_(True))
+            .limit(1)
+        ).first()
+        is not None
+    )
+    return {
+        "conexion_id": str(conexion.id),
+        "auth_tipo": str(config.get("auth_tipo", "ninguna")),
+        "campos": conector.secretos_que_pide(config),
+        "actual": _version(activa) if activa else None,
+        "anteriores": [_version(c) for c in versiones if not c.activa][:limite],
+        "se_puede_probar": se_puede_probar,
+        "prueba": {
+            "probada_at": conexion.probada_at,
+            "ok": conexion.prueba_ok,
+            "detalle": conexion.prueba_detalle,
+        },
+    }
 
 
 @router.post(

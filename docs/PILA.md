@@ -172,8 +172,20 @@ El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.
   familia que salió al comprobarlas: un resumen que es una LISTA no se pintaba
   —los casos en riesgo de SLA no se vieron nunca—; ahora sale como lista con
   su rótulo (4 de los 40 resúmenes lo eran).
-- **Siguiente**: las 9 pantallas que faltan, en bloque; las 6 sin hacer, a
-  decidir por formulario.
+- **Hecho el 09-11-2026, las 21 críticas** (82 → 63): las 9 pantallas que
+  faltaban y las 6 que no estaban hechas (decidido por formulario construirlas
+  todas): MFA por rol (sin push: TOTP y passkeys), «Entrar como» de soporte,
+  identificador de petición, latencia p95/p99 por operación, alta en las
+  herramientas, credenciales de la conexión, encargos en el portal, acciones
+  del sobre de firma, reunión en línea, deduplicar leads, duplicar y
+  traspasar, importar con reversión, lote desde la tabla y previsión por
+  jerarquía. Arreglados de paso: el login no leía los ajustes de la empresa,
+  el identificador de petición no era el mismo de punta a punta, la auditoría
+  sólo enseñaba la de un servicio, el sobre no guardaba el id del proveedor y
+  declarar una operación de conexión daba 500.
+- **Sin ver en vivo**: la reunión contra Teams/Meet y la firma contra un
+  proveedor real (no hay ninguno conectado en local), y lo que cruza el bus.
+- **Siguiente**: las 63 que quedan, todas de criticidad A o D.
 
 ### 7. Lo que el PATCH genérico ofrece y escribe el sistema
 

@@ -47,7 +47,9 @@ import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
 import { cifra, nombreDelRegistro, rotuloDeOpcion } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
+import { moduloDeObjeto } from "@/lib/modulos";
 import { recursoDeReferencia } from "@/lib/referencias";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utiles";
 
 /** Los tipos que ocupan las dos columnas de la rejilla. */
@@ -82,6 +84,11 @@ export interface Props {
   enviando?: boolean;
   textoEnviar: string;
   alEnviar: (valores: Record<string, unknown>) => void;
+  /**
+   * `forzar` no se ofrece como casilla: sólo como «Es otro, crearlo igual»
+   * tras un 409 por duplicado. Lo pide el alta.
+   */
+  forzarTrasElAviso?: boolean;
 }
 
 export function Formulario({
@@ -92,6 +99,7 @@ export function Formulario({
   alEnviar,
   recurso,
   fallo,
+  forzarTrasElAviso = false,
 }: Props) {
   const { t } = useTranslation();
   /** Qué dijo el servidor de cada campo, por su nombre. */
@@ -125,24 +133,54 @@ export function Formulario({
    * todos: un formulario que no enseña nada no es un formulario.
    */
   const { obligatorios, opcionales } = useMemo(() => {
-    const exigidos = campos.filter((c) => c.obligatorio);
+    // En un alta, `forzar` no es un dato del registro: es la decisión de
+    // crearlo aunque se parezca a otro, y se toma DESPUÉS de ver los
+    // candidatos, con el botón del 409. Como casilla suelta entre los campos
+    // invita a marcarla por si acaso y saltarse la deduplicación sin haber
+    // visto nada. Sólo lo esconde quien lo pide: en otras operaciones
+    // —mover de etapa saltando criterios— `forzar` es el formulario.
+    const visibles = forzarTrasElAviso
+      ? campos.filter((c) => c.nombre !== "forzar")
+      : campos;
+    const exigidos = visibles.filter((c) => c.obligatorio);
     if (exigidos.length > 0) {
       return {
         obligatorios: exigidos,
-        opcionales: campos.filter((c) => !c.obligatorio),
+        opcionales: visibles.filter((c) => !c.obligatorio),
       };
     }
     const preferidas = new Set(recurso?.columnas ?? []);
-    const delante = campos.filter((c) => preferidas.has(c.nombre));
-    if (delante.length === 0) return { obligatorios: campos, opcionales: [] };
+    const delante = visibles.filter((c) => preferidas.has(c.nombre));
+    if (delante.length === 0) return { obligatorios: visibles, opcionales: [] };
     return {
       obligatorios: delante,
-      opcionales: campos.filter((c) => !preferidas.has(c.nombre)),
+      opcionales: visibles.filter((c) => !preferidas.has(c.nombre)),
     };
-  }, [campos, recurso]);
+  }, [campos, recurso, forzarTrasElAviso]);
 
   function enviar(evento: FormEvent) {
     evento.preventDefault();
+    alEnviar(limpiar());
+  }
+
+  /**
+   * «Es otro, crearlo igual» (CRM-01.01.03.03).
+   *
+   * El servidor contesta 409 con los candidatos cuando lo que se da de alta se
+   * parece demasiado a algo que ya existe —una cuenta con el mismo NIF, un
+   * contacto con el mismo correo, un lead que ya escribió—, y dice cómo
+   * seguir: usar el que hay o repetir con `forzar`. El formulario no ofrecía
+   * lo segundo en ningún alta, así que un caso legítimo —dos sociedades del
+   * mismo grupo— no tenía salida desde la pantalla. Se ofrece **sólo si el
+   * alta admite `forzar`**: un botón que el servidor va a rechazar es peor que
+   * no tenerlo.
+   */
+  const duplicado = useMemo(() => candidatosDe(fallo), [fallo]);
+  const admiteForzar = campos.some(
+    (c) => c.nombre === "forzar" && c.tipo === "booleano",
+  );
+
+  function limpiar(): Record<string, unknown> {
     // Se quitan los vacíos que no son obligatorios: mandar cadenas vacías
     // sobrescribiría con "" campos que el servidor tenía a nulo, y eso borra
     // datos sin que nadie lo haya pedido.
@@ -171,7 +209,7 @@ export function Formulario({
       }
       limpio[campo.nombre] = valor;
     }
-    alEnviar(limpio);
+    return limpio;
   }
 
   if (campos.length === 0) {
@@ -239,6 +277,71 @@ export function Formulario({
         </div>
       ) : null}
 
+      {duplicado ? (
+        <div
+          role="status"
+          className="rounded-lg border border-warning/40 bg-warning/5 p-3"
+        >
+          <p className="text-dato font-medium text-ink">
+            {duplicado.explicacion || t("formulario.pareceDuplicado")}
+          </p>
+          <ul className="mt-2 divide-y divide-ink-dim/30">
+            {duplicado.candidatos.map((c) => {
+              const objeto = c.objeto || recurso?.objeto || "";
+              const modulo = objeto ? moduloDeObjeto(objeto) : "";
+              return (
+                <li
+                  key={`${objeto}-${c.id}`}
+                  className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                >
+                  {modulo ? (
+                    <Link
+                      to={`/m/${modulo}/${objeto}/${c.id}`}
+                      className="text-dato text-accent hover:underline"
+                    >
+                      {c.nombre || c.id}
+                    </Link>
+                  ) : (
+                    <span className="text-dato text-ink">
+                      {c.nombre || c.id}
+                    </span>
+                  )}
+                  {c.objeto ? (
+                    <span className="chip-dato">{c.objeto}</span>
+                  ) : null}
+                  <span className="text-rotulo text-ink-faint">
+                    {t("formulario.coincide", {
+                      senales: c.senales.join(", "),
+                      parecido: Math.round(c.similitud * 100),
+                    })}
+                  </span>
+                  {c.concluyente ? (
+                    <span className="chip-dato chip-dato--aviso">
+                      {t("formulario.concluyente")}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          {duplicado.sinContactos ? (
+            <p className="mt-2 text-rotulo text-warning">
+              {t("formulario.sinMirarContactos")}
+            </p>
+          ) : null}
+          {admiteForzar ? (
+            <button
+              type="button"
+              disabled={enviando}
+              onClick={() => alEnviar({ ...limpiar(), forzar: true })}
+              className="btn-secondary mt-3"
+            >
+              {t("formulario.esOtroCrearIgual")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <button
         type="submit"
         disabled={enviando}
@@ -248,6 +351,48 @@ export function Formulario({
       </button>
     </form>
   );
+}
+
+/** Un registro que el servidor dice que podría ser el que se está dando de alta. */
+export interface CandidatoDuplicado {
+  id: string;
+  nombre: string;
+  objeto: string;
+  similitud: number;
+  senales: string[];
+  concluyente: boolean;
+}
+
+/**
+ * Los candidatos de un 409 por duplicado, o `null` si el fallo es otra cosa.
+ *
+ * Se mira la FORMA del detalle —una lista `candidatos`— y no el código de
+ * error: cuentas, contactos y leads responden cada uno con el suyo, y una
+ * lista de códigos se queda corta con el siguiente objeto que deduplique.
+ */
+export function candidatosDe(fallo: unknown): {
+  explicacion: string;
+  candidatos: CandidatoDuplicado[];
+  sinContactos: boolean;
+} | null {
+  if (!(fallo instanceof ErrorApi) || fallo.estado !== 409) return null;
+  const detalle = (fallo.detalle ?? {}) as Record<string, unknown>;
+  if (!Array.isArray(detalle.candidatos)) return null;
+  const candidatos = (detalle.candidatos as Record<string, unknown>[]).map(
+    (c) => ({
+      id: String(c.id ?? ""),
+      nombre: String(c.nombre ?? ""),
+      objeto: String(c.objeto ?? ""),
+      similitud: Number(c.similitud ?? 0),
+      senales: Array.isArray(c.senales) ? c.senales.map(String) : [],
+      concluyente: Boolean(c.concluyente),
+    }),
+  );
+  return {
+    explicacion: fallo.explicacion,
+    candidatos,
+    sinContactos: detalle.contactos_consultados === false,
+  };
 }
 
 function Campo({

@@ -208,7 +208,7 @@ stateDiagram-v2
 | `POST /api/v1/suite/cuarentena/{sincronizacion_id}/reintentar` | Volver a intentar algo apartado | sincronizacion_id* | 200, 422 | — |
 | `POST /api/v1/suite/herramientas` | Conectar una herramienta de la suite | nombre*, base_url*, credenciales, tipo, mapeo_roles, mapeo_campos, campos_fijos, objetos, identificador_externo | 201, 422 | — |
 | `POST /api/v1/suite/provisionar/organizacion` | Replicar áreas y departamentos a las herramientas | — | 200, 422 | — |
-| `POST /api/v1/suite/provisionar/tenant` | Dar de alta este tenant en las herramientas conectadas | — | 200, 422 | — |
+| `POST /api/v1/suite/provisionar/tenant` | Dar de alta este tenant en las herramientas conectadas | aplicar | 200, 422 | — |
 | `POST /api/v1/suite/provisionar/usuario` | Alta, cambio o baja de un usuario en toda la suite | id*, email*, nombre, roles, unidad, activa, operacion | 200, 422 | — |
 | `POST /api/v1/suite/reconciliar/{herramienta}/reparar` | Reencolar lo divergente | herramienta*, objeto_ids*, forzar | 200, 422 | — |
 | `PUT /api/v1/tcsec/requisitos/{clave}/atestacion` | Atestiguar un requisito TCSEC que no se puede medir | clave*, resultado*, evidencia*, plan_accion | 200, 422 | — |
@@ -273,6 +273,7 @@ stateDiagram-v2
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/factores/codigo` | Enviar un código de un solo uso | canal*, proposito, direccion | 202, 422 | — |
 | `POST /api/v1/factores/comprobar` | Validar un código y elevar el nivel de esta sesión | codigo*, proposito | 200, 422 | — |
+| `PUT /api/v1/factores/obligatoria-por-rol` | A qué roles se exige segundo factor (CRM-00.05.01.06) | roles | 200, 422 | — |
 | `POST /api/v1/identity/compuesto` | Varias operaciones de «identity» en una llamada | operaciones | 200, 422 | — |
 | `PUT /api/v1/identity/estados/{objeto}` | Configurar los estados de un objeto | objeto*, estados*, inicial, transiciones, exigen_motivo | 200, 422 | — |
 | `DELETE /api/v1/identity/estados/{objeto}` | Volver a los estados de fábrica | objeto* | 200, 422 | — |
@@ -693,7 +694,7 @@ stateDiagram-v2
 | `DELETE /api/v1/suites/perfiles/{perfil_suite_id}` | Borrar perfiles de suite | perfil_suite_id* | 204, 422 | — |
 | `POST /api/v1/suites/perfiles/{perfil_suite_id}/archivar` | Archivar perfiles de suite | perfil_suite_id* | 200, 422 | — |
 | `POST /api/v1/suites/reglas` | Qué entra de verdad, juntando la política de la empresa y la preferencia de la persona | del_tenant, del_usuario | 200, 422 | — |
-| `POST /api/v1/suites/reuniones` | Preparar una reunión en línea con el proveedor del tenant | perfil*, asunto*, inicio*, fin*, confirmada, asistentes | 200, 422 | — |
+| `POST /api/v1/suites/reuniones` | Crear una reunión en línea con la suite del tenant y guardar su enlace | perfil, asunto, inicio, fin, confirmada, asistentes, organizador, actividad_id, objeto, objeto_id | 200, 422 | — |
 | `POST /api/v1/suites/reuniones/enlace` | Si este enlace de reunión puede ir por ese canal | enlace*, destino* | 200, 422 | — |
 | `POST /api/v1/suites/suscripciones` | Registrar una suscripción a los cambios del proveedor | perfil*, recurso*, externo_id*, caduca_at | 201, 422 | — |
 | `POST /api/v1/suites/tareas/sincronizar` | Qué hacer con una tarea que está en los dos sitios | en_el_crm, en_el_proveedor, ultima_sincronizacion | 200, 422 | — |
@@ -742,6 +743,7 @@ stateDiagram-v2
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
 | `POST /api/v1/accounts` | Dar de alta una cuenta | nombre*, nombre_comercial, roles, identificadores, sector_esquema, sector_codigo, tamano, empleados, facturacion_anual, moneda, tier, web, telefono, email, owner_id, campos, forzar | 201, 422 | `account.created` |
+| `POST /api/v1/accounts/masivo` | Operación masiva sobre cuentas | modo, operacion*, elementos, callback_url | 207, 422 | — |
 | `PATCH /api/v1/accounts/{cuenta_id}` | Actualizar una cuenta | cuenta_id*, nombre, nombre_comercial, roles, estado, ciclo_vida, sector_esquema, sector_codigo, tamano, empleados, facturacion_anual, tier, clasificacion_abc, web, telefono, email, owner_id, campos | 200, 422 | — |
 | `DELETE /api/v1/accounts/{cuenta_id}` | Enviar una cuenta a la papelera | cuenta_id* | 204, 422 | — |
 | `POST /api/v1/accounts/{cuenta_id}/direcciones` | Añadir una dirección | cuenta_id*, tipo, principal, linea1*, linea2, codigo_postal, ciudad, provincia, pais | 201, 422 | — |
@@ -819,6 +821,7 @@ stateDiagram-v2
 | `POST /api/v1/compras/respuestas/{respuesta_oferta_id}/incidencia` | Anotar una incidencia del proveedor | respuesta_oferta_id*, gravedad*, descripcion* | 200, 422 | — |
 | `POST /api/v1/contactos/masivo` | Operación masiva sobre contactos | modo, operacion*, elementos, callback_url | 207, 422 | — |
 | `POST /api/v1/contacts` | Dar de alta un contacto | nombre*, apellidos, tratamiento, cargo, departamento, email, telefono, movil, idioma, canal_preferido, cuenta_id, rol, owner_id, campos, forzar | 201, 422 | `contact.created` |
+| `POST /api/v1/contacts/masivo` | Operación masiva sobre contactos | modo, operacion*, elementos, callback_url | 207, 422 | — |
 | `PATCH /api/v1/contacts/{contacto_id}` | Editar contactos | contacto_id*, nombre, apellidos, tratamiento, cargo, anonimizado_at, departamento, email, email_secundario, telefono, movil, canales, idioma, canal_preferido, horario_preferido, frecuencia_maxima, no_contactar, owner_id, estado_email, estado_telefono, calidad, calidad_faltan, campos | 200, 422 | — |
 | `DELETE /api/v1/contacts/{contacto_id}` | Borrar contactos | contacto_id* | 204, 422 | — |
 | `POST /api/v1/contacts/{contacto_id}/consentimientos` | Registrar un consentimiento | contacto_id*, finalidad*, canal*, concedido*, base_legal, origen, texto_aceptado, evidencia | 201, 422 | `contact.consent.changed` |
@@ -856,6 +859,8 @@ stateDiagram-v2
 | `POST /api/v1/mapa-personas/mapa-de-poder` | Quién manda, quién ayuda, quién estorba y con quién no se ha hablado | contactos | 200, 422 | — |
 | `PATCH /api/v1/mapa-personas/{relacion_persona_id}` | Editar mapa de personas | relacion_persona_id*, tipo, motivo, anotada_por_id | 200, 422 | — |
 | `DELETE /api/v1/mapa-personas/{relacion_persona_id}` | Borrar mapa de personas | relacion_persona_id* | 204, 422 | — |
+| `POST /api/v1/party-admin/importaciones` | Importar cuentas o contactos, simulando antes | objeto*, filas*, simular, actualizar, fichero | 200, 422 | — |
+| `POST /api/v1/party-admin/importaciones/{importacion_id}/revertir` | Deshacer una importación entera | importacion_id*, simular, forzar, motivo | 200, 422 | — |
 | `POST /api/v1/party-admin/importar/cuentas` | Importar cuentas desde filas | simular, actualizar | 200, 422 | — |
 | `POST /api/v1/party-admin/papelera/purgar` | Destruir definitivamente lo que ya pasó su plazo | motivo* | 200, 422 | — |
 | `PATCH /api/v1/party-admin/papelera/{entrada_id}` | Editar entradas de la papelera | entrada_id*, objeto, etiqueta, cascada, borrado_por, borrado_at, purgable_at, restaurado_at, restaurado_por, purgado_at | 200, 422 | — |
@@ -1000,7 +1005,7 @@ stateDiagram-v2
 | `POST /api/v1/lead-routing/reglas/probar` | Probar las reglas contra un lead de ejemplo, sin guardar nada | — | 200, 422 | — |
 | `DELETE /api/v1/lead-routing/reglas/{regla_id}` | Borrar una regla de enrutamiento | regla_id* | 204, 422 | — |
 | `PATCH /api/v1/lead-routing/reglas/{regla_id}` | Editar una regla | regla_id*, nombre, descripcion, prioridad, condiciones, combinacion, estrategia, candidatos, cola, activa | 200, 422 | — |
-| `POST /api/v1/leads` | Capturar un lead | nombre, apellidos, empresa, cargo, email, telefono, web, pais, origen, campana_id, utm, owner_id, campos | 201, 422 | `lead.assigned`, `lead.created` |
+| `POST /api/v1/leads` | Capturar un lead | nombre, apellidos, empresa, cargo, email, telefono, web, pais, origen, campana_id, utm, owner_id, campos, forzar | 201, 422 | `lead.assigned`, `lead.created` |
 | `POST /api/v1/leads/masivo` | Operación masiva sobre leads | modo, operacion*, elementos, callback_url | 207, 422 | — |
 | `PATCH /api/v1/leads/{lead_id}` | Editar leads | lead_id*, nombre, apellidos, empresa, cargo, email, telefono, web, pais, motivo_descarte, nota_descarte, reciclar_at, origen, campana_id, utm, primer_toque, ultimo_toque, owner_id, asignado_at, sla_primera_respuesta_at, primera_respuesta_at, sla_incumplido, convertido_at, cuenta_id, contacto_id, oportunidad_id, puntuacion, campos | 200, 422 | — |
 | `DELETE /api/v1/leads/{lead_id}` | Borrar leads | lead_id* | 204, 422 | — |
@@ -1035,11 +1040,13 @@ stateDiagram-v2
 | `PATCH /api/v1/niveles-partner/{nivel_partner_id}` | Editar niveles del programa | nivel_partner_id*, clave, nombre, orden, facturacion_minima, certificaciones_exigidas, descuento_extra_pct, dias_proteccion | 200, 422 | — |
 | `POST /api/v1/oportunidades/masivo` | Operación masiva sobre oportunidades | modo, operacion*, elementos, callback_url | 207, 422 | — |
 | `POST /api/v1/opportunities` | Crear una oportunidad | nombre*, descripcion, cuenta_id, contacto_id, pipeline_id, etapa_id, importe, moneda, fecha_cierre, owner_id, campos | 201, 422 | `opportunity.created`, `opportunity.lesson.advice` |
+| `POST /api/v1/opportunities/masivo` | Operación masiva sobre oportunidades | modo, operacion*, elementos, callback_url | 207, 422 | — |
 | `PATCH /api/v1/opportunities/{oportunidad_id}` | Actualizar una oportunidad | oportunidad_id*, nombre, descripcion, importe, probabilidad, fecha_cierre, contacto_id, owner_id, motivo_perdida, competidor_ganador, campos | 200, 422 | — |
 | `DELETE /api/v1/opportunities/{oportunidad_id}` | Borrar oportunidades | oportunidad_id* | 204, 422 | — |
 | `POST /api/v1/opportunities/{oportunidad_id}/archivar` | Archivar oportunidades | oportunidad_id* | 200, 422 | — |
 | `POST /api/v1/opportunities/{oportunidad_id}/competidores` | Registrar un competidor en la operación | oportunidad_id*, nombre*, cuenta_id, fortalezas, debilidades, ganador | 201, 422 | — |
 | `POST /api/v1/opportunities/{oportunidad_id}/consejos/ia` | Qué hacer y qué no, según las lecciones, con la IA | oportunidad_id* | 200, 422 | — |
+| `POST /api/v1/opportunities/{oportunidad_id}/duplicar` | Duplicar la oportunidad con sus líneas | oportunidad_id*, nombre | 201, 422 | `opportunity.created` |
 | `POST /api/v1/opportunities/{oportunidad_id}/estado` | Cambiar el estado | oportunidad_id*, estado*, motivo | 200, 422 | — |
 | `POST /api/v1/opportunities/{oportunidad_id}/etapa` | Mover la oportunidad de etapa | oportunidad_id*, etapa_id*, motivo, forzar | 200, 422 | `opportunity.lesson.advice`, `opportunity.lost`, `opportunity.stage.changed`, `opportunity.won` |
 | `POST /api/v1/opportunities/{oportunidad_id}/lineas` | Añadir una línea | oportunidad_id*, descripcion*, producto_id, cantidad, precio_unitario, descuento_pct, coste_unitario, tipo_ingreso, periodicidad, orden | 201, 422 | — |
@@ -1123,6 +1130,7 @@ stateDiagram-v2
 | `PATCH /api/v1/registros-oportunidad/{registro_oportunidad_id}` | Editar registros de oportunidad | registro_oportunidad_id*, partner_id, cliente_nombre, nif, dominio, cuenta_id, contacto, importe_estimado, moneda, cierre_estimado, descripcion, estado, protegido_hasta, decidido_por, decidido_at, motivo, conflicto_con, oportunidad_id | 200, 422 | — |
 | `DELETE /api/v1/registros-oportunidad/{registro_oportunidad_id}` | Borrar registros de oportunidad | registro_oportunidad_id* | 204, 422 | — |
 | `POST /api/v1/registros-oportunidad/{registro_oportunidad_id}/archivar` | Archivar registros de oportunidad | registro_oportunidad_id* | 200, 422 | — |
+| `POST /api/v1/sales-admin/transferir-propiedad` | Traspasar todo lo de una persona a otra | de_usuario*, a_usuario*, motivo, simular | 200, 422 | — |
 | `POST /api/v1/sales/compuesto` | Varias operaciones de «sales» en una llamada | operaciones | 200, 422 | — |
 | `PUT /api/v1/sales/estados/{objeto}` | Configurar los estados de un objeto | objeto*, estados*, inicial, transiciones, exigen_motivo | 200, 422 | — |
 | `DELETE /api/v1/sales/estados/{objeto}` | Volver a los estados de fábrica | objeto* | 200, 422 | — |
@@ -1746,7 +1754,7 @@ llamada de nadie.
 | `module.installed` | metadata | modulo, version, elementos, conectores | `POST /api/v1/metadata/modulos/instalar` | — |
 | `module.uninstalled` | metadata | modulo, datos_borrados, objetos | `POST /api/v1/metadata/modulos/{clave}/desinstalar` | — |
 | `module.updated` | metadata | modulo, version, desde, conectores | `POST /api/v1/metadata/modulos/actualizar` | — |
-| `opportunity.created` | sales | oportunidad_id, cuenta_id, importe, moneda | `POST /api/v1/leads/{lead_id}/convertir`, `POST /api/v1/opportunities` | — |
+| `opportunity.created` | sales | oportunidad_id, cuenta_id, importe, moneda | `POST /api/v1/leads/{lead_id}/convertir`, `POST /api/v1/opportunities`, `POST /api/v1/opportunities/{oportunidad_id}/duplicar` | — |
 | `opportunity.lesson.advice` | sales | oportunidad_id, aviso_id, momento, titulo, detalle, owner_id | `POST /api/v1/opportunities`, `POST /api/v1/opportunities/{oportunidad_id}/etapa`, `POST /api/v1/presupuestos/{presupuesto_id}/enviar` | — |
 | `opportunity.lesson.signed` | sales | leccion_id, oportunidad_id, resultado | `POST /api/v1/lecciones/{leccion_id}/firmar` | — |
 | `opportunity.lessons.summary` | sales | resumen_id, titulo, detalle, destinatarios | `POST /api/v1/lecciones/resumen` | — |

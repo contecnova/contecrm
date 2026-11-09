@@ -1,6 +1,8 @@
 /**
  * Un periodo de previsión: el número, quién lo tocó y por qué se movió
- * (CRM-03.02.01.03, CRM-03.02.01.04, CRM-03.02.01.05, CRM-03.02.01.08).
+ * (CRM-03.02.01.03, CRM-03.02.01.04, CRM-03.02.01.05, CRM-03.02.01.08), y
+ * cómo se reparte por el organigrama: comercial → equipo → región → compañía
+ * (CRM-03.02.01.02).
  *
  * El módulo listaba los periodos y ahí se acababa. Y un periodo de previsión
  * es justo lo contrario de una fila: es **un número que alguien defiende en un
@@ -32,6 +34,7 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { importe as comoImporte } from "@/lib/formato";
+import { nombreDe, usePersonas } from "@/lib/personas";
 
 interface Prevision {
   periodo: string;
@@ -84,6 +87,34 @@ interface Deslizamiento {
   dias_empujados: number;
   empujadas_mas_de_una_vez: number;
   detalle: { nombre?: string; dias_netos: number; veces: number }[];
+}
+
+interface NodoOrganigrama {
+  id: string;
+  nombre: string;
+  usuario_id: string | null;
+  nivel: "comercial" | "equipo" | "region" | "direccion";
+  total: string;
+  ponderado: string;
+  compromiso: string;
+  oportunidades: number;
+  hijos: NodoOrganigrama[];
+}
+
+interface Organigrama {
+  fuente: string;
+  moneda: string;
+  compania: Prevision;
+  nodos: NodoOrganigrama[];
+  fuera_del_organigrama: {
+    usuario_id: string;
+    total: string;
+    oportunidades: number;
+  }[];
+  sin_asignar: string;
+  sin_dueno: string;
+  cuadra: boolean;
+  aviso: string;
 }
 
 interface Desglose {
@@ -242,6 +273,7 @@ export function PeriodoDePrevision() {
           moneda={prevision.moneda}
         />
         <ElDesglose desglose={desglose} por={por} alCambiar={setPor} />
+        <LaJerarquia clave={clave} />
         <LasFotos fotos={fotos} />
         <LoQueSeHaDeslizado deslizamiento={deslizamiento} />
       </div>
@@ -345,6 +377,180 @@ function LosAjustes({
           )}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * Por jerarquía: comercial → equipo → región → compañía (CRM-03.02.01.02).
+ *
+ * El servidor sabía calcularla desde el principio, pero pedía los nodos ya
+ * resueltos —«este equipo son estos tres UUID»— y ninguna pantalla los tenía.
+ * Ahora el árbol lo resuelve `sales` con lo que tiene: el **mapa de
+ * territorios** o la **jerarquía de mando** que replica de identidad. Aquí se
+ * elige cuál y se pinta.
+ *
+ * **Lo que no cuelga de ninguna rama sale aparte, con su importe y su dueño.**
+ * El total de la compañía no se suma de los nodos: se calcula aparte, y la
+ * diferencia es el agujero —alguien recién incorporado, una cartera
+ * huérfana— que explica por qué las ramas no cuadran.
+ */
+function LaJerarquia({ clave }: { clave: string }) {
+  const { t } = useTranslation();
+  const personas = usePersonas();
+  const [fuente, setFuente] = useState("territorios");
+  const [datos, setDatos] = useState<Organigrama | null>(null);
+  const [cargado, setCargado] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    setDatos(null);
+    setCargado(false);
+    setFallo(null);
+    llamar<Organigrama>(
+      `/api/v1/forecast/periodos/${encodeURIComponent(clave)}/organigrama?fuente=${fuente}`,
+      { signal: control.signal },
+    )
+      // Una respuesta sin la forma esperada se trata como «sin organigrama»
+      // y no tumba la pantalla: el número del periodo, que es a lo que se
+      // entra, no puede depender de este panel.
+      .then((r) => {
+        setDatos(
+          r.datos && Array.isArray(r.datos.nodos) && r.datos.compania
+            ? r.datos
+            : null,
+        );
+        setCargado(true);
+      })
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [clave, fuente]);
+
+  const nombreDelNodo = (n: NodoOrganigrama) =>
+    n.nombre || (n.usuario_id ? nombreDe(personas, n.usuario_id) : n.id);
+
+  // Una función que pinta y no un componente: definido aquí dentro, un
+  // componente sería un tipo nuevo en cada pintado y React desmontaría el
+  // árbol entero cada vez.
+  function rama(nodo: NodoOrganigrama, nivel: number) {
+    return (
+      <li key={nodo.id}>
+        <div
+          className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+          style={{ paddingLeft: `${nivel * 1.25}rem` }}
+        >
+          <span className="text-dato font-medium text-ink">
+            {nombreDelNodo(nodo)}
+          </span>
+          <span className="chip-dato">
+            {t(`prevision.niveles.${nodo.nivel}`)}
+          </span>
+          <span className="text-dato text-ink-muted">
+            {comoImporte(nodo.total, datos?.moneda ?? "")}
+          </span>
+          <span className="text-rotulo text-ink-faint">
+            {t("prevision.ponderadoCorto", {
+              valor: comoImporte(nodo.ponderado, datos?.moneda ?? ""),
+            })}
+          </span>
+          <span className="text-rotulo text-ink-faint">
+            {t("prevision.cuantas", { cuantas: nodo.oportunidades })}
+          </span>
+        </div>
+        {nodo.hijos.length > 0 ? (
+          <ul className="divide-y divide-ink-dim/20">
+            {nodo.hijos.map((h) => rama(h, nivel + 1))}
+          </ul>
+        ) : null}
+      </li>
+    );
+  }
+
+  return (
+    <section className="card p-4 lg:col-span-2">
+      <h2 className="section-label mb-1">{t("prevision.jerarquia")}</h2>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("prevision.jerarquiaAyuda")}
+      </p>
+      <label htmlFor="jerarquia-fuente" className="text-dato text-ink-muted">
+        {t("prevision.organigramaDe")}
+        <select
+          id="jerarquia-fuente"
+          value={fuente}
+          onChange={(e) => setFuente(e.target.value)}
+          className="input-sm ml-2 inline-block w-auto"
+        >
+          <option value="territorios">{t("prevision.porTerritorios")}</option>
+          <option value="mando">{t("prevision.porMando")}</option>
+        </select>
+      </label>
+      {fallo ? (
+        <div className="mt-2">
+          <Fallo error={fallo} />
+        </div>
+      ) : !cargado ? (
+        <Cargando />
+      ) : !datos ? (
+        <div className="mt-2">
+          <Vacio titulo={t("prevision.sinOrganigrama")} compacto />
+        </div>
+      ) : (
+        <div className="mt-2" role="status">
+          <p className="text-dato text-ink">
+            {t("prevision.compania", {
+              total: comoImporte(datos.compania.total, datos.moneda),
+              cuantas: datos.compania.oportunidades,
+            })}
+          </p>
+          {datos.aviso ? (
+            <p className="mt-1 text-rotulo text-warning">{datos.aviso}</p>
+          ) : null}
+          {datos.nodos.length === 0 ? (
+            <div className="mt-2">
+              <Vacio titulo={t("prevision.sinOrganigrama")} compacto />
+            </div>
+          ) : (
+            <ul className="mt-2 divide-y divide-ink-dim/30">
+              {datos.nodos.map((n) => rama(n, 0))}
+            </ul>
+          )}
+          {!datos.cuadra ? (
+            <div className="mt-3 border-t border-ink-dim/30 pt-2">
+              <p className="text-dato text-warning">
+                {t("prevision.fueraDelOrganigrama", {
+                  importe: comoImporte(datos.sin_asignar, datos.moneda),
+                })}
+              </p>
+              <ul className="mt-1 divide-y divide-ink-dim/30">
+                {datos.fuera_del_organigrama.map((f) => (
+                  <li
+                    key={f.usuario_id}
+                    className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                  >
+                    <span className="text-dato text-ink">
+                      {nombreDe(personas, f.usuario_id)}
+                    </span>
+                    <span className="text-dato text-ink-muted">
+                      {comoImporte(f.total, datos.moneda)}
+                    </span>
+                    <span className="text-rotulo text-ink-faint">
+                      {t("prevision.cuantas", { cuantas: f.oportunidades })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {Number(datos.sin_dueno) !== 0 ? (
+                <p className="mt-1 text-dato text-ink-muted">
+                  {t("prevision.sinDueno", {
+                    importe: comoImporte(datos.sin_dueno, datos.moneda),
+                  })}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }

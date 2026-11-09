@@ -71,6 +71,9 @@ PREFIJOS: dict[str, str] = {
     "data-quality": "party",
     "data-subject-requests": "party",
     "party-admin": "party",
+    # La administración de ventas: hoy, el traspaso de leads y oportunidades
+    # (CRM-07.01.01.07), la otra mitad del de `party-admin`.
+    "sales-admin": "sales",
     "leads": "sales",
     "opportunities": "sales",
     # Las lecciones aprendidas de las oportunidades cerradas.
@@ -460,6 +463,7 @@ SECCIONES_PORTAL = {
     "contratos": "sales",
     "pedidos": "sales",
     "contactos": "party",
+    "encargos": "integration",
 }
 
 # Qué servicio sirve cada componente embebible. El dueño de lo que enseña:

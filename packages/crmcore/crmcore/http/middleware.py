@@ -361,7 +361,9 @@ class TiemposMiddleware:
                     duracion_ms=round(duracion * 1000, 1),
                     **extra,
                 )
-            await self._anotar_slo(estado["status"], duracion)
+            await self._anotar_slo(
+                estado["status"], duracion, metodo=scope.get("method", ""), ruta=ruta
+            )
             self._medir_presion(duracion)
 
     def _medir_presion(self, duracion_s: float) -> None:
@@ -399,7 +401,9 @@ class TiemposMiddleware:
         except Exception as exc:  # noqa: BLE001 — medir no puede tirar la petición
             logger.warning("presion.no_medida", motivo=str(exc)[:120])
 
-    async def _anotar_slo(self, status: int, duracion_s: float) -> None:
+    async def _anotar_slo(
+        self, status: int, duracion_s: float, *, metodo: str = "", ruta: str = ""
+    ) -> None:
         """Apunta la petición contra el presupuesto de error (CRM-00.06.01.04).
 
         Aquí y no en cada endpoint: el presupuesto tiene que contar **todas** las
@@ -425,6 +429,9 @@ class TiemposMiddleware:
                 # integración que manda mal los datos.
                 ok=status < 500,
                 ms=duracion_s * 1000,
+                # Y de qué tipo era (CRM-08.01.01.01), para medir p95 y p99
+                # por operación: con la plantilla de ruta, nunca la concreta.
+                operacion=slo.operacion_de(metodo, ruta),
             )
         except Exception as exc:  # noqa: BLE001 — medir no puede tirar la petición
             logger.warning("slo.no_anotado_middleware", motivo=str(exc)[:120])

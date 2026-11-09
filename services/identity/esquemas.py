@@ -119,6 +119,13 @@ class YoOut(BaseModel):
     roles: list[str] = []
     permisos: list[str] = []
     suplantado_por: UUID | None = None
+    # Quién está dentro por soporte y por qué (CRM-00.01.02.06). La franja de
+    # la interfaz lo dice con estas palabras: «Estás dentro como X por
+    # soporte: motivo». Sin el motivo, la franja recuerda que se está dentro
+    # pero no para qué, y es lo que se olvida a mitad de trabajo.
+    suplantado_por_email: str | None = None
+    motivo_suplantacion: str | None = None
+    suplantacion_caduca_at: datetime | None = None
 
 
 class ActivarMfa(BaseModel):
@@ -210,6 +217,11 @@ class SesionOut(BaseModel):
 
 
 class Suplantar(BaseModel):
+    """La empresa en la que se entra es **la que se está mirando**
+    (`X-CRM-Tenant-Mirado`), no un campo del cuerpo: así es la misma que el
+    selector de la barra enseña en color de aviso, y no hay forma de entrar en
+    una empresa distinta de la que se ve en pantalla."""
+
     usuario_id: UUID
     motivo: str = Field(
         ...,

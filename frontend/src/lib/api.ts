@@ -46,6 +46,15 @@ export class ErrorApi extends Error {
      * campo. Medido el 03-11-2026 creando uno.
      */
     readonly campos: { campo: string; mensaje: string }[] = [],
+    /**
+     * El identificador de la petición que falló (CRM-00.02.04.07).
+     *
+     * Es lo que cierra el círculo del soporte: el servidor lo pone en el
+     * cuerpo del error y en `X-Request-Id`, el mismo que queda en su log y en
+     * el audit trail. Se perdía aquí, así que la persona que llamaba a soporte
+     * no tenía nada que pegar y la búsqueda empezaba por «¿a qué hora fue?».
+     */
+    readonly requestId: string = "",
   ) {
     super(titulo || `Error ${estado}`);
     this.name = "ErrorApi";
@@ -127,19 +136,28 @@ export async function subir<T = unknown>(
 ): Promise<T> {
   const cuerpo = new FormData();
   cuerpo.append("fichero", fichero);
-  for (const [clave, valor] of Object.entries(campos)) cuerpo.append(clave, valor);
+  for (const [clave, valor] of Object.entries(campos))
+    cuerpo.append(clave, valor);
 
   const respuesta = await conRed(() =>
     fetch(`${config().apiBase}${ruta}`, {
       method: "POST",
-      headers: { Accept: "application/json", "Idempotency-Key": crypto.randomUUID() },
+      headers: {
+        Accept: "application/json",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
       body: cuerpo,
       credentials: "include",
     }),
   );
   const texto = await respuesta.text();
   const datos = texto ? seguroJson(texto) : null;
-  if (!respuesta.ok) throw problema(respuesta.status, datos);
+  if (!respuesta.ok)
+    throw problema(
+      respuesta.status,
+      datos,
+      respuesta.headers.get("X-Request-Id"),
+    );
   return datos as T;
 }
 
@@ -176,7 +194,10 @@ export function mirarTenant(id: string): void {
   }
 }
 
-export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {}): Promise<Respuesta<T>> {
+export async function llamar<T = unknown>(
+  ruta: string,
+  opciones: Opciones = {},
+): Promise<Respuesta<T>> {
   const metodo = (opciones.metodo ?? "GET").toUpperCase();
   const cabeceras: Record<string, string> = { Accept: "application/json" };
 
@@ -186,7 +207,8 @@ export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {})
   const mirado = tenantMirado();
   if (mirado) cabeceras["X-CRM-Tenant-Mirado"] = mirado;
 
-  if (opciones.cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
+  if (opciones.cuerpo !== undefined)
+    cabeceras["Content-Type"] = "application/json";
   if (opciones.version) cabeceras["If-Match"] = opciones.version;
   if (ESCRITURAS.has(metodo)) {
     cabeceras["Idempotency-Key"] = opciones.idempotencia ?? crypto.randomUUID();
@@ -196,7 +218,10 @@ export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {})
     fetch(`${config().apiBase}${ruta}`, {
       method: metodo,
       headers: cabeceras,
-      body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
+      body:
+        opciones.cuerpo === undefined
+          ? undefined
+          : JSON.stringify(opciones.cuerpo),
       // La sesión va en cookie, nunca en un almacén que pueda leer un script
       // (CRM-07.04.02.03): un XSS con el token en `localStorage` es una sesión
       // robada; con cookie `HttpOnly`, no.
@@ -206,14 +231,23 @@ export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {})
   );
 
   if (respuesta.status === 204) {
-    return { datos: undefined as T, version: null, retenidos: [], enmascarados: [] };
+    return {
+      datos: undefined as T,
+      version: null,
+      retenidos: [],
+      enmascarados: [],
+    };
   }
 
   const texto = await respuesta.text();
   const cuerpo = texto ? seguroJson(texto) : null;
 
   if (!respuesta.ok) {
-    throw problema(respuesta.status, cuerpo);
+    throw problema(
+      respuesta.status,
+      cuerpo,
+      respuesta.headers.get("X-Request-Id"),
+    );
   }
 
   return {
@@ -266,12 +300,23 @@ async function conRed(hacer: () => Promise<Response>): Promise<Response> {
   } catch (error) {
     // Una cancelación NO es un fallo de red: tiene su propio tratamiento en
     // `salvoCancelacion`, y convertirla aquí lo rompería.
-    if (error instanceof DOMException && error.name === "AbortError") throw error;
-    throw new ErrorApi(0, "sin_red", "", null, String((error as Error)?.message ?? error));
+    if (error instanceof DOMException && error.name === "AbortError")
+      throw error;
+    throw new ErrorApi(
+      0,
+      "sin_red",
+      "",
+      null,
+      String((error as Error)?.message ?? error),
+    );
   }
 }
 
-function problema(estado: number, cuerpo: unknown): ErrorApi {
+export function problema(
+  estado: number,
+  cuerpo: unknown,
+  cabecera: string | null = null,
+): ErrorApi {
   const p = (cuerpo ?? {}) as Record<string, unknown>;
   return new ErrorApi(
     estado,
@@ -280,6 +325,10 @@ function problema(estado: number, cuerpo: unknown): ErrorApi {
     p.detalle ?? p.detail ?? null,
     String(p.detail ?? ""),
     camposDelError(p.errors),
+    // El del cuerpo primero: es el que el servicio escribió en su log. La
+    // cabecera, si el cuerpo no lo trae —una página de error de un proxy—; y
+    // si llegaran varias juntas, la primera.
+    String(p.request_id ?? "") || ((cabecera ?? "").split(",")[0] ?? "").trim(),
   );
 }
 
@@ -296,7 +345,10 @@ function camposDelError(crudo: unknown): { campo: string; mensaje: string }[] {
   for (const fila of crudo) {
     if (!fila || typeof fila !== "object") continue;
     const f = fila as Record<string, unknown>;
-    const campo = String(f.campo ?? f.loc ?? "").split(".").pop() ?? "";
+    const campo =
+      String(f.campo ?? f.loc ?? "")
+        .split(".")
+        .pop() ?? "";
     const mensaje = String(f.mensaje ?? f.msg ?? f.motivo ?? "");
     if (campo && mensaje) salida.push({ campo, mensaje });
   }
@@ -334,7 +386,9 @@ export function filas<T>(datos: unknown): T[] {
     // adivina —`{metricas: […], sin_dueno: […]}` podría ser cualquiera de las
     // dos— y elegir mal enseñaría una lista equivocada, que es peor que no
     // enseñar ninguna.
-    const arrays = Object.values(datos as Record<string, unknown>).filter(Array.isArray);
+    const arrays = Object.values(datos as Record<string, unknown>).filter(
+      Array.isArray,
+    );
     if (arrays.length === 1) return arrays[0] as T[];
   }
   return [];

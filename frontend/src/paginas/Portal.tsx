@@ -18,8 +18,10 @@
  */
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import { config } from "@/lib/config";
+import { fechaHora } from "@/lib/formato";
 
 interface Sesion {
   token: string;
@@ -260,9 +262,15 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
           el cliente pudiera verlas: lo que su empresa tiene instalado, sus
           contratos, sus pedidos, los artículos que puede leer, la comunidad y
           quién más de su empresa tiene acceso. */}
-      {sesion.secciones.map((seccion) => (
-        <Seccion key={seccion} seccion={seccion} sesion={sesion} />
-      ))}
+      {sesion.secciones.map((seccion) =>
+        // Los encargos no son una lista y ya: cada uno se abre para ver por
+        // dónde va, así que tienen su propio bloque.
+        seccion === "encargos" ? (
+          <MisEncargos key={seccion} sesion={sesion} />
+        ) : (
+          <Seccion key={seccion} seccion={seccion} sesion={sesion} />
+        ),
+      )}
       {/* Y si además es proveedora, sus papeles: es la parte que más se usa de
           un portal de proveedor, porque perseguir certificados caducados es
           trabajo de alguien todos los meses y el único que puede resolverlo es
@@ -413,6 +421,196 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
                 <p className="text-rotulo text-ink-faint">
                   {texto(fila, DEBAJO)}
                 </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+interface Encargo {
+  id: string;
+  referencia: string;
+  referencia_transportista: string | null;
+  proveedor: string;
+  estado: string;
+  prometido_para: string | null;
+  completado_at: string | null;
+  va_tarde: boolean;
+}
+
+interface Seguimiento {
+  hitos: {
+    estado: string;
+    descripcion: string | null;
+    lugar: string | null;
+    at: string;
+  }[];
+  incidencias: { tipo: string; abierta: boolean; descripcion: string | null }[];
+  va_tarde: boolean;
+  sin_novedad: boolean;
+}
+
+/**
+ * Los encargos de su empresa y por dónde va cada uno (CRM-00.04.05.06).
+ *
+ * El seguimiento para el cliente existía y sólo lo podía pedir un empleado
+ * pasando la cuenta por la dirección: el cliente no llegaba. Aquí la cuenta
+ * sale de su sesión, y lo que no es suyo da «no existe». Lo que se ve lo
+ * decide el servidor: ni coste, ni proveedor alternativo, ni notas internas.
+ */
+function MisEncargos({ sesion }: { sesion: Sesion }) {
+  const { t } = useTranslation();
+  const [filas, setFilas] = useState<Encargo[] | null>(null);
+  const [fallo, setFallo] = useState("");
+  const [abierto, setAbierto] = useState<string | null>(null);
+  const [seguimiento, setSeguimiento] = useState<Seguimiento | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void pedir<Encargo[]>("/api/v1/portal/mi/encargos", sesion.token)
+      .then((datos) => vivo && setFilas(Array.isArray(datos) ? datos : []))
+      .catch(
+        (error: unknown) =>
+          vivo &&
+          // Sin `t` dentro: este efecto depende sólo del token. Con `t` en
+          // las dependencias, una `t` nueva en cada render repite la
+          // petición sin parar.
+          setFallo(error instanceof Error ? error.message : " "),
+      );
+    return () => {
+      vivo = false;
+    };
+  }, [sesion.token]);
+
+  async function ver(id: string) {
+    if (abierto === id) {
+      setAbierto(null);
+      return;
+    }
+    setAbierto(id);
+    setSeguimiento(null);
+    try {
+      setSeguimiento(
+        await pedir<Seguimiento>(
+          `/api/v1/portal/mi/encargos/${id}/seguimiento`,
+          sesion.token,
+        ),
+      );
+    } catch (error) {
+      setFallo(
+        error instanceof Error ? error.message : t("portalEncargos.fallo"),
+      );
+    }
+  }
+
+  // Con la localización del tenant, como el resto del producto.
+  const cuando = (valor: string | null) => (valor ? fechaHora(valor) : "");
+
+  return (
+    <section className="card mb-4 p-4" aria-labelledby="portal-encargos">
+      <h2
+        id="portal-encargos"
+        className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint"
+      >
+        {t("portalEncargos.titulo")}
+      </h2>
+      {fallo ? (
+        <p role="alert" className="text-dato text-danger">
+          {fallo.trim() || t("portalEncargos.fallo")}
+        </p>
+      ) : filas === null ? (
+        <p className="text-dato text-ink-faint">
+          {t("portalEncargos.cargando")}
+        </p>
+      ) : filas.length === 0 ? (
+        <p className="text-dato text-ink-faint">{t("portalEncargos.vacio")}</p>
+      ) : (
+        <ul className="lista-acotada space-y-2 pr-1">
+          {filas.map((e) => (
+            <li key={e.id} className="rounded-lg bg-paper-sunk px-3 py-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-titulin text-ink">
+                  {e.referencia}
+                  {e.referencia_transportista
+                    ? ` · ${e.referencia_transportista}`
+                    : ""}
+                </p>
+                <button
+                  type="button"
+                  className="text-dato text-ink-faint hover:text-ink"
+                  aria-expanded={abierto === e.id}
+                  onClick={() => void ver(e.id)}
+                >
+                  {abierto === e.id
+                    ? t("portalEncargos.ocultar")
+                    : t("portalEncargos.verSeguimiento")}
+                </button>
+              </div>
+              <p className="text-rotulo text-ink-faint">
+                {e.estado}
+                {e.prometido_para
+                  ? ` · ${t("portalEncargos.prometido", { cuando: cuando(e.prometido_para) })}`
+                  : ""}
+              </p>
+              {e.va_tarde ? (
+                <p className="text-rotulo text-warning">
+                  {t("portalEncargos.vaTarde")}
+                </p>
+              ) : null}
+              {abierto === e.id ? (
+                <div role="status" className="mt-2">
+                  {seguimiento === null ? (
+                    <p className="text-rotulo text-ink-faint">
+                      {t("portalEncargos.cargando")}
+                    </p>
+                  ) : (
+                    <>
+                      {seguimiento.hitos.length === 0 ? (
+                        <p className="text-rotulo text-ink-faint">
+                          {t("portalEncargos.sinHitos")}
+                        </p>
+                      ) : (
+                        <ol className="space-y-1">
+                          {seguimiento.hitos.map((h, i) => (
+                            <li
+                              key={`${h.at}-${i}`}
+                              className="text-rotulo text-ink"
+                            >
+                              {cuando(h.at)} · {h.descripcion || h.estado}
+                              {h.lugar ? ` · ${h.lugar}` : ""}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                      {seguimiento.incidencias.map((inc, i) => (
+                        <p
+                          key={`${inc.tipo}-${i}`}
+                          className={
+                            inc.abierta
+                              ? "text-rotulo text-warning"
+                              : "text-rotulo text-ink-faint"
+                          }
+                        >
+                          {inc.abierta
+                            ? t("portalEncargos.incidenciaAbierta", {
+                                tipo: inc.descripcion || inc.tipo,
+                              })
+                            : t("portalEncargos.incidenciaCerrada", {
+                                tipo: inc.descripcion || inc.tipo,
+                              })}
+                        </p>
+                      ))}
+                      {seguimiento.sin_novedad ? (
+                        <p className="text-rotulo text-warning">
+                          {t("portalEncargos.sinNovedad")}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
               ) : null}
             </li>
           ))}

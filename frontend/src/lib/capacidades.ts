@@ -105,6 +105,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // conectores instalables, los trabajos largos y el progreso de convivencia
   // con el CRM heredado.
   "procesos": [
+    // La ficha de una conexión: «Fijar/Rotar credenciales» con los campos que
+    // pide su tipo de autenticación, cuándo y quién (nunca el valor), y
+    // «Probar la conexión». Verificado en el navegador el 09-11-2026 contra un
+    // doble local: token fijado, versión 1 por quien pulsó, prueba en verde.
+    "CRM-00.01.04.08",
     // El código del tenant: «Extensiones» (alta, versiones que no se pisan,
     // probar, activar y volver atrás, ejecuciones y cómo va), «Endpoints
     // propios» y «Firmantes de confianza» para las de terceros.
@@ -235,6 +240,15 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-06.01.02.09",
     "CRM-06.01.02.13",
     "CRM-06.01.02.14",
+    // La ficha del sobre ofrece enviar, recordar, cancelar y archivar el
+    // firmado según su estado, con lo que contesta el proveedor a la vista.
+    // Verificado en el navegador el 09-11-2026 contra un doble local: enviado
+    // (con su id externo guardado), recordado y cancelado con motivo.
+    "CRM-06.01.02.11",
+    // Los encargos en el portal del cliente («Vuestros envíos y encargos», en
+    // /portal), con su seguimiento y sin lo interno. Verificado el 09-11-2026:
+    // el cliente ve los de su cuenta y uno de otra da 404 con su token.
+    "CRM-00.04.05.06",
     // Proveedores de servicio con «Regla de elección de proveedor» y «A qué
     // proveedor iría este encargo»; y los buzones conectados, que registran solos lo
     // que llega por correo. Verificado pulsando el 05-11-2026.
@@ -336,6 +350,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     // Las actividades cuelgan de cualquier objeto: la lista enseña de cuál, y
     // la ficha delega, programa el recordatorio y la completa. Verificado pulsando el 05-11-2026.
     "CRM-01.02.01.03",
+    // «Crear reunión en línea» en la ficha de una actividad de reunión y en la
+    // de la cuenta: crea la sala en la suite del tenant y guarda el enlace.
+    // Verificado en el navegador el 09-11-2026 con una suite doble local (sin
+    // suite, el botón sale deshabilitado con el motivo).
+    "CRM-06.01.03.10",
   ],
   // La oportunidad con su pipeline y sus etapas, los presupuestos con
   // versiones y vigencia, el motor de precios, los pedidos y su traspaso al
@@ -343,6 +362,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // producto, las metodologías de venta, la cola priorizada del comercial y
   // la papelera.
   "oportunidades": [
+    // «Duplicar la oportunidad con sus líneas» en el menú de la ficha: la
+    // copia sale con las dos líneas, 500 € y en la primera etapa, y el
+    // resultado enlaza a ella. Y «Duplicar» en una cuenta abre el alta con sus
+    // datos. Visto el 09-11-2026; el traspaso de cartera está en su pantalla.
+    "CRM-07.01.01.07",
     // «Qué hacer ahora con esta oportunidad», con las señales del negocio.
     "CRM-03.01.02.04",
     // La probabilidad de la etapa y la puesta a mano, las dos a la vez: saber
@@ -384,6 +408,15 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // normalizados, la trazabilidad de origen con sus campañas y toques, y las
   // cadencias con sus plantillas de correo.
   "leads": [
+    // Comprobado en el navegador el 09-11-2026: «Nuevo» con el correo de un
+    // candidato que ya estaba → el formulario enseña con quién coincide y en
+    // qué, y «Es otro, crearlo igual» lo crea. Por API, el 409 trae también
+    // si se miró entre los contactos del maestro.
+    "CRM-01.01.03.03",
+    // Casillas en la tabla de candidatos: «Actualizar un campo» a dos
+    // elegidos → «Actualizados 2 de 2»; «Borrar» pide volver a verificarse.
+    // Visto el 09-11-2026.
+    "CRM-00.02.01.11",
     // El motivo de descarte normalizado con su nota y su fecha de reciclaje:
     // el motivo agrupa —«precio»— y la nota dice cuál era el precio del otro.
     // La nota estaba en la tabla y no salía por la API.
@@ -408,6 +441,10 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-03.01.01.15",
   ],
   "prevision": [
+    // El panel «Por jerarquía» en la ficha del periodo, con el organigrama
+    // de los territorios o de mando, el total aparte y lo que queda fuera con
+    // su dueño. Visto el 09-11-2026 en 2026-T4.
+    "CRM-03.02.01.02",
     // El cierre del objetivo de un periodo, con su historial de reaperturas.
     "CRM-03.02.02.08",
     "CRM-03.01.01.12",

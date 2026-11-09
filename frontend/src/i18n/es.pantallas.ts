@@ -1031,6 +1031,29 @@ const pantallas = {
       "El dato está caducado: se enseña con su antigüedad en vez de como si acabara de llegar.",
   },
   estado: {
+    // Latencia p95/p99 por tipo de operación (CRM-08.01.01.01).
+    latencia: {
+      titulo: "Cuánto tarda cada tipo de operación",
+      ayuda:
+        "Percentil 95 y 99 de este mes, de la empresa que estás mirando, frente a su objetivo. El 95 dice cuánto espera casi todo el mundo; el 99, cuánto espera el que peor lo pasa.",
+      servicio: "Servicio",
+      todos: "Todos juntos",
+      operacion: "Operación",
+      peticiones: "Peticiones",
+      p95: "p95",
+      p99: "p99",
+      ms: "{{ms}} ms",
+      masDe: "más de {{ms}} ms",
+      objetivo: "(objetivo {{ms}} ms)",
+      pocas: "pocas para fiarse",
+      tipo: {
+        lectura: "Lectura",
+        escritura: "Escritura",
+        busqueda: "Búsqueda",
+        exportacion: "Exportación",
+        otra: "Otra",
+      },
+    },
     titulo: "Estado del servicio",
     entradilla:
       "Si el sistema va bien, y si no, qué parte. Lo dice el propio sistema " +
@@ -1072,6 +1095,7 @@ const pantallas = {
     observado: "{{ventanas}} de {{minimo}} ventanas observadas",
   },
   ficha: {
+    duplicar: "Duplicar",
     sinComentarios: "Todavía no ha escrito nadie",
     interno: "interno",
     editado: "editado",
@@ -1399,7 +1423,153 @@ const pantallas = {
     sinMotivo:
       "Se movió sin motivo escrito: así no se puede discutir en un comité.",
   },
+  // Lo que se hace con varias filas a la vez (CRM-00.02.01.11).
+  masivo: {
+    titulo: "Con los elegidos",
+    resultado: "Resultado del lote",
+    elegidos_one: "1 elegido",
+    elegidos_other: "{{count}} elegidos",
+    actualizarCampo: "Actualizar un campo",
+    borrar: "Borrar",
+    quitarSeleccion: "Desmarcar todos",
+    cerrar: "Cerrar",
+    queCampo: "Qué campo",
+    eligeCampo: "Elige un campo…",
+    aplicarA_one: "Aplicar a 1",
+    aplicarA_other: "Aplicar a {{count}}",
+    confirmarBorrado_one:
+      "Se manda 1 registro a la papelera. Si otro registro lo usa, no se borra y se dice.",
+    confirmarBorrado_other:
+      "Se mandan {{count}} registros a la papelera. Los que use otro registro no se borran, y se dice cuáles.",
+    borrarN_one: "Borrar 1",
+    borrarN_other: "Borrar {{count}}",
+    informeActualizado: "Actualizados {{hechos}} de {{total}}.",
+    informeBorrado: "A la papelera {{hechos}} de {{total}}.",
+    fallidos_one: "1 no se ha podido:",
+    fallidos_other: "{{count}} no se han podido:",
+    fila: "Fila {{fila}}",
+    noMostrados_one: "Y 1 más que no cabe aquí.",
+    noMostrados_other: "Y {{count}} más que no caben aquí.",
+    noSePudo: "No se ha podido hacer.",
+    verificate:
+      "Borrar en lote pide volver a verificar tu identidad. Hazlo desde tu perfil y vuelve.",
+  },
+  // Duplicar un registro desde su ficha (CRM-07.01.01.07).
+  duplicar: {
+    desde: "Copia de un registro: revisa los datos antes de guardar.",
+    sufijo: "(copia)",
+  },
+  // Importar con mapeo, simulación y reversión (CRM-07.01.01.08).
+  importar: {
+    titulo: "Importar datos",
+    entradilla:
+      "Sube un CSV, di a qué campo va cada columna, mira qué haría con cada fila y sólo entonces impórtalo. Una importación hecha se puede deshacer entera.",
+    paso1: "1 · El fichero",
+    queImportas: "Qué importas",
+    objetos: { cuenta: "Cuentas", contacto: "Contactos" },
+    fichero: "Fichero",
+    leido: "«{{fichero}}»: {{filas}} filas y {{columnas}} columnas.",
+    paso2: "2 · A qué campo va cada columna",
+    mapeoAyuda:
+      "Lo que se llama igual que un campo se propone solo. Los campos propios de tu empresa salen marcados; lo que dejes en «No importar» no se manda.",
+    columna: "Columna del fichero",
+    ejemplo: "Primera fila",
+    destino: "Va a",
+    destinoDe: "A qué campo va «{{columna}}»",
+    sinCabecera: "(sin cabecera)",
+    noImportar: "No importar",
+    campoPropio: "{{campo}} (propio)",
+    faltan: "Falta llevar alguna columna a: {{campos}}.",
+    completarExistentes:
+      "Completar las que ya existan (rellena huecos, no pisa lo que tienen)",
+    simular: "Simular",
+    importar: "Importar",
+    primeroSimula: "Simula antes de importar",
+    informeSimulado: "3 · Lo que haría (no se ha escrito nada)",
+    informeHecho: "Importado",
+    resumen:
+      "{{total}} filas: {{creados}} se crean, {{actualizados}} se completan, {{omitidos}} se omiten porque ya existen y {{fallidos}} fallan.",
+    sePuedeRevertir:
+      "Queda en el historial de abajo: si algo no era lo que esperabas, se revierte entera.",
+    porFila: "Fila a fila",
+    fila: "Fila",
+    nombre: "Nombre",
+    queHaria: "Qué hace",
+    motivo: "Por qué",
+    acciones: {
+      crear: "Crear",
+      actualizar: "Completar",
+      omitir: "Omitir",
+      falla: "Falla",
+    },
+    noMostrados: "Y {{cuantos}} fallos más que no caben en la respuesta.",
+    historial: "Importaciones hechas",
+    historialAyuda:
+      "Revertir manda a la papelera lo que creó y devuelve lo completado a como estaba. Si algo se ha tocado después, se avisa.",
+    sinHistorial: "Todavía no se ha importado nada.",
+    cuando: "Cuándo",
+    que: "Qué",
+    quien: "Quién",
+    resultado: "Resultado",
+    resultadoCorto:
+      "{{creados}} creados · {{actualizados}} completados · {{fallidos}} fallidos",
+    revertida: "Revertida el {{cuando}}",
+    revertir: "Revertir",
+    revertirTitulo: "Revertir «{{fichero}}»",
+    revertirPlan:
+      "Se mandarían a la papelera {{borrados}} y se devolverían a como estaban {{restaurados}}. {{ya}} ya no estaban.",
+    revertirConflictos:
+      "{{cuantos}} se han cambiado después de importarlos: revertirlos desharía ese trabajo.",
+    revertirForzar: "Revertirlos igualmente",
+    motivoRevertir: "Por qué se revierte",
+    confirmarRevertir: "Revertir la importación",
+  },
+  // El traspaso de la cartera de una persona a otra (CRM-07.01.01.07).
+  propiedad: {
+    titulo: "Traspasar cartera",
+    entradilla:
+      "Lo que lleva una persona —cuentas, contactos, actividades, leads y oportunidades— pasa a otra. Se simula antes y se confirma con un motivo.",
+    paso1: "1 · De quién y a quién",
+    de: "De",
+    a: "A",
+    elige: "Elige una persona…",
+    simular: "Simular el traspaso",
+    mismaPersona: "El origen y el destino son la misma persona.",
+    paso2: "2 · Lo que se movería",
+    servicio: "Dónde",
+    tipo: "Qué",
+    cuantos: "Cuántos",
+    servicios: { clientes: "Clientes", ventas: "Ventas" },
+    nada: "Nada que mover",
+    totalSimulado_one: "En total, 1 registro.",
+    totalSimulado_other: "En total, {{count}} registros.",
+    motivo: "Motivo del traspaso",
+    motivoEjemplo: "Baja de la persona, cambio de cartera…",
+    confirmar_one: "Traspasar 1 registro",
+    confirmar_other: "Traspasar {{count}} registros",
+    cambiaste: "Has cambiado la pareja: vuelve a simular antes de confirmar.",
+    hecho: "Hecho: esto es lo que se ha movido",
+    noContesta: "No ha contestado",
+  },
   prevision: {
+    // Por jerarquía (CRM-03.02.01.02).
+    jerarquia: "Por jerarquía",
+    jerarquiaAyuda:
+      "Comercial, equipo, región y compañía. Cada rama suma lo de todo lo que cuelga de ella; el total de la compañía va aparte.",
+    organigramaDe: "Organigrama de",
+    porTerritorios: "los territorios",
+    porMando: "la jerarquía de mando",
+    niveles: {
+      comercial: "Comercial",
+      equipo: "Equipo",
+      region: "Región",
+      direccion: "Dirección",
+    },
+    compania: "Compañía: {{total}} en {{cuantas}} oportunidades.",
+    sinOrganigrama: "No hay organigrama del que colgar la previsión.",
+    fueraDelOrganigrama:
+      "{{importe}} no cuelga de ninguna rama. Es de estas personas:",
+    sinDueno: "Y {{importe}} es de oportunidades sin dueño.",
     cuantas: "{{cuantas}} oportunidades",
     total: "{{total}} · {{ponderado}} ponderado",
     ponderadoCorto: "{{valor}} ponderado",
@@ -1570,6 +1740,31 @@ const pantallas = {
     falta: "falta",
     eventos: "Qué ha pasado con el sobre",
     sinEventos: "Sin eventos todavía",
+    // Las acciones del sobre según su estado (CRM-06.01.02.11).
+    acciones: {
+      titulo: "Qué hacer con el sobre",
+      enviar: "Enviar a firmar",
+      recordar: "Recordar a quien le toca",
+      cancelar: "Cancelar el sobre",
+      archivar: "Archivar el firmado",
+      confirmarEnvio:
+        "Al cliente le llega un correo y no se puede deshacer. ¿Lo mandamos?",
+      siEnviar: "Sí, enviarlo",
+      siCancelar: "Cancelar el sobre",
+      volver: "Volver",
+      motivo: "Por qué se cancela",
+      documentoFirmado: "Documento firmado (identificador)",
+      certificado: "Certificado (opcional)",
+      sello: "Sello de tiempo (opcional)",
+      enviado:
+        "Enviado al proveedor: ahora está «{{estado}}» y vale hasta el {{caduca}}.",
+      recordado: "Recordado a: {{quienes}}.",
+      nadieQueRecordar: "No hay nadie a quien le toque firmar ahora.",
+      cancelado: "Sobre cancelado.",
+      archivado: "Firmado archivado y enlazado a {{n}} registro(s).",
+      archivadoSinOrigen:
+        "Firmado archivado, pero el sobre no cuelga de ningún registro: no saldrá en ninguna ficha.",
+    },
   },
   plataforma: {
     titulo: "Plataforma y cumplimiento",
@@ -1587,6 +1782,28 @@ const pantallas = {
     volcarSiem: "Volcar al SIEM",
     filtroAccion: "Filtrar por acción",
     filtroObjeto: "Filtrar por objeto",
+    filtroPeticion: "Identificador de petición",
+    auditoriaDonde: "De qué servicio",
+    auditoriaTodos: "Todos los servicios",
+    auditoriaSinRespuesta:
+      "No han contestado: {{servicios}}. La lista no los incluye.",
+    entrarComo: {
+      titulo: "Entrar como otra persona, por soporte",
+      ayuda:
+        "Entras con la sesión de una persona de la empresa que estás mirando en la barra, para ver lo que ella ve. El motivo queda en la auditoría del cliente y la sesión caduca sola. Arriba verás siempre de quién es y por qué, y desde ahí vuelves a la tuya.",
+      persona: "Persona",
+      elige: "Elige a quién…",
+      motivo: "Motivo",
+      motivoEjemplo: "Ticket 4312: no puede cerrar una oportunidad",
+      motivoCorto:
+        "El motivo tiene que tener al menos diez caracteres: es lo que hace defendible el acceso.",
+      entrar: "Entrar como esta persona",
+      reverificar:
+        "Antes tienes que volver a verificar tu identidad con tu segundo factor (Identidad y seguridad).",
+      sinFactor:
+        "Para entrar como otra persona hace falta segundo factor, y tu cuenta no tiene ninguno configurado.",
+    },
+    filtrarPorPeticion: "Ver todo lo que escribió esta petición",
     enNombreDe: "en nombre de otra persona",
     sinApuntes: "Sin apuntes con ese filtro",
     anomalias: "Lo que se salió de lo normal",
@@ -1766,6 +1983,26 @@ const pantallas = {
         "Cuentan como segundo factor y no protegen como una passkey.",
       todos: "Todo el mundo tiene segundo factor",
       todosDetalle: "No hay nadie con quien hablar.",
+      // MFA obligatoria por rol (CRM-00.05.01.06).
+      obligatoriaParaTodos:
+        "La instalación exige segundo factor a todo el mundo, tenga el rol que tenga.",
+      seQuedanFuera_one:
+        "1 persona se quedaría fuera: se le exige segundo factor y todavía no lo tiene.",
+      seQuedanFuera_other:
+        "{{cuantas}} personas se quedarían fuera: se les exige segundo factor y todavía no lo tienen.",
+      seLeExige: "se le exige",
+      porRolTitulo: "A quién se le exige",
+      porRolAyuda:
+        "Elige los roles que tienen que entrar con segundo factor. A quien lleve alguno se le pedirá el código al entrar con contraseña; si aún no lo tiene configurado, no podrá entrar hasta hacerlo. Sin roles, manda el ajuste general de la instalación.",
+      porRolNinguno: "Ningún rol: no se exige por rol.",
+      anadirRol: "Añadir un rol…",
+      quitarRol: "Quitar {{rol}}",
+      guardar: "Guardar",
+      guardando: "Guardando…",
+      porRolGuardado:
+        "Guardado. Se aplica en la próxima entrada de cada persona.",
+      factoresQueCumplen:
+        "Cumplen una aplicación de códigos (TOTP) o una passkey; el SMS y el correo cuentan si la empresa los tiene encendidos. No hay notificación push.",
     },
     certificados: {
       titulo: "Certificados del proveedor de identidad",
@@ -1845,6 +2082,25 @@ const pantallas = {
     quitarDeVerdad: "Quitar el módulo",
   },
   suite: {
+    // Alta del tenant en cascada (CRM-00.01.07.02).
+    alta: {
+      titulo: "Alta de la empresa en las herramientas",
+      ayuda:
+        "Da de alta a esta empresa en cada herramienta conectada y enseña en qué quedó en cada una. Sólo el alta de la empresa: las personas y los departamentos van por su lado.",
+      boton: "Dar de alta en las herramientas",
+      enviando: "Dando de alta…",
+      resumen:
+        "De {{total}} herramientas, {{aplicadas}} la tienen dada de alta y {{fallidas}} han fallado.",
+      ninguna: "No hay ninguna herramienta conectada que gobierne la empresa.",
+      inactiva: "herramienta apagada",
+      estado: {
+        sin_alta: "Sin alta",
+        pendiente: "Pendiente",
+        aplicado: "Dada de alta",
+        fallido: "Ha fallado: se reintentará",
+        cuarentena: "Apartada: necesita una persona",
+      },
+    },
     organigrama:
       "Áreas del cliente, definidas una vez y compartidas por las tres herramientas ({{cuantas}})",
     cuelgaDe: "Cuelga de {{de}}",
@@ -2115,6 +2371,21 @@ const pantallas = {
       "Falla en {{entrada}}: pide {{operador}} {{esperado}} y vale {{encontrado}}",
     vacio: "(vacío)",
     cumpleTodas: "Cumple todas sus condiciones",
+  },
+  // Los encargos en el portal del cliente (CRM-00.04.05.06).
+  portalEncargos: {
+    titulo: "Vuestros envíos y encargos",
+    cargando: "Cargando…",
+    vacio: "No consta ningún encargo a nombre de tu empresa.",
+    fallo: "No se ha podido cargar",
+    verSeguimiento: "Ver por dónde va",
+    ocultar: "Ocultar",
+    prometido: "previsto para el {{cuando}}",
+    vaTarde: "Va con retraso sobre lo previsto.",
+    sinHitos: "Todavía no hay novedades de este encargo.",
+    incidenciaAbierta: "Incidencia abierta: {{tipo}}",
+    incidenciaCerrada: "Incidencia resuelta: {{tipo}}",
+    sinNovedad: "Hace tiempo que no hay novedades: lo estamos mirando.",
   },
 };
 

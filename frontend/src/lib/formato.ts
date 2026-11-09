@@ -194,6 +194,7 @@ const CON_TILDE: Record<string, string> = {
   tardio: "tardío",
   decidio: "decidió",
   acerto: "acertó",
+  adopcion: "adopción",
   eliminacion: "eliminación",
   maxima: "máxima",
   mayoria: "mayoría",

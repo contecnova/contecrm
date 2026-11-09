@@ -80,7 +80,11 @@ router_leads = APIRouter(prefix="/leads", tags=["leads"])
     summary="Capturar un lead",
     description=(
         "El reloj del SLA de primera respuesta empieza **al entrar**, no al "
-        "asignarlo: quien rellenó el formulario espera desde que lo envió."
+        "asignarlo: quien rellenó el formulario espera desde que lo envió.\n\n"
+        "Comprueba duplicados **antes** de crear, contra los leads y contra los "
+        "contactos del maestro: mismo correo, mismo teléfono o empresa y nombre "
+        "casi iguales responde 409 con los candidatos y cómo continuar. Con "
+        "`forzar=true` se crea igualmente y la decisión queda auditada."
     ),
 )
 def crear_lead(datos: CrearLead, uow: UowDep) -> Any:
@@ -696,6 +700,46 @@ def actualizar_oportunidad(oportunidad_id: UUID, datos: ActualizarOportunidad, u
         uow, oportunidad_id, datos.model_dump(exclude_unset=True, exclude_none=True)
     )
     return _una_oportunidad(uow.db, oportunidad)
+
+
+class DuplicarOportunidad(BaseModel):
+    nombre: str | None = Field(
+        None, max_length=300, description="El de la copia. Si se omite, «… (copia)»"
+    )
+
+
+@router_oportunidades.post(
+    "/{oportunidad_id}/duplicar",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Duplicar la oportunidad con sus líneas",
+    description=(
+        "Copia lo que se ofertó —cuenta, contacto, embudo, moneda, fecha "
+        "prevista y **cada línea** con su precio y su coste—. La copia empieza "
+        "en la primera etapa y abierta: lo que dice cómo le fue a la original "
+        "no se copia, o la previsión contaría dos veces lo que se cerró una."
+    ),
+)
+def duplicar_oportunidad(oportunidad_id: UUID, datos: DuplicarOportunidad, uow: UowDep) -> Any:
+    copia = svc.duplicar_oportunidad(uow, oportunidad_id, nombre=datos.nombre)
+    # Lo que contesta es dónde está la copia, no la copia entera: quien la pide
+    # desde la ficha quiere ir a ella, y `oportunidad_id` es lo que la pantalla
+    # convierte en enlace.
+    from sqlalchemy import func
+
+    from services.sales.modelos import LineaOportunidad
+
+    lineas = uow.db.execute(
+        select(func.count()).where(LineaOportunidad.oportunidad_id == copia.id)
+    ).scalar_one()
+    return {
+        "oportunidad_id": str(copia.id),
+        "nombre": copia.nombre,
+        "importe": str(copia.importe),
+        "moneda": copia.moneda,
+        "lineas_copiadas": int(lineas),
+    }
 
 
 @router_oportunidades.post(
@@ -1420,7 +1464,7 @@ from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
 
 from services.sales.masivo import RECURSOS as _RECURSOS_MASIVOS  # noqa: E402
 
-routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
+# Los routers del lote se montan al final del módulo: ver allí.
 
 # Un trabajo de `sales` guarda el lote de leads u oportunidades que se importó,
 # así que verlo pide el mismo permiso que escribirlos, no uno de lectura.
@@ -1719,7 +1763,6 @@ ROUTERS = [
     router_documental,
     router_trabajos,
     router_captura,
-    *routers_masivos,
     *ROUTERS_FORECAST,
 ]
 
@@ -1822,4 +1865,30 @@ admite_parametros_abiertos(
 # marca, la ruta contesta 422 a sus propios filtros.
 admite_parametros_abiertos(
     listar_pipelines, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+
+
+# ── Lotes (CRM-00.02.01.11) ───────────────────────────────────────────────
+# Al final, y no junto a su importación: los lotes toman «actualizar» y
+# «borrar» de las fichas genéricas montadas arriba, y la lista cerrada de
+# operaciones que publica el contrato sale de ahí. Montados antes, el contrato
+# decía que sólo se podía crear y la pantalla no ofrecía nada más.
+routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
+ROUTERS.extend(routers_masivos)
+
+
+# ── Traspaso de propiedad (CRM-07.01.01.07) ───────────────────────────────
+# La mitad de ventas del traspaso: leads y oportunidades. La de cuentas,
+# contactos y actividades la publica `party` con la misma fábrica, y la pantalla
+# llama a las dos. Las fotos de previsión NO se mueven: son lo que se vio en su
+# día, y reescribirles el dueño cambiaría la historia.
+from crmcore.http.propiedad_router import crear_router_transferencia  # noqa: E402
+
+ROUTERS.append(
+    crear_router_transferencia(
+        prefijo="/sales-admin",
+        modelos=[Lead, Oportunidad],
+        permiso="opportunity:admin",
+        que="leads y oportunidades",
+    )
 )

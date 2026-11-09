@@ -467,14 +467,19 @@ def crear_reunion(
             error_code="suite.sin_proveedor_de_reuniones",
         )
 
+    cuerpo = {
+        "asunto": asunto[:300],
+        "inicio": inicio.isoformat(),
+        "fin": fin.isoformat(),
+        "asistentes": sorted({a.strip().lower() for a in asistentes if a.strip()}),
+    }
     return {
         "endpoint": endpoint,
-        "cuerpo": {
-            "asunto": asunto[:300],
-            "inicio": inicio.isoformat(),
-            "fin": fin.isoformat(),
-            "asistentes": sorted({a.strip().lower() for a in asistentes if a.strip()}),
-        },
+        "cuerpo": cuerpo,
+        # Lo que se le manda AL PROVEEDOR, en su forma. Sale de la plantilla
+        # del perfil y no de código: Teams pide `subject` y `startDateTime`,
+        # Google `summary` y `start.dateTime`, y eso es configuración.
+        "operacion": _operacion_de_reunion(reuniones, cuerpo),
         "el_enlace_es_una_credencial": True,
         "donde_puede_ir": ["la cita del calendario", "la ficha del registro"],
         "donde_no": [
@@ -482,6 +487,102 @@ def crear_reunion(
             "una página pública o un enlace compartido sin caducidad",
         ],
     }
+
+
+# Lo que se le puede pedir a la plantilla del cuerpo. `{{asistentes}}` no es
+# texto: es la lista entera, construida con la plantilla de un asistente.
+MARCA_ASISTENTES = "{{asistentes}}"
+
+
+def _operacion_de_reunion(reuniones: dict[str, Any], cuerpo: dict[str, Any]) -> dict[str, Any]:
+    """La llamada declarada al proveedor, con el cuerpo ya en su forma.
+
+    El perfil declara, dentro de `recursos.reuniones`:
+
+    * `endpoint` y `metodo` (POST si no dice nada), y `query` si la pide;
+    * `cuerpo`: la plantilla del cuerpo, con `{{asunto}}`, `{{inicio}}`,
+      `{{fin}}` y `{{organizador}}`; un valor que sea exactamente
+      `{{asistentes}}` se sustituye por la lista;
+    * `asistente`: la plantilla de cada asistente (`{"email": "{{email}}"}` si
+      no dice nada);
+    * `campos`: de dónde sale en la respuesta el `enlace` y el `id_externo`.
+
+    Sin plantilla de cuerpo se manda el cuerpo neutro tal cual: sirve para un
+    proveedor propio que ya habla nuestra forma, y no se inventa la de nadie.
+    """
+    from services.integration.conector import _renderizar
+
+    plantilla_asistente = reuniones.get("asistente") or {"email": "{{email}}"}
+    asistentes = [_renderizar(plantilla_asistente, {"email": a}) for a in cuerpo["asistentes"]]
+
+    def _poner(valor: Any) -> Any:
+        if valor == MARCA_ASISTENTES:
+            return asistentes
+        if isinstance(valor, dict):
+            return {k: _poner(v) for k, v in valor.items()}
+        if isinstance(valor, list):
+            return [_poner(v) for v in valor]
+        return valor
+
+    plantilla_cuerpo = reuniones.get("cuerpo")
+    return {
+        "metodo": str(reuniones.get("metodo") or "POST").upper(),
+        "ruta": str(reuniones.get("endpoint") or ""),
+        "query": dict(reuniones.get("query") or {}),
+        "cuerpo": _poner(plantilla_cuerpo) if plantilla_cuerpo else dict(cuerpo),
+        "mapeo": dict(reuniones.get("campos") or {}),
+    }
+
+
+def pedir_reunion(
+    *,
+    preparada: dict[str, Any],
+    perfil_config: dict[str, Any],
+    secretos: dict[str, str],
+    tenant_id: str,
+    organizador: str = "",
+) -> dict[str, Any]:
+    """Crea la sala en el proveedor y devuelve su enlace.
+
+    Por el **conector declarativo de la casa**, el mismo que lee un ERP: la URL,
+    la autenticación y el mapeo de la respuesta salen del perfil. No hay un
+    cliente de Microsoft ni uno de Google.
+
+    Si el proveedor contesta sin enlace se dice, en vez de devolver una reunión
+    «creada» a la que no se puede entrar: es la sala huérfana de la que avisa
+    `crear_reunion`, sólo que además invisible.
+    """
+    import asyncio
+
+    from services.integration import conector
+
+    operacion = dict(preparada["operacion"])
+    ruta = str(operacion.get("ruta") or "")
+    config = dict(perfil_config)
+    # El endpoint puede venir entero (`https://graph…/onlineMeetings`) o
+    # relativo a `url_base`. Entero, la URL base ES él: pegarlo detrás de una
+    # base vacía daba «/https://…».
+    if ruta.lower().startswith(("http://", "https://")):
+        config["url_base"] = ruta
+        operacion["ruta"] = ""
+    # El servidor de tokens del perfil se llama `token_url`; el conector lo
+    # busca como `oauth_token_url`. Uno solo, el del perfil.
+    if config.get("token_url") and not config.get("oauth_token_url"):
+        config["oauth_token_url"] = config["token_url"]
+
+    parametros = {**preparada["cuerpo"], "organizador": organizador}
+    resultado = asyncio.run(
+        conector.ejecutar(config, operacion, parametros, secretos=secretos, tenant_id=tenant_id)
+    )
+    registro = next(iter(resultado.get("registros") or []), {}) or {}
+    enlace = str(registro.get("enlace") or "")
+    if not enlace:
+        raise ErrorValidacion(
+            "El proveedor ha contestado sin enlace a la sala. Revisa en el perfil de "
+            "reuniones de dónde sale el «enlace» de su respuesta (`campos`).",
+            error_code="suite.reunion_sin_enlace",
+        )
+    return {"enlace": enlace, "id_externo": str(registro.get("id_externo") or "")}
 
 
 def enlace_para(*, enlace: str, destino: str) -> dict[str, Any]:

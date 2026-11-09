@@ -182,8 +182,13 @@ def consultar(
     desde: datetime | None = None,
     hasta: datetime | None = None,
     limite: int = 100,
+    request_id: str = "",
 ) -> list[dict[str, Any]]:
     """Consulta filtrable del audit trail (CRM-00.05.04.05).
+
+    Y por **identificador de petición** (CRM-00.02.04.07): es el que el usuario
+    copia de la pantalla de error, y con él se encuentra lo que esa petición
+    escribió sin tener que adivinar acción, objeto ni hora.
 
     Desde la propia plataforma y no exportando a otro sitio: la pregunta «¿quién
     tocó esta cuenta?» se hace mientras se mira la cuenta, y obligar a salir a
@@ -200,6 +205,8 @@ def consultar(
         consulta = consulta.where(ApunteAuditoria.created_at >= desde)
     if hasta:
         consulta = consulta.where(ApunteAuditoria.created_at < hasta)
+    if request_id:
+        consulta = consulta.where(ApunteAuditoria.request_id == request_id.strip())
 
     filas = (
         db.execute(consulta.order_by(ApunteAuditoria.secuencia.desc()).limit(limite))
@@ -218,6 +225,7 @@ def consultar(
             "origen": f.origen,
             "ip": f.ip,
             "motivo": f.motivo,
+            "request_id": f.request_id,
             "datos": f.datos,
         }
         for f in filas

@@ -212,6 +212,31 @@ def por_jerarquia(clave: str, datos: Jerarquia, db: DbDep, principal: Autenticad
 
 
 @router_forecast.get(
+    "/periodos/{clave}/organigrama",
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="Previsión por comercial, equipo, región y compañía, con el organigrama resuelto",
+    description=(
+        "Lo mismo que `POST …/jerarquia`, sin tener que mandar los nodos: el "
+        "árbol sale del **mapa de territorios** (`fuente=territorios`) o de la "
+        "**jerarquía de mando** replicada de identidad (`fuente=mando`). Cada "
+        "nodo suma lo de todo lo que cuelga de él; el total de la compañía va "
+        "aparte, y lo que no cuelga de ninguna rama sale como «fuera del "
+        "organigrama» con su importe."
+    ),
+)
+def por_organigrama(
+    clave: str,
+    db: DbDep,
+    principal: AutenticadoDep,
+    fuente: str = Query("territorios", pattern="^(territorios|mando)$"),
+    moneda: str = Query("", max_length=3),
+) -> Any:
+    return forecast.previsión_por_organigrama(
+        db, principal.tenant_id, periodo_clave=clave, fuente=fuente, moneda=moneda or None
+    )
+
+
+@router_forecast.get(
     "/periodos/{clave}/desglose",
     dependencies=[Depends(exige_permiso("opportunity:read"))],
     summary="Previsión por producto, familia o tipo de ingreso",

@@ -364,6 +364,13 @@ async def slo_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
     cabeceras = proxy.cabeceras_de_identidad(
         principal, get_settings().secret_key.get_secret_value()
     )
+    # La empresa que se mira, también aquí (CRM-08.01.01.01): quien opera la
+    # plataforma elige un cliente en la barra y el SLO tiene que ser de ése.
+    from crmcore.http.deps import H_TENANT_MIRADO
+
+    mirado = request.headers.get(H_TENANT_MIRADO)
+    if mirado:
+        cabeceras = {**cabeceras, H_TENANT_MIRADO: mirado}
 
     tier = "estandar"
     tier_conocido = False
@@ -399,6 +406,7 @@ async def slo_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
             }
 
     presupuestos = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+    operaciones = _latencias_de_la_instalacion(presupuestos)
     medibles = [p for p in presupuestos if p.get("medible")]
     agotados = [p["servicio"] for p in medibles if p.get("agotado")]
     sin_respuesta = [p["servicio"] for p in presupuestos if not p.get("medible")]
@@ -410,6 +418,10 @@ async def slo_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
         "tier_confirmado": tier_conocido,
         "consultado_at": datetime.now(timezone.utc).isoformat(),
         "servicios": presupuestos,
+        # p95 y p99 por tipo de operación, sumando todos los servicios
+        # (CRM-08.01.01.01). Es lo que nota el cliente: no le importa qué
+        # servicio atendió su búsqueda, sino cuánto tardó.
+        "operaciones": operaciones,
         "servicios_medibles": len(medibles),
         "sin_medicion": sin_respuesta,
         "presupuesto_agotado_en": agotados,
@@ -421,6 +433,54 @@ async def slo_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
             else "Queda margen en todos los servicios medibles: se puede seguir desplegando"
         ),
     }
+
+
+def _latencias_de_la_instalacion(presupuestos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Junta los cubos de latencia de cada servicio y recalcula p95 y p99.
+
+    **Un percentil no se promedia**: la media de los p95 de catorce servicios
+    no es el p95 de nada. Se suman los cubos —que sí se pueden sumar— y se
+    calcula sobre el total. Sólo se suman los de servicios con los MISMOS
+    límites de cubo: dos despliegues con cubos distintos no se mezclan, se
+    deja fuera al distinto y se dice.
+    """
+    from crmcore.obs import slo
+
+    limites: list[int] | None = None
+    por_op: dict[str, list[int]] = {}
+    objetivos: dict[str, dict[str, int]] = {}
+    # Los objetivos, primero los de `tenancy`: es donde los escribe la consola
+    # de ajustes, y los demás servicios los reciben por el bus. Si la réplica
+    # va con retraso —o no hay bus, como en la pila local—, el de la consola es
+    # el que alguien acaba de decidir.
+    presupuestos = sorted(presupuestos, key=lambda p: p.get("servicio") != "tenancy")
+    for p in presupuestos:
+        cubos = p.get("cubos_ms")
+        if not isinstance(cubos, list) or not p.get("operaciones"):
+            continue
+        if limites is None:
+            limites = [int(c) for c in cubos]
+        elif [int(c) for c in cubos] != limites:
+            continue
+        for fila in p["operaciones"]:
+            op = str(fila.get("operacion") or "otra")
+            conteos = [int(n) for n in (fila.get("cubos") or [])]
+            if len(conteos) != len(limites) + 1:
+                continue
+            acumulado = por_op.setdefault(op, [0] * (len(limites) + 1))
+            por_op[op] = [a + b for a, b in zip(acumulado, conteos, strict=True)]
+            if fila.get("objetivo_p95_ms") is not None or fila.get("objetivo_p99_ms") is not None:
+                objetivos.setdefault(
+                    op,
+                    {
+                        k: int(fila[f"objetivo_{k}"])
+                        for k in ("p95_ms", "p99_ms")
+                        if fila.get(f"objetivo_{k}") is not None
+                    },
+                )
+    if limites is None:
+        return []
+    return slo.resumen_por_operacion(por_op, objetivos, limites)
 
 
 @router.get(
@@ -1451,13 +1511,24 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
             anomalias.frenar(tenant, motivo=veredicto["porque"])
 
     s = get_settings()
+    from crmcore.tenancy.context import contexto_actual
+
+    # **El identificador de la petición viaja al servicio** (CRM-00.02.04.07).
+    # No viajaba: el gateway ponía el suyo en la respuesta, el servicio
+    # generaba otro para su log y su audit trail, y el navegador recibía los
+    # dos. El que el usuario copiaba de la pantalla de error no aparecía en
+    # ningún apunte, que es justo para lo que se copia. Medido el 09-11-2026.
+    cabeceras_entrantes = dict(request.headers)
+    rid = contexto_actual().request_id
+    if rid:
+        cabeceras_entrantes["x-request-id"] = rid
     respuesta = await proxy.reenviar(
         _cliente,
         url_base=destino.url_base,
         metodo=request.method,
         ruta=ruta_completa,
         query=str(request.url.query or ""),
-        cabeceras=dict(request.headers),
+        cabeceras=cabeceras_entrantes,
         cuerpo=await request.body(),
         identidad=proxy.cabeceras_de_identidad(principal, s.secret_key.get_secret_value()),
         timeout_s=s.http_interno_timeout_s,
@@ -1485,7 +1556,11 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
         headers={
             k: v
             for k, v in respuesta.headers.items()
-            if k.lower() not in ("content-length", "transfer-encoding", "connection")
+            # `x-request-id` lo pone el middleware del gateway, y es el mismo
+            # que se le ha mandado al servicio: copiarlo también del servicio
+            # daría la cabecera dos veces.
+            if k.lower()
+            not in ("content-length", "transfer-encoding", "connection", "x-request-id")
         },
         media_type=respuesta.headers.get("content-type"),
     )

@@ -188,6 +188,11 @@ class PlanImportacion:
     # como desconocidas y el importador pierde en silencio justo los campos que
     # el cliente añadió porque le importaban.
     tenant_id: Any = None
+    # Las columnas de serie que el plan sabe leer, en el orden en que se
+    # enseñan al mapear un fichero. Las obligatorias van aparte, arriba. Sin
+    # esta lista, la pantalla de importar no podía ofrecer a qué campo llevar
+    # cada columna y había que acertar el nombre exacto en la cabecera del CSV.
+    columnas: tuple[str, ...] = ()
 
 
 def importar(
@@ -198,12 +203,18 @@ def importar(
     simular: bool = True,
     actualizar_existentes: bool = False,
     tope: int | None = None,
+    registro: list[dict[str, Any]] | None = None,
 ) -> Informe:
     """Importa filas según el plan del objeto.
 
     **`simular=True` por defecto**, y es deliberado: la operación destructiva
     tiene que pedirse a propósito. Quien llama por error a este endpoint con un
     fichero de prueba recibe un informe, no un maestro de clientes contaminado.
+
+    Con `registro` (una lista), apunta en ella cada registro creado y cada
+    actualizado con su foto de antes y de después: es lo que permite revertir
+    la importación entera (`crmcore.datos.importaciones`). Las filas que fallan
+    no se apuntan, porque no dejaron nada.
     """
     from crmcore.config import get_settings
     from crmcore.errors import ErrorValidacion
@@ -246,6 +257,20 @@ def importar(
 
     for indice, fila in enumerate(filas, start=1):
         errores = plan.validar(fila)
+        if not errores and fila.get("campos") and plan.tenant_id is not None:
+            # Los campos propios también se validan al simular: si sólo se
+            # validaran al escribir, la simulación diría «crear» de filas que
+            # la carga de verdad rechazaría, y el informe previo dejaría de ser
+            # una previsión.
+            from crmcore import metamodelo
+
+            try:
+                metamodelo.validar(db, plan.tenant_id, plan.objeto, fila["campos"])
+            except ErrorValidacion as exc:
+                errores = [
+                    f"{e.get('campo', '')}: {e.get('mensaje', '')}".strip(": ")
+                    for e in (exc.errores or [])
+                ] or [exc.mensaje]
         if errores:
             informe.anotar_error(indice, "validacion", {"errores": errores})
             continue
@@ -276,16 +301,29 @@ def importar(
         # anteriores, y el informe seguía contándolas como creadas.
         punto = db.begin_nested()
         try:
+            from crmcore.datos.importaciones import foto
+
+            antes = foto(existente) if existente is not None and registro is not None else None
             if existente is not None:
-                plan.actualizar(db, existente, fila)
+                tocado = plan.actualizar(db, existente, fila) or existente
                 informe.actualizados += 1
             else:
-                plan.crear(db, fila)
+                tocado = plan.crear(db, fila)
                 informe.creados += 1
             # Un volcado por fila: así una fila mala falla sola y no arrastra a
             # las 9.999 buenas del lote.
             db.flush()
             punto.commit()
+            if registro is not None and tocado is not None and hasattr(tocado, "id"):
+                apunte: dict[str, Any] = {
+                    "id": str(tocado.id),
+                    "accion": "actualizar" if existente is not None else "crear",
+                    "fila": indice,
+                    "despues": foto(tocado),
+                }
+                if antes is not None:
+                    apunte["antes"] = antes
+                registro.append(apunte)
         except Exception as exc:  # noqa: BLE001 — una fila mala no tumba la carga
             # `rollback()` SIEMPRE, no sólo si «sigue activo»: cuando el fallo
             # es de la base, SQLAlchemy desactiva el savepoint y aun así exige

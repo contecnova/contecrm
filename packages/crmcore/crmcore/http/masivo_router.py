@@ -31,7 +31,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Query, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 from sqlalchemy.orm import Session
 
 from crmcore.datos.masivas import Informe
@@ -74,18 +74,35 @@ class RecursoMasivo:
     # servicio no ofrece `upsert`, y se dice en el error en vez de hacer un alta
     # y llamarlo actualización.
     buscar: Callable[[Session, dict[str, Any]], UUID | None] | None = None
+    # La colección con la que el resto de la API —y el front— llama a este
+    # recurso: `/accounts` y no `/cuentas`. El lote se monta **también** ahí,
+    # porque el front sólo conoce la colección de su listado y no tenía cómo
+    # saber que el lote de `/accounts` vivía en `/cuentas/masivo`: no lo
+    # llamaba nunca.
+    coleccion: str = ""
+    # El objeto de la ficha genérica (`montar_ficha`) del que se toman
+    # `actualizar` y `borrar` cuando el recurso no declara los suyos. Así el
+    # lote hace exactamente lo que hace el PATCH o el DELETE de un registro.
+    ficha: str = ""
 
     @property
     def tipo_trabajo(self) -> str:
         return f"{self.recurso}.masivo"
 
+    def funcion(self, operacion: str) -> Any:
+        """La función de la operación: la declarada o, si no, la de la ficha."""
+        propia = {"crear": self.crear, "actualizar": self.actualizar, "borrar": self.borrar}.get(
+            operacion
+        )
+        if propia is not None or not self.ficha or operacion not in ("actualizar", "borrar"):
+            return propia
+        from crmcore.http.listados import operacion_de_ficha
+
+        return operacion_de_ficha(self.ficha, operacion)
+
     def admite(self, operacion: str) -> bool:
-        if operacion == "crear":
-            return self.crear is not None
-        if operacion == "actualizar":
-            return self.actualizar is not None
-        if operacion == "borrar":
-            return self.borrar is not None
+        if operacion in ("crear", "actualizar", "borrar"):
+            return self.funcion(operacion) is not None
         if operacion == "upsert":
             return self.buscar is not None and self.crear is not None
         return False
@@ -155,12 +172,14 @@ def aplicar(
                 recurso.crear(uow, elemento)
                 informe.creados += 1
             elif operacion == "actualizar":
-                assert recurso.actualizar is not None
-                recurso.actualizar(uow, _id_de(elemento, fila), campos)
+                actualizar = recurso.funcion("actualizar")
+                assert actualizar is not None
+                actualizar(uow, _id_de(elemento, fila), campos)
                 informe.actualizados += 1
             elif operacion == "borrar":
-                assert recurso.borrar is not None
-                recurso.borrar(uow, _id_de(elemento, fila))
+                borrar = recurso.funcion("borrar")
+                assert borrar is not None
+                borrar(uow, _id_de(elemento, fila))
                 informe.borrados += 1
             elif operacion == "upsert":
                 assert recurso.buscar is not None and recurso.crear is not None
@@ -248,7 +267,13 @@ def registrar_recursos(recursos: tuple[RecursoMasivo, ...] | list[RecursoMasivo]
 
 
 def crear_router_masivo(recurso: RecursoMasivo) -> APIRouter:
-    """Monta `POST /<recurso>/masivo`."""
+    """Monta `POST /<recurso>/masivo`, y también `POST /<coleccion>/masivo`.
+
+    **Se llama después de montar las fichas.** Las operaciones que el recurso
+    toma de su ficha (`ficha=`) tienen que estar ya apuntadas, porque de ellas
+    sale la lista cerrada de operaciones que publica el contrato: la pantalla la
+    lee para ofrecer sólo lo que el servidor va a aceptar.
+    """
     from crmcore.datos.trabajos import ejecutor_de
 
     if ejecutor_de(recurso.tipo_trabajo) is None:
@@ -261,11 +286,23 @@ def crear_router_masivo(recurso: RecursoMasivo) -> APIRouter:
 
     router = APIRouter(tags=["masivo"])
 
-    @router.post(
-        f"/{recurso.recurso}/masivo",
-        summary=f"Operación masiva sobre {recurso.recurso}",
-        status_code=status.HTTP_207_MULTI_STATUS,
+    # La lista cerrada de lo que este recurso admite, en el contrato. Con un
+    # texto libre la pantalla no podía saber si ofrecer «Borrar» y lo
+    # descubría con un 422 después de que alguien lo pulsara.
+    #
+    # Se publica como `enum` del esquema y no como tipo cerrado: validarlo en
+    # la entrada contestaría el 422 genérico de «no es uno de los valores» y se
+    # perdería el de abajo, que dice cuáles sí admite este recurso.
+    admitidas = tuple(o for o in OPERACIONES if recurso.admite(o))
+    Peticion = create_model(  # noqa: N806 - es un tipo
+        f"PeticionMasiva{recurso.recurso.title().replace('-', '').replace('_', '')}",
+        __base__=PeticionMasiva,
+        operacion=(
+            str,
+            Field(description=" | ".join(admitidas), json_schema_extra={"enum": list(admitidas)}),
+        ),
     )
+
     def masivo(
         principal: AutenticadoDep,
         uow: UowDep,
@@ -370,5 +407,31 @@ def crear_router_masivo(recurso: RecursoMasivo) -> APIRouter:
         # 207 incluso cuando todo va bien: el cliente que lee el informe lo lee
         # siempre igual, y no tiene que tratar dos formas distintas de éxito.
         return informe.a_dict()
+
+    # El cuerpo con su lista cerrada. Se asigna aquí y no en la firma porque
+    # este módulo usa anotaciones aplazadas: escrita arriba, a FastAPI le
+    # llegaría el texto «Peticion», un nombre local que no sabe resolver.
+    import inspect
+
+    firma = inspect.signature(masivo)
+    masivo.__signature__ = firma.replace(  # type: ignore[attr-defined]
+        parameters=[
+            p.replace(annotation=Peticion) if p.name == "peticion" else p
+            for p in firma.parameters.values()
+        ]
+    )
+    rutas = [f"/{recurso.recurso}/masivo"]
+    if recurso.coleccion and recurso.coleccion.strip("/") != recurso.recurso:
+        rutas.append(f"/{recurso.coleccion.strip('/')}/masivo")
+    for ruta in rutas:
+        router.post(
+            ruta,
+            summary=f"Operación masiva sobre {recurso.recurso}",
+            description=(
+                f"Admite: {', '.join(admitidas)}. Devuelve el informe de resultados "
+                "parciales —qué fila falló y por qué— con un 207 aunque todo vaya bien."
+            ),
+            status_code=status.HTTP_207_MULTI_STATUS,
+        )(masivo)
 
     return router

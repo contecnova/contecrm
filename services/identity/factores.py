@@ -53,6 +53,7 @@ from services.identity.modelos import (
     DesafioFactor,
     DispositivoConfianza,
     Membresia,
+    RolTenant,
     Sesion,
     Usuario,
 )
@@ -638,6 +639,15 @@ def adopcion_mfa(db: Session, tenant_id: UUID) -> dict[str, Any]:
         .order_by(Usuario.email)
     ).all()
 
+    from services.identity.servicio import roles_con_mfa_obligatoria
+
+    obligatoria = bool(_cfg(db, "mfa_obligatoria"))
+    # A quién se le exige, por rol (CRM-00.05.01.06). Se calcula aquí con la
+    # misma regla que aplica el login —el interruptor suma, los roles añaden—
+    # para que la lista de «a quién se le va a pedir» no sea una segunda
+    # opinión que discrepa de la puerta.
+    roles_exigidos = roles_con_mfa_obligatoria(db)
+
     con_factor: list[dict[str, Any]] = []
     sin_factor: list[dict[str, Any]] = []
     for usuario, membresia in filas:
@@ -649,6 +659,7 @@ def adopcion_mfa(db: Session, tenant_id: UUID) -> dict[str, Any]:
             "ultimo_acceso_at": (
                 usuario.ultimo_acceso_at.isoformat() if usuario.ultimo_acceso_at else None
             ),
+            "exigida": obligatoria or bool(set(roles_exigidos) & set(membresia.roles or [])),
         }
         if usuario.mfa_activo:
             entrada["factor"] = "totp"
@@ -659,7 +670,6 @@ def adopcion_mfa(db: Session, tenant_id: UUID) -> dict[str, Any]:
             sin_factor.append(entrada)
 
     total = len(filas)
-    obligatoria = bool(_cfg(db, "mfa_obligatoria"))
     return {
         "total_usuarios": total,
         "con_factor": len(con_factor),
@@ -669,6 +679,17 @@ def adopcion_mfa(db: Session, tenant_id: UUID) -> dict[str, Any]:
         "adopcion_pct": round(100 * len(con_factor) / total, 1) if total else None,
         "medible": total > 0,
         "mfa_obligatoria": obligatoria,
+        "mfa_obligatoria_roles": roles_exigidos,
+        # Los que se quedarían fuera: se les exige y no tienen con qué. El
+        # login les dice «configúralo para poder entrar», y sin este número
+        # quien aprieta la política lo descubre por las llamadas.
+        "exigida_sin_factor": sum(1 for u in sin_factor if u["exigida"]),
+        # Los factores con los que se cumple, dichos por su nombre: TOTP (una
+        # aplicación de códigos) y passkey. El SMS y el correo cuentan si están
+        # encendidos, y abajo se avisa de que son los débiles. No hay «push»:
+        # este producto no lo tiene, y enseñarlo sería prometer lo que no hay.
+        "factores_que_cumplen": ["totp", "passkey"],
+        "roles_disponibles": roles_del_tenant(db, tenant_id),
         "usuarios_sin_factor": sin_factor,
         "usuarios_con_factor": con_factor,
         "canales_debiles_activos": [
@@ -682,6 +703,60 @@ def adopcion_mfa(db: Session, tenant_id: UUID) -> dict[str, Any]:
             "como una passkey o un TOTP."
         ),
     }
+
+
+def roles_del_tenant(db: Session, tenant_id: UUID) -> list[str]:
+    """Los roles que se pueden elegir: los de serie, los que la empresa ha
+    definido y los que alguien lleva.
+
+    Los tres, porque una membresía puede llevar un rol de serie que no tiene
+    fila propia en el tenant, y dejarlo fuera haría imposible exigirle MFA a
+    quien más la necesita —el administrador—.
+    """
+    from crmcore.authz.rbac import ROLES_BASE
+
+    definidos = db.execute(select(RolTenant.nombre).where(RolTenant.tenant_id == tenant_id))
+    llevados = db.execute(
+        select(Membresia.roles).where(Membresia.tenant_id == tenant_id, Membresia.activa.is_(True))
+    )
+    nombres = {str(n) for n in ROLES_BASE} | {str(n) for (n,) in definidos if n}
+    for (roles,) in llevados:
+        nombres.update(str(r) for r in (roles or []) if r)
+    return sorted(nombres)
+
+
+def fijar_mfa_por_rol(
+    db: Session, tenant_id: UUID, roles: list[str], *, por: UUID | None
+) -> dict[str, Any]:
+    """Guarda a qué roles se les exige segundo factor (CRM-00.05.01.06).
+
+    **Se guarda aquí, en identidad, que es quien la aplica.** Los ajustes viven
+    en el esquema de cada servicio y se replican por el bus; escrito desde la
+    consola general, sin bus el login seguía leyendo el valor de antes y quien
+    lo había guardado lo veía guardado. Escribirlo donde se usa hace que valga
+    desde ya, y la réplica a los demás sale igual.
+
+    Un rol que no existe se rechaza: una regla con un rol inventado no se
+    cumple nunca y se lee como protección puesta.
+    """
+    limpios = sorted({str(r).strip() for r in roles if str(r).strip()})
+    existentes = set(roles_del_tenant(db, tenant_id))
+    desconocidos = [r for r in limpios if r not in existentes]
+    if desconocidos:
+        raise ErrorValidacion(
+            f"Estos roles no existen en la empresa: {', '.join(desconocidos)}.",
+            error_code="mfa.rol_desconocido",
+            detalle={"desconocidos": desconocidos, "existentes": sorted(existentes)},
+        )
+    rt.fijar(
+        db,
+        "mfa_obligatoria_roles",
+        limpios,
+        ambito="tenant",
+        ambito_id=str(tenant_id),
+        por=por,
+    )
+    return adopcion_mfa(db, tenant_id)
 
 
 def usuarios_sin_factor(db: Session, tenant_id: UUID) -> int:

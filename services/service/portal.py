@@ -489,7 +489,15 @@ def resumen(db: Session, acceso: AccesoPortal) -> dict[str, Any]:
 # ERP, que es otra cosa y se declara como tal.
 SECCIONES_POR_NIVEL = {
     "propio": ("casos", "conocimiento", "comunidad"),
-    "cuenta": ("casos", "conocimiento", "comunidad", "contratos", "activos", "pedidos"),
+    "cuenta": (
+        "casos",
+        "conocimiento",
+        "comunidad",
+        "contratos",
+        "activos",
+        "pedidos",
+        "encargos",
+    ),
     "admin": (
         "casos",
         "conocimiento",
@@ -497,6 +505,7 @@ SECCIONES_POR_NIVEL = {
         "contratos",
         "activos",
         "pedidos",
+        "encargos",
         "contactos",
     ),
 }
@@ -642,6 +651,9 @@ SECCIONES_SERVIDAS = (
     "contratos",
     "pedidos",
     "contactos",
+    # Los encargos seguidos —envíos, servicios de un tercero— los sirve
+    # `integration`, que es quien los sigue (CRM-00.04.05.06).
+    "encargos",
 )
 
 

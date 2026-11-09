@@ -38,19 +38,52 @@ logger = get_logger(__name__)
 # ── Leads ─────────────────────────────────────────────────────────────────
 
 
-def crear_lead(uow: UnidadDeTrabajo, **datos: Any) -> Lead:
+def crear_lead(
+    uow: UnidadDeTrabajo,
+    *,
+    forzar: bool = False,
+    comprobar_duplicados: bool = True,
+    **datos: Any,
+) -> Lead:
     """Da de alta un lead y le pone el reloj del SLA de primera respuesta.
 
     El SLA se fija **al entrar**, no al asignarlo: el cliente que rellenó el
     formulario está esperando desde que lo envió, no desde que alguien de dentro
     se hizo cargo. Contarlo desde la asignación permitiría cumplir el SLA
     siempre, sin más que asignar tarde.
+
+    **Antes de crear, mira si ya existe** como lead o como contacto
+    (CRM-01.01.03.03). Con un duplicado concluyente responde 409 con los
+    candidatos, como cuentas y contactos; `forzar=True` lo crea igual y la
+    decisión queda en la auditoría. `comprobar_duplicados=False` es para quien
+    ya ha mirado —la captura automática, que decide por su cuenta qué hacer—.
     """
     from crmcore.runtime import settings as rt
 
     tenant_id = uow.tenant_id
     if tenant_id is None:
         raise ErrorValidacion("Falta el tenant", error_code="sales.sin_tenant")
+
+    encontrados = None
+    if comprobar_duplicados:
+        from crmcore.authz.principal import principal_actual
+
+        from services.sales import dedupe_leads
+
+        encontrados = dedupe_leads.buscar(
+            uow.db, tenant_id, datos, principal_id=principal_actual().id
+        )
+        if encontrados.concluyentes and not forzar:
+            raise Conflicto(
+                "Ya existe un lead o un contacto que parece el mismo",
+                error_code="sales.lead_duplicado",
+                detalle={
+                    **encontrados.a_dict(),
+                    # Se dice cómo continuar: sin esto, quien recibe el 409 no
+                    # sabe si tiene que abrir el que hay o insistir.
+                    "como_continuar": "usa el registro existente, o repite con forzar=true",
+                },
+            )
 
     horas = int(rt.efectivo("lead_sla_primera_respuesta_horas", uow.db) or 4)
     ahora = datetime.now(timezone.utc)
@@ -79,6 +112,17 @@ def crear_lead(uow: UnidadDeTrabajo, **datos: Any) -> Lead:
     registro = None
     if lead.owner_id is None and bool(rt.efectivo("lead_enrutar_al_crear", uow.db)):
         registro = enrutar(uow.db, lead, tenant_id=tenant_id)
+
+    if encontrados is not None and encontrados.concluyentes and forzar:
+        # Crear a sabiendas de que se parece a otro es una decisión, y queda
+        # escrita: quién, cuándo y contra qué candidatos.
+        registrar(
+            uow.db,
+            accion="lead.creado_forzado",
+            objeto="lead",
+            objeto_id=lead.id,
+            datos={"candidatos_descartados": [c.a_dict() for c in encontrados.candidatos]},
+        )
 
     uow.emitir(
         "lead.created",
@@ -890,6 +934,66 @@ def actualizar_oportunidad(
 
 
 # ── Líneas ────────────────────────────────────────────────────────────────
+
+
+def duplicar_oportunidad(
+    uow: UnidadDeTrabajo, oportunidad_id: UUID, *, nombre: str | None = None
+) -> Oportunidad:
+    """Copia una oportunidad **con sus líneas** (CRM-07.01.01.07).
+
+    Lo que se copia es lo que se ofertó —cuenta, contacto, embudo, moneda,
+    fecha prevista, campos propios y cada línea con su precio y su coste
+    pactados—. Lo que **no** se copia es lo que dice cómo le fue a la original:
+    la copia empieza en la primera etapa, abierta y sin historial de etapas,
+    porque una venta nueva no ha pasado por donde pasó la otra. Con el estado
+    copiado, la previsión contaría dos veces lo que se cerró una.
+
+    Pasa por `crear_oportunidad_nueva`, como cualquier alta: numeración,
+    eventos y reglas de la etapa son los de siempre.
+    """
+    original = _oportunidad(uow.db, oportunidad_id)
+    copia = crear_oportunidad_nueva(
+        uow,
+        nombre=(nombre or "").strip() or f"{original.nombre} (copia)",
+        descripcion=original.descripcion,
+        cuenta_id=original.cuenta_id,
+        contacto_id=original.contacto_id,
+        pipeline_id=original.pipeline_id,
+        importe=original.importe or Decimal(0),
+        moneda=original.moneda,
+        fecha_cierre=original.fecha_cierre,
+        owner_id=original.owner_id,
+        campos=dict(original.campos or {}),
+    )
+    lineas = (
+        uow.db.execute(
+            select(LineaOportunidad)
+            .where(LineaOportunidad.oportunidad_id == original.id)
+            .order_by(LineaOportunidad.orden)
+        )
+        .scalars()
+        .all()
+    )
+    copiables = [
+        c.key
+        for c in LineaOportunidad.__table__.columns
+        if c.key not in ("id", "oportunidad_id", "created_at", "updated_at")
+    ]
+    for linea in lineas:
+        uow.db.add(
+            LineaOportunidad(**{k: getattr(linea, k) for k in copiables}, oportunidad_id=copia.id)
+        )
+    uow.db.flush()
+    if lineas:
+        recalcular_total(uow.db, copia)
+    registrar(
+        uow.db,
+        accion="oportunidad.duplicada",
+        objeto="oportunidad",
+        objeto_id=copia.id,
+        datos={"de": str(original.id), "lineas": len(lineas)},
+    )
+    return copia
 
 
 def recalcular_total(db: Session, oportunidad: Oportunidad) -> Decimal:

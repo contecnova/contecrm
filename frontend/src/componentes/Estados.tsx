@@ -7,6 +7,7 @@
  * de una pantalla dice algo útil y el de otra dice «Error».
  */
 
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -189,6 +190,7 @@ export function Error({
           </pre>
         </details>
       ) : null}
+      {api?.requestId ? <IdDePeticion id={api.requestId} /> : null}
       {reintentar ? (
         <button
           type="button"
@@ -199,6 +201,42 @@ export function Error({
         </button>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * El identificador de la petición que falló, para copiarlo
+ * (CRM-00.02.04.07).
+ *
+ * A la vista y no dentro del «detalle técnico»: es lo único del error que
+ * quien llama a soporte necesita dar, y escondido no lo da nadie. Con él, el
+ * audit trail de Plataforma y cumplimiento enseña lo que esa petición
+ * escribió.
+ */
+export function IdDePeticion({ id }: { id: string }) {
+  const { t } = useTranslation();
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <p className="mt-3 flex flex-wrap items-center gap-2 text-rotulo text-ink-faint">
+      <span>{t("errores.peticion")}:</span>
+      <code className="font-mono text-ink-muted">{id}</code>
+      <button
+        type="button"
+        className="btn-ghost"
+        onClick={() => {
+          // Sin portapapeles (contexto inseguro, permiso denegado) el
+          // identificador sigue a la vista y se puede seleccionar a mano.
+          void navigator.clipboard
+            ?.writeText(id)
+            .then(() => setCopiado(true))
+            .catch(() => undefined);
+        }}
+      >
+        <Icono nombre={copiado ? "check" : "content_copy"} tamano="sm" />
+        {copiado ? t("errores.copiado") : t("errores.copiar")}
+      </button>
+      <span className="w-full">{t("errores.peticionAyuda")}</span>
+    </p>
   );
 }
 

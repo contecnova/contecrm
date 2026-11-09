@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 
@@ -125,5 +125,46 @@ def crear_router_cumplimiento(servicio: str) -> APIRouter:
                 "lee el esquema de otro."
             ),
         }
+
+    @router.get(
+        "/auditoria",
+        response_model=list[dict],
+        dependencies=[Depends(exige_permiso("tenant:read"))],
+        summary=f"El audit trail de «{servicio}» (CRM-00.05.04.05, CRM-00.02.04.07)",
+        description=(
+            "Cada servicio guarda su audit trail en su propio esquema, y la "
+            "consulta de `tenancy` sólo ve el suyo: una entrada de soporte —que "
+            "apunta identidad— o el cambio de una cuenta —que apunta party— no "
+            "salían en ninguna pantalla. Ésta es la misma consulta, servicio a "
+            "servicio.\n\n"
+            "Con `request_id` se encuentra lo que escribió UNA petición, el "
+            "identificador que la pantalla de error deja copiar."
+        ),
+    )
+    def auditoria(
+        request: Request,
+        db: DbDep,
+        principal: AutenticadoDep,
+        accion: str = Query("", max_length=80),
+        objeto: str = Query("", max_length=80),
+        request_id: str = Query("", max_length=64),
+        limite: int = Query(100, ge=1, le=1000),
+    ) -> Any:
+        from crmcore.http.deps import tenant_mirado
+        from crmcore.seguridad.siem import consultar
+
+        # De la empresa que se mira: la sesión de esta petición ya va atada a
+        # ella, y filtrar por la propia daría una lista vacía sin decir por qué.
+        return [
+            {**fila, "servicio": servicio}
+            for fila in consultar(
+                db,
+                tenant_mirado(request, principal),
+                accion=accion,
+                objeto=objeto,
+                request_id=request_id,
+                limite=limite,
+            )
+        ]
 
     return router
