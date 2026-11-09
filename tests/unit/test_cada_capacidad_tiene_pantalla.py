@@ -1012,7 +1012,10 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 # 05-11-2026, decimotercera: 83 → 82. La extracción desde el contacto, con
 # las propuestas que se aceptan una a una y llegan a la ficha.
-TOPE_SIN_PANTALLA = 82
+# 09-11-2026: 82 → 78. Comprobadas en el navegador y declaradas: el historial
+# de la cuenta, los consentimientos del contacto, los contactos del proveedor
+# y los casos en riesgo de SLA, que no se pintaban por ser una lista.
+TOPE_SIN_PANTALLA = 78
 
 
 def _es_pantalla(p: Path) -> bool:

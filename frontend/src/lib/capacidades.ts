@@ -247,6 +247,11 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // calidad del dato con sus duplicados y su fusión, los derechos del
   // interesado y la papelera con restauración en cascada.
   "cuentas": [
+    // Comprobadas en el navegador el 09-11-2026: «Lo que ha pasado» en la
+    // ficha de la cuenta, el historial unificado (.02.08), y el «Historial de
+    // consentimientos» en la ficha del contacto, con su alta (02.04.02.01).
+    "CRM-01.01.02.08",
+    "CRM-02.04.02.01",
     // La IA desde la ficha: resumir la cuenta y redactar un correo a un contacto.
     "CRM-01.01.05.05",
     "CRM-05.02.02.01",
@@ -294,6 +299,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // El proveedor como cuenta con rol, su homologación por categoría y la
   // documentación obligatoria con vigencia que avisa de lo que caduca.
   "proveedores": [
+    // «Los contactos declarados de este proveedor», por función y con alta,
+    // en su ficha. Comprobado en el navegador el 09-11-2026.
+    "CRM-09.01.01.06",
     "CRM-09.01.01.01",
     "CRM-09.01.01.02",
     "CRM-09.01.01.03",
@@ -514,6 +522,10 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // agentes disponibles con su capacidad, las encuestas de satisfacción y la
   // papelera.
   "casos": [
+    // Los casos en riesgo de incumplir el SLA, encima de los acuerdos en la
+    // vista SLA. Estaba declarado como resumen y NO se pintaba —era una lista
+    // y el resumen sólo pintaba cifras—; desde el 09-11-2026 sale como lista.
+    "CRM-04.01.02.05",
     // Casos resueltos y artículos parecidos, por significado, con su cita.
     "CRM-04.03.01.04",
     // Resumir el caso y sugerir respuesta con los artículos en que se apoya.

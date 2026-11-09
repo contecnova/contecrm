@@ -1653,13 +1653,54 @@ export function Medidas({ rutas }: { rutas: string[] }) {
   const pintadas = rutas.filter((r) => datos[r]);
   if (pintadas.length === 0) return null;
 
+  // Un resumen que es una LISTA —los casos en riesgo de incumplir, lo que me
+  // toca decidir— se pinta como lista. Hasta el 09-11-2026 se pasaba a la
+  // tarjeta de cifras, que recorría la lista como si fuera un objeto y no
+  // pintaba nada: la pestaña SLA no enseñó nunca los casos en riesgo.
+  const comoLista = (r: string) => listaDe(datos[r]);
+  const cifras = pintadas.filter((r) => comoLista(r) === null);
+  const listas = pintadas.filter((r) => comoLista(r) !== null);
+
   return (
-    <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {pintadas.map((ruta) => (
-        <Medida key={ruta} datos={datos[ruta] ?? {}} />
-      ))}
-    </div>
+    <>
+      {cifras.length ? (
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {cifras.map((ruta) => (
+            <Medida key={ruta} datos={datos[ruta] ?? {}} />
+          ))}
+        </div>
+      ) : null}
+      {listas.map((ruta) => {
+        const titulo = humanizar(
+          (ruta.split("?")[0]?.split("/").pop() ?? "").replace(/-/g, "_"),
+        );
+        return (
+          <section key={ruta} className="mb-3">
+            {/* Rótulo a la vista: el de la tabla es sólo para quien no ve la
+                pantalla, y una lista sin título encima no dice qué es. */}
+            <h2 className="section-label mb-1">{titulo}</h2>
+            <Tabla filas={comoLista(ruta) ?? []} titulo={titulo} />
+          </section>
+        );
+      })}
+    </>
   );
+}
+
+/** Las filas si el resumen es una lista (tal cual o en `items`); si no, `null`. */
+function listaDe(datos: unknown): Record<string, unknown>[] | null {
+  const filas = Array.isArray(datos)
+    ? datos
+    : datos &&
+        typeof datos === "object" &&
+        Array.isArray((datos as { items?: unknown }).items)
+      ? (datos as { items: unknown[] }).items
+      : null;
+  return filas
+    ? filas.filter(
+        (f): f is Record<string, unknown> => !!f && typeof f === "object",
+      )
+    : null;
 }
 
 /** Los campos que explican, por orden de cuál manda si hay varios. */

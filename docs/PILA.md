@@ -164,6 +164,17 @@ a ellas. Se recorren una a una, como se hizo con lecciones.
 
 El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.
 
+- **09-11-2026, medidas las 21 críticas (C)**: 6 se alcanzaban sin
+  declararlas, 9 necesitan pantalla y 6 no están hechas del todo (MFA por rol
+  y push, deduplicar leads al capturar, reunión en línea de verdad, duplicar
+  registros, revertir una importación, p99 por operación).
+- **Hecho**: 4 comprobadas en el navegador y declaradas (82 → 78). Y la
+  familia que salió al comprobarlas: un resumen que es una LISTA no se pintaba
+  —los casos en riesgo de SLA no se vieron nunca—; ahora sale como lista con
+  su rótulo (4 de los 40 resúmenes lo eran).
+- **Siguiente**: las 9 pantallas que faltan, en bloque; las 6 sin hacer, a
+  decidir por formulario.
+
 ### 7. Lo que el PATCH genérico ofrece y escribe el sistema
 
 De 357 campos, 34 se cerraron el 08-11-2026 (hashes, sellos, contadores,

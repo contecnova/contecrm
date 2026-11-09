@@ -78,6 +78,10 @@ export function MenuDeAcciones({
 }) {
   const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
+  // Hacia dónde abre, decidido al abrir: si desde el botón no cabe hacia la
+  // derecha, hacia la izquierda. Dejarlo a que cada sitio lo pida hacía que el
+  // «Más» de la ficha, pegado al borde derecho, se cortara (09-11-2026).
+  const [noCabe, setNoCabe] = useState(false);
   const caja = useRef<HTMLDivElement>(null);
   const disparador = useRef<HTMLButtonElement>(null);
 
@@ -119,7 +123,19 @@ export function MenuDeAcciones({
             aria-haspopup="menu"
             aria-expanded={abierto}
             aria-label={etiqueta ?? t("acciones.mas")}
-            onClick={() => setAbierto((v) => !v)}
+            onClick={() => {
+              const caja = disparador.current?.getBoundingClientRect();
+              // 20rem es el ancho máximo del menú (abajo, `max-w-[min(20rem…`).
+              const ancho =
+                20 *
+                parseFloat(
+                  getComputedStyle(document.documentElement).fontSize || "16",
+                );
+              setNoCabe(
+                Boolean(caja && caja.left + ancho > window.innerWidth - 8),
+              );
+              setAbierto((v) => !v);
+            }}
           >
             {soloIcono ? null : t("acciones.mas")}
             <Icono
@@ -140,7 +156,7 @@ export function MenuDeAcciones({
                 // parte en dos líneas y el panel sigue dentro.
                 "absolute z-popover mt-1 min-w-56 max-w-[min(20rem,calc(100vw-2rem))]",
                 "rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3",
-                haciaLaIzquierda ? "right-0" : "left-0",
+                haciaLaIzquierda || noCabe ? "right-0" : "left-0",
               )}
             >
               {normales.map((o) => (
