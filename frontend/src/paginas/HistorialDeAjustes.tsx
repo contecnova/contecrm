@@ -146,13 +146,14 @@ export function HistorialDeAjustes() {
 
   async function verRango() {
     if (!desde) return;
-    const params = new URLSearchParams({
-      desde: new Date(desde).toISOString(),
-    });
-    if (hasta) params.set("hasta", new Date(hasta).toISOString());
+    // `desde` escrito en la ruta, no montado aparte: es obligatorio, y así
+    // se ve —también el guardián que comprueba que se manda— que va siempre.
+    const hastaQ = hasta
+      ? `&hasta=${encodeURIComponent(new Date(hasta).toISOString())}`
+      : "";
     try {
       const r = await llamar<{ cambios: CambioEnRango[] }>(
-        `/api/v1/ajustes/versiones/diferencias?${params.toString()}`,
+        `/api/v1/ajustes/versiones/diferencias?desde=${encodeURIComponent(new Date(desde).toISOString())}${hastaQ}`,
       );
       setEnRango(r.datos.cambios ?? []);
       setFallo(null);
