@@ -528,12 +528,9 @@ def crear_oportunidad(datos: CrearOportunidad, uow: UowDep) -> Any:
 
 def _del_estado(maquina: Any, estado: str) -> dict[str, Any]:
     """Qué significa el estado y cómo lo llama y pinta esta empresa."""
-    presentacion = (maquina.presentacion.get(estado) if maquina else None) or {}
-    return {
-        "estado_significa": maquina.significado(estado) if maquina else estado,
-        "estado_nombre": presentacion.get("nombre") or None,
-        "estado_color": presentacion.get("color") or None,
-    }
+    from crmcore.datos.estados import presentar
+
+    return presentar(maquina, estado)
 
 
 def _una_oportunidad(db: Any, oportunidad: Any) -> Any:

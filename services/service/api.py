@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
+from crmcore.datos.estados import maquina_efectiva, presentar
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url
 from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
@@ -16,6 +17,7 @@ from sqlalchemy import and_, or_, select
 
 from services.service import servicio as svc
 from services.service.ajustes import ajustes
+from services.service.estados import terminales
 from services.service.modelos import Caso, CategoriaCaso, DefinicionSLA, EventoCaso
 
 router_casos = APIRouter(prefix="/casos", tags=["casos"])
@@ -281,6 +283,7 @@ def listar(
     consulta = aplicar_filtros_de_la_url(
         request, Caso, consulta, principal=principal, db=db, objeto="caso"
     )
+    maquina = maquina_efectiva("caso", db)
     return paginar_consulta(
         db,
         Caso,
@@ -292,6 +295,7 @@ def listar(
             "codigo": f.codigo,
             "asunto": f.asunto,
             "estado": f.estado,
+            **presentar(maquina, f.estado),
             "prioridad": f.prioridad,
             "severidad": f.severidad,
             "vence_resolucion_at": (
@@ -339,7 +343,7 @@ def bandeja(
     base = select(Caso).where(
         Caso.tenant_id == principal.tenant_id,
         Caso.deleted_at.is_(None),
-        Caso.estado.not_in(("resuelto", "cerrado")),
+        Caso.estado.not_in(terminales(db)),
     )
 
     montones = {
@@ -432,6 +436,7 @@ def leer(caso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
         "asunto": caso.asunto,
         "descripcion": caso.descripcion,
         "estado": caso.estado,
+        **presentar(maquina_efectiva("caso", db), caso.estado),
         "prioridad": caso.prioridad,
         "severidad": caso.severidad,
         "clasificacion": svc.ruta_de_categoria(db, principal.tenant_id, caso.categoria_id)
@@ -525,6 +530,23 @@ def cambiar_estado(
 ) -> Any:
     caso = svc.cambiar_estado(uow, caso_id, estado=datos.estado, motivo=datos.motivo)
     return {"id": str(caso.id), "estado": caso.estado, "pausa_s": caso.pausa_acumulada_s}
+
+
+@router_casos.post(
+    "/{caso_id}/estado",
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Mover el caso de estado (desde la ficha)",
+    description=(
+        "Lo mismo que el `PUT`: es la forma en que la cabecera de cualquier "
+        "ficha mueve un registro de estado. Sin ella, el desplegable del caso "
+        "no tenía a quién llamar, y una ruta genérica se habría saltado el "
+        "reloj del SLA."
+    ),
+)
+def cambiar_estado_desde_la_ficha(
+    caso_id: UUID, datos: CambiarEstado, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    return cambiar_estado(caso_id, datos, uow, principal)
 
 
 @router_casos.post(

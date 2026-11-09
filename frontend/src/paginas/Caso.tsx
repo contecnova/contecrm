@@ -233,6 +233,13 @@ export function Caso() {
         nombre={caso.asunto}
         fila={caso as unknown as Record<string, unknown>}
         volverA={{ a: "/m/casos", titulo: modulo?.titulo ?? "", id }}
+        // El estado se mueve desde aquí, con los que la empresa haya
+        // configurado: el `POST …/estado` del caso para y reanuda el reloj.
+        cambioDeEstado={{
+          servicio: "service",
+          ruta: `/api/v1/casos/${id}`,
+          alCambiar: () => cargar(),
+        }}
         // Sólo lo que NO está ya en los datos clave de debajo. El código, el
         // estado y la prioridad son las columnas preferidas del recurso, así
         // que salían dos veces en el mismo panel: como insignia arriba y como

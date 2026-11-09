@@ -1392,6 +1392,11 @@ Para **ganar o perder** una oportunidad, muévela a la etapa final; para
 **convertir o descartar** un lead, usa sus botones. Hacen más cosas que cambiar
 el estado (la lección aprendida, el bloqueo, la cuenta nueva).
 
+En un **caso de soporte** es igual: el estado de la cabecera es un desplegable.
+Si lo pasas a un estado de pausa —«Esperando cliente»— el reloj del SLA se
+para; al cerrarlo te pide el motivo, y al volver a trabajar uno cerrado te pide
+por qué y cuenta como reapertura.
+
 Quién decide qué estados hay, cómo se llaman y a cuáles se puede pasar: el
 administrador, en **Administrar › Plataforma › Estados de los objetos**. Y
 las etapas del embudo —cuántas hay, su probabilidad y qué hace falta para salir

@@ -69,6 +69,11 @@
   de la ficha y el código preguntando por el significado. Falta extenderlo a
   los objetos que hoy guardan su estado en una tupla —casos, presupuestos,
   pedidos…—, dándoles máquina; con eso se cierra también la entrada 1.
+- **Caso, hecho el 09-11-2026**: máquina configurable, el SLA para el reloj
+  por significado («en pausa») y cerrar/reabrir desde el estado pasan por su
+  camino. Medido: de más de 50 tuplas de estados, la mayoría son del sistema
+  (trabajos, sagas, firmas, cargas) y no se configuran; las de negocio que
+  quedan son actividad, presupuesto y contrato.
 
 ### 3. Las gráficas se leen al pasar el ratón — hecho el 09-11-2026
 

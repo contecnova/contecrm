@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from crmcore.audit import registrar
+from crmcore.datos.estados import estado_de, significa
 from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
@@ -49,6 +50,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
+
+from services.service.estados import terminales
 
 logger = get_logger(__name__)
 
@@ -308,7 +311,7 @@ def carga_de(db: Session, tenant_id: UUID, usuarios: list[UUID]) -> dict[UUID, i
         .where(
             Caso.tenant_id == tenant_id,
             Caso.owner_id.in_(usuarios),
-            Caso.estado.not_in(("resuelto", "cerrado")),
+            Caso.estado.not_in(terminales(db)),
             Caso.deleted_at.is_(None),
         )
         .group_by(Caso.owner_id)
@@ -523,8 +526,8 @@ def asignar(uow: UnidadDeTrabajo, caso: Caso, *, canal: str = "caso") -> Registr
             continue
 
         caso.owner_id = elegido
-        if caso.estado == "nuevo":
-            caso.estado = "asignado"
+        if significa("caso", caso.estado, "nuevo", uow.db):
+            caso.estado = estado_de("caso", "asignado", uow.db)
         return _anotar_asignacion(
             uow, caso, regla=regla, asignado_a=elegido, cola=None, evaluadas=evaluadas
         )
@@ -646,7 +649,7 @@ def cola(db: Session, tenant_id: UUID, clave: str, *, limite: int = 100) -> list
                 Caso.tenant_id == tenant_id,
                 Caso.equipo == clave,
                 Caso.owner_id.is_(None),
-                Caso.estado.not_in(("resuelto", "cerrado")),
+                Caso.estado.not_in(terminales(db)),
                 Caso.deleted_at.is_(None),
             )
             .order_by(Caso.vence_resolucion_at.asc().nulls_last(), Caso.created_at)
@@ -697,8 +700,8 @@ def coger_de_cola(uow: UnidadDeTrabajo, caso_id: UUID, usuario_id: UUID) -> Caso
             detalle={"owner_id": str(caso.owner_id)},
         )
     caso.owner_id = usuario_id
-    if caso.estado == "nuevo":
-        caso.estado = "asignado"
+    if significa("caso", caso.estado, "nuevo", uow.db):
+        caso.estado = estado_de("caso", "asignado", uow.db)
     uow.db.add(
         EventoCaso(
             tenant_id=caso.tenant_id,
@@ -763,7 +766,7 @@ def evaluar_escaladas(
         uow.db.execute(
             select(Caso).where(
                 Caso.tenant_id == tenant_id,
-                Caso.estado.not_in(("resuelto", "cerrado")),
+                Caso.estado.not_in(terminales(uow.db)),
                 Caso.deleted_at.is_(None),
             )
         )

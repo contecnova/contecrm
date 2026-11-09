@@ -885,6 +885,15 @@ pantallas:
   `estado_significa`, `estado_nombre` y `estado_color`; la pantalla pinta
   `<campo>_nombre` cuando viene. En el front: `paginas/Estados.tsx` y
   `componentes/CambioDeEstado.tsx`, que `DatosClave` pinta en la cabecera.
+- **Poner un estado por su significado**: `estado_de(objeto, significado,
+  db)` devuelve el estado al que llevar un registro (el de fábrica si sigue
+  activo; si no, el primero activo con ese significado). `presentar(maquina,
+  estado)` da `estado_significa`, `estado_nombre` y `estado_color` para la
+  respuesta. Máquina del caso en `services/service/estados.py` (significado
+  `en_pausa` para el reloj; `terminales(db)` para resueltos y cerrados);
+  `servicio.cambiar_estado` desvía a `cerrar_caso`/`reabrir_caso` cuando entra
+  o sale de un «cerrado». `POST /casos/{id}/estado` existe para la cabecera de
+  la ficha, igual que el `PUT`.
 - **Metodologías** (`services/sales/cadencias.py`): `metodologia_de` elige
   la del embudo de la oportunidad (o la general), `criterios_de` normaliza las
   dos formas en que se han escrito los criterios (`etiqueta`/`peso` y

@@ -59,6 +59,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from services.service.estados import terminales
+
 logger = get_logger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -1071,7 +1073,7 @@ def consola(db: Session, tenant_id: UUID, agente_id: UUID) -> dict[str, Any]:
             .where(
                 Caso.tenant_id == tenant_id,
                 Caso.owner_id == agente_id,
-                Caso.estado.not_in(("resuelto", "cerrado")),
+                Caso.estado.not_in(terminales(db)),
                 Caso.deleted_at.is_(None),
             )
             .order_by(Caso.vence_resolucion_at.asc().nulls_last())

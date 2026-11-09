@@ -282,6 +282,43 @@ def significa(objeto: str, estado: str | None, significado: str, db: Session | N
     return bool(estado) and estado in con_significado(objeto, significado, db)
 
 
+def presentar(maquina: Maquina | None, estado: str) -> dict[str, Any]:
+    """Qué significa el estado y cómo lo llama y pinta esta empresa.
+
+    Va en la respuesta de cada registro con máquina: la pantalla pinta
+    `estado_nombre` cuando viene, y quien lee desde otro servicio pregunta por
+    `estado_significa`, que no cambia aunque la empresa renombre el estado.
+    """
+    presentacion = (maquina.presentacion.get(estado) if maquina else None) or {}
+    return {
+        "estado_significa": maquina.significado(estado) if maquina else estado,
+        "estado_nombre": presentacion.get("nombre") or None,
+        "estado_color": presentacion.get("color") or None,
+    }
+
+
+def estado_de(objeto: str, significado: str, db: Session | None = None) -> str:
+    """El estado al que el código lleva un registro cuando quiere decir esto.
+
+    Comparar se hace con `con_significado`; **poner** un estado necesita uno
+    solo. Gana el de fábrica con ese nombre si sigue activo —es el que la
+    empresa conoce—; si no, el primero activo con ese significado, por orden.
+    Sin ninguno, el propio significado: un objeto sin máquina guarda texto.
+    """
+    maquina = maquina_efectiva(objeto, db)
+    if maquina is None:
+        return significado
+    activos = [
+        e
+        for e in maquina.estados
+        if maquina.significado(e) == significado and e not in maquina.inactivos
+    ]
+    if significado in activos:
+        return significado
+    activos.sort(key=lambda e: (maquina.presentacion.get(e, {}).get("orden", 0), e))
+    return activos[0] if activos else significado
+
+
 def _restricciones(db: Session | None, objeto: str) -> dict[str, set[str]]:
     """Transiciones que este tenant ha quitado.
 

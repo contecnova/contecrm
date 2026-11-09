@@ -1783,6 +1783,22 @@ el estado; si se intenta por aquí, lo dice.
 
 Las restricciones de antes (`transiciones_prohibidas`) siguen aplicando encima.
 
+**El caso de soporte**, desde el 09-11-2026, tiene también su máquina
+configurable. Sus significados son nuevo, asignado, en curso, **en pausa**,
+resuelto y cerrado, y el SLA los lee por lo que significan:
+
+- el reloj de resolución se para en **todo estado que signifique «en
+  pausa»** —de fábrica, «Esperando cliente»—. Lo que antes era una lista fija
+  ahora lo decide cada empresa: «Esperando repuesto» es un estado propio que
+  significa «en pausa», y para el reloj; uno que no lo signifique, no;
+- un estado que signifique «cerrado» —«Archivado», por ejemplo— cuenta como
+  cerrado en la bandeja, en la carga de cada agente, en la escalada y en la
+  salud del cliente;
+- **cerrar y reabrir desde el desplegable pasan por su camino**: cerrar pide
+  el motivo y fija la resolución y el incumplimiento del SLA; reabrir pide
+  motivo, respeta la ventana de reapertura y suma la reapertura. Hasta ahora
+  cambiar el estado a mano permitía reabrir fuera de plazo sin que constara.
+
 Los objetos **propios del tenant** son el caso distinto: no tienen código
 detrás, así que ahí la declaración de metadatos **es** la máquina entera y sí
 define los estados.

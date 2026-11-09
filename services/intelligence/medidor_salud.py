@@ -100,7 +100,13 @@ def soporte(casos: list[dict[str, Any]], s: Any) -> float | None:
     if casos is None:
         return None
 
-    abiertos = [c for c in casos if str(c.get("estado") or "") not in ("cerrado", "resuelto")]
+    # Por lo que SIGNIFICA el estado: la empresa puede llamar «Archivado» a un
+    # estado que significa cerrado, y por el nombre contaría como abierto.
+    abiertos = [
+        c
+        for c in casos
+        if str(c.get("estado_significa") or c.get("estado") or "") not in ("cerrado", "resuelto")
+    ]
     ahora = _ahora()
     enquistados = sum(
         1

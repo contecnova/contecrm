@@ -27,17 +27,25 @@ from services.service.modelos import Caso, CategoriaCaso, DefinicionSLA, EventoC
 
 logger = get_logger(__name__)
 
-# Estados en los que el reloj de resolución **no** corre. Es una lista y no un
-# booleano en el estado porque quién para el reloj es una decisión de negocio que
-# cambia por cliente: hay contratos donde «esperando repuesto» para el reloj y
-# otros donde no.
-ESTADOS_PAUSA = ("esperando_cliente",)
-ESTADOS_TERMINALES = ("resuelto", "cerrado")
+# Qué estados paran el reloj y cuáles son terminales ya no es una lista: es el
+# significado de cada estado en la máquina del caso (`estados.py`), que la
+# empresa configura. Quién para el reloj es una decisión de negocio que cambia
+# por cliente —hay contratos donde «esperando repuesto» lo para y otros donde
+# no—, y por eso no podía ser una constante.
 
 # La prioridad es de aquí y no sale: en qué orden se atiende es decisión del
 # servicio. La severidad sí viaja —la manda la telemetría en el comando que abre
 # un caso—, así que se escribe una vez en `crmcore.vocabularios`.
-from services.service.modelos import ESTADOS_CASO, PRIORIDADES  # noqa: E402
+from crmcore.datos.estados import (  # noqa: E402
+    comprobar,
+    con_significado,
+    estado_de,
+    maquina_efectiva,
+    significa,
+)
+
+from services.service.estados import EN_PAUSA, terminales  # noqa: E402
+from services.service.modelos import PRIORIDADES  # noqa: E402
 
 SEVERIDADES = SEVERIDADES_QUE_CRUZAN
 
@@ -412,18 +420,38 @@ def cambiar_estado(uow: UnidadDeTrabajo, caso_id: UUID, *, estado: str, motivo: 
     en una discusión con el cliente que no se puede ganar sin el dato.
     """
     caso = exigir_caso(uow.db, caso_id)
-    if estado not in ESTADOS_CASO:
+    maquina = maquina_efectiva("caso", uow.db)
+    validos = sorted(maquina.estados - maquina.inactivos) if maquina else []
+    if estado not in validos:
         raise ErrorValidacion(
             f"«{estado}» no es un estado de caso",
             error_code="caso.estado_desconocido",
-            detalle={"validos": list(ESTADOS_CASO)},
+            detalle={"validos": validos},
         )
     if estado == caso.estado:
         return caso
+    # Las transiciones y el motivo, como los configure la empresa.
+    comprobar("caso", desde=caso.estado, hasta=estado, motivo=motivo, db=uow.db)
+
+    # Cerrar y reabrir tienen su camino: cerrar fija la resolución y el
+    # incumplimiento, reabrir mira la ventana y cuenta la reapertura. Desde el
+    # desplegable de estado se pasa por ellos; si no, cambiar el estado a mano
+    # era la forma de reabrir fuera de plazo sin que constara.
+    estaba_cerrado = significa("caso", caso.estado, "cerrado", uow.db)
+    va_a_cerrado = significa("caso", estado, "cerrado", uow.db)
+    if va_a_cerrado and not estaba_cerrado:
+        cerrar_caso(uow, caso.id, motivo=motivo)
+        caso.estado = estado  # el cerrado que se eligió, si la empresa tiene varios
+        return caso
+    if estaba_cerrado and not va_a_cerrado:
+        reabrir_caso(uow, caso.id, motivo=motivo)
+        if estado == caso.estado:
+            return caso
 
     ahora = _ahora()
-    estaba_en_pausa = caso.estado in ESTADOS_PAUSA
-    entra_en_pausa = estado in ESTADOS_PAUSA
+    pausa = con_significado("caso", EN_PAUSA, uow.db)
+    estaba_en_pausa = caso.estado in pausa
+    entra_en_pausa = estado in pausa
 
     if estaba_en_pausa and not entra_en_pausa and caso.pausado_desde is not None:
         parado = int((ahora - _con_tz(caso.pausado_desde)).total_seconds())
@@ -439,7 +467,7 @@ def cambiar_estado(uow: UnidadDeTrabajo, caso_id: UUID, *, estado: str, motivo: 
 
     anterior = caso.estado
     caso.estado = estado
-    if estado == "resuelto" and caso.resuelto_at is None:
+    if significa("caso", estado, "resuelto", uow.db) and caso.resuelto_at is None:
         caso.resuelto_at = ahora
         vence = _con_tz(caso.vence_resolucion_at)
         if vence is not None and ahora > vence:
@@ -468,7 +496,7 @@ def cerrar_caso(
             error_code="service.cierre_sin_motivo",
         )
     caso = exigir_caso(uow.db, caso_id)
-    if caso.estado == "cerrado":
+    if significa("caso", caso.estado, "cerrado", uow.db):
         raise Conflicto("El caso ya está cerrado", error_code="service.caso_ya_cerrado")
 
     ahora = _ahora()
@@ -477,7 +505,7 @@ def cerrar_caso(
         vence = _con_tz(caso.vence_resolucion_at)
         if vence is not None and ahora > vence:
             caso.incumplio_resolucion = True
-    caso.estado = "cerrado"
+    caso.estado = estado_de("caso", "cerrado", uow.db)
     caso.cerrado_at = ahora
     caso.motivo_cierre = motivo
     caso.resolucion = resolucion or caso.resolucion
@@ -527,7 +555,7 @@ def reabrir_caso(
             "Reabrir exige un motivo escrito.", error_code="service.reapertura_sin_motivo"
         )
     caso = exigir_caso(uow.db, caso_id)
-    if caso.estado != "cerrado":
+    if not significa("caso", caso.estado, "cerrado", uow.db):
         raise Conflicto("El caso no está cerrado", error_code="service.caso_no_cerrado")
 
     from crmcore.runtime import settings as rt
@@ -547,7 +575,7 @@ def reabrir_caso(
             detalle={"ventana_dias": dias, "cerrado_at": cerrado.isoformat()},
         )
 
-    caso.estado = "en_curso"
+    caso.estado = estado_de("caso", "en_curso", uow.db)
     caso.cerrado_at = None
     caso.resuelto_at = None
     caso.reaperturas += 1
@@ -603,7 +631,7 @@ def cerrar_masiva(
             select(Caso).where(
                 Caso.tenant_id == maestro.tenant_id,
                 Caso.maestro_id == maestro.id,
-                Caso.estado != "cerrado",
+                Caso.estado.not_in(con_significado("caso", "cerrado", uow.db)),
                 Caso.deleted_at.is_(None),
             )
         )
@@ -614,7 +642,7 @@ def cerrar_masiva(
     for hijo in hijos:
         cerrar_caso(uow, hijo.id, motivo=motivo, resolucion=resolucion)
         cerrados.append(str(hijo.id))
-    if maestro.estado != "cerrado":
+    if not significa("caso", maestro.estado, "cerrado", uow.db):
         cerrar_caso(uow, maestro.id, motivo=motivo, resolucion=resolucion)
     return {"maestro": str(maestro.id), "cerrados": cerrados, "cuantos": len(cerrados)}
 
@@ -634,7 +662,7 @@ def marcar_duplicado(uow: UnidadDeTrabajo, caso_id: UUID, original_id: UUID) -> 
             error_code="service.duplicado_de_si_mismo",
         )
     caso.duplicado_de_id = original.id
-    caso.estado = "cerrado"
+    caso.estado = estado_de("caso", "cerrado", uow.db)
     caso.cerrado_at = _ahora()
     caso.motivo_cierre = "duplicado"
     _anotar(uow.db, caso, "duplicado", original=str(original.id))
@@ -690,7 +718,7 @@ def en_riesgo(db: Session, tenant_id: UUID, *, umbral_pct: int = 80) -> list[dic
         db.execute(
             select(Caso).where(
                 Caso.tenant_id == tenant_id,
-                Caso.estado.not_in(ESTADOS_TERMINALES),
+                Caso.estado.not_in(terminales(db)),
                 Caso.deleted_at.is_(None),
             )
         )

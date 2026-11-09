@@ -16,6 +16,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore import ia_ficha
+from crmcore.datos.estados import con_significado
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends
@@ -352,7 +353,9 @@ def indexar_todo(db: DbDep, principal: AutenticadoDep) -> Any:
     casos = (
         db.execute(
             select(Caso).where(
-                Caso.estado == "cerrado", Caso.resolucion.is_not(None), Caso.deleted_at.is_(None)
+                Caso.estado.in_(con_significado("caso", "cerrado", db)),
+                Caso.resolucion.is_not(None),
+                Caso.deleted_at.is_(None),
             )
         )
         .scalars()
