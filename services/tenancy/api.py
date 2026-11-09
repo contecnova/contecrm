@@ -46,6 +46,7 @@ from services.tenancy.api_compromisos import ROUTERS_COMPROMISOS
 from services.tenancy.api_grc import ROUTERS_GRC
 from services.tenancy.api_marca import ROUTERS_MARCA
 from services.tenancy.api_sandboxes import ROUTERS_SANDBOXES
+from services.tenancy.api_tcsec import ROUTERS_TCSEC
 from services.tenancy.esquemas import (
     CambiarEstado,
     ConsumoOut,
@@ -640,6 +641,7 @@ ROUTERS = [
     *ROUTERS_CATALOGOS,
     *ROUTERS_BYOK,
     *ROUTERS_GRC,
+    *ROUTERS_TCSEC,
     *ROUTERS_COMPROMISOS,
     *ROUTERS_SUITE,
     *ROUTERS_AISLAMIENTO,

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**783 capacidades**: 🔧 3 en-curso · ✅ 780 hecho
+**784 capacidades**: 🔧 3 en-curso · ✅ 781 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1083,7 +1083,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-109 capacidades · ✅ 109
+110 capacidades · ✅ 110
 
 ### 7.1 Administración funcional
 
@@ -1145,6 +1145,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.03.02.08` | Evidencias automáticas: el audit trail, los certificados y los gates alimentan el control en vez de adjuntarse a mano | A | 1 | core | ✅ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
 | `CRM-07.03.02.09` | Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales | A | 2 | core | ✅ | — |
 | `CRM-07.03.02.10` | Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo | A | 2 | core | ✅ | — |
+| `CRM-07.03.02.11` | Clasificacion TCSEC de la instalacion: requisitos por nivel medidos sobre el sistema o atestiguados con evidencia en el GRC, nivel alcanzado e informe para auditoria | B | 2 | tenancy | ✅ | — |
 
 ### 7.4 Front oficial de referencia
 

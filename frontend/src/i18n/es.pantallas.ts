@@ -666,6 +666,41 @@ const pantallas = {
     },
   },
   // Lecciones aprendidas de las oportunidades cerradas (05-11-2026).
+  tcsec: {
+    titulo: "Clasificación TCSEC",
+    entradilla:
+      "Qué nivel de confianza alcanza esta instalación según los criterios TCSEC (D, C1, C2, B1, B2, B3, A1). Lo que se puede medir se mide ahora mismo sobre el sistema; lo demás lo atestigua una persona, con su evidencia.",
+    medir: "Volver a medir",
+    midiendo: "Midiendo…",
+    descargar: "Descargar el informe",
+    descargado: "Descargado {{fichero}}.",
+    nivel: "Nivel alcanzado",
+    escala: "Niveles TCSEC, de menos a más exigente",
+    alcanzado: "La instalación alcanza {{nivel}}: {{nombre}}.",
+    falta_one: "Para {{siguiente}} falta un requisito, marcado abajo.",
+    falta_other: "Para {{siguiente}} faltan {{count}} requisitos, marcados abajo.",
+    medidoEl: "Medido el {{fecha}}.",
+    medido: "medido",
+    atestiguado: "atestiguado",
+    estados: {
+      cumple: "Cumple",
+      no_cumple: "No cumple",
+      sin_medir: "Sin medir",
+      no_implementado: "No implementado",
+    },
+    atestiguar: "Atestiguar",
+    resultado: "Resultado",
+    resultados: {
+      efectivo: "Se cumple",
+      parcial: "Se cumple en parte",
+      inefectivo: "No se cumple",
+      no_aplica: "No aplica",
+    },
+    evidencia: "Evidencia",
+    evidenciaAyuda: "Qué se revisó y dónde está la prueba",
+    plan: "Plan de acción",
+    guardar: "Guardar la atestación",
+  },
   segregacion: {
     titulo: "Segregación de funciones",
     entradilla:

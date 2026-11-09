@@ -388,6 +388,12 @@ class _LimitsSettings(BaseSettings):
     # los de fábrica. Se edita desde Administrar, no a mano.
     maquinas_de_estado: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
+    # ── Clasificación TCSEC (CRM-07.03.02.11) ─────────────────────────────
+    # Qué parte de las personas tiene que tener segundo factor para dar por
+    # cumplida la responsabilidad individual de C2. Cien por defecto: una sola
+    # cuenta sin segundo factor es la que se usa para entrar.
+    tcsec_mfa_minima_pct: int = Field(100, ge=0, le=100)
+
     # ── Control de flujo en automatizaciones (CRM-00.03.03.04) ────────────
     # Vueltas máximas de un `para_cada`. Una automatización que recorre una
     # colección no puede colgar la petición que la disparó: guardar una

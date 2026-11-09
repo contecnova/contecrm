@@ -227,6 +227,8 @@ PREFIJOS: dict[str, str] = {
     "explotacion": "analytics",
     "proveedores-servicio": "integration",
     "grc": "tenancy",
+    # La clasificación TCSEC de la instalación (CRM-07.03.02.11).
+    "tcsec": "tenancy",
     "compromisos": "tenancy",
     "tablas-decision": "orchestrator",
     "sagas": "orchestrator",

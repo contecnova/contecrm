@@ -4064,6 +4064,45 @@ Las reglas se crean y se editan en la misma pantalla. Los permisos que se
 ofrecen son los que dan los roles de la empresa: una regla con un permiso que
 no tiene nadie no se incumple nunca y parece un control que pasa.
 
+### Clasificación TCSEC (`CRM-07.03.02.11`)
+
+TCSEC (el «libro naranja») clasifica un sistema por la confianza que merece:
+D, C1, C2, B1, B2, B3 y A1, cada nivel con sus requisitos y los de los
+anteriores. Lo piden las herramientas de control interno tipo Infor para
+poder decirle a un auditor en qué nivel está la instalación y por qué.
+
+En **Administrar › Gobierno y cumplimiento › Clasificación TCSEC**, cada
+requisito sale con su estado y de dónde sale:
+
+- **Medido** sobre el sistema en el momento: identificación con bloqueo por
+  intentos (C1), acceso por roles (C1), separación entre empresas con RLS y un
+  rol de conexión que no se la salta (C1), cadena de auditoría íntegra en cada
+  servicio (C2), segundo factor en las cuentas con el mínimo que fije la
+  empresa (C2), clave propia de cifrado para que lo borrado no se recupere
+  (C2), etiquetas de sensibilidad en los campos y nivel por rol (B1),
+  segregación de funciones sin conflictos (B2) y administrador de seguridad
+  aparte (B3).
+- **Atestiguado** por una persona con su evidencia, porque no sale de una
+  consulta: canales encubiertos y gestión de la configuración (B2),
+  recuperación de confianza (B3) y verificación formal (A1). La atestación
+  vale un año y queda como evaluación de un control del GRC, así que también
+  aparece en Riesgos y controles bajo el marco «TCSEC».
+
+Tres reglas que hacen que el nivel signifique algo:
+
+- **Lo que no se pudo medir sale «sin medir», nunca «cumple».** Si identidad
+  no contesta, el requisito no sube el nivel.
+- **Lo que se mide no se atestigua.** Una persona diciendo «cumple» encima de
+  una medida que dice que no es justo lo que el informe existe para evitar.
+- **Lo que el producto no hace, se dice.** El control obligatorio de
+  escritura por etiquetas —no copiar un dato a un sitio de nivel más bajo—
+  no existe, y sin él no hay B1. Sale «no implementado» y no se puede
+  atestiguar.
+
+«Descargar el informe» baja lo mismo en Markdown, con la fecha de la medida,
+para adjuntarlo a una auditoría. El mínimo de segundo factor para C2 es el
+ajuste `tcsec_mfa_minima_pct` (100 % de serie), en Administración.
+
 ---
 
 ## 42. El front oficial, y la consola que se construye sola

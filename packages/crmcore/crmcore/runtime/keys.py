@@ -140,6 +140,14 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="maquinas_de_estado",
             sensible=True,
         ),
+        _c(
+            "tcsec_mfa_minima_pct",
+            "int",
+            "TCSEC: porcentaje mínimo de personas con segundo factor para cumplir C2",
+            minimo=0,
+            maximo=100,
+            campo_settings="tcsec_mfa_minima_pct",
+        ),
         # Búsqueda (CRM-00.01.01.09)
         _c(
             "busqueda_idioma",

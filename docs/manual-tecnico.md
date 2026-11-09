@@ -903,6 +903,21 @@ pantallas:
   `test_sod.py` lo comprueba buscándolos en el código). Detecta, no bloquea:
   ninguna asignación de rol consulta estas reglas. Pantalla:
   `paginas/Segregacion.tsx`; `Seguridad.tsx` sólo enseña el recuento y enlaza.
+- **Clasificación TCSEC** (`services/tenancy/tcsec.py`, `api_tcsec.py`,
+  prefijo `/tcsec`, CRM-07.03.02.11). `REQUISITOS` declara cada requisito
+  con su nivel y, si se mide, su comprobación (`Contexto` → `(estado,
+  detalle, datos)`); las que leen de otros servicios usan
+  `crmcore.http.interno.invocar` con la identidad de quien evalúa y guardan
+  la respuesta en el contexto (el informe de cumplimiento de cada servicio
+  sirve para la cadena y para las etiquetas). Los parámetros van en
+  `parametros`, nunca pegados a la ruta: la ruta decide el servicio. Los
+  ajustes se leen con `_ajuste`, que cae a `Settings` si la clave no es
+  editable. Los requisitos sin comprobación se atestiguan como evaluación del
+  control `TCSEC-<clave>` del GRC (se crea la primera vez, marco «TCSEC»,
+  frecuencia anual). Rutas: `GET /tcsec/evaluacion`, `PUT
+  /tcsec/requisitos/{clave}/atestacion` (`tenant:write`) y `GET
+  /tcsec/informe` (`{fichero, contenido}` en Markdown). Ajuste:
+  `tcsec_mfa_minima_pct`. Pantalla: `paginas/Tcsec.tsx`.
 - **Etapas del embudo**: `PATCH /pipelines/{id}/etapas/{etapa}`,
   `PUT /pipelines/{id}/etapas/orden` y `DELETE …/etapas/{etapa}?mover_a=`,
   con `_exigir_cierres` (una final ganada y una perdida). Pantalla:

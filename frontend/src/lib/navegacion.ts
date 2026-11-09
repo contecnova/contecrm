@@ -324,6 +324,8 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // mandaría aquí a quien busca un riesgo concreto.
   // La segregación de funciones: existía por API y no tenía pantalla
   // (CRM-07.03.02.06).
+  // La clasificación TCSEC de la instalación (CRM-07.03.02.11).
+  { area: "gobierno", a: "/tcsec", clave: "nav.tcsec", icono: "verified_user", permiso: "tenant:read" },
   { area: "gobierno", a: "/segregacion", clave: "nav.segregacion", icono: "rule_settings", permiso: "user:read", recursos: ["segregacion"] },
   { area: "gobierno", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
 ];

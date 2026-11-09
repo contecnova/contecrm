@@ -106,6 +106,7 @@ export default {
     embudos: "Embudos y etapas",
     metodologias: "Metodologías y playbooks",
     segregacion: "Segregación de funciones",
+    tcsec: "Clasificación TCSEC",
     queCliente: "Cliente que estás mirando",
     crear: "Crear",
     crearQue: "Qué quieres dar de alta",

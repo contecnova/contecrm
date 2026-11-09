@@ -100,7 +100,7 @@ cuál mirar sin leerlos todos.
 | **Herramientas de plataforma** | lo que se modela y lo que se publica: Gestor de objetos, Contrato de la API |
 | **Automatización** | Procesos y orquestación, y el Editor de procesos |
 | **Entornos y despliegue** | Operación, Promoción entre entornos, Despliegues y desvíos, Ciclo de vida del cliente, Estado |
-| **Gobierno y cumplimiento** | Riesgos y controles, Plataforma y cumplimiento, Panel de cumplimiento, Segregación de funciones |
+| **Gobierno y cumplimiento** | Riesgos y controles, Plataforma y cumplimiento, Panel de cumplimiento, Segregación de funciones, Clasificación TCSEC |
 
 Hasta el 03-11-2026 eran dos: «Automatización», con dos entradas, y
 «Configuración», con dieciocho —entre ellas «Ayuda» y «Estado», que no ajustan
@@ -2491,6 +2491,28 @@ las comisiones no las aprueba, quien da de alta usuarios no les asigna roles.
   «Comprobar» te dice qué reglas pasaría a incumplir. No cambia nada.
 - **«Excepciones aprobadas»**, abajo, con el motivo y la fecha; marca «Ver
   también las caducadas» para distinguir «no hay ninguna» de «todas vencieron».
+
+### Clasificación TCSEC: en qué nivel de confianza está la instalación
+
+En **Administrar › Gobierno y cumplimiento › Clasificación TCSEC**. Arriba,
+la escala de niveles (D, C1, C2, B1, B2, B3, A1) con el que alcanza tu
+instalación y cuántos requisitos faltan para el siguiente. Debajo, cada nivel
+con sus requisitos:
+
+- **Cumple / No cumple**: lo que se ha medido ahora mismo sobre el sistema, con
+  la cifra que lo explica (por ejemplo, cuántas personas no tienen segundo
+  factor).
+- **Sin medir**: no se pudo comprobar —un servicio no contestó—. No cuenta
+  como cumplido.
+- **No implementado**: el producto no lo hace; se dice para que nadie lo dé
+  por hecho.
+- **Atestiguar**: en los requisitos que no se pueden medir (canales
+  encubiertos, control de cambios, recuperación, verificación formal), elige
+  el resultado y escribe la evidencia —qué se revisó y dónde está la
+  prueba—. Vale un año.
+
+**«Volver a medir»** repite la medida; **«Descargar el informe»** baja el
+resultado en un documento para la auditoría.
 
 ### Dos preguntas que se hacen en «Identidad y seguridad»
 

@@ -78,7 +78,7 @@ ninguna; y la gráfica se dibujaba a 640 de ancho fijo, con lo que en una
 tarjeta la letra se veía de 8,6 px. Ahora cada fila es su zona —también con el
 teclado—, se resalta la señalada con su emergente y la gráfica mide su sitio.
 
-### 4. Un GRC mucho más potente
+### 4. Un GRC mucho más potente — hecho el 09-11-2026
 
 - **Pedido**: 09-11-2026 — «el GRC debe ser mucho más potente, pudiendo llegar
   a tener un DEM o TCSEC como los que tiene Infor en sus herramientas».
@@ -96,8 +96,14 @@ teclado—, se resalta la señalada con su emergente y la gráfica mide su sitio
   el simulador «qué pasa si le doy este rol» y siete reglas de serie. Quitados
   los dos trozos que contestaban lo mismo (Seguridad y la pestaña de
   Cumplimiento); el de Seguridad no marcaba nunca la excepción.
-- **Pendiente: TCSEC** —nivel de la instalación, controles por nivel con su
-  comprobación automática y el informe para auditoría—.
+- **Hecho el 09-11-2026, TCSEC**: pantalla en Administrar › Gobierno y
+  cumplimiento › Clasificación TCSEC (CRM-07.03.02.11) con 15 requisitos de C1
+  a A1 —11 medidos sobre el sistema, 4 atestiguados en el GRC—, el nivel
+  alcanzado y el informe descargable. La pila local sale en D porque conecta
+  como SUPERUSER.
+- **Queda abierto, y se dice en la pantalla**: el control obligatorio de
+  escritura por etiquetas (no copiar un dato a un nivel más bajo) no existe;
+  sin él no hay B1. Construirlo es un bloque propio; sólo si se pide.
 
 ### 5. Las 41 capacidades críticas, alcanzables desde una pantalla
 
