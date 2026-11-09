@@ -78,8 +78,10 @@ class ReglaSupervivencia(Base, TimestampMixin):
     confianza_por_fuente: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
-    activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    nota: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    activa: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    nota: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "objeto", "campo", name="uq_regla_supervivencia"),
@@ -96,19 +98,35 @@ class GoldenRecord(Base, TimestampMixin):
     objeto: Mapped[str] = mapped_column(String(40), nullable=False)
     objeto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     valores: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, info={"anonimizar_en_copias": True}
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     # {campo: {fuente, regla, porque, candidatos}}
     procedencia: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, info={"anonimizar_en_copias": True}
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     a_revisar: Mapped[list[Any]] = mapped_column(
-        JSONB, nullable=False, default=list, info={"anonimizar_en_copias": True}
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     # De qué se compuso: {fuente: cuántos valores aportó}.
-    fuentes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    fuentes: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     aplicado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    aplicados: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    aplicados: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     compuesto_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
     __table_args__ = (

@@ -67,9 +67,13 @@ class PerfilEnriquecimiento(Base, TimestampMixin):
     mapeo: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
     )
-    confianza: Mapped[int] = mapped_column(Integer, nullable=False, default=40)
-    coste_por_consulta: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    confianza: Mapped[int] = mapped_column(Integer, nullable=False, default=40, server_default="40")
+    coste_por_consulta: Mapped[float] = mapped_column(
+        Numeric(10, 4), nullable=False, default=0, server_default="0"
+    )
+    activo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=sql_text("true")
+    )
 
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_perfil_enriquecimiento"),)
 
@@ -87,16 +91,26 @@ class PropuestaEnriquecimiento(Base, TimestampMixin):
     objeto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     # [{campo, actual, propuesto, tipo: hueco|discrepancia|igual}]
     campos: Mapped[list[Any]] = mapped_column(
-        JSONB, nullable=False, default=list, info={"anonimizar_en_copias": True}
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=sql_text("'[]'::jsonb"),
+        info={"anonimizar_en_copias": True},
     )
     estado: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="pendiente", info={"opciones": ESTADOS}
+        String(20),
+        nullable=False,
+        default="pendiente",
+        server_default="pendiente",
+        info={"opciones": ESTADOS},
     )
     consultado_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     pedido_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     decidido_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     decidido_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    aplicados: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    aplicados: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=sql_text("'[]'::jsonb")
+    )
 
     __table_args__ = (
         Index("ix_propuestas_enriquecimiento", "tenant_id", "estado", "objeto", "objeto_id"),

@@ -79,7 +79,7 @@ class AcuerdoProveedor(Base, TimestampMixin):
     disponibilidad_pct: Mapped[float | None] = mapped_column(Numeric(6, 3), nullable=True)
     cobertura_horaria: Mapped[str | None] = mapped_column(String(40), nullable=True)
     vigente_hasta: Mapped[date | None] = mapped_column(Date, nullable=True)
-    notas: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notas: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "proveedor_clave", name="uq_acuerdo_proveedor"),
