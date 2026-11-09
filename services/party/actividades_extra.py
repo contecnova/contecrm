@@ -44,6 +44,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from services.party.estados import cerradas
+
 logger = get_logger(__name__)
 
 # Cada cuánto se repite. Cerrado: cada uno tiene su forma de calcular la
@@ -530,7 +532,7 @@ def generar_pendientes(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
 
         if recurrencia.una_a_una and recurrencia.ultima_creada_id is not None:
             anterior = uow.db.get(Actividad, recurrencia.ultima_creada_id)
-            if anterior is not None and anterior.estado not in ("completada", "cancelada"):
+            if anterior is not None and anterior.estado not in cerradas(uow.db):
                 # Se reprograma en vez de acumular: la anterior sigue abierta y
                 # crear otra igual encima solo hace la lista más larga.
                 recurrencia.proxima_at = _siguiente(recurrencia.patron, ahora, recurrencia.cada)

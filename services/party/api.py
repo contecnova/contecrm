@@ -42,6 +42,7 @@ from services.party.esquemas import (
     ActividadOut,
     ActualizarCuenta,
     AsignarActividad,
+    CambiarEstadoActividad,
     CandidatoOut,
     CompletarActividad,
     ConsentimientoOut,
@@ -65,6 +66,7 @@ from services.party.esquemas import (
     VincularContacto,
     Vista360,
 )
+from services.party.estados import vivas
 from services.party.modelos import (
     Actividad,
     Consentimiento,
@@ -1107,7 +1109,7 @@ def listar_actividades(
     if vencidas:
         consulta = consulta.where(
             Actividad.vence_at < datetime.now(timezone.utc),
-            Actividad.estado.in_(("pendiente", "en_curso")),
+            Actividad.estado.in_(vivas(db)),
         )
     # Y los filtros comunes, con sus rangos: `?vence_at__hasta=…` para «lo que
     # vence antes del viernes», `?prioridad__en=alta,urgente`…
@@ -1132,6 +1134,49 @@ def listar_actividades(
         modelo_salida=ActividadOut,
         contar=contar,
     )
+
+
+@router_actividades.post(
+    "/{actividad_id}/estado",
+    response_model=ActividadOut,
+    dependencies=[Depends(exige_permiso("activity:write"))],
+    summary="Mover una actividad de estado",
+    description=(
+        "Con los estados y las transiciones que haya configurado la empresa. "
+        "Pasar a un estado que significa «completada» es completarla: guarda "
+        "cuándo y con qué resultado, y avisa (`activity.completed`)."
+    ),
+)
+def cambiar_estado_actividad(
+    actividad_id: UUID, datos: CambiarEstadoActividad, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from crmcore.authz.decision import exigir
+    from crmcore.datos.estados import aplicar, comprobar, significa
+
+    actividad = svc._actividad(uow.db, actividad_id)
+    exigir(uow.db, objeto="actividad", accion="write", registro=actividad)
+    comprobar(
+        "actividad", desde=actividad.estado, hasta=datos.estado, motivo=datos.motivo, db=uow.db
+    )
+    if significa("actividad", datos.estado, "completada", uow.db) and not significa(
+        "actividad", actividad.estado, "completada", uow.db
+    ):
+        completar(actividad_id, CompletarActividad(resultado=datos.resultado), uow, principal)
+        actividad.estado = datos.estado  # la completada que se eligió
+        return actividad
+    if significa("actividad", actividad.estado, "completada", uow.db):
+        # Se retoma: deja de constar como hecha.
+        actividad.completada_at = None
+    aplicar(
+        uow.db,
+        actividad,
+        objeto="actividad",
+        nuevo=datos.estado,
+        motivo=datos.motivo,
+        por=principal.id,
+    )
+    actividad.updated_by = principal.id
+    return actividad
 
 
 @router_actividades.post(

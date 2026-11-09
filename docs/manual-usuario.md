@@ -1397,6 +1397,9 @@ Si lo pasas a un estado de pausa —«Esperando cliente»— el reloj del SLA se
 para; al cerrarlo te pide el motivo, y al volver a trabajar uno cerrado te pide
 por qué y cuenta como reapertura.
 
+Y en una **actividad**: el desplegable de la cabecera la empieza, la completa,
+la cancela (te pide por qué) o la retoma.
+
 Quién decide qué estados hay, cómo se llaman y a cuáles se puede pasar: el
 administrador, en **Administrar › Plataforma › Estados de los objetos**. Y
 las etapas del embudo —cuántas hay, su probabilidad y qué hace falta para salir

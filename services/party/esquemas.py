@@ -274,6 +274,10 @@ class ActividadOut(BaseModel):
     cuenta_id: UUID | None = None
     contacto_id: UUID | None = None
     estado: str
+    # Qué significa y cómo lo llama esta empresa (estados configurables).
+    estado_significa: str | None = None
+    estado_nombre: str | None = None
+    estado_color: str | None = None
     prioridad: str
     asignada_a: UUID | None = None
     vence_at: datetime | None = None
@@ -303,6 +307,12 @@ class ActividadOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class CambiarEstadoActividad(BaseModel):
+    estado: str = Field(max_length=20)
+    motivo: str = ""
+    resultado: str | None = None
 
 
 class CompletarActividad(BaseModel):

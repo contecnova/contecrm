@@ -894,6 +894,12 @@ pantallas:
   `servicio.cambiar_estado` desvía a `cerrar_caso`/`reabrir_caso` cuando entra
   o sale de un «cerrado». `POST /casos/{id}/estado` existe para la cabecera de
   la ficha, igual que el `PUT`.
+- **Máquina de la actividad** en `services/party/estados.py`, con `vivas(db)`
+  y `cerradas(db)`. `POST /activities/{id}/estado` desvía a completar cuando
+  el destino significa «completada». El modelo expone `estado_significa`,
+  `estado_nombre` y `estado_color` como propiedades (sesión del objeto). Un
+  rollup cuyo filtro depende de la empresa usa `Rollup.filtro_de(db)` en vez
+  de `filtro`, que se construye al importar.
 - **Metodologías** (`services/sales/cadencias.py`): `metodologia_de` elige
   la del embudo de la oportunidad (o la general), `criterios_de` normaliza las
   dos formas en que se han escrito los criterios (`etiqueta`/`peso` y

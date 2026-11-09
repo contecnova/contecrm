@@ -84,7 +84,7 @@ def relacion(actividades: list[dict[str, Any]], s: Any) -> float | None:
     vencidas = sum(
         1
         for a in actividades
-        if str(a.get("estado") or "") in ("pendiente", "en_curso")
+        if str(a.get("estado_significa") or a.get("estado") or "") in ("pendiente", "en_curso")
         and (_fecha(a.get("vence_at")) or ahora) < ahora
     )
     return _acotar(base - vencidas * int(s.salud_relacion_penalizacion_vencida))

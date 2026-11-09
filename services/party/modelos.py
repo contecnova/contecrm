@@ -504,6 +504,15 @@ class Consentimiento(Base, TimestampMixin):
 
 
 ESTADOS_ACTIVIDAD = ("pendiente", "en_curso", "completada", "cancelada")
+
+
+def _vivas(db: Any) -> frozenset[str]:
+    """Las actividades por hacer, con los estados de la empresa (ver `estados.py`)."""
+    from services.party.estados import vivas
+
+    return vivas(db)
+
+
 PRIORIDADES_ACTIVIDAD = ("baja", "normal", "alta", "urgente")
 
 
@@ -613,13 +622,33 @@ class Actividad(EntidadBase, SoftDeleteMixin):
         ),
     )
 
+    def _presentacion(self) -> dict[str, Any]:
+        from crmcore.datos.estados import maquina_efectiva, presentar
+        from sqlalchemy.orm import object_session
+
+        return presentar(maquina_efectiva("actividad", object_session(self)), self.estado)
+
+    @property
+    def estado_significa(self) -> str | None:
+        return self._presentacion()["estado_significa"]
+
+    @property
+    def estado_nombre(self) -> str | None:
+        return self._presentacion()["estado_nombre"]
+
+    @property
+    def estado_color(self) -> str | None:
+        return self._presentacion()["estado_color"]
+
     @property
     def esta_vencida(self) -> bool:
         from datetime import timezone as tz
 
+        from sqlalchemy.orm import object_session
+
         return (
             self.vence_at is not None
-            and self.estado in ("pendiente", "en_curso")
+            and self.estado in _vivas(object_session(self))
             and self.vence_at < datetime.now(tz.utc)
         )
 
@@ -833,7 +862,8 @@ _rollups.declarar(
         modelo_hijo=Actividad,
         campo_padre="cuenta_id",
         funcion="cuenta",
-        filtro=Actividad.estado.in_(("pendiente", "en_curso")),
+        # Las vivas, según los estados de la empresa.
+        filtro_de=lambda db: Actividad.estado.in_(_vivas(db)),
     ),
     _rollups.Rollup(
         nombre="ultima_actividad_at",

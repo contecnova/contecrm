@@ -8,6 +8,7 @@ from uuid import UUID
 
 from crmcore.audit.chain import registrar, registrar_cambios
 from crmcore.authz.decision import exigir
+from crmcore.datos.estados import estado_de, significa
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from services.party import duplicados, metricas_embebidas
 from services.party import normalizacion as norm
+from services.party.estados import cerradas, vivas
 from services.party.modelos import (
     Actividad,
     Consentimiento,
@@ -770,9 +772,9 @@ def completar_actividad(
 ) -> Actividad:
     actividad = _actividad(db, actividad_id)
     exigir(db, objeto="actividad", accion="write", registro=actividad)
-    if actividad.estado == "completada":
+    if significa("actividad", actividad.estado, "completada", db):
         raise Conflicto("Esa actividad ya está completada", error_code="party.actividad_completada")
-    actividad.estado = "completada"
+    actividad.estado = estado_de("actividad", "completada", db)
     actividad.completada_at = datetime.now(timezone.utc)
     actividad.resultado = resultado
     actividad.updated_by = por
@@ -1500,7 +1502,7 @@ def asignar_actividad(
     repartidor decide por dónde avisa (CRM-06.02.01.02).
     """
     actividad = _actividad(uow.db, actividad_id)
-    if actividad.estado in ("completada", "cancelada"):
+    if actividad.estado in cerradas(uow.db):
         raise Conflicto(
             "No se puede asignar una actividad ya cerrada",
             error_code="party.actividad_cerrada",
@@ -1546,7 +1548,7 @@ def delegar_actividad(
     exactamente lo que pasa con las tareas delegadas por correo.
     """
     actividad = _actividad(uow.db, actividad_id)
-    if actividad.estado in ("completada", "cancelada"):
+    if actividad.estado in cerradas(uow.db):
         raise Conflicto(
             "No se puede delegar una actividad ya cerrada",
             error_code="party.actividad_cerrada",
@@ -1685,7 +1687,7 @@ def actividades_vencidas(
     ahora = datetime.now(timezone.utc)
     consulta = select(Actividad).where(
         Actividad.deleted_at.is_(None),
-        Actividad.estado.in_(("pendiente", "en_curso")),
+        Actividad.estado.in_(vivas(db)),
         Actividad.vence_at.is_not(None),
         Actividad.vence_at < ahora,
     )
@@ -1731,7 +1733,7 @@ def barrer_recordatorios(db: Session, *, limite: int = 200) -> dict[str, int]:
             select(Actividad)
             .where(
                 Actividad.deleted_at.is_(None),
-                Actividad.estado.in_(("pendiente", "en_curso")),
+                Actividad.estado.in_(vivas(db)),
                 Actividad.recordatorio_enviado.is_(False),
                 Actividad.recordar_at.is_not(None),
                 Actividad.recordar_at <= ahora,

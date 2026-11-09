@@ -1799,6 +1799,14 @@ resuelto y cerrado, y el SLA los lee por lo que significan:
   motivo, respeta la ventana de reapertura y suma la reapertura. Hasta ahora
   cambiar el estado a mano permitía reabrir fuera de plazo sin que constara.
 
+**La actividad**, también desde el 09-11-2026. Sus significados son pendiente,
+en curso, completada y cancelada. Un estado propio —«Esperando respuesta» con
+significado «en curso»— sigue saliendo en las vencidas, en los recordatorios y
+en las actividades abiertas de la cuenta; uno que signifique «cancelada» deja
+de recibir avisos. Pasar a un estado que significa «completada» es completarla:
+guarda cuándo y con qué resultado y avisa igual que el botón «Completar».
+Cancelar pide motivo.
+
 Los objetos **propios del tenant** son el caso distinto: no tienen código
 detrás, así que ahí la declaración de metadatos **es** la máquina entera y sí
 define los estados.

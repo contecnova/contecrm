@@ -74,6 +74,8 @@
   camino. Medido: de más de 50 tuplas de estados, la mayoría son del sistema
   (trabajos, sagas, firmas, cargas) y no se configuran; las de negocio que
   quedan son actividad, presupuesto y contrato.
+- **Actividad, hecho el 09-11-2026**: máquina configurable; vencidas,
+  recordatorios, abiertas de la cuenta y salud del cliente por significado.
 
 ### 3. Las gráficas se leen al pasar el ratón — hecho el 09-11-2026
 

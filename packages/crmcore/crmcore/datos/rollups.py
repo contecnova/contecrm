@@ -62,6 +62,10 @@ class Rollup:
     funcion: str
     campo: str | None = None
     filtro: Any = None
+    # Lo mismo, cuando la condición depende de la empresa —los estados que
+    # cuentan como abiertos los configura cada una—: se construye con la sesión
+    # en el momento de calcular, no al importar.
+    filtro_de: Any = None
 
     def __post_init__(self) -> None:
         if self.funcion not in FUNCIONES:
@@ -123,6 +127,8 @@ def calcular(db: Session, rollups: list[Rollup], padres: list[UUID]) -> dict[UUI
         consulta = select(columna_padre, agregacion(objetivo)).where(columna_padre.in_(padres))
         if rollup.filtro is not None:
             consulta = consulta.where(rollup.filtro)
+        if rollup.filtro_de is not None:
+            consulta = consulta.where(rollup.filtro_de(db))
         consulta = consulta.group_by(columna_padre)
 
         # Con SAVEPOINT, y no un `try` a secas: un `try` atrapa el error pero
