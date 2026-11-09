@@ -900,6 +900,12 @@ pantallas:
   `estado_nombre` y `estado_color` como propiedades (sesión del objeto). Un
   rollup cuyo filtro depende de la empresa usa `Rollup.filtro_de(db)` en vez
   de `filtro`, que se construye al importar.
+- **Motor de procesos, despertar** (`services/orchestrator/motor.py`):
+  `avanzar` llama a `_despertar` cuando la instancia está en `esperando`
+  (espera → `siguiente`; subproceso → mira la última hija por `padre_id`;
+  evento → `si_caduca` o falla). `esperando_humano` no pasa por aquí: lo
+  reanuda `responder_tarea`. Tareas: `_le_toca(tarea, principal)` en
+  `api.py` decide responder y delegar.
 - **Presupuesto y contrato** (`services/sales/estados.py`): máquinas con
   `_CON_SU_CAMINO` en `servicio.py` para lo que tiene acción; entre dos
   estados del mismo significado no se exige el camino. Rutas `POST

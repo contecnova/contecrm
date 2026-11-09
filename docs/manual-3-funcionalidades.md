@@ -4825,6 +4825,25 @@ que pasa **antes** de que una definición llegue a producción, y es donde estos
 motores se rompen siempre: alguien cambia el diagrama un martes y doscientas
 instancias a medias pasan a ejecutar pasos que no existían cuando empezaron.
 
+### Las esperas despiertan (09-11-2026)
+
+Un paso `espera`, un `subproceso` que se espera y un `evento` con plazo dejaban
+la instancia en «esperando» con su fecha de despertar, y al llegar la fecha el
+worker la recogía y no hacía nada: el motor sólo avanzaba lo que estaba
+«ejecutando». Medido en la pila: tres minutos parada en una espera de cinco
+segundos. Ahora, al vencer, la espera pasa al paso siguiente; el subproceso
+sigue si la hija terminó (con su resultado en `<paso>_resultado`), falla si la
+hija falló y, si no, vuelve a mirar en un minuto; y el evento que caduca va a
+`si_caduca` si el paso lo declara o falla diciendo qué no llegó.
+
+### Quién puede responder o delegar una tarea humana (09-11-2026)
+
+La tarea es de la persona asignada o, si sólo hay rol, de quien tenga ese
+rol. Hasta ahora, con sólo un rol asignado cualquiera la respondía, y delegar no
+comprobaba nada: cualquiera del tenant con el identificador se la quedaba.
+Delegar ajena sólo puede quien administra procesos (`proceso:admin`), que es
+reasignar.
+
 ### Dos formas de que un proceso se atasque, y solo se detectaba una
 
 La validación ya avisaba de pasos inalcanzables: un paso que se dejó de enlazar

@@ -329,6 +329,9 @@ Lo que hay que saber:
 
 ### Cuando un proceso se queda parado
 
+Una espera, un subproceso o un evento ya no dejan el proceso parado para
+siempre: al llegar su hora, sigue.
+
 En **Procesos › Instancias**, cada fila se abre. Dentro está lo que hace falta
 para entenderlo y para sacarlo de ahí:
 

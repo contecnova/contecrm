@@ -337,6 +337,55 @@ def test_una_instancia_que_espera_tiene_fecha_de_despertar_crm_00_03_02_07(
         "despertar_at"
     ], f"una instancia dormida sin fecha de despertar no la despierta nadie: {sorted(ficha)}"
 
+    # Y al vencer, DESPIERTA. La prueba se paraba aquí, y el motor no sacaba
+    # nunca a una instancia de «esperando»: el temporizador estaba puesto y no
+    # sonaba (medido el 09-11-2026 en la pila).
+    Motor(db).avanzar(instancia)
+    db.flush()
+    assert instancia.estado == "completada", (instancia.estado, instancia.error)
+
+
+def test_un_subproceso_que_se_espera_reanuda_al_padre_crm_00_03_02_08(
+    cliente: Any, cabeceras: dict[str, str], db: Any, contexto_tenant: UUID
+) -> None:
+    from services.orchestrator.modelos import InstanciaProceso
+    from services.orchestrator.motor import Motor
+
+    for clave, definicion in (
+        ("hija_corta", {"inicio": "fin", "pasos": {"fin": {"tipo": "fin"}}}),
+        (
+            "padre_que_espera",
+            {
+                "inicio": "llamar",
+                "pasos": {
+                    "llamar": {"tipo": "subproceso", "proceso": "hija_corta", "siguiente": "fin"},
+                    "fin": {"tipo": "fin"},
+                },
+            },
+        ),
+    ):
+        cliente.post(
+            "/api/v1/procesos/definiciones",
+            headers=cabeceras,
+            json={"clave": clave, "nombre": clave, "definicion": definicion, "estado": "publicada"},
+        )
+    r = cliente.post("/api/v1/instancias", headers=cabeceras, json={"clave": "padre_que_espera"})
+    padre = db.get(InstanciaProceso, UUID(r.json()["id"]))
+    motor = Motor(db)
+    motor.avanzar(padre)
+    db.flush()
+    assert padre.estado == "esperando"
+    hija = db.query(InstanciaProceso).filter_by(padre_id=padre.id).one()
+    # Mientras la hija no ha terminado, el padre sigue esperando.
+    motor.avanzar(padre)
+    assert padre.estado == "esperando"
+    motor.avanzar(hija)
+    db.flush()
+    assert hija.estado == "completada"
+    motor.avanzar(padre)
+    db.flush()
+    assert padre.estado == "completada", (padre.estado, padre.error)
+
 
 # ── CRM-00.03.02.08 · Subprocesos ─────────────────────────────────────────
 
@@ -550,3 +599,69 @@ def test_el_evento_se_escribe_con_el_dato_y_no_despues_crm_00_03_02_06(
     assert (
         filas[0].publicado_at is None
     ), "nace publicado: entonces un reenvío no sabría cuáles faltan por salir"
+
+
+def _cabeceras_de(tenant_id: UUID, permisos: str, roles: str) -> dict[str, str]:
+    from crmcore.config import get_settings
+    from crmcore.http.deps import H_PERMISOS, H_ROLES, H_TENANT, H_USER, firmar_cabeceras_internas
+
+    return firmar_cabeceras_internas(
+        {H_TENANT: str(tenant_id), H_USER: str(uuid4()), H_PERMISOS: permisos, H_ROLES: roles},
+        get_settings().secret_key.get_secret_value(),
+    )
+
+
+def test_una_tarea_de_un_rol_no_la_responde_ni_la_delega_quien_no_lo_tiene(
+    cliente: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Medido el 09-11-2026: cualquiera del tenant se delegaba una tarea ajena
+    y la respondía; y con sólo un rol asignado no se comprobaba nada."""
+    from services.orchestrator.modelos import InstanciaProceso, TareaHumana
+    from services.orchestrator.motor import Motor
+
+    definicion = {
+        "inicio": "aprobar",
+        "pasos": {
+            "aprobar": {
+                "tipo": "humano",
+                "asignada_rol": "direccion",
+                "rutas": {"ok": "fin", "ko": "fin"},
+            },
+            "fin": {"tipo": "fin"},
+        },
+    }
+    cliente.post(
+        "/api/v1/procesos/definiciones",
+        headers=cabeceras,
+        json={
+            "clave": "de_rol",
+            "nombre": "De rol",
+            "definicion": definicion,
+            "estado": "publicada",
+        },
+    )
+    r = cliente.post("/api/v1/instancias", headers=cabeceras, json={"clave": "de_rol"})
+    Motor(db).avanzar(db.get(InstanciaProceso, UUID(r.json()["id"])))
+    db.flush()
+    tarea = db.query(TareaHumana).filter_by(instancia_id=UUID(r.json()["id"])).one()
+
+    ajeno = _cabeceras_de(tenant_id, "proceso:read,proceso:write,tarea:write", "comercial")
+    assert (
+        cliente.post(
+            f"/api/v1/tareas/{tarea.id}/responder", headers=ajeno, json={"respuesta": "ok"}
+        ).status_code
+        == 404
+    )
+    assert (
+        cliente.post(
+            f"/api/v1/tareas/{tarea.id}/delegar", headers=ajeno, json={"usuario_id": str(uuid4())}
+        ).status_code
+        == 404
+    )
+    del_rol = _cabeceras_de(tenant_id, "proceso:read,proceso:write,tarea:write", "direccion")
+    assert (
+        cliente.post(
+            f"/api/v1/tareas/{tarea.id}/responder", headers=del_rol, json={"respuesta": "ok"}
+        ).status_code
+        == 200
+    )

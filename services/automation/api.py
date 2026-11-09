@@ -122,7 +122,9 @@ router = APIRouter(prefix="/automatizaciones", tags=["automatizaciones"])
 )
 def crear(datos: CrearAutomatizacion, db: DbDep, principal: AutenticadoDep) -> Any:
     for accion in datos.acciones:
-        if str(accion.get("tipo", "")) not in motor.ACCIONES:
+        # Las de control —si, para_cada, fijar— también: el motor las ejecuta y
+        # crear las rechazaba, así que ramas y bucles no se podían guardar.
+        if str(accion.get("tipo", "")) not in motor.ACCIONES | motor.CONTROL:
             raise ErrorValidacion(
                 f"Acción no admitida: «{accion.get('tipo')}»",
                 error_code="automatizacion.accion_no_admitida",

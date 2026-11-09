@@ -505,6 +505,14 @@ class Motor:
         pasos = definicion.definicion.get("pasos") or {}
         ejecutados_en_turno = 0
 
+        # Una instancia en «esperando» que el worker recoge es que le ha
+        # llegado la hora. Sin esto no despertaba nunca: el bucle de abajo
+        # sólo corre con «ejecutando» y nada la sacaba de la espera, así que un
+        # temporizador, un subproceso o un evento la dejaban parada para
+        # siempre (medido el 09-11-2026: 3 minutos en una espera de 5 s).
+        if instancia.estado == "esperando" and not self._despertar(instancia, pasos):
+            return instancia
+
         while instancia.estado == "ejecutando" and ejecutados_en_turno < max_pasos:
             if instancia.pasos_ejecutados >= s.proceso_max_pasos:
                 self._fallar(
@@ -746,6 +754,72 @@ class Motor:
             vence or datetime.now(timezone.utc) + timedelta(days=1),
             {"tarea_pendiente": nombre},
         )
+
+    def _despertar(self, instancia: InstanciaProceso, pasos: dict[str, Any]) -> bool:
+        """Saca de la espera una instancia vencida. Devuelve si debe seguir.
+
+        Espera: al vencer pasa al siguiente paso. Subproceso: sigue si la hija
+        terminó, falla si la hija falló, y si no vuelve a mirar en un minuto.
+        Evento: si caduca, va a `si_caduca` cuando lo declara; si no, falla
+        diciendo qué no llegó —quedarse esperando algo que ya no va a llegar es
+        lo que el plazo existe para evitar—.
+        """
+        from sqlalchemy import select
+
+        ahora = datetime.now(timezone.utc)
+        nombre = instancia.paso_actual or ""
+        paso = pasos.get(nombre) or {}
+        tipo = paso.get("tipo")
+
+        def seguir(destino: Any) -> bool:
+            instancia.paso_actual = destino
+            instancia.despertar_at = None
+            instancia.estado = "ejecutando" if destino else "completada"
+            return bool(destino)
+
+        if tipo == "espera":
+            return seguir(paso.get("siguiente"))
+
+        if tipo == "subproceso":
+            hija = (
+                self.db.execute(
+                    select(InstanciaProceso)
+                    .where(InstanciaProceso.padre_id == instancia.id)
+                    .order_by(InstanciaProceso.created_at.desc())
+                    .limit(1)
+                )
+                .scalars()
+                .first()
+            )
+            if hija is not None and hija.estado == "completada":
+                instancia.variables = {
+                    **(instancia.variables or {}),
+                    f"{nombre}_resultado": dict(hija.variables or {}),
+                }
+                return seguir(paso.get("siguiente"))
+            if hija is None or hija.estado in ("fallida", "compensada", "cancelada"):
+                self._fallar(
+                    instancia,
+                    f"El subproceso de «{nombre}» "
+                    + ("no existe" if hija is None else f"terminó como «{hija.estado}»"),
+                )
+                return False
+            instancia.despertar_at = ahora + timedelta(minutes=1)
+            return False
+
+        if tipo == "evento":
+            if paso.get("si_caduca"):
+                return seguir(paso.get("si_caduca"))
+            self._fallar(
+                instancia,
+                f"El evento «{paso.get('evento')}» que esperaba «{nombre}» no llegó a tiempo",
+            )
+            return False
+
+        # Cualquier otra cosa en «esperando» es un estado que no debería darse:
+        # se dice en vez de reintentar en bucle.
+        self._fallar(instancia, f"«{nombre}» estaba esperando sin saber a qué")
+        return False
 
     def _cumple(self, condicion: dict[str, Any], variables: dict[str, Any]) -> bool:
         return cumple_condicion(condicion, variables)

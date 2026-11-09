@@ -530,7 +530,10 @@ def saltar_paso(instancia_id: UUID, datos: SaltarPaso, db: DbDep, principal: Aut
     instancia = db.get(InstanciaProceso, instancia_id)
     if instancia is None or instancia.tenant_id != principal.tenant_id:
         raise NoEncontrado("La instancia no existe", error_code="proceso.no_encontrado")
-    if instancia.estado in ("terminada", "compensada"):
+    # «completada», no «terminada»: el motor nunca escribe «terminada», así que
+    # una instancia ya acabada se dejaba saltar. Compensada tampoco: sus pasos
+    # ya se deshicieron, y para eso está «Reintentar».
+    if instancia.estado in ("completada", "compensada", "cancelada"):
         raise Conflicto(
             "La instancia ya ha terminado: saltar un paso de un proceso cerrado "
             "no lo reabre, lo falsea.",
@@ -639,11 +642,10 @@ def responder(tarea_id: UUID, datos: ResponderTarea, db: DbDep, principal: Auten
     tarea = db.get(TareaHumana, tarea_id)
     if tarea is None or tarea.tenant_id != principal.tenant_id:
         raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")
-    # Se comprueba que le toca: por asignación directa o por rol. Sin esto,
-    # cualquiera con acceso a la API podría aprobar el descuento de otro.
-    if tarea.asignada_a and tarea.asignada_a != principal.id:
-        if not (tarea.asignada_rol and tarea.asignada_rol in principal.roles):
-            raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")
+    # Se comprueba que le toca. Sin esto, cualquiera con acceso a la API podría
+    # aprobar el descuento de otro.
+    if not _le_toca(tarea, principal):
+        raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")
 
     motor = mtr.Motor(db)
     instancia = motor.responder_tarea(
@@ -662,6 +664,21 @@ def responder(tarea_id: UUID, datos: ResponderTarea, db: DbDep, principal: Auten
     return instancia
 
 
+def _le_toca(tarea: TareaHumana, principal: Any) -> bool:
+    """Si esta tarea es de quien pregunta: por persona, o por rol si no hay persona.
+
+    Con sólo un rol asignado no se comprobaba nada: cualquiera respondía una
+    tarea pensada para «dirección».
+    """
+    if tarea.asignada_a:
+        return tarea.asignada_a == principal.id or bool(
+            tarea.asignada_rol and tarea.asignada_rol in principal.roles
+        )
+    if tarea.asignada_rol:
+        return tarea.asignada_rol in principal.roles
+    return True
+
+
 @router_tareas.post(
     "/{tarea_id}/delegar",
     response_model=TareaOut,
@@ -670,6 +687,11 @@ def responder(tarea_id: UUID, datos: ResponderTarea, db: DbDep, principal: Auten
 def delegar(tarea_id: UUID, datos: DelegarTarea, db: DbDep, principal: AutenticadoDep) -> Any:
     tarea = db.get(TareaHumana, tarea_id)
     if tarea is None or tarea.tenant_id != principal.tenant_id:
+        raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")
+    # Delegar es quedarse la tarea de alguien para dársela a otro: sólo quien la
+    # tiene, o quien administra procesos (reasignar). Sin esto cualquiera del
+    # tenant con el identificador se la delegaba a sí mismo y la respondía.
+    if not (_le_toca(tarea, principal) or principal.tiene("proceso:admin")):
         raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")
     if tarea.estado != "pendiente":
         raise Conflicto("Esa tarea ya está resuelta", error_code="tarea.ya_resuelta")

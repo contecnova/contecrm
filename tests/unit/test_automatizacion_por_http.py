@@ -131,3 +131,33 @@ def test_y_se_listan_las_dos(
     cuerpo = r.json()
     programaciones = {f["programacion"] for f in cuerpo["items"]}
     assert programaciones == {None, "0 8 * * 1"}, programaciones
+
+
+def test_ramas_y_bucles_se_pueden_guardar(
+    cliente: Any, cabeceras: dict[str, str], contexto_tenant: UUID
+) -> None:
+    """`si`, `para_cada` y `fijar` los ejecuta el motor, y crear los rechazaba
+    con «Acción no admitida»: ramas y bucles no se podían guardar (09-11-2026)."""
+    r = cliente.post(
+        "/api/v1/automatizaciones",
+        json=_regla(
+            nombre="Con rama y bucle",
+            acciones=[
+                {"tipo": "fijar", "nombre": "limite", "valor": 1000},
+                {
+                    "tipo": "para_cada",
+                    "en": "lineas",
+                    "acciones": [{"tipo": "notificar", "a": "owner"}],
+                },
+            ],
+        ),
+        headers=cabeceras,
+    )
+    assert r.status_code == 201, r.text[:400]
+    # Y lo que no es acción ni control sigue sin pasar.
+    r = cliente.post(
+        "/api/v1/automatizaciones",
+        json=_regla(nombre="Inventada", acciones=[{"tipo": "borrar_todo"}]),
+        headers=cabeceras,
+    )
+    assert r.status_code == 422, r.text[:200]
