@@ -27,6 +27,7 @@ ya lo tienen leads, cuentas u oportunidades— y este deja de usarse para él.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -660,6 +661,29 @@ NO_EDITABLES = frozenset(
 )
 
 
+# Columnas que son del sistema por CONVENCIÓN DE NOMBRE, en cualquier modelo.
+#
+# Medido el 08-11-2026: de 357 campos que el PATCH genérico ofrecía y que el
+# código de su servicio escribe, éstos son los que nadie puede tocar a mano sin
+# falsear algo —34 en nueve servicios—: el hash enviado, el hash firmado y el
+# sello de tiempo de un sobre de firma, el recuento y las diferencias de una
+# migración, los fallos seguidos de un webhook (que lo desactivan), las
+# ejecuciones de una automatización, el resultado de probar una conexión, el
+# nombre completo y la clave canónica de un contacto (salen de otros campos) y
+# las marcas de «último envío/acceso/mensaje». Los otros 323 —el estado, las
+# notas, quién es el responsable, los plazos— los cambia una persona y siguen
+# siendo editables: quitarlos impediría corregir un dato mal puesto.
+#
+# Un campo calculado que no siga estas formas se marca en su columna con
+# `info={"calculado": True}`.
+ES_DEL_SISTEMA = re.compile(
+    r"^hash_|_hash$|^sello_|^recuento_|^veces_|_enviados$|^fallos|^ejecuciones$"
+    r"|^intentos$|^recibidos$|^descartados$|^creadas$|^diferencias$"
+    r"|^clave_canonica$|^nombre_completo$|^prueba_ok$|^prueba_detalle$|^probada_at$"
+    r"|^ultim[oa]_(.+_)?at$"
+)
+
+
 def _ya_montada(router: Any, ruta: str, metodo: str) -> bool:
     """Si el router ya atiende `metodo` en `ruta` con una escrita a mano.
 
@@ -769,9 +793,9 @@ def montar_ficha(
         # Lo que calcula el sistema lo dice la propia columna, no una lista
         # aquí: quien añade un campo calculado lo marca donde lo declara.
         and not (getattr(columna, "columns", None) and columna.columns[0].info.get("calculado"))
-        # Un resumen criptográfico no se teclea: escribirlo es cambiar el
-        # secreto sin pasar por la operación que lo rota.
-        and not nombre_campo.endswith("_hash")
+        # Lo que es del sistema por cómo se llama: huellas y sellos, contadores,
+        # derivados y marcas de «último evento». Ver `ES_DEL_SISTEMA`.
+        and not ES_DEL_SISTEMA.search(nombre_campo)
         and (editable is None or nombre_campo in editable)
         # Las claves ajenas al dueño del registro no se cambian por aquí: mover
         # un contacto de cuenta tiene consecuencias —visibilidad, territorio,
