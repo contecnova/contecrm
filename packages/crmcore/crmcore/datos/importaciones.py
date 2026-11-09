@@ -110,7 +110,8 @@ def _de_json(modelo: type, campo: str, valor: Any) -> Any:
     """Devuelve a su tipo un valor de la foto, para escribirlo en la columna."""
     if valor is None:
         return None
-    columna = sa_inspect(modelo).columns.get(campo)
+    mapeador: Any = sa_inspect(modelo)
+    columna = mapeador.columns.get(campo)
     if columna is None:
         return valor
     try:

@@ -226,7 +226,7 @@ async def latencias_de(
         crudo = dict(_memoria.get(clave, {}))
     por_op: dict[str, list[int]] = {}
     for campo, valor in crudo.items():
-        campo = campo.decode() if isinstance(campo, bytes) else str(campo)
+        campo = bytes(campo).decode() if isinstance(campo, (bytes, bytearray)) else str(campo)
         op, _, indice = campo.rpartition("|")
         try:
             i = int(indice)

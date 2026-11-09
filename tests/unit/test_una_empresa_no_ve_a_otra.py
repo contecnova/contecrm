@@ -239,6 +239,13 @@ def soporte_y_cliente(db: Any, tenant_id: UUID, contexto_tenant: UUID) -> Any:
     )
     db.add_all([soporte, cliente])
     db.flush()
+    # El cliente es DE la empresa: desde el 09-11-2026 sólo se entra «como»
+    # alguien que tiene acceso a ella. Sin la membresía, la sesión de soporte
+    # salía sin roles y no reproducía nada de lo que esa persona ve.
+    from services.identity.modelos import Membresia
+
+    db.add(Membresia(tenant_id=tenant_id, usuario_id=cliente.id, roles=["comercial"]))
+    db.flush()
     return soporte, cliente
 
 
