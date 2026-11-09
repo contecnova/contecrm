@@ -641,3 +641,18 @@ def test_no_se_mandan_hechos_a_un_periodo_cerrado() -> None:
     with pytest.raises(Conflicto) as fallo:
         cmp.exigir_periodo_abierto(periodo_cerrado=True, referencia="OP-1")
     assert fallo.value.error_code == "compensacion.periodo_cerrado"
+
+
+def test_las_lineas_de_la_oportunidad_tal_como_se_guardan() -> None:
+    """La ficha manda sus líneas con `tipo_ingreso`, `periodicidad` y `total`, y
+    el cálculo sólo entendía `tipo`, `periodo` e `importe`: daba 422 con
+    cualquier oportunidad con líneas (09-11-2026)."""
+    from services.sales import ingresos as ing
+
+    salida = ing.metricas_de_ingreso(
+        lineas=[
+            {"tipo_ingreso": "recurrente", "periodicidad": "mensual", "total": "100"},
+            {"tipo_ingreso": "implantacion", "total": "500"},
+        ]
+    )
+    assert float(salida["arr"]) == 1200

@@ -179,6 +179,19 @@ def _hoy(db: Any = None) -> date:
 # ── Recurrente frente a puntual (CRM-03.01.01.06) ─────────────────────────
 
 
+def _forma_corta(linea: dict[str, Any]) -> dict[str, Any]:
+    """Una línea con los nombres que usa el cálculo, venga como venga."""
+    corta = dict(linea)
+    corta.setdefault("tipo", linea.get("tipo_ingreso") or "puntual")
+    if corta.get("tipo") is None:
+        corta["tipo"] = linea.get("tipo_ingreso") or "puntual"
+    if not corta.get("periodo") and linea.get("periodicidad"):
+        corta["periodo"] = linea["periodicidad"]
+    if corta.get("importe") in (None, "") and linea.get("total") not in (None, ""):
+        corta["importe"] = linea["total"]
+    return corta
+
+
 def metricas_de_ingreso(*, lineas: list[dict[str, Any]]) -> dict[str, Any]:
     """ARR, MRR, TCV y ACV, **separando lo recurrente de lo que no lo es**.
 
@@ -189,6 +202,12 @@ def metricas_de_ingreso(*, lineas: list[dict[str, Any]]) -> dict[str, Any]:
     Aquí cada línea dice de qué tipo es, y lo que no es recurrente **no entra en
     el ARR** por mucho que se repita todos los años.
     """
+    # Las líneas de una oportunidad tal como se guardan —`tipo_ingreso`,
+    # `periodicidad`, `total`— además de la forma corta. La ficha manda las
+    # suyas tal cual y el cálculo sólo entendía la corta: con cualquier línea
+    # contestaba «tipo de ingreso desconocido: None» y las métricas no salían
+    # nunca (medido el 09-11-2026).
+    lineas = [_forma_corta(x) for x in lineas]
     desconocidos = sorted(
         {str(x.get("tipo")) for x in lineas if str(x.get("tipo")) not in TIPOS_INGRESO}
     )
