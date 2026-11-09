@@ -70,15 +70,13 @@
   los objetos que hoy guardan su estado en una tupla —casos, presupuestos,
   pedidos…—, dándoles máquina; con eso se cierra también la entrada 1.
 
-### 3. Las gráficas se leen al pasar el ratón
+### 3. Las gráficas se leen al pasar el ratón — hecho el 09-11-2026
 
-- **Pedido**: 09-11-2026 — en lecciones aprendidas, «al navegar sobre ellas
-  debería dar cada información y cuesta mucho; mucho mejor diseño y
-  usabilidad».
-- **Medido**: las barras horizontales (la forma que usan las medidas de los
-  módulos) no tienen emergente al pasar el ratón; las de columnas y líneas sí.
-- **Falta**: emergente y foco en todas las formas, rótulos legibles al tamaño
-  real de la tarjeta, y revisar el diseño de las tarjetas de medidas.
+La forma de barras horizontales tenía encima la capa de puntería de las
+columnas, en franjas verticales, y el ratón caía en la franja equivocada o en
+ninguna; y la gráfica se dibujaba a 640 de ancho fijo, con lo que en una
+tarjeta la letra se veía de 8,6 px. Ahora cada fila es su zona —también con el
+teclado—, se resalta la señalada con su emergente y la gráfica mide su sitio.
 
 ### 4. Un GRC mucho más potente
 

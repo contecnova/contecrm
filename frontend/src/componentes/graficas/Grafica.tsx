@@ -30,7 +30,7 @@
  */
 
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -113,6 +113,22 @@ export function Grafica({
   const [verTabla, setVerTabla] = useState(false);
   const [encima, setEncima] = useState<number | null>(null);
   const idTitulo = useId();
+  // El ancho de verdad del sitio que tiene. Con un ancho fijo de 640, en una
+  // tarjeta de 460 px el dibujo entero se escalaba al 72 % y la letra de 12 px
+  // se veía de 8,6 —medido en las tarjetas de lecciones—: no se leía.
+  const contenedor = useRef<HTMLDivElement>(null);
+  const [anchoMedido, setAnchoMedido] = useState(640);
+  useEffect(() => {
+    const nodo = contenedor.current;
+    if (!nodo || typeof ResizeObserver === "undefined") return;
+    const observador = new ResizeObserver(([entrada]) => {
+      const w = Math.round(entrada?.contentRect.width ?? 0);
+      if (w > 0) setAnchoMedido(Math.max(280, w));
+    });
+    observador.observe(nodo);
+    return () => observador.disconnect();
+    // Al volver de la tabla al dibujo el contenedor es otro: hay que medirlo.
+  }, [verTabla, datos]);
 
   const categorias = useMemo(
     () => datos.filas.map((f) => String(f[datos.ejeX] ?? "")),
@@ -165,7 +181,7 @@ export function Grafica({
   const maximo = techo(apilada ? totales : series.flatMap((s) => s.valores));
   const lineasEje = marcas(maximo);
 
-  const ancho = 640;
+  const ancho = anchoMedido;
   const anchoUtil = ancho - MARGEN.izquierda - MARGEN.derecha;
   const altoUtil = ALTO - MARGEN.arriba - MARGEN.abajo;
   const x = (i: number) =>
@@ -204,145 +220,155 @@ export function Grafica({
         <Tabla datos={datos} series={series} categorias={categorias} />
       ) : (
         <>
-          <svg
-            viewBox={`0 0 ${ancho} ${ALTO}`}
-            className="w-full"
-            role="img"
-            aria-label={titulo}
-            onMouseLeave={() => setEncima(null)}
-          >
-            {/* Rejilla recesiva: orienta y no compite. Sólo horizontales —las
+          <div ref={contenedor}>
+            <svg
+              viewBox={`0 0 ${ancho} ${ALTO}`}
+              className="w-full"
+              role="img"
+              aria-label={titulo}
+              onMouseLeave={() => setEncima(null)}
+            >
+              {/* Rejilla recesiva: orienta y no compite. Sólo horizontales —las
                 verticales doblan las líneas en pantalla y no añaden nada que el
                 rótulo del eje no diga ya. */}
-            {/* El embudo no lleva eje de valor ni rejilla: sus etapas no son
+              {/* El embudo no lleva eje de valor ni rejilla: sus etapas no son
                 una magnitud sobre un eje vertical, y pintarle marcas de 0 a
                 1,5 k al lado es una escala que no mide nada de lo que se ve.
                 Cada etapa lleva su número al lado, que es lo que se lee. */}
-            {esEmbudo
-              ? null
-              : lineasEje.map((v) => (
-                  <g key={v}>
-                    <line
-                      x1={MARGEN.izquierda}
-                      x2={ancho - MARGEN.derecha}
-                      y1={y(v)}
-                      y2={y(v)}
-                      stroke="rgb(var(--viz-grid))"
-                      strokeWidth={1}
-                    />
-                    <text
-                      x={MARGEN.izquierda - 6}
-                      y={y(v) + 3}
-                      textAnchor="end"
-                      className="fill-ink-faint"
-                      style={{ fontSize: LETRA_GRAFICA }}
-                    >
-                      {corto(v)}
-                    </text>
-                  </g>
-                ))}
+              {esEmbudo
+                ? null
+                : lineasEje.map((v) => (
+                    <g key={v}>
+                      <line
+                        x1={MARGEN.izquierda}
+                        x2={ancho - MARGEN.derecha}
+                        y1={y(v)}
+                        y2={y(v)}
+                        stroke="rgb(var(--viz-grid))"
+                        strokeWidth={1}
+                      />
+                      <text
+                        x={MARGEN.izquierda - 6}
+                        y={y(v) + 3}
+                        textAnchor="end"
+                        className="fill-ink-faint"
+                        style={{ fontSize: LETRA_GRAFICA }}
+                      >
+                        {corto(v)}
+                      </text>
+                    </g>
+                  ))}
 
-            {forma === "embudo" ? (
-              <Embudo
-                series={series}
-                categorias={categorias}
-                maximo={maximo}
-                ancho={ancho}
-              />
-            ) : apilada ? (
-              <Apiladas
-                series={series}
-                categorias={categorias}
-                maximo={maximo}
-                x={x}
-                y={y}
-                anchoUtil={anchoUtil}
-                altoUtil={altoUtil}
-                margen={MARGEN}
-                encima={encima}
-                alEntrar={setEncima}
-              />
-            ) : forma === "barras" ? (
-              <Barras
-                series={series}
-                categorias={categorias}
-                y={y}
-                anchoUtil={anchoUtil}
-                margen={MARGEN}
-                base={MARGEN.arriba + altoUtil}
-                encima={encima}
-                alEntrar={setEncima}
-              />
-            ) : (
-              <Trazos
-                series={series}
-                conRelleno={conRelleno}
-                x={x}
-                y={y}
-                base={MARGEN.arriba + altoUtil}
-                encima={encima}
-              />
-            )}
+              {forma === "embudo" ? (
+                <Embudo
+                  series={series}
+                  categorias={categorias}
+                  maximo={maximo}
+                  ancho={ancho}
+                  encima={encima}
+                  alEntrar={setEncima}
+                />
+              ) : apilada ? (
+                <Apiladas
+                  series={series}
+                  categorias={categorias}
+                  maximo={maximo}
+                  x={x}
+                  y={y}
+                  anchoUtil={anchoUtil}
+                  altoUtil={altoUtil}
+                  margen={MARGEN}
+                  encima={encima}
+                  alEntrar={setEncima}
+                />
+              ) : forma === "barras" ? (
+                <Barras
+                  series={series}
+                  categorias={categorias}
+                  y={y}
+                  anchoUtil={anchoUtil}
+                  margen={MARGEN}
+                  base={MARGEN.arriba + altoUtil}
+                  encima={encima}
+                  alEntrar={setEncima}
+                />
+              ) : (
+                <Trazos
+                  series={series}
+                  conRelleno={conRelleno}
+                  x={x}
+                  y={y}
+                  base={MARGEN.arriba + altoUtil}
+                  encima={encima}
+                />
+              )}
 
-            {/* Las categorías del eje. Se saltan las que no caben en vez de
+              {/* Las categorías del eje. Se saltan las que no caben en vez de
                 encogerlas: una etiqueta de 6px no la lee nadie, y girarlas 45°
                 hace ilegible la gráfica entera en cuanto hay doce. */}
-            {esEmbudo
-              ? null
-              : categorias.map((c, i) =>
-                  i % Math.ceil(categorias.length / 8) === 0 ? (
-                    <text
-                      key={`${c}-${i}`}
-                      x={
-                        forma === "barras" || apilada
-                          ? bandaX(
-                              i,
-                              categorias.length,
-                              MARGEN.izquierda,
-                              anchoUtil,
-                            )
-                          : x(i)
-                      }
-                      y={ALTO - 8}
-                      textAnchor="middle"
-                      className="fill-ink-faint"
-                      style={{ fontSize: LETRA_GRAFICA }}
-                    >
-                      {/* Igual que en el embudo: cortado, pero legible. */}
-                      {c.length > 12 ? <title>{c}</title> : null}
-                      {c.length > 12 ? `${c.slice(0, 11)}…` : c}
-                    </text>
-                  ) : null,
-                )}
+              {esEmbudo
+                ? null
+                : categorias.map((c, i) =>
+                    i % Math.ceil(categorias.length / 8) === 0 ? (
+                      <text
+                        key={`${c}-${i}`}
+                        x={
+                          forma === "barras" || apilada
+                            ? bandaX(
+                                i,
+                                categorias.length,
+                                MARGEN.izquierda,
+                                anchoUtil,
+                              )
+                            : x(i)
+                        }
+                        y={ALTO - 8}
+                        textAnchor="middle"
+                        className="fill-ink-faint"
+                        style={{ fontSize: LETRA_GRAFICA }}
+                      >
+                        {/* Igual que en el embudo: cortado, pero legible. */}
+                        {c.length > 12 ? <title>{c}</title> : null}
+                        {c.length > 12 ? `${c.slice(0, 11)}…` : c}
+                      </text>
+                    ) : null,
+                  )}
 
-            {/* La cruz de posición, sólo en líneas y área: es donde hace falta
+              {/* La cruz de posición, sólo en líneas y área: es donde hace falta
                 para leer un punto concreto de una serie continua. */}
-            {encima !== null && (forma === "lineas" || forma === "area") ? (
-              <line
-                x1={x(encima)}
-                x2={x(encima)}
-                y1={MARGEN.arriba}
-                y2={MARGEN.arriba + altoUtil}
-                stroke="rgb(var(--ink-muted))"
-                strokeWidth={1}
-                strokeDasharray="3 3"
-              />
-            ) : null}
+              {encima !== null && (forma === "lineas" || forma === "area") ? (
+                <line
+                  x1={x(encima)}
+                  x2={x(encima)}
+                  y1={MARGEN.arriba}
+                  y2={MARGEN.arriba + altoUtil}
+                  stroke="rgb(var(--ink-muted))"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                />
+              ) : null}
 
-            {/* Las zonas de puntería, más anchas que la marca: acertarle a una
-                línea de 2px con el ratón no lo consigue nadie. */}
-            {categorias.map((_, i) => (
-              <rect
-                key={i}
-                x={MARGEN.izquierda + (anchoUtil * i) / categorias.length}
-                y={MARGEN.arriba}
-                width={anchoUtil / categorias.length}
-                height={altoUtil}
-                fill="transparent"
-                onMouseEnter={() => setEncima(i)}
-              />
-            ))}
-          </svg>
+              {/* Las zonas de puntería, más anchas que la marca: acertarle a una
+                línea de 2px con el ratón no lo consigue nadie. En franjas
+                VERTICALES, que es como van las columnas; las barras
+                horizontales llevan las suyas por fila, dentro de `Embudo`. Con
+                éstas encima, el ratón caía en la franja de otra categoría o en
+                ninguna, y el dato no salía. */}
+              {forma === "embudo"
+                ? null
+                : categorias.map((_, i) => (
+                    <rect
+                      key={i}
+                      x={MARGEN.izquierda + (anchoUtil * i) / categorias.length}
+                      y={MARGEN.arriba}
+                      width={anchoUtil / categorias.length}
+                      height={altoUtil}
+                      fill="transparent"
+                      onMouseEnter={() => setEncima(i)}
+                    />
+                  ))}
+            </svg>
+          </div>
 
           {encima !== null ? (
             <Emergente
@@ -587,11 +613,15 @@ function Embudo({
   categorias,
   maximo,
   ancho,
+  encima,
+  alEntrar,
 }: {
   series: SeriePintada[];
   categorias: string[];
   maximo: number;
   ancho: number;
+  encima: number | null;
+  alEntrar: (i: number) => void;
 }) {
   // Un embudo es UNA serie por etapas: se dibuja con la primera y las demás se
   // ignoran a propósito. Un embudo de dos series no es un embudo, son dos
@@ -645,8 +675,29 @@ function Embudo({
         const anchoTramo = Math.max(2, (util * v) / maximo);
         const y = MARGEN.arriba + altoEtapa * i;
         const medio = y + altoEtapa / 2 + 3;
+        const total_ = total > 0 ? ` (${Math.round((v / total) * 100)} %)` : "";
         return (
-          <g key={`${c}-${i}`}>
+          // La FILA entera es la zona de puntería —rótulo, barra y cifra—, y
+          // se puede recorrer con el teclado: apuntar a una barra de 8 px con
+          // el ratón costaba, y el dato no salía.
+          <g
+            key={`${c}-${i}`}
+            tabIndex={0}
+            role="img"
+            aria-label={`${c}: ${corto(v)}${total_}`}
+            onMouseEnter={() => alEntrar(i)}
+            onFocus={() => alEntrar(i)}
+            className="cursor-default outline-none"
+          >
+            <rect
+              x={0}
+              y={y}
+              width={ancho}
+              height={altoEtapa}
+              fill={
+                encima === i ? "rgb(var(--ink-muted) / 0.08)" : "transparent"
+              }
+            />
             <text
               x={ROTULO}
               y={medio}
@@ -672,7 +723,9 @@ function Embudo({
               // Un solo tono que se aclara al bajar: las etapas son una
               // secuencia, no cinco cosas distintas, y cinco colores aquí
               // dirían que lo son.
-              fillOpacity={1 - i * 0.13}
+              fillOpacity={
+                encima === null || encima === i ? 1 - i * 0.13 : 0.35
+              }
             />
             {/* El valor SIEMPRE al lado: la caída entre etapas es el dato, y
                 estimarla comparando la longitud de dos rectángulos es

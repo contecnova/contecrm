@@ -859,6 +859,11 @@ pantallas:
   `paginas/Modulo.tsx`) pinta como barras horizontales, con `Grafica`, cualquier
   campo `{categoría: número}` de una ruta de `resumen`. Antes se descartaban sin
   avisar. Para que una medida nueva salga dibujada basta con devolverla plana.
+- **`Grafica` mide su sitio** (`ResizeObserver`) en vez de dibujar a 640 de
+  ancho fijo: en una tarjeta de 460 px todo se escalaba al 72 % y la letra
+  de 12 px se veía de 8,6. En las barras horizontales cada **fila entera** es
+  la zona de puntería —y se recorre con el teclado—; la capa de franjas
+  verticales de las columnas no se pinta ahí, porque tapaba a las filas.
 - **`escalar`** separa las listas con «, » y escribe los códigos `snake_case`
   como texto; una palabra suelta no se toca, porque puede ser un nombre.
 - **`nombreDelRegistro`** prefiere `nombre_completo` a `nombre`.
