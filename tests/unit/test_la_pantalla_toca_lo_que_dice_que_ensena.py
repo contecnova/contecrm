@@ -52,7 +52,10 @@ ENTRADA = re.compile(
 def _pagina_de_cada_ruta() -> dict[str, Path]:
     """Ruta del enrutador → fichero de la pantalla que la atiende."""
     app = APP.read_text(encoding="utf-8")
-    componentes = dict(re.findall(r'<Route path="([^"]+)" element=\{<(\w+)', app))
+    # Con `\s+` y no un espacio: el formateador parte en varias líneas las
+    # rutas largas (`<Route\n path=…\n element=…`), y con un espacio exacto
+    # esas rutas no se veían y el menú que llevaba a ellas salía sin pantalla.
+    componentes = dict(re.findall(r'<Route\s+path="([^"]+)"\s+element=\{<(\w+)', app))
     # `import { X as Y }`: el enrutador nombra a Y y el fichero exporta X.
     alias = dict(re.findall(r"(\w+)\s+as\s+(\w+)", app))
     donde: dict[str, Path] = {}
