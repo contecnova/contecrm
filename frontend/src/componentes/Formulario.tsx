@@ -423,7 +423,7 @@ function Campo({
 }
 
 /** Lista de opciones cerradas: se marcan, no se escriben. */
-function Opciones({
+export function Opciones({
   campo,
   valor,
   alCambiar,

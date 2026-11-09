@@ -103,6 +103,7 @@ export default {
   },
   nav: {
     estados: "Estados de los objetos",
+    embudos: "Embudos y etapas",
     queCliente: "Cliente que estás mirando",
     crear: "Crear",
     crearQue: "Qué quieres dar de alta",

@@ -256,6 +256,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // ── Automatización ──────────────────────────────────────────────────────
   // Los estados de cada objeto, como los llama y ordena la empresa
   // (CRM-00.04.01.07). Va con el modelado: es la misma clase de decisión.
+  // Los embudos de venta y sus etapas: cuántas hay, cómo se llaman, su
+  // probabilidad y qué hace falta para salir de cada una.
+  { area: "plataforma", a: "/embudos", clave: "nav.embudos", icono: "view_kanban", permiso: "pipeline:write" },
   { area: "plataforma", a: "/estados", clave: "nav.estados", icono: "rule", permiso: "tenant:write" },
   { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read"  },
   // El código del tenant (CRM-00.04.02): estaba sólo dentro de «Procesos», en

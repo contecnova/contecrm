@@ -57,6 +57,9 @@
   configuración del tenant, con los de fábrica como punto de partida; (b) el
   editor de embudos y etapas; (c) las metodologías; (d) todo ello en una
   sección de Administrar.
+- **(b) hecho el 09-11-2026**: Administrar › Plataforma › Embudos y etapas —
+  crear embudos; nombre, probabilidad, color, estancamiento, final y ganada,
+  criterios de salida, orden y quitar etapas moviendo sus oportunidades—.
 - **(a) hecho el 09-11-2026** para lead y oportunidad: Administrar ›
   Plataforma › Estados de los objetos, el desplegable de estado en la cabecera
   de la ficha y el código preguntando por el significado. Falta extenderlo a

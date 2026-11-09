@@ -880,6 +880,10 @@ pantallas:
   `estado_significa`, `estado_nombre` y `estado_color`; la pantalla pinta
   `<campo>_nombre` cuando viene. En el front: `paginas/Estados.tsx` y
   `componentes/CambioDeEstado.tsx`, que `DatosClave` pinta en la cabecera.
+- **Etapas del embudo**: `PATCH /pipelines/{id}/etapas/{etapa}`,
+  `PUT /pipelines/{id}/etapas/orden` y `DELETE …/etapas/{etapa}?mover_a=`,
+  con `_exigir_cierres` (una final ganada y una perdida). Pantalla:
+  `paginas/Embudos.tsx`.
 - **Un objeto con máquina de estados no ofrece `estado` en su formulario de
   edición**: se mueve con sus acciones, que validan la transición. El estado de
   un caso, que no tiene máquina, se valida contra `ESTADOS_CASO`.

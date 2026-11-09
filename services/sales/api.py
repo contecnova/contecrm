@@ -48,10 +48,12 @@ from services.sales.esquemas import (
     CrearOportunidad,
     CrearPipeline,
     DescartarLead,
+    EditarEtapa,
     EtapaOut,
     LeadOut,
     LineaOut,
     OportunidadOut,
+    OrdenEtapas,
     PipelineOut,
     Reabrir,
 )
@@ -372,6 +374,140 @@ def crear_etapa(pipeline_id: UUID, datos: CrearEtapa, db: DbDep, principal: Aute
     db.add(etapa)
     db.flush()
     return etapa
+
+
+def _etapas_del(db: Any, pipeline_id: UUID, principal: Any) -> tuple[Any, list[Any]]:
+    pipeline = db.get(Pipeline, pipeline_id)
+    if pipeline is None or pipeline.tenant_id != principal.tenant_id:
+        raise NoEncontrado("El pipeline no existe", error_code="sales.pipeline_no_encontrado")
+    etapas = list(
+        db.execute(
+            select(Etapa).where(Etapa.pipeline_id == pipeline_id).order_by(Etapa.orden)
+        ).scalars()
+    )
+    return pipeline, etapas
+
+
+def _exigir_cierres(etapas: list[Any]) -> None:
+    """Un embudo sin etapa final ganada o perdida no deja cerrar ninguna venta."""
+    if not any(e.terminal and e.ganada for e in etapas):
+        raise ErrorValidacion(
+            "El embudo tiene que conservar una etapa final de ganada",
+            error_code="sales.embudo_sin_ganada",
+        )
+    if not any(e.terminal and not e.ganada for e in etapas):
+        raise ErrorValidacion(
+            "El embudo tiene que conservar una etapa final de perdida",
+            error_code="sales.embudo_sin_perdida",
+        )
+
+
+@router_pipelines.patch(
+    "/{pipeline_id}/etapas/{etapa_id}",
+    response_model=EtapaOut,
+    dependencies=[Depends(exige_permiso("pipeline:write"))],
+    summary="Cambiar una etapa",
+    description=(
+        "Nombre, probabilidad, color, criterios de salida, checklist y días de "
+        "estancamiento. El embudo conserva siempre una etapa final ganada y una "
+        "perdida: sin ellas no se puede cerrar ninguna venta."
+    ),
+)
+def editar_etapa(
+    pipeline_id: UUID, etapa_id: UUID, datos: EditarEtapa, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    _, etapas = _etapas_del(db, pipeline_id, principal)
+    etapa = next((e for e in etapas if e.id == etapa_id), None)
+    if etapa is None:
+        raise NoEncontrado("La etapa no es de este embudo", error_code="sales.etapa_no_encontrada")
+    for campo, valor in datos.model_dump(exclude_unset=True).items():
+        setattr(etapa, campo, valor)
+    if not etapa.terminal:
+        etapa.ganada = False
+    _exigir_cierres(etapas)
+    db.flush()
+    return etapa
+
+
+@router_pipelines.put(
+    "/{pipeline_id}/etapas/orden",
+    response_model=list[EtapaOut],
+    dependencies=[Depends(exige_permiso("pipeline:write"))],
+    summary="Ordenar las etapas",
+    description="Se mandan todas las del embudo, en el orden nuevo.",
+)
+def ordenar_etapas(
+    pipeline_id: UUID, datos: OrdenEtapas, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    _, etapas = _etapas_del(db, pipeline_id, principal)
+    por_id = {e.id: e for e in etapas}
+    if set(datos.etapas) != set(por_id) or len(datos.etapas) != len(por_id):
+        raise ErrorValidacion(
+            "Hay que mandar todas las etapas del embudo, cada una una vez",
+            error_code="sales.orden_incompleto",
+        )
+    for i, etapa_id in enumerate(datos.etapas):
+        por_id[etapa_id].orden = i
+    db.flush()
+    return [por_id[i] for i in datos.etapas]
+
+
+@router_pipelines.delete(
+    "/{pipeline_id}/etapas/{etapa_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("pipeline:write"))],
+    summary="Quitar una etapa",
+    description=(
+        "Si tiene oportunidades, hay que decir a qué etapa pasan "
+        "(`mover_a`): una oportunidad sin etapa no sale en el tablero ni en la "
+        "previsión. El paso queda en su historial."
+    ),
+)
+def borrar_etapa(
+    pipeline_id: UUID,
+    etapa_id: UUID,
+    db: DbDep,
+    principal: AutenticadoDep,
+    mover_a: UUID | None = Query(None, description="La etapa a la que pasan sus oportunidades"),
+) -> None:
+    _, etapas = _etapas_del(db, pipeline_id, principal)
+    etapa = next((e for e in etapas if e.id == etapa_id), None)
+    if etapa is None:
+        raise NoEncontrado("La etapa no es de este embudo", error_code="sales.etapa_no_encontrada")
+    quedan = [e for e in etapas if e.id != etapa_id]
+    _exigir_cierres(quedan)
+    ocupadas = list(
+        db.execute(
+            select(Oportunidad).where(
+                Oportunidad.etapa_id == etapa_id, Oportunidad.deleted_at.is_(None)
+            )
+        ).scalars()
+    )
+    if ocupadas:
+        destino = next((e for e in quedan if e.id == mover_a), None)
+        if destino is None:
+            raise Conflicto(
+                f"La etapa tiene {len(ocupadas)} oportunidades: di a qué etapa pasan",
+                error_code="sales.etapa_con_oportunidades",
+                detalle={"oportunidades": len(ocupadas)},
+            )
+        for op in ocupadas:
+            db.add(
+                CambioEtapa(
+                    tenant_id=op.tenant_id,
+                    oportunidad_id=op.id,
+                    etapa_desde_id=etapa.id,
+                    etapa_hasta_id=destino.id,
+                    importe_en_cambio=op.importe,
+                    fecha_cierre_en_cambio=op.fecha_cierre,
+                    motivo=f"Se quitó la etapa «{etapa.nombre}» del embudo",
+                    por=principal.id,
+                )
+            )
+            op.etapa_id = destino.id
+    db.flush()
+    db.delete(etapa)
+    db.flush()
 
 
 # ── Oportunidades ─────────────────────────────────────────────────────────

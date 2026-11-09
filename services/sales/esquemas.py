@@ -136,6 +136,23 @@ class CrearEtapa(BaseModel):
     dias_estancamiento: int | None = Field(None, ge=1)
 
 
+class EditarEtapa(BaseModel):
+    """Lo que se cambia de una etapa. Sólo lo que se manda."""
+
+    nombre: str | None = Field(None, min_length=1, max_length=150)
+    probabilidad: int | None = Field(None, ge=0, le=100)
+    color: str | None = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    terminal: bool | None = None
+    ganada: bool | None = None
+    criterios_salida: list[str] | None = None
+    checklist: list[str] | None = None
+    dias_estancamiento: int | None = Field(None, ge=1)
+
+
+class OrdenEtapas(BaseModel):
+    etapas: list[UUID] = Field(..., min_length=1, description="Todas las del embudo, en orden")
+
+
 class EtapaOut(BaseModel):
     id: UUID
     clave: str

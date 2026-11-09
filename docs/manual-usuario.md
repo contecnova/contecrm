@@ -1384,7 +1384,9 @@ Para **ganar o perder** una oportunidad, muévela a la etapa final; para
 el estado (la lección aprendida, el bloqueo, la cuenta nueva).
 
 Quién decide qué estados hay, cómo se llaman y a cuáles se puede pasar: el
-administrador, en **Administrar › Plataforma › Estados de los objetos**.
+administrador, en **Administrar › Plataforma › Estados de los objetos**. Y
+las etapas del embudo —cuántas hay, su probabilidad y qué hace falta para salir
+de cada una—, en **Administrar › Plataforma › Embudos y etapas**.
 
 ### Por qué se perdió (o se ganó): las lecciones aprendidas
 

@@ -123,6 +123,10 @@ const Cuadros = pantalla(
   () => import("@/paginas/Cuadros"),
   (m) => m.Cuadros,
 );
+const Embudos = pantalla(
+  () => import("@/paginas/Embudos"),
+  (m) => m.Embudos,
+);
 const Estados = pantalla(
   () => import("@/paginas/Estados"),
   (m) => m.Estados,
@@ -389,6 +393,7 @@ export function App() {
           <Route path="/m/oportunidades/oportunidad/:id" element={<Oportunidad />} />
           <Route path="/m/lecciones/leccion/:id" element={<Leccion />} />
           <Route path="/estados" element={<Estados />} />
+          <Route path="/embudos" element={<Embudos />} />
           {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
               —ajustes, fotos, desglose, deslizamiento— se dirigen por su
               clave, y pasarles el identificador las deja en 404. */}

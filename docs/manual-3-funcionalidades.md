@@ -1721,6 +1721,17 @@ migración— aparecen oportunidades «ganadas» que nunca pasaron por negociaci
 los informes de conversión dejan de significar nada **sin que nada haya
 fallado**.
 
+### Los embudos y sus etapas, también configurables
+
+En **Administrar › Plataforma › Embudos y etapas** se crean embudos y, de cada
+etapa, se cambia el nombre, la probabilidad, el color, los días a partir de
+los que una oportunidad está estancada, si es final —ganada o perdida— y los
+**criterios de salida**: los campos sin los que una oportunidad no puede
+avanzar. Se ordenan y se quitan. Dos reglas que se comprueban al guardar: el
+embudo conserva siempre una etapa final ganada y una perdida —sin ellas no se
+cierra ninguna venta—, y una etapa con oportunidades sólo se quita diciendo a
+cuál pasan; el paso queda en el historial de cada una con el motivo.
+
 ### La empresa configura sus estados; el código pregunta por lo que significan
 
 Hasta el 09-11-2026 la máquina se declaraba en el código y la empresa sólo
