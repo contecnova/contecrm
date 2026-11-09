@@ -511,10 +511,22 @@ GATES: list[Gate] = [
 # las demás repartidas por debajo de 3,3 s. No hay un sitio gordo: cada prueba
 # levanta un servicio y recorre sus rutas, y hay más rutas. El umbral de grasa
 # pasa a 340 ms por prueba; por encima, sí hay que buscarla.
+#
+# **09-11-2026, el nivel «push»: 320 → 390 s de CPU.** Gastó 351 s y, repetido
+# con la máquina libre (carga 1,2), 347 s, con los diecisiete gates en verde y
+# el reloj en 119 s de los 120. `aislamiento` solo: **179 pruebas en 65,5 s,
+# 366 ms por prueba** (82,5 s con carga 4), por encima del umbral de 340, así
+# que se buscó la grasa midiendo cada petición del gate: ninguna ruta pasa de
+# 1,7 s, y las cuatro que se acercan son la primera de su servicio, que es la
+# que lo levanta. Las más caras siguen siendo el fuzzing de sales, party,
+# service e integration (3-4,4 s cada una), que recorre todas sus rutas: en
+# las dos tandas de hoy entraron **115 rutas nuevas** (48 + 67). No hay un
+# sitio gordo: hay más rutas. 390 es ~1,13× sobre lo medido, el margen de
+# siempre. El umbral de grasa pasa a 390 ms por prueba con la máquina libre.
 PRESUPUESTOS: dict[str, tuple[float, float]] = {
     # nivel: (reloj de referencia, tope de CPU)
     "rapido": (35.0, 40.0),
-    "push": (120.0, 320.0),
+    "push": (120.0, 390.0),
     "completo": (400.0, 760.0),
 }
 
