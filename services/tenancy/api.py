@@ -564,34 +564,105 @@ def consumo(tenant_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
         raise NoEncontrado("El tenant no existe", error_code="tenant.no_encontrado")
     from crmcore.consumo import medido_aqui
 
-    salida = []
-    for fila in medido_aqui(db, tenant_id):
-        if not fila.get("legible"):
-            # Un medidor roto se dice en su fila y no tumba el panel.
+    # **De todos los módulos, no sólo de éste.** Cada servicio guarda y cuenta
+    # lo suyo —y la cuota corta por módulo—, así que lo que medía tenancy en
+    # su propio proceso eran sus tablas: «0 registros» con miles de cuentas en
+    # party. Se pregunta a cada uno por su `/estado/consumo`, con la identidad
+    # del tenant que se mira, y cada fila dice de qué módulo es.
+    por_modulo: dict[str, list[dict[str, Any]] | str] = {"tenancy": medido_aqui(db, tenant_id)}
+    por_modulo.update(_consumo_de_los_demas(tenant_id, principal.id))
+
+    salida: list[ConsumoOut] = []
+    for modulo, filas in sorted(por_modulo.items()):
+        if isinstance(filas, str):
+            # NO es un cero: «no se ha podido leer» es verdad, un cero no.
             salida.append(
                 ConsumoOut(
-                    metrica=fila["metrica"],
+                    metrica="*",
+                    modulo=modulo,
                     periodo="actual",
                     consumido=0,
                     limite=0,
                     pct=0.0,
                     en_aviso=False,
                     medido=False,
-                    porque=str(fila.get("porque") or ""),
+                    porque=filas,
                 )
             )
             continue
-        salida.append(
-            ConsumoOut(
-                metrica=fila["metrica"],
-                periodo=str(fila.get("periodo") or "actual"),
-                consumido=int(fila["consumido"]),
-                limite=int(fila["limite"]),
-                pct=float(fila.get("pct") or 0.0),
-                en_aviso=bool(fila.get("en_aviso")),
+        for fila in filas:
+            if not fila.get("legible"):
+                # Un medidor roto se dice en su fila y no tumba el panel.
+                salida.append(
+                    ConsumoOut(
+                        metrica=fila["metrica"],
+                        modulo=modulo,
+                        periodo="actual",
+                        consumido=0,
+                        limite=0,
+                        pct=0.0,
+                        en_aviso=False,
+                        medido=False,
+                        porque=str(fila.get("porque") or ""),
+                    )
+                )
+                continue
+            salida.append(
+                ConsumoOut(
+                    metrica=fila["metrica"],
+                    modulo=modulo,
+                    periodo=str(fila.get("periodo") or "actual"),
+                    consumido=int(fila["consumido"]),
+                    limite=int(fila["limite"]),
+                    pct=float(fila.get("pct") or 0.0),
+                    en_aviso=bool(fila.get("en_aviso")),
+                )
             )
-        )
-    return salida
+    return sorted(salida, key=lambda f: (f.metrica, f.modulo))
+
+
+def _consumo_de_los_demas(tenant_id: UUID, principal_id: Any) -> dict[str, Any]:
+    """Lo que mide cada uno de los otros módulos, o por qué no se ha leído.
+
+    En paralelo y con el plazo de las llamadas internas: en serie, trece
+    servicios con su plazo cada uno serían minutos justo cuando algo va mal. El
+    texto del error no sale —lleva host y puerto, y esto lo ve el cliente—.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    import httpx
+    from crmcore.config import get_settings
+    from crmcore.http.interno import cabeceras_de
+    from crmcore.rutas_de_api import cargar_destinos
+
+    s = get_settings()
+    destinos = {
+        n: d
+        for n, d in cargar_destinos(s.rutas_servicios).items()
+        if n not in ("tenancy", "gateway")
+    }
+    cabeceras = cabeceras_de(tenant_id=tenant_id, principal_id=principal_id)
+
+    def _preguntar(nombre: str) -> tuple[str, Any]:
+        try:
+            r = httpx.get(
+                f"{destinos[nombre].url_base}/api/v1/estado/consumo",
+                headers=cabeceras,
+                timeout=s.http_interno_timeout_s,
+            )
+            if r.status_code != 200:
+                return (
+                    nombre,
+                    f"El módulo contestó {r.status_code}: su consumo no se ha podido leer",
+                )
+            return nombre, list(r.json().get("metricas") or [])
+        except Exception:  # noqa: BLE001 — un módulo caído es información, no un error
+            return nombre, "El módulo no responde: su consumo no se ha podido leer"
+
+    if not destinos:
+        return {}
+    with ThreadPoolExecutor(max_workers=len(destinos)) as hilos:
+        return dict(hilos.map(_preguntar, sorted(destinos)))
 
 
 # ── Resolución interna ────────────────────────────────────────────────────

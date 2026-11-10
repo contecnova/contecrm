@@ -49,6 +49,7 @@ def _tareas() -> list[Any]:
         tenants_con_programacion,
         una_vuelta,
     )
+    from services.integration.senales_identidad import reenviar_pendientes, tenants_con_pendientes
     from services.integration.suites import mantener_suscripciones, tenants_con_suscripciones
 
     s = get_settings()
@@ -68,6 +69,10 @@ def _tareas() -> list[Any]:
     def _caducar(tenant_id: Any) -> dict[str, Any]:
         with unidad_de_trabajo(tenant_id, sistema=True) as uow:
             return dict(caducar_vencidos(uow, tenant_id))
+
+    def _senales(tenant_id: Any) -> dict[str, Any]:
+        with unidad_de_trabajo(tenant_id, sistema=True) as uow:
+            return reenviar_pendientes(uow.db, tenant_id)
 
     def _mantener(tenant_id: Any) -> dict[str, Any]:
         with unidad_de_trabajo(tenant_id, sistema=True) as uow:
@@ -102,6 +107,15 @@ def _tareas() -> list[Any]:
             "integration.sobres_vencidos",
             int(s.tarea_purgas_intervalo_s),
             por_tenant(_tenants_con_sobres, _caducar),
+            al_arrancar=False,
+        ),
+        # Las señales de identidad que party no recibió al momento —no
+        # contestaba, o quien las vio no tenía permiso— y las del ERP, que
+        # entran sin persona detrás (CRM-01.01.05.02).
+        Tarea(
+            "integration.senales_identidad",
+            int(s.tarea_integraciones_intervalo_s),
+            por_tenant(tenants_con_pendientes, _senales),
             al_arrancar=False,
         ),
         Tarea(

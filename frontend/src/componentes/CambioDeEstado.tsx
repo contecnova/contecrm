@@ -21,6 +21,34 @@ interface Config {
   exigen_motivo: string[];
 }
 
+/**
+ * Qué objetos de cada servicio tienen estados configurables, una vez por
+ * servicio y sesión de la pantalla.
+ *
+ * Antes se pedía `/{servicio}/estados/{objeto}` para TODO registro con campo
+ * `estado` y se contaba con el 404 para no pintar nada: la ficha de un sandbox
+ * pedía `/tenancy/estados/sandbox` y dejaba un 404 en cada visita —medido el
+ * 09-11-2026—, que es ruido en la consola y un falso aviso para quien vigila
+ * los errores. Preguntando primero la lista, sólo se pide lo que existe.
+ */
+const objetosConEstados = new Map<string, Promise<Set<string>>>();
+
+function conEstados(servicio: string): Promise<Set<string>> {
+  const hay = objetosConEstados.get(servicio);
+  if (hay) return hay;
+  const pedida = llamar<{ items?: { objeto: string }[] }>(
+    `/api/v1/${servicio}/estados`,
+  )
+    .then((r) => new Set((r.datos?.items ?? []).map((i) => i.objeto)))
+    .catch(() => {
+      // Un fallo no se recuerda: la siguiente ficha lo vuelve a intentar.
+      objetosConEstados.delete(servicio);
+      return new Set<string>();
+    });
+  objetosConEstados.set(servicio, pedida);
+  return pedida;
+}
+
 export function CambioDeEstado({
   servicio,
   objeto,
@@ -45,15 +73,19 @@ export function CambioDeEstado({
 
   useEffect(() => {
     const control = new AbortController();
-    // Un objeto sin estados configurables contesta 404: entonces no se pinta.
-    llamar<Config>(`/api/v1/${servicio}/estados/${objeto}`, {
-      signal: control.signal,
-    })
+    // Un objeto sin estados configurables no se pide: no se pinta.
+    conEstados(servicio)
+      .then((objetos) => {
+        if (!objetos.has(objeto)) return null;
+        return llamar<Config>(`/api/v1/${servicio}/estados/${objeto}`, {
+          signal: control.signal,
+        });
+      })
       // Lo que no venga cuenta como vacío: la cabecera de una ficha no puede
       // caerse por una respuesta a medias.
       .then((r) =>
         setConf(
-          Array.isArray(r.datos?.estados)
+          r && Array.isArray(r.datos?.estados)
             ? {
                 estados: r.datos.estados,
                 transiciones: r.datos.transiciones ?? {},

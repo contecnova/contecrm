@@ -674,6 +674,100 @@ def listar_oportunidades(
     return pagina.a_dict(_fila)
 
 
+# Antes que `/{oportunidad_id}`: si no, «historial-etapas» se leería como un
+# identificador y contestaría 422.
+@router_oportunidades.get(
+    "/historial-etapas",
+    response_model=PaginaDeListado,
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="Paso por etapas de muchas oportunidades, en bloque y paginado",
+    description=(
+        "Una página de oportunidades —las que ve quien pregunta, con los mismos "
+        "filtros que el listado— y, en cada una, sus cambios de etapa en orden. "
+        "Es lo que lee el embudo de la analítica: antes pedía el historial "
+        "oportunidad por oportunidad, una llamada cada una, y se quedaba en las "
+        "100 más recientes para no agotar la cuota de quien miraba. Aquí son "
+        "dos consultas por página de hasta 200. El importe y la fecha de cierre "
+        "de cada cambio siguen en el historial de cada oportunidad."
+    ),
+)
+def historial_etapas_en_bloque(
+    request: Request,
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(100, ge=1, le=200),
+    cursor: str = Query(""),
+    estado: str = Query("", description="Vacío: todas, abiertas y cerradas"),
+    pipeline_id: UUID | None = Query(None),
+) -> Any:
+    params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden="-created_at")
+    consulta = aplicar_visibilidad(
+        select(Oportunidad).where(Oportunidad.deleted_at.is_(None)),
+        Oportunidad,
+        db=db,
+        principal=principal,
+        objeto="oportunidad",
+        permiso_ver_todo="opportunity:admin",
+    )
+    if estado:
+        from crmcore.datos.estados import MAQUINAS
+
+        fabrica = MAQUINAS["oportunidad"]
+        consulta = consulta.where(
+            Oportunidad.estado.in_(
+                con_significado("oportunidad", fabrica.significado(estado), db)
+                if estado in fabrica.estados
+                else {estado}
+            )
+        )
+    if pipeline_id:
+        consulta = consulta.where(Oportunidad.pipeline_id == pipeline_id)
+    consulta = aplicar_filtros_de_la_url(
+        request, Oportunidad, consulta, principal=principal, db=db, objeto="oportunidad"
+    )
+    consulta = aplicar_orden_y_cursor(
+        consulta,
+        Oportunidad,
+        params,
+        columnas_permitidas={"created_at"},
+        objeto="oportunidad",
+        principal=principal,
+        db=db,
+    )
+    filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    ids = [o.id for o in pagina.items]
+    cambios: dict[Any, list[dict[str, Any]]] = {i: [] for i in ids}
+    if ids:
+        for c in db.execute(
+            select(CambioEtapa)
+            .where(CambioEtapa.oportunidad_id.in_(ids))
+            .order_by(CambioEtapa.oportunidad_id, CambioEtapa.created_at)
+        ).scalars():
+            cambios[c.oportunidad_id].append(
+                {
+                    "id": c.id,
+                    "etapa_desde_id": c.etapa_desde_id,
+                    "etapa_hasta_id": c.etapa_hasta_id,
+                    "dias_en_etapa": c.dias_en_etapa,
+                    "created_at": c.created_at,
+                }
+            )
+    maquina = maquina_efectiva("oportunidad", db)
+
+    def _fila(o: Any) -> dict[str, Any]:
+        return {
+            "oportunidad_id": o.id,
+            "pipeline_id": o.pipeline_id,
+            "created_at": o.created_at,
+            "estado": o.estado,
+            "estado_significa": _del_estado(maquina, o.estado).get("estado_significa"),
+            "cambios": cambios.get(o.id, []),
+        }
+
+    return pagina.a_dict(_fila)
+
+
 @router_oportunidades.get(
     "/{oportunidad_id}",
     response_model=OportunidadOut,
@@ -1925,6 +2019,10 @@ admite_parametros_abiertos(
 # principal no ve en claro.
 admite_parametros_abiertos(
     listar_oportunidades, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    historial_etapas_en_bloque,
+    "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna",
 )
 
 

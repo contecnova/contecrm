@@ -317,6 +317,9 @@ from services.integration.mcp import (  # noqa: E402,F401
 )
 from services.integration.referencias_suite import ReferenciaSuite  # noqa: E402,F401
 
+# Las señales de identidad que los canales mandan a party (CRM-01.01.05.02).
+from services.integration.senales_identidad import SenalSaliente  # noqa: E402,F401
+
 # Suites de productividad: consentimiento por persona y suscripción a cambios
 # (CRM-06.01.03.02, .05).
 from services.integration.suites import (  # noqa: E402,F401

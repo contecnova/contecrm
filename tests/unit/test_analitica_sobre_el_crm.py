@@ -197,9 +197,28 @@ def llamadas(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
             return {"estado": 200, "ok": True, "datos": {"items": crm["oportunidades"]}}
         if ruta == "/api/v1/pipelines":
             return {"estado": 200, "ok": True, "datos": {"items": [PIPELINE]}}
-        if ruta.endswith("/historial-etapas"):
-            oid = ruta.split("/")[-2]
-            return {"estado": 200, "ok": True, "datos": crm["historiales"].get(oid, [])}
+        if ruta == "/api/v1/opportunities/historial-etapas":
+            # El listado en bloque, paginado: de dos en dos para que la prueba
+            # recorra el cursor.
+            todas = [
+                o
+                for o in crm["oportunidades"]
+                if o["pipeline_id"] == kw["parametros"]["pipeline_id"]
+            ]
+            desde = int(kw["parametros"].get("cursor") or 0)
+            trozo = todas[desde : desde + min(2, int(kw["parametros"]["limite"]))]
+            siguiente = str(desde + len(trozo)) if desde + len(trozo) < len(todas) else None
+            return {
+                "estado": 200,
+                "ok": True,
+                "datos": {
+                    "items": [
+                        {"oportunidad_id": o["id"], "cambios": crm["historiales"].get(o["id"], [])}
+                        for o in trozo
+                    ],
+                    "siguiente": siguiente,
+                },
+            }
         if "/integraciones/conexiones/" in ruta:
             n = int(kw["cuerpo"]["parametros"]["limite"]) + 5
             return {
@@ -292,6 +311,13 @@ def test_el_embudo_sale_del_historial_de_etapas_sin_la_de_perdida(
     # Al listado de oportunidades se le pide TODO, no sólo las abiertas.
     opp = [c for c in llamadas if c["ruta"] == "/api/v1/opportunities"]
     assert opp and opp[0]["parametros"]["estado"] == ""
+    # El historial va en bloque y paginado, no una llamada por oportunidad, y
+    # ya no se queda en las 100 más recientes (analytics no tiene ese tope).
+    bloque = [c for c in llamadas if c["ruta"] == "/api/v1/opportunities/historial-etapas"]
+    assert len(bloque) == -(-len(_crm()["oportunidades"]) // 2)
+    assert not any(c["ruta"].endswith("/historial-etapas") and c not in bloque for c in llamadas)
+    assert d["procedencia"]["historial_etapas"]["leidos"] == len(_crm()["oportunidades"])
+    assert d["procedencia"]["historial_etapas"]["recortado"] is False
 
 
 # ── Actividad y resultados (CRM-05.01.03.06) ──────────────────────────────

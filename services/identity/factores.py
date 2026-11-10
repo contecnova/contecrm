@@ -277,6 +277,17 @@ def _entregar(
         )
 
 
+def _guardar_intento(fila: DesafioFactor, tenant_id: UUID) -> None:
+    from crmcore.db.session import guardar_aunque_falle
+
+    guardar_aunque_falle(
+        DesafioFactor,
+        fila.id,
+        {"intentos": fila.intentos, "usado_at": fila.usado_at},
+        tenant_id=tenant_id,
+    )
+
+
 def comprobar_desafio(
     db: Session, usuario_id: UUID, tenant_id: UUID, codigo: str, *, proposito: str = "entrar"
 ) -> DesafioFactor:
@@ -299,6 +310,7 @@ def comprobar_desafio(
         )
     if (_con_tz(fila.expira_at) or _ahora()) <= _ahora():
         fila.usado_at = _ahora()
+        _guardar_intento(fila, tenant_id)
         raise NoAutenticado("El código ha caducado. Pide uno nuevo.", error_code="factor.caducado")
 
     maximo = int(_cfg(db, "otp_max_intentos") or 5)
@@ -309,14 +321,23 @@ def comprobar_desafio(
     if not hmac.compare_digest(fila.hash_codigo, _hash((codigo or "").strip())):
         if fila.intentos >= maximo:
             fila.usado_at = _ahora()
-            registrar(
-                db,
-                accion="factor.desafio_agotado",
-                objeto="usuario",
-                objeto_id=usuario_id,
-                datos={"canal": fila.canal, "intentos": fila.intentos},
-                tenant_id=tenant_id,
-            )
+        # Aparte y confirmado: el error que se contesta deshace la transacción,
+        # y con ella se iba el intento —se podía probar sin límite—.
+        _guardar_intento(fila, tenant_id)
+        if fila.intentos >= maximo:
+            # El apunte, también aparte: es el aviso de seguridad, y en la
+            # transacción de la petición se lo llevaba el mismo error.
+            from crmcore.db.session import sesion as _sesion_aparte
+
+            with _sesion_aparte(tenant_id) as aparte:
+                registrar(
+                    aparte,
+                    accion="factor.desafio_agotado",
+                    objeto="usuario",
+                    objeto_id=usuario_id,
+                    datos={"canal": fila.canal, "intentos": fila.intentos},
+                    tenant_id=tenant_id,
+                )
             raise LimiteExcedido(
                 "Demasiados intentos. Pide un código nuevo.",
                 error_code="factor.intentos_agotados",
@@ -428,8 +449,21 @@ def recordar_dispositivo(
     nombre: str = "",
     ip: str = "",
 ) -> DispositivoConfianza:
-    """Marca este equipo como de confianza durante el plazo configurado."""
-    dias = int(_cfg(db, "dispositivo_confianza_dias") or 0)
+    """Marca este equipo como de confianza durante el plazo configurado.
+
+    El plazo se lee **con el tenant puesto en el contexto**, como los demás
+    ajustes del login: en la entrada todavía no hay nadie autenticado, así que
+    `efectivo` saltaba el ámbito de la empresa y leía sólo el global. Una
+    empresa que pedía recordar el equipo 30 días no conseguía nada si la
+    instalación lo tenía a 0. Medido el 09-11-2026.
+    """
+    from crmcore.tenancy.context import con_contexto, contexto_actual
+
+    if contexto_actual().tenant_id == tenant_id:
+        dias = int(_cfg(db, "dispositivo_confianza_dias") or 0)
+    else:
+        with con_contexto(tenant_id=tenant_id):
+            dias = int(_cfg(db, "dispositivo_confianza_dias") or 0)
     if dias <= 0:
         raise Prohibido(
             "Esta instalación no permite recordar dispositivos.",

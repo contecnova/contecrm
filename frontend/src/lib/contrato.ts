@@ -104,6 +104,8 @@ interface Esquema {
   anyOf?: Esquema[];
   $ref?: string;
   default?: unknown;
+  /** Un valor que el servidor devuelve UNA sola vez: el secreto de una clave. */
+  "x-una-vez"?: boolean;
 }
 
 export interface Documento {
@@ -311,6 +313,45 @@ export function altaPorPost(
 ): string | null {
   if (!admite(documento, listar, "post")) return null;
   return listar.split("?")[0] ?? listar;
+}
+
+/**
+ * Los campos de la respuesta de un alta que el servidor devuelve **una sola
+ * vez** —el secreto de una clave de API—, marcados `x-una-vez` en el contrato.
+ *
+ * Sin esto la pantalla de alta tiraba la respuesta y recargaba la lista: la
+ * clave quedaba creada y su secreto, que no se puede volver a pedir, no lo veía
+ * nadie. Medido el 09-11-2026. Sale del contrato y no de una lista del cliente:
+ * el alta siguiente que devuelva un secreto lo enseña sin tocar el front.
+ */
+export function camposDeUnaVez(
+  documento: Documento,
+  ruta: string,
+  metodo: string,
+): string[] {
+  const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[
+    metodo.toLowerCase()
+  ] as
+    | {
+        responses?: Record<
+          string,
+          { content?: Record<string, { schema?: Esquema }> }
+        >;
+      }
+    | undefined;
+  const salida = new Set<string>();
+  for (const [codigo, respuesta] of Object.entries(
+    operacion?.responses ?? {},
+  )) {
+    if (!codigo.startsWith("2")) continue;
+    const bruto = respuesta?.content?.["application/json"]?.schema;
+    if (!bruto) continue;
+    const esquema = resolver(documento, bruto);
+    for (const [nombre, prop] of Object.entries(esquema.properties ?? {})) {
+      if (prop["x-una-vez"]) salida.add(nombre);
+    }
+  }
+  return [...salida];
 }
 
 export function camposDe(

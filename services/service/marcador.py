@@ -463,9 +463,15 @@ def colgar(
             else f"No se ha podido crear la siguiente llamada: {_error_de(s)}"
         )
     if resultado == "numero_erroneo":
-        # El estado del teléfono es de la ficha y su vocabulario lo decide
-        # party; aquí no se inventa uno. Se dice qué hay que hacer.
-        pendientes.append("Marca el teléfono como erróneo en la ficha del contacto.")
+        # Lo marca la telefonía al anotar el resultado (PATCH del contacto en
+        # party con `estado_telefono`); aquí se dice si lo hizo o qué falta.
+        marcado = ((a.get("datos") or {}) if a.get("ok") else {}).get("telefono_marcado") or {}
+        if marcado.get("marcado"):
+            aplicadas.append("Teléfono marcado como erróneo en la ficha")
+        else:
+            pendientes.append(
+                marcado.get("porque") or "Marca el teléfono como erróneo en la ficha del contacto."
+            )
     return {
         **registro,
         "contacto_id": contacto,

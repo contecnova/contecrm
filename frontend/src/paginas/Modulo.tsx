@@ -45,6 +45,7 @@ import {
   type Vista,
 } from "@/componentes/Vistas";
 import { Formulario, candidatosDe } from "@/componentes/Formulario";
+import { SecretoDeUnaVez } from "@/componentes/SecretoDeUnaVez";
 import { AccionesMasivas } from "@/componentes/AccionesMasivas";
 import { Filtros } from "@/componentes/Filtros";
 import { Tabla, leerElegidas, leerOrden } from "@/componentes/Tabla";
@@ -82,6 +83,7 @@ import {
   altaPorClave,
   altaPorPost,
   camposDe,
+  camposDeUnaVez,
   contratoDe,
   fichaDe,
   propositoDe,
@@ -593,6 +595,10 @@ function RecursoVista({
   const navegar = useNavigate();
   const [creando, setCreando] = useState(abrirAlta);
   const [enviando, setEnviando] = useState(false);
+  // Lo que el alta devuelve una sola vez —el secreto de una clave—: sólo en
+  // memoria, y se va al cerrar el aviso o al salir de la pantalla.
+  const [camposUnaVez, setCamposUnaVez] = useState<string[]>([]);
+  const [unaVez, setUnaVez] = useState<Record<string, string> | null>(null);
   const [parametros, setParametros] = useSearchParams();
   const [termino, setTermino] = useState("");
   const [desde, setDesde] = useState("");
@@ -1153,6 +1159,9 @@ function RecursoVista({
       const alta = porClave?.plantilla ?? declarada ?? porPost;
       setRutaDeAlta(alta);
       setClaveDeAlta(porClave?.clave ?? "");
+      setCamposUnaVez(
+        alta ? camposDeUnaVez(documento, alta, porClave ? "put" : "post") : [],
+      );
       setCampos(
         alta
           ? porClave
@@ -1299,7 +1308,16 @@ function RecursoVista({
             metodo: "PUT",
           }
         : { ruta: rutaDeAlta!, cuerpo: valores, metodo: "POST" };
-      await llamar(ruta, { metodo, cuerpo });
+      const respuesta = await llamar<Record<string, unknown>>(ruta, {
+        metodo,
+        cuerpo,
+      });
+      const secretos = Object.fromEntries(
+        camposUnaVez
+          .map((c) => [c, respuesta.datos?.[c]] as const)
+          .filter(([, v]) => typeof v === "string" && v !== ""),
+      ) as Record<string, string>;
+      setUnaVez(Object.keys(secretos).length ? secretos : null);
       setCreando(false);
       setFallo(null);
       if (parametros.has("duplicar")) {
@@ -1340,6 +1358,10 @@ function RecursoVista({
         {creando ? t("modulo.cancelar") : t("modulo.nuevo")}
       </button>
     ) : null;
+
+  const avisoDeUnaVez = unaVez ? (
+    <SecretoDeUnaVez valores={unaVez} alCerrar={() => setUnaVez(null)} />
+  ) : null;
 
   const formularioDeAlta =
     creando && campos ? (
@@ -1476,6 +1498,8 @@ function RecursoVista({
           alTerminar={() => void cargar()}
         />
       ) : null}
+
+      {avisoDeUnaVez}
 
       {/* Un 409 por duplicado no es un fallo de la pantalla: lo explica el
           propio formulario, con los candidatos y «Es otro, crearlo igual». */}

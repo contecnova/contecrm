@@ -11,6 +11,7 @@ from services.intelligence import (
     ajustes,  # noqa: F401 — registra los ajustes de este servicio al arrancar
 )
 from services.intelligence.api import ROUTERS
+from services.intelligence.api_evaluacion import ROUTERS_EVALUACION
 from services.intelligence.api_indice import ROUTERS_INDICE
 from services.intelligence.api_modelos import ROUTERS_MODELOS
 from services.intelligence.api_reuniones import ROUTERS_REUNIONES
@@ -64,7 +65,7 @@ def _tareas() -> list[object]:
             trabajo = encolar_medicion(db, tenant_id=tenant_id, pedido_por=None)
             return {"trabajo": str(trabajo.id)}
 
-    from services.intelligence import predictivo
+    from services.intelligence import evaluacion, predictivo
 
     return [
         Tarea("intelligence.salud", cada, por_tenant(_tenants_con_salud, _encolar)),
@@ -75,6 +76,22 @@ def _tareas() -> list[object]:
             "intelligence.reentreno",
             int(predictivo._ajuste("ia_reentreno_comprobar_s")),
             por_tenant(predictivo.tenants_con_programacion, predictivo.reentrenar_lo_que_toca),
+        ),
+        # La evaluación programada de la IA contra el modelo real. Mira cada
+        # `IA_EVALUACION_COMPROBAR_S` a qué tenant le toca —cada
+        # `ia_evaluacion_cada_horas`, 0 la apaga— y encola su trabajo.
+        Tarea(
+            "intelligence.evaluacion",
+            int(evaluacion._ajuste("ia_evaluacion_comprobar_s")),
+            por_tenant(evaluacion.tenants_con_banco, evaluacion.evaluar_si_toca),
+        ),
+        # Y la que la recorre: cada `IA_EVALUACION_AVANCE_S`, una tanda de la
+        # ejecución en curso de cada tenant. El estado está en sus tablas caso
+        # a caso, así que si el proceso muere, la siguiente vuelta sigue.
+        Tarea(
+            "intelligence.evaluacion_avance",
+            int(evaluacion._ajuste("ia_evaluacion_avance_s")),
+            por_tenant(evaluacion.tenants_con_evaluacion_en_curso, evaluacion.avanzar_en_curso),
         ),
     ]
 
@@ -116,7 +133,13 @@ app = crear_servicio(
         "se escribe, lo que responde cita sus fuentes, y cada llamada queda "
         "registrada con su coste y su resultado."
     ),
-    routers=[*ROUTERS, *ROUTERS_MODELOS, *ROUTERS_REUNIONES, *ROUTERS_INDICE],
+    routers=[
+        *ROUTERS,
+        *ROUTERS_MODELOS,
+        *ROUTERS_REUNIONES,
+        *ROUTERS_INDICE,
+        *ROUTERS_EVALUACION,
+    ],
     # El índice de conocimiento se llena solo: cada artículo que se publica y
     # cada caso que se cierra con su resolución entran en él.
     consumidores=[

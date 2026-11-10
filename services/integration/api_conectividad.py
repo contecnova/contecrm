@@ -402,8 +402,12 @@ def declarar_canal(datos: DeclararCanal, uow: UowDep) -> Any:
         "contacto que falta, no basura."
     ),
 )
-def registrar_interaccion(datos: RegistrarInteraccion, uow: UowDep) -> Any:
-    return canales.registrar(uow, **datos.model_dump())
+def registrar_interaccion(
+    datos: RegistrarInteraccion, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from services.integration.api_telefonia import identidad_de
+
+    return canales.registrar(uow, **datos.model_dump(), identidad=identidad_de(principal))
 
 
 @router_canales.get(
@@ -425,10 +429,19 @@ def sin_atribuir(
 def atribuir(
     interaccion_id: UUID,
     uow: UowDep,
+    principal: AutenticadoDep,
     contacto_id: UUID | None = Query(None),
     cuenta_id: UUID | None = Query(None),
 ) -> Any:
-    fila = canales.atribuir(uow, interaccion_id, contacto_id=contacto_id, cuenta_id=cuenta_id)
+    from services.integration.api_telefonia import identidad_de
+
+    fila = canales.atribuir(
+        uow,
+        interaccion_id,
+        contacto_id=contacto_id,
+        cuenta_id=cuenta_id,
+        identidad=identidad_de(principal),
+    )
     return {"id": str(fila.id), "atribuida": fila.atribuida}
 
 

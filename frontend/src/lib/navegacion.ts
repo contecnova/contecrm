@@ -715,6 +715,18 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
     icono: "verified_user",
     permiso: "tenant:read",
   },
+  // La evaluación de la IA contra el modelo real: el acierto de cada función,
+  // su tendencia y lo que falla. En Administrar porque es control de calidad
+  // de un componente, como la segregación o el panel de cumplimiento; no hay
+  // un área «IA» en Administrar y una con una sola entrada no pasaría el
+  // suelo de entradas por área.
+  {
+    area: "gobierno",
+    a: "/evaluacion-ia",
+    clave: "nav.evaluacionIa",
+    icono: "fact_check",
+    permiso: "ia:usar",
+  },
 ];
 
 /**

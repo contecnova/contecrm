@@ -25,13 +25,6 @@ class AjustesAnalytics(Settings):
     # Lo que pasa del tope se DICE en la respuesta: un embudo calculado sobre
     # las dos mil más recientes y presentado como «todas» engaña.
     analisis_max_registros: int = Field(2000, ge=50, le=50000)
-    # Cuántas oportunidades se recorren con su historial de etapas. Es una
-    # llamada por oportunidad, así que el tope es más bajo que el de listar.
-    # Y cuenta contra el límite de peticiones DE QUIEN PREGUNTA: medido el
-    # 09-11-2026, con 300 el embudo de 255 oportunidades se comía la cuota del
-    # usuario y su propia pantalla recibía 429 en el mismo minuto. Con 100 se
-    # miran las más recientes y la respuesta dice que está recortado.
-    analisis_max_historiales: int = Field(100, ge=10, le=5000)
     # Mínimo de sujetos para dar un coeficiente de correlación. Con cinco
     # comerciales, uno de vacaciones decide el signo. Era un 8 en el cálculo.
     analisis_minimo_correlacion: int = Field(8, ge=3, le=1000)
@@ -49,14 +42,6 @@ registrar_claves(
             minimo=50,
             maximo=50000,
             campo_settings="analisis_max_registros",
-        ),
-        ClaveAjuste(
-            clave="analisis_max_historiales",
-            tipo="int",
-            descripcion="Oportunidades cuyo paso por etapas se lee para el embudo",
-            minimo=10,
-            maximo=5000,
-            campo_settings="analisis_max_historiales",
         ),
         ClaveAjuste(
             clave="analisis_minimo_correlacion",

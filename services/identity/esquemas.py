@@ -155,7 +155,15 @@ class ClaveApiCreada(BaseModel):
     id: UUID
     nombre: str
     prefijo: str
-    secreto: str = Field(..., description="Se muestra UNA sola vez. Guárdalo ahora")
+    # `x-una-vez`: la pantalla de alta lo enseña al crear, con el aviso de
+    # copiarlo, y no lo guarda en ninguna parte. Va en el contrato y no en una
+    # lista del cliente para que cualquier alta que devuelva un secreto lo
+    # enseñe igual sin que nadie se acuerde de añadirla.
+    secreto: str = Field(
+        ...,
+        description="Se muestra UNA sola vez. Guárdalo ahora",
+        json_schema_extra={"x-una-vez": True},
+    )
     expira_at: datetime | None = None
 
 
@@ -169,6 +177,10 @@ class ClaveApiOut(BaseModel):
     revocada_at: datetime | None = None
     ultimo_uso_at: datetime | None = None
     cuota_mes: int | None = None
+    # Desde dónde se admite. Se guardaba y no se devolvía: quien revisaba una
+    # clave no podía saber si estaba restringida a la IP de su ERP o abierta a
+    # internet entero, que es justo lo que se mira al revisarla.
+    ips_permitidas: list[str] = []
 
     model_config = {"from_attributes": True}
 

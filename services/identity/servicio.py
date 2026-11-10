@@ -307,6 +307,19 @@ def _anotar_fallo(db: Session, usuario: Usuario, maximo: int, minutos: int) -> N
     if usuario.intentos_fallidos >= maximo:
         usuario.bloqueado_hasta = datetime.now(timezone.utc) + timedelta(minutes=minutos)
         logger.warning("auth.cuenta_bloqueada", usuario_id=str(usuario.id))
+    # Aparte y confirmado ya: el login contesta con error y ese error deshace su
+    # transacción. Sin esto el contador no llegaba nunca a la base y el bloqueo
+    # por fuerza bruta no actuaba (medido el 10-11-2026).
+    from crmcore.db.session import guardar_aunque_falle
+
+    guardar_aunque_falle(
+        Usuario,
+        usuario.id,
+        {
+            "intentos_fallidos": usuario.intentos_fallidos,
+            "bloqueado_hasta": usuario.bloqueado_hasta,
+        },
+    )
 
 
 def _membresia(db: Session, usuario_id: UUID, tenant_id: UUID) -> Membresia | None:

@@ -59,6 +59,19 @@ class AjustesIntegration(Settings):
     # fichero o un hilo existe y si esta persona tiene acceso en el origen.
     suite_op_resolver_referencia: str = "resolver_referencia"
 
+    # ── Señales de identidad hacia party (CRM-01.01.05.02) ────────────────
+    # Cuánto se espera a party al mandar una señal, cuántas veces se reintenta
+    # una que falla y cuántas manda el relevo por vuelta y tenant.
+    senales_identidad_espera_s: float = Field(10.0, ge=1.0, le=120.0)
+    senales_identidad_reintentos: int = Field(10, ge=1, le=1_000)
+    senales_identidad_lote: int = Field(200, ge=1, le=10_000)
+
+    # ── Número erróneo al cerrar una llamada ───────────────────────────────
+    # El resultado comercial que dice que el número no es de esa persona, y el
+    # estado que se escribe entonces en el teléfono de la ficha del contacto.
+    telefonia_resultado_numero_erroneo: str = "numero_erroneo"
+    telefonia_estado_telefono_erroneo: str = "erroneo"
+
 
 registrar_claves(
     [
@@ -148,6 +161,42 @@ registrar_claves(
                 "referencia existe y si quien la abre tiene acceso"
             ),
             campo_settings="suite_op_resolver_referencia",
+        ),
+        ClaveAjuste(
+            clave="senales_identidad_espera_s",
+            tipo="float",
+            descripcion="Segundos que se espera a party al mandarle una señal de identidad",
+            minimo=1.0,
+            maximo=120.0,
+            campo_settings="senales_identidad_espera_s",
+        ),
+        ClaveAjuste(
+            clave="senales_identidad_reintentos",
+            tipo="int",
+            descripcion="Veces que se intenta mandar a party una señal de identidad que falla",
+            minimo=1,
+            maximo=1_000,
+            campo_settings="senales_identidad_reintentos",
+        ),
+        ClaveAjuste(
+            clave="senales_identidad_lote",
+            tipo="int",
+            descripcion="Señales de identidad que el relevo manda a party por vuelta y tenant",
+            minimo=1,
+            maximo=10_000,
+            campo_settings="senales_identidad_lote",
+        ),
+        ClaveAjuste(
+            clave="telefonia_resultado_numero_erroneo",
+            tipo="str",
+            descripcion="Resultado de la llamada que marca el teléfono de la ficha como erróneo",
+            campo_settings="telefonia_resultado_numero_erroneo",
+        ),
+        ClaveAjuste(
+            clave="telefonia_estado_telefono_erroneo",
+            tipo="str",
+            descripcion="Estado que se escribe en el teléfono del contacto cuando el número es erróneo",
+            campo_settings="telefonia_estado_telefono_erroneo",
         ),
         ClaveAjuste(
             clave="chat_url_crm",

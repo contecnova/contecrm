@@ -144,7 +144,10 @@ const pantallas = {
     aplicar: "Aplicar lo elegido",
     quedarmeConLoSuyo: "Quedarme con lo del servidor",
     descartar: "Descartar",
-    tipos: { crear: "Alta", actualizar: "Cambio" },
+    tipos: { crear: "Alta", actualizar: "Cambio", borrar: "Borrado" },
+    borradoEnConflicto:
+      "Otra persona cambió este registro después de que lo leyeras. ¿Lo borras igualmente? Irá a la papelera y se podrá recuperar desde allí.",
+    borrarIgualmente: "Borrarlo igualmente",
     estados: {
       pendiente: "Pendiente",
       enviando: "Enviando",
@@ -204,16 +207,31 @@ const pantallas = {
       "Es la lista de potencia escondida en la API: capacidades construidas, probadas y documentadas que quien mira el producto concluye que no están.",
     todoEnsenado: "Todo lo publicado tiene pantalla.",
   },
+  renovacionContrato: {
+    titulo: "Renovación",
+    ayuda:
+      "Al llegar el preaviso se avisa y se abre una oportunidad de renovación en su embudo, enlazada con el contrato. La revisión periódica lo hace sola; aquí se revisa sólo este contrato.",
+    revisar: "Revisar este contrato",
+    vence: "Vence el {{fin}}; el preaviso es de {{dias}} días.",
+    sinFin: "Sin fecha de fin: no se renueva ni avisa.",
+    preavisoDado: "preaviso dado",
+    oportunidad: "Oportunidad de renovación abierta:",
+    abrirOportunidad: "abrirla en el embudo",
+    noRevisado: "No se ha revisado: {{porque}}.",
+    sinEmbudo:
+      "El embudo de renovaciones «{{clave}}» no existe: no se abre ninguna.",
+    aunNo: "Todavía no ha llegado el preaviso: no toca abrir la renovación.",
+  },
   calidadDelDato: {
     titulo: "Calidad del dato",
     entradilla:
       "La ficha buena de cada cliente con de dónde sale cada valor, lo que dice el proveedor de datos, quién es la misma persona en cada canal, cuánto tienen que parecerse dos fichas y las direcciones en su forma normal.",
     irDuplicados: "Duplicados",
-    objetos: { cuenta: "Cuentas", contacto: "Contactos" },
+    objetos: { cuenta: "Cuentas", contacto: "Contactos", lead: "Leads" },
     // Golden record
     golden: "Ficha buena (golden record)",
     goldenAyuda:
-      "Las fichas con más de una versión de la verdad —fusionadas o unidas por identidad—. Componer aplica las reglas y guarda el resultado con su procedencia; aplicar lo escribe en la ficha.",
+      "Las fichas con más de una versión de la verdad —fusionadas o unidas por identidad—. En un lead, las fusionadas son las capturas que entraron en él y las unidas, los leads señalados como su duplicado. Componer aplica las reglas y guarda el resultado con su procedencia; aplicar lo escribe en la ficha.",
     sinCandidatas:
       "Ninguna ficha tiene todavía otra versión fusionada o unida: componerla devolvería lo que ya tiene.",
     ficha: "Ficha",
@@ -314,6 +332,12 @@ const pantallas = {
       sugerencia: "Sugerir",
       bloqueo: "Bloquear",
       propuesta: "Proponer",
+    },
+    filasUmbral: {
+      cuenta: "Cuentas",
+      contacto: "Contactos",
+      leadLead: "Lead frente a otro lead",
+      leadContacto: "Lead frente a un contacto",
     },
     general: "del general",
     propio: "propio",
@@ -1956,6 +1980,54 @@ const pantallas = {
     explicar: "Explicar la puntuación",
     noMedible: "No se puede explicar",
   },
+  // La evaluación de la IA contra el modelo real (CRM-05.02.01.07).
+  evaluacionIa: {
+    titulo: "Evaluación de la IA",
+    entradilla:
+      "Un banco de casos con su respuesta buena, pasado contra el modelo real por el mismo camino que usan las funciones: el acierto de cada una, su tendencia y cada caso que falla con su porqué.",
+    evaluarAhora: "Evaluar ahora",
+    evaluando: "Evaluando… {{hechos}} de {{total}}",
+    ultima: "Última evaluación",
+    resumen:
+      "{{aciertos}} de {{casos}} casos acertados · {{cuando}} · {{origen}}",
+    modelo:
+      "Modelo: {{modelos}} · coste {{coste}} · {{latencia}} ms de media por caso",
+    nunca:
+      "Todavía no se ha evaluado. El banco de serie trae {{casos}} casos y se guarda como tuyo la primera vez.",
+    programada:
+      "Se evalúa sola cada {{horas}} horas; avisa si una función baja del {{umbral}}. Próxima: {{proxima}}.",
+    trasLaPrimera: "tras la primera",
+    sinProgramar:
+      "La evaluación programada está apagada (0 horas). El umbral de aviso es el {{umbral}}.",
+    porFuncion: "Acierto por función",
+    casosDe: "{{aciertos}} de {{casos}} casos",
+    antes: "antes {{antes}}",
+    latencia: "{{ms}} ms",
+    sinEvaluar: "Sin evaluar todavía.",
+    conJuez:
+      "{{n}} caso(s) con un criterio que decide un modelo juez: no se puede medir por programa.",
+    version: "Versión del prompt {{version}}",
+    tendencia: "Tendencia del acierto",
+    fecha: "Evaluación",
+    acierto: "Acierto global",
+    fallan: "Casos que fallan",
+    ningunFallo: "Ningún caso falla en la última evaluación.",
+    juez: "juez",
+    banco: "Banco de casos",
+    bancoAyuda:
+      "Configuración de tu empresa: el producto trae los de serie y aquí se apagan los que no apliquen. Los propios se añaden por la API.",
+    bancoVacio: "El banco se guarda la primera vez que se evalúa.",
+    activar: "Evaluar «{{caso}}»",
+    col: {
+      funcion: "Función",
+      caso: "Caso",
+      origen: "Origen",
+      juez: "Juez",
+      activo: "Activo",
+    },
+    origenes: { manual: "a mano", programada: "programada" },
+    origenesCaso: { serie: "De serie", propio: "Propio" },
+  },
   modeloDatos: {
     probar: {
       titulo: "Probar un registro",
@@ -2348,7 +2420,7 @@ const pantallas = {
     noMostrados_other: "Y {{count}} más que no caben aquí.",
     noSePudo: "No se ha podido hacer.",
     verificate:
-      "Borrar en lote pide volver a verificar tu identidad. Hazlo desde tu perfil y vuelve.",
+      "Borrar en lote pide confirmar que eres tú, y no se ha confirmado: no se ha borrado nada. Vuelve a pulsarlo y confírmalo.",
   },
   // Duplicar un registro desde su ficha (CRM-07.01.01.07).
   duplicar: {

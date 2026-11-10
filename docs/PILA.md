@@ -222,16 +222,35 @@ El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.
     compensación, Teams/Slack, enriquecimiento. Todo está probado contra dobles
     locales; falta la credencial de cada uno en Integraciones y, para la
     transcripción por enlace, un `PUBLIC_BASE_URL` público.
-  - [ ] Integration debe mandar a party las señales de identidad de otros
+  - [x] Integration debe mandar a party las señales de identidad de otros
     canales (`POST /calidad-dato/identidades/observar`) y la respuesta que
     detecta el buzón a las cadencias.
-  - [ ] Golden record y umbral por objeto para leads (hoy cuentas y contactos).
-  - [ ] Sin conexión: formularios que no se abrieron con red, borrar sin red.
-  - [ ] `numero_erroneo` de la telefonía no marca el teléfono de la ficha.
-  - [ ] Al recoger ventas para la compensación, el reparto sale vacío: la lista
+  - [x] Golden record y umbral por objeto para leads (hoy cuentas y contactos).
+  - [x] Sin conexión: formularios que no se abrieron con red, borrar sin red.
+  - [x] `numero_erroneo` de la telefonía no marca el teléfono de la ficha.
+  - [x] Al recoger ventas para la compensación, el reparto sale vacío: la lista
     de oportunidades no trae `owner_id` con esa identidad. Sin investigar.
-  - [ ] El embudo de la analítica se limita a 100 historiales; un listado en
+  - [x] El embudo de la analítica se limita a 100 historiales; un listado en
     bloque en sales quitaría el tope.
+- **Cerrado el 10-11-2026** (lo pendiente de la segunda tanda):
+  - Señales de identidad desde correo, calendario, SMS, voz, telefonía,
+    buzón y ERP; el rastreo web y la app no existen en integration.
+  - La respuesta detectada en el buzón saca de las cadencias, una vez por
+    mensaje, y queda como actividad.
+  - Ficha buena y umbral por objeto para leads; embudo de la analítica sin
+    tope de 100; renovaciones vistas y declaradas (queda 1 sin pantalla,
+    CRM-00.04.04.06, que necesita el bus).
+  - El reparto vacío de compensación no era de código: 160 de 162 ganadas no
+    tienen dueño. Desde ahora quien crea una oportunidad queda como dueño; las
+    antiguas, al poblar (entrada 10).
+  - Restos de la primera tanda: el secreto de una clave se enseña una vez,
+    `ips_permitidas`, el sandbox, el equipo de confianza del tenant, el consumo
+    legible y borrar sin conexión.
+  - **Arreglado al medir**: `If-Match` sólo lo respetaba la edición genérica
+    (ahora toda escritura sobre un registro); **el bloqueo por intentos
+    fallidos no actuaba nunca** (el error deshacía el contador); no había forma
+    de volver a verificarse sin salir (ruta y diálogo común nuevos); los
+    ajustes de la analítica habían dejado de registrarse.
 - **Arreglado de paso en la segunda tanda**: toda subida de fichero desde la
   pantalla daba 500 (la idempotencia releía un cuerpo multipart ya leído); los
   enlaces firmados a adjuntos daban 401 siempre; tras borrar un caso nadie
@@ -249,6 +268,75 @@ El tope del guardián (`TOPE_SIN_PANTALLA`) está en 82. Bajan por familias.
 De 357 campos, 34 se cerraron el 08-11-2026 (hashes, sellos, contadores,
 derivados). Quedan 323 que el código también escribe pero corrige una persona
 —estado, notas, plazos—; se revisan por familia sólo si aparece un caso real.
+
+### 10. El objetivo completo, medido el 09-11-2026
+
+- **Pedido**: 09-11-2026 — «rediseño completo que se compare con Salesforce y
+  lo supere; la IA clave y funcionando a la perfección; todas las
+  funcionalidades con sentido en el front; flujos, avisos e información
+  cruzada increíblemente potentes; recoger lo interesante de contecmind y
+  contecintelligence; nunca mentir, todo completo, medir, nada hardcodeado,
+  ultra configurable, la mejor experiencia de usuario».
+- **Por orden**:
+  - [ ] **El bus en vivo.** Nunca se ha visto: en local no hay NATS. Levantar
+    uno con JetStream (hay Docker) y recorrer todo lo que cruza servicios
+    —aprobación de presupuestos, firma que mueve la etapa, avisos de
+    automatización al chat, CRM-00.04.04.06—, arreglando lo que falle.
+  - [ ] **Evaluación de la IA.** No existe ningún conjunto de evaluación (sólo
+    métricas de los modelos predictivos): «funciona a la perfección» no se
+    puede afirmar. Banco de casos con su respuesta buena —asistente,
+    preguntas sobre los datos, resúmenes, extracción, compromisos de
+    reuniones— pasado contra el modelo real, con el acierto a la vista y un
+    aviso si baja; y corregir hasta que acierte.
+  - [ ] **Todo bajo el GRC** (entrada 11).
+  - [ ] **Lo que queda fuera del front**: 32 colecciones publicadas sin
+    pantalla que las abra (`TOPE_SIN_PUERTA`) y 91 capacidades que ninguna
+    prueba nombra (`TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE`).
+  - [ ] **contecintelligence y contecmind**: registrar el CRM como fuente en
+    contecintelligence (las instantáneas y las preguntas que pasan por él no
+    se han visto en vivo) y medir una a una las cinco piezas que la
+    comparativa dice traer. contecmind sigue caído por la entrada 9.
+  - [ ] **Barrido de constantes** en el código entero: hoy no está medido, y
+    sin medirlo no se puede decir «nada hardcodeado».
+  - [ ] **El rediseño pantalla por pantalla**, con medidas de usabilidad
+    (clics y tiempo por tarea frecuente), no sólo a ojo.
+  - [ ] **Rehacer la comparativa con Salesforce** capacidad por capacidad con
+    lo construido desde el 05-11; el lado de Salesforce no está medido.
+  - [ ] **Poblar todo**: 213 de 235 pestañas con datos; 16 vacías (unas con
+    razón —fallidos, papelera, pendientes— y otras sin datos de ejemplo:
+    audiencias publicitarias, sobres de firma, registros recibidos,
+    programación de integraciones, proveedores de identidad…).
+
+### 11. Todo lo que hay en la aplicación, controlado por el GRC
+
+- **Pedido**: 09-11-2026 — «revisar que todo lo que hay en la aplicación esté
+  controlado por GRC; desarrollar algo como el TCSEC y el DEM de Infor para
+  controlar accesos, todo ello enlazado con el GRC».
+- **Medido el 09-11-2026** en el tenant de plataforma:
+  - Cobertura: **0 de 781 capacidades hechas tienen control**. Hay 6
+    controles y 6 riesgos, y ninguno anclado a una capacidad hecha.
+  - Segregación de funciones (el DEM, hecho hoy): **no está enlazada con el
+    GRC**; sus reglas y conflictos no generan ni riesgos ni controles ni
+    evidencias.
+  - TCSEC (hecho hoy): sólo los 4 requisitos manuales pasan por el GRC; los 11
+    medidos no dejan evidencia en él.
+  - **No hay revisión periódica de accesos** (recertificación: cada
+    responsable confirma o retira lo que tiene su gente).
+- **A construir**:
+  - [ ] Controles de serie anclados a las capacidades, por familia, con su
+    evidencia automática (el audit trail, los gates, los certificados), hasta
+    que la cobertura mida de verdad lo que hay —con el informe de los dos
+    sentidos que ya existe—.
+  - [ ] La segregación como control del GRC: cada regla es un control
+    preventivo, cada conflicto sin excepción un hallazgo con su riesgo, cada
+    excepción aprobada una evidencia con caducidad.
+  - [ ] TCSEC entero en el GRC: los 15 requisitos como controles, los
+    medidos con su evidencia automática al evaluarse.
+  - [ ] Revisión de accesos: campañas periódicas por responsable, con
+    confirmar o retirar y la retirada aplicada de verdad en identity; el
+    resultado, evidencia del control de accesos.
+  - [ ] Todo en Administrar › Gobierno y cumplimiento, enlazado en los dos
+    sentidos (del control a la regla o el requisito, y de vuelta).
 
 ## Dependen de otros
 

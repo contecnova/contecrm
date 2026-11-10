@@ -12,8 +12,10 @@ se coordinen es que todo lo que decide la copia es **determinista**:
   globales— se conservan: el orquestador los pasa en `conservar`.
 - **La muestra es por cuenta.** Una copia parcial se queda con un porcentaje de
   las cuentas, elegidas por un hash de su identificador, y con todo lo que lleva
-  `cuenta_id`. Lo que no cuelga de una cuenta —catálogo, configuración,
-  procesos— se copia entero: sin ello, el sandbox no funciona.
+  `cuenta_id`. Los contactos van con sus cuentas —y los que no cuelgan de
+  ninguna, por su propio hash—, y lo que lleva `contacto_id` va con su
+  contacto. Lo que no cuelga de una cuenta ni de un contacto —catálogo,
+  configuración, procesos— se copia entero: sin ello, el sandbox no funciona.
 - **La anonimización sale del modelo**: las columnas que declaran sensibilidad
   `personal`, `especial` o `confidencial`, con un seudónimo consistente y no
   reversible (`crmcore.seguridad.anonimizar`).
@@ -48,6 +50,12 @@ logger = get_logger(__name__)
 # con su cuenta. `cuentas.id` es la propia cuenta.
 COLUMNAS_DE_CUENTA = ("cuenta_id", "account_id")
 TABLA_DE_CUENTAS = "cuentas"
+# Y los contactos, que NO llevan `cuenta_id`: cuelgan de sus cuentas por una
+# tabla de enlace. Sin esto se copiaban enteros con cualquier porcentaje —
+# medido el 09-11-2026: con el 5 % se iban todos los contactos, que son
+# justamente los datos personales que la copia parcial quiere reducir—.
+COLUMNAS_DE_CONTACTO = ("contacto_id", "contact_id")
+TABLA_DE_CONTACTOS = "contactos"
 # Parámetros que admite una sentencia en Postgres: un hecho del protocolo, no un
 # ajuste. El lote de cada tabla se recorta para no pasarlo.
 PARAMETROS_POSTGRES = 65_535
@@ -64,6 +72,89 @@ def en_la_muestra(semilla: str, cuenta: Any, porcentaje: int) -> bool:
         return True
     resumen = hashlib.sha256(f"{semilla}:{cuenta}".encode()).hexdigest()
     return int(resumen[:8], 16) % 100 < porcentaje
+
+
+def contactos_en_la_muestra(
+    db: Session, tablas: list[tuple[Any, type]], *, origen: UUID, semilla: str, porcentaje: int
+) -> set[str] | None:
+    """Los contactos que entran en la copia, si este servicio los guarda.
+
+    Entra un contacto **si cuelga de una cuenta de la muestra** —por cualquier
+    tabla del servicio que lleve a la vez su contacto y su cuenta: el enlace
+    contacto-cuenta, sus actividades— **o si su propio identificador cae en la
+    muestra**, que es lo que decide para los que no cuelgan de ninguna. Así una
+    cuenta copiada llega con sus contactos y el porcentaje limita los demás.
+
+    Los otros servicios no ven el enlace, así que deciden sólo por el
+    identificador del contacto: es un subconjunto de éste, de modo que lo que
+    copien apunta siempre a un contacto que existe en el sandbox. Lo que pierden
+    —filas sueltas de contactos que entraron por su cuenta— es muestra de
+    menos, nunca una referencia rota.
+
+    `None` cuando el servicio no guarda contactos.
+    """
+    if porcentaje >= 100:
+        return None
+    if not any(t.name == TABLA_DE_CONTACTOS for t, _ in tablas):
+        return None
+    dentro: set[str] = set()
+    for tabla, _ in tablas:
+        cuenta = next((c for c in COLUMNAS_DE_CUENTA if c in tabla.c), None)
+        contacto = next((c for c in COLUMNAS_DE_CONTACTO if c in tabla.c), None)
+        if not cuenta or not contacto:
+            continue
+        for fila_cuenta, fila_contacto in db.execute(
+            select(tabla.c[cuenta], tabla.c[contacto]).where(
+                tabla.c.tenant_id == origen,
+                tabla.c[cuenta].is_not(None),
+                tabla.c[contacto].is_not(None),
+            )
+        ):
+            if en_la_muestra(semilla, fila_cuenta, porcentaje):
+                dentro.add(str(fila_contacto))
+    contactos = next(t for t, _ in tablas if t.name == TABLA_DE_CONTACTOS)
+    for (identificador,) in db.execute(
+        select(contactos.c.id).where(contactos.c.tenant_id == origen)
+    ):
+        if en_la_muestra(semilla, identificador, porcentaje):
+            dentro.add(str(identificador))
+    return dentro
+
+
+def _entra(
+    tabla: Any,
+    datos: dict[str, Any],
+    *,
+    semilla: str,
+    porcentaje: int,
+    contactos: set[str] | None,
+) -> bool:
+    """Si una fila entra en la copia parcial. Ver `contactos_en_la_muestra`."""
+    if porcentaje >= 100:
+        return True
+    if tabla.name == TABLA_DE_CUENTAS:
+        return en_la_muestra(semilla, datos.get("id"), porcentaje)
+    if tabla.name == TABLA_DE_CONTACTOS:
+        identificador = datos.get("id")
+        return (
+            str(identificador) in contactos
+            if contactos is not None
+            else en_la_muestra(semilla, identificador, porcentaje)
+        )
+    cuenta = next((c for c in COLUMNAS_DE_CUENTA if c in tabla.c), None)
+    if cuenta and datos.get(cuenta) is not None:
+        return en_la_muestra(semilla, datos.get(cuenta), porcentaje)
+    contacto = next((c for c in COLUMNAS_DE_CONTACTO if c in tabla.c), None)
+    if contacto and datos.get(contacto) is not None:
+        valor = datos.get(contacto)
+        return (
+            str(valor) in contactos
+            if contactos is not None
+            else en_la_muestra(semilla, valor, porcentaje)
+        )
+    # Lo que no cuelga de una cuenta ni de un contacto —catálogo,
+    # configuración, procesos— se copia entero: sin ello el sandbox no funciona.
+    return True
 
 
 def _es_uuid(columna: Any) -> bool:
@@ -145,7 +236,11 @@ def copiar_tenant(
     no_copiadas: list[dict[str, str]] = []
     fallidas: list[dict[str, str]] = []
 
-    for tabla, modelo in _tablas_del_servicio(servicio):
+    tablas = _tablas_del_servicio(servicio)
+    contactos = contactos_en_la_muestra(
+        db, tablas, origen=origen, semilla=semilla, porcentaje=porcentaje
+    )
+    for tabla, modelo in tablas:
         # Lo que es de ESTE entorno y no de sus datos —una cola de ejecuciones
         # pendientes— lo declara la propia tabla, con su motivo. Copiado, el
         # sandbox repetiría el trabajo que producción tiene a medias.
@@ -172,7 +267,6 @@ def copiar_tenant(
         autonumericas = [
             c.name for c in tabla.primary_key.columns if not _es_uuid(c) and c.autoincrement is True
         ]
-        cuenta = next((c for c in COLUMNAS_DE_CUENTA if c in tabla.c), None)
         sensibles = campos_sensibles(modelo) if anonimizar else []
         tope = max(1, min(s.sandbox_copia_lote, PARAMETROS_POSTGRES // len(tabla.c)))
         filas = 0
@@ -183,15 +277,12 @@ def copiar_tenant(
                 lote: list[dict[str, Any]] = []
                 for fila in db.execute(select(tabla).where(tabla.c.tenant_id == origen)).mappings():
                     datos = dict(fila)
-                    clave_muestra = (
-                        datos.get("id")
-                        if tabla.name == TABLA_DE_CUENTAS
-                        else datos.get(cuenta)
-                        if cuenta
-                        else None
-                    )
-                    if clave_muestra is not None and not en_la_muestra(
-                        semilla, clave_muestra, porcentaje
+                    if not _entra(
+                        tabla,
+                        datos,
+                        semilla=semilla,
+                        porcentaje=porcentaje,
+                        contactos=contactos,
                     ):
                         fuera_de_muestra += 1
                         continue

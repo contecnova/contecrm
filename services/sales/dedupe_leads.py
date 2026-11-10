@@ -108,9 +108,22 @@ def _ajustes(db: Session) -> dict[str, Any]:
         efectivo = rt.efectivo(clave, db)
         return getattr(a, clave) if efectivo is None else efectivo
 
+    # Por objeto con el que se compara (CRM-01.01.04.02): lo que el objeto no
+    # diga sale del general. Se lee una vez por alta, no por candidato.
+    from services.sales.golden_leads import _por_objeto, umbral_de
+
+    por_objeto = _por_objeto(db)
     return {
-        "sugerencia": float(valor("lead_dedupe_umbral_sugerencia")),
-        "bloqueo": float(valor("lead_dedupe_umbral_bloqueo")),
+        "sugerencia": umbral_de(db, "lead", "sugerencia", por_objeto=por_objeto),
+        "bloqueo": umbral_de(db, "lead", "bloqueo", por_objeto=por_objeto),
+        # Sin umbral propio frente al contacto, vale lo que `party` ya propone
+        # con el suyo: no se filtra dos veces con dos listones.
+        "contacto_sugerencia": (
+            umbral_de(db, "contacto", "sugerencia", por_objeto=por_objeto)
+            if (por_objeto.get("contacto") or {}).get("sugerencia") is not None
+            else 0.0
+        ),
+        "contacto_bloqueo": umbral_de(db, "contacto", "bloqueo", por_objeto=por_objeto),
         "contactos": bool(valor("lead_dedupe_contactos")),
         "maximo": int(valor("lead_dedupe_max_candidatos")),
         "espera_s": float(valor("lead_dedupe_espera_s")),
@@ -272,13 +285,19 @@ def buscar(
             tenant_id,
             datos,
             principal_id=principal_id or tenant_id,
-            bloqueo=a["bloqueo"],
+            bloqueo=a["contacto_bloqueo"],
             espera_s=a["espera_s"],
         )
         if contactos is None:
             resultado.contactos_consultados = False
         else:
-            resultado.candidatos.extend(contactos)
+            # Lo que `party` propone con su propio listón se filtra con el del
+            # lead frente al contacto: un tenant que exige más ahí no quiere
+            # ver de candidato a un compañero de la misma empresa. Las señales
+            # concluyentes pasan siempre.
+            resultado.candidatos.extend(
+                c for c in contactos if c.concluyente or c.similitud >= a["contacto_sugerencia"]
+            )
     resultado.candidatos.sort(key=lambda c: (-int(c.concluyente), -c.similitud))
     resultado.candidatos = resultado.candidatos[: a["maximo"]]
     return resultado

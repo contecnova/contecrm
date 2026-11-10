@@ -199,14 +199,20 @@ def operaciones_sensibles(principal: AutenticadoDep) -> Any:
 )
 def nivel_de_sesion(db: DbDep, principal: AutenticadoDep) -> Any:
     sesion = db.get(Sesion, principal.sesion_id) if principal.sesion_id else None
+    # Si tiene la app de autenticación activada: es con lo que se vuelve a
+    # verificar sin salir (`/auth/mfa/reverificar`). El diálogo lo pregunta al
+    # abrirse para no pedir un código a quien no tiene con qué generarlo.
+    usuario = db.get(Usuario, principal.id)
+    tiene_app = bool(usuario and usuario.mfa_activo and usuario.mfa_secreto)
     if sesion is None:
-        return {"nivel": 0, "factores": [], "factor_fuerte_at": None}
+        return {"nivel": 0, "factores": [], "factor_fuerte_at": None, "tiene_app": tiene_app}
     return {
         "nivel": factores.nivel_de(sesion),
         "factores": list(sesion.factores or []),
         "factor_fuerte_at": (
             sesion.factor_fuerte_at.isoformat() if sesion.factor_fuerte_at else None
         ),
+        "tiene_app": tiene_app,
     }
 
 

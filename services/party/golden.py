@@ -31,6 +31,7 @@ from uuid import UUID
 
 from crmcore.audit.chain import registrar
 from crmcore.authz.decision import exigir
+from crmcore.datos import supervivencia
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
@@ -213,19 +214,7 @@ def guardar_regla(
             error_code="golden.campo_no_componible",
             detalle={"admitidos": ["*", *campos_componibles(objeto)]},
         )
-    confianzas: dict[str, int] = {}
-    for fuente, valor in (confianza_por_fuente or {}).items():
-        try:
-            numero = int(valor)
-        except (TypeError, ValueError):
-            numero = -1
-        if not str(fuente).strip() or not 0 <= numero <= 100:
-            raise ErrorValidacion(
-                "La confianza de cada fuente va de 0 a 100.",
-                error_code="golden.confianza_invalida",
-                detalle={"fuente": fuente, "valor": valor},
-            )
-        confianzas[str(fuente).strip()] = numero
+    confianzas = supervivencia.validar_confianzas(confianza_por_fuente)
     fila = uow.db.execute(
         select(ReglaSupervivencia).where(
             ReglaSupervivencia.tenant_id == uow.tenant_id,
@@ -417,19 +406,6 @@ def _reglas_efectivas(
     return filas, filas.get("*")
 
 
-def _serializable(candidato: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "fuente": candidato.get("fuente"),
-        "valor": candidato.get("valor"),
-        "origen": candidato.get("origen"),
-        "cambiado_at": (
-            candidato["cambiado_at"].isoformat()
-            if isinstance(candidato.get("cambiado_at"), datetime)
-            else None
-        ),
-    }
-
-
 def componer(
     uow: UnidadDeTrabajo,
     *,
@@ -444,47 +420,19 @@ def componer(
     fila = datos["fila"]
     if aplicar:
         exigir(uow.db, objeto=objeto, accion="write", registro=fila)
-    por_campo, por_defecto = _reglas_efectivas(uow.db, uow.tenant_id, objeto)
-
-    valores: dict[str, Any] = {}
-    procedencia: dict[str, Any] = {}
-    a_revisar: list[dict[str, Any]] = []
-    fuentes: dict[str, int] = {}
-    for campo, lista in datos["campos"].items():
-        regla = por_campo.get(campo) or por_defecto
-        confianzas = dict((por_defecto.confianza_por_fuente if por_defecto else {}) or {})
-        if regla is not None:
-            confianzas.update(regla.confianza_por_fuente or {})
-        estrategia = regla.estrategia if regla is not None else "mayor_confianza"
-        salida = mdm.resolver_valor(
-            campo=campo,
-            candidatos=lista,
-            estrategia=estrategia,
-            confianza_por_fuente=confianzas,
-        )
-        for c in lista:
-            fuentes[str(c["fuente"])] = fuentes.get(str(c["fuente"]), 0) + 1
-        valores[campo] = salida["valor"]
-        procedencia[campo] = {
-            "fuente": salida["fuente"],
-            "estrategia": estrategia,
-            "regla": (
-                "propia del campo"
-                if campo in por_campo
-                else ("por defecto del objeto" if por_defecto else "sin regla: mayor confianza")
-            ),
-            "porque": salida["porque"],
-            "candidatos": [_serializable(c) for c in lista],
-        }
-        if salida["discrepancias"] or salida["hay_que_decidir"]:
-            a_revisar.append(
-                {
-                    "campo": campo,
-                    "hay_que_decidir": salida["hay_que_decidir"],
-                    "discrepancias": salida["discrepancias"],
-                    "opciones": salida.get("opciones", []),
-                }
-            )
+    por_campo, _ = _reglas_efectivas(uow.db, uow.tenant_id, objeto)
+    # La decisión es la del núcleo, la misma que la ficha buena del lead.
+    compuesto = supervivencia.componer_campos(
+        datos["campos"],
+        reglas={
+            campo: {"estrategia": r.estrategia, "confianza_por_fuente": r.confianza_por_fuente}
+            for campo, r in por_campo.items()
+        },
+    )
+    valores: dict[str, Any] = compuesto["valores"]
+    procedencia: dict[str, Any] = compuesto["procedencia"]
+    a_revisar: list[dict[str, Any]] = compuesto["a_revisar"]
+    fuentes: dict[str, int] = compuesto["fuentes"]
 
     golden = uow.db.execute(
         select(GoldenRecord).where(

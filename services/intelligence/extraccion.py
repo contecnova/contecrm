@@ -123,6 +123,29 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
+_MILES = re.compile(r"-?\d{1,3}(\.\d{3})+")
+
+
+def _numero(valor: Any, crudo: str) -> Decimal:
+    """Un número escrito a la española o como lo devuelve un modelo en JSON.
+
+    **Medido el 10-11-2026 con la evaluación de la IA.** Aquí se quitaban todos
+    los puntos como si fueran de millar, y el modelo devuelve el importe con
+    punto decimal: «2904.00» salía 290400 —un total de factura cien veces
+    mayor, con buena cara—. Ahora: un número de verdad va tal cual; con coma,
+    los puntos son de millar; sin coma, el punto sólo es de millar si agrupa de
+    tres en tres («18.000», «1.250.000»).
+    """
+    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+        return Decimal(str(valor))
+    texto = crudo.replace(" ", "").replace("€", "")
+    if "," in texto:
+        return Decimal(texto.replace(".", "").replace(",", "."))
+    if _MILES.fullmatch(texto):
+        return Decimal(texto.replace(".", ""))
+    return Decimal(texto)
+
+
 def convertir(valor: Any, tipo: str) -> tuple[Any, bool]:
     """Convierte al tipo del campo destino. Devuelve (valor, se_pudo).
 
@@ -137,7 +160,7 @@ def convertir(valor: Any, tipo: str) -> tuple[Any, bool]:
         return crudo, True
     if tipo == "numero":
         try:
-            return Decimal(crudo.replace(".", "").replace(",", ".")), True
+            return _numero(valor, crudo), True
         except (InvalidOperation, ValueError):
             return None, False
     if tipo == "fecha":

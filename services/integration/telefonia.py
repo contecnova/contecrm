@@ -858,6 +858,23 @@ def ingerir(
                 )
             except CrmError:
                 llamada.contexto = {}
+        # El número que llamó es una señal de identidad para party
+        # (CRM-01.01.05.02), con el contacto si se le reconoció. Si party no
+        # contesta, la llamada sigue y la señal la manda el relevo.
+        from services.integration import senales_identidad as sen
+
+        db.flush()
+        sen.anotar_y_enviar(
+            db,
+            tenant_id,
+            identidad=identidad,
+            invocar=invocar,
+            tipo="telefono",
+            valor=llamada.numero,
+            origen="telefonia",
+            referencia=str(llamada.id),
+            contacto_id=llamada.contacto_id,
+        )
 
     if evento == "contestada" and llamada.contestada_at is None:
         llamada.contestada_at = ahora
@@ -1092,8 +1109,62 @@ def anotar_resultado(
             llamada.registro_error = (
                 f"La nota no se guardó en la actividad (HTTP {r.get('estado')})"
             )
+    if resultado_comercial == str(_ajuste("telefonia_resultado_numero_erroneo", db)):
+        marcar_telefono_erroneo(db, llamada, invocar=invocar, identidad=identidad)
     db.flush()
     return llamada
+
+
+def marcar_telefono_erroneo(
+    db: Session, llamada: LlamadaTelefonica, *, invocar: Invocador, identidad: dict[str, Any]
+) -> dict[str, Any]:
+    """«Número erróneo» marca el teléfono de la ficha del contacto en party.
+
+    Por la edición del contacto, que admite `estado_telefono`, y con la
+    identidad de quien cierra la llamada: si no puede editar la ficha, no se
+    edita, y se dice. El resultado queda en la historia de la llamada, para que
+    la pantalla pueda decir si se marcó o qué falta.
+    """
+    if llamada.contacto_id is None:
+        hecho = {
+            "marcado": False,
+            "porque": "La llamada no está ligada a un contacto: márcalo a mano en su ficha.",
+        }
+    else:
+        estado = str(_ajuste("telefonia_estado_telefono_erroneo", db))
+        try:
+            r = invocar(
+                metodo="PATCH",
+                ruta=f"/api/v1/contacts/{llamada.contacto_id}",
+                cuerpo={"estado_telefono": estado},
+                **identidad,
+            )
+        except CrmError as exc:
+            r = {"ok": False, "estado": 0, "datos": {"mensaje": exc.mensaje}}
+        if r.get("ok"):
+            hecho = {"marcado": True, "estado_telefono": estado}
+        else:
+            datos = r.get("datos") or {}
+            hecho = {
+                "marcado": False,
+                "porque": (
+                    f"party no ha marcado el teléfono (HTTP {r.get('estado')}): "
+                    f"{datos.get('mensaje') or datos.get('detail') or ''}"
+                )[:500],
+            }
+    llamada.eventos = [
+        *(llamada.eventos or []),
+        {"evento": "telefono_erroneo", "at": _ahora_utc().isoformat(), **hecho},
+    ]
+    return hecho
+
+
+def telefono_marcado(llamada: LlamadaTelefonica) -> dict[str, Any] | None:
+    """Lo último que pasó al marcar el teléfono como erróneo, si se intentó."""
+    for e in reversed(llamada.eventos or []):
+        if (e or {}).get("evento") == "telefono_erroneo":
+            return {k: v for k, v in e.items() if k not in ("evento",)}
+    return None
 
 
 def sonando(db: Session, tenant_id: UUID, *, usuario_id: UUID) -> list[LlamadaTelefonica]:
@@ -1158,5 +1229,7 @@ def a_dict(llamada: LlamadaTelefonica) -> dict[str, Any]:
         "resultado_comercial": llamada.resultado_comercial,
         "nota": llamada.nota,
         "error": llamada.error,
+        # Si «número erróneo» marcó el teléfono de la ficha, o por qué no.
+        "telefono_marcado": telefono_marcado(llamada),
         "pantalla": pantalla,
     }

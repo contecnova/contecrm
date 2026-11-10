@@ -77,6 +77,12 @@ IDENTIFICADOR = {
     "calendario": "email",
 }
 
+# Qué señal de identidad es, para `party`, el interlocutor de cada canal
+# (CRM-01.01.05.02). Solo los que identifican a alguien de fuera: el usuario
+# de la CLI o del agente es de la casa, y el identificador del chat no es de
+# ningún tipo que party sepa pesar —mandarlo sería pedirle que lo rechace—.
+SENAL_DEL_CANAL = {"email": "email", "telefono": "telefono"}
+
 
 class CanalEntrada(Base, TimestampMixin, SoftDeleteMixin):
     """Una vía por la que entra actividad sin interfaz (CRM-00.02.03.09)."""
@@ -225,6 +231,7 @@ def registrar(
     cuenta_id: UUID | None = None,
     usuario_id: UUID | None = None,
     datos: dict[str, Any] | None = None,
+    identidad: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Registra una interacción llegada por un canal (CRM-01.02.01.04).
 
@@ -342,6 +349,8 @@ def registrar(
         pedido = ficha.produce
         fila.produjo = pedido
 
+    senal = _senal_de(uow, fila, identidad=identidad)
+
     uow.emitir(
         "interaction.recorded",
         subject=("interaccion", fila.id),
@@ -356,7 +365,33 @@ def registrar(
         # Se dice qué se **pidió** crear, no que exista: lo crea el servicio dueño.
         "pedido": pedido,
         "contenido_guardado": bool(fila.contenido),
+        # Si party ya tiene la señal de identidad de quien escribió o llamó.
+        # «error» no tumba nada: la reintenta el relevo.
+        "senal_identidad": senal.estado if senal is not None else "",
     }
+
+
+def _senal_de(uow: UnidadDeTrabajo, fila: Interaccion, *, identidad: dict[str, Any] | None) -> Any:
+    """Cuenta a party que este interlocutor se ha visto por este canal.
+
+    Nunca tumba el registro: si party no contesta, la señal queda en error y la
+    manda el relevo.
+    """
+    from services.integration import senales_identidad as sen
+
+    tipo = SENAL_DEL_CANAL.get(IDENTIFICADOR.get(fila.canal, ""))
+    if not tipo or not fila.interlocutor or fila.direccion != "entrante":
+        return None
+    return sen.anotar_y_enviar(
+        uow.db,
+        uow.tenant_id,
+        identidad=identidad,
+        tipo=tipo,
+        valor=fila.interlocutor,
+        origen=f"canal:{fila.canal}",
+        referencia=str(fila.id),
+        contacto_id=fila.contacto_id,
+    )
 
 
 def sin_atribuir(db: Session, tenant_id: UUID, *, limite: int = 100) -> dict[str, Any]:
@@ -408,6 +443,7 @@ def atribuir(
     *,
     contacto_id: UUID | None = None,
     cuenta_id: UUID | None = None,
+    identidad: dict[str, Any] | None = None,
 ) -> Interaccion:
     """Cuelga a posteriori una interacción que no se pudo atribuir."""
     fila = uow.db.get(Interaccion, interaccion_id)
@@ -422,6 +458,9 @@ def atribuir(
     fila.atribuida = True
     fila.motivo_sin_atribuir = ""
     uow.db.flush()
+    # Atribuirla es lo que ata la señal a alguien: vuelve a party con el
+    # contacto, y si no contesta la manda el relevo.
+    _senal_de(uow, fila, identidad=identidad)
     return fila
 
 

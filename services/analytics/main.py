@@ -11,6 +11,11 @@ from crmcore.service import crear_servicio
 # bien: aceptar un trabajo que nadie va a ejecutar es dejarlo encolado para
 # siempre—, y el worker lo importa por su cuenta porque es otro proceso.
 import services.analytics.trabajos_fuente  # noqa: F401,E402
+
+# Registra los ajustes de los análisis sobre el CRM. Lo importaba el cálculo
+# del embudo por un ajuste que se quitó el 10-11-2026, y con él se fue el
+# registro de los otros tres: dejaron de salir en Administrar.
+from services.analytics import ajustes  # noqa: F401,E402
 from services.analytics.api import ROUTERS
 from services.analytics.api_almacen import ROUTERS_ALMACEN
 from services.analytics.api_cuadros import ROUTERS_CUADROS

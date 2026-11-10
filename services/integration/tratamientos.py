@@ -128,3 +128,36 @@ declarar(
         responsable=RESPONSABLE,
     )
 )
+
+# ── Lo que integración cuenta a otros servicios (09-11-2026) ──────────────
+
+declarar(
+    Tratamiento(
+        objeto="senales_identidad_salientes",
+        # El correo, el teléfono o el identificador externo con que alguien
+        # llegó por un canal, hasta que party lo tiene.
+        finalidad=(
+            "Reconocer a la misma persona cuando llega por canales distintos, "
+            "mandando a party la señal con que se la vio"
+        ),
+        base_legal="interes_legitimo",
+        plazo="Mientras exista el contacto o la interacción que la originó",
+        destinatarios=(),
+        responsable=RESPONSABLE,
+    )
+)
+
+declarar(
+    Tratamiento(
+        objeto="elementos_buzon",
+        # Asunto, asistentes y remitente de lo sincronizado; nunca el cuerpo.
+        finalidad=(
+            "Registrar en el CRM los correos y reuniones con clientes y sacar de "
+            "las cadencias a quien contesta"
+        ),
+        base_legal="interes_legitimo",
+        plazo="Mientras el buzón siga conectado; el remitente de quien no es nadie en el CRM se borra al avisar",
+        destinatarios=("El proveedor de correo y calendario que conecte cada persona",),
+        responsable=RESPONSABLE,
+    )
+)

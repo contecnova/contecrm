@@ -194,6 +194,103 @@ describe("sin conexión", () => {
     await resolver(op, { cargo: false });
     expect(await cola()).toHaveLength(0);
   });
+
+  it("borrar sin red se encola y se manda por su ruta al volver", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    const error = await llamar(`/api/v1/contacts/${ID}`, {
+      metodo: "DELETE",
+      version: 'W/"7"',
+    }).catch((e: unknown) => e);
+    vi.unstubAllGlobals();
+    expect((error as ErrorApi).codigo).toBe("encolada_sin_conexion");
+    const [op] = await cola();
+    expect(op).toMatchObject({
+      tipo: "borrar",
+      metodo: "DELETE",
+      registro_id: ID,
+      version_base: 7,
+      campos: {},
+    });
+
+    const enviar = vi.fn(async () => ({ ok: true, estado: 204, datos: null }));
+    const res = await sincronizar(enviar);
+    expect(res.enviadas).toBe(1);
+    const [ruta, init] = enviar.mock.calls[0] as unknown as [
+      string,
+      { metodo: string; cuerpo: unknown; cabeceras: Record<string, string> },
+    ];
+    expect(ruta).toBe(`/api/v1/contacts/${ID}`);
+    expect(init.metodo).toBe("DELETE");
+    expect(init.cuerpo).toBeUndefined();
+    expect(init.cabeceras["If-Match"]).toBe('W/"7"');
+    expect(await cola()).toHaveLength(0);
+  });
+
+  it("un borrado que choca se pregunta, y resolverlo es borrar sobre la versión de ahora", async () => {
+    await encolar({
+      metodo: "DELETE",
+      ruta: `/api/v1/contacts/${ID}`,
+      cuerpo: undefined,
+      version: 'W/"1"',
+      idempotencia: "b2",
+      mirado: "",
+    });
+    const choca = vi.fn(async (_r: string, init: { metodo: string }) =>
+      init.metodo === "GET"
+        ? { ok: true, estado: 200, datos: { version: 3 } }
+        : { ok: false, estado: 412, datos: { detail: "cambió" } },
+    );
+    expect((await sincronizar(choca)).conflictos).toBe(1);
+    const [enConflicto] = await cola();
+    expect(enConflicto!.estado).toBe("conflicto");
+    await resolver(enConflicto!, {});
+    const [otraVez] = await cola();
+    expect(otraVez).toMatchObject({ estado: "pendiente", version_base: 3 });
+  });
+
+  it("borrar lo que ya no está no es un rechazo", async () => {
+    await encolar({
+      metodo: "DELETE",
+      ruta: `/api/v1/contacts/${ID}`,
+      cuerpo: undefined,
+      idempotencia: "b3",
+      mirado: "",
+    });
+    const res = await sincronizar(
+      vi.fn(async () => ({ ok: false, estado: 404, datos: null })),
+    );
+    expect(res).toMatchObject({ enviadas: 1, rechazadas: 0 });
+    expect(await cola()).toHaveLength(0);
+  });
+
+  it("borrar algo que no es un registro no se encola", async () => {
+    const ok = await encolar({
+      metodo: "DELETE",
+      ruta: "/api/v1/metadata/vistas-de-lista/x",
+      cuerpo: undefined,
+      idempotencia: "b4",
+      mirado: "",
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("lo que se hace solo no se encola: el «visto» va con encolable a false", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    const error = await llamar("/api/v1/vistos", {
+      metodo: "POST",
+      cuerpo: { objeto_tipo: "contacto", objeto_id: ID },
+      encolable: false,
+    }).catch((e: unknown) => e);
+    vi.unstubAllGlobals();
+    expect((error as ErrorApi).codigo).toBe("sin_red");
+    expect(await cola()).toHaveLength(0);
+  });
 });
 
 async function usarYPoner(op: OperacionEncolada) {

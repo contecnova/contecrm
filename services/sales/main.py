@@ -12,6 +12,7 @@ from services.sales import (
 )
 from services.sales.api import ROUTERS, ROUTERS_SIN_PREFIJO
 from services.sales.api_cadencias import ROUTERS_CADENCIAS
+from services.sales.api_calidad_leads import ROUTERS_CALIDAD_LEADS
 from services.sales.api_comisiones import ROUTERS_COMISIONES
 from services.sales.api_coste import ROUTERS_COSTE
 from services.sales.api_cotizacion import ROUTERS_COTIZACION
@@ -121,6 +122,9 @@ app = crear_servicio(
         "que no se cierra hasta que el ERP contesta."
     ),
     routers=[
+        # Antes que los de leads: `/leads/calidad-dato/…` no debe caer en una
+        # ruta `/leads/{lead_id}/…`.
+        *ROUTERS_CALIDAD_LEADS,
         *ROUTERS,
         *ROUTERS_COSTE,
         *ROUTERS_INGRESOS,

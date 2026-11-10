@@ -5077,16 +5077,17 @@ Pantalla `/analisis-crm` (`frontend/src/paginas/AnalisisCrm.tsx`). Servidor en
 (`tablas_analiticas` con `objeto` = `cuenta`, `actividad` u `oportunidad`,
 cargada y con las columnas de `COLUMNAS`), o si no por la API pública de
 `party` y `sales` con `crmcore.http.interno.invocar` y **la identidad de quien
-pregunta** (`tipo="usuario"`). El historial de etapas se pide oportunidad a
-oportunidad (`/opportunities/{id}/historial-etapas`): no hay listado en bloque,
-y cada llamada cuenta contra el límite de peticiones del usuario, por eso el
-tope `ANALISIS_MAX_HISTORIALES` (100). Cada respuesta trae `procedencia` por
+pregunta** (`tipo="usuario"`). El historial de etapas se pide en bloque
+(`GET /opportunities/historial-etapas?pipeline_id=&created_at__desde=`, páginas
+de hasta 200 de `sales`): desde el 09-11-2026 ya no es una llamada por
+oportunidad, y el tope de 100 historiales (`analisis_max_historiales`) se ha
+quitado; vale el mismo `analisis_max_registros` que el resto de objetos. Cada respuesta trae `procedencia` por
 objeto: `fuente`, `leidos`, `recortado`, `sin_permiso`, `no_leido` y
 `estado_http`.
 
 **Ajustes** (`services/analytics/ajustes.py`, editables en Admin):
-`analisis_max_registros` (2000), `analisis_max_historiales` (100),
-`analisis_minimo_correlacion` (8), `analisis_dias_ventana` (365).
+`analisis_max_registros` (2000), `analisis_minimo_correlacion` (8),
+`analisis_dias_ventana` (365).
 
 **Instantáneas programadas.** Migración
 `alembic/versions/analytics/20261109_1200_instantaneas_programadas.py`: columna
@@ -5243,6 +5244,282 @@ nuevo:
 - **Pruebas**: `frontend/src/pruebas/tablero_mueve_por_su_accion.test.ts` y
   `el_error_ensena_sus_problemas.test.ts`. Visto en el navegador el
   09-11-2026: 50 tarjetas arrastrables y `POST …/etapa` 200 al soltar.
+
+### 4.6.53 Integración cuenta lo que ve: señales de identidad, respuestas a cadencias y número erróneo (CRM-01.01.05.02, CRM-03.03.01.04, CRM-03.03.01.05)
+
+Tres rutas de otros servicios estaban escritas y nadie las llamaba desde
+integración. Ahora se llaman por HTTP (`crmcore.http.interno.invocar`), con la
+identidad de quien pide o, sin persona, la del sistema (el tenant como
+principal de máquina y sólo `contact:write`).
+
+- **Señales de identidad → party** (`services/integration/senales_identidad.py`).
+  Tabla `senales_identidad_salientes` (clave única tenant + origen + referencia
+  + tipo; estados `pendiente`, `enviada`, `error`, `rechazada`). Se anota y se
+  manda a `POST /api/v1/calidad-dato/identidades/observar`; si party no contesta
+  o no deja (401/403/408/429/5xx), queda en `error` y la reintenta la tarea
+  `integration.senales_identidad` (cada `TAREA_INTEGRACIONES_INTERVALO_S`); un
+  4xx de validación queda `rechazada` y no se reintenta. Nunca tumba la entrada.
+  Fuentes que existen en integración:
+  - `canales_entrada.registrar` (`POST /canales-entrada/interacciones`): el
+    interlocutor de correo y calendario como `email`, el de SMS y voz como
+    `telefono`, con su contacto si viene atribuido; al atribuir a posteriori
+    se vuelve a mandar con el contacto. El chat, la CLI y el agente no: el
+    identificador de chat no es un tipo de party y los otros son usuarios.
+  - `telefonia.ingerir`: el número de la llamada entrante, con el contacto
+    reconocido.
+  - `buzon.avisar_respuestas`: la dirección de quien contesta, si el correo
+    tiene que ver con el CRM o le sacó de una cadencia.
+  - Lo programado (`programador._aterrizar`), por ejemplo el maestro del ERP:
+    sólo si la definición de la operación declara
+    `"senales_identidad": {"campo": "tipo"}` (p. ej. `{"codigo": "id_erp",
+    "cif": "nif"}`); las manda la tarea con la identidad del sistema.
+  - **No existen en integración**: el rastreo web (cookie) y la app; no entran
+    por este servicio.
+- **La respuesta del buzón saca de las cadencias.** `elementos_buzon` guarda
+  `remitente` (del campo `remitente` o `de` del elemento, sólo si es correo,
+  `direccion` entrante —se supone si no viene— y no es el propio buzón) y
+  `respuesta_cadencia` (`""`, `pendiente`, `avisada`, `error`).
+  `POST /buzones/{id}/sincronizar` llama después a
+  `POST /api/v1/cadencias/respuesta` `{email, tipo: "respondio"}` una vez por
+  mensaje y devuelve `respuestas: {avisadas, sacadas_de_cadencias, errores}`;
+  lo que falla se reintenta en la siguiente sincronización. Si sales no sacó a
+  nadie y el correo no tenía relación con el CRM, se borra el remitente.
+  `registrar_reuniones` recoge ahora también los correos registrados
+  (`por_registrar_como_actividad`) como actividad `email` en party.
+- **Número erróneo.** `POST /telefonia/llamadas/{id}/resultado` con el
+  resultado del ajuste `TELEFONIA_RESULTADO_NUMERO_ERRONEO` (`numero_erroneo`)
+  hace `PATCH /api/v1/contacts/{contacto}` `{estado_telefono}` con el valor de
+  `TELEFONIA_ESTADO_TELEFONO_ERRONEO` (`erroneo`; party no tiene vocabulario
+  cerrado para ese campo). Queda como evento `telefono_erroneo` en la llamada
+  y sale en `telefono_marcado` (`marcado`, o `porque`). El marcador
+  (`services/service/marcador.py`) lo pasa a `aplicadas` o `pendientes`.
+- **Ajustes** (`services/integration/ajustes.py`, editables en Admin):
+  `senales_identidad_espera_s`, `senales_identidad_reintentos`,
+  `senales_identidad_lote`, `telefonia_resultado_numero_erroneo`,
+  `telefonia_estado_telefono_erroneo`.
+- **Migración**: `alembic/versions/integration/20261109_2219_senales_de_identidad_y_respuestas_del_.py`.
+- **Pruebas**: `tests/unit/test_senales_y_respuestas_de_los_canales.py`.
+
+### 4.6.54 Ficha buena y umbral del lead, dueño de la oportunidad, historial en bloque y renovación de un contrato (CRM-01.01.04.06, CRM-01.01.04.02, CRM-03.03.02.10)
+
+- **La decisión, en el núcleo.** `crmcore/datos/supervivencia.py` tiene
+  `ESTRATEGIAS`, `resolver_valor`, `validar_confianzas` y `componer_campos`
+  (valores, procedencia, a revisar y fuentes con las reglas `{campo|*:
+  {estrategia, confianza_por_fuente}}`). `services/party/mdm.py` la reexporta y
+  `party/golden.py` compone con ella; `sales` también, sin importar a `party`.
+- **Ficha buena del lead** (`services/sales/golden_leads.py`, rutas en
+  `api_calidad_leads.py`, montadas antes que las de leads). Mismas rutas que
+  `/calidad-dato` de party bajo `/api/v1/leads/calidad-dato`:
+  `GET /golden/reglas/lead`, `PUT|DELETE /golden/reglas/lead/{campo}`
+  (`lead:configurar`), `GET /golden/candidatas`,
+  `POST /golden/lead/{id}/componer` `{aplicar}` (`lead:write`),
+  `GET /golden/lead/{id}`. Campos: `CAMPOS` (nombre, apellidos, empresa, cargo,
+  email, teléfono, web, país). Fuentes: `crm` (la ficha), el canal de cada
+  `campos.capturas_fusionadas` y `duplicado` (leads con `duplicado_de_id`).
+  Migración `alembic/versions/sales/20261109_2200_ficha_buena_del_lead.py`
+  (`reglas_supervivencia_lead`, `golden_leads`).
+- **Umbral del lead por objeto.** `GET|PUT /api/v1/leads/calidad-dato/umbrales-duplicado`
+  `{por_objeto: {lead|contacto: {sugerencia, bloqueo}}}` guarda el ajuste
+  `lead_dedupe_umbral_por_objeto`; lo que falta sale de
+  `lead_dedupe_umbral_sugerencia`/`_bloqueo`. `dedupe_leads._ajustes` lo lee una
+  vez por alta; frente a contactos, la sugerencia propia filtra lo que party
+  propone (sin propia no se filtra dos veces).
+- **Compensación con reparto vacío: por qué.** Medido con la identidad de
+  integration (`identidad_de`: permisos y roles de quien pulsa, tipo usuario o
+  agente): `GET /opportunities?estado=ganada&fecha_cierre_real__…` **sí trae
+  `owner_id`**. Lo vacío era el dato: 160 de 162 ganadas del tenant de la
+  plataforma sin dueño, porque nadie lo ponía al crear y una cerrada está
+  bloqueada. Arreglo en sales: `crear_oportunidad_nueva` pone de dueño a quien
+  crea si es una persona (`principal.tipo == "usuario"`); ajuste
+  `oportunidad_dueno_quien_crea` (true). Lo histórico sin dueño sigue sin él.
+- **Historial de etapas en bloque.** `GET /api/v1/opportunities/historial-etapas`
+  (`opportunity:read`, antes que `/{oportunidad_id}`): página de oportunidades
+  visibles (`limite` ≤ 200, `cursor`, `estado`, `pipeline_id` y los filtros
+  comunes, p. ej. `created_at__desde`) con sus cambios de etapa (sin importe ni
+  fecha de cierre). `analytics/datos_crm.py` `Lector.historiales` lo recorre
+  hasta `analisis_max_registros`; el ajuste `analisis_max_historiales` se ha
+  quitado.
+- **Revisar un contrato.** `POST /api/v1/contratos/revisar-renovaciones` admite
+  cuerpo opcional `{contrato_id, contrato_ids}`; con él sólo revisa esos y
+  devuelve `no_revisados` `[{contrato_id, porque}]`. Botón en la ficha del
+  contrato: `frontend/src/componentes/RenovacionDeContrato.tsx`.
+- **Pantalla**: `CalidadDelDato.tsx` admite `lead` en ficha buena y reglas, y
+  las filas «Lead frente a otro lead / a un contacto» en umbrales.
+- **Pruebas**: `tests/unit/test_lead_ficha_buena_historial_y_renovacion.py`,
+  `tests/unit/test_analitica_sobre_el_crm.py`.
+
+### 4.6.56 Claves de API, sandbox, equipo de confianza, consumo y borrar sin conexión (CRM-00.02.04.06, CRM-07.02.01.02, CRM-00.05.01.20, CRM-00.01.06.07, CRM-06.02.01.04)
+
+- **Secreto de una vez.** `ClaveApiCreada.secreto` lleva
+  `json_schema_extra={"x-una-vez": True}`. `frontend/src/lib/contrato.ts`
+  `camposDeUnaVez(documento, ruta, metodo)` lee las respuestas 2xx del alta y
+  `Modulo.tsx` pinta `componentes/SecretoDeUnaVez.tsx` con esos campos (sólo en
+  memoria; «Ya lo he copiado» lo quita). `ClaveApiOut` devuelve
+  `ips_permitidas`. El alta sigue exigiendo reverificación (`stepup.requerido`);
+  la pantalla genérica no tiene flujo para pedirla y enseña el error.
+- **Sandbox.** `crmcore/datos/copia_sandbox.py`: `contactos_en_la_muestra`
+  (contactos enlazados a una cuenta de la muestra por cualquier tabla con
+  `cuenta_id` y `contacto_id`, más los sueltos por su hash) y `_entra` decide
+  fila a fila: cuenta → por cuenta; `contactos` → por ese conjunto; con
+  `contacto_id` y sin cuenta → por el contacto. Fuera de party el conjunto es el
+  hash del contacto (subconjunto del de party). `CambioDeEstado.tsx` pide antes
+  `/{servicio}/estados` (una vez por servicio) y sólo pide la máquina de los
+  objetos listados: se acabó el 404 de `/tenancy/estados/sandbox`.
+- **Equipo de confianza.** `factores.recordar_dispositivo` lee
+  `dispositivo_confianza_dias` con `con_contexto(tenant_id=…)`, como
+  `servicio._ajuste_del_tenant`.
+- **Consumo.** `crmcore/consumo.py` `medido_aqui`: cada medidor en
+  `db.begin_nested()`; `UndefinedTable` (SQLSTATE 42P01) → la métrica no vive en
+  ese módulo y no sale; otro error → `legible: False` con el tipo. `GET
+  /api/v1/tenants/{id}/consumo` junta lo de tenancy con `GET
+  /api/v1/estado/consumo` de cada servicio (`cargar_destinos`, `cabeceras_de`
+  con el tenant mirado, en paralelo, plazo `http_interno_timeout_s`);
+  `ConsumoOut.modulo` dice de quién es la fila y un módulo que no contesta sale
+  `metrica="*"`, `medido=false`.
+- **Borrar sin conexión.** `sinConexion.ts` encola `DELETE` sobre
+  `/api/v1/<colección>/<uuid>` como `tipo: "borrar"` (versión de `If-Match` o de
+  lo leído; sin versión también) y lo manda por su ruta; 404/410 al volver
+  cuenta como hecho; 409/412 → conflicto, y `resolver` lo reencola sobre la
+  versión del servidor («Borrarlo igualmente» en `SinConexion.tsx`). El borrado
+  de party no comprueba `If-Match` hoy. `iniciarSinConexion` pide con red el
+  módulo de `paginas/SinConexion` para que el service worker lo guarde. Lo
+  automático no se encola: sólo `POST` a colección, `PATCH`/`PUT`/`DELETE` a un
+  registro, y `vistos` va con `encolable: false`.
+- **Probar sin red con Playwright**: `context.setOffline(false)` no dispara el
+  evento `online` en la página (medido: 0 eventos); hay que despacharlo a mano
+  (`window.dispatchEvent(new Event("online"))`) o la cola parece no subir.
+- **Pruebas**: `tests/unit/test_restos_claves_login_y_consumo.py`,
+  `tests/unit/test_copia_a_sandbox.py`, `frontend/src/lib/sinConexion.test.ts`.
+
+### 4.6.57 `If-Match` en toda escritura sobre un registro (CRM-00.02.01.09)
+
+- **Qué fallaba (medido el 10-11-2026).** `comprobar_if_match` sólo lo llamaba
+  la edición genérica de `crmcore/http/listados.py`. El borrado genérico y las
+  rutas escritas a mano —el PATCH y el DELETE de cuentas y contactos en party,
+  las acciones sobre un registro— no: una versión vieja borraba o pisaba el
+  cambio de otro. Lo cazó el borrado del modo sin conexión, que va con su
+  versión y esperaba un 409.
+- **Cómo se resuelve, para la familia.** `crmcore/http/concurrencia.py`:
+  `ContextoMiddleware` guarda la cabecera y los trozos de la ruta en un
+  `ContextVar` (sólo en POST, PUT, PATCH y DELETE con `If-Match`), y un oyente
+  `before_flush` de la sesión compara la versión de cada objeto con
+  `VersionMixin` (salvo `VERSION_ES_DE_NEGOCIO`) que está modificado o borrado
+  y cuyo `id` va en la ruta. El borrado reversible es una modificación de
+  `deleted_at`, así que entra.
+- **Una vez por registro y petición**: tras la primera escritura la versión ya
+  ha subido, y una segunda escritura de la misma ruta daría conflicto con su
+  propio cambio.
+- **Sin cabecera, nada cambia**: exigirla rompería a quien integra sin mandarla.
+- **Pruebas**: `tests/unit/test_if_match_en_toda_escritura.py` (por HTTP contra
+  party; validada quitando la comprobación: falla).
+
+### 4.6.58 Volver a verificarse sin salir, y lo que queda aunque la petición falle (CRM-00.05.01.18)
+
+- **Qué faltaba (medido el 10-11-2026).** No había ruta para superar un factor
+  fuerte con la sesión abierta: el TOTP sólo se comprobaba al entrar
+  (`servicio.py`) y al activarlo (`/auth/mfa/activar`), y `FUERZA` da 1 a correo
+  y SMS. Crear una clave de API desde la pantalla contestaba
+  `stepup.requerido` y no había salida.
+- **Servidor.** `POST /api/v1/auth/mfa/reverificar` (identity, `api.py`):
+  `409 auth.mfa_no_activa` si no tiene la app; comprueba el bloqueo; un código
+  malo pasa por `_anotar_fallo` (el mismo contador del acceso); el bueno anota
+  `totp` en la sesión y devuelve `access_token` con `usar_este_token`, que la
+  pasarela convierte en cookie (`_refrescar_la_cookie_si_la_sesion_ha_subido`).
+  `GET /factores/nivel` dice además `tiene_app`.
+- **Front.** `registrarReverificacion` en `lib/api.ts`: si una respuesta trae
+  `stepup.requerido`, `llamar` pide al diálogo (`componentes/Reverificacion.tsx`,
+  montado en `Marco.tsx`) y repite UNA vez con la misma `Idempotency-Key`.
+  `pedirReverificacion()` para lo que no pasa por `llamar` (la descarga de
+  `Exportar.tsx`).
+- **Lo que queda aunque falle.** `crmcore.db.session.guardar_aunque_falle`
+  escribe valores absolutos en una transacción propia, confirmada en el acto.
+  Lo usan `_anotar_fallo` (intentos y bloqueo del acceso) y
+  `factores.comprobar_desafio` (intentos y agotado del código por correo o SMS,
+  y su apunte de auditoría). Medido en la pila local: sin esto, tres
+  contraseñas malas dejaban `intentos_fallidos` en 0; con esto, 3.
+- **Por qué no se ve en la suite.** El fixture `db` comparte una conexión con
+  puntos de guardado anidados: el deshacer de la petición se lleva también lo
+  escrito aparte. La prueba del mecanismo
+  (`test_lo_escrito_aparte_queda_aunque_la_peticion_se_deshaga`) usa
+  conexiones de verdad y borra lo suyo; validada vaciando la escritura: falla.
+- **Pruebas**: `tests/unit/test_lo_que_queda_aunque_falle_y_reverificar.py` y
+  `frontend/src/pruebas/reverificar_sin_salir.test.ts`.
+
+### 4.6.59 Evaluación de la IA contra el modelo real (CRM-05.02.01.07)
+
+- **Dónde**: `services/intelligence/evaluacion.py` (tablas, comprobaciones,
+  ejecutores, juez, panel y programación), `evaluacion_de_serie.py` (el banco:
+  50 casos de 10 funciones) y `api_evaluacion.py`. Pantalla
+  `frontend/src/paginas/EvaluacionIa.tsx` en `/evaluacion-ia` (Administrar →
+  Gobierno y cumplimiento).
+- **Tablas** (migración `20261110_0507_evaluacion_de_la_ia`):
+  `ia_evaluacion_casos` (el banco del tenant: entrada, criterios, activo,
+  origen `serie|propio`, versión), `ia_evaluaciones` (cada pasada: modelos por
+  uso, `versiones_prompt`, acierto global y `por_funcion`, coste, latencia,
+  umbral, `bajo_umbral`, aviso) e `ia_evaluacion_resultados` (caso a caso:
+  criterios con `ok`/`porque`/`juez`, salida recortada, modelo, versión del
+  prompt, tokens, coste, latencia, error).
+- **El banco es configuración del tenant.** `asegurar_banco` guarda los de
+  serie que falten (respeta los apagados) y pone al día los de serie que el
+  tenant no ha tocado (versión 1); cambiar entrada o criterios sube la versión
+  y ya no se pisa.
+- **Mismo camino que la función real.** Cada ejecutor llama al puerto que la
+  función tiene registrado (`rag._respondedor`, `rag._traductor`,
+  `generacion._generador`, `conversacion._resumidor`/`_clasificador`,
+  `extraccion._extractor`, `reuniones._resumidor`, `variantes_copy._redactor`,
+  `acciones_asistente._proponedor`, `agentes._planificador`) con el modelo de
+  `enrutador.exigir_disponible` para su uso, y trata la salida con las mismas
+  funciones: `RE_CITA`, `consulta_natural.normalizar/validar_plan/agregar` (el
+  plan se ejecuta sobre las filas del caso con la gramática del listado,
+  incluido su filtro por defecto), el filtro de cita literal y confianza de
+  `extraccion` con `convertir`, `transcripcion.proponer_extraidos` y la cita
+  literal de `reuniones`, el deduplicado y `marcar_afirmaciones` de las
+  variantes, el saneado de `clasificar` y `acciones_asistente.limpiar`. Cada
+  llamada se anota en el uso y el gasto de IA (`tarea=evaluacion`).
+- **Criterios** (`COMPROBACIONES`): `contiene`/`no_contiene` (alternativas
+  `a|b`, sin acentos), `igual`, `en`, `numero`, `grupos`, `cita`,
+  `citas_validas`, `no_sabe`, `campos` (con `solo_digitos`), `ausentes`,
+  `cuantos`, `elementos_contienen`, `compromiso` (dueño, texto y fecha),
+  `ningun_compromiso`, `citas_literales`, `cuantas`, `marcadores`,
+  `sin_afirmaciones_nuevas`, `longitud_max`, `concluyente`, `argumentos`
+  (`asunto|cuerpo` = en cualquiera de los dos), `herramientas_de_la_lista`,
+  `usa_herramienta`, `plan_valido` y `juez`. Uno desconocido, uno que revienta
+  o un juez sin conectar **no se cumplen**; un caso sin criterios no se puede
+  guardar. El juez usa el uso `clasificacion` y su coste suma al del caso.
+- **Cómo corre.** `POST /ia/evaluacion/ejecutar` abre la ejecución con los
+  casos fijados; la tarea `intelligence.evaluacion_avance` (cada
+  `IA_EVALUACION_AVANCE_S`) pasa `ia_evaluacion_casos_por_tanda` casos de la
+  ejecución en curso de cada tenant, con su fila bloqueada `SKIP LOCKED`, y la
+  cierra cuando no queda ninguno. **No va por la cola de trabajos**: el estado
+  ya está caso a caso (si el proceso muere, la vuelta siguiente sigue por el
+  primero sin resultado), y en la pila local un worker de una versión anterior
+  tomaba el trabajo y lo daba por fallido. `intelligence.evaluacion` (cada
+  `IA_EVALUACION_COMPROBAR_S`) lanza la programada a los tenants con banco
+  cuando pasan `ia_evaluacion_cada_horas` (0 la apaga). Una sin terminar en
+  `ia_evaluacion_caducidad_horas` deja de bloquear y se da por fallida.
+- **Aviso**: al cerrar, si una función queda por debajo de
+  `ia_evaluacion_umbral` se emite `automatizacion.aviso` (identidad lo convierte
+  en notificación) a quien la pidió y a `ia_evaluacion_avisar_a`; el texto
+  queda en la ejecución y la pantalla lo enseña.
+- **Rutas**: `GET /ia/evaluacion` (panel), `POST /ia/evaluacion/ejecutar`
+  (202; 409 `evaluacion.en_curso`), `GET /ia/evaluacion/ejecuciones`,
+  `GET /ia/evaluacion/ejecuciones/{id}`, `GET|POST /ia/evaluacion/casos`,
+  `PATCH /ia/evaluacion/casos/{clave}`. Leer, `ia:usar`; lanzar y cambiar el
+  banco, `ia:administrar`.
+- **Ajustes**: `IA_EVALUACION_UMBRAL` (0,9), `IA_EVALUACION_CADA_HORAS` (168),
+  `IA_EVALUACION_AVISAR_A`, `IA_EVALUACION_HISTORIAL` (20),
+  `IA_EVALUACION_CASOS_POR_TANDA` (4), `IA_EVALUACION_CADUCIDAD_HORAS` (6),
+  con clave en caliente; `IA_EVALUACION_COMPROBAR_S` (3600) e
+  `IA_EVALUACION_AVANCE_S` (5), del `.env`.
+- **Lo que corrigió la primera pasada** (88 % → 98 % en 50 casos con
+  `gemini-2.5-flash`): `puerto._responder` pide «No lo sé.» y
+  `_dice_que_no_sabe` lo reconoce sin tilde (antes el modelo escribía «No lo
+  sabes.»); `extraccion.convertir` lee el punto decimal y sólo toma el punto
+  como millar si agrupa de tres en tres (2904.00 salía 290400); `puerto._extraer`
+  pide el formato del tipo y descarta palabras genéricas; `_resumir_reunion`
+  excluye lo condicional y pone el plazo en el `cuando`; `_redactar_variantes`
+  evita las palabras que marcan afirmaciones.
+- **Pruebas**: `tests/unit/test_ia_evaluacion.py`, sin modelo real.
 
 ## 5. Operación
 

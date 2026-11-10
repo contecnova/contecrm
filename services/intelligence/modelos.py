@@ -47,6 +47,11 @@ from services.intelligence.enrutador import (  # noqa: F401
     PoliticaIA,
     ProveedorIA,
 )
+from services.intelligence.evaluacion import (  # noqa: F401
+    CasoEvaluacionIA,
+    EjecucionEvaluacionIA,
+    ResultadoEvaluacionIA,
+)
 from services.intelligence.extraccion import CampoExtraido  # noqa: F401
 from services.intelligence.generacion import PlantillaPrompt, Propuesta  # noqa: F401
 from services.intelligence.gobierno import MedicionDeriva, ModeloML  # noqa: F401
@@ -65,8 +70,10 @@ __all__ = [
     "BloqueoIA",
     "BloqueoLegal",
     "CampoExtraido",
+    "CasoEvaluacionIA",
     "ClaveTenant",
     "EjecucionAgente",
+    "EjecucionEvaluacionIA",
     "FragmentoIndice",
     "GastoIA",
     "LlamadaIA",
@@ -82,6 +89,7 @@ __all__ = [
     "Propuesta",
     "ProveedorIA",
     "ReglaGuardia",
+    "ResultadoEvaluacionIA",
     "ResumenConversacion",
     "SaludCuenta",
     "SenalConversacion",

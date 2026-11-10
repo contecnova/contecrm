@@ -154,6 +154,10 @@ const ModelosPredictivos = pantalla(
   () => import("@/paginas/ModelosPredictivos"),
   (m) => m.ModelosPredictivos,
 );
+const EvaluacionIa = pantalla(
+  () => import("@/paginas/EvaluacionIa"),
+  (m) => m.EvaluacionIa,
+);
 const Asistente = pantalla(
   () => import("@/paginas/Asistente"),
   (m) => m.Asistente,
@@ -752,6 +756,7 @@ export function App() {
               path="/modelos-predictivos"
               element={<ModelosPredictivos />}
             />
+            <Route path="/evaluacion-ia" element={<EvaluacionIa />} />
             <Route path="/asistente" element={<Asistente />} />
             <Route path="/archivos" element={<Archivos />} />
             <Route path="/calendario" element={<Calendario />} />

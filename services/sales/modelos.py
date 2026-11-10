@@ -767,6 +767,8 @@ from services.sales.consejos import AvisoLeccion, ResumenLecciones  # noqa: E402
 
 # Ingresos recurrentes, calendario, reparto, grupo de compra y oportunidades
 # relacionadas (CRM-03.01.01.06, .07, .08, .10, .11 · CRM-01.01.02.04).
+# La ficha buena del lead (CRM-01.01.04.06).
+from services.sales.golden_leads import GoldenLead, ReglaSupervivenciaLead  # noqa: E402,F401
 from services.sales.ingresos import (  # noqa: E402,F401
     LineaIngreso,
     ParticipacionComercial,

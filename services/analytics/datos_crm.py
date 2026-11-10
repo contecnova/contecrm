@@ -237,10 +237,47 @@ class Lector:
         filas = datos.get("items") if isinstance(datos, dict) else datos
         return [p for p in (filas or []) if isinstance(p, dict)] if r.get("estado") == 200 else []
 
-    def historial(self, oportunidad_id: str) -> list[dict[str, Any]]:
-        r = self._invocar(f"/api/v1/opportunities/{oportunidad_id}/historial-etapas")
-        datos = r.get("datos")
-        return [c for c in (datos or []) if isinstance(c, dict)] if r.get("estado") == 200 else []
+    def historiales(
+        self, *, pipeline_id: str, desde: date
+    ) -> tuple[dict[str, list[dict[str, Any]]], bool, int]:
+        """El paso por etapas de las oportunidades de un embudo, en bloque.
+
+        Antes era una llamada por oportunidad y, para no comerse la cuota de
+        quien mira, se quedaba en las 100 más recientes. Ahora son páginas de
+        200 del listado en bloque de `sales`, hasta el mismo tope que cualquier
+        otro objeto (`analisis_max_registros`). Devuelve los cambios por
+        oportunidad, si se recortó y el estado HTTP de la última llamada.
+        """
+        ruta = "/api/v1/opportunities/historial-etapas"
+        salida: dict[str, list[dict[str, Any]]] = {}
+        cursor = ""
+        recortado = False
+        estado_http = 200
+        while True:
+            parametros: dict[str, Any] = {
+                "pipeline_id": pipeline_id,
+                "created_at__desde": str(desde),
+                "limite": min(200, self.maximo - len(salida)),
+            }
+            if cursor:
+                parametros["cursor"] = cursor
+            r = self._invocar(ruta, parametros)
+            estado_http = int(r.get("estado") or 0)
+            if estado_http != 200:
+                break
+            datos = r.get("datos") if isinstance(r.get("datos"), dict) else {}
+            for fila in datos.get("items") or []:
+                if isinstance(fila, dict) and fila.get("oportunidad_id"):
+                    salida[str(fila["oportunidad_id"])] = [
+                        c for c in (fila.get("cambios") or []) if isinstance(c, dict)
+                    ]
+            cursor = str(datos.get("siguiente") or "")
+            if len(salida) >= self.maximo:
+                recortado = bool(cursor)
+                break
+            if not cursor:
+                break
+        return salida, recortado, estado_http
 
 
 # ── Cohortes (CRM-05.01.03.04) ────────────────────────────────────────────
@@ -344,12 +381,14 @@ def embudo_crm(
         if str(o.get("pipeline_id")) == str(elegido.get("id"))
         and (_a_fecha(o.get("created_at")) or date.min) >= corte
     ]
-    tope = _ajuste("analisis_max_historiales", db, 100)
+    historiales, recortado, estado_http = lec.historiales(
+        pipeline_id=str(elegido.get("id")), desde=corte
+    )
     recorridos = []
-    for o in oportunidades[:tope]:
+    for o in oportunidades:
         pasos = [
             {"etapa": nombre_de[str(c.get("etapa_hasta_id"))], "fecha": c.get("created_at")}
-            for c in lec.historial(str(o.get("id")))
+            for c in historiales.get(str(o.get("id")), [])
             if str(c.get("etapa_hasta_id")) in nombre_de
         ]
         recorridos.append(
@@ -367,8 +406,12 @@ def embudo_crm(
     )
     lec.procedencia["historial_etapas"] = {
         "fuente": "api",
-        "leidos": len(recorridos),
-        "recortado": len(oportunidades) > tope,
+        "ruta": "/api/v1/opportunities/historial-etapas",
+        "leidos": len(historiales),
+        "recortado": recortado,
+        "sin_permiso": estado_http in (401, 403),
+        "no_leido": estado_http not in (200, 401, 403),
+        "estado_http": estado_http,
     }
     return {
         **salida,

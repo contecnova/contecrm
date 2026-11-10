@@ -1113,8 +1113,16 @@ def _sumar_meses(desde: date, meses: int) -> date:
     return date(anio, mes, dia)
 
 
-def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
+def revisar_renovaciones(
+    uow: UnidadDeTrabajo, tenant_id: UUID, contrato_ids: list[UUID] | None = None
+) -> dict[str, Any]:
     """Avisa de los preavisos y renueva lo que toca renovar solo.
+
+    Con `contrato_ids` revisa sólo esos: es el «revisar este contrato» de la
+    ficha, y lo que permite probar la renovación de un contrato sin abrir
+    oportunidades sobre todos los demás. Los pedidos que no se revisan —no
+    existen, no están vigentes o no tienen fecha de fin— se dicen en
+    `no_revisados`, con el porqué.
 
     **El preaviso es la fecha que importa**, no el vencimiento: el día que vence
     ya es tarde para no renovar, y quien quería negociar se encuentra con otro
@@ -1124,17 +1132,27 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
     olvidan: nadie los renueva y el cliente se va sin que nadie lo haya decidido.
     """
     dia = hoy(uow.db)
-    vigentes = (
-        uow.db.execute(
-            select(Contrato).where(
-                Contrato.tenant_id == tenant_id,
-                Contrato.estado.in_(con_significado("contrato", "vigente", uow.db)),
-                Contrato.fin.isnot(None),
-            )
-        )
-        .scalars()
-        .all()
+    estados_vigentes = con_significado("contrato", "vigente", uow.db)
+    consulta = select(Contrato).where(
+        Contrato.tenant_id == tenant_id,
+        Contrato.estado.in_(estados_vigentes),
+        Contrato.fin.isnot(None),
     )
+    no_revisados: list[dict[str, Any]] = []
+    if contrato_ids is not None:
+        pedidos = list(dict.fromkeys(contrato_ids))
+        consulta = consulta.where(Contrato.id.in_(pedidos))
+        for cid in pedidos:
+            fila = uow.db.get(Contrato, cid)
+            if fila is None or fila.tenant_id != tenant_id:
+                no_revisados.append({"contrato_id": str(cid), "porque": "no existe"})
+            elif fila.estado not in estados_vigentes:
+                no_revisados.append(
+                    {"contrato_id": str(cid), "porque": f"no está vigente ({fila.estado})"}
+                )
+            elif fila.fin is None:
+                no_revisados.append({"contrato_id": str(cid), "porque": "no tiene fecha de fin"})
+    vigentes = uow.db.execute(consulta).scalars().all()
     avisados: list[dict[str, Any]] = []
     renovados: list[dict[str, Any]] = []
     oportunidades: list[dict[str, Any]] = []
@@ -1196,6 +1214,7 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
     uow.db.flush()
     return {
         "revisados": len(vigentes),
+        "no_revisados": no_revisados,
         "avisados": avisados,
         "renovados": renovados,
         "oportunidades": oportunidades,

@@ -187,7 +187,11 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            la ruta y no por el modulo —que es por donde no
 #                            entra ninguna pantalla—, y las del scoring por los
 #                            umbrales, que se guardaban y no los leia nadie
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 91
+#   10-11-2026  86 de 784  las dos tandas de lo que simulaba, construido de
+#                            verdad: cada pieza nueva llega con la prueba que
+#                            cita su identificador (telefonia, compensacion,
+#                            calidad del dato, analitica, renovaciones)
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 86
 
 
 @functools.cache

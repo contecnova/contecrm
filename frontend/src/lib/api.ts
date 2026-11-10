@@ -94,6 +94,31 @@ export interface Opciones {
    * cambio de la persona (CRM-06.02.01.04).
    */
   encolable?: boolean;
+  /** Interno: ya se pidió volver a verificarse para esta llamada. */
+  sinReverificar?: boolean;
+}
+
+/**
+ * Quién pide volver a verificarse cuando una operación sensible lo exige
+ * (CRM-00.05.01.18). Lo registra el diálogo del marco; devuelve `true` si la
+ * persona se ha verificado y la operación se puede repetir.
+ *
+ * **No existía, ni en el servidor ni aquí.** Crear una clave de API, exportar
+ * media base o borrar en bloque contestaban «vuelve a verificarte» y cada
+ * pantalla lo enseñaba como un error —«hazlo desde tu perfil»—, sin camino:
+ * había que salir y volver a entrar (medido el 10-11-2026). Ahora la llamada
+ * se para, se pide el código y se repite una vez.
+ */
+let reverificar: (() => Promise<boolean>) | null = null;
+export function registrarReverificacion(
+  pedir: (() => Promise<boolean>) | null,
+): void {
+  reverificar = pedir;
+}
+
+/** Para lo que no pasa por `llamar` (la descarga de un fichero). */
+export function pedirReverificacion(): Promise<boolean> {
+  return reverificar ? reverificar() : Promise.resolve(false);
 }
 
 /** Métodos que crean o cambian algo, y por tanto necesitan protección. */
@@ -272,11 +297,26 @@ export async function llamar<T = unknown>(
   const cuerpo = texto ? seguroJson(texto) : null;
 
   if (!respuesta.ok) {
-    throw problema(
+    const error = problema(
       respuesta.status,
       cuerpo,
       respuesta.headers.get("X-Request-Id"),
     );
+    if (
+      error.codigo === "stepup.requerido" &&
+      reverificar &&
+      !opciones.sinReverificar &&
+      (await reverificar())
+    ) {
+      // La misma operación, con la misma clave de idempotencia: si la primera
+      // llegó a hacer algo, la segunda no lo repite.
+      return llamar<T>(ruta, {
+        ...opciones,
+        idempotencia: cabeceras["Idempotency-Key"],
+        sinReverificar: true,
+      });
+    }
+    throw error;
   }
 
   return {

@@ -103,7 +103,10 @@ def pausar(buzon_id: UUID, cuerpo: Pausar, uow: UowDep) -> Any:
         "nadie sabría que hubo algo que no se trajo.\n\n"
         "La marca de incremento solo avanza si no ha fallado nada. Avanzar con un "
         "fallo dentro deja un hueco que no se recupera y que nadie nota hasta que "
-        "falta una reunión."
+        "falta una reunión.\n\n"
+        "Un correo que entra con `remitente` (y `direccion` «entrante», que es lo "
+        "que se supone si no se dice) avisa a las cadencias una vez: quien "
+        "contesta sale del recorrido."
     ),
 )
 def sincronizar(buzon_id: UUID, cuerpo: Sincronizar, uow: UowDep, principal: AutenticadoDep) -> Any:
@@ -119,7 +122,13 @@ def sincronizar(buzon_id: UUID, cuerpo: Sincronizar, uow: UowDep, principal: Aut
     # Las citas registradas se convierten en actividad de verdad, con sus
     # asistentes vinculados a contactos (CRM-06.01.01.04). Con la identidad de
     # quien sincroniza: si no puede escribir actividades, no se escriben.
+    # Los correos registrados, como actividad `email` del mismo modo.
     salida["reuniones"] = buz.registrar_reuniones(
+        uow, buzon_id=buzon_id, identidad=identidad_de(principal)
+    )
+    # Quien contesta sale de las cadencias (CRM-03.03.01.04), una vez por
+    # mensaje; si sales no contesta, se reintenta en la siguiente vuelta.
+    salida["respuestas"] = buz.avisar_respuestas(
         uow, buzon_id=buzon_id, identidad=identidad_de(principal)
     )
     return salida

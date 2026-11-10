@@ -60,14 +60,29 @@ def medido_aqui(db: Any, tenant_id: UUID) -> list[dict[str, Any]]:
     salida: list[dict[str, Any]] = []
     for nombre, medir in sorted(_MEDIDORES.items()):
         try:
-            consumido, clave = medir(db, tenant_id)
+            # **Cada medidor en su punto de guardado.** Sin él, el primero que
+            # fallaba dejaba la transacción abortada y TODOS los siguientes
+            # caían con «current transaction is aborted»: medido el 09-11-2026,
+            # tres de cuatro métricas salían «no legibles» en la ficha del
+            # tenant, y en identity los correos —que sí se guardan ahí— caían
+            # porque antes había fallado el almacenamiento.
+            with _aislado(db):
+                consumido, clave = medir(db, tenant_id)
         except Exception as exc:  # noqa: BLE001 — una métrica rota no tumba el panel
+            if _no_vive_aqui(exc):
+                # La tabla que cuenta esta métrica no existe en este módulo:
+                # los medidores comunes se registran en todos los procesos, y
+                # los correos sólo se guardan en uno. No es una métrica rota,
+                # es que aquí no hay nada que contar.
+                continue
             logger.warning("consumo.medidor_roto", metrica=nombre, error=str(exc)[:200])
             salida.append(
                 {
                     "metrica": nombre,
                     "legible": False,
-                    "porque": "no se ha podido medir en este módulo",
+                    # El tipo del error, no su texto: el texto lleva SQL y
+                    # nombres de tabla, y esto lo lee el cliente.
+                    "porque": f"no se ha podido medir en este módulo ({type(exc).__name__})",
                 }
             )
             continue
@@ -99,6 +114,24 @@ def medido_aqui(db: Any, tenant_id: UUID) -> list[dict[str, Any]]:
             }
         )
     return salida
+
+
+def _aislado(db: Any) -> Any:
+    """Un punto de guardado si la sesión lo admite; si no, nada."""
+    from contextlib import nullcontext
+
+    anidar = getattr(db, "begin_nested", None)
+    return anidar() if callable(anidar) else nullcontext()
+
+
+def _no_vive_aqui(exc: BaseException) -> bool:
+    """Si el error es que la tabla no existe en el esquema de este módulo."""
+    origen = getattr(exc, "orig", None)
+    return (
+        getattr(origen, "sqlstate", None) == "42P01"
+        or getattr(origen, "pgcode", None) == "42P01"
+        or type(origen).__name__ == "UndefinedTable"
+    )
 
 
 def avisar_de_los_que_se_acercan(uow: Any) -> dict[str, Any]:

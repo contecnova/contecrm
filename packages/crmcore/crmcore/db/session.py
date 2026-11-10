@@ -285,6 +285,29 @@ def sesion(tenant_id: UUID | None = None, *, sistema: bool = False) -> Iterator[
         db.close()
 
 
+def guardar_aunque_falle(
+    modelo: Any, fila_id: Any, valores: dict[str, Any], *, tenant_id: UUID | None = None
+) -> None:
+    """Escribe unos valores en su propia transacción, confirmada en el acto.
+
+    **Para lo que tiene que quedar aunque la petición falle**: el intento
+    fallido de una contraseña, el código de un solo uso que se agota. La
+    petición termina con un error —es lo que tiene que contestar—, el error
+    deshace su transacción, y con ella se iba el contador. Medido el
+    10-11-2026: tras tres contraseñas malas, `intentos_fallidos` seguía en 0; el
+    bloqueo por fuerza bruta no había actuado nunca.
+
+    Valores absolutos, no incrementos: quien llama ya ha calculado el nuevo
+    valor sobre la fila que leyó. Y la petición no debe haber escrito antes esa
+    fila —tendría su bloqueo y esto esperaría a una transacción que espera a
+    esto—; en los dos usos de hoy la fila sólo se ha leído.
+    """
+    from sqlalchemy import update
+
+    with sesion(tenant_id, sistema=tenant_id is None) as db:
+        db.execute(update(modelo).where(modelo.id == fila_id).values(**valores))
+
+
 @contextmanager
 def escribir_como(db: Session, tenant_id: UUID) -> Iterator[None]:
     """Escribe lo de dentro como `tenant_id`, en la misma transacción.

@@ -147,6 +147,20 @@ class ElementoSincronizado(Base):
     asistentes: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    # Quién lo mandó, si es un correo que entra. Es lo que dice que alguien ha
+    # contestado y lo que saca de las cadencias (CRM-03.03.01.04).
+    remitente: Mapped[str] = mapped_column(
+        String(320),
+        nullable=False,
+        default="",
+        server_default=text("''"),
+        info={"sensibilidad": "personal", "anonimizar_en_copias": True},
+    )
+    # «» no aplica (saliente, cita o sin remitente) · pendiente · avisada ·
+    # error. Una sola vez por mensaje: «avisada» no se vuelve a mandar.
+    respuesta_cadencia: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="", server_default=text("''")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -295,6 +309,24 @@ def _relevante(elemento: dict[str, Any], criterio: str, conocidas: set[str]) -> 
     return False, "Solo asistentes internos: no es una interacción con un cliente"
 
 
+def _remitente_entrante(elemento: dict[str, Any], buzon: Buzon) -> str:
+    """Quién manda este correo, si entra. Vacío si sale, si es una cita o si
+    el proveedor no lo dice: no se adivina por los participantes, porque
+    tomar al destinatario por remitente sacaría de la cadencia a quien no ha
+    contestado."""
+    if buzon.ambito != "correo":
+        return ""
+    if str(elemento.get("direccion") or "entrante") != "entrante":
+        return ""
+    de = elemento.get("remitente") or elemento.get("de") or ""
+    if isinstance(de, dict):
+        de = de.get("email") or de.get("correo") or ""
+    de = str(de).strip().lower()
+    if not de or de == buzon.direccion:
+        return ""
+    return de
+
+
 def sincronizar(
     uow: UnidadDeTrabajo,
     *,
@@ -388,6 +420,7 @@ def sincronizar(
             continue
 
         entra, porque = _relevante(elemento, buzon.criterio, conocidas)
+        remitente = _remitente_entrante(elemento, buzon)
         fila = ElementoSincronizado(
             tenant_id=uow.tenant_id,
             buzon_id=buzon.id,
@@ -399,6 +432,11 @@ def sincronizar(
             asistentes=list(elemento.get("participantes") or []),
             resultado="registrado" if entra else "saltado_sin_relacion",
             porque=porque,
+            remitente=remitente,
+            # Que conteste alguien saca de la cadencia aunque el correo no se
+            # registre como actividad: el que no está en el CRM puede ser un
+            # lead en plena secuencia.
+            respuesta_cadencia="pendiente" if remitente else "",
         )
         uow.db.add(fila)
         nuevos.append(fila)
@@ -546,8 +584,10 @@ def registrar_reuniones(
     buzon = uow.db.get(Buzon, buzon_id)
     if buzon is None or buzon.tenant_id != uow.tenant_id:
         raise NoEncontrado("Ese buzón no existe", error_code="buzon.no_encontrado")
-    if buzon.ambito != "calendario":
-        return {"creadas": 0, "errores": 0, "porque": "El buzón es de correo, no de calendario."}
+    # Un correo registrado es una actividad `email`, igual que una cita es una
+    # `reunion`: `por_registrar_como_actividad` lo devolvía para los dos y solo
+    # se recogían las citas (medido el 09-11-2026).
+    es_cita = buzon.ambito == "calendario"
     pendientes = (
         uow.db.execute(
             select(ElementoSincronizado).where(
@@ -564,6 +604,8 @@ def registrar_reuniones(
     detalle: list[dict[str, Any]] = []
     for e in pendientes:
         correos = [c for c in (_correo_de(a) for a in e.asistentes or []) if c]
+        if e.remitente and e.remitente not in correos:
+            correos.insert(0, e.remitente)
         try:
             conocidos = contactos_por_correo(invocar, identidad=identidad, correos=correos)
             asistentes = [
@@ -579,8 +621,8 @@ def registrar_reuniones(
                 metodo="POST",
                 ruta="/api/v1/activities",
                 cuerpo={
-                    "tipo": "reunion",
-                    "asunto": (e.asunto or "Reunión")[:300],
+                    "tipo": "reunion" if es_cita else "email",
+                    "asunto": (e.asunto or ("Reunión" if es_cita else "Correo"))[:300],
                     "objeto": "contacto" if principal_id else None,
                     "objeto_id": principal_id,
                     "contacto_id": principal_id,
@@ -588,7 +630,8 @@ def registrar_reuniones(
                     "inicio_at": e.ocurrido_at.isoformat() if e.ocurrido_at else None,
                     "detalles": {
                         "asistentes": asistentes,
-                        "origen": "calendario",
+                        "origen": "calendario" if es_cita else "correo",
+                        "remitente": e.remitente or None,
                         "externo_id": e.externo_id,
                         "buzon_id": str(buzon.id),
                     },
@@ -598,7 +641,8 @@ def registrar_reuniones(
             if not r.get("ok"):
                 datos = r.get("datos") or {}
                 raise ErrorValidacion(
-                    f"party no ha aceptado la reunión (HTTP {r.get('estado')}): "
+                    f"party no ha aceptado la {'reunión' if es_cita else 'actividad del correo'} "
+                    f"(HTTP {r.get('estado')}): "
                     f"{datos.get('mensaje') or datos.get('detail') or datos}"[:400],
                     error_code="buzon.reunion_rechazada",
                 )
@@ -621,3 +665,84 @@ def registrar_reuniones(
             errores += 1
     uow.db.flush()
     return {"creadas": creadas, "errores": errores, "reuniones": detalle}
+
+
+# ── La respuesta que detecta el buzón saca de las cadencias (CRM-03.03.01.04) ──
+#
+# Hasta el 09-11-2026 la sincronización del buzón no avisaba a nadie: alguien
+# contestaba al correo de la cadencia y recibía el siguiente igual. La regla de
+# sales —«responder saca del recorrido, siempre»— tiene una sola puerta
+# (`POST /cadencias/respuesta`) y el buzón no llamaba.
+
+
+def avisar_respuestas(
+    uow: UnidadDeTrabajo,
+    *,
+    buzon_id: UUID,
+    identidad: dict[str, Any],
+    invocar: Any = None,
+) -> dict[str, Any]:
+    """Cada correo entrante con remitente avisa a las cadencias, una vez.
+
+    Se avisa por todos, no solo por los que casan con un contacto: quien está
+    en una cadencia puede ser un lead que aún no es contacto. Sales contesta
+    cuántas inscripciones sacó; si ninguna y el correo no tenía que ver con el
+    CRM, el remitente se borra —no hay por qué guardar la dirección de quien no
+    es nadie aquí—. Lo que falla se queda en «error» y se reintenta en la
+    siguiente sincronización.
+    """
+    from services.integration import senales_identidad as sen
+
+    invocar = invocar or _invocar
+    pendientes = (
+        uow.db.execute(
+            select(ElementoSincronizado).where(
+                ElementoSincronizado.tenant_id == uow.tenant_id,
+                ElementoSincronizado.buzon_id == buzon_id,
+                ElementoSincronizado.respuesta_cadencia.in_(("pendiente", "error")),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    avisadas, sacadas, errores = 0, 0, 0
+    for e in pendientes:
+        try:
+            r = invocar(
+                metodo="POST",
+                ruta="/api/v1/cadencias/respuesta",
+                cuerpo={"email": e.remitente, "tipo": "respondio"},
+                **identidad,
+            )
+        except CrmError as exc:
+            r = {"ok": False, "estado": 0, "datos": {"mensaje": exc.mensaje}}
+        if not r.get("ok"):
+            e.respuesta_cadencia = "error"
+            datos = r.get("datos") or {}
+            e.porque = (
+                f"Las cadencias no han recibido la respuesta (HTTP {r.get('estado')}): "
+                f"{datos.get('mensaje') or datos.get('detail') or ''}"
+            )[:1000]
+            errores += 1
+            continue
+        e.respuesta_cadencia = "avisada"
+        avisadas += 1
+        n = int((r.get("datos") or {}).get("sacadas") or 0)
+        sacadas += n
+        if e.resultado == "registrado" or n:
+            # Quien escribe es una señal de identidad para party
+            # (CRM-01.01.05.02). Nunca tumba la sincronización.
+            sen.anotar_y_enviar(
+                uow.db,
+                uow.tenant_id,
+                identidad=identidad,
+                invocar=invocar,
+                tipo="email",
+                valor=e.remitente,
+                origen="buzon",
+                referencia=f"{buzon_id}:{e.externo_id}",
+            )
+        else:
+            e.remitente = ""
+    uow.db.flush()
+    return {"avisadas": avisadas, "sacadas_de_cadencias": sacadas, "errores": errores}

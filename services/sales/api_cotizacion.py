@@ -643,6 +643,13 @@ def crear_contrato(datos: CrearContrato, uow: UowDep) -> Any:
     return {"id": str(fila.id), "numero": fila.numero, "fin": str(fila.fin) if fila.fin else None}
 
 
+class RevisarRenovaciones(BaseModel):
+    contrato_id: UUID | None = Field(None, description="Revisar sólo este contrato")
+    contrato_ids: list[UUID] | None = Field(
+        None, max_length=500, description="Revisar sólo estos contratos"
+    )
+
+
 @router_ctr.post(
     "/revisar-renovaciones",
     dependencies=[Depends(exige_permiso("contract:write"))],
@@ -650,11 +657,19 @@ def crear_contrato(datos: CrearContrato, uow: UowDep) -> Any:
     description=(
         "Los contratos **sin** renovación automática también avisan. Son los que "
         "se olvidan: nadie los renueva y el cliente se va sin que nadie lo haya "
-        "decidido."
+        "decidido. Sin cuerpo revisa todos los vigentes, como la tarea "
+        "periódica; con `contrato_id` o `contrato_ids`, sólo esos —«revisar este "
+        "contrato» desde su ficha—, y los que no se pudieron revisar salen en "
+        "`no_revisados` con el porqué."
     ),
 )
-def revisar_renovaciones(uow: UowDep, principal: AutenticadoDep) -> Any:
-    return pre.revisar_renovaciones(uow, principal.tenant_id)
+def revisar_renovaciones(
+    uow: UowDep, principal: AutenticadoDep, cuerpo: RevisarRenovaciones = RevisarRenovaciones()
+) -> Any:
+    ids: list[UUID] | None = None
+    if cuerpo.contrato_id or cuerpo.contrato_ids:
+        ids = [*(cuerpo.contrato_ids or []), *([cuerpo.contrato_id] if cuerpo.contrato_id else [])]
+    return pre.revisar_renovaciones(uow, principal.tenant_id, contrato_ids=ids)
 
 
 # ── Suscripciones ─────────────────────────────────────────────────────────

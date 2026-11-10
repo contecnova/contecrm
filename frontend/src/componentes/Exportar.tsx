@@ -33,7 +33,7 @@ import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
 import { config } from "@/lib/config";
-import { ErrorApi } from "@/lib/api";
+import { ErrorApi, pedirReverificacion } from "@/lib/api";
 import { useSuperficie } from "@/lib/permisos";
 import type { Operacion } from "@/lib/superficie";
 
@@ -68,7 +68,7 @@ export function Exportar({
   );
   if (!publicada) return null;
 
-  async function bajar() {
+  async function bajar(reintento = false) {
     setBajando(true);
     setAviso("");
     try {
@@ -93,6 +93,12 @@ export function Exportar({
           // Un cuerpo que no es JSON no cambia lo que hay que decir.
         }
         if (codigo === "stepup.requerido") {
+          // Se pide confirmar aquí mismo y se repite la descarga una vez; sólo
+          // si se cancela queda el aviso (CRM-00.05.01.18).
+          if (!reintento && (await pedirReverificacion())) {
+            setBajando(false);
+            return bajar(true);
+          }
           setAviso(
             detalle.tiene_factor
               ? t("exportar.vuelveAVerificarte", {

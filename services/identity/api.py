@@ -568,6 +568,72 @@ def activar_mfa(datos: ActivarMfa, db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 @router_auth.post(
+    "/mfa/reverificar",
+    response_model=dict,
+    summary="Volver a verificarse con el autenticador, sin salir",
+    description=(
+        "Valida el código de la app de autenticación de quien ya la tiene "
+        "activada, anota el factor fuerte en la sesión y devuelve un token "
+        "nuevo (`usar_este_token`): es lo que abre la ventana de las "
+        "operaciones sensibles (CRM-00.05.01.18) —crear claves de API, "
+        "exportar, borrar en bloque, restaurar—.\n\n"
+        "**No existía.** El código de la app sólo se comprobaba al entrar y al "
+        "activarla, y los códigos por correo o SMS no cuentan como factor "
+        "fuerte; así que toda operación sensible obligaba a salir y volver a "
+        "entrar (medido el 10-11-2026 creando una clave desde la pantalla).\n\n"
+        "Un código equivocado cuenta como intento fallido del acceso, con el "
+        "mismo bloqueo."
+    ),
+)
+def reverificar_mfa(datos: ActivarMfa, db: DbDep, principal: AutenticadoDep) -> Any:
+    from datetime import datetime, timezone
+
+    from crmcore.errors import Conflicto
+
+    usuario = db.get(Usuario, principal.id)
+    if usuario is None or not usuario.mfa_activo or not usuario.mfa_secreto:
+        raise Conflicto(
+            "No tienes activada la app de autenticación. Actívala en Puesto › "
+            "Seguridad y vuelve a intentarlo.",
+            error_code="auth.mfa_no_activa",
+        )
+    if usuario.bloqueado_hasta and usuario.bloqueado_hasta > datetime.now(timezone.utc):
+        raise NoAutenticado(
+            "La cuenta está bloqueada temporalmente por intentos fallidos",
+            error_code="auth.cuenta_bloqueada",
+        )
+    sesion = db.get(Sesion, principal.sesion_id) if principal.sesion_id else None
+    if sesion is None or principal.tenant_id is None:
+        raise Conflicto(
+            "Esta llamada no viene de una sesión que se pueda elevar.",
+            error_code="auth.sin_sesion",
+        )
+    if not svc.verificar_totp(usuario.mfa_secreto, datos.codigo):
+        s = get_settings()
+        svc._anotar_fallo(db, usuario, s.login_max_intentos, s.login_bloqueo_minutos)
+        raise NoAutenticado("El código no es válido", error_code="auth.mfa_invalida")
+
+    from services.identity import factores as _factores
+
+    _factores.anotar_factor(db, sesion, "totp")
+    db.flush()
+    token = svc.emitir_token_acceso(
+        db,
+        usuario=usuario,
+        tenant_id=principal.tenant_id,
+        sesion_id=sesion.id,
+        actor_real_id=principal.actor_real_id,
+    )
+    return {
+        "factor_fuerte_at": sesion.factor_fuerte_at.isoformat()
+        if sesion.factor_fuerte_at
+        else None,
+        "access_token": token,
+        "usar_este_token": True,
+    }
+
+
+@router_auth.post(
     "/mfa/desactivar",
     response_model=dict,
     summary="Quitar el segundo factor de esta cuenta",

@@ -223,6 +223,7 @@ export default {
     territorios: "Territorios",
     inteligencia: "Inteligencia",
     modelosPredictivos: "Modelos predictivos",
+    evaluacionIa: "Evaluación de la IA",
     asistente: "Asistente IA",
     nexus: "Nexus",
     duplicados: "Duplicados",
@@ -312,11 +313,11 @@ export default {
       "larga. Acota con un filtro antes de mandarlo a nadie.",
     noSePudo: "No se ha podido exportar",
     vuelveAVerificarte:
-      "Exportar en masa pide volver a verificar tu identidad. Hazlo desde tu " +
-      "perfil y vuelve: vale para los próximos {{minutos}} minutos.",
+      "Exportar en masa pide confirmar que eres tú, y lo has cancelado. Vuelve " +
+      "a pulsar Exportar y confírmalo: vale para los próximos {{minutos}} minutos.",
     sinSegundoFactor:
       "Exportar en masa exige un segundo factor y tu cuenta no tiene ninguno " +
-      "configurado. Se configura desde tu perfil.",
+      "configurado. Actívalo en tu puesto (Puesto › Seguridad) y vuelve.",
   },
 
   // ── Las vistas de lista ──────────────────────────────────────────────
@@ -749,6 +750,12 @@ export default {
     nuevo: "Nuevo",
     cancelar: "Cancelar",
     guardar: "Guardar",
+    // Lo que el servidor devuelve UNA vez al dar de alta: el secreto de una
+    // clave de API. Después sólo guarda su hash.
+    unaVezTitulo: "Cópialo ahora: no se volverá a enseñar",
+    unaVezAviso:
+      "Este valor sólo se muestra esta vez. Guárdalo en un sitio seguro antes de cerrar este aviso: si se pierde, hay que crear otro.",
+    unaVezCerrar: "Ya lo he copiado",
     filasCargadas: "{{cuantas}} filas cargadas",
     cargarMas: "Cargar más",
     seccion: "sección",
@@ -1044,6 +1051,20 @@ export default {
     },
   },
   // La ficha emergente al entrar una llamada (CRM-04.02.01.05). En el marco.
+  // Volver a verificarse sin salir (CRM-00.05.01.18): lo pide cualquier
+  // operación sensible, desde cualquier pantalla.
+  reverificar: {
+    titulo: "Confirma que eres tú",
+    porQue:
+      "Esta operación es sensible —crear una clave, exportar, borrar en bloque, restaurar— y pide haber verificado tu identidad hace poco.",
+    pideCodigo: "Escribe el código de tu app de autenticación y se hará.",
+    codigo: "Código de 6 cifras de tu app de autenticación",
+    confirmar: "Confirmar y seguir",
+    cancelar: "Cancelar",
+    sinApp:
+      "No tienes activada la app de autenticación, así que no hay con qué verificarte sin volver a entrar. Actívala en tu puesto y vuelve a intentarlo.",
+    irAlPuesto: "Activarla en mi puesto",
+  },
   llamadaEntrante: {
     titulo: "Llamada entrante",
     cerrar: "Cerrar el aviso de llamada",

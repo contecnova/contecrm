@@ -1744,9 +1744,15 @@ no hay decisión que tomar. Dejarlo en cada endpoint daría un recurso que unas
 veces devuelve `ETag` y otras no, y un cliente no puede usar `If-Match` contra
 eso.
 
-La otra mitad —comprobar el `If-Match` que llega— **no puede ser automática**:
-hace falta el objeto cargado para saber su versión actual, y eso solo lo sabe el
-endpoint. Se llama con una línea, y un gate vigila que no se olvide.
+La otra mitad —comprobar el `If-Match` que llega— **también es automática desde
+el 10-11-2026**. Antes se dejaba a cada endpoint, y medido ese día sólo la
+edición genérica la hacía: el borrado genérico y todas las rutas escritas a mano
+(editar o borrar una cuenta o un contacto, las acciones sobre un registro)
+aceptaban una versión vieja y pisaban el cambio de otro. Ahora, si la petición
+trae `If-Match`, justo antes de escribir se compara la versión de cada registro
+que se modifica o se borra y cuyo identificador va en la ruta —que es el que el
+cliente leyó—; lo demás que toque la operación no se compara. Cada registro se
+compara una vez por petición. Sin `If-Match`, todo sigue como antes.
 
 El ETag es **débil** (`W/"7"`) a propósito: identifica la versión lógica del
 registro, no el byte exacto de la representación. Dos peticiones con distinta
@@ -3191,7 +3197,12 @@ manejan en la pantalla **Calidad del dato**, a la que se llega desde
   identidad. Componer guarda el resultado con la procedencia de cada valor
   (qué fuente ganó, con qué regla y por qué) y lo que queda por revisar;
   **aplicar** lo escribe en la ficha, marca el ganador en el linaje y deja el
-  antes en la auditoría.
+  antes en la auditoría. **El lead también** (desde el 09-11-2026): vive en
+  ventas y tiene sus propias reglas por campo; sus valores que compiten son lo
+  que tiene hoy (`crm`), cada captura fusionada en él —con su canal como
+  fuente, para poder decir «la feria trae bien el cargo»— y cada lead señalado
+  como su posible duplicado (`duplicado`). La decisión de qué gana es la misma
+  que en cuentas y contactos.
 - **Enriquecimiento firmográfico** (`CRM-01.01.01.08`). Cada proveedor es un
   **perfil** sobre el conector de Integraciones: conexión, operación, qué
   campos de la ficha rellenan sus parámetros y qué campo de la respuesta va a
@@ -3211,7 +3222,11 @@ manejan en la pantalla **Calidad del dato**, a la que se llega desde
   señales se borran.
 - **Umbral de coincidencia por objeto** (`CRM-01.01.04.02`). Sugerir,
   bloquear y proponer, por cuenta y por contacto; lo que no se fija sale del
-  umbral general. Lo usan el alta y la cola de duplicados.
+  umbral general. Lo usan el alta y la cola de duplicados. El lead tiene los
+  suyos —sugerir y bloquear— según con qué se compara: **otro lead** (la misma
+  persona que rellena dos veces) o **un contacto** del maestro (que puede ser
+  un compañero de la misma empresa). Lo que no se fija sale de los umbrales
+  generales del lead.
 - **Direcciones normalizadas** (`CRM-01.01.04.04`). Al guardar una dirección
   —por cualquier vía— se limpian los espacios, la abreviatura de vía de la
   primera palabra pasa a su forma larga, el código postal recupera los ceros
@@ -6633,6 +6648,24 @@ nuevo**. El que se tenía se emitió antes de verificarse y sigue diciendo que n
 hay factor, así que elevar el nivel sin cambiar de token serviría dentro de
 identidad y no serviría fuera.
 
+**Y se puede superar sin salir, desde el 10-11-2026.** Hasta entonces no había
+cómo: el código de la app de autenticación sólo se comprobaba al entrar y al
+activarla, y los códigos por correo o SMS no cuentan como factor fuerte. Toda
+operación sensible obligaba a salir y volver a entrar, y cada pantalla enseñaba
+el rechazo como un error («hazlo desde tu perfil», donde no había nada). Ahora
+`POST /auth/mfa/reverificar` comprueba el código de la app y eleva la sesión, y
+en el navegador cualquier operación que lo pida abre un diálogo común, pide el
+código y se repite sola —con la misma clave de idempotencia—. Si la persona no
+tiene la app activada, el diálogo lo dice de entrada y la lleva a su puesto.
+Un código equivocado cuenta como intento fallido del acceso.
+
+**Lo que tiene que quedar aunque la operación falle**, también desde el
+10-11-2026: el intento fallido de una contraseña, del código al reverificar y
+del código por correo o SMS se guardan en su propia transacción. Antes los
+guardaba la de la petición, y como la petición contesta con error, el error los
+deshacía: medido en la pila local, tres contraseñas malas dejaban el contador en
+0, así que **el bloqueo por intentos fallidos no había actuado nunca**.
+
 Dos excepciones, y las dos deliberadas. **Una credencial de máquina no teclea un
 código**: tratarla como a una persona dejaría los procesos automáticos parados
 para siempre y sin nadie a quien pedirle nada; lo que la protege es la credencial,
@@ -6665,6 +6698,12 @@ misma entrada se ha demostrado el factor —recordarlo sin haberlo pasado sería
 forma de no tener MFA nunca—, y **nunca salta la contraseña**: ahorra el factor,
 no la credencial, y confundir las dos cosas convierte un portátil robado en una
 sesión abierta.
+
+**Cuántos días, lo decide la empresa** (10-11-2026): el plazo
+(`dispositivo_confianza_dias`) se lee del ajuste del tenant, como los demás del
+login. Antes se leía sólo el global —en la entrada todavía no hay nadie
+autenticado y el contexto no lleva empresa—, así que una empresa que lo pedía a
+30 días no conseguía nada si la instalación lo tenía a 0.
 
 ### Delegar el factor al IdP (`CRM-00.05.01.24`)
 
@@ -8921,6 +8960,19 @@ otra. Un embudo configurado que no existe no abre ninguna y lo dice
 (`embudo_no_encontrado`); `renovacion_crear_oportunidad` apagado deja sólo el
 aviso.
 
+**Revisar un solo contrato.** La revisión admite un filtro —`contrato_id` o una
+lista `contrato_ids`— y entonces sólo mira esos: es el botón **Revisar este
+contrato** de la ficha del contrato, que enseña si ya se dio el preaviso y
+enlaza la oportunidad de renovación abierta. Los pedidos que no se revisan (no
+existen, no están vigentes o no tienen fin) salen en `no_revisados` con el
+porqué.
+
+**Quién es el dueño.** Desde el 09-11-2026, quien da de alta una oportunidad sin
+decir de quién es queda como su dueño (`oportunidad_dueno_quien_crea`); una
+oportunidad que abre un proceso —como la renovación periódica— sigue sin dueño
+y se reparte con las reglas de siempre. Sin dueño, la oportunidad no cuenta en
+la consecución de nadie y la compensación externa la manda sin reparto.
+
 ### Suscripciones (`CRM-03.03.02.09`)
 
 El prorrateo se calcula **por días reales del periodo**, no por treintavos: un
@@ -9679,6 +9731,13 @@ respuesta.
 Nadie puede estar en **dos cadencias a la vez**: dos secuencias sobre la misma
 persona es la forma más rápida de que pida la baja, y ocurre sin querer cuando dos
 comerciales importan la misma lista.
+
+**El buzón conectado llama a esa puerta solo.** Cada correo que entra en el buzón
+de un comercial avisa una vez de que su remitente ha contestado, y quien estaba en
+una cadencia sale. Se avisa también por los que no son contactos —quien está en
+una cadencia puede ser un candidato—; de quien no es nadie en el CRM no se guarda
+la dirección. Y el correo, si tiene que ver con el CRM, queda en la ficha como
+actividad de correo, igual que una cita del calendario queda como reunión.
 
 ### La secuencia (`CRM-03.03.01.01`)
 
@@ -11124,6 +11183,15 @@ Las señales se guardan **con huella y pista, no en claro**: una tabla de
 identidades es un índice de todos los correos y teléfonos del CRM, y para saber de
 cuál se habla basta con «termina en 4321».
 
+**Las señales de los canales llegan solas.** Integración, que es quien recibe a la
+gente por los canales, se las cuenta a party: el correo o el teléfono de quien
+escribe o llama por un canal de entrada (y su contacto en cuanto se atribuye), el
+número que llama a la centralita con el contacto que se le reconoció, la dirección
+de quien contesta en el buzón y, si la operación lo declara, los identificadores
+que trae un sistema externo como el ERP. Si party no contesta, la entrada no se
+cae: la señal se queda pendiente y se manda en la siguiente vuelta. La web
+(cookie) y la app no entran por integración y no forman parte de esto.
+
 ## IA generativa (`CRM-05.02.02`)
 
 La IA en un CRM es útil por lo mismo que es peligrosa: hace en un segundo lo que
@@ -11455,6 +11523,64 @@ casos** se midió. Sin ninguna medición no se dice que el modelo acierte: se di
 que nadie lo ha comprobado, que es otra cosa. Por debajo de cien muestras la medición se marca como **no
 concluyente**, porque treinta casos no dicen si el modelo se ha estropeado y
 reentrenar por ruido es cómo se empeora un modelo que iba bien.
+
+### Evaluación de la IA generativa contra el modelo real (`CRM-05.02.01.07`)
+
+Hasta el 09-11-2026 de la IA generativa —el asistente, las preguntas sobre los
+datos, los resúmenes, la extracción, los compromisos de una reunión— sólo se
+sabía que funcionaba **alguna vez**. No había ningún banco de casos, así que
+«funciona» no se podía afirmar ni negar.
+
+Ahora cada empresa tiene un **banco de evaluación**: 50 casos de serie, de diez
+funciones, guardados como configuración suya la primera vez que evalúa (se
+apagan los que no apliquen y se añaden los propios). Cada caso es una entrada y
+lo que la respuesta tiene que cumplir, **comprobado por programa** siempre que
+se puede: el campo extraído exacto, la cifra calculada con las filas del propio
+caso, la cita que existe, el compromiso con su dueño y su fecha, que no se
+invente lo que no está. Sólo en los resúmenes de caso hay un criterio que decide
+**un modelo juez** —«¿afirma algo que no esté en el historial?»—, y se dice al
+lado de cada resultado.
+
+La evaluación pasa por **el mismo camino que las funciones reales**: el mismo
+modelo que el enrutador elige para cada uso y el mismo tratamiento de lo que
+vuelve. Por eso caza lo que ve el usuario. Lo que cazó la primera pasada,
+medida el 10-11-2026 con Gemini 2.5 Flash:
+
+| Función | Casos | Antes | Después |
+|---|---|---|---|
+| Asistente con conocimiento | 6 | 67 % | 100 % |
+| Preguntas sobre los datos | 7 | 100 % | 100 % |
+| Resumen de un caso (con juez) | 4 | 100 % | 75 % |
+| Resumen de una conversación | 4 | 100 % | 100 % |
+| Extracción de datos de un texto | 6 | 83 % | 100 % |
+| Compromisos de una reunión | 5 | 60 % | 100 % |
+| Variantes de copy | 4 | 100 % | 100 % |
+| Sentimiento e intención | 5 | 100 % | 100 % |
+| Acciones del asistente | 6 | 83 % | 100 % |
+| Plan de un agente | 3 | 100 % | 100 % |
+| **Total** | **50** | **88 %** | **98 %** |
+
+- **El asistente no reconocía su propio «no lo sé».** El prompt pedía «di
+  exactamente que no lo sabes» y el modelo contestaba, literal, «No lo sabes.»:
+  se presentaba como una respuesta sin fuentes en vez de «no consta».
+- **La extracción multiplicaba los importes.** Un total de «2904.00» se
+  guardaba como 290.400 y un IVA de 21.0 como 210: se quitaban todos los puntos
+  como si fueran de millar. Y una fecha en palabras no se convertía.
+- **Las reuniones inventaban compromisos.** «Si queréis, podemos hacer una
+  demo» y «cuando lo tengáis claro me decís» salían como próximos pasos con
+  dueño, que es justo lo que llena la agenda de tareas que nadie asumió.
+
+El resumen de un caso baja de 100 % a 75 % en la última pasada por el juez: un
+caso de cuatro, distinto en cada pasada, en el que el juez discute una
+inferencia razonable («dos cargos de 1.250 €» cuando el historial dice dos
+cargos de una factura de 1.250 €). Con cuatro casos, un caso son 25 puntos: no
+se lee como una caída.
+
+Cada ejecución guarda la fecha, los modelos, **la versión de cada prompt** (la
+huella del código que lo escribe y de la plantilla del tenant), el acierto por
+función y caso a caso con el porqué, el coste (unos 0,08 por pasada) y la
+latencia. Se pasa sola cada semana, y si una función baja del umbral (90 %) se
+avisa a quien la pidió y a quien diga el ajuste.
 
 ### Scoring con explicabilidad (`CRM-05.02.01.01`, `CRM-05.02.01.03`)
 
@@ -12950,6 +13076,15 @@ Y los errores van **separados por culpa**: los suyos —4xx— y los nuestros �
 Mezclarlos hace que un integrador pase una tarde revisando su código por una caída
 nuestra, o al revés.
 
+**El secreto de una clave se ve una vez, al crearla** (10-11-2026). La pantalla
+de alta tiraba la respuesta y recargaba la lista: la clave quedaba creada y su
+secreto —que no se puede volver a pedir, sólo se guarda su hash— no lo veía
+nadie. Ahora sale arriba con el aviso de copiarlo y no se guarda en ninguna
+parte. Lo decide el contrato (`x-una-vez` en el campo), no una lista del front:
+cualquier alta que devuelva un secreto así lo enseña igual. Y la lista de claves
+devuelve **desde qué IP se admite cada una** (`ips_permitidas`): se guardaba y
+no salía, y es lo primero que se revisa de una credencial de máquina.
+
 ### Endpoints propios del tenant (`CRM-00.04.02.04`)
 
 Son una **composición con nombre suyo**, no una puerta aparte: heredan el mismo
@@ -13510,6 +13645,23 @@ con el servidor» y lo escrito se perdía. Ahora:
 - **Una franja en todas las pantallas** dice cuándo no hay red y cuántos cambios
   quedan por subir o en conflicto. La cola es de quien la hizo: otra persona que
   entre en el mismo navegador no envía lo tuyo.
+- **Borrar sin red** (10-11-2026). Borrar un registro sin red se encola igual,
+  con la versión que se leyó, y al volver se manda por su ruta. Si el servidor
+  contesta que el registro cambió entre medias, sale en **Sin conexión** con
+  «Borrarlo igualmente» o «Quedarme con lo del servidor»; si ya no existe, se da
+  por hecho. Medido: el borrado de contactos **no comprueba la versión** en el
+  servidor, así que hoy se borra aunque otra persona lo cambiara —va a la
+  papelera y se recupera desde allí—.
+- **Editar sin haber abierto antes el formulario** funciona si el registro se
+  consultó con red: medido el 10-11-2026 recargando la ficha sin red, el
+  formulario sale y el cambio se encola y se aplica al volver. Y la propia
+  pantalla **Sin conexión** se descarga al entrar con red, así que se puede
+  abrir sin red aunque no se hubiera abierto antes.
+- **Lo que hace la aplicación sola no se encola.** Revisado el 10-11-2026: sólo
+  se encola crear en una colección (`POST /api/v1/<colección>`), editar o
+  borrar un registro por su identificador; lo automático que cae en esa forma
+  —apuntar un «visto»— va marcado para no encolarse, y lo demás (renovar la
+  sesión, marcar leído, ejecutar un informe) no tiene esa forma.
 
 ## Change Data Capture hacia el lago del cliente (`CRM-00.02.02.06`)
 
@@ -14871,7 +15023,9 @@ ningún teléfono. **No se había registrado nunca una llamada.** Ahora:
   se preguntan a party, y la grabación la decide el ajuste
   `marcador_grabar_por_politica` junto con el consentimiento de la persona. Al
   colgar, lo que obliga a algo se hace: «pide que no le llamen» marca la ficha
-  como «no contactar» y «reprogramar» crea la siguiente llamada con su fecha.
+  como «no contactar», «reprogramar» crea la siguiente llamada con su fecha y
+  «número erróneo» marca el teléfono de la ficha del contacto como erróneo (o
+  dice por qué no ha podido: llamada sin contacto o sin permiso para editarlo).
 
 ## Los dos manuales completos (`CRM-07.05.01.01`, `CRM-07.05.01.02`, `CRM-07.05.01.03`, `CRM-07.05.01.04`, `CRM-07.05.01.05`, `CRM-07.05.01.06`, `CRM-07.05.02.01`, `CRM-07.05.02.02`, `CRM-07.05.02.03`, `CRM-07.05.02.04`, `CRM-07.05.02.05`, `CRM-07.05.02.06`)
 
@@ -15108,8 +15262,19 @@ filtraciones de un CRM no salen de producción: salen de una copia.
   tiene acceso.
 - **Las referencias siguen cuadrando** entre módulos: una oportunidad copiada
   apunta a la copia de su cuenta. Lo que no se traduce son los identificadores
-  escritos dentro de textos o documentos JSON, y lo que no se copia son los
+  escritos dentro de textos o documentos JSON, y lo que no se copian son los
   comentarios, los adjuntos y el índice del buscador.
+- **El porcentaje limita también los contactos** (10-11-2026). No llevan cuenta
+  propia —cuelgan de sus cuentas por un enlace—, así que se copiaban todos con
+  cualquier porcentaje: justo los datos personales que la copia parcial quiere
+  reducir. Ahora van los contactos de las cuentas copiadas y, de los que no
+  cuelgan de ninguna, la misma proporción por su identificador; lo que lleva
+  `contacto_id` va con su contacto. En los otros módulos, que no ven el enlace,
+  decide sólo el identificador del contacto: pueden quedarse fuera filas
+  sueltas, nunca apuntar a un contacto que no está.
+- **La ficha del sandbox ya no pide estados que no tiene**: preguntaba
+  `/tenancy/estados/sandbox` en cada visita y recibía 404. Ahora cada ficha
+  pregunta antes qué objetos tienen estados configurables en su servicio.
 
 ## Las pantallas que faltaban del front oficial (`CRM-07.04.03.23`, `CRM-07.04.03.24`, `CRM-07.04.03.27`, `CRM-07.04.03.29`, `CRM-07.04.03.31`, `CRM-07.04.03.32`, `CRM-07.04.03.33`, `CRM-00.01.07.06`)
 
@@ -15877,6 +16042,18 @@ una cuota agotada que no se corresponde con lo que tiene.
 
 Una métrica que no se puede medir **se dice en su fila** y no tumba el panel. Y
 «no se ha podido medir» no es «cero», que es justo la confusión que había.
+
+**Tres de cuatro salían «no legibles»** (medido el 09-11-2026 en la ficha del
+tenant), y no estaban rotas: el primer medidor que fallaba dejaba la
+transacción abortada y todos los siguientes caían detrás. Fallaba porque los
+medidores comunes —correos, SMS, almacenamiento— se registran en todos los
+módulos y cada uno cuenta una tabla que sólo existe en uno. Ahora cada medidor
+va en su punto de guardado, el que cuenta una tabla que en ese módulo no existe
+no sale —ahí no hay nada que contar—, y lo que falla de verdad dice el tipo de
+error. La ficha del tenant, además, **pregunta a todos los módulos** y no sólo
+a tenancy, que medía sus propias tablas («0 registros» con miles de cuentas):
+una línea por métrica y módulo, porque la cuota corta por módulo; el módulo que
+no contesta sale con la métrica «\*» y su motivo.
 
 Lo mismo con el componente de estado de la plataforma: leía esa misma tabla, así
 que **no podía avisar de una cuota agotada ni queriendo**.

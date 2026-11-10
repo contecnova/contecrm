@@ -826,8 +826,13 @@ Dos consecuencias que conviene conocer:
   reescribir un control sin duplicarlo— y conviene saberlo antes de reutilizar
   un código.
 - **Algunas de estas altas piden volver a verificar tu identidad.** Cambiar
-  roles, permisos o políticas de acceso lo exige: la pantalla te lo dice y te
-  manda a identificarte otra vez. No es un error.
+  roles, permisos o políticas de acceso, crear una clave de API, exportar en
+  masa o borrar en bloque lo exigen. No hace falta salir: se abre un recuadro
+  **«Confirma que eres tú»**, escribes el código de 6 cifras de tu app de
+  autenticación y la operación sigue sola. Vale unos minutos para las
+  siguientes. Si no tienes la app activada, el recuadro te lo dice y te lleva a
+  **Puesto** para activarla. Un código equivocado cuenta como intento fallido,
+  igual que al entrar.
 
 Hasta el 04-11-2026 esas cuatro no se podían dar de alta desde el producto,
 aunque el sistema las admitía.
@@ -1748,6 +1753,15 @@ Cuando un contrato llega a su preaviso, aparece sola una oportunidad
 con el importe del contrato y su vencimiento como fecha de cierre. Se trabaja
 como cualquier otra oportunidad, en **Ventas › Oportunidades**.
 
+Para no esperar a la revisión periódica, abre el contrato (**Ventas ›
+Contratos** y pulsa en él) y, en el bloque **Renovación**, pulsa **Revisar
+este contrato**. Sólo se revisa ése: si ha llegado su preaviso, se abre la
+oportunidad y sale el enlace **abrirla en el embudo**; si no, te dice que
+todavía no toca o por qué no se ha revisado.
+
+Las oportunidades que das de alta tú quedan a tu nombre si no eliges otro
+dueño. Así cuentan en tus objetivos y en tus comisiones.
+
 ### Si una firma se sostiene, o sólo lo parece
 
 Al abrir un sobre, lo primero que sale no es si está firmado: es **si esa firma
@@ -1880,7 +1894,14 @@ hace falta para defenderlo.
   dinero. Y el coste **se congela al ofertar**: si la tarifa del proveedor sube
   después, se te avisa y la oferta no se reescribe sola.
 - **El marcador**: llamar desde la ficha, y al colgar la llamada se registra sola.
-  Lo que tienes que escribir tú es qué se habló.
+  Lo que tienes que escribir tú es qué se habló. Si eliges **Número erróneo**
+  (**Clientes › Contactos ›** el contacto **› Llamar**, y al colgar **Cómo fue ›
+  Número erróneo › Anotar y cerrar**), el teléfono de la ficha queda marcado como
+  erróneo y debajo lo dice; si no se pudo —la llamada no era de un contacto o no
+  puedes editar su ficha—, dice qué falta para que lo hagas a mano.
+- **Si contesta al correo, sale de la cadencia.** Con tu buzón conectado no
+  tienes que hacer nada: el correo que te llega de alguien que está en una
+  cadencia lo saca de ella, una sola vez, aunque no sea todavía un contacto.
 - **El plan conjunto con el cliente**: los pasos acordados con fechas, con una
   condición — **tiene que haber pasos suyos**. Un plan donde todo es nuestro es una
   lista de seguimiento interna, y lo valioso es justo lo incómodo: que el cliente
@@ -2381,6 +2402,44 @@ Los mínimos —el AUC para publicar, la mejora sobre la mediana, cada cuántos
 días se reentrena, la ventana de la propensión— se cambian en **Administrar →
 Usuarios y empresa → Administración**, en los ajustes de la IA (`ia_…`).
 
+### Evaluación de la IA: cuánto acierta, medido
+
+**Administrar → Gobierno y cumplimiento → Evaluación de la IA.** Aquí se ve si
+la IA funciona, con un número por función y no con una impresión: el asistente
+con conocimiento, las preguntas sobre los datos, los resúmenes de casos y de
+conversaciones, la extracción de datos de un texto, los compromisos de una
+reunión, las variantes de copy, el sentimiento y la intención, las acciones que
+propone el asistente y el plan de un agente.
+
+1. Pulsa **«Evaluar ahora»** (arriba a la derecha). Se pasa el banco de casos
+   contra el modelo de verdad que usa tu empresa, por el mismo camino que usan
+   las funciones; tarda unos minutos y el botón dice por cuál va
+   («Evaluando… 24 de 50»). La primera vez, los casos de serie se guardan como
+   tuyos. Cuesta llamadas al modelo: se apuntan en el gasto de IA como
+   cualquier otra.
+2. **«Última evaluación»** dice cuántos casos acertó, cuándo, con qué modelo,
+   cuánto costó y cuánto tardó cada caso de media. Si alguna función ha bajado
+   del umbral, sale el aviso en amarillo —y te llega también como notificación
+   si la pediste tú o si estás en la lista de avisos—.
+3. **«Acierto por función»**: una tarjeta por función con su porcentaje (verde
+   si llega al umbral, amarillo si se queda cerca, rojo si no), cuántos casos,
+   el acierto de la evaluación anterior para comparar y la versión del prompt.
+   Si una función tiene casos que decide **un modelo juez** —lo que un programa
+   no puede comprobar, como «¿se inventa algo que no está en el historial?»—,
+   la tarjeta lo dice.
+4. **«Tendencia del acierto»** dibuja el acierto global de las últimas
+   evaluaciones (con dos o más). **«Ver la tabla»** da los números.
+5. **«Casos que fallan»**: cada caso fallado con su función y **el porqué**
+   —«total: "29040.0" y es "2904"», «no cita el fragmento [2]», «propone como
+   compromiso algo que nadie prometió»—; lo marcado **juez** lo decidió el
+   modelo juez.
+6. **«Banco de casos»**: desmarca **Activo** en un caso que no aplique a tu
+   empresa y deja de evaluarse (no vuelve aunque el producto lo traiga).
+
+Se evalúa sola cada semana. El umbral (90 % de serie), cada cuántas horas
+(0 la apaga) y a quién más se avisa se cambian en **Administrar → Usuarios y
+empresa → Administración**, en los ajustes `ia_evaluacion_…`.
+
 ### Asistente IA
 
 **Analítica → Asistente IA.** Dos cajas:
@@ -2463,6 +2522,11 @@ lo hace igual con todas: lo que cambia es configuración, no un módulo por casa
   al proponer la hora — si no, quedan salas abiertas de reuniones que no cuajaron.
 - **Y si algo deja de llegar, se ve.** El panel de conexiones dice qué lleva sin
   sincronizar, desde cuándo y por qué; lo que no se ha medido no cuenta como bueno.
+- **El correo que entra hace su trabajo solo.** Si tiene que ver con el CRM queda
+  en la ficha como actividad de correo, igual que la reunión queda como reunión;
+  si quien escribe estaba en una cadencia, sale de ella; y su dirección ayuda a
+  reconocerle cuando llegue por otro canal (lo ves en **Clientes › Duplicados ›
+  Calidad del dato**, bloque «La misma persona en cada canal»).
 
 También hay chat corporativo conectado —avisos y consultas desde Teams o Slack—,
 documentos generados desde plantillas y firma electrónica desde cualquier
@@ -2667,14 +2731,19 @@ arriba a la derecha (o directamente en `/calidad-del-dato`). Hay cinco bloques:
    versión fusionada o unida. Pulsa **Componer** en una y verás, campo a
    campo, el valor que gana, de qué fuente sale, con qué regla y lo que dicen
    las demás. Los campos con «!» tienen fuentes que no coinciden. Si estás de
-   acuerdo, pulsa **Aplicar a la ficha**.
-2. **Reglas de supervivencia**: elige el objeto, el campo (o «*» para todos),
+   acuerdo, pulsa **Aplicar a la ficha**. Salen también los **leads** con
+   capturas fusionadas en ellos o con otro lead marcado como su duplicado; en
+   ellos, la fuente de cada captura es su canal (por ejemplo «feria»).
+2. **Reglas de supervivencia**: elige el objeto (Cuentas, Contactos o Leads), el campo (o «*» para todos),
    la estrategia y la confianza de cada fuente, una por línea (`erp=90`), y
    pulsa **Guardar la regla**. Para cambiar una, púlsala en la lista; **Quitar**
    la devuelve a la regla por defecto.
 3. **La misma persona en cada canal**: salen las parejas de contactos que
    comparten correo, teléfono u otro identificador. Pulsa **Unir** y la
-   primera queda como principal; no se borra ninguna ficha.
+   primera queda como principal; no se borra ninguna ficha. Además de lo que
+   tiene cada ficha, cuentan lo que llega por los canales: quien escribe por un
+   canal de entrada o al buzón, el número que llama a la centralita y, si tu
+   administrador lo ha declarado, los códigos que trae el ERP.
 4. **Proveedor de datos**: declara el proveedor (clave, nombre, conexión de
    Integraciones, operación, parámetros y qué campo va a cada campo), elige
    una ficha en **Pedir para** y pulsa **Pedir**. En **Propuestas por revisar**
@@ -2682,7 +2751,8 @@ arriba a la derecha (o directamente en `/calidad-del-dato`). Hay cinco bloques:
    **Aplicar lo marcado**, o **Descartar**.
 5. **Cuánto tienen que parecerse dos fichas** y **Direcciones normalizadas**:
    escribe el umbral propio de cada objeto (vacío = el general) y pulsa
-   **Guardar los umbrales**; en direcciones, **Ver qué cambiaría** y, si te
+   **Guardar los umbrales**. Las filas **Lead frente a otro lead** y **Lead
+   frente a un contacto** son las del alta de leads; no tienen «Proponer»; en direcciones, **Ver qué cambiaría** y, si te
    convence, **Aplicar**.
 
 ### Duplicados: el sistema los busca, tú decides
@@ -2820,6 +2890,14 @@ Una clave puede tener **cuota mensual** (al crearla, o con *Cambiar la cuota
 mensual*). Al gastarla, la integración recibe «cuota agotada» —no «clave no
 válida»— hasta el día 1 o hasta que se amplíe.
 
+**Al crear una clave** (*Usuarios y permisos → Claves de API → Nuevo →
+Guardar*) sale arriba un recuadro **«Cópialo ahora: no se volverá a enseñar»**
+con el secreto y un botón **Copiar**. Cópialo y pulsa **Ya lo he copiado**: no
+se guarda en ninguna parte y no vuelve a salir —ni al recargar ni en la lista—;
+si se pierde, se crea otra. Crear una clave pide haber verificado tu identidad
+con el segundo factor hace poco. La lista dice también **desde qué IP** se
+admite cada clave (columna *Ips permitidas*, en *Columnas*).
+
 ### Comprar a un proveedor, de la petición a la evaluación
 
 En *Proveedores* están las pestañas de compras. El recorrido normal:
@@ -2899,8 +2977,9 @@ aparece encima **Con los elegidos**:
 
 - **Actualizar un campo**: eliges el campo en el desplegable, escribes el valor
   y pulsas **Aplicar a N**.
-- **Borrar**: confirma y los manda a la papelera. Pide volver a verificar tu
-  identidad, como exportar en masa.
+- **Borrar**: confirma y los manda a la papelera. Pide confirmar que eres tú
+  con el código de tu app, como exportar en masa: sale el recuadro y, al
+  confirmarlo, sigue solo.
 
 Al terminar te dice cuántos se han hecho y, de los que no, **cuál era y por
 qué** —por ejemplo, uno que otro registro está usando y no se puede borrar—.
@@ -3001,7 +3080,9 @@ empresa. Sirve para probar una migración, formar a alguien o reproducir un
 problema sin tocar lo de verdad.
 
 1. **Crear**: le das un nombre, el propósito (desarrollo, pruebas, formación,
-   migración o soporte) y qué porcentaje de tus clientes quieres copiar. El
+   migración o soporte) y qué porcentaje de tus clientes quieres copiar —el
+   porcentaje limita las cuentas y también los **contactos**: van los de las
+   cuentas copiadas y, de los que no tienen cuenta, la misma proporción—. El
    propósito decide cuándo caduca. Por defecto los datos se **anonimizan**; si no
    quieres anonimizar, tienes que escribir por qué, y queda escrito con tu nombre.
 2. **Copiar los datos**: la copia no empieza sola, porque tarda y conviene
@@ -3471,6 +3552,13 @@ tienes que hacer:
 3. **Decide**: si lo tuyo sigue teniendo sentido, vuelve a escribirlo sobre lo
    nuevo; si no, deja lo suyo.
 
+Desde el 10-11-2026 vale también para **borrar** y para cualquier ficha, no
+sólo las de las listas genéricas: si alguien cambió una cuenta o un contacto
+mientras la tenías abierta, el CRM no deja que tu borrado o tu guardado se
+lleve su cambio por delante sin avisarte. Con el modo sin conexión pasa lo
+mismo: lo que borraste sin red y otro cambió entretanto aparece en
+Sin conexión como conflicto, para que elijas.
+
 Es un segundo de molestia a cambio de no perder el trabajo de alguien sin saberlo.
 
 ### Si una plantilla sale con un error
@@ -3510,6 +3598,13 @@ Lo que ves ahí se cuenta de verdad sobre tus datos, no de un contador aparte: s
 borras registros, el número baja. Y si alguna métrica no se puede medir en ese
 momento, te lo dice en esa línea en lugar de enseñarte un cero, que es muy
 distinto.
+
+En la ficha de tu empresa (*Usuarios y empresa → Empresas y unidades*, abrir la
+empresa → pestaña *Relacionado* → *Consumo del periodo frente a los topes*) cada
+línea dice además **de qué módulo** es —registros en
+contactos y cuentas, correos en avisos…—, porque el límite se aplica módulo a
+módulo. Un módulo que no contesta sale con la métrica «\*» y el motivo, nunca
+como cero.
 
 ### Mandar el consumo a facturación
 
@@ -3852,6 +3947,13 @@ arriba a la derecha → **Sin conexión** (o **Ver** en la franja).
   estabas sin red. Sale **lo tuyo** y **lo que hay en el servidor**; elige uno
   en cada campo y pulsa **Aplicar lo elegido**, o **Quedarme con lo del
   servidor** para olvidar tu cambio. Nada se elige solo.
+- **Borrar sin red** también se guarda y se envía al volver: en la ficha,
+  **Más → Borrar**. Si otra persona cambió ese registro entre medias, en
+  **Sin conexión** eliges **Borrarlo igualmente** o **Quedarme con lo del
+  servidor**.
+
+Puedes editar sin red un registro aunque no hubieras abierto su formulario
+antes: basta con haber abierto su ficha con red.
 
 Al cerrar sesión se borra lo consultado de este dispositivo.
 

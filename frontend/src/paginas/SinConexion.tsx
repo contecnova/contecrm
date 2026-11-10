@@ -183,6 +183,37 @@ function ResolverConflicto({ op }: { op: OperacionEncolada }) {
   const [eleccion, setEleccion] = useState<Record<string, "mio" | "suyo">>({});
   const completo = choque.campos.every((c) => eleccion[c]);
 
+  // Un borrado que chocó: otra persona cambió el registro después de que se
+  // leyera. No hay campos que elegir; se pregunta si borrarlo igualmente.
+  if (op.tipo === "borrar") {
+    return (
+      <div className="rounded border border-ink-dim/40 p-3">
+        <p className="mb-2 text-dato">
+          {op.recurso} · {fechaHora(op.encolada_at)}
+        </p>
+        <p className="text-dato text-ink-muted">
+          {t("sinConexion.borradoEnConflicto")}
+        </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={() => void resolver(op, {}).then(() => sincronizar())}
+          >
+            {t("sinConexion.borrarIgualmente")}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => void descartar(op.id_cliente)}
+          >
+            {t("sinConexion.quedarmeConLoSuyo")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded border border-ink-dim/40 p-3">
       <p className="mb-2 text-dato">

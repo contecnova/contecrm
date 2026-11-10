@@ -98,6 +98,12 @@ class ContextoMiddleware:
             origen="api",
         )
         token = fijar_contexto(ctx)
+        # `If-Match` en toda escritura sobre un registro (crmcore.http.concurrencia).
+        from crmcore.http import concurrencia
+
+        token_if_match = concurrencia.fijar(
+            scope.get("method", ""), scope.get("path", ""), _cabecera(scope, "if-match")
+        )
 
         async def send_con_correlacion(message: Message) -> None:
             if message["type"] == "http.response.start":
@@ -136,6 +142,7 @@ class ContextoMiddleware:
             ):
                 await self.app(scope, receive, send_con_correlacion)
         finally:
+            concurrencia.soltar(token_if_match)
             restaurar_contexto(token)
 
 

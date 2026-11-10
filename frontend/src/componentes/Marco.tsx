@@ -36,6 +36,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { AvisoSinConexion } from "@/componentes/AvisoSinConexion";
+import { Reverificacion } from "@/componentes/Reverificacion";
 import { BarraDeAplicacion } from "@/componentes/BarraDeAplicacion";
 import { BarraLateral } from "@/componentes/BarraLateral";
 import { BarraSuperior } from "@/componentes/BarraSuperior";
@@ -231,6 +232,8 @@ function Armazon({
             persona toma decisiones sobre datos que no son los que cree. */}
         {sesion?.suplantado_por ? <FranjaDeSoporte sesion={sesion} /> : null}
         <AvisoSinConexion usuario={sesion?.usuario_id ?? ""} />
+        {/* Volver a verificarse sin salir, cuando una operación lo pide. */}
+        <Reverificacion />
 
         <BarraSuperior
           sesion={sesion}

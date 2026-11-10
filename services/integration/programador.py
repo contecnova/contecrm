@@ -187,9 +187,18 @@ def _aterrizar(
     guardarlo con uno inventado lo duplicaría en cada vuelta, y descartarlo en
     silencio haría que faltaran filas sin que nadie supiera por qué.
     """
+    from services.integration import senales_identidad as sen
+
     sin_id = 0
     nuevos = 0
     repetidos = 0
+    # Qué campos de lo que entra son señales de identidad para party
+    # (CRM-01.01.05.02): `{"campo": "tipo"}` en la definición de la
+    # operación —por ejemplo `{"codigo_cliente": "id_erp", "cif": "nif"}`—.
+    # Declarado y no adivinado: un campo `email` de un maestro de proveedores
+    # no es la señal de ningún cliente. Las manda el relevo, con la identidad
+    # del sistema.
+    senales = dict((operacion.definicion or {}).get("senales_identidad") or {})
     ya = {
         e
         for (e,) in uow.db.execute(
@@ -219,6 +228,15 @@ def _aterrizar(
                 datos=dict(registro),
             )
         )
+        for campo, tipo in senales.items():
+            sen.anotar(
+                uow.db,
+                uow.tenant_id,
+                tipo=str(tipo),
+                valor=str(registro.get(campo) or ""),
+                origen=f"integracion:{operacion.clave}",
+                referencia=externo,
+            )
         nuevos += 1
     uow.db.flush()
     return {"nuevos": nuevos, "repetidos": repetidos, "sin_identificador": sin_id}

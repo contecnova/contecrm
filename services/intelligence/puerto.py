@@ -197,15 +197,32 @@ def _responder(
             "content": (
                 "Responde solo con lo que haya en los fragmentos. Cita cada "
                 "afirmación con su número entre corchetes. Si los fragmentos no "
-                "contienen la respuesta, di exactamente que no lo sabes."
+                "contienen la respuesta, contesta únicamente «No lo sé.», sin "
+                "nada más."
             ),
         },
         {"role": "user", "content": f"{pregunta}\n\n{texto_fragmentos}"},
     ]
     salida = _llamar(proveedor=proveedor, modelo=modelo, mensajes=mensajes, opt_out=opt_out)
-    texto = salida.get("texto") or ""
-    salida["sin_respuesta"] = "no lo sé" in texto.lower() or "no lo se" in texto.lower()
+    salida["sin_respuesta"] = _dice_que_no_sabe(salida.get("texto") or "")
     return salida
+
+
+def _dice_que_no_sabe(texto: str) -> bool:
+    """Si la respuesta es «no lo sé».
+
+    **Medido el 10-11-2026 con la evaluación de la IA.** El prompt pedía «di
+    exactamente que no lo sabes» y el modelo contestaba, literal, «No lo
+    sabes.»: el asistente no lo reconocía como «no sé» y lo presentaba como una
+    respuesta sin fuentes. Ahora se le pide la frase exacta y se reconoce sin
+    depender de la tilde.
+    """
+    import unicodedata
+
+    plano = "".join(
+        c for c in unicodedata.normalize("NFKD", texto.lower()) if not unicodedata.combining(c)
+    )
+    return "no lo se" in plano
 
 
 def _traducir_a_plan(
@@ -331,7 +348,12 @@ def _extraer(
                 "Extrae los campos pedidos. Devuelve SOLO un JSON con `campos`: "
                 "lista de {clave, valor, confianza (0-1), cita}. La `cita` tiene "
                 "que ser un fragmento LITERAL del texto. Si un campo no aparece, "
-                "no lo incluyas."
+                "no lo incluyas. El `valor` es el dato concreto que pide el campo "
+                "—un nombre, un número, una fecha—: una palabra genérica («mi "
+                "empresa», «el cliente», «un teléfono») no es un valor, y entonces "
+                "el campo no aparece. Escribe el `valor` en el formato de su `tipo`: "
+                "una fecha en AAAA-MM-DD aunque el texto la diga en palabras, y un "
+                "número sin separador de miles y con punto decimal."
             ),
         },
         {"role": "user", "content": f"Campos: {json.dumps(campos)}\n\nTexto:\n{texto}"},
@@ -705,9 +727,18 @@ def _resumir_reunion(
                 "cuando, cita}}. `tipo` es uno de " + ", ".join(tipos) + ". `quien` "
                 "es la persona que se comprometió tal como se la nombra; si habla "
                 "en primera persona quien tuvo la reunión y no se dice su nombre, "
-                "«quien registra la reunión»; si no se sabe, vacío. `cuando` en ISO 8601 si se dijo una fecha, o vacío. "
-                "`cita` es un fragmento LITERAL de la transcripción. No inventes "
-                "compromisos: «si me la mandas, la miro» no compromete a nadie."
+                "«quien registra la reunión»; si no se sabe, vacío. `cuando` en ISO 8601 si se dijo una fecha o un plazo («antes del 20», «el "
+                "viernes 14») para ESE compromiso, o vacío. Lo que una persona promete "
+                "en una misma frase —«reviso el contrato y te contesto antes del "
+                "lunes»— es un solo elemento, con el plazo en su `cuando`. "
+                "`cita` es un fragmento LITERAL de la transcripción, dicho por "
+                "`quien`. No inventes compromisos: un `compromiso` o un "
+                "`proximo_paso` exige que alguien diga que lo HARÁ, en firme. Lo "
+                "condicional, lo hipotético o lo que se deja en el aire —«si me la "
+                "mandas, la miro», «si os parece, podríamos montar una prueba», «lo "
+                "estudiaremos», «a ver si encontramos hueco», «cuando sepáis algo, "
+                "avisad»— no es "
+                "compromiso ni próximo paso de nadie: no lo incluyas como tal."
             ),
         },
         {"role": "user", "content": f"Hoy es {_hoy_iso()}.\n\nTranscripción:\n{texto}"},
@@ -752,7 +783,9 @@ def _redactar_variantes(
                 f"Escribes {cuantas} variantes DISTINTAS de un texto de marketing para "
                 f"el canal «{canal}», en el idioma «{idioma}». Mantén el sentido y los "
                 "datos del texto base; no añadas cifras, garantías ni superlativos que "
-                "no estén en él. Conserva TAL CUAL los marcadores entre llaves "
+                "no estén en él, ni palabras que los sugieran («garantiza», «asegura», "
+                "«el mejor», «líder», «gratis», «sin compromiso») si la base no las "
+                "usa: cada una obliga a quien revisa a comprobarla. Conserva TAL CUAL los marcadores entre llaves "
                 "dobles ({{...}}): se rellenan al enviar. Devuelve SOLO un JSON con `variantes`: lista de "
                 "textos."
             ),

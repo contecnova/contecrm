@@ -47,20 +47,14 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
-# Cómo se decide qué valor sobrevive. Lista cerrada: cada una se equivoca de una
-# forma distinta, y con texto libre nadie podría decir por qué ganó lo que ganó.
-ESTRATEGIAS = (
-    "mayor_confianza",  # manda la fuente declarada como más fiable para ese campo
-    "mas_reciente",  # el que CAMBIÓ después, no el que llegó después
-    "mas_completo",  # entre un valor y un vacío, el valor
-    "solo_si_falta",  # la fuente rellena huecos y no pisa nada
-    "decide_una_persona",  # para lo que no se puede automatizar sin equivocarse
+# La decisión —qué estrategias hay y qué gana— vive en el núcleo desde el
+# 09-11-2026: el lead (en `sales`) compone su ficha buena con la misma regla, y
+# ningún servicio importa a otro.
+from crmcore.datos.supervivencia import (  # noqa: E402,F401
+    ESTRATEGIAS,
+    FUENTE_MANUAL,
+    resolver_valor,
 )
-
-# Lo que escribe una persona no lo pisa ningún proceso automático, salvo que la
-# regla diga expresamente lo contrario. Alguien que corrige un teléfono está
-# diciendo que el otro estaba mal.
-FUENTE_MANUAL = "manual"
 
 
 # Cuánto se considera que un valor sigue siendo bueno si nadie lo confirma. Es un
@@ -122,141 +116,6 @@ class LinajeValor(Base):
 
 def _ahora() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _momento(candidato: dict[str, Any]) -> datetime:
-    """Cuándo cambió el valor **de verdad**.
-
-    Si la fuente no dice cuándo cambió, se usa cuándo llegó, y se marca: no es lo
-    mismo y confundirlos es lo que hace que un maestro reenviado pise lo que
-    alguien corrigió esta mañana.
-    """
-    cambiado = candidato.get("cambiado_at")
-    if isinstance(cambiado, datetime):
-        return cambiado if cambiado.tzinfo else cambiado.replace(tzinfo=timezone.utc)
-    recibido = candidato.get("recibido_at")
-    if isinstance(recibido, datetime):
-        return recibido if recibido.tzinfo else recibido.replace(tzinfo=timezone.utc)
-    return datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-def resolver_valor(
-    *,
-    campo: str,
-    candidatos: list[dict[str, Any]],
-    estrategia: str = "mayor_confianza",
-    confianza_por_fuente: dict[str, int] | None = None,
-) -> dict[str, Any]:
-    """Decide qué valor sobrevive para un campo, **y por qué**.
-
-    Cada candidato es `{"fuente", "valor", "cambiado_at", "recibido_at"}`.
-
-    El «por qué» va en la respuesta porque la pregunta que llega siempre es «¿por
-    qué pone esto aquí?», y sin respuesta la gente deja de fiarse de la ficha —
-    y cuando se deja de confiar en una ficha, se vuelve a la hoja de cálculo.
-
-    Lo que pierde **se devuelve como discrepancia**, no se tira. Que el ERP y el
-    formulario digan direcciones distintas probablemente significa que el cliente
-    se mudó y solo uno se enteró: eso es información, no ruido.
-    """
-    if estrategia not in ESTRATEGIAS:
-        raise ErrorValidacion(
-            f"Estrategia de supervivencia «{estrategia}» desconocida",
-            error_code="mdm.estrategia_invalida",
-            detalle={"admitidas": list(ESTRATEGIAS)},
-        )
-    vivos = [c for c in candidatos if str(c.get("valor") or "").strip()]
-    if not vivos:
-        return {
-            "valor": None,
-            "fuente": None,
-            "porque": "Ninguna fuente trae valor para este campo.",
-            "discrepancias": [],
-            "hay_que_decidir": False,
-        }
-
-    confianzas = dict(confianza_por_fuente or {})
-    manual = [c for c in vivos if str(c.get("fuente")) == FUENTE_MANUAL]
-    if manual and estrategia != "decide_una_persona":
-        ganador = max(manual, key=_momento)
-        return {
-            "valor": ganador["valor"],
-            "fuente": FUENTE_MANUAL,
-            "porque": (
-                "Lo escribió una persona. Ningún proceso automático lo pisa: quien "
-                "corrige un teléfono a mano está diciendo que el otro estaba mal."
-            ),
-            "discrepancias": _discrepancias(ganador, vivos),
-            "hay_que_decidir": False,
-        }
-
-    if estrategia == "decide_una_persona":
-        distintos = {str(c.get("valor")) for c in vivos}
-        return {
-            "valor": vivos[0]["valor"] if len(distintos) == 1 else None,
-            "fuente": vivos[0].get("fuente") if len(distintos) == 1 else None,
-            "hay_que_decidir": len(distintos) > 1,
-            "porque": (
-                "Todas las fuentes dicen lo mismo."
-                if len(distintos) == 1
-                else f"«{campo}» está declarado para que lo decida una persona, y hay "
-                f"{len(distintos)} valores distintos. Elegir automáticamente aquí es "
-                "lo que produce fichas que cambian solas."
-            ),
-            "opciones": [{"fuente": c.get("fuente"), "valor": c.get("valor")} for c in vivos],
-            "discrepancias": [],
-        }
-
-    if estrategia == "mas_reciente":
-        ganador = max(vivos, key=_momento)
-        sin_fecha_de_cambio = [c for c in vivos if not isinstance(c.get("cambiado_at"), datetime)]
-        porque = f"Es el valor que cambió después ({_momento(ganador).date().isoformat()})."
-        if sin_fecha_de_cambio:
-            porque += (
-                " Aviso: hay fuentes que no dicen cuándo cambió el valor, solo cuándo "
-                "llegó el mensaje. No es lo mismo: un maestro reenviado cada noche "
-                "trae valores idénticos con fecha nueva."
-            )
-    elif estrategia == "mas_completo":
-        ganador = max(vivos, key=lambda c: len(str(c.get("valor") or "")))
-        porque = "Entre un valor y uno más pobre, se queda el que trae más información."
-    elif estrategia == "solo_si_falta":
-        ganador = vivos[0]
-        porque = (
-            "Esta regla solo rellena huecos: si ya había valor, no se toca. Es la "
-            "adecuada para una fuente de enriquecimiento, que sabe de muchos y no "
-            "conoce a ninguno."
-        )
-    else:
-        ganador = max(vivos, key=lambda c: (confianzas.get(str(c.get("fuente")), 50), _momento(c)))
-        porque = (
-            f"«{ganador.get('fuente')}» es la fuente declarada como más fiable para "
-            f"«{campo}» (confianza {confianzas.get(str(ganador.get('fuente')), 50)})."
-        )
-
-    return {
-        "valor": ganador["valor"],
-        "fuente": ganador.get("fuente"),
-        "porque": porque,
-        "discrepancias": _discrepancias(ganador, vivos),
-        "hay_que_decidir": False,
-    }
-
-
-def _discrepancias(ganador: dict[str, Any], vivos: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Lo que dicen las demás fuentes y no ha ganado."""
-    return [
-        {
-            "fuente": c.get("fuente"),
-            "valor": c.get("valor"),
-            "porque_importa": (
-                "Dos sistemas dicen cosas distintas del mismo cliente. Suele ser que "
-                "algo cambió y solo uno se enteró: merece una revisión, no un olvido."
-            ),
-        }
-        for c in vivos
-        if str(c.get("valor")) != str(ganador.get("valor"))
-    ]
 
 
 def componer_golden(

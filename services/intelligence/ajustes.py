@@ -218,6 +218,28 @@ class AjustesIntelligence(Settings):
     # revisan con cuidado, y revisar es lo que hace que esto valga.
     ia_variantes_maximas: int = Field(5, ge=1, le=20)
 
+    # ── Evaluación de la IA contra el modelo real ─────────────────────────
+    # Acierto mínimo por función. Por debajo, la ejecución lo marca y se avisa
+    # por el sistema de avisos de la casa.
+    ia_evaluacion_umbral: float = Field(0.9, ge=0.0, le=1.0)
+    # Cada cuántas horas se pasa sola, por tenant. 0 la apaga.
+    ia_evaluacion_cada_horas: int = Field(168, ge=0, le=8_760)
+    # A quién más se avisa si baja (identificadores de usuario separados por
+    # comas). Quien la pidió se avisa siempre.
+    ia_evaluacion_avisar_a: str = ""
+    # Cuántas ejecuciones se enseñan en la tendencia.
+    ia_evaluacion_historial: int = Field(20, ge=2, le=200)
+    # Cada cuánto mira el servicio a qué tenant le toca, en segundos.
+    ia_evaluacion_comprobar_s: int = Field(3600, ge=60, le=86_400)
+    # Cada cuánto se avanza una evaluación en curso, en segundos.
+    ia_evaluacion_avance_s: int = Field(5, ge=1, le=3_600)
+    # Casos por tanda: cada uno es una llamada al modelo de un par de segundos,
+    # y la tanda corre dentro de la tarea de fondo del servicio.
+    ia_evaluacion_casos_por_tanda: int = Field(4, ge=1, le=50)
+    # Horas tras las que una ejecución que no terminó (el worker murió) deja de
+    # bloquear la siguiente.
+    ia_evaluacion_caducidad_horas: int = Field(6, ge=1, le=168)
+
 
 # ── Cuáles se pueden afinar POR CLIENTE y cuáles no ───────────────────────
 #
@@ -365,6 +387,52 @@ registrar_claves(
             minimo=1,
             maximo=20,
             campo_settings="ia_variantes_maximas",
+        ),
+        ClaveAjuste(
+            clave="ia_evaluacion_umbral",
+            tipo="float",
+            descripcion="Acierto mínimo por función en la evaluación de la IA; por debajo se avisa",
+            minimo=0.0,
+            maximo=1.0,
+            campo_settings="ia_evaluacion_umbral",
+        ),
+        ClaveAjuste(
+            clave="ia_evaluacion_cada_horas",
+            tipo="int",
+            descripcion="Cada cuántas horas se evalúa la IA sola (0 la apaga)",
+            minimo=0,
+            maximo=8_760,
+            campo_settings="ia_evaluacion_cada_horas",
+        ),
+        ClaveAjuste(
+            clave="ia_evaluacion_avisar_a",
+            tipo="str",
+            descripcion="Usuarios (ids separados por comas) a los que se avisa si la IA baja del umbral",
+            campo_settings="ia_evaluacion_avisar_a",
+        ),
+        ClaveAjuste(
+            clave="ia_evaluacion_historial",
+            tipo="int",
+            descripcion="Evaluaciones de la IA que se enseñan en la tendencia",
+            minimo=2,
+            maximo=200,
+            campo_settings="ia_evaluacion_historial",
+        ),
+        ClaveAjuste(
+            clave="ia_evaluacion_casos_por_tanda",
+            tipo="int",
+            descripcion="Casos de la evaluación de la IA que se pasan en cada tanda",
+            minimo=1,
+            maximo=50,
+            campo_settings="ia_evaluacion_casos_por_tanda",
+        ),
+        ClaveAjuste(
+            clave="ia_evaluacion_caducidad_horas",
+            tipo="int",
+            descripcion="Horas tras las que una evaluación de la IA sin terminar deja de bloquear",
+            minimo=1,
+            maximo=168,
+            campo_settings="ia_evaluacion_caducidad_horas",
         ),
         ClaveAjuste(
             clave="ia_asistente_parecido_minimo",

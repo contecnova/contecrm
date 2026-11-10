@@ -163,6 +163,9 @@ class FijarMiPreferencia(BaseModel):
 
 class ConsumoOut(BaseModel):
     metrica: str
+    # De qué módulo es la fila. La cuota corta por módulo —cada servicio cuenta
+    # lo suyo—, así que el porcentaje sólo significa algo al lado de su módulo.
+    modulo: str = ""
     periodo: str
     consumido: int
     limite: int

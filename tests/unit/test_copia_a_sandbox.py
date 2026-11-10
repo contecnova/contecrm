@@ -7,7 +7,7 @@ copia. Aquí se comprueba el motor que cada servicio ejecuta sobre sus tablas:
   referencia de una tabla a otra sigue cuadrando en la copia;
 - lo que el modelo declara personal sale anonimizado, y el origen no se toca;
 - la copia parcial es por cuenta: la relación de un contacto con una cuenta que
-  la muestra deja fuera no se copia;
+  la muestra deja fuera no se copia, y los contactos van con sus cuentas;
 - una tabla con secretos no se copia nunca.
 """
 
@@ -132,6 +132,54 @@ def test_la_copia_parcial_es_por_cuenta(db: Any, tenant_id: UUID) -> None:
     # Que la muestra no sea ni todo ni nada, o la prueba no prueba nada.
     dentro = sum(en_la_muestra(semilla, c.id, 30) for c in cuentas)
     assert 0 < dentro < len(cuentas)
+
+
+def test_el_porcentaje_limita_tambien_los_contactos(db: Any, tenant_id: UUID) -> None:
+    """Los contactos no llevan `cuenta_id` y se copiaban TODOS con cualquier
+    porcentaje: justo los datos personales que la copia parcial quiere reducir.
+    Ahora van con su cuenta, y los sueltos por su propio identificador."""
+    from crmcore.datos.copia_sandbox import copiar_tenant, en_la_muestra, nuevo_identificador
+
+    from services.party.modelos import Contacto
+
+    semilla = "semilla-contactos"
+    pares = [_cuenta_y_contacto(db, tenant_id, f"Con {i}", f"k{i}@x.example") for i in range(12)]
+    sueltos = []
+    for i in range(12):
+        suelto = Contacto(
+            tenant_id=tenant_id,
+            nombre="Suelto",
+            nombre_completo=f"Suelto {i}",
+            email=f"s{i}@x.example",
+            clave_canonica=f"s{i}@x.example",
+        )
+        db.add(suelto)
+        sueltos.append(suelto)
+    db.flush()
+    destino = uuid4()
+    resultado = copiar_tenant(
+        db,
+        servicio="party",
+        origen=tenant_id,
+        destino=destino,
+        semilla=semilla,
+        porcentaje=30,
+        anonimizar=True,
+        conservar=set(),
+    )
+    assert not resultado["fallidas"], resultado["fallidas"]
+    # El contacto de una cuenta copiada llega con ella; el de una que se quedó
+    # fuera, no (salvo que su propio identificador caiga en la muestra).
+    for cuenta, contacto in pares:
+        esperado = en_la_muestra(semilla, cuenta.id, 30) or en_la_muestra(semilla, contacto.id, 30)
+        copia = db.get(Contacto, nuevo_identificador(semilla, contacto.id))
+        assert (copia is not None) == esperado
+    for suelto in sueltos:
+        copia = db.get(Contacto, nuevo_identificador(semilla, suelto.id))
+        assert (copia is not None) == en_la_muestra(semilla, suelto.id, 30)
+    copiados = db.execute(select(Contacto).where(Contacto.tenant_id == destino)).scalars().all()
+    # Y la cuenta de lo copiado: ni todos ni ninguno, o la prueba no prueba nada.
+    assert 0 < len(copiados) < len(pares) + len(sueltos), len(copiados)
 
 
 def test_una_tabla_con_secretos_no_se_copia(db: Any, tenant_id: UUID) -> None:

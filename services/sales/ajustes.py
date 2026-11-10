@@ -35,6 +35,12 @@ class AjustesSales(Settings):
     # deja los suyos, no los de una centralita.
     lead_dedupe_umbral_sugerencia: float = Field(0.85, ge=0.0, le=1.0)
     lead_dedupe_umbral_bloqueo: float = Field(0.97, ge=0.0, le=1.0)
+    # Los mismos dos umbrales, por objeto con el que se compara el lead
+    # (CRM-01.01.04.02): {lead|contacto: {sugerencia, bloqueo}}. Un lead que se
+    # parece a otro lead suele ser la misma persona rellenando dos veces; uno
+    # que se parece a un contacto puede ser un compañero de la misma empresa, y
+    # un tenant quiere exigir más ahí. Lo que no se diga sale de los generales.
+    lead_dedupe_umbral_por_objeto: dict[str, dict[str, float]] = Field(default_factory=dict)
     # Preguntar también a los contactos del maestro (`party`, por HTTP). Si no
     # contesta, el alta sigue y se dice que no se miró.
     lead_dedupe_contactos: bool = True
@@ -67,6 +73,12 @@ class AjustesSales(Settings):
     # Exigir motivo de pérdida normalizado al cerrar como perdida. Sin esto, el
     # análisis de pérdidas es una nube de texto libre imposible de agrupar.
     exigir_motivo_perdida: bool = True
+    # Quien da de alta una oportunidad sin decir de quién es queda como su
+    # dueño. Sin esto, la oportunidad no tiene comercial: no sale en «mías», no
+    # cuenta en su consecución y la compensación externa la manda sin reparto
+    # (medido el 09-11-2026: 160 de 162 ganadas sin dueño). Sólo personas: un
+    # proceso o un agente no son dueños de nada.
+    oportunidad_dueno_quien_crea: bool = True
     # Días sin actividad tras los que una oportunidad se marca como estancada,
     # cuando su etapa no declara uno propio.
     dias_estancamiento_defecto: int = Field(30, ge=1, le=365)
@@ -229,6 +241,21 @@ registrar_claves(
             minimo=0,
             maximo=1,
             campo_settings="lead_dedupe_umbral_bloqueo",
+        ),
+        ClaveAjuste(
+            clave="lead_dedupe_umbral_por_objeto",
+            tipo="json",
+            descripcion=(
+                "Umbrales de duplicado de lead por objeto comparado: {lead|contacto: "
+                "{sugerencia, bloqueo}}; lo que falte sale de los generales"
+            ),
+            campo_settings="lead_dedupe_umbral_por_objeto",
+        ),
+        ClaveAjuste(
+            clave="oportunidad_dueno_quien_crea",
+            tipo="bool",
+            descripcion="Quien da de alta una oportunidad sin dueño queda como su dueño",
+            campo_settings="oportunidad_dueno_quien_crea",
         ),
         ClaveAjuste(
             clave="lead_dedupe_contactos",

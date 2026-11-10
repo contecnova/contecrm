@@ -439,6 +439,29 @@ def primera_etapa(db: Session, pipeline_id: UUID) -> Etapa:
 # ── Oportunidades ─────────────────────────────────────────────────────────
 
 
+def _dueno_por_defecto(db: Session) -> UUID | None:
+    """Quien da de alta la oportunidad, si es una persona y el ajuste lo dice.
+
+    Medido el 09-11-2026: 160 de las 162 ganadas del tenant de la plataforma no
+    tenían dueño —nadie lo ponía al crearlas, y una cerrada queda bloqueada—,
+    así que la compensación externa las mandaba sin reparto. Un proceso, un
+    agente o la revisión periódica no son dueños de nada: esas se quedan sin él,
+    como antes, y se reparten con las reglas de siempre.
+    """
+    from crmcore.authz.principal import principal_actual
+    from crmcore.runtime import settings as rt
+
+    from services.sales.ajustes import ajustes
+
+    activo = rt.efectivo("oportunidad_dueno_quien_crea", db)
+    if activo is None:
+        activo = ajustes().oportunidad_dueno_quien_crea
+    if not activo:
+        return None
+    quien = principal_actual()
+    return quien.id if quien.tipo == "usuario" and quien.id is not None else None
+
+
 def crear_oportunidad_nueva(
     uow: UnidadDeTrabajo,
     *,
@@ -468,6 +491,8 @@ def crear_oportunidad_nueva(
             "La etapa no pertenece a ese pipeline", error_code="sales.etapa_de_otro_pipeline"
         )
 
+    if datos.get("owner_id") is None:
+        datos["owner_id"] = _dueno_por_defecto(uow.db)
     oportunidad = Oportunidad(
         tenant_id=tenant_id,
         nombre=nombre.strip(),

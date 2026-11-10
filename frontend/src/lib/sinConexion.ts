@@ -43,7 +43,7 @@ export interface Conflicto {
 export interface OperacionEncolada {
   id_cliente: string;
   usuario: string;
-  tipo: "crear" | "actualizar";
+  tipo: "crear" | "actualizar" | "borrar";
   metodo: string;
   /** La ruta tal cual se pidió: `/api/v1/contacts/…`. */
   ruta: string;
@@ -217,7 +217,7 @@ export function versionDe(etag: string | null | undefined): number | null {
  * Guarda en la cola una escritura que no pudo salir por falta de red.
  *
  * Devuelve `false` si no se puede encolar con garantías: una acción que no es
- * crear ni editar un registro, o una edición de la que no se sabe sobre qué
+ * crear, editar ni borrar un registro, o una edición de la que no se sabe sobre qué
  * versión se hizo — sin eso no se puede detectar un conflicto y el cambio de
  * otra persona desaparecería sin rastro. Entonces sigue el error de siempre.
  */
@@ -230,12 +230,16 @@ export async function encolar(peticion: {
   mirado: string;
 }): Promise<boolean> {
   const metodo = peticion.metodo.toUpperCase();
+  const deRegistro = RE_REGISTRO.exec(peticion.ruta);
+  // Borrar no lleva cuerpo: lo que se borra lo dice la ruta.
+  const borra = metodo === "DELETE" && Boolean(deRegistro);
   const campos =
     peticion.cuerpo && typeof peticion.cuerpo === "object"
       ? (peticion.cuerpo as Record<string, unknown>)
-      : null;
+      : borra
+        ? {}
+        : null;
   if (!campos || !usuarioActual) return false;
-  const deRegistro = RE_REGISTRO.exec(peticion.ruta);
   const deColeccion = RE_COLECCION.exec(peticion.ruta);
   let op: OperacionEncolada;
   const comun = {
@@ -274,6 +278,22 @@ export async function encolar(peticion: {
       servicio: await servicioDe(deRegistro[1] ?? ""),
       version_base: version,
       campos_base: base,
+    };
+  } else if (borra && deRegistro) {
+    // Borrar sin red (CRM-06.02.01.04). Con la versión leída, si la hay: al
+    // volver, si otra persona cambió el registro entre medias, el servidor
+    // contesta con un choque y se pregunta antes de borrar lo que no se vio.
+    // Sin versión se borra igual: va a la papelera y se recupera desde allí.
+    const leido = await leidoAntes(peticion.ruta, peticion.mirado);
+    op = {
+      ...comun,
+      campos: {},
+      tipo: "borrar",
+      recurso: deRegistro[1] ?? "",
+      registro_id: deRegistro[2] ?? null,
+      servicio: "",
+      version_base: versionDe(peticion.version) ?? leido?.version ?? null,
+      campos_base: {},
     };
   } else if (deColeccion && metodo === "POST") {
     op = {
@@ -315,6 +335,19 @@ export async function resolver(
 ): Promise<void> {
   const choque = op.conflicto;
   if (!choque) return;
+  // Un borrado que chocó no tiene campos que elegir: resolverlo es decidir
+  // borrar igualmente, sobre la versión que hay ahora.
+  if (op.tipo === "borrar") {
+    await almacen.poner({
+      ...op,
+      version_base: choque.version_servidor,
+      estado: "pendiente",
+      conflicto: undefined,
+      motivo: undefined,
+    });
+    avisar();
+    return;
+  }
   const campos: Record<string, unknown> = {};
   const base: Record<string, unknown> = { ...op.campos_base };
   for (const [c, v] of Object.entries(op.campos)) {
@@ -432,15 +465,17 @@ async function pasada(enviar: Enviar): Promise<Resultado> {
 
   /** Por la ruta de siempre, con `If-Match`: el servidor dice si chocó. */
   const porSuRuta = async (op: OperacionEncolada, version: number | null) => {
+    const borra = op.tipo === "borrar";
     const r = await enviar(op.ruta, {
       metodo: op.metodo,
-      cuerpo: op.campos,
+      cuerpo: borra ? undefined : op.campos,
       cabeceras: {
         "Idempotency-Key": op.id_cliente,
         ...(version !== null ? { "If-Match": `W/"${version}"` } : {}),
       },
     });
-    if (r.ok) {
+    if (r.ok || (borra && (r.estado === 404 || r.estado === 410))) {
+      // Borrar lo que ya no está consigue lo que se pedía: no es un rechazo.
       await almacen.quitar(op.id_cliente);
       res.enviadas += 1;
     } else if (r.estado === 409 || r.estado === 412) {
@@ -467,7 +502,7 @@ async function pasada(enviar: Enviar): Promise<Resultado> {
 
   try {
     for (const op of pendientes.filter(
-      (o) => o.tipo === "crear" || !o.servicio,
+      (o) => o.tipo === "crear" || o.tipo === "borrar" || !o.servicio,
     )) {
       await porSuRuta(op, op.version_base);
     }
@@ -565,6 +600,12 @@ export function iniciarSinConexion(): void {
   }
   // La primera pasada la lanza `fijarUsuario`, cuando ya se sabe quién entró.
   window.addEventListener("online", () => void sincronizar());
+  // La pantalla «Sin conexión» se carga aparte, al abrirla. Sin pedirla antes
+  // con red, sin red no se podía abrir —justo cuando hace falta—: medido el
+  // 10-11-2026, «Failed to fetch dynamically imported module». Se pide aquí
+  // con red y el service worker la guarda con el resto de la aplicación.
+  if (navigator.onLine)
+    void import("@/paginas/SinConexion").catch(() => undefined);
 }
 
 /**

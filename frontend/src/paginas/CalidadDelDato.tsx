@@ -4,7 +4,9 @@
  * CRM-01.01.04.06 — golden record compuesto de lo que dice cada fuente sobre la
  * ficha (linaje, lo que tiene hoy, las fichas fusionadas en ella y las unidas
  * por identidad), con reglas por campo guardadas y el resultado guardado con
- * su procedencia; «Aplicar a la ficha» lo escribe.
+ * su procedencia; «Aplicar a la ficha» lo escribe. También del lead, que vive
+ * en `sales`: sus fuentes son lo que tiene hoy, cada captura fusionada en él
+ * (su canal) y cada lead señalado como su duplicado.
  * CRM-01.01.01.08 — enriquecimiento por un proveedor declarado sobre el
  * conector de Integraciones: pedir, revisar campo a campo y aplicar con el
  * proveedor como procedencia en el linaje.
@@ -12,7 +14,7 @@
  * guardar el contacto (y por API desde otros canales); aquí se proponen las
  * parejas con sus señales y se unen.
  * CRM-01.01.04.02 — umbral de coincidencia por objeto, con lo que sale del
- * general marcado como tal.
+ * general marcado como tal; el lead, frente a otros leads y frente a contactos.
  * CRM-01.01.04.04 — direcciones: se normalizan al guardar; para lo que ya
  * estaba, ver qué cambiaría y aplicarlo.
  *
@@ -36,15 +38,34 @@ import { listar } from "@/lib/listados";
 import { cn } from "@/lib/utiles";
 
 const BASE = "/api/v1/calidad-dato";
+// El lead vive en `sales` y tiene sus mismas rutas colgadas de aquí.
+const BASE_LEADS = "/api/v1/leads/calidad-dato";
 const OBJETOS = ["cuenta", "contacto"] as const;
 type Objeto = (typeof OBJETOS)[number];
+// La ficha buena y sus reglas también para el lead (CRM-01.01.04.06).
+const OBJETOS_GOLDEN = [...OBJETOS, "lead"] as const;
+type ObjetoGolden = (typeof OBJETOS_GOLDEN)[number];
+
+function baseDe(objeto: ObjetoGolden): string {
+  return objeto === "lead" ? BASE_LEADS : BASE;
+}
+
+function enlaceDe(objeto: ObjetoGolden, id: string): string {
+  if (objeto === "cuenta") return `/cuentas/${id}`;
+  if (objeto === "contacto") return `/contactos/${id}`;
+  return `/abrir/lead/${id}`;
+}
 
 interface Candidata {
-  objeto: Objeto;
+  objeto: ObjetoGolden;
   objeto_id: string;
   nombre: string;
-  fusionadas: number;
-  unidas: number;
+  // En un lead: las capturas fusionadas en él y los leads señalados como su
+  // duplicado.
+  fusionadas?: number;
+  unidas?: number;
+  capturas?: number;
+  duplicados?: number;
   compuesto_at: string | null;
   aplicado_at: string | null;
 }
@@ -124,12 +145,18 @@ function GoldenRecord() {
   const [trabajando, setTrabajando] = useState(false);
 
   const cargar = useCallback(() => {
-    listar<Candidata>(`${BASE}/golden/candidatas?limite=50`)
-      .then(setCandidatas)
-      .catch((e) => {
-        setCandidatas([]);
-        setFallo(e);
-      });
+    // Las de `party` y los leads de `sales`, cada uno por su lado: si uno no
+    // contesta, lo del otro se enseña igual y el fallo se dice.
+    void Promise.allSettled([
+      listar<Candidata>(`${BASE}/golden/candidatas?limite=50`),
+      listar<Candidata>(`${BASE_LEADS}/golden/candidatas?limite=50`),
+    ]).then((r) => {
+      setCandidatas(
+        r.flatMap((x) => (x.status === "fulfilled" ? x.value : [])),
+      );
+      const caido = r.find((x) => x.status === "rejected");
+      setFallo(caido && caido.status === "rejected" ? caido.reason : null);
+    });
   }, []);
   useEffect(cargar, [cargar]);
 
@@ -138,10 +165,17 @@ function GoldenRecord() {
     setFallo(null);
     setAviso("");
     try {
-      const r = await llamar<Golden>(
-        `${BASE}/golden/${c.objeto}/${c.objeto_id}/componer`,
-        { metodo: "POST", cuerpo: { aplicar } },
-      );
+      const opciones = { metodo: "POST" as const, cuerpo: { aplicar } };
+      const r =
+        c.objeto === "lead"
+          ? await llamar<Golden>(
+              `${BASE_LEADS}/golden/lead/${c.objeto_id}/componer`,
+              opciones,
+            )
+          : await llamar<Golden>(
+              `${BASE}/golden/${c.objeto}/${c.objeto_id}/componer`,
+              opciones,
+            );
       setAbierta(c);
       setGolden(r.datos);
       if (aplicar)
@@ -190,7 +224,7 @@ function GoldenRecord() {
               <Casilla>
                 <Link
                   className="text-ink hover:text-accent hover:underline"
-                  to={`/${c.objeto === "cuenta" ? "cuentas" : "contactos"}/${c.objeto_id}`}
+                  to={enlaceDe(c.objeto, c.objeto_id)}
                 >
                   {c.nombre || c.objeto_id.slice(0, 8)}
                 </Link>
@@ -198,8 +232,12 @@ function GoldenRecord() {
                   {t(`calidadDelDato.objetos.${c.objeto}`)}
                 </span>
               </Casilla>
-              <Casilla className="text-center">{c.fusionadas}</Casilla>
-              <Casilla className="text-center">{c.unidas}</Casilla>
+              <Casilla className="text-center">
+                {c.fusionadas ?? c.capturas ?? 0}
+              </Casilla>
+              <Casilla className="text-center">
+                {c.unidas ?? c.duplicados ?? 0}
+              </Casilla>
               <Casilla enUnaLinea>
                 {c.compuesto_at
                   ? fechaHora(c.compuesto_at)
@@ -309,7 +347,7 @@ interface Regla {
 
 function ReglasSupervivencia() {
   const { t } = useTranslation();
-  const [objeto, setObjeto] = useState<Objeto>("cuenta");
+  const [objeto, setObjeto] = useState<ObjetoGolden>("cuenta");
   const [datos, setDatos] = useState<{
     reglas: Regla[];
     campos: string[];
@@ -322,7 +360,7 @@ function ReglasSupervivencia() {
 
   const cargar = useCallback(() => {
     llamar<{ reglas: Regla[]; campos: string[]; estrategias: string[] }>(
-      `${BASE}/golden/reglas/${objeto}`,
+      `${baseDe(objeto)}/golden/reglas/${objeto}`,
     )
       .then((r) => setDatos(r.datos))
       .catch(setFallo);
@@ -342,7 +380,7 @@ function ReglasSupervivencia() {
     );
     try {
       await llamar(
-        `${BASE}/golden/reglas/${objeto}/${encodeURIComponent(campo)}`,
+        `${baseDe(objeto)}/golden/reglas/${objeto}/${encodeURIComponent(campo)}`,
         {
           metodo: "PUT",
           cuerpo: { estrategia, confianza_por_fuente: numeros, activa: true },
@@ -357,7 +395,7 @@ function ReglasSupervivencia() {
   async function quitar(r: Regla) {
     try {
       await llamar(
-        `${BASE}/golden/reglas/${objeto}/${encodeURIComponent(r.campo)}`,
+        `${baseDe(objeto)}/golden/reglas/${objeto}/${encodeURIComponent(r.campo)}`,
         { metodo: "DELETE" },
       );
       cargar();
@@ -377,9 +415,12 @@ function ReglasSupervivencia() {
         <select
           className="input-base"
           value={objeto}
-          onChange={(e) => setObjeto(e.target.value as Objeto)}
+          onChange={(e) => {
+            setDatos(null);
+            setObjeto(e.target.value as ObjetoGolden);
+          }}
         >
-          {OBJETOS.map((o) => (
+          {OBJETOS_GOLDEN.map((o) => (
             <option key={o} value={o}>
               {t(`calidadDelDato.objetos.${o}`)}
             </option>
@@ -1136,52 +1177,102 @@ function Enriquecimiento() {
 // ── Umbrales por objeto ───────────────────────────────────────────────────
 
 const TIPOS_UMBRAL = ["sugerencia", "bloqueo", "propuesta"] as const;
-type Umbrales = Record<
-  Objeto,
-  Record<(typeof TIPOS_UMBRAL)[number], { valor: number; propio: boolean }>
+type TipoUmbral = (typeof TIPOS_UMBRAL)[number];
+type UmbralesDe = Record<
+  string,
+  Partial<Record<TipoUmbral, { valor: number; propio: boolean }>>
 >;
+
+/**
+ * Cada fila es un objeto que se compara, y quién guarda su umbral. Cuentas y
+ * contactos los guarda `party`; el lead, `sales`, y se compara con otros
+ * leads y con los contactos del maestro (CRM-01.01.04.02). El lead no tiene
+ * cola de propuestas: su columna sale vacía.
+ */
+const FILAS_UMBRAL = [
+  { clave: "cuenta", base: BASE, objeto: "cuenta" },
+  { clave: "contacto", base: BASE, objeto: "contacto" },
+  { clave: "leadLead", base: BASE_LEADS, objeto: "lead" },
+  { clave: "leadContacto", base: BASE_LEADS, objeto: "contacto" },
+] as const;
+
+/** Cada servicio con su ruta escrita entera: así se sabe a cuál se pide. */
+function pedirUmbrales(base: string, opciones?: Parameters<typeof llamar>[1]) {
+  return base === BASE_LEADS
+    ? llamar<UmbralesDe>(`${BASE_LEADS}/umbrales-duplicado`, opciones)
+    : llamar<UmbralesDe>(`${BASE}/umbrales-duplicado`, opciones);
+}
 
 function Umbrales() {
   const { t } = useTranslation();
-  const [umbrales, setUmbrales] = useState<Umbrales | null>(null);
+  const [umbrales, setUmbrales] = useState<Record<string, UmbralesDe> | null>(
+    null,
+  );
   const [propios, setPropios] = useState<Record<string, string>>({});
+  const [tocados, setTocados] = useState<Set<string>>(new Set());
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
 
-  function tomar(u: Umbrales) {
-    setUmbrales(u);
-    const p: Record<string, string> = {};
-    for (const o of OBJETOS)
-      for (const tipo of TIPOS_UMBRAL)
-        if (u[o][tipo].propio) p[`${o}.${tipo}`] = String(u[o][tipo].valor);
-    setPropios(p);
+  function tomar(base: string, u: UmbralesDe) {
+    setUmbrales((previo) => ({ ...(previo ?? {}), [base]: u }));
+    setPropios((previo) => {
+      const p = { ...previo };
+      for (const f of FILAS_UMBRAL) {
+        if (f.base !== base) continue;
+        for (const tipo of TIPOS_UMBRAL) {
+          const u1 = u[f.objeto]?.[tipo];
+          const clave = `${f.clave}.${tipo}`;
+          if (u1?.propio) p[clave] = String(u1.valor);
+          else delete p[clave];
+        }
+      }
+      return p;
+    });
   }
 
   useEffect(() => {
-    llamar<Umbrales>(`${BASE}/umbrales-duplicado`)
-      .then((r) => tomar(r.datos))
-      .catch(setFallo);
+    // Cada servicio por su lado: si quien mira no puede ver los leads, las
+    // filas de cuentas y contactos salen igual.
+    for (const base of [BASE, BASE_LEADS])
+      pedirUmbrales(base)
+        .then((r) => tomar(base, r.datos))
+        .catch((e) => {
+          setUmbrales((previo) => previo ?? {});
+          if (base === BASE) setFallo(e);
+        });
   }, []);
 
   async function guardar() {
     setFallo(null);
-    const por_objeto: Record<string, Record<string, number>> = {};
-    for (const [clave, v] of Object.entries(propios)) {
-      if (!v.trim()) continue;
-      const [o = "", tipo = ""] = clave.split(".");
-      por_objeto[o] = { ...(por_objeto[o] ?? {}), [tipo]: Number(v) };
-    }
+    setAviso("");
     try {
-      const r = await llamar<Umbrales>(`${BASE}/umbrales-duplicado`, {
-        metodo: "PUT",
-        cuerpo: { por_objeto },
-      });
-      tomar(r.datos);
+      for (const base of tocados) {
+        const por_objeto: Record<string, Record<string, number>> = {};
+        for (const f of FILAS_UMBRAL) {
+          if (f.base !== base) continue;
+          for (const tipo of TIPOS_UMBRAL) {
+            const v = propios[`${f.clave}.${tipo}`] ?? "";
+            if (!v.trim()) continue;
+            por_objeto[f.objeto] = {
+              ...(por_objeto[f.objeto] ?? {}),
+              [tipo]: Number(v),
+            };
+          }
+        }
+        const r = await pedirUmbrales(base, {
+          metodo: "PUT",
+          cuerpo: { por_objeto },
+        });
+        tomar(base, r.datos);
+      }
+      setTocados(new Set());
       setAviso(t("calidadDelDato.umbralesGuardados"));
     } catch (e) {
       setFallo(e);
     }
   }
+
+  const filas = FILAS_UMBRAL.filter((f) => umbrales?.[f.base]?.[f.objeto]);
 
   return (
     <section className="card mb-4 p-4">
@@ -1203,41 +1294,56 @@ function Umbrales() {
               ...TIPOS_UMBRAL.map((x) => t(`calidadDelDato.tiposUmbral.${x}`)),
             ]}
           >
-            {OBJETOS.map((o) => (
-              <tr key={o} className="border-b border-ink-dim/30 last:border-0">
-                <Casilla enUnaLinea>{t(`calidadDelDato.objetos.${o}`)}</Casilla>
-                {TIPOS_UMBRAL.map((tipo) => (
-                  <Casilla key={tipo}>
-                    <input
-                      type="number"
-                      min={0}
-                      max={1}
-                      step="0.01"
-                      className="input-base w-24"
-                      aria-label={`${t(`calidadDelDato.objetos.${o}`)} · ${t(`calidadDelDato.tiposUmbral.${tipo}`)}`}
-                      placeholder={String(umbrales[o][tipo].valor)}
-                      value={propios[`${o}.${tipo}`] ?? ""}
-                      onChange={(e) =>
-                        setPropios({
-                          ...propios,
-                          [`${o}.${tipo}`]: e.target.value,
-                        })
-                      }
-                    />
-                    <span className="block text-rotulo text-ink-faint">
-                      {umbrales[o][tipo].propio
-                        ? t("calidadDelDato.propio")
-                        : `${umbrales[o][tipo].valor} ${t("calidadDelDato.general")}`}
-                    </span>
-                  </Casilla>
-                ))}
-              </tr>
-            ))}
+            {filas.map((f) => {
+              const etiqueta = t(`calidadDelDato.filasUmbral.${f.clave}`);
+              return (
+                <tr
+                  key={f.clave}
+                  className="border-b border-ink-dim/30 last:border-0"
+                >
+                  <Casilla enUnaLinea>{etiqueta}</Casilla>
+                  {TIPOS_UMBRAL.map((tipo) => {
+                    const actual = umbrales[f.base]?.[f.objeto]?.[tipo];
+                    if (!actual)
+                      return (
+                        <Casilla key={tipo} className="text-ink-faint">
+                          —
+                        </Casilla>
+                      );
+                    const clave = `${f.clave}.${tipo}`;
+                    return (
+                      <Casilla key={tipo}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          className="input-base w-24"
+                          aria-label={`${etiqueta} · ${t(`calidadDelDato.tiposUmbral.${tipo}`)}`}
+                          placeholder={String(actual.valor)}
+                          value={propios[clave] ?? ""}
+                          onChange={(e) => {
+                            setPropios({ ...propios, [clave]: e.target.value });
+                            setTocados(new Set([...tocados, f.base]));
+                          }}
+                        />
+                        <span className="block text-rotulo text-ink-faint">
+                          {actual.propio
+                            ? t("calidadDelDato.propio")
+                            : `${actual.valor} ${t("calidadDelDato.general")}`}
+                        </span>
+                      </Casilla>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </Rejilla>
           <div className="mt-2 flex items-center gap-3">
             <button
               type="button"
               className="btn-primary"
+              disabled={tocados.size === 0}
               onClick={() => void guardar()}
             >
               {t("calidadDelDato.guardarUmbrales")}
