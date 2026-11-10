@@ -6,6 +6,10 @@ from typing import Any
 
 from crmcore.service import crear_servicio
 
+# Registra los ajustes propios del servicio al arrancar. Sin esto sólo se
+# registraban cuando algo los importaba dentro de una función, y la consola de
+# Administrar no veía ninguna de las 27 (medido el 10-11-2026).
+from services.integration import ajustes  # noqa: F401
 from services.integration.api import ROUTERS
 from services.integration.api_buzon import ROUTERS_BUZON
 from services.integration.api_compensacion import ROUTERS_COMPENSACION

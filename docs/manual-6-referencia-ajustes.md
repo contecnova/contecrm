@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**349 ajustes** en total, de los cuales **126** son editables en caliente por tenant.
+**358 ajustes** en total, de los cuales **133** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -75,6 +75,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `FACTURACION_FORMATO_ENVIO` | 🔥 `facturacion_formato_envio` | `json` |  | En qué forma viaja el corte: `json` (una lista de filas) o `csv`. |
 | `FACTURACION_MAX_INTENTOS` | 🔥 `facturacion_max_intentos` | `5` | 1–50 | Intentos de envío antes de dejar el corte en «fallido» y dejar de reintentarlo solo. Se puede reenviar a mano. |
 | `TAREA_FACTURACION_INTERVALO_S` | — | `3600` | 60–86400 | Cada cuánto se toma el corte del periodo en curso y se mandan los periodos ya cerrados. El corte de un mes es el ÚLTIMO que se tomó dentro de ese mes, así que el intervalo es también lo que puede faltar del final del periodo. |
+| `SANDBOX_COPIA_AVISO_PCT` | 🔥 `sandbox_copia_aviso_pct` | `20` | 1–100 | Porcentaje de los datos a partir del cual preparar una copia avisa de que se copia de más: con el 5 % se prueba igual de bien y hay veinte veces menos que proteger. Era un 20 en `sandboxes.plan_de_copia`; cuánto riesgo se acepta en un entorno de pruebas lo decide cada empresa. |
 | `JERARQUIA_INDICADORES` | 🔥 `jerarquia_indicadores` |  |  | Qué indicadores agrega la matriz de las empresas hijas que se los han COMPARTIDO: cada uno es `{nombre, ruta, campo}` — una ruta GET de la API del CRM y el campo numérico de su respuesta que se suma. Sólo cifras, y sólo de las hijas que lo han autorizado. |
 
 ## Bus de eventos, outbox y webhooks
@@ -229,6 +230,10 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `REVERIFICACION_TOPE` | — | `50` | 1–100000 | Candidatos que se reverifican de una tacada. |
 | `PLAN_DIAS_SIN_TOCAR` | — | `21` | 1–3650 | Días sin tocar un plan conjunto tras los que se avisa. |
 | `CADENCIA_MINIMO_DIAS` | — | `30` | 1–3650 | Duración mínima de una cadencia, en días. |
+| `CADENCIA_HORA_DESDE` | 🔥 `cadencia_hora_desde` | `8` | 0–23 | La ventana de envío de las cadencias (CRM-03.03.01.01), en horas del reloj del tenant —su `zona_horaria`, no UTC—: antes de `desde` se espera, a partir de `hasta` pasa al día siguiente, y lo que se recoloca va a `reprograma`. Eran 8, 19 y 9 escritos en `cadencias` y evaluados en UTC. |
+| `CADENCIA_HORA_HASTA` | 🔥 `cadencia_hora_hasta` | `19` | 1–24 |  |
+| `CADENCIA_HORA_REPROGRAMA` | 🔥 `cadencia_hora_reprograma` | `9` | 0–23 |  |
+| `CONVIVENCIA_MEDIDA_FRESCA_DIAS` | 🔥 `convivencia_medida_fresca_dias` | `30` | 1–365 | Días que vale una medida de la convivencia con el sistema heredado: más vieja, el avance de la migración no es fresco y el informe no es concluyente. Era un 30 en `integration.convivencia`; depende de cada cuánto mide la empresa. |
 | `MARCADOR_ABANDONO_MAXIMO_PCT` | — | `3.0` | 0.0–100.0 | Abandono máximo tolerado en el marcador, en porcentaje. Lo fija la ley en varios países; por eso se puede ajustar pero no quitar. |
 | `MARCADOR_GRABAR_POR_POLITICA` | 🔥 `marcador_grabar_por_politica` | `False` |  | Si la política del tenant es grabar las llamadas del marcador. Apagado por defecto: grabar exige avisar y un plazo de borrado, y eso lo decide quien opera, no el producto. |
 | `MARCADOR_ESPERA_S` | 🔥 `marcador_espera_s` | `20.0` | 1.0–120.0 | Segundos que el marcador espera a la telefonía (integration) al llamar. |
@@ -302,6 +307,10 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `APROBACION_ENLACE_POR_CORREO` | 🔥 `aprobacion_enlace_por_correo` | `True` |  | Si al abrirse una etapa se manda a cada aprobador su enlace por correo. Apagado, el enlace sólo sale cuando alguien lo pide desde la ficha. |
 | `APROBACION_ENLACE_INTENTOS_POR_IP` | — | `30` | 1–10000 | Intentos que admite una misma IP contra la página pública del enlace, por ventana. Muy por debajo del límite general: quien prueba tokens al azar hace muchas peticiones, y quien abre su correo hace dos o tres. |
 | `APROBACION_ENLACE_VENTANA_S` | — | `3600` | 60–86400 |  |
+| `CAPTURA_PUBLICA_INTENTOS_POR_IP` | — | `30` | 1–10000 | El formulario público de captura (`POST /captura/{tenant}/{clave}`) y los componentes embebidos los llama el navegador de un desconocido desde una web que no es nuestra. El gateway los deja pasar con estos topes, que son de la puerta: detrás de él todas las peticiones llegan con SU dirección, y… |
+| `CAPTURA_PUBLICA_VENTANA_S` | — | `3600` | 60–86400 |  |
+| `CAPTURA_PUBLICA_MAX_BYTES` | — | `16384` | 1024–1048576 | Tamaño máximo del cuerpo, en bytes. Un formulario de contacto son unos cientos de bytes; el máximo general (`MAX_BODY_MB`) está pensado para importaciones y adjuntos, y dejarlo aquí es dejar que un desconocido mande megas a una ruta que escribe en la base. |
+| `INCRUSTABLE_ORIGENES` | — | `*` |  | Desde qué webs se admiten, separadas por comas (`https://www.cliente.com,https://tienda.cliente.com`). `*` = desde cualquiera, que es el valor de serie: lo que autoriza es la clave del canal o el token del componente, no el origen, y un formulario puede vivir en cualquier web del cliente.… |
 | `AUTOMATIZACION_MAX_VUELTAS` | — | `200` | 1–10000 | Vueltas máximas de un `para_cada`. Una automatización que recorre una colección no puede colgar la petición que la disparó: guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y el usuario vería un formulario congelado sin saber por qué. Cuando se corta se DICE en la… |
 | `AUTOMATIZACION_MAX_ANIDAMIENTO` | — | `3` | 1–10 | Anidamiento máximo de ramas y bucles. Tres niveles cubren todo lo que alguien construye en una interfaz; más que eso es un proceso, y para eso está el motor de procesos, que sabe reanudar y compensar. |
 | `AUTOMATIZACION_DIFERIDA_ESPERA_S` | 🔥 `automatizacion_diferida_espera_s` | `0` | 0–86400 | Cuánto espera una automatización «diferida» después de confirmarse el disparo. Cero ya la separa de la transacción que la disparó —corre en la vuelta siguiente del planificador, nunca dentro de quien guardó—; más da margen a que alguien deshaga lo que acaba de hacer antes de que salga el correo. |

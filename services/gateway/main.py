@@ -6,11 +6,12 @@ import time
 from typing import Any
 
 from crmcore.config import get_settings
-from crmcore.errors import CuotaAgotada, NoAutenticado
+from crmcore.errors import CuotaAgotada, NoAutenticado, Prohibido
 from crmcore.http.problems import manejar_error_dominio
 from crmcore.service import crear_servicio
+from starlette.responses import Response
 
-from services.gateway import api, claves, llamadas
+from services.gateway import api, claves, incrustable, llamadas
 from services.gateway.api import ROUTERS, ROUTERS_SIN_PREFIJO, arrancar, parar
 
 app = crear_servicio(
@@ -28,6 +29,46 @@ app = crear_servicio(
     necesita_bus=False,
     necesita_db=False,
 )
+
+
+@app.middleware("http")
+async def lo_que_se_incrusta(request: Any, siguiente: Any) -> Any:
+    """El CORS de la captura pública y de los componentes embebidos.
+
+    Va como middleware y POR FUERA del CORS general —lo añade `crear_servicio`
+    antes que éste, así que queda dentro—, porque la pregunta previa del
+    navegador (`OPTIONS`) la contesta el CORS general por su cuenta y, con un
+    origen que no es la consola, la contestaba con un 400: el formulario de la
+    web de un cliente no llegaba ni a salir.
+
+    Aquí el origen es la web de cualquier cliente y la cookie del CRM no tiene
+    nada que hacer: se admite el origen según `INCRUSTABLE_ORIGENES` y **nunca
+    con credenciales**. Una web no admitida recibe un 403 con el formato de
+    siempre, también en la pregunta previa. Sin cabecera `Origin` no se mira:
+    no es un navegador, y lo que autoriza es la clave o el token.
+    """
+    if not incrustable.es_incrustable(request.url.path):
+        return await siguiente(request)
+    origen = request.headers.get("origin", "")
+    if origen and not incrustable.origen_admitido(origen):
+        return await manejar_error_dominio(
+            request,
+            Prohibido(
+                "Esta web no está entre las que pueden llamar a esta dirección",
+                error_code="incrustable.origen_no_admitido",
+            ),
+        )
+    if request.method == "OPTIONS" and request.headers.get("access-control-request-method"):
+        return Response(status_code=204, headers=incrustable.cabeceras_cors(origen or "*"))
+    respuesta = await siguiente(request)
+    if origen:
+        # El CORS general, si el origen también es de la consola, ya ha puesto
+        # las suyas con credenciales: se cambian por éstas.
+        for nombre in ("access-control-allow-credentials", "access-control-allow-origin"):
+            if nombre in respuesta.headers:
+                del respuesta.headers[nombre]
+        respuesta.headers.update(incrustable.cabeceras_cors(origen))
+    return respuesta
 
 
 @app.middleware("http")

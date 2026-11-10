@@ -6024,19 +6024,503 @@ empresa), `test_restablecer_contrasena.py::test_el_alta_y_el_cambio_exigen_el_mi
   catálogos cerrados que el código interpreta valor a valor (tipos de
   componente, de nodo, de paso, acciones): un valor nuevo sin su rama sería un
   hueco.
-- **Candidatas a vocabulario, siguiente bloque** (se validan contra la
-  constante y no tienen rama de código, sólo son etiquetas de negocio):
-  `ingresos.ROLES_COMPRA`, `proveedores.FUNCIONES_CONTACTO`,
-  `party.servicio.ROLES_EQUIPO`, `cuenta_360.RELACIONES`,
-  `marcador.RESULTADOS`, `postventa.MOTIVOS_SUSPENSION`. Las de party y service
-  piden además la pantalla por servicio (hoy «Vocabularios de negocio» sólo
-  lista los de ventas). Y umbrales que un administrador podría querer:
-  `transcripcion` 40 %, `caso_semantico` 15 %, `convivencia` 30 días,
-  `sandboxes` 20 %.
-- **Avisado, no tocado**: la ventana horaria de las cadencias
-  (`cadencias._siguiente_laborable`: 8, 9 y 19 h) se evalúa sobre el instante
-  en UTC, no en la zona del tenant; pasarla a ajuste sin arreglar eso sería
-  dar a elegir una hora que no es la que se aplica.
+- **Candidatas a vocabulario y umbrales que quedaban**: hechos en el bloque
+  siguiente, «Vocabularios de la casa, cuatro umbrales y la ventana de las
+  cadencias» (más abajo), con `postventa.MOTIVOS_SUSPENSION` cerrada y su
+  motivo.
+- **La ventana horaria de las cadencias**, que se evaluaba en UTC: arreglada
+  en ese mismo bloque.
+
+### Poblar la aplicación entera, y lo que se queda vacío a propósito (10-11-2026)
+
+Una demostración se juzga por la pantalla que sale vacía. Recorriendo las 240
+rutas de listado que declara `frontend/src/lib/recursos.ts` contra el tenant de
+la plataforma salían **15 pestañas vacías** y, además, **160 de las 162
+oportunidades ganadas sin dueño**, con lo que las comisiones y la compensación
+externa salían sin reparto. Después de sembrar quedan **10**, y las diez por
+un motivo que se puede decir.
+
+**Cómo se puebla, en orden.** Los tres guiones de siempre, y dos pasos nuevos:
+
+```bash
+# 1. La empresa con volumen e historia (ORM, por servicio)
+python scripts/sembrar_empresa.py --slug acme --email direccion@acme.example --contrasena "…"
+# 2. La configuración y los catálogos (por la API)
+python scripts/sembrar_configuracion.py --tenant acme --email direccion@acme.example \
+    --contrasena "…" --aprobador ventas.oem@acme.example
+# 3. Dueño a las oportunidades que no lo tienen (también a las cerradas)
+python scripts/sembrar_empresa.py --parte duenos --slug acme --tenant <uuid>
+# 4. Las pestañas que quedaban vacías y las comisiones con reparto
+python scripts/sembrar_configuracion.py --tenant acme --email … --contrasena "…" \
+    --aprobador ventas.oem@acme.example --parte pestanas_que_quedaban
+```
+
+- **Dueños (`--parte duenos`).** Por la API no se podía: una oportunidad
+  cerrada está bloqueada, y `sembrar_duenos` se las saltaba —con razón— y
+  además sólo miraba la primera página. Se rellena por el ORM y **sólo lo
+  vacío**: el dueño es el de la cuenta si quien la lleva vende (rol
+  `comercial` o `responsable_ventas`); si no, un comercial del organigrama
+  elegido con la semilla **por cuenta**, así que todas las ventas de un
+  cliente caen en la misma persona y la misma empresa da el mismo reparto en
+  cada pasada. No toca `updated_at`: el dueño no es un cambio de hoy. Medido
+  en la plataforma: 554 oportunidades, 438 por el dueño de su cuenta y 116 por
+  semilla; la segunda pasada, cero. En Docker, `sales` no lee `identity` ni
+  `party`: la parte `usuarios` con `--enlaces` escribe `comerciales` y
+  `venden`, y `duenos_cuenta` se pasa en el mismo fichero; sin él se reparte
+  sólo por semilla y **lo dice**. `--comprobar` añade «toda oportunidad ganada
+  tiene dueño».
+- **Comisiones.** Las liquidaciones salían a 0,00 € y sin líneas: el servicio
+  no lee las ventas —las trae quien llama— y el sembrado no traía ninguna. Se
+  siembra un plan **sobre cierre** (`cierre_<año>`, escalado marginal 2 % hasta
+  100.000 € al mes y 3 % por encima) —el `directa_<año>` se devenga al cobrar
+  y comisionar sobre él lo ganado sin cobrar contradiría su propia
+  declaración—, se asigna a quien vende y se liquida **el último mes
+  cerrado** con sus ventas ganadas como operaciones. Medido: cuatro
+  liquidaciones con 37 líneas.
+- **Bandeja de aprobaciones.** Es de cada persona, y quien pide no se aprueba
+  a sí mismo: pedida por quien siembra no llega nunca a su bandeja, y el
+  servicio rechaza la etapa. La pide la segunda persona de `--aprobador`; sin
+  ella no se siembra y se dice. Y la aprobación de descuento que ya sembraba
+  `las_que_siguen_vacias` se duplicaba en cada pasada —ocho copias— y tenía
+  por aprobador al primero del listado de usuarios, que era la auditora, de
+  solo lectura: ahora sale del organigrama y lleva `unico_por`.
+- **Firma.** Los sobres van por la oportunidad (`enviar-a-firma`) y **sin
+  mandar**: no hay proveedor real y mandarlo llamaría afuera, así que quedan en
+  borrador. Hacía falta un proveedor que identifique por correo —el sembrado
+  sólo admitía SMS, vídeo o certificado y la oportunidad no pasa
+  identificación, así que **todo envío desde la ficha salía rechazado**— y una
+  regla que lo elija. La firma en mano es la conformidad de dos pedidos con el
+  comercial de la cuenta como testigo, con consentimiento y un trazo que pasa
+  el mínimo.
+- **Audiencia publicitaria.** Una conexión «Plataforma de anuncios» con sus
+  tres operaciones y una audiencia sobre «Perfiles técnicos»; **no se
+  sincroniza**, porque llamaría afuera, y se queda en borrador.
+- **Programación de integraciones.** Dos lecturas del ERP —clientes cada día,
+  pedidos cada hora— **en pausa**: la conexión sembrada apunta a un dominio de
+  verdad y activarla haría que el programador lo llamase en cada vuelta.
+
+Todo se puede repetir: cada alta mira antes si ya está (por clave, por título,
+por el registro de origen o, si no hay listado, por el 409 de la base), y
+medido en tres pasadas la tercera crea **cero**.
+
+**Lo que queda vacío, y por qué:**
+
+| Pestaña | Por qué |
+|---|---|
+| eventos/fallidos, marketing/papelera, encargos/estados-sin-mapear | Son listas de problemas: vacías es lo sano. Sembrarlas sería fingir una avería. |
+| eventos/archivo | Se llena cuando un evento pasa su retención y se archiva; ninguno la ha pasado todavía. |
+| integraciones/registros-recibidos | Llegan cuando un sistema de fuera contesta a una lectura; las lecturas están en pausa porque no hay ERP conectado. |
+| dispositivos-confianza | Son de una persona y de su navegador; no se crean desde fuera. |
+| proveedores-identidad | SAML y OIDC apagados en esta instalación; un proveedor falso pondría un botón de entrar que no funciona. |
+| extensiones/firmantes | Dar por buena una clave pública es una decisión de seguridad de una persona; sembrarla sería enseñar a confiar en algo que nadie ha verificado. |
+| aislamiento/migraciones | Planificar un cambio de aislamiento es una operación sobre un tenant de verdad, no un dato de ejemplo. |
+| captura/recepciones | Ya no está vacía: el 10-11-2026 se dejaron cuatro recepciones de demostración en el canal `web-demostracion`, entradas por las dos puertas desde otra web (abajo). |
+
+**Las dos puertas de la captura** estaban rotas el 10-11-2026 —la pública
+contestaba 404 desde fuera y el formulario incrustado 401— y ya funcionan: ver
+«La captura desde la web y los componentes incrustables» más abajo. Medido en
+la plataforma: el formulario público y el incrustado, llamados desde otra web,
+dejan cada uno su recepción `creado` y su lead.
+
+Las cinco rutas que el recorrido da como «fallan» (`campanas/calendario`,
+`creditos-servicio/cumplimiento`, `encargos/cumplimiento`, `encuestas/resumen`,
+`sla/cumplimiento`) no están vacías ni rotas: exigen `desde` y la sonda no lo
+manda; la pantalla sí.
+
+### Vocabularios de la casa, cuatro umbrales y la ventana de las cadencias (10-11-2026)
+
+**La ventana de envío de las cadencias.** `cadencias._siguiente_laborable`
+comparaba 8, 9 y 19 con `momento.hour` sobre un instante en UTC: en Madrid la
+ventana iba de 9 a 20 en invierno y de 10 a 21 en verano, y el día de la
+semana también se miraba en UTC. Ahora:
+
+- `cadencias.VentanaEnvio(zona, desde, hasta, reprograma)` y
+  `ventana_envio(db)`, que lee `crmcore.fechas.zona_del_tenant(db)` y tres
+  ajustes del núcleo (`config_parts/_limits.py` + `runtime/keys.py`):
+  `cadencia_hora_desde` (8), `cadencia_hora_hasta` (19) y
+  `cadencia_hora_reprograma` (9). En el núcleo y no en `services/sales/ajustes.py`
+  para que la consola de **Ajustes** los liste (ver el hallazgo de abajo). Una
+  ventana vacía o al revés (`desde >= hasta`) avisa en el log
+  (`cadencias.ventana_invalida`) y usa la de fábrica; un `reprograma` fuera de
+  la ventana se recoloca a `desde`.
+- `_siguiente_laborable(momento, solo_laborable, ventana=None)` convierte a la
+  zona, recoloca con `datetime.combine(dia, time(reprograma), tzinfo=zona)`
+  —las 9 son las 9 de ese día, con el desfase que tenga— y devuelve UTC.
+  `avanzar` lee la ventana **una vez por pasada** y suma `espera_dias` en el
+  reloj local (`ahora.astimezone(zona) + timedelta(days=n)`), así que «dentro
+  de tres días» que cruza el cambio de hora no se corre una hora.
+- **La zona del destinatario no se usa**: ventas no la tiene. La inscripción
+  guarda el correo y, como mucho, `Lead.pais` (un país puede tener varias
+  zonas); la única zona por persona de la casa es `zona_horaria` del perfil de
+  marketing, en otro servicio, y `avanzar` no puede llamar a otro servicio por
+  cada inscripción.
+- **El primer paso**, cerrado el mismo día (ver «La consola de ajustes conoce
+  los de cada servicio», más abajo): `inscribir` programa
+  `proximo_at = _siguiente_laborable(_ahora(), cadencia.solo_laborable,
+  ventana_envio(db))`. `avanzar` sigue sin mirar la ventana al ejecutar: lo
+  que ya está programado dentro de ella se ejecuta en la pasada que toque.
+
+Prueba: `test_cadencias.py::test_la_ventana_es_la_del_reloj_del_tenant_tambien_al_cambiar_la_hora`
+(Madrid, lunes 19-10 y 26-10 a las 18:30 locales con `hasta` = 18: las dos se
+recolocan a las 9 locales, 07:00 y 08:00 UTC; y viernes 10:00 + 3 días cae el
+lunes a las 10:00 locales).
+
+**Cinco vocabularios nuevos** (`crmcore.vocabulario`, como `factores_leccion`):
+
+| Vocabulario | Servicio | Era | Fijos |
+|---|---|---|---|
+| `roles_compra` | sales | `ingresos.ROLES_COMPRA` | `decisor`, `economico` (`grupo_de_compra`, `api.py` del decisor; `ROLES_COMPRA_FIJOS`) |
+| `roles_equipo_cuenta` | party | `servicio.ROLES_EQUIPO` | — (la propiedad es `owner_id`, no el rol) |
+| `relaciones_persona` | party | `cuenta_360.RELACIONES` | — (el mapa agrupa por código) |
+| `funciones_contacto_proveedor` | party | `proveedores.FUNCIONES_CONTACTO` | `escalado` (`a_quien_llamo`, `FUNCION_ESCALADO`) |
+| `resultados_llamada` | service | `marcador.RESULTADOS` | `hablado`, `numero_erroneo`, `pide_que_no_le_llamen`, `reprogramar` (`marcador.colgar`; `telefonia_resultado_numero_erroneo` en integration) |
+
+- **Fijos** (`vocabulario.registrar(..., fijos=...)`, nuevo): los de fábrica que
+  el código lee valor a valor. `valores()` los admite siempre; el router de
+  vocabularios contesta **409 `vocabulario.valor_fijo`** a retirarlos (PATCH
+  `activo=false` o DELETE) y deja cambiar rótulo y orden; cada fila y cada
+  vocabulario dicen `fijo`/`fijos`. Un fijo que no esté entre los de fábrica es
+  un `ValueError` al registrar.
+- **Opinión en una relación nueva**: `cuenta_360._es_opinion(db, tipo)` = de
+  fábrica (`RELACIONES_QUE_SON_OPINION`) o con `extra.opinion` verdadero en su
+  fila del vocabulario; exige motivo igual.
+- Se valida contra `vocabulario.valores(db, …)`; las columnas pierden
+  `info={"opciones": …}` (era la lista cerrada del contrato, como ya pasaba con
+  `motivo_perdida`). El marcador recibe `admitidos=marcador.resultados_validos(db)`
+  desde `POST /marcador/colgar`; `services/service/api.py` importa `marcador`
+  al arrancar porque un vocabulario que no está registrado al montar la app no
+  tiene ruta (party y service montan ahora `/{servicio}/vocabularios`).
+- **Front**: cinco pestañas en el módulo `modelo` (Gestor de objetos), y
+  «Vocabularios de negocio» pasa a `por_servicio: ["sales", "party", "service"]`.
+  `Marcador.tsx` pide `/api/v1/service/vocabularios/resultados_llamada` al
+  abrir una llamada (no al pintar la ficha) y rotula los de fábrica con la
+  traducción y los de la empresa con su etiqueta.
+- **`superficie.rutaPermitida` casa ahora por tramos**, con `{param}` como
+  comodín (como `operacionDe`). Sólo por prefijo, `/sales/vocabularios/roles_compra`
+  no casaba con `/sales/vocabularios/{nombre}` y la pestaña se escondía en
+  cuanto llegaba la superficie: medido en vivo, «Factores de una lección» abría
+  la primera pestaña de Lecciones, y las cinco nuevas, la de Objetos.
+- **Longitud**: las columnas que guardan un valor de vocabulario son
+  `String(120)`, como `valores_vocabulario.valor` (ver más abajo).
+- **`postventa.MOTIVOS_SUSPENSION` se queda cerrada**: no por una rama de
+  código, sino porque es el control. Son los motivos que la norma reconoce
+  para parar el plazo legal de una reclamación; editable, el plazo se pararía
+  por «mucho trabajo».
+
+Pruebas: `test_vocabularios.py::test_un_valor_fijo_se_renombra_pero_no_se_retira`,
+`test_ingresos_y_equipo.py::test_un_rol_de_compra_inventado_se_rechaza` (y
+admitido si la empresa lo añade), `test_calidad_del_dato.py::test_llamar_detractor_a_alguien_exige_motivo`
+(una relación añadida con `opinion`).
+
+**Cuatro umbrales a ajuste** (núcleo, en la consola): `transcripcion_correccion_maxima_pct`
+(40, `transcripcion.calidad_de_la_extraccion`), `caso_parecido_uso_minimo_pct`
+(15, `caso_semantico.aprender_de_lo_usado`), los dos en
+`config_parts/_intelligence.py`; `convivencia_medida_fresca_dias` (30,
+`convivencia.progreso`) y `sandbox_copia_aviso_pct` (20, `sandboxes.plan_de_copia`,
+en `_tenancy.py`). Las funciones puras reciben el umbral por parámetro; sus
+rutas (`/transcripciones/calidad`, `/sugerencias-caso/aprovechamiento`,
+`/sandboxes/plan`) lo leen con `rt.efectivo(clave, db)` y la respuesta lo
+devuelve (`maximo_pct`, `minimo_pct`, `dias_que_vale_una_medida`,
+`aviso_pct`). Sin sesión,
+el del `.env`.
+
+**Hallazgo, cerrado el mismo día**: la consola de **Ajustes** (`GET/PUT
+/api/v1/ajustes`, en tenancy) sólo conocía las claves del núcleo, y las que
+declaran los `services/*/ajustes.py` con `registrar_claves` se rechazaban como
+`ajustes.clave_desconocida`. Ver «La consola de ajustes conoce los de cada
+servicio», más abajo. Las de este bloque se quedan en el núcleo.
+
+### La captura desde la web y los componentes incrustables (10-11-2026)
+
+**Lo que fallaba.** Ninguna vía de captura funcionaba desde fuera.
+`POST /captura/{tenant}/{clave}` contestaba 404: el gateway sólo reenviaba
+`/api/*` y la captura va sin prefijo de versión a propósito. Y los cuatro
+componentes incrustables contestaban 401: el token de componente no lleva
+`id`, `es_anonimo` lo daba por anónimo y `AutenticadoDep` lo rechazaba. No se
+podía «quitarle el anónimo»: el token vive en el HTML de una página pública y
+entraría en toda ruta que sólo pide estar autenticado.
+
+**Una dependencia propia, y la guarda en la que pasa por todo.**
+
+- `crmcore.http.deps.exige_componente(componente)` es la única puerta del
+  token: comprueba que sea de componente, de ESE componente y tipo de objeto
+  (`embebido.registro_del_token`), que lleve dentro los permisos de su ruta,
+  y devuelve `AccesoComponente(tenant_id, objeto_id, principal)`. El tipo de
+  objeto y los permisos salen de `crmcore.embebido.OBJETO_DE_COMPONENTE` y
+  `PERMISOS_DE_COMPONENTE`, la misma tabla con la que el gateway emite el
+  token (`emitir` rechaza ahora un objeto que no es el del componente,
+  `embebido.objeto_no_corresponde`). Las cuatro rutas
+  (`services/{party,service,sales}/api_embebido.py`) la usan en vez de
+  `AutenticadoDep`.
+- `contexto_autenticado` —la pide la dependencia global de idempotencia, así
+  que pasa por TODAS las rutas— rechaza un token de componente con 401
+  `embebido.ruta_no_admite_componente` si la ruta no lleva la marca
+  `admite_componente` en sus dependencias (`ruta_admite_componente`, que mira
+  `request.scope["route"].dependant`). Cortarlo sólo en `exige_autenticacion`
+  dejaba abiertas las rutas que sólo piden `DbDep`: con un principal sin `id`
+  pero con tenant, `get_db` abría sesión en su empresa. `exige_autenticacion`
+  lo rechaza además por tipo, aunque algún día el token lleve `id`.
+- En el gateway, `/api/v1/embebido/{componente}` (`proxy_embebido`) es la
+  única ruta que lleva la marca: comprueba en la puerta que el token sea de
+  ese componente y reenvía por `_proxiar`, el cuerpo común con el proxy
+  general (operatividad del tenant, acceso contextual, anomalías). El proxy
+  general `/api/{ruta}` no la lleva, así que un token de componente en
+  `/api/v1/accounts` muere en el gateway sin llegar al servicio.
+
+**La captura pública, por su nombre.** `captura_publica` en
+`services/gateway/api.py` reenvía `POST /captura/{tenant}/{clave}` a `sales`
+**sin identidad** y sólo con `content-type` y `x-captura-secreto`
+(`incrustable.CABECERAS_DE_CAPTURA`), después del tope por IP
+(`rutas.TOPES_POR_IP["/captura/"]`), el tamaño
+(`incrustable.cuerpo_acotado`, que corta también un cuerpo por trozos sin
+longitud declarada) y la operatividad y el plan del tenant. El formulario
+incrustado lleva el mismo tope por IP (otro contador) y el mismo tamaño. Y la
+ruta de `sales` contesta ahora siempre `{"recibido": true}`: devolvía el
+`lead_id`, nulo al descartar, que le decía a un robot si había caído en la
+trampa.
+
+**El CORS de lo incrustable.** El general (`CORS_ORIGINS`, con credenciales)
+contestaba con 400 la pregunta previa del navegador desde la web de un
+cliente. El middleware `lo_que_se_incrusta` de `services/gateway/main.py`,
+por fuera del general, atiende `/captura/*` y `/api/v1/embebido/*`: admite el
+origen según `INCRUSTABLE_ORIGENES` (`*` de serie), **nunca con
+credenciales**, contesta él la pregunta previa y responde 403
+`incrustable.origen_no_admitido` a una web no admitida. Sin cabecera `Origin`
+no mira nada: no es un navegador.
+
+**Ajustes** (`config_parts/_limits.py`, sólo `.env`: el gateway no tiene base
+de datos y un ajuste en caliente ahí se guardaría sin aplicarse):
+`CAPTURA_PUBLICA_INTENTOS_POR_IP` (30), `CAPTURA_PUBLICA_VENTANA_S` (3600),
+`CAPTURA_PUBLICA_MAX_BYTES` (16384), `INCRUSTABLE_ORIGENES` (`*`).
+
+**El componente** (`frontend/src/embebido/index.ts`). `formulario-alta`
+mandaba `{}` en cuanto se pintaba —cada visita dejaba una recepción
+descartada— y ahora pinta su formulario con la trampa oculta y manda al
+enviar. Y todo lo que viene del CRM se escapa antes del `innerHTML`: un
+asunto de caso con `<img onerror>` se ejecutaba en la web del anfitrión. El
+fichero que se incrusta sale de `npm run build:embebido`
+(`frontend/dist-embebido/embebido.js`) y lo sirve el front en `/embebido.js`:
+ver «Las tres puertas de fuera, cerradas» más abajo.
+
+**Medido en vivo** contra la plataforma, desde una página en otro origen
+(`http://127.0.0.1:18991`): el formulario público y el incrustado crean su
+lead y su recepción `creado` en el canal `web-demostracion` («Formulario de
+contacto de la web», trampa `web`, obligatorio `email`); `ficha-cuenta`,
+`lista-casos` y `estado-pedido` se pintan con sus datos; el token de
+`ficha-cuenta` contesta 401 en `/api/v1/accounts`, `/api/v1/captura/recepciones`
+y `/api/v1/sdk/componentes`, y 403 en `/api/v1/embebido/lista-casos`. Se ven en
+**Ventas › Candidatos › Recepciones**. Quedan cuatro recepciones
+de demostración: la verificación se pasó dos veces y la segunda marcó sus dos
+leads como posibles duplicados de los primeros, que también sirve para
+enseñar la deduplicación al capturar.
+
+Pruebas: `tests/unit/test_lo_que_se_incrusta_entra_por_su_puerta.py` —el token
+entra en su ruta y en ninguna otra, ni en la de solo `PrincipalDep`; la ruta
+del componente no atiende otro componente ni una sesión; el gateway lo deja
+sólo en su componente; la captura se reenvía sin identidad, con su CORS, su
+tamaño y su origen; validada quitando la guarda de `contexto_autenticado`:
+fallan dos— y `frontend/src/pruebas/embebido.test.ts` (el formulario no
+escribe al pintarse; lo del CRM se pinta como texto).
+
+### Las tres puertas de fuera, cerradas: portal, token de componente y `embebido.js` (10-11-2026)
+
+**El token de portal entraba donde no debía.** Lleva `sub` (el acceso) y
+`tenant`, así que `contexto_autenticado` lo convertía en un principal con `id`
+y pasaba `AutenticadoDep` en toda ruta que no pide un permiso concreto. Medido
+contra la pila viva antes del arreglo: 200 en `/api/v1/superficie` y en
+`/api/v1/sdk/componentes` del gateway, y el proxy general lo reenviaba a
+cualquier servicio (`/api/v1/accounts` llegaba a `party`, que lo paraba sólo
+porque esa ruta pide `account:read`).
+
+- `crmcore.http.deps._PUERTA_DE_TIPO` junta los dos tipos de token que viven
+  fuera del CRM con la marca que tiene que llevar la ruta:
+  `componente` → `admite_componente`, `portal` → `admite_portal`. La guarda de
+  `contexto_autenticado` y `exige_autenticacion` leen esa tabla;
+  `_ruta_lleva_marca(request, marca)` recorre las dependencias de la ruta
+  (`ruta_admite_componente` queda como atajo). Un token de portal fuera de su
+  sitio da 401 `portal.ruta_no_admite_portal`.
+- La marca la lleva `crmcore.http.portal_deps.contexto_portal`, que es la
+  dependencia de `PortalDep`: toda ruta de `/portal/mi/*` la tiene, y
+  `exige_seccion_portal` también, porque depende de ella.
+- En el gateway, `/api/v1/portal/mi/{resto}` (`proxy_portal`) es la única ruta
+  con la marca. Reenvía por `_proxiar` sin mirar más: quién es y qué secciones
+  tiene lo comprueba el servicio con `PortalDep`. `POST /portal/sesion` y
+  `POST /portal/enlace` no cambian (no llevan token de portal).
+
+**`token_embebido` comprueba que quien lo pide ve el registro.** El comentario
+lo decía y sólo se exigían los permisos: con `integracion:write` y
+`party:read` se emitía un token para cualquier identificador, también uno que
+no existe (medido: 200 en la pila sin arreglo). Ahora `POST
+/api/v1/sdk/componentes/token` valida antes el componente y el objeto
+(`embebido.validar`, sacado de `emitir`) y llama a `_exigir_que_lo_ve`: pide
+la ficha del registro al servicio dueño **con la identidad firmada de quien lo
+pide** (`proxy.cabeceras_de_identidad`). La ruta sale de
+`crmcore.embebido.RUTA_DEL_OBJETO` (`cuenta` → `/accounts/{id}`,
+`formulario` → `/captura/canales/{id}`, `pedido` → `/pedidos/{id}`) y el
+servicio de `rutas.servicio_de`. 200 emite; 403 o 404 → 403
+`embebido.registro_no_visible` (los dos igual, para no decir qué existe);
+cualquier otra cosa, o el servicio caído → 503 `embebido.no_se_puede_comprobar`.
+Cerrado por defecto. La visibilidad (permiso, compartición, unidad de negocio)
+es la del servicio dueño, no se copia en el gateway.
+
+**`embebido.js` lo sirve el front, en una ruta estable.**
+
+- Imagen (`frontend/Dockerfile`): `npm run build && npm run build:embebido`, y
+  `dist-embebido/embebido.js` se copia a la raíz que sirve nginx.
+  `frontend/nginx.conf` tiene `location = /embebido.js` con
+  `Cache-Control: public, max-age=3600` (sin hash, así que no puede ser
+  inmutable: pasada la hora el navegador revalida con el `ETag`),
+  `Access-Control-Allow-Origin: *` **sin** `Allow-Credentials`,
+  `Cross-Origin-Resource-Policy: cross-origin` y `nosniff`. Un
+  `<script type="module">` de otro origen se pide en modo CORS y no se ejecuta
+  sin la cabecera; sin credenciales, nunca lleva la cookie de la consola.
+- Pila local (`vite.config.ts`, plugin `servirEmbebido`): el servidor de
+  desarrollo construye `/embebido.js` al pedirlo con la misma
+  `vite.embebido.config.ts` y lo reconstruye sólo si cambia algo en
+  `src/embebido/`. Mismas cabeceras salvo la caché: `no-cache` con `ETag`, para
+  que un cambio se vea al recargar.
+- `vite.embebido.config.ts` lleva `publicDir: false`: copiaba el `sw.js` de la
+  consola a `dist-embebido/`.
+
+Cómo se pega en la web del cliente (el token lo emite **su servidor** con una
+clave de API, nunca el navegador; va en el HTML de la página):
+
+```html
+<script type="module" src="https://crm.ejemplo.com/embebido.js"></script>
+<contecrm-componente
+  componente="formulario-alta"
+  api="https://api.crm.ejemplo.com/api/v1"
+  token="…el de POST /api/v1/sdk/componentes/token…"></contecrm-componente>
+```
+
+`src` es el origen del front (en local, `http://localhost:15173/embebido.js`);
+`api`, el del gateway con su prefijo. La web del cliente tiene que estar en
+`INCRUSTABLE_ORIGENES` (`*` de serie). Medido: `curl` al 15173 y a un nginx con
+esta configuración devuelven 200 con esas cabeceras, y 304 con `If-None-Match`.
+
+**Medido en vivo** con un segundo gateway con este código (puerto 18091) contra
+los servicios de la pila: token para una cuenta, un canal de captura y un
+pedido existentes → 200; para un identificador inventado → 403
+`embebido.registro_no_visible`; el token emitido se usa en
+`/api/v1/embebido/ficha-cuenta` → 200. Portal con un enlace de verdad
+(`/portal/enlace` + `/portal/sesion`): `/portal/mi/resumen` y `/portal/mi/casos`
+→ 200; `/accounts`, `/superficie`, `/sdk/componentes` y `/auth/me` → 401
+`portal.ruta_no_admite_portal`. La pila compartida sigue con el código anterior
+hasta su próximo arranque.
+
+Pruebas, en `tests/unit/test_lo_que_se_incrusta_entra_por_su_puerta.py`:
+`test_el_token_de_portal_entra_en_el_portal_y_en_ninguna_otra_ruta`,
+`test_el_gateway_deja_el_token_de_portal_sólo_en_el_portal` (fallaban las dos
+antes del arreglo) y
+`test_el_token_sólo_se_emite_para_un_registro_que_quien_lo_pide_ve` (pregunta
+a `party` con el `x-crm-user` de quien lo pide; 403 para la cuenta que el
+servicio no le da).
+
+**Recepciones de captura, de primer nivel.** `Recurso.fija` (nuevo, en
+`frontend/src/lib/modulos.ts`): la pestaña se pinta con su nombre en la
+cabecera del listado (`CabeceraDeLista`), fuera del desplegable de objetos.
+La lleva «Recepciones» en el módulo `leads`; el menú de Ventas ya tiene diez
+entradas. Prueba: `frontend/src/pruebas/recepciones_de_primer_nivel.test.tsx`
+(validada quitando `fija`).
+
+**Descripciones de ruta.** Las de «Quitar una programación» (analytics) y
+«Promover automatizaciones desde un sandbox» e «Instalar una plantilla de la
+biblioteca» (automation) abrían contando lo que fallaba; ese porqué baja a un
+comentario y `test_la_descripcion_no_es_una_nota_de_cambio.py` vuelve a verde.
+
+### La consola de ajustes conoce los de cada servicio (10-11-2026)
+
+**Lo que fallaba.** `crmcore.runtime.keys.CLAVES` es por proceso. La consola
+vive en `tenancy`, que no puede importar el `ajustes.py` de otro servicio
+(`test_ningun_servicio_importa_modulos_de_otro`), así que sólo conocía las 133
+claves del núcleo. Las 166 que registran `analytics`, `integration`,
+`intelligence`, `marketing`, `party`, `sales` y `service` no salían en
+`GET /api/v1/ajustes` y `PUT` las rechazaba (`ajustes.clave_desconocida`).
+
+**Cada servicio publica, la consola agrega.** Una clave sigue declarada en un
+solo sitio —el `ajustes.py` de su dueño— y el valor fijado le llega por la
+réplica de siempre (`configuracion.ajuste_cambiado`, que `consumir_ajuste`
+aplica porque la clave es suya).
+
+- `keys.registrar_claves` anota en `_REGISTRADAS` lo que añade el servicio;
+  `claves_del_servicio()`, `a_dict()` y `de_dict()` las serializan.
+  `ClaveAjuste.servicio` (nuevo, vacío en el núcleo) dice de quién es.
+  `incorporar_de_otro_servicio(decl)` la mete en `CLAVES` **sin pisar nunca una
+  del núcleo** ni una propia del proceso.
+- `crmcore/http/ajustes_catalogo_router.py`: `GET
+  /api/v1/interno/ajustes/catalogo`, montado por `crear_servicio` en todos los
+  servicios, con `exige_firma_interna` y fuera del contrato (el gateway no
+  enruta `interno`). Devuelve las claves propias con `por_defecto` =
+  `rt.efectivo(clave)` sin sesión: el `.env` **del dueño**.
+- `services/tenancy/ajustes_remotos.py`: `asegurar()` pregunta en paralelo a
+  todos los de `RUTAS_SERVICIOS` (salvo tenancy y gateway), con
+  `http_interno_timeout_s`, incorpora lo que llega y guarda los valores por
+  defecto en un proveedor registrado con `registrar_ajustes_servicio`, que es
+  por donde `efectivo()` ya buscaba el defecto de un ajuste de servicio. Se
+  refresca con `ajustes_ttl_cache_s` y, si alguno no contestó, en la llamada
+  siguiente; los que no contestan salen en la cabecera
+  `X-Ajustes-Sin-Catalogo` del listado y en el log
+  (`ajustes.catalogo_sin_respuesta`). La llaman `GET /ajustes`, `PUT
+  /ajustes/{clave}` (con una clave desconocida fuerza la pregunta),
+  `POST /ajustes/versiones/{id}/volver` y las dos de `/mis-preferencias`.
+- `valores_efectivos` devuelve además `minimo_ambito` y `servicio` (`nucleo`
+  para las del núcleo); la pantalla genérica los ofrece en **Columnas**.
+- `integration` y `service` importan ahora su `ajustes.py` en `main.py`.
+  `integration` sólo lo importaba dentro de funciones y publicaba **cero** de
+  sus 27: lo cazó la medida en vivo (272 de 299).
+
+**Medido en vivo** (10-11-2026, pila local con NATS): el listado da 299
+claves —133 núcleo, analytics 4, integration 27, intelligence 30, marketing
+37, party 26, sales 38, service 4— sin servicios que no contesten. Fijadas
+desde la consola en el tenant de la plataforma: `riesgo_concentracion_pct` 40
+→ 80 (party, `POST /proveedores/riesgo`: de 1 proveedor crítico a 0, en 1 s),
+`margen_minimo_pct` 20 → 30 (sales, `POST /coste/margen` de una línea al 25 %:
+`necesita_aprobacion` pasa a verdadero, en 0,5 s) y `sla_riesgo_horas` 4 → 7,5
+→ 6 (service, `GET /casos/bandeja`: `riesgo_horas` lo sigue en 1,2 s). Un 500
+en `margen_minimo_pct` da 422 `ajustes.fuera_de_rango`; el historial guarda
+`antes` 20 y `despues` 30. Se dejaron como estaban quitando el valor del
+tenant (`rt.quitar`), y las tres rutas volvieron a 40, 20 y 4 por la misma
+réplica.
+
+**El primer paso de una cadencia respeta la ventana.** `cadencias.inscribir` programa
+el primer paso con `_siguiente_laborable` y la ventana del tenant: inscribir
+un viernes a las 23:00 UTC lo deja para el lunes a las 9 locales, y una pasada
+de `avanzar` en ese momento no ejecuta nada.
+
+**Las columnas de vocabulario, a 120.** Ensanchadas en vez de limitar el
+vocabulario: el tope del vocabulario es uno y común (`valores_vocabulario.valor`,
+`String(120)`, y el router lo valida con `max_length=120`), mientras que cada
+columna tenía el suyo. Migraciones `20261110_1010_vocabulario_cabe_entero` en
+`sales` (`roles_compra.rol` 20, `leads.motivo_descarte`,
+`oportunidades.motivo_perdida` y `lecciones_oportunidad.motivo` 80), `party`
+(`contactos_proveedor.funcion` y `relaciones_persona.tipo` 20,
+`equipo_cuenta.rol` 40) e `integration`
+(`llamadas_telefonicas.resultado_comercial` 40, que además se recortaba con
+`[:40]` en silencio; su `max_length` de entrada pasa a 120). Ensanchar un
+`varchar` no reescribe la tabla; el `downgrade` falla si ya hay un valor más
+largo, a propósito. Ninguna toca `server_default`.
+`scripts/migraciones_locales.py comprobar`: los trece, «al día».
+
+Pruebas: `tests/unit/test_la_consola_conoce_los_ajustes_de_cada_servicio.py`
+(el dueño publica las suyas con su defecto y sin firma no se entra; la consola
+valida, limita el ámbito y resuelve el defecto del dueño sin pisar una del
+núcleo, y dice quién no contestó; todo `main.py` importa su `ajustes.py`,
+validada quitando el import de `integration`) y
+`test_cadencias.py::test_el_primer_paso_tambien_espera_a_la_ventana` (validada
+devolviendo `proximo_at = _ahora()`). Las pruebas que inscriben y avanzan en
+seguida fijan el reloj dentro de la ventana (`en_horario`): sin eso, de noche
+o en fin de semana fallaban por la hora.
+
+### 4.6.70 Deshacer el primer cambio de un ajuste vuelve a heredar (10-11-2026)
+
+`runtime.settings.fijar` apuntaba en la versión el valor **efectivo** de antes
+—el de fábrica si el ámbito no tenía uno propio—, así que deshacer el primer
+cambio de una clave fijaba ese valor de fábrica en el tenant para siempre: la
+clave dejaba de seguir los cambios de serie sin que nadie lo hubiera decidido.
+Ahora apunta el valor **propio** del ámbito (`None` si no tenía), y
+`versiones.volver_a` ya sabía que `None` es «quitar y heredar». La auditoría
+sigue diciendo el efectivo. La prueba que lo cubría ponía el `None` a mano, que
+es lo que escondía el fallo; ya no lo fuerza.
 
 ## 5. Operación
 

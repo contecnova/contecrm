@@ -38,6 +38,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion
@@ -61,6 +62,11 @@ PERIODOS = {"mensual": 12, "trimestral": 4, "semestral": 2, "anual": 1}
 # Papeles en la decisión de compra. Cerrada: son los que cambian lo que hay que
 # hacer. Con texto libre, «interlocutor» acaba siendo el 80 % de los contactos y
 # no dice nada.
+#
+# Cerrada, pero **de la empresa** (10-11-2026): éstos son los de fábrica del
+# vocabulario `roles_compra`, que se edita en Administrar › Herramientas de
+# plataforma › Gestor de objetos › «Roles en la compra». Se valida contra
+# `vocabulario.valores(db, "roles_compra")`, no contra esta tupla.
 ROLES_COMPRA = (
     "decisor",  # firma
     "economico",  # aprueba el gasto
@@ -68,6 +74,21 @@ ROLES_COMPRA = (
     "usuario",  # lo va a usar
     "guardian",  # controla el acceso a los demás
     "campeon",  # empuja por dentro
+)
+# Los dos que lee el código uno a uno: la cobertura de una compra pregunta si
+# hay decisor y económico, y la ficha de la oportunidad busca al decisor. Se
+# pueden renombrar, no retirar.
+ROLES_COMPRA_FIJOS = ("decisor", "economico")
+
+vocabulario.registrar(
+    "roles_compra",
+    ROLES_COMPRA,
+    etiqueta="Roles en la compra",
+    descripcion=(
+        "El papel de cada persona en una decisión de compra. «Decisor» y "
+        "«económico» son los que mide la cobertura y no se pueden retirar."
+    ),
+    fijos=ROLES_COMPRA_FIJOS,
 )
 
 # Cómo se relaciona una oportunidad con otra. Importa para el informe: una
@@ -134,7 +155,7 @@ class RolCompra(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     oportunidad_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     contacto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    rol: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": ROLES_COMPRA})
+    rol: Mapped[str] = mapped_column(String(120), nullable=False)
     # Cómo de a favor está, de -2 a 2. Es una valoración y por eso lleva motivo.
     postura: Mapped[int] = mapped_column(Numeric(2, 0), nullable=False, default=0)
     motivo: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -441,11 +462,12 @@ def anotar_rol(
     seis meses y aplicará sin poder contrastarla — y encima es una valoración
     sobre una persona identificada.
     """
-    if rol not in ROLES_COMPRA:
+    admitidos = vocabulario.valores(uow.db, "roles_compra")
+    if rol not in admitidos:
         raise ErrorValidacion(
             f"Rol de compra «{rol}» desconocido",
             error_code="compra.rol_invalido",
-            detalle={"admitidos": list(ROLES_COMPRA)},
+            detalle={"admitidos": sorted(admitidos)},
         )
     if postura < 0 and not motivo.strip():
         raise ErrorValidacion(
@@ -508,10 +530,10 @@ def grupo_de_compra(
             }
         )
 
-    faltan_roles = [r for r in ("decisor", "economico") if r not in por_rol]
+    faltan_roles = [r for r in ROLES_COMPRA_FIJOS if r not in por_rol]
     sin_hablar = [
         c["contacto_id"]
-        for rol in ("decisor", "economico")
+        for rol in ROLES_COMPRA_FIJOS
         for c in por_rol.get(rol, [])
         if not c["hablado"]
     ]

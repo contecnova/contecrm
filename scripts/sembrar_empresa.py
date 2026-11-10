@@ -32,6 +32,7 @@ tiene permisos:
     --parte sales     desde sales
     --parte service   desde service
     --parte marketing desde marketing
+    --parte duenos    dueño a las oportunidades que no lo tienen (ver `repartir_duenos`)
 
 **Y las partes se pasan los identificadores por un fichero.** Las oportunidades
 y los casos cuelgan de cuentas que viven en otro esquema. En ejecución, un
@@ -944,6 +945,147 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
             )
 
 
+# Los roles que venden. Quien lleva una cuenta con uno de éstos es quien vende
+# lo que sale de ella; quien la lleva con otro —soporte, auditoría, dirección—
+# no cobra comisión por ella, y la oportunidad se le da a un comercial.
+ROLES_COMERCIALES = ("comercial",)
+ROLES_QUE_VENDEN = ("comercial", "responsable_ventas")
+
+
+def _quienes_venden(tenant_id: UUID, enlaces: dict) -> tuple[list[str], set[str]]:
+    """Los comerciales del organigrama, y todos los que venden.
+
+    Del fichero de enlaces si viene —en Docker, la parte `usuarios` lo escribe
+    porque `sales` no puede leer el esquema de `identity`—, y si no, de las
+    membresías: en local un solo proceso llega a todo.
+    """
+    if enlaces.get("comerciales"):
+        return list(enlaces["comerciales"]), set(enlaces.get("venden") or enlaces["comerciales"])
+    _cambiar_a("identity")
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+    from sqlalchemy import select
+
+    from services.identity.modelos import Membresia, Usuario
+
+    comerciales: list[str] = []
+    venden: set[str] = set()
+    with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
+        filas = uow.db.execute(
+            select(Membresia.usuario_id, Membresia.roles)
+            .join(Usuario, Usuario.id == Membresia.usuario_id)
+            .where(Membresia.tenant_id == tenant_id, Usuario.activo.is_(True))
+        ).all()
+    for usuario_id, roles in filas:
+        roles = set(roles or [])
+        if roles & set(ROLES_COMERCIALES):
+            comerciales.append(str(usuario_id))
+        if roles & set(ROLES_QUE_VENDEN):
+            venden.add(str(usuario_id))
+    # Ordenados: el reparto sale de la posición en esta lista, y sin orden fijo
+    # la misma semilla daría otro comercial en cada pasada.
+    return sorted(comerciales), venden
+
+
+def _duenos_de_cuenta(tenant_id: UUID, enlaces: dict) -> dict[str, str]:
+    """Quién lleva cada cuenta. Del fichero de enlaces, o de `party` en local."""
+    if "duenos_cuenta" in enlaces:
+        return dict(enlaces["duenos_cuenta"])
+    _cambiar_a("party")
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+    from sqlalchemy import select
+
+    from services.party.modelos import Cuenta
+
+    try:
+        with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
+            return {
+                str(cid): str(dueno)
+                for cid, dueno in uow.db.execute(
+                    select(Cuenta.id, Cuenta.owner_id).where(
+                        Cuenta.tenant_id == tenant_id, Cuenta.owner_id.is_not(None)
+                    )
+                ).all()
+            }
+    except Exception as exc:  # noqa: BLE001 — en Docker, sin permisos sobre `party`
+        # Se dice, no se calla: el reparto sigue, pero por semilla y no por
+        # quien lleva la cuenta, y eso cambia a quién le toca cada venta.
+        print(
+            "No se ha podido leer quién lleva cada cuenta "
+            f"({type(exc).__name__}); se reparte sólo con la semilla. En Docker, "
+            "pásalo en el fichero de enlaces como «duenos_cuenta»."
+        )
+        return {}
+
+
+def repartir_duenos(cfg: argparse.Namespace, tenant_id: UUID, enlaces: dict) -> None:
+    """Da dueño a las oportunidades que no lo tienen, también a las cerradas.
+
+    Medido el 09-11-2026 en el tenant de la plataforma: **160 de 162 ganadas
+    sin dueño**, y con ellas las comisiones y la compensación externa salían sin
+    reparto. No se podía arreglar por la API, y con razón: una oportunidad
+    cerrada está bloqueada y cambiarle el dueño movería la consecución de dos
+    comerciales. Aquí no se cambia nada que alguien haya mirado: se rellena lo
+    que la siembra dejó vacío, que es historia que nunca tuvo dueño.
+
+    Quién: **el comercial que lleva la cuenta**, si la lleva alguien que vende.
+    Si no —la cuenta es de soporte, de dirección o de nadie—, uno de los
+    comerciales del organigrama, elegido con la semilla **por cuenta**: todas
+    las oportunidades de un cliente caen en la misma persona, que es lo que
+    pasa en una cartera de verdad, y la misma empresa da el mismo reparto en
+    cada pasada.
+
+    Sólo toca las que tienen `owner_id` vacío, así que repetirlo no cambia
+    nada. Y no toca `updated_at`: el dueño no es un cambio de hoy.
+    """
+    comerciales, venden = _quienes_venden(tenant_id, enlaces)
+    if not comerciales:
+        print(
+            "Sin comerciales en el organigrama (rol «comercial»): las oportunidades "
+            "se quedan sin dueño. Siembra antes la parte «usuarios»."
+        )
+        return
+    duenos_cuenta = _duenos_de_cuenta(tenant_id, enlaces)
+
+    _cambiar_a("sales")
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+    from sqlalchemy import select, update
+
+    from services.sales.modelos import Oportunidad
+
+    por_cuenta = por_azar = 0
+    with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
+        sin_dueno = uow.db.execute(
+            select(Oportunidad.id, Oportunidad.cuenta_id).where(
+                Oportunidad.tenant_id == tenant_id,
+                Oportunidad.owner_id.is_(None),
+                Oportunidad.deleted_at.is_(None),
+            )
+        ).all()
+        for oid, cuenta_id in sin_dueno:
+            dueno = duenos_cuenta.get(str(cuenta_id)) if cuenta_id else None
+            if dueno in venden:
+                por_cuenta += 1
+            else:
+                # La semilla es la empresa y la cuenta, no el orden de la
+                # consulta: así no depende de qué otras filas hubiera.
+                rnd = random.Random(f"{cfg.slug}:dueno:{cuenta_id or oid}")
+                dueno = comerciales[rnd.randrange(len(comerciales))]
+                por_azar += 1
+            uow.db.execute(
+                update(Oportunidad)
+                .where(Oportunidad.id == oid, Oportunidad.owner_id.is_(None))
+                .values(owner_id=UUID(dueno), updated_at=Oportunidad.updated_at)
+            )
+    print(
+        f"{por_cuenta + por_azar} oportunidades con dueño nuevo: {por_cuenta} el de su "
+        f"cuenta, {por_azar} un comercial elegido por cuenta con la semilla "
+        f"({len(comerciales)} comerciales)"
+    )
+
+
 def _fecha(valor: object):
     """Una fecha del fichero de enlace, o `None` si no venía."""
     from datetime import datetime
@@ -1764,6 +1906,14 @@ COMPROBACIONES: dict[str, tuple[tuple[str, str, str], ...]] = {
             "select count(*) from presupuestos where tenant_id = :t",
         ),
         (
+            # Sin dueño, una venta ganada no le cuenta a nadie: ni comisión, ni
+            # consecución, ni reparto en la compensación externa.
+            "toda oportunidad ganada tiene dueño",
+            "select count(*) from oportunidades where tenant_id = :t and estado = 'ganada' "
+            "and owner_id is null and deleted_at is null",
+            "select count(*) from oportunidades where tenant_id = :t and estado = 'ganada'",
+        ),
+        (
             "ningún presupuesto se queda sin líneas",
             "select count(*) from presupuestos p where p.tenant_id = :t and not exists "
             "(select 1 from lineas_presupuesto l where l.presupuesto_id = p.id)",
@@ -1944,10 +2094,25 @@ def main() -> int:
     if cfg.parte in ("usuarios", "todo"):
         sembrar_usuarios(cfg, tenant_id)
         if cfg.parte == "usuarios":
+            # Quién vende, para la parte `duenos`: en Docker `sales` no puede
+            # leer el esquema de `identity`, y esto es lo único que necesita.
+            if ruta_enlaces:
+                comerciales, venden = _quienes_venden(tenant_id, {})
+                enlaces.update(comerciales=comerciales, venden=sorted(venden))
+                ruta_enlaces.write_text(json.dumps(enlaces, ensure_ascii=False), encoding="utf-8")
+                print(f"Comerciales escritos en {ruta_enlaces}")
             return 0
 
+    if cfg.parte == "duenos":
+        # Sólo rellena lo vacío: se puede pasar sobre una empresa ya sembrada
+        # sin tocar nada más. En local resuelve solo quién vende y quién lleva
+        # cada cuenta; en Docker los lee del fichero de enlaces.
+        repartir_duenos(cfg, tenant_id, enlaces)
+        return 0
+
     if cfg.parte in ("party", "todo"):
-        enlaces = sembrar_party(cfg, tenant_id, vol)
+        previos = {k: enlaces[k] for k in ("comerciales", "venden") if k in enlaces}
+        enlaces = {**sembrar_party(cfg, tenant_id, vol), **previos}
         if ruta_enlaces:
             ruta_enlaces.write_text(json.dumps(enlaces, ensure_ascii=False), encoding="utf-8")
             print(f"Enlaces escritos en {ruta_enlaces}")
@@ -1956,6 +2121,8 @@ def main() -> int:
 
     if cfg.parte in ("sales", "todo"):
         sembrar_sales(cfg, tenant_id, vol, enlaces)
+        if cfg.parte == "todo":
+            repartir_duenos(cfg, tenant_id, enlaces)
         if cfg.parte == "sales":
             return 0
 

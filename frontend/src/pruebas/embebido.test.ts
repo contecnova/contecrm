@@ -55,7 +55,9 @@ describe("el componente embebible", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(opciones?.credentials).toBe("omit");
-    expect((opciones?.headers as Record<string, string>).Authorization).toBe("Bearer tok");
+    expect((opciones?.headers as Record<string, string>).Authorization).toBe(
+      "Bearer tok",
+    );
     el.remove();
   });
 
@@ -86,6 +88,76 @@ describe("el componente embebible", () => {
     const el = document.createElement("contecrm-componente");
     document.body.appendChild(el);
     expect(el.shadowRoot).toBeTruthy();
+    el.remove();
+  });
+
+  it("el formulario de alta no escribe al pintarse, sino al enviarlo", async () => {
+    // Mandaba un `{}` en cuanto se pintaba: cada visita a la web dejaba una
+    // recepción descartada y nadie podía darse de alta.
+    const llamadas: { url: string; o?: RequestInit }[] = [];
+    vi.stubGlobal("fetch", (url: string, o?: RequestInit) => {
+      llamadas.push({ url, o });
+      return Promise.resolve(
+        new Response('{"recibido":true}', { status: 200 }),
+      );
+    });
+
+    const el = document.createElement("contecrm-componente");
+    el.setAttribute("componente", "formulario-alta");
+    el.setAttribute("api", "https://crm.example/api/v1");
+    el.setAttribute("token", "tok");
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(llamadas).toHaveLength(0);
+
+    const raiz = el.shadowRoot as ShadowRoot;
+    (raiz.querySelector('input[name="nombre"]') as HTMLInputElement).value =
+      "Irene";
+    (raiz.querySelector('input[name="email"]') as HTMLInputElement).value =
+      "irene@ejemplo.example";
+    (raiz.querySelector("form") as HTMLFormElement).dispatchEvent(
+      new Event("submit", { cancelable: true }),
+    );
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(llamadas).toHaveLength(1);
+    const [envio] = llamadas;
+    expect(envio?.url).toBe(
+      "https://crm.example/api/v1/embebido/formulario-alta",
+    );
+    expect(envio?.o?.credentials).toBe("omit");
+    expect(JSON.parse(String(envio?.o?.body))).toEqual({
+      nombre: "Irene",
+      email: "irene@ejemplo.example",
+    });
+    el.remove();
+  });
+
+  it("lo que viene del CRM se pinta como texto, no como HTML", async () => {
+    // El asunto de un caso lo puede escribir un cliente desde un correo, y
+    // esto se pinta en la web de otro: el Shadow DOM aísla estilos, no scripts.
+    vi.stubGlobal("fetch", () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            casos: [
+              { asunto: '<img src=x onerror="alert(1)">', estado: "abierto" },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    const el = document.createElement("contecrm-componente");
+    el.setAttribute("componente", "lista-casos");
+    el.setAttribute("api", "https://crm.example/api/v1");
+    el.setAttribute("token", "tok");
+    document.body.appendChild(el);
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(el.shadowRoot?.querySelector("img")).toBeNull();
+    expect(el.shadowRoot?.textContent).toContain("<img");
     el.remove();
   });
 

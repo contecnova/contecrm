@@ -126,3 +126,13 @@ class _IntelligenceSettings(BaseSettings):
     # la nueva sin crear, así que el CRM se quedaba apuntando a una fuente que ya
     # no existía y todo informe contestaba «Fuente no encontrada».
     ci_timeout_registro_s: float = Field(300.0, ge=30.0, le=1800.0)
+
+    # Si la IA aplicada sirve (barrido del 10-11-2026). Porcentaje de propuestas
+    # de la extracción de una transcripción que se corrigen a partir del que
+    # «no merece la pena» —revisar cansa más que escribir—; era un 40 en
+    # `transcripcion.calidad_de_la_extraccion`.
+    transcripcion_correccion_maxima_pct: float = Field(40.0, ge=0.0, le=100.0)
+    # Porcentaje de casos parecidos sugeridos que el agente usa por debajo del
+    # cual las sugerencias «no sirven»; era un 15 en
+    # `caso_semantico.aprender_de_lo_usado`.
+    caso_parecido_uso_minimo_pct: float = Field(15.0, ge=0.0, le=100.0)

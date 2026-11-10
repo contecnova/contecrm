@@ -194,10 +194,14 @@ export function CabeceraDeLista({
 }) {
   const { t } = useTranslation();
 
-  // La papelera y demás pestañas con icono viven fuera del desplegable.
+  // La papelera y demás pestañas con icono viven fuera del desplegable, y las
+  // de primer nivel (`fija`) también, con su nombre.
   const normales = recursos
     .map((r, i) => ({ r, i }))
-    .filter(({ r }) => !r.icono);
+    .filter(({ r }) => !r.icono && !r.fija);
+  const fijas = recursos
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => r.fija && !r.icono);
   const conIcono = recursos
     .map((r, i) => ({ r, i }))
     .filter(({ r }) => r.icono);
@@ -352,6 +356,20 @@ export function CabeceraDeLista({
 
         <div className="flex shrink-0 items-center gap-2">
           {acciones}
+          {fijas.map(({ r, i }) => (
+            <button
+              key={r.nombre}
+              type="button"
+              onClick={() => alElegir(i)}
+              aria-current={i === activo ? "page" : undefined}
+              className={cn(
+                "btn-ghost",
+                i === activo ? "bg-accent/10 text-accent" : undefined,
+              )}
+            >
+              {r.nombre}
+            </button>
+          ))}
           {conIcono.map(({ r, i }) => (
             <button
               key={r.nombre}

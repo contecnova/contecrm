@@ -15,6 +15,10 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, select
 
+# Se importa al arrancar, y no sólo al llamar: declara el vocabulario
+# `resultados_llamada`, y un vocabulario que no se ha registrado al montar la app
+# no tiene ruta (`crmcore.service` sólo monta las de los que ya existen).
+from services.service import marcador as _marcador  # noqa: F401
 from services.service import servicio as svc
 from services.service.ajustes import ajustes
 from services.service.estados import terminales
@@ -790,11 +794,13 @@ def marcar(cuerpo: LlamadaIn, principal: AutenticadoDep) -> Any:
         "«reprogramar» crea la siguiente llamada con su fecha."
     ),
 )
-def colgar(cuerpo: ColgarIn, principal: AutenticadoDep) -> Any:
+def colgar(cuerpo: ColgarIn, db: DbDep, principal: AutenticadoDep) -> Any:
     from crmcore.errors import ErrorValidacion
 
     from services.service import marcador
 
+    # Los resultados del vocabulario del tenant, no la tupla de fábrica.
+    admitidos = marcador.resultados_validos(db)
     if cuerpo.llamada_id is not None:
         return marcador.colgar(
             identidad=_identidad(principal),
@@ -802,6 +808,7 @@ def colgar(cuerpo: ColgarIn, principal: AutenticadoDep) -> Any:
             resultado=cuerpo.resultado,
             nota=cuerpo.nota,
             proxima_fecha=cuerpo.proxima_fecha,
+            admitidos=admitidos,
         )
     if cuerpo.contacto_id is None:
         raise ErrorValidacion(
@@ -815,6 +822,7 @@ def colgar(cuerpo: ColgarIn, principal: AutenticadoDep) -> Any:
         nota=cuerpo.nota,
         grabacion_ref=cuerpo.grabacion_ref,
         proxima_fecha=cuerpo.proxima_fecha,
+        admitidos=admitidos,
     )
 
 

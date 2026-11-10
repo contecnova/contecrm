@@ -35,7 +35,8 @@ más que no haberla propuesto.
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta, timezone
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta, timezone, tzinfo
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -435,7 +436,11 @@ def inscribir(
         lead_id=lead_id,
         cuenta_id=cuenta_id,
         responsable_id=responsable_id,
-        proximo_at=_ahora(),
+        # El primer paso también respeta la ventana. Se programaba para «ya»
+        # y `avanzar` lo mandaba en la siguiente pasada fuera de horario: una
+        # inscripción de las once de la noche salía a las once y cinco, y la
+        # del sábado, el sábado. Los siguientes pasos ya pasaban por aquí.
+        proximo_at=_siguiente_laborable(_ahora(), cadencia.solo_laborable, ventana_envio(uow.db)),
     )
     uow.db.add(fila)
     uow.db.flush()
@@ -573,23 +578,87 @@ def registrar_respuesta(
     return {"sacadas": sacadas, "companeros": companeros}
 
 
-def _siguiente_laborable(momento: datetime, solo_laborable: bool) -> datetime:
+@dataclass(frozen=True)
+class VentanaEnvio:
+    """Las horas en las que una cadencia toca a alguien, **en su reloj**.
+
+    Eran tres números escritos en `_siguiente_laborable` (8, 9 y 19) y se
+    comparaban con la hora UTC del instante: en Madrid la ventana iba de las 9 a
+    las 20 en invierno y de las 10 a las 21 en verano, y en Nueva York un correo
+    «de las nueve» salía a las cuatro o a las cinco de la mañana. Ahora la hora
+    se mira en la zona del tenant y cada tramo es un ajuste.
+
+    La del **destinatario** no se usa porque ventas no la tiene: la inscripción
+    guarda un correo y, como mucho, el país del lead (que no da una zona: un
+    país puede tener varias). La que sí existe —la del perfil de marketing— vive
+    en otro servicio, y una cadencia no puede preguntarle en mitad del avance.
+    """
+
+    zona: tzinfo
+    #: Antes de esta hora no se toca a nadie: se espera a `reprograma`.
+    desde: int
+    #: A partir de esta hora tampoco: pasa al día siguiente, a `reprograma`.
+    hasta: int
+    #: La hora a la que se recoloca lo que cae fuera.
+    reprograma: int
+
+
+def ventana_envio(db: Session | None = None) -> VentanaEnvio:
+    """La ventana del tenant: su zona horaria y los tres tramos de sus ajustes."""
+    from crmcore.fechas import zona_del_tenant
+    from crmcore.runtime import settings as rt
+
+    desde = int(rt.efectivo("cadencia_hora_desde", db))
+    hasta = int(rt.efectivo("cadencia_hora_hasta", db))
+    reprograma = int(rt.efectivo("cadencia_hora_reprograma", db))
+    if not desde < hasta:
+        # Una ventana vacía o al revés no deja enviar nunca, y todo se iría
+        # empujando un día detrás de otro sin que nadie supiera por qué. Se
+        # avisa y se usa la de fábrica.
+        logger.warning("cadencias.ventana_invalida", desde=desde, hasta=hasta)
+        from crmcore.config import Settings
+
+        campos = Settings.model_fields
+        desde = int(campos["cadencia_hora_desde"].default)
+        hasta = int(campos["cadencia_hora_hasta"].default)
+    if not desde <= reprograma < hasta:
+        # Recolocar fuera de la ventana sería mover el toque a otra hora en la
+        # que tampoco se puede: se recoloca al abrir.
+        reprograma = desde
+    return VentanaEnvio(zona=zona_del_tenant(db), desde=desde, hasta=hasta, reprograma=reprograma)
+
+
+def _siguiente_laborable(
+    momento: datetime, solo_laborable: bool, ventana: VentanaEnvio | None = None
+) -> datetime:
     """Empuja el toque al siguiente día laborable si hace falta.
 
     Un correo automático a las tres de la mañana dice «esto lo manda una máquina»
     más alto que cualquier firma, y el sábado dice además «y no le importas».
+
+    Las horas y el día de la semana se miran **en la zona de la ventana**, no en
+    UTC; el resultado vuelve en UTC.
     """
     if not solo_laborable:
         return momento
-    while momento.weekday() >= 5:
-        momento = (momento + timedelta(days=1)).replace(hour=9, minute=0)
-    if momento.hour < 8:
-        momento = momento.replace(hour=9, minute=0)
-    elif momento.hour >= 19:
-        momento = (momento + timedelta(days=1)).replace(hour=9, minute=0)
-        while momento.weekday() >= 5:
-            momento = (momento + timedelta(days=1)).replace(hour=9, minute=0)
-    return momento
+    v = ventana or ventana_envio()
+    local = momento.astimezone(v.zona)
+
+    def a_la_hora(dia: datetime) -> datetime:
+        # Con `combine` y la zona, y no `replace(hour=…)` sobre el instante: así
+        # las 9 son las 9 del reloj de ese día, con el desfase que tenga ese
+        # día —antes o después del cambio de hora—.
+        return datetime.combine(dia.date(), time(v.reprograma), tzinfo=v.zona)
+
+    while local.weekday() >= 5:
+        local = a_la_hora(local + timedelta(days=1))
+    if local.hour < v.desde:
+        local = a_la_hora(local)
+    elif local.hour >= v.hasta:
+        local = a_la_hora(local + timedelta(days=1))
+        while local.weekday() >= 5:
+            local = a_la_hora(local + timedelta(days=1))
+    return local.astimezone(timezone.utc)
 
 
 def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 200) -> dict[str, Any]:
@@ -617,6 +686,9 @@ def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 200) -> dict
     )
     ejecutados: list[dict[str, Any]] = []
     terminadas: list[str] = []
+    # Una vez por pasada y no por inscripción: son tres ajustes y una zona, y
+    # leerlos en el bucle sería una consulta por persona.
+    ventana = ventana_envio(uow.db)
 
     for inscripcion in pendientes:
         cadencia = uow.db.get(Cadencia, inscripcion.cadencia_id)
@@ -680,9 +752,13 @@ def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 200) -> dict
             terminadas.append(inscripcion.email)
         else:
             siguiente = pasos[inscripcion.paso_actual]
+            # Los días se suman en el reloj del tenant: «dentro de tres días»
+            # que cruza el cambio de hora sigue siendo a la misma hora.
             inscripcion.proximo_at = _siguiente_laborable(
-                ahora + timedelta(days=int(siguiente.get("espera_dias", 1))),
+                ahora.astimezone(ventana.zona)
+                + timedelta(days=int(siguiente.get("espera_dias", 1))),
                 cadencia.solo_laborable,
+                ventana,
             )
         ejecutados.append(
             {"email": inscripcion.email, "canal": canal, "paso": inscripcion.paso_actual - 1}

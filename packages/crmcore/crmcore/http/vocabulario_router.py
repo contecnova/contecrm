@@ -70,6 +70,8 @@ def crear_router_vocabulario(servicio: str) -> APIRouter:
                     "etiqueta": definicion.etiqueta,
                     "descripcion": definicion.descripcion,
                     "valores": len(propios) or len(definicion.defectos),
+                    # Los que el código lee uno a uno: se renombran, no se retiran.
+                    "fijos": list(definicion.fijos),
                     "de_fabrica": not propios,
                 }
             )
@@ -151,7 +153,7 @@ def crear_router_vocabulario(servicio: str) -> APIRouter:
         )
         db.add(fila)
         db.flush()
-        return _salida(fila)
+        return _salida(fila, nombre)
 
     @router.patch(
         "/{nombre}/{valor}",
@@ -182,10 +184,17 @@ def crear_router_vocabulario(servicio: str) -> APIRouter:
                 f"«{valor}» no está en este vocabulario", error_code="vocabulario.valor_no_existe"
             )
         cambios = datos.model_dump(exclude_none=True)
+        if cambios.get("activo") is False and voc.es_fijo(nombre, valor):
+            raise Conflicto(
+                f"«{valor}» no se puede retirar: el producto lo interpreta por su código "
+                "(lo que hace con él dejaría de pasar sin avisar). Se puede cambiar su "
+                "rótulo o su orden.",
+                error_code="vocabulario.valor_fijo",
+            )
         for campo, nuevo in cambios.items():
             setattr(fila, campo, nuevo)
         db.flush()
-        return _salida(fila)
+        return _salida(fila, nombre)
 
     @router.delete(
         "/{nombre}/{valor}",
@@ -204,7 +213,7 @@ def crear_router_vocabulario(servicio: str) -> APIRouter:
     return router
 
 
-def _salida(fila: Any) -> dict[str, Any]:
+def _salida(fila: Any, nombre: str) -> dict[str, Any]:
     return {
         # El identificador de un valor es su CÓDIGO, no la clave de la fila.
         # Es lo que llevan escrito los registros que lo usan, lo que espera la
@@ -216,5 +225,6 @@ def _salida(fila: Any) -> dict[str, Any]:
         "orden": fila.orden,
         "activo": fila.activo,
         "extra": fila.extra,
+        "fijo": voc.es_fijo(nombre, fila.valor),
         "de_fabrica": False,
     }

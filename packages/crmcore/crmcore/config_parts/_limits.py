@@ -206,6 +206,18 @@ class _LimitsSettings(BaseSettings):
     plan_dias_sin_tocar: int = Field(21, ge=1, le=3650)
     # Duración mínima de una cadencia, en días.
     cadencia_minimo_dias: int = Field(30, ge=1, le=3650)
+    # La ventana de envío de las cadencias (CRM-03.03.01.01), en horas del
+    # reloj del tenant —su `zona_horaria`, no UTC—: antes de `desde` se espera,
+    # a partir de `hasta` pasa al día siguiente, y lo que se recoloca va a
+    # `reprograma`. Eran 8, 19 y 9 escritos en `cadencias` y evaluados en UTC.
+    cadencia_hora_desde: int = Field(8, ge=0, le=23)
+    cadencia_hora_hasta: int = Field(19, ge=1, le=24)
+    cadencia_hora_reprograma: int = Field(9, ge=0, le=23)
+    # Días que vale una medida de la convivencia con el sistema heredado: más
+    # vieja, el avance de la migración no es fresco y el informe no es
+    # concluyente. Era un 30 en `integration.convivencia`; depende de cada
+    # cuánto mide la empresa.
+    convivencia_medida_fresca_dias: int = Field(30, ge=1, le=365)
     # Abandono máximo tolerado en el marcador, en porcentaje. Lo fija la ley en
     # varios países; por eso se puede ajustar pero no quitar.
     marcador_abandono_maximo_pct: float = Field(3.0, ge=0.0, le=100.0)
@@ -509,6 +521,35 @@ class _LimitsSettings(BaseSettings):
     # hace muchas peticiones, y quien abre su correo hace dos o tres.
     aprobacion_enlace_intentos_por_ip: int = Field(30, ge=1, le=10_000)
     aprobacion_enlace_ventana_s: int = Field(3_600, ge=60, le=86_400)
+
+    # ── Lo que se incrusta en la web de otro (CRM-01.01.03.02, CRM-00.02.03.05)
+    # El formulario público de captura (`POST /captura/{tenant}/{clave}`) y los
+    # componentes embebidos los llama el navegador de un desconocido desde una
+    # web que no es nuestra. El gateway los deja pasar con estos topes, que
+    # son de la puerta: detrás de él todas las peticiones llegan con SU
+    # dirección, y un tope por IP contado en `sales` sería uno solo para todo
+    # el mundo. El tope por canal y hora, la clave y la trampa siguen siendo
+    # del canal, en `sales`.
+    #
+    # Envíos que admite una misma IP por ventana. Una persona rellena un
+    # formulario una o dos veces; un robot, cientos. Treinta deja margen a una
+    # oficina entera detrás de una sola dirección.
+    captura_publica_intentos_por_ip: int = Field(30, ge=1, le=10_000)
+    captura_publica_ventana_s: int = Field(3_600, ge=60, le=86_400)
+    # Tamaño máximo del cuerpo, en bytes. Un formulario de contacto son unos
+    # cientos de bytes; el máximo general (`MAX_BODY_MB`) está pensado para
+    # importaciones y adjuntos, y dejarlo aquí es dejar que un desconocido
+    # mande megas a una ruta que escribe en la base.
+    captura_publica_max_bytes: int = Field(16_384, ge=1_024, le=1_048_576)
+    # Desde qué webs se admiten, separadas por comas
+    # (`https://www.cliente.com,https://tienda.cliente.com`). `*` = desde
+    # cualquiera, que es el valor de serie: lo que autoriza es la clave del
+    # canal o el token del componente, no el origen, y un formulario puede
+    # vivir en cualquier web del cliente. Acotarlo cierra la puerta a que otra
+    # web use una clave o un token filtrado desde el navegador de sus
+    # visitantes. Una petición sin cabecera `Origin` —un servidor— no se mira
+    # aquí: el origen sólo lo declara un navegador.
+    incrustable_origenes: str = "*"
 
     # ── Control de flujo en automatizaciones (CRM-00.03.03.04) ────────────
     # Vueltas máximas de un `para_cada`. Una automatización que recorre una

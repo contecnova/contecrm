@@ -259,7 +259,7 @@ def transferir(
 
 
 class ResultadoIn(BaseModel):
-    resultado_comercial: str = Field(..., min_length=1, max_length=40)
+    resultado_comercial: str = Field(..., min_length=1, max_length=120)
     nota: str = Field("", max_length=10_000)
 
 

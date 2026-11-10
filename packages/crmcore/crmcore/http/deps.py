@@ -32,7 +32,9 @@ from sqlalchemy.orm import Session
 
 from crmcore.authz.principal import ANONIMO, Principal
 from crmcore.db.al_margen import al_margen
+from crmcore.embebido import TIPO as TIPO_COMPONENTE
 from crmcore.errors import NoAutenticado, Prohibido
+from crmcore.http.portal_deps import TIPO as TIPO_PORTAL
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -135,6 +137,14 @@ def _verificar_firma(request: Request, secreto: str) -> bool:
             # reautenticación reforzada entera dejaría de valer: bastaría con
             # decir «me acabo de verificar».
             H_FACTOR_FUERTE,
+            # Y el acotamiento del componente embebido. El gateway lo firmaba y
+            # aquí no se miraba, así que la firma no cuadraba nunca: TODA
+            # llamada con un token de componente salía con 401 «identidad
+            # propagada no válida» (medido el 10-11-2026 dando de alta por el
+            # formulario incrustado). Y dentro de lo firmado, no fuera: si no,
+            # cualquiera en la red interna podría apuntar el token a otro
+            # registro.
+            H_EMBEBIDO,
         )
     }
     esperada = hmac.new(
@@ -236,6 +246,24 @@ async def contexto_autenticado(
             principal = ANONIMO
     else:
         principal = ANONIMO
+
+    # **Un token de componente sólo entra por las rutas de su componente**
+    # (CRM-00.02.03.05). Vive en el HTML de una página pública, así que lo
+    # tiene cualquiera que la abra. Se corta AQUÍ y no en `exige_autenticacion`
+    # porque ésta es la dependencia que pasa por TODAS las rutas —la global de
+    # idempotencia la pide—: también por las que sólo piden `DbDep`, que con un
+    # principal sin `id` pero con tenant abrirían una sesión en su empresa.
+    # Cortarlo sólo en «exige estar autenticado» dejaba esas abiertas.
+    #
+    # **Y el de portal, igual** (CRM-04.03.02.01). Lleva `sub` —el acceso— y
+    # tenant, así que con sólo la guarda de arriba pasaba `AutenticadoDep` en
+    # toda ruta que no pide un permiso concreto: medido el 10-11-2026, 200 en
+    # `/api/v1/superficie` del gateway y en cualquier ruta de servicio que sólo
+    # pidiera estar autenticado. Sólo entra donde la ruta declara el portal, y
+    # la declaración es la propia `contexto_portal`.
+    puerta = _PUERTA_DE_TIPO.get(principal.tipo)
+    if puerta is not None and not _ruta_lleva_marca(request, puerta[0]):
+        raise NoAutenticado(puerta[2], error_code=puerta[1])
 
     # Una sola forma de construir el contexto de identidad. Esto estaba escrito
     # aquí en línea y además existía `fijar_identidad_en_contexto`, que decía en
@@ -388,7 +416,17 @@ def cookie_rechazada() -> NoAutenticado | None:
 
 
 def exige_autenticacion(principal: PrincipalDep) -> Principal:
-    """Endpoint que exige identidad, sea del tipo que sea."""
+    """Endpoint que exige identidad, sea del tipo que sea.
+
+    Salvo la de un componente embebido o la de un portal. El de componente no
+    lleva `id` y `es_anonimo` ya lo paraba, pero eso era una casualidad del
+    formato; el de portal sí lo lleva, y pasaba. Un token que vive en una
+    página pública o en el navegador de un cliente no puede valer donde basta
+    con «estar autenticado». Sus rutas usan `exige_componente` y `PortalDep`.
+    """
+    puerta = _PUERTA_DE_TIPO.get(principal.tipo)
+    if puerta is not None:
+        raise NoAutenticado(puerta[2], error_code=puerta[1])
     if principal.es_anonimo:
         rechazada = cookie_rechazada()
         if rechazada is not None:
@@ -421,6 +459,120 @@ def exige_permiso(permiso: str) -> Any:
     # realidad dejan de coincidir el día que alguien cambia una y no el otro —
     # que es el día en que la auditoría deja de valer.
     _dep.permiso_exigido = permiso  # type: ignore[attr-defined]
+    return _dep
+
+
+# ── Componentes embebidos (CRM-00.02.03.05) ───────────────────────────────
+
+
+# Los tokens que viven fuera del CRM y sólo valen en su puerta: la marca que
+# tiene que llevar alguna dependencia de la ruta, y lo que se contesta si no.
+# Una sola tabla para la guarda global y para `exige_autenticacion`.
+_PUERTA_DE_TIPO: dict[str, tuple[str, str, str]] = {
+    TIPO_COMPONENTE: (
+        "admite_componente",
+        "embebido.ruta_no_admite_componente",
+        "Un token de componente sólo vale en las rutas de su componente",
+    ),
+    TIPO_PORTAL: (
+        "admite_portal",
+        "portal.ruta_no_admite_portal",
+        "Un token de portal sólo vale en las rutas del portal",
+    ),
+}
+
+
+def ruta_admite_componente(request: Request | None) -> bool:
+    """¿La ruta de esta petición está declarada para un componente?"""
+    return _ruta_lleva_marca(request, "admite_componente")
+
+
+def _ruta_lleva_marca(request: Request | None, marca: str) -> bool:
+    """¿Alguna dependencia de la ruta lleva esta marca?
+
+    Se mira en las dependencias de la ruta que casó, buscando la marca que
+    ponen `exige_componente` y `contexto_portal`: **la declaración es la propia
+    guarda**, no una lista de rutas aparte que pueda quedarse vieja. Sin ruta
+    —una llamada fuera del enrutado— la respuesta es no.
+
+    Sólo se pregunta con uno de esos tokens delante, así que recorrer las
+    dependencias no lo paga ninguna otra petición.
+    """
+    ruta = request.scope.get("route") if request is not None else None
+    dependant = getattr(ruta, "dependant", None)
+    if dependant is None:
+        return False
+    pendientes = list(dependant.dependencies)
+    while pendientes:
+        dep = pendientes.pop()
+        if getattr(getattr(dep, "call", None), marca, False):
+            return True
+        pendientes.extend(dep.dependencies)
+    return False
+
+
+class AccesoComponente:
+    """Lo que un token de componente deja hacer: un registro de una empresa."""
+
+    __slots__ = ("tenant_id", "objeto_id", "principal")
+
+    def __init__(self, *, tenant_id: UUID, objeto_id: UUID, principal: Principal) -> None:
+        self.tenant_id = tenant_id
+        self.objeto_id = objeto_id
+        self.principal = principal
+
+
+def exige_componente(componente: str) -> Any:
+    """La única puerta por la que entra un token de componente embebido.
+
+        @router.get("/embebido/ficha-cuenta")
+        def ficha(acceso: Annotated[AccesoComponente,
+                  Depends(exige_componente("ficha-cuenta"))]): ...
+
+    Tres cosas, y cada una tapa un agujero:
+
+      * **sólo un token de componente**: una sesión del CRM aquí entraría por
+        una puerta que no mira permisos de fila;
+      * **de ESTE componente y de este tipo de objeto**: si no, el token de una
+        lista de casos abriría la ficha de la cuenta;
+      * **con el alcance que el token dice**: el permiso tiene que ir dentro
+        del token, que lo puso quien lo emitió.
+
+    El tipo de objeto y el permiso salen de `crmcore.embebido`, la misma tabla
+    con la que el gateway emite el token: escritos aquí a mano, el día que no
+    coincidieran el token saldría bien y la ruta lo rechazaría.
+
+    Devuelve el registro al que está atado el token: la ruta no recibe ningún
+    identificador por la URL. Y deja la marca `admite_componente`, que es lo
+    que `contexto_autenticado` mira para dejar pasar el token hasta aquí —y
+    sólo hasta aquí—.
+    """
+    from crmcore import embebido
+
+    objeto = embebido.OBJETO_DE_COMPONENTE[componente]
+    permisos = embebido.PERMISOS_DE_COMPONENTE[componente]
+
+    def _dep(principal: PrincipalDep) -> AccesoComponente:
+        objeto_id = embebido.registro_del_token(principal, componente=componente, objeto=objeto)
+        if principal.tenant_id is None:
+            raise NoAutenticado(
+                "El token no dice de qué empresa es", error_code="embebido.token_malformado"
+            )
+        faltan = [p for p in permisos if not principal.tiene(p)]
+        if faltan:
+            raise Prohibido(
+                "Este token no lleva permiso para esta operación",
+                error_code="embebido.alcance_insuficiente",
+                detalle={"permiso_requerido": faltan[0]},
+            )
+        return AccesoComponente(
+            tenant_id=principal.tenant_id, objeto_id=objeto_id, principal=principal
+        )
+
+    _dep.admite_componente = True  # type: ignore[attr-defined]
+    # Y el permiso a la vista de la matriz, como `exige_permiso`.
+    _dep.permiso_exigido = permisos[0] if permisos else ""  # type: ignore[attr-defined]
+    _dep.componente = componente  # type: ignore[attr-defined]
     return _dep
 
 

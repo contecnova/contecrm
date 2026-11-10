@@ -264,12 +264,21 @@ def confirmar(
     }
 
 
-def calidad_de_la_extraccion(*, confirmadas: list[dict[str, Any]]) -> dict[str, Any]:
+def calidad_de_la_extraccion(
+    *, confirmadas: list[dict[str, Any]], maximo_pct: float | None = None
+) -> dict[str, Any]:
     """Cuánto hay que corregir de lo que propone el modelo.
 
     Es el número que decide si esto se sigue usando. Si hay que corregir la mitad,
     no ahorra tiempo: lo cambia de sitio — de escribir a revisar, que cansa más.
+
+    `maximo_pct` es el ajuste `transcripcion_correccion_maxima_pct` del tenant,
+    que lee quien tiene sesión; sin él, el del `.env` (era un 40 aquí).
     """
+    if maximo_pct is None:
+        from crmcore.runtime import settings as rt
+
+        maximo_pct = float(rt.efectivo("transcripcion_correccion_maxima_pct"))
     if not confirmadas:
         return {
             "medible": False,
@@ -285,11 +294,13 @@ def calidad_de_la_extraccion(*, confirmadas: list[dict[str, Any]]) -> dict[str, 
         "confirmadas": len(confirmadas),
         "corregidas": len(corregidas),
         "pct_corregidas": pct,
-        "merece_la_pena": pct < 40,
+        "merece_la_pena": pct < maximo_pct,
+        "maximo_pct": maximo_pct,
         "que_significa": (
-            f"Hay que corregir el {pct} % de lo que propone. Por encima del 40 % esto no "
-            "ahorra tiempo: lo cambia de sitio, de escribir a revisar, que cansa más."
-            if pct >= 40
+            f"Hay que corregir el {pct} % de lo que propone. Desde el {maximo_pct:g} % "
+            "esto no ahorra tiempo: lo cambia de sitio, de escribir a revisar, que "
+            "cansa más."
+            if pct >= maximo_pct
             else f"Se corrige el {pct} % de las propuestas."
         ),
     }

@@ -120,7 +120,9 @@ def test_la_puerta_de_entrada_mide_el_trafico() -> None:
     ).read_text(encoding="utf-8")
     arbol = ast.parse(fuente)
     for nodo in ast.walk(arbol):
-        if isinstance(nodo, ast.AsyncFunctionDef | ast.FunctionDef) and nodo.name == "proxy_api":
+        # `_proxiar`: el cuerpo común del proxy general y de la puerta de los
+        # componentes embebidos.
+        if isinstance(nodo, ast.AsyncFunctionDef | ast.FunctionDef) and nodo.name == "_proxiar":
             llamadas = {
                 getattr(n.func, "attr", None) for n in ast.walk(nodo) if isinstance(n, ast.Call)
             }

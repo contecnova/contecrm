@@ -137,7 +137,7 @@ class LeccionOportunidad(Base, TimestampMixin):
     resultado: Mapped[str] = mapped_column(
         String(20), nullable=False, info={"opciones": RESULTADOS}
     )
-    motivo: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    motivo: Mapped[str | None] = mapped_column(String(120), nullable=True)
     estado: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pendiente", info={"opciones": ESTADOS}
     )

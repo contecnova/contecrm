@@ -7,11 +7,10 @@ incrusta en una web pública, y el precio al que se vendió no se enseña ahí.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from crmcore import embebido
 from crmcore.errors import NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.deps import AccesoComponente, DbDep, UowDep, exige_componente
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -29,10 +28,15 @@ router_embebido = APIRouter(prefix="/embebido", tags=["componentes embebibles"])
         "esto se pinta en una web pública."
     ),
 )
-def estado_pedido(db: DbDep, principal: AutenticadoDep) -> Any:
-    pedido_id = embebido.registro_del_token(principal, componente="estado-pedido", objeto="pedido")
+def estado_pedido(
+    db: DbDep,
+    acceso: Annotated[
+        AccesoComponente,
+        Depends(exige_componente("estado-pedido")),
+    ],
+) -> Any:
     fila = db.execute(
-        select(Pedido).where(Pedido.id == pedido_id, Pedido.tenant_id == principal.tenant_id)
+        select(Pedido).where(Pedido.id == acceso.objeto_id, Pedido.tenant_id == acceso.tenant_id)
     ).scalar_one_or_none()
     if fila is None:
         raise NoEncontrado("No existe ese pedido", error_code="embebido.no_encontrado")
@@ -68,7 +72,6 @@ class AltaEmbebida(BaseModel):
 
 @router_embebido.post(
     "/formulario-alta",
-    dependencies=[Depends(exige_permiso("lead:write"))],
     summary="Recoger un alta desde una web ajena",
     description=(
         "El único componente que ESCRIBE, y por eso el más acotado: **no "
@@ -83,15 +86,25 @@ class AltaEmbebida(BaseModel):
         "en el HTML de una página ajena."
     ),
 )
-def formulario_alta(datos: AltaEmbebida, uow: UowDep, principal: AutenticadoDep) -> Any:
+def formulario_alta(
+    datos: AltaEmbebida,
+    uow: UowDep,
+    acceso: Annotated[
+        AccesoComponente,
+        Depends(exige_componente("formulario-alta")),
+    ],
+) -> Any:
     from services.sales.captura import CanalCaptura, recibir_por_canal
 
-    canal_id = embebido.registro_del_token(
-        principal, componente="formulario-alta", objeto="formulario"
-    )
     canal = uow.db.execute(
         select(CanalCaptura).where(
-            CanalCaptura.id == canal_id, CanalCaptura.tenant_id == principal.tenant_id
+            CanalCaptura.id == acceso.objeto_id,
+            CanalCaptura.tenant_id == acceso.tenant_id,
+            # Un canal apagado no recibe, tampoco por aquí: por la puerta
+            # pública ya era así, y un segundo camino con otra regla es el
+            # camino por el que entra lo que se quiso cortar.
+            CanalCaptura.activo.is_(True),
+            CanalCaptura.deleted_at.is_(None),
         )
     ).scalar_one_or_none()
     if canal is None:

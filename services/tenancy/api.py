@@ -33,10 +33,11 @@ from crmcore.http.pagination import (
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.runtime import settings as rt
 from crmcore.runtime.keys import es_preferencia_personal, preferencias_personales
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from services.tenancy import ajustes_remotos
 from services.tenancy import servicio as svc
 from services.tenancy.api_aislamiento import ROUTERS_AISLAMIENTO
 from services.tenancy.api_alta import ROUTERS_ALTA
@@ -337,7 +338,13 @@ router_ajustes = APIRouter(prefix="/ajustes", tags=["ajustes"])
         "guardar no se aplica (lo sobrescribe un ámbito más específico)."
     ),
 )
-def listar_ajustes(db: DbDep, _: AutenticadoDep) -> Any:
+def listar_ajustes(db: DbDep, _: AutenticadoDep, response: Response) -> Any:
+    # Con las claves que declaran los demás servicios, no sólo las del núcleo.
+    # El servicio que no contesta se dice en la cabecera y en el registro: un
+    # listado que calla lo que no pudo traer parece completo.
+    faltan = ajustes_remotos.asegurar()
+    if faltan:
+        response.headers["X-Ajustes-Sin-Catalogo"] = ",".join(faltan)
     return rt.valores_efectivos(db)
 
 
@@ -348,6 +355,7 @@ def listar_ajustes(db: DbDep, _: AutenticadoDep) -> Any:
     summary="Fijar un ajuste",
 )
 def fijar_ajuste(clave: str, datos: FijarAjuste, db: DbDep, principal: AutenticadoDep) -> Any:
+    ajustes_remotos.asegurar_clave(clave)
     ambito_id = datos.ambito_id or (str(principal.tenant_id) if datos.ambito == "tenant" else "")
     valor = rt.fijar(
         db, clave, datos.valor, ambito=datos.ambito, ambito_id=ambito_id, por=principal.id
@@ -443,6 +451,7 @@ def comparar_versiones(db: DbDep, principal: AutenticadoDep, a: UUID, b: UUID) -
 def volver_a_version(version_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     from crmcore.runtime import versiones
 
+    ajustes_remotos.asegurar()
     return versiones.volver_a(db, version_id, tenant_id=principal.tenant_id, por=principal.id)
 
 
@@ -473,6 +482,7 @@ router_preferencias = APIRouter(prefix="/mis-preferencias", tags=["ajustes"])
     ),
 )
 def mis_preferencias(db: DbDep, principal: AutenticadoDep) -> Any:
+    ajustes_remotos.asegurar()
     efectivos = rt.valores_efectivos(db)
     return {
         c.clave: {
@@ -500,6 +510,7 @@ def fijar_mi_preferencia(
     db: DbDep,
     principal: AutenticadoDep,
 ) -> Any:
+    ajustes_remotos.asegurar_clave(clave)
     # Primero la puerta, y con el porqué dentro del mensaje: «no se puede fijar»
     # a secas manda a mirar los permisos cuando el problema es que esa clave no
     # es de nadie en particular.

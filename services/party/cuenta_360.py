@@ -36,6 +36,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
@@ -61,11 +62,40 @@ logger = get_logger(__name__)
 # Qué relación puede haber entre dos personas de la misma cuenta. Cerrada porque
 # de estas cuatro se saca el mapa de poder, y con texto libre no se puede dibujar
 # nada ni avisar de nada.
+#
+# Cerrada, pero **de la empresa** (10-11-2026): éstas son las de fábrica del
+# vocabulario `relaciones_persona` (Administrar › Herramientas de plataforma ›
+# Gestor de objetos). El mapa las agrupa por su código sin interpretar ninguna,
+# así que se pueden añadir y retirar.
 RELACIONES = ("reporta_a", "aliado", "detractor", "influye_en", "sustituye_a")
 
 # Opiniones sobre una persona identificada. No son un dato más: van con motivo,
-# con autor y sin salir del CRM.
+# con autor y sin salir del CRM. Las de fábrica son éstas; una relación que añade
+# la empresa es opinión si lleva `{"opinion": true}` en su `extra` —si no se
+# pudiera marcar, «hostil» entraría sin motivo y «detractor» no—.
 RELACIONES_QUE_SON_OPINION = ("aliado", "detractor")
+
+vocabulario.registrar(
+    "relaciones_persona",
+    RELACIONES,
+    etiqueta="Relaciones entre personas",
+    descripcion=(
+        "Cómo se relacionan dos personas de una cuenta en el mapa de influencia. "
+        "Las que son una opinión sobre alguien —aliado, detractor, o las que se "
+        'añadan con {"opinion": true} en extra— exigen motivo.'
+    ),
+)
+
+
+def _es_opinion(db: Session, tipo: str) -> bool:
+    """Si esta relación es una valoración sobre la persona, y por eso pide motivo."""
+    if tipo in RELACIONES_QUE_SON_OPINION:
+        return True
+    return any(
+        f.valor == tipo and bool((f.extra or {}).get("opinion"))
+        for f in vocabulario.filas(db, "relaciones_persona", incluir_inactivos=True)
+    )
+
 
 # Estados del estado financiero replicado.
 ESTADOS_FINANCIEROS = ("al_corriente", "vigilancia", "deuda_vencida", "bloqueado")
@@ -158,7 +188,7 @@ class RelacionPersona(Base, TimestampMixin, SoftDeleteMixin):
     destino_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), nullable=False, info={"referencia": "contacto"}
     )
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": RELACIONES})
+    tipo: Mapped[str] = mapped_column(String(120), nullable=False)
     # Una valoración sobre una persona sin el porqué es un rumor guardado en una
     # base de datos. Con el porqué, es información que otro puede contrastar.
     motivo: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -551,17 +581,18 @@ def anotar_relacion(
     identificada: si algún día esa persona ejerce su derecho de acceso, lo que
     sale es eso.
     """
-    if tipo not in RELACIONES:
+    admitidas = vocabulario.valores(uow.db, "relaciones_persona")
+    if tipo not in admitidas:
         raise ErrorValidacion(
             f"Relación «{tipo}» desconocida",
             error_code="relacion.tipo_invalido",
-            detalle={"admitidas": list(RELACIONES)},
+            detalle={"admitidas": sorted(admitidas)},
         )
     if origen_id == destino_id:
         raise ErrorValidacion(
             "Una persona no se relaciona consigo misma", error_code="relacion.circular"
         )
-    if tipo in RELACIONES_QUE_SON_OPINION and not motivo.strip():
+    if not motivo.strip() and _es_opinion(uow.db, tipo):
         raise ErrorValidacion(
             f"«{tipo}» es una valoración sobre una persona: sin el porqué es un rumor "
             "guardado en una base de datos. Y si esa persona ejerce su derecho de "

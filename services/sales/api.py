@@ -1808,13 +1808,18 @@ async def recibir_lead(
     entrada = await cuerpo_json(peticion)
 
     with con_contexto(tenant_id=tenant_id, origen="api"), unidad_de_trabajo(tenant_id) as uow:
-        return captura.recibir(
+        captura.recibir(
             uow,
             tenant_id=tenant_id,
             clave=clave,
             secreto=x_captura_secreto,
             entrada=entrada,
         )
+    # Lo mismo SIEMPRE, como el formulario incrustado. Devolvía el `lead_id`,
+    # que es nulo al descartar: la «misma forma» le decía igualmente a un robot
+    # si su envío había entrado o había caído en la trampa. Y no se devuelve el
+    # identificador de lo creado: quien rellena un formulario no lo necesita.
+    return {"recibido": True}
 
 
 # Corpus documental delegado en contecmind (RT-5). La lista blanca impide que

@@ -18,9 +18,11 @@ de empleado compartida por internet.
 **El token de portal no es el de un empleado**, y la diferencia es lo que lo
 hace seguro:
 
-* No lleva permisos. Un token sin permisos no puede llamar a ninguna ruta del
-  CRM, porque todas exigen uno; la puerta se cierra sola en vez de depender de
-  que nadie monte una ruta sin `exige_permiso`.
+* No lleva permisos, y **sólo entra en las rutas que dependen de
+  `contexto_portal`**. Lo primero solo no bastaba: hay rutas que sólo piden
+  estar autenticado, y como el token lleva `sub` entraba en todas ellas
+  (medido el 10-11-2026). Lo corta `contexto_autenticado`, mirando la marca
+  `admite_portal` que lleva esta dependencia.
 * Lleva el **acceso** y no el contacto: qué se puede ver lo decide el nivel del
   acceso, que ya está resuelto en el servidor.
 * Dura poco y se renueva entrando otra vez con el enlace, porque un portal se
@@ -218,6 +220,10 @@ class SesionPortal:
             )
         return self.cuenta_id
 
+
+# La marca que mira `contexto_autenticado` para dejar pasar un token de portal:
+# sólo llega a las rutas que dependen de esto, y a ninguna otra.
+contexto_portal.admite_portal = True  # type: ignore[attr-defined]
 
 PortalDep = Annotated[SesionPortal, Depends(contexto_portal)]
 

@@ -265,6 +265,31 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "sales"
     },
     {
+      "r": "/api/v1/sales/vocabularios/roles_compra",
+      "p": "metadata:read",
+      "s": "sales"
+    },
+    {
+      "r": "/api/v1/party/vocabularios/roles_equipo_cuenta",
+      "p": "metadata:read",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/party/vocabularios/relaciones_persona",
+      "p": "metadata:read",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/party/vocabularios/funciones_contacto_proveedor",
+      "p": "metadata:read",
+      "s": "party"
+    },
+    {
+      "r": "/api/v1/service/vocabularios/resultados_llamada",
+      "p": "metadata:read",
+      "s": "service"
+    },
+    {
       "r": "/api/v1/party/buscar/objetos",
       "p": "metadata:read",
       "s": "party"

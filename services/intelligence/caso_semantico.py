@@ -189,13 +189,22 @@ def _en_que_se_parece(resultado: dict[str, Any], contexto: dict[str, Any]) -> di
     }
 
 
-def aprender_de_lo_usado(*, sugerencias: list[dict[str, Any]]) -> dict[str, Any]:
+def aprender_de_lo_usado(
+    *, sugerencias: list[dict[str, Any]], minimo_pct: float | None = None
+) -> dict[str, Any]:
     """Si esto le sirve al agente o solo ocupa sitio en la pantalla.
 
     Se mide por **lo que usa**, no por lo que abre. Y si no usa casi nada, el
     problema no es del agente: o el índice está vacío de lo que hace falta, o el
     umbral de parecido está dejando pasar ruido.
+
+    `minimo_pct` es el ajuste `caso_parecido_uso_minimo_pct` del tenant, que lee
+    quien tiene sesión; sin él, el del `.env` (era un 15 aquí).
     """
+    if minimo_pct is None:
+        from crmcore.runtime import settings as rt
+
+        minimo_pct = float(rt.efectivo("caso_parecido_uso_minimo_pct"))
     if not sugerencias:
         return {
             "medible": False,
@@ -213,12 +222,13 @@ def aprender_de_lo_usado(*, sugerencias: list[dict[str, Any]]) -> dict[str, Any]
         "abiertas": len(abiertas),
         "usadas": len(usadas),
         "pct_usadas": pct,
-        "sirve": pct >= 15,
+        "sirve": pct >= minimo_pct,
+        "minimo_pct": minimo_pct,
         "que_significa": (
             f"Solo se usa el {pct} % de lo que se sugiere. El problema no es del agente: "
             "o el índice no tiene lo que hace falta, o el umbral de parecido está "
             "dejando pasar ruido."
-            if pct < 15
+            if pct < minimo_pct
             else f"Se usa el {pct} % de lo sugerido."
         ),
     }

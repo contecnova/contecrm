@@ -95,7 +95,9 @@ export interface Superficie {
   operaciones: Operacion[];
 }
 
-export async function cargarSuperficie(signal?: AbortSignal): Promise<Superficie> {
+export async function cargarSuperficie(
+  signal?: AbortSignal,
+): Promise<Superficie> {
   const { datos } = await llamar<Superficie>("/api/v1/superficie", { signal });
   return datos;
 }
@@ -152,7 +154,9 @@ export function areasDeAdministracion(superficie: Superficie): Area[] {
       area.nombre = `${area.nombre} · ${area.recurso}`;
     }
   }
-  return [...porRecurso.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  return [...porRecurso.values()].sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, "es"),
+  );
 }
 
 /** `/api/v1/tenants/{id}/unidades` → `tenants`. */
@@ -170,7 +174,9 @@ export function recursoDe(ruta: string): string {
  * tabla sin pedirle al usuario que invente un identificador.
  */
 export function operacionDeListado(area: Area): Operacion | undefined {
-  return area.operaciones.find((o) => o.metodo === "GET" && !o.ruta.includes("{"));
+  return area.operaciones.find(
+    (o) => o.metodo === "GET" && !o.ruta.includes("{"),
+  );
 }
 
 /** Operaciones que cambian algo, que son las que se ofrecen como acciones. */
@@ -220,8 +226,22 @@ export function rutasPermitidas(
 export function rutaPermitida(permitidas: Set<string>, ruta: string): boolean {
   const limpia = ruta.split("?")[0] ?? ruta;
   if (permitidas.has(limpia)) return true;
+  const tramos = limpia.split("/");
   for (const p of permitidas) {
     if (p === limpia || p.startsWith(`${limpia}/`)) return true;
+    // Y por tramos, con los parámetros como comodín: la pestaña de un
+    // vocabulario pide `/sales/vocabularios/motivos_perdida` y la superficie
+    // publica `/sales/vocabularios/{nombre}`. Sólo por prefijo no casaba, y
+    // las pestañas de los vocabularios se escondían en cuanto llegaba la
+    // superficie (medido el 10-11-2026: «Factores de una lección» y las cinco
+    // de vocabularios nuevos, en pantalla de la primera pestaña del módulo).
+    const suyos = p.split("/");
+    if (
+      suyos.length === tramos.length &&
+      suyos.every((t, i) => t === tramos[i] || /^\{[^}]+\}$/.test(t))
+    ) {
+      return true;
+    }
   }
   return false;
 }

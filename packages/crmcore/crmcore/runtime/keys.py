@@ -52,6 +52,10 @@ class ClaveAjuste:
     # `True` cuando cambiarlo tiene consecuencias de seguridad o de coste. La
     # consola lo pide con confirmación y la auditoría lo marca.
     sensible: bool = False
+    # Servicio dueño, cuando la declara un servicio y no el núcleo. Sólo lo
+    # rellena la consola al traer el catálogo de los demás (ver `de_dict`): en
+    # el proceso del dueño la clave es suya y no hace falta decirlo.
+    servicio: str = ""
 
 
 def _c(*args: Any, **kwargs: Any) -> ClaveAjuste:
@@ -1089,6 +1093,15 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=50,
             campo_settings="facturacion_max_intentos",
         ),
+        # Copias a entornos que no son producción
+        _c(
+            "sandbox_copia_aviso_pct",
+            "int",
+            "Porcentaje de los datos a partir del que preparar una copia a un sandbox avisa de que se copia de más",
+            minimo=1,
+            maximo=100,
+            campo_settings="sandbox_copia_aviso_pct",
+        ),
         # Jerarquía de empresas (CRM-00.01.03.07)
         _c(
             "jerarquia_indicadores",
@@ -1117,6 +1130,55 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="licencias_maximas",
             sensible=True,
         ),
+        # La ventana de envío de las cadencias, en la hora del tenant.
+        _c(
+            "cadencia_hora_desde",
+            "int",
+            "Hora (del tenant) antes de la que una cadencia no toca a nadie",
+            minimo=0,
+            maximo=23,
+            campo_settings="cadencia_hora_desde",
+        ),
+        _c(
+            "cadencia_hora_hasta",
+            "int",
+            "Hora (del tenant) a partir de la que el toque de una cadencia pasa al día siguiente",
+            minimo=1,
+            maximo=24,
+            campo_settings="cadencia_hora_hasta",
+        ),
+        _c(
+            "cadencia_hora_reprograma",
+            "int",
+            "Hora (del tenant) a la que se recoloca un toque que caía fuera de la ventana",
+            minimo=0,
+            maximo=23,
+            campo_settings="cadencia_hora_reprograma",
+        ),
+        _c(
+            "convivencia_medida_fresca_dias",
+            "int",
+            "Días que vale una medida de la migración desde el sistema heredado",
+            minimo=1,
+            maximo=365,
+            campo_settings="convivencia_medida_fresca_dias",
+        ),
+        _c(
+            "transcripcion_correccion_maxima_pct",
+            "float",
+            "Porcentaje de propuestas corregidas a partir del que la extracción de una transcripción no merece la pena",
+            minimo=0.0,
+            maximo=100.0,
+            campo_settings="transcripcion_correccion_maxima_pct",
+        ),
+        _c(
+            "caso_parecido_uso_minimo_pct",
+            "float",
+            "Porcentaje de casos parecidos sugeridos que hay que usar para decir que las sugerencias sirven",
+            minimo=0.0,
+            maximo=100.0,
+            campo_settings="caso_parecido_uso_minimo_pct",
+        ),
         _c(
             "marcador_grabar_por_politica",
             "bool",
@@ -1135,6 +1197,11 @@ CLAVES: dict[str, ClaveAjuste] = {
         ),
     )
 }
+
+
+# Las que ha añadido un servicio con `registrar_claves`, para poder publicarlas
+# sin mezclarlas con las del núcleo (que la consola ya conoce por sí misma).
+_REGISTRADAS: set[str] = set()
 
 
 def registrar_claves(nuevas: list[ClaveAjuste]) -> None:
@@ -1159,6 +1226,57 @@ def registrar_claves(nuevas: list[ClaveAjuste]) -> None:
                 f"«{previa.tipo}» y se intenta registrar como «{clave.tipo}»"
             )
         CLAVES[clave.clave] = clave
+        _REGISTRADAS.add(clave.clave)
+
+
+def claves_del_servicio() -> list[ClaveAjuste]:
+    """Las que declara el servicio de este proceso, no el núcleo, en orden estable."""
+    return [CLAVES[c] for c in sorted(_REGISTRADAS) if c in CLAVES]
+
+
+def a_dict(decl: ClaveAjuste) -> dict[str, Any]:
+    """La declaración tal cual, para publicarla a otro servicio."""
+    return {
+        "clave": decl.clave,
+        "tipo": decl.tipo,
+        "descripcion": decl.descripcion,
+        "minimo_ambito": decl.minimo_ambito,
+        "minimo": decl.minimo,
+        "maximo": decl.maximo,
+        "opciones": list(decl.opciones),
+        "campo_settings": decl.campo_settings,
+        "sensible": decl.sensible,
+    }
+
+
+def de_dict(datos: dict[str, Any], servicio: str) -> ClaveAjuste:
+    """Lo contrario de `a_dict`: la declaración que publicó `servicio`."""
+    return ClaveAjuste(
+        clave=str(datos["clave"]),
+        tipo=datos["tipo"],
+        descripcion=str(datos.get("descripcion") or ""),
+        minimo_ambito=datos.get("minimo_ambito") or "tenant",
+        minimo=datos.get("minimo"),
+        maximo=datos.get("maximo"),
+        opciones=tuple(datos.get("opciones") or ()),
+        campo_settings=str(datos.get("campo_settings") or ""),
+        sensible=bool(datos.get("sensible")),
+        servicio=servicio,
+    )
+
+
+def incorporar_de_otro_servicio(decl: ClaveAjuste) -> bool:
+    """La consola aprende una clave que declara OTRO servicio.
+
+    Nunca pisa una del núcleo ni una del propio proceso: la declaración que
+    manda es la de quien lee el valor, y aquí sólo se refresca la copia que se
+    trajo de fuera. Devuelve si la ha incorporado.
+    """
+    previa = CLAVES.get(decl.clave)
+    if previa is not None and not previa.servicio:
+        return False
+    CLAVES[decl.clave] = decl
+    return True
 
 
 def validar(clave: str, valor: Any) -> Any:

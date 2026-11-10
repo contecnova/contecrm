@@ -116,6 +116,14 @@ class _TenancySettings(BaseSettings):
     # del periodo.
     tarea_facturacion_intervalo_s: int = Field(3_600, ge=60, le=86_400)
 
+    # ── Copias a entornos que no son producción (sandboxes) ───────────────
+    #
+    # Porcentaje de los datos a partir del cual preparar una copia avisa de que
+    # se copia de más: con el 5 % se prueba igual de bien y hay veinte veces
+    # menos que proteger. Era un 20 en `sandboxes.plan_de_copia`; cuánto riesgo
+    # se acepta en un entorno de pruebas lo decide cada empresa.
+    sandbox_copia_aviso_pct: int = Field(20, ge=1, le=100)
+
     # ── Jerarquía de empresas (CRM-00.01.03.07) ───────────────────────────
     #
     # Qué indicadores agrega la matriz de las empresas hijas que se los han

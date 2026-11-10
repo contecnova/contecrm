@@ -338,6 +338,10 @@ def progreso(db: Session, tenant_id: UUID) -> dict[str, Any]:
         .all()
     )
     objetos_con_regla = {r.objeto for r in reglas}
+    # Cuántos días vale una medida: ajuste por tenant (era un 30 aquí).
+    from crmcore.runtime import settings as rt
+
+    dias_fresca = int(rt.efectivo("convivencia_medida_fresca_dias", db))
     salida = []
     for fila in filas:
         total = fila.en_heredado + fila.en_nuevo
@@ -358,7 +362,7 @@ def progreso(db: Session, tenant_id: UUID) -> dict[str, Any]:
                 "medido_hace_dias": edad,
                 # Una medida vieja no vale: se marca en vez de presentarla como
                 # actual.
-                "medida_fresca": edad <= 30,
+                "medida_fresca": edad <= dias_fresca,
                 "terminado": fila.en_heredado == 0 and total > 0,
             }
         )
@@ -370,6 +374,7 @@ def progreso(db: Session, tenant_id: UUID) -> dict[str, Any]:
         "con_regla_sin_medir": sin_medir,
         "terminados": len([o for o in salida if o["terminado"]]),
         "concluyente": not sin_medir and all(o["medida_fresca"] for o in salida),
+        "dias_que_vale_una_medida": dias_fresca,
     }
 
 

@@ -373,7 +373,7 @@ class LlamadaTelefonica(Base, TimestampMixin):
     actividad_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     registro_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Lo que anota la persona al colgar (marcador): cómo fue, comercialmente.
-    resultado_comercial: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    resultado_comercial: Mapped[str | None] = mapped_column(String(120), nullable=True)
     nota: Mapped[str] = mapped_column(Text, nullable=False, default="")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -1096,7 +1096,7 @@ def anotar_resultado(
     llamada = db.get(LlamadaTelefonica, llamada_id)
     if llamada is None or llamada.tenant_id != tenant_id:
         raise NoEncontrado("La llamada no existe", error_code="telefonia.llamada_no_encontrada")
-    llamada.resultado_comercial = resultado_comercial[:40]
+    llamada.resultado_comercial = resultado_comercial[:120]
     llamada.nota = nota.strip()
     if llamada.actividad_id is not None:
         r = invocar(

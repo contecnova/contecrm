@@ -257,6 +257,23 @@ def test_un_rol_de_compra_inventado_se_rechaza(uow: UnidadDeTrabajo, contexto_te
         ing.anotar_rol(uow, oportunidad_id=uuid4(), contacto_id=uuid4(), rol="interlocutor")
     assert fallo.value.error_code == "compra.rol_invalido"
 
+    # Pero si la empresa lo añade a su vocabulario (`roles_compra`), vale: la
+    # lista es suya, no la tupla del código.
+    from crmcore import vocabulario
+
+    vocabulario.materializar(uow.db, "roles_compra", uow.tenant_id)
+    uow.db.add(
+        vocabulario.ValorVocabulario(
+            tenant_id=uow.tenant_id,
+            vocabulario="roles_compra",
+            valor="interlocutor",
+            etiqueta="Interlocutor",
+        )
+    )
+    uow.db.flush()
+    fila = ing.anotar_rol(uow, oportunidad_id=uuid4(), contacto_id=uuid4(), rol="interlocutor")
+    assert fila.rol == "interlocutor"
+
 
 # ── Oportunidades relacionadas (CRM-03.01.01.11) ──────────────────────────
 

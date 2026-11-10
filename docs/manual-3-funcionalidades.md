@@ -120,9 +120,25 @@ que una avalancha de uno no bloquea la entrega de los demás.
 
 La configuración es **jerárquica**: global → tier → tenant → unidad de negocio →
 usuario (CRM-00.01.04.01). Cada nivel sobrescribe al anterior y lo que nadie
-fije cae al valor de `.env`. Son 32 ajustes editables en caliente, con validación
-al escribir y auditoría del cambio; la lista está en el
-[Manual VI](manual-6-referencia-ajustes.md).
+fije cae al valor de `.env`. Son 299 ajustes editables en caliente (medido el
+10-11-2026: 133 del núcleo y 166 que declara cada servicio para lo suyo), con
+validación al escribir y auditoría del cambio; los del núcleo están en el
+[Manual VI](manual-6-referencia-ajustes.md), y los de cada servicio, con su
+explicación, en el `ajustes.py` de ese servicio y en la propia consola.
+
+**Todos están en la consola, también los de cada servicio.** Hasta el
+10-11-2026 no era verdad: la consola de **Ajustes** sólo conocía los del
+núcleo, y los que declara un servicio para su propio negocio —los umbrales de
+salud de la cuenta, el preaviso de un contrato de proveedor, las lecciones
+aprendidas, la telefonía, el margen mínimo— no salían en ella y, si se
+intentaban fijar, se rechazaban como «ajuste desconocido». Sólo se cambiaban
+en el `.env`, y este manual decía que desde la consola. Ahora cada servicio
+publica los suyos y la consola los enseña todos, con el mismo trato: su tipo,
+sus límites, hasta qué ámbito se pueden bajar, **qué servicio lo lee**, su
+historial y la vuelta atrás. El cambio le llega al servicio dueño en un
+segundo, sin reiniciar. Si un servicio no contesta cuando se abre la consola,
+sus ajustes no salen esa vez y la respuesta lo dice
+(`X-Ajustes-Sin-Catalogo`).
 
 El **plan** decide qué capacidades están activas (CRM-00.01.04.05), y eso vive
 como dato, no como condicionales en el código: un plan nuevo es una fila, no un
@@ -3666,12 +3682,38 @@ de su web y no la vuelve a tocar; una URL con `/api/v1/` dentro invita a que
 alguien la «actualice» a `/api/v2/` el día que exista y se le rompa el
 formulario sin avisar.
 
-### Lo que no hace, dicho
+### Dos puertas desde la web, y las dos pasan por el gateway
 
-**No deduplica en el momento de la captura.** Eso lo hace el flujo de calidad
-después. Meterlo aquí convertiría cada envío de formulario en una consulta de
-similitud contra toda la tabla, y un formulario que tarda dos segundos es un
-formulario que se abandona.
+Lo que llega de la web de un cliente entra por **una de dos puertas**, y las dos
+acaban en el mismo canal con sus mismas tres protecciones:
+
+- **El formulario público**, `POST /captura/{tenant}/{clave}` con la clave en
+  `X-Captura-Secreto`. Para un formulario que el cliente monta a su gusto.
+- **El formulario incrustado** (`CRM-00.02.03.05`): el componente
+  `formulario-alta` pegado en la web, con un **token acotado a ese canal** en
+  vez de la clave. Pinta su propio formulario —nombre, apellidos, empresa,
+  correo, teléfono y mensaje, más la trampa oculta— y no escribe nada hasta
+  que la persona lo envía.
+
+El gateway reenvía las dos **por su nombre**, sin abrir nada más, y les pone lo
+que es de la puerta: un **tope por IP** (`CAPTURA_PUBLICA_INTENTOS_POR_IP`, 30
+por `CAPTURA_PUBLICA_VENTANA_S`, una hora), un **tamaño máximo** del envío
+(`CAPTURA_PUBLICA_MAX_BYTES`, 16 KB) y **desde qué webs** se admiten
+(`INCRUSTABLE_ORIGENES`, `*` de serie: lo que autoriza es la clave o el token;
+acotarlo a las webs del cliente impide que otra web use una clave filtrada).
+Las dos contestan **siempre `{"recibido": true}`**, se cree o se descarte.
+
+Hasta el 10-11-2026 **ninguna de las dos funcionaba desde fuera**: el gateway
+no reenviaba la primera y la segunda contestaba 401.
+
+### Deduplica al entrar, sin preguntar
+
+Contra los leads y contra los contactos del maestro, por índice. Como aquí no
+hay nadie a quien preguntar, `lead_dedupe_captura` decide: **marcar** el lead
+nuevo como posible duplicado —la recepción lo dice: «posible duplicado de lead
+por email, nombre»—, **fusionar** lo que llega en el que ya había, o dejarlo
+pasar. Nunca se pierde lo que llegó (ver «Detección de duplicados» en la
+sección de leads).
 
 ---
 
@@ -8030,6 +8072,13 @@ cuenta **sin cuenta asignada no ve nada**: enseñar todo «porque tiene nivel de
 cuenta» sería el peor fallo posible aquí. Y declarar secciones concretas **se
 interseca** con las del nivel en vez de sustituirlas, porque si mandaran las
 declaradas, declarar una sección sería una forma de saltarse el nivel.
+
+**La sesión del portal sólo vale en el portal.** El token que recibe el cliente
+al entrar con su enlace sirve para las rutas `/api/v1/portal/mi/…` y para
+ninguna otra, tampoco para las que sólo piden estar autenticado: fuera de su
+sitio contesta 401 (`portal.ruta_no_admite_portal`). Es la misma regla que el
+token de un componente incrustado, y por lo mismo: vive en el navegador de
+alguien que no trabaja aquí.
 
 Al abrir un caso desde el portal, el contacto y la cuenta los pone **el acceso**,
 no la petición: aceptarlos de quien llama permitiría abrir casos en nombre de otra
@@ -13292,6 +13341,37 @@ quien pase por ahí, basta con abrir las herramientas del navegador. Y su contra
 es tan público como el de la API, porque se incrusta en páginas que no son
 nuestras.
 
+**El token de componente sólo entra por la ruta de su componente.** Hay cuatro
+—`ficha-cuenta`, `lista-casos`, `estado-pedido` y `formulario-alta`, el único
+que escribe— y cada uno vive en `/api/v1/embebido/<componente>`. Cualquier
+otra ruta lo rechaza con 401 (`embebido.ruta_no_admite_componente`), también
+las que sólo piden estar autenticado: ese token vive en el HTML de una página
+pública y lo tiene quien la abra. Y en la suya sólo vale si es de ese
+componente, de ese tipo de registro y con el permiso que su ruta exige dentro
+del token. El token se pide con `POST /api/v1/sdk/componentes/token`; si el
+tipo de registro no es el del componente, se dice al emitirlo. **Y sólo se
+emite para un registro que quien lo pide puede ver**: se pregunta al servicio
+dueño con su identidad, y si no lo ve —o no existe— contesta 403
+(`embebido.registro_no_visible`). Tener permiso para incrustar no da permiso
+para publicar en una web lo que uno mismo no puede abrir.
+
+**El fichero del componente se sirve en `/embebido.js`**, en el mismo sitio que
+la consola, con una hora de caché y sin credenciales: se pide desde webs
+ajenas y no tiene nada que ver con la sesión de nadie. La ruta no cambia entre
+versiones, porque es la que el cliente deja pegada en su web:
+
+```html
+<script type="module" src="https://crm.ejemplo.com/embebido.js"></script>
+<contecrm-componente componente="formulario-alta"
+  api="https://api.crm.ejemplo.com/api/v1" token="…"></contecrm-componente>
+```
+
+El token lo pide el servidor de la web del cliente —con su clave de API— y lo
+pone en el HTML; el navegador del visitante no ve nunca otra credencial.
+
+Lo que viene del CRM se pinta **como texto**, nunca como HTML: el asunto de un
+caso puede escribirlo un cliente, y el componente se pinta en la web de otro.
+
 ## Tokenización de datos de pago (`CRM-00.05.03.04`)
 
 Cifrar un número de tarjeta lo protege de quien lea la base. **Tokenizarlo lo saca
@@ -16857,6 +16937,54 @@ también al prepararla a mano y al pedir el riesgo de dependencia.
 
 La **hora de una instantánea o un envío programado** es la de la zona horaria
 de la empresa, y la pantalla la dice al lado.
+
+### Más listas y umbrales de la empresa (10-11-2026, segundo bloque)
+
+- **La ventana de envío de las cadencias** (`CRM-03.03.01.01`) se mira en la
+  hora de la empresa —su zona horaria— y no en hora universal, también al
+  cambiar la hora; antes en España se corría una hora en invierno y dos en
+  verano. Cada tramo es un ajuste: `cadencia_hora_desde` (8),
+  `cadencia_hora_hasta` (19) y `cadencia_hora_reprograma` (9). «Dentro de tres
+  días» que cruza el cambio de hora cae a la misma hora del reloj.
+  **El primer paso también la respeta**: inscribir a alguien a las once de la
+  noche o en sábado deja el primer toque para la mañana del siguiente día
+  laborable, a la hora de recolocar. Hasta el 10-11-2026 se programaba para
+  «ya» y salía en la siguiente pasada, a cualquier hora.
+- **Un valor de vocabulario cabe entero donde se usa.** El código de un valor
+  admite 120 caracteres, y las columnas que lo guardan admitían 20 (rol en la
+  compra, función de contacto de proveedor, relación entre personas), 40 (rol
+  en el equipo de cuenta, resultado de una llamada) u 80 (motivos de pérdida y
+  de descarte): un código largo se aceptaba en el vocabulario y fallaba al
+  usarlo —o, en el resultado de la llamada, se guardaba recortado—. Desde el
+  10-11-2026 todas guardan 120.
+- **Cinco listas pasan a ser vocabularios de la empresa**, con sus valores de
+  fábrica como punto de partida y su pestaña en **Administrar › Herramientas de
+  plataforma › Gestor de objetos**: roles en la compra (`roles_compra`), roles
+  en el equipo de cuenta (`roles_equipo_cuenta`), relaciones entre personas del
+  mapa de influencia (`relaciones_persona`), funciones de contacto de proveedor
+  (`funciones_contacto_proveedor`) y resultados de una llamada
+  (`resultados_llamada`). El marcador ofrece al colgar los de la empresa.
+- **Valores fijos**: los que el producto interpreta uno a uno se pueden
+  renombrar pero no retirar —decisor y económico (cobertura de la compra),
+  escalado (a quién se llama), y hablado, pide que no le llamen, número
+  erróneo y reprogramar (lo que hace el marcador al colgar)—. Retirarlos
+  apagaría en silencio lo que el producto hace con ellos.
+- **Una relación nueva puede ser una opinión** (`{"opinion": true}` en su
+  *extra*) y entonces exige motivo, como aliado y detractor.
+- **Vocabularios de negocio** enseña los de ventas, clientes y servicio, con
+  un selector, y cuáles son fijos.
+- **Se queda cerrada a propósito**: los motivos de suspensión del plazo de una
+  reclamación (`postventa`). Son los que reconoce la norma; si la empresa
+  pudiera añadir los suyos, el plazo legal se pararía por «mucho trabajo» y
+  dejaría de ser un plazo.
+- **Cuatro umbrales más a ajuste**: cuándo la extracción de una transcripción
+  no merece la pena (`transcripcion_correccion_maxima_pct`, 40 % corregido),
+  cuándo las sugerencias de casos parecidos sirven
+  (`caso_parecido_uso_minimo_pct`, 15 % usadas), cuántos días vale una medida
+  de la migración desde el sistema heredado (`convivencia_medida_fresca_dias`,
+  30) y a partir de qué porcentaje copiado avisa una copia a un sandbox
+  (`sandbox_copia_aviso_pct`, 20 %). Las respuestas dicen el umbral que
+  aplicaron.
 
 ## Lo que la API servía y ninguna pantalla abría (10-11-2026)
 

@@ -349,8 +349,14 @@ def coste_transcripcion(cuerpo: CosteTranscribirIn, principal: AutenticadoDep) -
         "que es una respuesta distinta y la que toca."
     ),
 )
-def calidad_extraccion(cuerpo: CalidadExtraccionIn, principal: AutenticadoDep) -> Any:
-    return trs.calidad_de_la_extraccion(confirmadas=cuerpo.confirmadas)
+def calidad_extraccion(cuerpo: CalidadExtraccionIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.runtime import settings as rt
+
+    # El umbral del tenant (ajuste `transcripcion_correccion_maxima_pct`).
+    return trs.calidad_de_la_extraccion(
+        confirmadas=cuerpo.confirmadas,
+        maximo_pct=float(rt.efectivo("transcripcion_correccion_maxima_pct", db)),
+    )
 
 
 @router_variantes.post(
@@ -464,8 +470,14 @@ def indexables(cuerpo: IndexarIn, principal: AutenticadoDep) -> Any:
         "ruido. Las dos se arreglan aquí, no insistiendo en que lo miren."
     ),
 )
-def aprovechamiento(cuerpo: UsoDeSugerenciasIn, principal: AutenticadoDep) -> Any:
-    return sem.aprender_de_lo_usado(sugerencias=cuerpo.sugerencias)
+def aprovechamiento(cuerpo: UsoDeSugerenciasIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.runtime import settings as rt
+
+    # El umbral del tenant (ajuste `caso_parecido_uso_minimo_pct`).
+    return sem.aprender_de_lo_usado(
+        sugerencias=cuerpo.sugerencias,
+        minimo_pct=float(rt.efectivo("caso_parecido_uso_minimo_pct", db)),
+    )
 
 
 @router_sugerencias.post(

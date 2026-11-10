@@ -492,14 +492,15 @@ def historial_de_ejecuciones(
     )
 
 
+# Se podía programar y no desprogramar: un envío o una instantánea que ya no
+# quería nadie seguía corriendo cada semana.
 @router.delete(
     "/programaciones/{programacion_informe_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(exige_permiso("informe:write"))],
     summary="Quitar una programación",
     description=(
-        "Se podía programar y no desprogramar: un envío o una instantánea que ya "
-        "no quiere nadie seguía corriendo cada semana. Quitarla no toca el "
+        "Deja de enviar el informe o de tomar sus instantáneas. No toca el "
         "informe ni las instantáneas ya tomadas: la serie se queda como estaba."
     ),
 )

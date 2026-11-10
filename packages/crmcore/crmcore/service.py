@@ -795,6 +795,12 @@ def crear_servicio(
 
         app.include_router(crear_router_numeracion(nombre), prefix=s.api_prefix)
 
+    # Y sus ajustes propios, para que la consola de `tenancy` los liste y los
+    # deje fijar: sin esto sólo conocía los del núcleo (medido el 10-11-2026).
+    from crmcore.http.ajustes_catalogo_router import crear_router_catalogo_ajustes
+
+    app.include_router(crear_router_catalogo_ajustes(nombre), prefix=s.api_prefix)
+
     for router in routers or []:
         app.include_router(router, prefix=s.api_prefix)
     for router in routers_sin_prefijo or []:

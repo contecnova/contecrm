@@ -253,6 +253,17 @@ def fijar(
 
     convertido = validar(clave, valor)
     anterior = efectivo(clave, db)
+    # Lo que tenía ESTE ámbito, no lo que se aplicaba: si no tenía valor propio
+    # es `None`, y deshacer el cambio quita el valor en vez de fijar el de
+    # fábrica como propio (medido el 10-11-2026: deshacer el primer cambio de
+    # una clave la dejaba fijada para siempre en el tenant).
+    propio = db.execute(
+        select(AjusteRuntime.valor).where(
+            AjusteRuntime.clave == clave,
+            AjusteRuntime.ambito == ambito,
+            AjusteRuntime.ambito_id == ambito_id,
+        )
+    ).scalar_one_or_none()
 
     db.execute(
         pg_insert(AjusteRuntime)
@@ -274,7 +285,7 @@ def fijar(
     # rastro: un histórico que depende de que alguien se acuerde de anotar es un
     # histórico con huecos justo donde importa.
     _anotar_version(
-        db, clave, ambito, ambito_id, anterior, convertido, por, motivo=motivo, tipo=tipo_version
+        db, clave, ambito, ambito_id, propio, convertido, por, motivo=motivo, tipo=tipo_version
     )
 
     # Auditar el cambio de configuración es obligatorio (CRM-00.05.04.03): la
@@ -517,6 +528,11 @@ def valores_efectivos(db: Session) -> dict[str, Any]:
             "minimo": decl.minimo,
             "maximo": decl.maximo,
             "opciones": list(decl.opciones),
+            # Hasta dónde se puede bajar al fijarla, y de quién es. Sin el
+            # ámbito, quien la intentaba fijar por usuario se enteraba con el
+            # rechazo; sin el dueño, no sabía qué servicio la lee.
+            "minimo_ambito": decl.minimo_ambito,
+            "servicio": decl.servicio or "nucleo",
         }
     return resultado
 

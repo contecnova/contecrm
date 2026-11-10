@@ -5835,7 +5835,21 @@ def sembrar_las_que_siguen_vacias(api: Api) -> None:
     #
     # La bandeja vacía se lee como «no hay nada que aprobar», y lo que pasa es
     # que nunca se ha pedido ninguna.
-    if oportunidades:
+    #
+    # Los aprobadores salen del ORGANIGRAMA y no del primero del listado de
+    # usuarios: ése era, por orden alfabético, la auditora —que es de solo
+    # lectura— o un usuario de prueba. Y con `unico_por`: sin él, cada pasada
+    # pedía la misma aprobación otra vez (había ocho copias el 10-11-2026).
+    #
+    # Y nadie de los dos es quien siembra: quien pide no se aprueba a sí mismo,
+    # y el servicio rechaza una etapa que sólo le nombra a él.
+    yo = getattr(api, "principal_id", "")
+    personas = [p for p in _organigrama(api) if str(p.get("usuario_id")) != yo]
+    jefes = [
+        str(p["usuario_id"]) for p in personas if "responsable_ventas" in (p.get("roles") or [])
+    ]
+    direccion = [str(p["usuario_id"]) for p in personas if "admin" in (p.get("roles") or [])]
+    if oportunidades and jefes and direccion:
         api.crear(
             "/api/v1/aprobaciones",
             {
@@ -5847,20 +5861,21 @@ def sembrar_las_que_siguen_vacias(api: Api) -> None:
                     {
                         "nombre": "Responsable comercial",
                         "origen": "usuario",
-                        "usuarios": [u["id"] for u in usuarios[:1]],
+                        "usuarios": jefes,
                         "quorum": "cualquiera",
                         "vence_en_horas": 48,
                     },
                     {
                         "nombre": "Dirección",
                         "origen": "usuario",
-                        "usuarios": [u["id"] for u in usuarios[:1]],
-                        "quorum": "todos",
+                        "usuarios": direccion,
+                        "quorum": "cualquiera",
                         "vence_en_horas": 72,
                     },
                 ],
                 "campos_vigilados": ["importe", "descuento_pct"],
             },
+            unico_por="titulo",
         )
 
     # ── Un documento generado y su sobre de firma ─────────────────────────
@@ -6171,6 +6186,564 @@ def _actividad_de_la_oportunidad(api: Api, op: dict, contactos: list[dict], *, f
             api.crear(f"/api/v1/activities/{creada['id']}/completar", {"resultado": "hecha"})
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  Las pestañas que quedaban vacías (10-11-2026)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# Medido el 09-11-2026 recorriendo las 235 pestañas del menú contra el tenant de
+# la plataforma: 16 salían vacías. Diez de ellas lo están **a propósito** —una
+# cola de fallidos, una papelera, los dispositivos de confianza de una persona—
+# y se dicen en el manual técnico. Éstas seis no: son trabajo corriente que
+# cualquier empresa tiene, y su pestaña vacía se lee como «esto no está hecho».
+
+# Quién vende. Igual que en `sembrar_empresa.py`: quien lleva una cuenta con
+# uno de estos roles es quien vende lo que sale de ella.
+_ROLES_QUE_VENDEN = ("comercial", "responsable_ventas")
+
+
+def _organigrama(api: Api) -> list[dict]:
+    """Las personas activas, con sus roles y su superior.
+
+    De `/organigrama` y no de `/usuarios`: el listado de usuarios no trae los
+    roles, y sin ellos no se sabe quién vende y quién atiende.
+    """
+    estado, cuerpo = api._llamar("GET", "/api/v1/organigrama")
+    if estado != 200:
+        api.fallos.append(f"GET /api/v1/organigrama → {estado} {_motivo(cuerpo)}")
+        return []
+    return [p for p in (cuerpo or {}).get("personas", []) if p.get("activa")]
+
+
+def _todas(api: Api, ruta: str, tope: int = 2000) -> list[dict]:
+    """Un listado entero, siguiendo el cursor.
+
+    `listar` trae una página. Para repartir comisiones hace falta **todo** lo
+    ganado en el periodo: una página de 200 ordenada por alta deja fuera
+    justo lo que se creó hace años y se cerró el mes pasado.
+    """
+    filas: list[dict] = []
+    cursor = ""
+    sep = "&" if "?" in ruta else "?"
+    while len(filas) < tope:
+        estado, cuerpo = api._llamar("GET", f"{ruta}{sep}limite=200&cursor={cursor}")
+        if estado != 200 or not isinstance(cuerpo, dict):
+            api.fallos.append(f"GET {ruta} → {estado} {_motivo(cuerpo)}")
+            break
+        filas.extend(cuerpo.get("items") or [])
+        cursor = str(cuerpo.get("siguiente") or "")
+        if not cursor or not cuerpo.get("hay_mas"):
+            break
+    return filas
+
+
+def _comisiones_con_reparto(api: Api, venden: list[dict]) -> None:
+    """Un plan sobre cierre, asignado a quien vende, y su liquidación del mes.
+
+    Las tres liquidaciones que había salían a **0,00 €** y sin líneas: se
+    liquidaban sin operaciones —el servicio no las lee, las trae quien llama, y
+    el sembrado no traía ninguna— y dos sin persona. Una pantalla de comisiones
+    a cero se lee como que no funcionan.
+
+    Plan propio **sobre cierre** y no el `directa_<año>` que ya hay: aquél se
+    devenga al cobrar, y comisionar una venta ganada que nadie ha cobrado
+    contradiría lo que el propio plan declara.
+
+    El periodo es **el último mes cerrado**: liquidar el mes en curso da una
+    cifra que cambia cada día hasta que acaba.
+    """
+    if not venden:
+        return
+    fin = HOY.replace(day=1) - timedelta(days=1)
+    inicio = fin.replace(day=1)
+    plan = api.asegurar(
+        "/api/v1/planes-comision",
+        {
+            "clave": f"cierre_{HOY.year}",
+            "nombre": f"Variable comercial {HOY.year} (sobre cierre)",
+            "desde": date(HOY.year, 1, 1).isoformat(),
+            "hasta": date(HOY.year, 12, 31).isoformat(),
+            "base": "importe",
+            "moneda": "EUR",
+            "periodicidad": "mensual",
+            "devengo": "cierre",
+        },
+    )
+    if not plan or not plan.get("id"):
+        return
+    plan_id = plan["id"]
+    if plan.get("estado") != "activo":
+        # Escalado marginal: el tramo alto sólo para lo que pasa de él. Con
+        # retroactivo, cruzar el umbral por un euro sube todo lo anterior, y
+        # eso es la disputa de comisiones más repetida.
+        for nombre, desde_valor, hasta_valor, pct in (
+            ("Hasta 100.000 € al mes", 0, 100_000, 2),
+            ("Lo que pasa de 100.000 €", 100_000, None, 3),
+        ):
+            api.crear(
+                f"/api/v1/planes-comision/{plan_id}/reglas",
+                {
+                    "tipo": "escalado",
+                    "nombre": nombre,
+                    "desde_valor": desde_valor,
+                    "hasta_valor": hasta_valor,
+                    "porcentaje": pct,
+                    "modo_tramo": "marginal",
+                    "orden": 10 + desde_valor // 1000,
+                },
+            )
+        api.crear(f"/api/v1/planes-comision/{plan_id}/activar", {})
+
+    ganadas = _todas(api, "/api/v1/opportunities?estado=ganada")
+    liquidadas = api.listar("/api/v1/liquidaciones", 200)
+    for persona in venden:
+        uid = str(persona["usuario_id"])
+        if any(
+            str(liq.get("usuario_id")) == uid and liq.get("desde") == inicio.isoformat()
+            for liq in liquidadas
+        ):
+            api.cuenta["saltados"] += 1
+            continue
+        operaciones = []
+        for o in ganadas:
+            cierre = str(o.get("fecha_cierre_real") or o.get("fecha_cierre") or "")[:10]
+            if str(o.get("owner_id")) != uid or not (
+                inicio.isoformat() <= cierre <= fin.isoformat()
+            ):
+                continue
+            operaciones.append(
+                {
+                    "id": o["id"],
+                    "tipo": "oportunidad",
+                    "concepto": f"{o.get('codigo') or ''} {o.get('nombre') or ''}".strip(),
+                    "importe": o.get("importe"),
+                    "fecha": cierre,
+                }
+            )
+        if not operaciones:
+            # Sin ventas en el mes no hay nada que liquidar: una liquidación a
+            # cero de alguien que no vendió no enseña el reparto, lo diluye.
+            continue
+        if not any(str(liq.get("usuario_id")) == uid for liq in liquidadas):
+            # La asignación una sola vez por persona: no tiene listado propio
+            # contra el que mirar, y la liquidación es la huella de que ya está.
+            api.crear(
+                f"/api/v1/planes-comision/{plan_id}/asignaciones",
+                {"usuario_id": uid, "desde": date(HOY.year, 1, 1).isoformat()},
+            )
+        api.crear(
+            "/api/v1/liquidaciones",
+            {
+                "plan_id": plan_id,
+                "usuario_id": uid,
+                "desde": inicio.isoformat(),
+                "hasta": fin.isoformat(),
+                "operaciones": operaciones,
+            },
+        )
+
+
+def _aprobacion_en_la_bandeja(api: Api, aprobador: Api | None) -> None:
+    """Una decisión que le toca a quien entra.
+
+    La bandeja es **de cada persona**: enseña lo que le toca decidir a quien la
+    abre. Las ocho aprobaciones que había esperaban a otros —y a la auditora,
+    que es de solo lectura—, así que quien entraba a enseñarlo veía la bandeja
+    vacía con ocho pendientes en el sistema.
+
+    **La pide otra persona** (`--aprobador`). Pedida por quien siembra no
+    llega nunca a su bandeja: quien pide no se aprueba a sí mismo, y el
+    servicio rechaza una etapa que sólo le nombra a él —«saltarla la aprobaría
+    sola»—. Sin segunda persona no se siembra, y se dice.
+    """
+    yo = getattr(api, "principal_id", "")
+    if aprobador is None:
+        print(
+            "  · bandeja de aprobaciones: hace falta --aprobador (otra persona que "
+            "pida la aprobación); quien pide no se aprueba a sí mismo"
+        )
+        return
+    abiertas = [o for o in api.listar("/api/v1/opportunities", 50) if o.get("id")]
+    if not yo or not abiertas:
+        return
+    op = max(abiertas, key=lambda o: float(o.get("importe") or 0))
+    aprobador.crear(
+        "/api/v1/aprobaciones",
+        {
+            "politica": "condiciones_pago",
+            "objeto": "oportunidad",
+            "objeto_id": op["id"],
+            "titulo": f"Pago a 90 días en «{op.get('nombre')}»",
+            "contexto": {
+                "importe": op.get("importe"),
+                "plazo_pedido_dias": 90,
+                "plazo_habitual_dias": 60,
+                "motivo": "El cliente lo pone como condición para adjudicar este trimestre.",
+            },
+            "etapas": [
+                {
+                    "nombre": "Dirección",
+                    "origen": "usuario",
+                    "usuarios": [yo],
+                    "quorum": "cualquiera",
+                    "vence_en_horas": 72,
+                }
+            ],
+            "campos_vigilados": ["importe"],
+        },
+        unico_por="politica",
+    )
+
+
+def _audiencia_publicitaria(api: Api) -> None:
+    """Una audiencia de anuncios atada a un segmento de personas.
+
+    Necesita la conexión con la plataforma de anuncios y sus tres operaciones
+    —crear, añadir, quitar—: el proveedor es configuración. **No se
+    sincroniza**: la plataforma es un dominio reservado y sincronizar llamaría
+    afuera. Se queda «pendiente», que es exactamente lo que es: declarada y sin
+    subir.
+    """
+    segmentos = [s for s in api.listar("/api/v1/segmentos", 50) if s.get("id")]
+    segmento = next((s for s in segmentos if s.get("objeto") == "contacto"), None)
+    if segmento is None:
+        return
+    conexion = api.asegurar(
+        "/api/v1/integraciones/conexiones",
+        {
+            "nombre": "Plataforma de anuncios",
+            "sistema": "generico",
+            "descripcion": "Audiencias de público objetivo para campañas de pago",
+            "protocolo": "rest",
+            "config": {"base_url": "https://ads.example.com/v1", "autenticacion": "oauth2"},
+        },
+        clave="nombre",
+    )
+    if not conexion or not conexion.get("id"):
+        return
+    for clave, nombre, metodo, ruta in (
+        ("crear_audiencia", "Crear la audiencia", "POST", "/audiences"),
+        ("anadir_miembros", "Añadir miembros", "POST", "/audiences/{id_externo}/members"),
+        ("quitar_miembros", "Quitar miembros", "DELETE", "/audiences/{id_externo}/members"),
+    ):
+        _operacion(
+            api,
+            conexion["id"],
+            clave,
+            nombre,
+            {"metodo": metodo, "ruta": ruta, "mapeo": {"id_externo": "id"}},
+        )
+    api.crear(
+        "/api/v1/audiencias-publicitarias",
+        {
+            "nombre": f"{segmento.get('nombre')} — retargeting",
+            "segmento_id": segmento["id"],
+            "conexion_id": conexion["id"],
+            "finalidad": "Anuncios de las jornadas técnicas a quien ya es contacto técnico",
+        },
+        unico_por="nombre",
+    )
+
+
+def _operacion(api: Api, conexion_id: str, clave: str, nombre: str, definicion: dict) -> None:
+    """Declara una operación de una conexión, si no estaba.
+
+    No hay listado de operaciones contra el que mirar; la base rechaza la
+    segunda con la misma clave, y ese 409 es justo «ya estaba».
+    """
+    estado, cuerpo = api._llamar(
+        "POST",
+        f"/api/v1/integraciones/conexiones/{conexion_id}/operaciones",
+        {"clave": clave, "nombre": nombre, "definicion": definicion},
+    )
+    if estado in (200, 201):
+        api.cuenta["creados"] += 1
+    elif estado == 409:
+        api.cuenta["saltados"] += 1
+    else:
+        api.fallos.append(f"POST operación «{clave}» → {estado} {_motivo(cuerpo)}")
+
+
+def _recepciones_de_captura(api: Api) -> None:
+    """Lo que ha entrado por un formulario, incluido lo descartado.
+
+    **Por la puerta pública de verdad**: un token de componente para el
+    formulario y el alta con él, que es lo que hace el formulario incrustado
+    en la web del cliente. Tres entradas: dos personas y un robot que rellena
+    el campo trampa. Una lista de recepciones sin ningún descartado no enseña
+    para qué sirve.
+    """
+    if api.listar("/api/v1/captura/recepciones", 5):
+        api.cuenta["saltados"] += 1
+        return
+    canales = [c for c in api.listar("/api/v1/captura/canales", 50) if c.get("id")]
+    canal = next((c for c in canales if c.get("campo_trampa") and c.get("activo", True)), None)
+    if canal is None:
+        return
+    estado, token = api._llamar(
+        "POST",
+        "/api/v1/sdk/componentes/token",
+        {
+            "componente": "formulario-alta",
+            "objeto": "formulario",
+            "objeto_id": canal["id"],
+            "minutos": 5,
+        },
+    )
+    if estado != 200 or not (token or {}).get("token"):
+        api.fallos.append(f"POST /api/v1/sdk/componentes/token → {estado} {_motivo(token)}")
+        return
+    publico = Api(api.base)
+    publico.token = token["token"]
+    for entrada in (
+        {
+            "nombre": "Irene",
+            "apellidos": "Soler Vidal",
+            "empresa": "Cerámicas del Maestrazgo",
+            "email": "irene.soler@ceramicasmaestrazgo.example",
+            "telefono": "+34964112233",
+            "mensaje": "Queremos información del mantenimiento preventivo de dos líneas.",
+        },
+        {
+            "nombre": "Tomás",
+            "apellidos": "Aguirre",
+            "empresa": "Envases Bidasoa",
+            "email": "t.aguirre@envasesbidasoa.example",
+            "mensaje": "¿Hacéis auditorías técnicas fuera de Cataluña?",
+        },
+        # El robot: rellena lo que un humano no ve.
+        {
+            "nombre": "Promo",
+            "empresa": "Best SEO",
+            "email": "ventas@seo-barato.example",
+            "trampa": "https://seo-barato.example",
+        },
+    ):
+        estado, cuerpo = publico._llamar("POST", "/api/v1/embebido/formulario-alta", entrada)
+        if estado != 200:
+            # Una vez y no tres: si la puerta no abre, no abre para nadie.
+            api.fallos.append(f"POST /api/v1/embebido/formulario-alta → {estado} {_motivo(cuerpo)}")
+            return
+        api.cuenta["creados"] += 1
+
+
+def _firmas(api: Api, venden: list[dict]) -> None:
+    """Sobres preparados desde las oportunidades y firmas hechas en mano.
+
+    **Los sobres van por la oportunidad** (`enviar-a-firma`), que es quien
+    deja el origen puesto para que la firma vuelva a ella. No se mandan: no hay
+    proveedor real conectado, y mandar uno llamaría afuera. Se quedan en
+    borrador, que es lo que la pantalla tiene que enseñar en una instalación así.
+
+    Hacía falta un proveedor que identifique **por correo**: el único sembrado
+    pedía SMS, vídeo o certificado, y la oportunidad no pasa identificación,
+    así que todo envío desde ella salía rechazado.
+    """
+    api.crear(
+        "/api/v1/firma/proveedores",
+        {
+            "clave": "firma-simple",
+            "nombre": "Firma simple por correo",
+            "niveles": ["simple"],
+            "identificaciones": ["correo", "sms"],
+            "mapa_estados": {
+                "sent": "enviado",
+                "viewed": "visto",
+                "completed": "completado",
+                "declined": "rechazado",
+                "expired": "caducado",
+            },
+            "coste_sobre": "0.40",
+        },
+        unico_por="clave",
+    )
+    # La regla se escribe con lo que el sobre lleva en su contexto: la moneda.
+    # Por importe no se puede —llega como texto y la comparación con un número
+    # se deniega, con razón—.
+    api.crear(
+        "/api/v1/firma/reglas",
+        {
+            "nombre": "Ofertas en euros: firma simple por correo",
+            "prioridad": 100,
+            "condiciones": [{"atributo": "documento.moneda", "operador": "=", "valor": "EUR"}],
+            "proveedor": "firma-simple",
+        },
+        unico_por="nombre",
+    )
+
+    sobres = api.listar("/api/v1/firma/sobres", 200)
+    ya = {str(s.get("objeto_origen_id")) for s in sobres}
+    faltan = 3 - len(sobres)
+    abiertas = sorted(
+        (o for o in api.listar("/api/v1/opportunities", 200) if o.get("cuenta_id")),
+        key=lambda o: (-(o.get("probabilidad") or 0), -float(o.get("importe") or 0)),
+    )
+    for op in abiertas:
+        if faltan <= 0:
+            break
+        if str(op["id"]) in ya:
+            continue
+        contactos = [
+            c
+            for c in api.listar(f"/api/v1/contacts?cuenta_id={op['cuenta_id']}", 10)
+            if c.get("email")
+        ]
+        if not contactos:
+            continue
+        firmante = contactos[0]
+        estado, cuerpo = api._llamar(
+            "POST",
+            f"/api/v1/opportunities/{op['id']}/enviar-a-firma",
+            {
+                "firmantes": [
+                    {
+                        "nombre": firmante.get("nombre_completo") or firmante.get("nombre"),
+                        "email": firmante["email"],
+                    }
+                ],
+                "mensaje": "Le adjuntamos la oferta para su aceptación.",
+                "enviar": False,
+            },
+        )
+        if estado in (200, 201):
+            api.cuenta["creados"] += 1
+            faltan -= 1
+        elif _codigo_de(cuerpo) != "firma.sin_presupuesto":
+            # Sin presupuesto vivo no hay qué firmar y se prueba la siguiente;
+            # cualquier otra cosa es un fallo y se dice.
+            api.fallos.append(f"POST enviar-a-firma → {estado} {_motivo(cuerpo)}")
+            break
+
+    # ── Firmas en mano: la conformidad de un pedido en la visita ──────────
+    import base64
+    import math
+
+    firmadas = {str(f.get("objeto_id")) for f in api.listar("/api/v1/firma-presencial", 200)}
+    pedidos = [p for p in api.listar("/api/v1/pedidos", 20) if p.get("cuenta_id")][:2]
+    testigos = [str(p["usuario_id"]) for p in venden]
+    for i, pedido in enumerate(pedidos):
+        if str(pedido["id"]) in firmadas or not testigos:
+            api.cuenta["saltados"] += 1
+            continue
+        contactos = [
+            c
+            for c in api.listar(f"/api/v1/contacts?cuenta_id={pedido['cuenta_id']}", 10)
+            if c.get("nombre_completo")
+        ]
+        if not contactos:
+            continue
+        cuenta = api.leer(f"/api/v1/accounts/{pedido['cuenta_id']}") or {}
+        # Testigo: quien lleva la cuenta, que es quien estaba allí. Si la lleva
+        # alguien que no vende, un comercial: el testigo es una persona del
+        # equipo, nunca nadie.
+        testigo = str(cuenta.get("owner_id") or "")
+        testigo = testigo if testigo in testigos else testigos[i % len(testigos)]
+        texto = (
+            f"Conformidad de entrega del pedido {pedido.get('numero')}, "
+            f"por importe de {pedido.get('total')} {pedido.get('moneda') or 'EUR'}."
+        )
+        # Un trazo con forma de firma: dos segundos y medio, ochenta puntos.
+        # El servicio rechaza —con razón— lo que parece un toque accidental.
+        trazo = {
+            "puntos": [
+                {
+                    "x": round(20 + k * 3.2, 1),
+                    "y": round(60 + 18 * math.sin(k / 4 + i) * math.cos(k / 11), 1),
+                    "t": k * 32,
+                    "p": round(0.4 + 0.3 * abs(math.sin(k / 7)), 2),
+                }
+                for k in range(80)
+            ]
+        }
+        api.crear(
+            "/api/v1/firma-presencial",
+            {
+                "trazo": trazo,
+                "contenido_firmado_b64": base64.b64encode(texto.encode()).decode(),
+                "firmante_nombre": contactos[0]["nombre_completo"],
+                "consentimiento_biometrico": True,
+                "texto_consentimiento": (
+                    "Acepto que se guarde el trazo de mi firma, que es un dato "
+                    "biométrico, sólo para poder acreditar esta conformidad."
+                ),
+                "documento_identidad": "DNI comprobado en mano por el testigo",
+                "testigo_id": testigo,
+                "objeto": "pedido",
+                "objeto_id": pedido["id"],
+                "documento_id": f"pedido:{pedido['id']}",
+                "dispositivo": "Tableta del equipo comercial",
+            },
+        )
+
+
+def _programacion_de_integraciones(api: Api) -> None:
+    """Qué lee sola la integración con el ERP, y cada cuánto.
+
+    **Programada y en pausa.** La conexión sembrada apunta al ERP de una
+    empresa de verdad: activarla haría que el programador la llamase cada
+    vuelta. La pestaña enseña la cadencia declarada y que está parada, que es
+    lo honesto en una instalación sin el ERP conectado; se activa desde ella
+    cuando haya credenciales.
+    """
+    conexiones = [
+        c
+        for c in api.listar("/api/v1/integraciones/conexiones", 50)
+        if c.get("id")
+        and c.get("protocolo") == "rest"
+        and (c.get("config") or {}).get("base_url")
+        and c.get("activa")
+    ]
+    erp = next((c for c in conexiones if "ERP" in str(c.get("nombre"))), None)
+    if erp is None:
+        return
+    # Volver a fijarla reinicia sus intentos y su próxima vuelta: si ya tiene
+    # cadencia, se deja como la haya dejado quien la use.
+    ya = {
+        (str(f.get("conexion_id")), f.get("operacion"))
+        for f in api.listar("/api/v1/integraciones/programacion", 200)
+    }
+    for clave, nombre, ruta, cada in (
+        ("leer_clientes", "Maestro de clientes", "/clientes", 1440),
+        ("leer_pedidos", "Estado de los pedidos", "/pedidos", 60),
+    ):
+        _operacion(
+            api,
+            erp["id"],
+            clave,
+            nombre,
+            {
+                "metodo": "GET",
+                "ruta": ruta,
+                "ruta_resultados": "items",
+                "mapeo": {"id_externo": "id"},
+            },
+        )
+        if (str(erp["id"]), clave) in ya:
+            api.cuenta["saltados"] += 1
+            continue
+        api.crear(
+            f"/api/v1/integraciones/conexiones/{erp['id']}/operaciones/{clave}/programacion",
+            {"cada_minutos": cada, "activa": False},
+            metodo="PUT",
+        )
+
+
+def sembrar_las_pestanas_que_quedaban(api: Api, aprobador: Api | None = None) -> None:
+    """Las seis pestañas vacías que no lo están a propósito, y las comisiones.
+
+    Va **después** del reparto de dueños (`sembrar_empresa.py --parte
+    duenos`): sin dueño, una venta ganada no le cuenta a nadie y la
+    liquidación no tiene qué repartir.
+    """
+    personas = _organigrama(api)
+    venden = [p for p in personas if set(p.get("roles") or []) & set(_ROLES_QUE_VENDEN)]
+    _comisiones_con_reparto(api, venden)
+    _aprobacion_en_la_bandeja(api, aprobador)
+    _audiencia_publicitaria(api)
+    _recepciones_de_captura(api)
+    _firmas(api, venden)
+    _programacion_de_integraciones(api)
+
+
 PARTES: dict[str, Any] = {
     "identidad": sembrar_identidad,
     "metadatos": sembrar_metadatos,
@@ -6205,6 +6778,7 @@ PARTES: dict[str, Any] = {
     "el_campo_y_la_prevision": sembrar_el_campo_y_la_prevision,
     "el_acceso_y_la_ia_aplicada": sembrar_el_acceso_y_la_ia_aplicada,
     "lecciones": sembrar_lecciones,
+    "pestanas_que_quedaban": sembrar_las_pestanas_que_quedaban,
 }
 
 
@@ -6259,6 +6833,8 @@ def _sembrar(api: Api, cfg: Any, aprobador: Any, partes: list[str]) -> int:
         antes = api.cuenta["creados"]
         if nombre == "servicio":
             sembrar_servicio(api, aprobador)
+        elif nombre == "pestanas_que_quedaban":
+            sembrar_las_pestanas_que_quedaban(api, aprobador)
         else:
             PARTES[nombre](api)
         print(f"  {nombre:16} {api.cuenta['creados'] - antes:4} registros")

@@ -15,6 +15,9 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Sin `public/`: copiaba el service worker de la consola junto al componente,
+  // y lo que se publica para webs ajenas es un fichero y nada más.
+  publicDir: false,
   build: {
     outDir: "dist-embebido",
     emptyOutDir: true,

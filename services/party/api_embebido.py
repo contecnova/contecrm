@@ -11,12 +11,11 @@ viaja a una página pública está a un clic de verse.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from crmcore import embebido
 from crmcore.errors import NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep
-from fastapi import APIRouter
+from crmcore.http.deps import AccesoComponente, DbDep, exige_componente
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
 from services.party.modelos import Cuenta
@@ -32,12 +31,17 @@ router_embebido = APIRouter(prefix="/embebido", tags=["componentes embebibles"])
         "componente pinta —nombre, estado, sector y web—, no la ficha entera."
     ),
 )
-def ficha_cuenta(db: DbDep, principal: AutenticadoDep) -> Any:
-    cuenta_id = embebido.registro_del_token(principal, componente="ficha-cuenta", objeto="cuenta")
+def ficha_cuenta(
+    db: DbDep,
+    acceso: Annotated[
+        AccesoComponente,
+        Depends(exige_componente("ficha-cuenta")),
+    ],
+) -> Any:
     fila = db.execute(
         select(Cuenta).where(
-            Cuenta.id == cuenta_id,
-            Cuenta.tenant_id == principal.tenant_id,
+            Cuenta.id == acceso.objeto_id,
+            Cuenta.tenant_id == acceso.tenant_id,
             Cuenta.deleted_at.is_(None),
         )
     ).scalar_one_or_none()

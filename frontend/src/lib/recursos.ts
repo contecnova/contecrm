@@ -485,16 +485,56 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // —«Motivos de descarte»—, pero cuáles existen no: para saberlo había que
       // probar su ruta.
       //
-      // Sólo `sales`, y no los tres que decía el contrato publicado: el router
-      // se monta en el servicio que DECLARA alguno, y declararlos sólo los
-      // declara ventas. El contrato anunciaba también los de `service` y
-      // `tenancy` porque se construyen los catorce en el mismo proceso y el
-      // registro era global; pedidas al servicio de verdad daban 404.
+      // De los servicios que DECLARAN alguno —el router sólo se monta ahí—:
+      // ventas, clientes (party) y servicio desde el 10-11-2026. El contrato
+      // llegó a anunciar también `tenancy` porque se construían los catorce en
+      // el mismo proceso con el registro global; pedida de verdad daba 404.
       {
         nombre: "Vocabularios de negocio",
-        listar: "/api/v1/sales/vocabularios",
+        listar: "/api/v1/:servicio/vocabularios",
+        por_servicio: ["sales", "party", "service"],
         servicio: "sales",
         permiso: "metadata:read",
+        columnas: ["etiqueta", "nombre", "valores", "fijos", "de_fabrica"],
+      },
+      // Los vocabularios que eran listas en el código (10-11-2026). Aquí y no
+      // en su módulo de trabajo: son configuración de la empresa, y el que los
+      // cambia es quien administra. Los «fijos» los lee el código uno a uno:
+      // se renombran, no se retiran.
+      {
+        nombre: "Roles en la compra",
+        listar: "/api/v1/sales/vocabularios/roles_compra",
+        servicio: "sales",
+        permiso: "metadata:read",
+        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+      },
+      {
+        nombre: "Roles en el equipo de cuenta",
+        listar: "/api/v1/party/vocabularios/roles_equipo_cuenta",
+        servicio: "party",
+        permiso: "metadata:read",
+        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+      },
+      {
+        nombre: "Relaciones entre personas",
+        listar: "/api/v1/party/vocabularios/relaciones_persona",
+        servicio: "party",
+        permiso: "metadata:read",
+        columnas: ["etiqueta", "valor", "orden", "activo", "extra", "de_fabrica"],
+      },
+      {
+        nombre: "Funciones de contacto de proveedor",
+        listar: "/api/v1/party/vocabularios/funciones_contacto_proveedor",
+        servicio: "party",
+        permiso: "metadata:read",
+        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+      },
+      {
+        nombre: "Resultados de una llamada",
+        listar: "/api/v1/service/vocabularios/resultados_llamada",
+        servicio: "service",
+        permiso: "metadata:read",
+        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
       },
       // Qué objetos admite la búsqueda de cada servicio. Sin esto, la única
       // forma de saber si algo es buscable era buscarlo y ver si salía.
@@ -1309,10 +1349,14 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/captura/canales",
         servicio: "sales",
       },
+      // De primer nivel: es donde se contesta «no me ha llegado el lead del
+      // formulario», y sólo se llegaba por el desplegable de Candidatos. No va
+      // al menú de Ventas porque tiene sus diez entradas (10-11-2026).
       {
         nombre: "Recepciones",
         listar: "/api/v1/captura/recepciones",
         servicio: "sales",
+        fija: true,
       },
       {
         nombre: "Motivos de descarte",

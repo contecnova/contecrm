@@ -108,8 +108,12 @@ def plan_de_copia(
     anonimizar: bool,
     motivo_sin_anonimizar: str = "",
     pedido_por: UUID | None = None,
+    aviso_pct: int | None = None,
 ) -> dict[str, Any]:
     """Prepara la copia a un entorno que no es producción.
+
+    `aviso_pct` es el ajuste `sandbox_copia_aviso_pct` del tenant, que lee quien
+    tiene sesión; sin él, el del `.env` (era un 20 aquí).
 
     **Copiar sin anonimizar exige pedirlo y explicarlo.** Que sea una casilla
     marcada por defecto es lo que hace que nadie la mire: a pruebas entran el
@@ -143,15 +147,22 @@ def plan_de_copia(
             extra={"proposito": proposito, "pedido_por": str(pedido_por)},
         )
 
+    if aviso_pct is None:
+        from crmcore.runtime import settings as rt
+
+        aviso_pct = int(rt.efectivo("sandbox_copia_aviso_pct"))
     return {
         "proposito": proposito,
         "porcentaje": porcentaje,
         "anonimiza": anonimizar,
         "caduca_en_dias": PROPOSITOS[proposito],
+        # El umbral que se aplicó: sin él, «no avisa» no se distingue de «el
+        # ajuste está más alto de lo que crees».
+        "aviso_pct": aviso_pct,
         "no_se_copian": [{"que": k, "porque": v} for k, v in NUNCA_SE_COPIAN.items()],
         "aviso": (
             ""
-            if porcentaje <= 20
+            if porcentaje <= aviso_pct
             else f"Se va a copiar el {porcentaje} % de los datos. Con el 5 % se prueba "
             "igual de bien y hay veinte veces menos que proteger: la copia parcial no es "
             "por espacio, es por riesgo."

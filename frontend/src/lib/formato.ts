@@ -196,6 +196,8 @@ const CON_TILDE: Record<string, string> = {
   telefonia: "telefonía",
   conservacion: "conservación",
   comprobacion: "comprobación",
+  anonimo: "anónimo",
+  inscripcion: "inscripción",
   ningun: "ningún",
   validas: "válidas",
   garantias: "garantías",

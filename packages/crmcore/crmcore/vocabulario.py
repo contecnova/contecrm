@@ -84,6 +84,11 @@ class Vocabulario:
     descripcion: str = ""
     #: Qué servicio lo declara. Sale del módulo que llama a `registrar`.
     servicio: str = ""
+    #: Los valores que el código lee **uno a uno** —«decisor» cuenta para la
+    #: cobertura de una compra, «pide_que_no_le_llamen» apunta una exclusión—.
+    #: Se pueden renombrar y reordenar, pero no retirar: retirarlos no cambia
+    #: una lista, apaga en silencio lo que el código hace con ellos.
+    fijos: tuple[str, ...] = ()
 
 
 _REGISTRO: dict[str, Vocabulario] = {}
@@ -113,20 +118,34 @@ def registrar(
     *,
     etiqueta: str,
     descripcion: str = "",
+    fijos: tuple[str, ...] = (),
 ) -> None:
     """Declara un vocabulario y los valores con los que se estrena.
 
     Se llama al importar el módulo que lo usa, y no en el arranque, para que la
     validación y la pantalla no puedan discrepar: el que valida es el mismo que
     se registra.
+
+    `fijos` son los de fábrica que el código interpreta valor a valor: siempre
+    se admiten y no se pueden retirar (ver `Vocabulario.fijos`).
     """
+    sobrantes = set(fijos) - set(defectos)
+    if sobrantes:
+        raise ValueError(f"Fijos de «{nombre}» que no son de fábrica: {sorted(sobrantes)}")
     _REGISTRO[nombre] = Vocabulario(
         nombre=nombre,
         etiqueta=etiqueta,
         defectos=tuple(sorted(defectos)),
         descripcion=descripcion,
         servicio=_servicio_que_llama(),
+        fijos=tuple(sorted(fijos)),
     )
+
+
+def es_fijo(nombre: str, valor: str) -> bool:
+    """Si el código lee este valor uno a uno y por eso no se puede retirar."""
+    definida = _REGISTRO.get(nombre)
+    return bool(definida and valor in definida.fijos)
 
 
 def registrados() -> dict[str, Vocabulario]:
@@ -171,11 +190,17 @@ def filas(db: Session, nombre: str, *, incluir_inactivos: bool = False) -> list[
 
 
 def valores(db: Session, nombre: str) -> frozenset[str]:
-    """Los valores admitidos AHORA: los del tenant, o los de fábrica."""
+    """Los valores admitidos AHORA: los del tenant, o los de fábrica.
+
+    Los fijos, siempre: no se pueden retirar desde la pantalla, y si una fila
+    vieja o una carga a mano los dejó inactivos, el código que los lee sigue
+    necesitándolos.
+    """
+    definida = _REGISTRO.get(nombre)
+    fijos = set(definida.fijos) if definida else set()
     propios = {f.valor for f in filas(db, nombre)}
     if propios:
-        return frozenset(propios)
-    definida = _REGISTRO.get(nombre)
+        return frozenset(propios | fijos)
     return frozenset(definida.defectos) if definida else frozenset()
 
 
@@ -199,6 +224,7 @@ def como_lista(
                 "orden": f.orden,
                 "activo": f.activo,
                 "extra": f.extra,
+                "fijo": es_fijo(nombre, f.valor),
                 "de_fabrica": False,
             }
             for f in guardados
@@ -214,6 +240,7 @@ def como_lista(
             "orden": (i + 1) * 10,
             "activo": True,
             "extra": {},
+            "fijo": v in definida.fijos,
             "de_fabrica": True,
         }
         for i, v in enumerate(definida.defectos)

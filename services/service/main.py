@@ -6,6 +6,7 @@ from typing import Any
 
 from crmcore.service import crear_servicio
 
+from services.service import ajustes  # noqa: F401 — registra los ajustes del servicio al arrancar
 from services.service.api import ROUTERS, ROUTERS_SIN_PREFIJO
 from services.service.api_campo import ROUTERS_CAMPO
 from services.service.api_embebido import router_embebido

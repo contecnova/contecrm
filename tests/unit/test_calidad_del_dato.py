@@ -529,6 +529,25 @@ def test_llamar_detractor_a_alguien_exige_motivo(
         )
     assert fallo.value.error_code == "relacion.opinion_sin_motivo"
 
+    # Y una que añade la empresa marcada como opinión, también: si no, «hostil»
+    # entraría sin motivo y «detractor» no.
+    from crmcore import vocabulario
+
+    vocabulario.materializar(uow.db, "relaciones_persona", uow.tenant_id)
+    uow.db.add(
+        vocabulario.ValorVocabulario(
+            tenant_id=uow.tenant_id,
+            vocabulario="relaciones_persona",
+            valor="hostil",
+            etiqueta="Hostil",
+            extra={"opinion": True},
+        )
+    )
+    uow.db.flush()
+    with pytest.raises(ErrorValidacion) as fallo:
+        c360.anotar_relacion(uow, origen_id=uuid4(), destino_id=uuid4(), tipo="hostil", motivo="")
+    assert fallo.value.error_code == "relacion.opinion_sin_motivo"
+
 
 @pytest.mark.db
 def test_una_jerarquia_no_necesita_motivo(uow: UnidadDeTrabajo, contexto_tenant: UUID) -> None:

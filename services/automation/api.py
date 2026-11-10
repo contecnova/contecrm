@@ -425,14 +425,14 @@ def probar_en_seco(cuerpo: ProbarEnSecoIn, principal: AutenticadoDep) -> Any:
     )
 
 
+# Antes devolvía un JSON y no guardaba nada.
 @router.post(
     "/promocionar",
     dependencies=[Depends(exige_permiso("automation:write"))],
     summary="Promover automatizaciones desde un sandbox",
     description=(
         "Trae a esta empresa las automatizaciones de uno de sus sandboxes, "
-        "**creándolas o actualizándolas de verdad**. Antes devolvía un JSON y no "
-        "guardaba nada.\n\n"
+        "**creándolas o actualizándolas de verdad**.\n\n"
         "**Primero en seco**: sin `huella`, dice qué pasaría con cada una "
         "—crear, actualizar, sin cambios, cuáles se apagarían— y devuelve una "
         "huella. Con esa huella se aplica, y si algo ha cambiado entre medias no "
@@ -490,6 +490,8 @@ def listar_plantillas(db: DbDep, principal: AutenticadoDep) -> Any:
     return {"items": items, "siguiente": None, "total_aprox": len(items)}
 
 
+# Antes había que teclear la plantilla en JSON y contestaba «instaladas» sin
+# crear nada.
 @router.post(
     "/plantillas/instalar",
     dependencies=[Depends(exige_permiso("automation:write"))],
@@ -497,8 +499,7 @@ def listar_plantillas(db: DbDep, principal: AutenticadoDep) -> Any:
     description=(
         "Se elige por su clave y **crea la automatización de verdad, apagada**: "
         "una plantilla que se enciende al instalarse manda avisos con textos que "
-        "nadie ha leído. Antes había que teclear la plantilla en JSON y "
-        "contestaba «instaladas» sin crear nada.\n\n"
+        "nadie ha leído.\n\n"
         "Lo que ya existe con ese nombre **no se pisa**: se dice, y se puede "
         "instalar con otro."
     ),

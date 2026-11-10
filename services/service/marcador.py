@@ -32,6 +32,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Callable
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.errors import ErrorValidacion, Prohibido
 from crmcore.logging import get_logger
 
@@ -56,6 +57,29 @@ EXIGEN_ACCION = {
     "numero_erroneo": "Se marca el teléfono como malo para que no vuelva a la cola",
     "reprogramar": "Se crea la siguiente llamada con fecha, o se pierde",
 }
+
+# Cerrada, pero **de la empresa** (10-11-2026): éstos son los de fábrica del
+# vocabulario `resultados_llamada` (Administrar › Herramientas de plataforma ›
+# Gestor de objetos). Cuatro los lee el código uno a uno y son fijos —se
+# renombran, no se retiran—: los tres que obligan a algo y «hablado», que es el
+# que pide la nota. Retirar «pide_que_no_le_llamen» no cambiaría una lista:
+# apagaría en silencio la exclusión, que es una obligación legal.
+vocabulario.registrar(
+    "resultados_llamada",
+    RESULTADOS,
+    etiqueta="Resultados de una llamada",
+    descripcion=(
+        "Cómo terminó una llamada, desde el punto de vista comercial. Los que "
+        "obligan a algo (no llamar más, número erróneo, reprogramar) y «hablado» "
+        "no se pueden retirar."
+    ),
+    fijos=("hablado", *EXIGEN_ACCION),
+)
+
+
+def resultados_validos(db: Any) -> frozenset[str]:
+    """Los resultados que este tenant admite: los suyos, o los de fábrica."""
+    return vocabulario.valores(db, "resultados_llamada")
 
 
 # Tope de abandono en marcado automático. Es el porcentaje de llamadas que suenan
@@ -128,8 +152,12 @@ def registrar_al_colgar(
     nota: str = "",
     grabacion_ref: str = "",
     proxima_fecha: Any = None,
+    admitidos: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Registra la llamada **sola**, y pide lo que solo sabe una persona.
+
+    `admitidos` son los resultados del vocabulario del tenant
+    (`resultados_validos(db)`); sin él, los de fábrica.
 
     La actividad se crea al colgar con lo que el sistema sabe: a quién, cuánto y
     cómo terminó. Lo que **no** se inventa es qué se dijo: «contestada, 3 minutos»
@@ -140,11 +168,12 @@ def registrar_al_colgar(
     entra en la exclusión ese mismo día, y un «reprogramar» sin fecha es una
     llamada que se pierde.
     """
-    if resultado not in RESULTADOS:
+    validos = admitidos if admitidos is not None else frozenset(RESULTADOS)
+    if resultado not in validos:
         raise ErrorValidacion(
             f"Resultado «{resultado}» desconocido",
             error_code="marcador.resultado_invalido",
-            detalle={"admitidos": list(RESULTADOS)},
+            detalle={"admitidos": sorted(validos)},
         )
     if resultado == "reprogramar" and not proxima_fecha:
         raise ErrorValidacion(
@@ -387,6 +416,7 @@ def colgar(
     nota: str,
     proxima_fecha: date | None,
     invocar: Invocador | None = None,
+    admitidos: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Anota cómo fue y hace lo que el resultado obliga a hacer.
 
@@ -411,6 +441,7 @@ def colgar(
         nota=nota,
         grabacion_ref=str(llamada.get("grabacion_url") or ""),
         proxima_fecha=proxima_fecha,
+        admitidos=admitidos,
     )
     a = invocar(
         metodo="POST",

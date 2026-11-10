@@ -6,7 +6,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run build
+# Y el componente que se incrusta en webs ajenas (CRM-00.02.03.05), aparte:
+# no puede arrastrar nada de la consola. Lo sirve nginx en `/embebido.js`.
+RUN npm run build && npm run build:embebido
 
 FROM nginx:1.27-alpine
 # La configuración del cliente se genera AL ARRANCAR a partir del entorno, no se
@@ -15,5 +17,6 @@ FROM nginx:1.27-alpine
 COPY entrada.sh /docker-entrypoint.d/40-config.sh
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist-embebido/embebido.js /usr/share/nginx/html/embebido.js
 RUN chmod +x /docker-entrypoint.d/40-config.sh
 EXPOSE 80

@@ -217,7 +217,10 @@ def test_el_proxy_avisa_de_la_cookie_caducada_salvo_al_entrar() -> None:
 
     from services.gateway import api
 
-    fuente = inspect.getsource(api.proxy_api)
+    # El cuerpo del proxy vive en `_proxiar`, que comparte con la puerta de
+    # los componentes embebidos; `proxy_api` sólo enruta hacia él.
+    assert "_proxiar(" in inspect.getsource(api.proxy_api)
+    fuente = inspect.getsource(api._proxiar)
     assert "cookie_rechazada" in fuente
     assert "RUTAS_DE_SESION" in fuente
     assert "/api/v1/auth/login" in rutas.RUTAS_DE_SESION

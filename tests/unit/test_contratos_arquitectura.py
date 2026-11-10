@@ -273,6 +273,15 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "delegar": "ídem: solo puede delegar quien la tiene asignada",
         "suplantar": "la comprobación es «ser personal de plataforma», dentro del servicio",
         "proxy_api": "el gateway reenvía; el permiso lo aplica el servicio destino",
+        "proxy_embebido": (
+            "el gateway reenvía el token de componente; el alcance lo comprueba "
+            "`exige_componente` en el servicio destino"
+        ),
+        "proxy_portal": (
+            "el gateway reenvía el token de portal; el acceso y la sección los "
+            "comprueba `PortalDep` en el servicio destino"
+        ),
+        "captura_publica": "el gateway reenvía «recibir_lead»; lo autoriza la clave del canal",
         # Por lo mismo: una petición compuesta despacha cada operación contra la
         # propia aplicación, y cada una comprueba el suyo. Exigir uno aquí
         # obligaría a pedir el más fuerte de todas, y entonces quien solo puede
@@ -439,8 +448,14 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
                 # NO es la de un empleado y que no puede llegar a estas rutas sin
                 # haber canjeado antes su credencial. Se reconocen por estructura
                 # y no por nombre de función, por lo mismo que `exige_firma_interna`.
+                # `exige_componente` es la guarda de un token de componente
+                # embebido: declara el componente, y con él el permiso que el
+                # token tiene que llevar dentro.
                 argumentos = ast.unparse(nodo.args)
-                if any(d in argumentos for d in ("PlataformaDep", "PortalDep", "TicketDep")):
+                if any(
+                    d in argumentos
+                    for d in ("PlataformaDep", "PortalDep", "TicketDep", "exige_componente(")
+                ):
                     continue
                 sin_permiso.append(f"{etiqueta}::{nodo.name}")
 

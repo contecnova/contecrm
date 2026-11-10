@@ -15,15 +15,20 @@ import { Error as Fallo } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { llamar } from "@/lib/api";
 
-const RESULTADOS = [
-  "hablado",
-  "buzon",
-  "no_contesta",
-  "numero_erroneo",
-  "persona_equivocada",
-  "pide_que_no_le_llamen",
-  "reprogramar",
-] as const;
+/**
+ * Un resultado del vocabulario `resultados_llamada` del tenant.
+ *
+ * Eran siete escritos aquí; desde el 10-11-2026 los decide la empresa en
+ * Administrar › Herramientas de plataforma › Gestor de objetos › «Resultados
+ * de una llamada», y la lista sale del servidor. Los de fábrica se rotulan con
+ * la traducción; los que añade la empresa, con su propio rótulo.
+ */
+interface ResultadoLlamada {
+  valor: string;
+  etiqueta: string;
+  activo: boolean;
+  de_fabrica: boolean;
+}
 
 interface Llamada {
   id: string;
@@ -79,11 +84,29 @@ export function Marcador({
   const [llamada, setLlamada] = useState<Llamada | null>(null);
   const [preparada, setPreparada] = useState<Preparada | null>(null);
   const [resultado, setResultado] = useState<string>("hablado");
+  const [resultados, setResultados] = useState<ResultadoLlamada[]>([]);
   const [nota, setNota] = useState("");
   const [proxima, setProxima] = useState("");
   const [colgada, setColgada] = useState<Colgada | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [enviando, setEnviando] = useState(false);
+
+  // Los resultados se piden al abrir la llamada, no al pintar la ficha: el
+  // marcador sale en cada contacto y la mayoría de fichas no llaman.
+  const hayLlamada = llamada !== null;
+  useEffect(() => {
+    if (!hayLlamada || resultados.length) return;
+    const control = new AbortController();
+    llamar<ResultadoLlamada[]>(
+      "/api/v1/service/vocabularios/resultados_llamada",
+      { signal: control.signal },
+    )
+      .then((r) => setResultados(r.datos.filter((x) => x.activo)))
+      .catch((e: unknown) => {
+        if (!control.signal.aborted) setFallo(e);
+      });
+    return () => control.abort();
+  }, [hayLlamada, resultados.length]);
 
   const numero = numeros.includes(elegido) ? elegido : (numeros[0] ?? "");
   if (numeros.length === 0) return null;
@@ -198,9 +221,13 @@ export function Marcador({
               value={resultado}
               onChange={(e) => setResultado(e.target.value)}
             >
-              {RESULTADOS.map((r) => (
-                <option key={r} value={r}>
-                  {t(`marcador.resultados.${r}`)}
+              {resultados.map((r) => (
+                <option key={r.valor} value={r.valor}>
+                  {r.de_fabrica
+                    ? t(`marcador.resultados.${r.valor}`, {
+                        defaultValue: r.etiqueta,
+                      })
+                    : r.etiqueta}
                 </option>
               ))}
             </select>

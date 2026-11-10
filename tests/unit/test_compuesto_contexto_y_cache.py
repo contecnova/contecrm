@@ -78,7 +78,7 @@ def test_la_puerta_comprueba_el_contexto_en_cada_peticion() -> None:
     fuente = (RAIZ / "services" / "gateway" / "api.py").read_text(encoding="utf-8")
     arbol = ast.parse(fuente)
     for nodo in ast.walk(arbol):
-        if isinstance(nodo, ast.AsyncFunctionDef) and nodo.name == "proxy_api":
+        if isinstance(nodo, ast.AsyncFunctionDef) and nodo.name == "_proxiar":
             llamadas = {
                 getattr(n.func, "attr", None) for n in ast.walk(nodo) if isinstance(n, ast.Call)
             }

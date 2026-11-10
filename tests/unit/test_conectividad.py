@@ -988,6 +988,49 @@ def test_el_token_de_un_componente_no_vale_para_otro_crm_00_02_03_05() -> None:
         embebido.registro_del_token(principal, componente="ficha-cuenta", objeto="cuenta")
 
 
+def test_lo_que_firma_el_gateway_con_un_componente_lo_acepta_el_servicio() -> None:
+    """Firmar y verificar viven en dos sitios y nunca se probaron juntos.
+
+    El gateway metía el acotamiento del componente en la firma y el servicio
+    no lo miraba al verificarla: las dos cadenas no cuadraban y toda llamada
+    con un token de componente salía con 401 (medido el 10-11-2026 en el
+    formulario incrustado). Y el acotamiento tiene que llegar íntegro: es lo
+    que dice de qué registro habla el token.
+    """
+    from crmcore import embebido
+    from crmcore.http.deps import _principal_de_cabeceras, _verificar_firma
+    from starlette.requests import Request
+
+    from services.gateway.proxy import cabeceras_de_identidad
+
+    canal = uuid4()
+    principal = Principal(
+        id=None,
+        tenant_id=uuid4(),
+        tipo=embebido.TIPO,
+        permisos=frozenset({"lead:write"}),
+        atributos={
+            "componente": "formulario-alta",
+            "objeto": "formulario",
+            "objeto_id": str(canal),
+        },
+    )
+    secreto = "s" * 32
+    cabeceras = cabeceras_de_identidad(principal, secreto)
+    peticion = Request(
+        {
+            "type": "http",
+            "headers": [(k.lower().encode(), v.encode()) for k, v in cabeceras.items()],
+        }
+    )
+    assert _verificar_firma(peticion, secreto)
+    llega = _principal_de_cabeceras(peticion)
+    assert (
+        embebido.registro_del_token(llega, componente="formulario-alta", objeto="formulario")
+        == canal
+    )
+
+
 def test_ninguna_ruta_de_componente_recibe_identificador_crm_00_02_03_05() -> None:
     """Es la comprobación que sostiene el acotamiento entero.
 

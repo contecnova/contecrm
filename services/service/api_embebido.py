@@ -7,11 +7,10 @@ una página pública está a un clic de verse.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from crmcore import embebido
-from crmcore.http.deps import AutenticadoDep, DbDep
-from fastapi import APIRouter
+from crmcore.http.deps import AccesoComponente, DbDep, exige_componente
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
 from services.service.modelos import Caso
@@ -28,14 +27,19 @@ router_embebido = APIRouter(prefix="/embebido", tags=["componentes embebibles"])
         "tarda en una web ajena y enseña de más."
     ),
 )
-def lista_casos(db: DbDep, principal: AutenticadoDep) -> Any:
-    cuenta_id = embebido.registro_del_token(principal, componente="lista-casos", objeto="cuenta")
+def lista_casos(
+    db: DbDep,
+    acceso: Annotated[
+        AccesoComponente,
+        Depends(exige_componente("lista-casos")),
+    ],
+) -> Any:
     filas = (
         db.execute(
             select(Caso)
             .where(
-                Caso.tenant_id == principal.tenant_id,
-                Caso.cuenta_id == cuenta_id,
+                Caso.tenant_id == acceso.tenant_id,
+                Caso.cuenta_id == acceso.objeto_id,
                 Caso.deleted_at.is_(None),
             )
             .order_by(Caso.created_at.desc())

@@ -69,7 +69,7 @@ class Lead(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # porque lo que se quiere es contar: «sin presupuesto» frente a «no es
     # nuestro perfil» llevan a acciones distintas, y en texto libre no se puede
     # agrupar.
-    motivo_descarte: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    motivo_descarte: Mapped[str | None] = mapped_column(String(120), nullable=True)
     nota_descarte: Mapped[str | None] = mapped_column(
         Text, nullable=True, info={"anonimizar_en_copias": True}
     )
@@ -280,7 +280,7 @@ class Oportunidad(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # ── Estado ────────────────────────────────────────────────────────────
     # abierta | ganada | perdida | cancelada
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="abierta", index=True)
-    motivo_perdida: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    motivo_perdida: Mapped[str | None] = mapped_column(String(120), nullable=True)
     nota_perdida: Mapped[str | None] = mapped_column(
         Text, nullable=True, info={"anonimizar_en_copias": True}
     )

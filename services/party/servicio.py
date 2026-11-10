@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.audit.chain import registrar, registrar_cambios
 from crmcore.authz.decision import exigir
 from crmcore.datos.estados import estado_de, significa
@@ -969,7 +970,22 @@ def crear_solicitud_derechos(
 # cuentas llevo como técnico?» y que la respuesta signifique lo mismo en toda la
 # instalación. Con texto libre, cada comercial escribe el suyo y a los tres
 # meses hay «tecnico», «Técnico» y «tec.» conviviendo.
+#
+# Cerrada, pero **de la empresa** (10-11-2026): éstos son los de fábrica del
+# vocabulario `roles_equipo_cuenta` (Administrar › Herramientas de plataforma ›
+# Gestor de objetos). Ninguno lo lee el código uno a uno —la propiedad es
+# `owner_id` de la cuenta, no este rol—, así que todos se pueden retirar.
 ROLES_EQUIPO = ("owner", "kam", "tecnico", "soporte", "financiero", "otro")
+
+vocabulario.registrar(
+    "roles_equipo_cuenta",
+    ROLES_EQUIPO,
+    etiqueta="Roles en el equipo de cuenta",
+    descripcion=(
+        "Qué papel tiene cada persona del equipo que lleva una cuenta. Es lo que "
+        "permite preguntar «¿qué cuentas llevo como técnico?»."
+    ),
+)
 ACCESOS_EQUIPO = ("lectura", "escritura")
 
 
@@ -993,11 +1009,12 @@ def añadir_al_equipo(
     """
     from services.party.modelos import MiembroEquipoCuenta
 
-    if rol not in ROLES_EQUIPO:
+    admitidos = vocabulario.valores(uow.db, "roles_equipo_cuenta")
+    if rol not in admitidos:
         raise ErrorValidacion(
             f"Rol de equipo desconocido: «{rol}»",
             error_code="party.rol_equipo_invalido",
-            detalle={"admitidos": list(ROLES_EQUIPO)},
+            detalle={"admitidos": sorted(admitidos)},
         )
     if acceso not in ACCESOS_EQUIPO:
         raise ErrorValidacion(

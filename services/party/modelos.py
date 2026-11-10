@@ -307,7 +307,7 @@ class MiembroEquipoCuenta(Base, TimestampMixin):
     )
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     # owner | kam | tecnico | soporte | financiero | otro
-    rol: Mapped[str] = mapped_column(String(40), nullable=False)
+    rol: Mapped[str] = mapped_column(String(120), nullable=False)
     # Acceso que concede pertenecer al equipo: lectura o escritura. Es una regla
     # de compartición, no un permiso global.
     acceso: Mapped[str] = mapped_column(String(20), nullable=False, default="lectura")

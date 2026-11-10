@@ -252,6 +252,18 @@ export interface Recurso {
    * estando, como etiqueta accesible y como título de la pantalla.
    */
   icono?: string;
+  /**
+   * Pestaña de primer nivel: se pinta **con su nombre** en la cabecera, fuera
+   * del desplegable de objetos.
+   *
+   * Para lo que se usa a diario dentro del módulo y en el desplegable no se
+   * encontraba: lo que sólo se alcanza desde ahí cuenta, para quien usa la
+   * herramienta, como si no existiera. No es un icono —uno que no sea la
+   * papelera no se reconoce sin leerlo— ni una entrada del menú, que tiene
+   * su tope por área. Se usa poco a propósito: diez de éstas son la tira de
+   * trece pestañas que el desplegable vino a quitar.
+   */
+  fija?: true;
 }
 
 export const MODULOS: Modulo[] = [

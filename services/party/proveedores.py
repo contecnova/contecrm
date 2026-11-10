@@ -40,6 +40,7 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.authz.decision import exigir
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
@@ -113,7 +114,24 @@ def _dias_preaviso(db: Session, pedido: int | None = None) -> int:
 # Funciones que hacen falta de un proveedor. Cerrada porque la pregunta real es
 # «¿a quién llamo cuando esto falla a las once de la noche?», y con texto libre
 # cada ficha contesta a otra cosa.
+#
+# Cerrada, pero **de la empresa** (10-11-2026): éstas son las de fábrica del
+# vocabulario `funciones_contacto_proveedor` (Administrar › Herramientas de
+# plataforma › Gestor de objetos). «escalado» es fija: «¿a quién llamo?» la
+# pregunta por defecto y avisa de quien no tiene teléfono fuera de horario.
 FUNCIONES_CONTACTO = ("comercial", "tecnico", "facturacion", "escalado", "calidad")
+FUNCION_ESCALADO = "escalado"
+
+vocabulario.registrar(
+    "funciones_contacto_proveedor",
+    FUNCIONES_CONTACTO,
+    etiqueta="Funciones de contacto de proveedor",
+    descripcion=(
+        "Para qué se llama a cada contacto de un proveedor. «Escalado» es la que "
+        "contesta «¿a quién llamo cuando esto falla?» y no se puede retirar."
+    ),
+    fijos=(FUNCION_ESCALADO,),
+)
 
 
 def _hoy(db: Any = None) -> date:
@@ -191,9 +209,7 @@ class ContactoProveedor(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     cuenta_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    funcion: Mapped[str] = mapped_column(
-        String(20), nullable=False, info={"opciones": FUNCIONES_CONTACTO}
-    )
+    funcion: Mapped[str] = mapped_column(String(120), nullable=False)
     nombre: Mapped[str] = mapped_column(
         String(200), nullable=False, default="", info={"sensibilidad": "personal"}
     )
@@ -734,11 +750,12 @@ def registrar_contacto(
 ) -> ContactoProveedor:
     """Registra a quién se llama y para qué."""
     exigir_proveedor(uow.db, uow.tenant_id, cuenta_id)
-    if funcion not in FUNCIONES_CONTACTO:
+    admitidas = vocabulario.valores(uow.db, "funciones_contacto_proveedor")
+    if funcion not in admitidas:
         raise ErrorValidacion(
             f"Función «{funcion}» desconocida",
             error_code="proveedor.funcion_invalida",
-            detalle={"admitidas": list(FUNCIONES_CONTACTO)},
+            detalle={"admitidas": sorted(admitidas)},
         )
     correo = email.strip().lower()
     fila = uow.db.execute(
@@ -762,7 +779,7 @@ def registrar_contacto(
 
 
 def a_quien_llamo(
-    db: Session, tenant_id: UUID, *, cuenta_id: UUID, funcion: str = "escalado"
+    db: Session, tenant_id: UUID, *, cuenta_id: UUID, funcion: str = FUNCION_ESCALADO
 ) -> dict[str, Any]:
     """A quién se llama cuando esto falla.
 
@@ -804,7 +821,9 @@ def a_quien_llamo(
             for f in de_la_funcion
         ],
         "sin_telefono_fuera_de_horario": [
-            f.nombre for f in de_la_funcion if funcion == "escalado" and not f.fuera_de_horario
+            f.nombre
+            for f in de_la_funcion
+            if funcion == FUNCION_ESCALADO and not f.fuera_de_horario
         ],
     }
 

@@ -317,10 +317,16 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
     comparativa dice traer. contecmind sigue caído por la entrada 9.
   - [x] **Barrido de constantes** (10-11-2026, `scripts/barrido_constantes.py`):
     20 umbrales de negocio pasan a ajuste, tres ajustes que existían ya se leen
-    y lo que queda va con su motivo. Pendientes: vocabularios candidatos
-    (roles de compra, funciones de contacto, resultados del marcador, motivos
-    de suspensión…), algunos umbrales (transcripción, caso parecido, sandbox)
-    y la ventana horaria de las cadencias, que se evalúa en UTC.
+    y lo que queda va con su motivo. Segundo bloque (10-11-2026): la ventana
+    de las cadencias en la hora del tenant y con un ajuste por tramo; cinco
+    vocabularios editables en Gestor de objetos, con valores fijos que el
+    código lee uno a uno (los motivos de suspensión se quedan cerrados: son
+    los de la norma); cuatro umbrales más a ajuste. Cerrado después, el mismo
+    día: el primer paso de una cadencia respeta la ventana; la consola de
+    Ajustes lista y fija las 166 claves de los `ajustes.py` de los servicios
+    (cada uno las publica y tenancy las agrega; medido en vivo con party,
+    sales y service); y las columnas que guardan un valor de vocabulario
+    pasan a 120 caracteres.
   - [x] **El bus entregaba nada a los consumidores de «todo»** (10-11-2026):
     `contecrm.*.*` no casa con tipos con punto; 30 consumidores (avisos,
     reglas, webhooks, perfiles, cachés y extensiones de cada servicio) no

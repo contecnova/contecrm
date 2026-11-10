@@ -1934,6 +1934,42 @@ señalado como **posible duplicado** —en su ficha, en «Detalles», dice de qu
 y por qué— o lo que llega se añade al candidato que ya existía. No se pierde
 nada de lo que llegó.
 
+### El formulario de contacto de tu web
+
+Los candidatos que deja la gente en el formulario de tu web entran solos en
+**Ventas › Candidatos**. Para ver **todo** lo que ha llegado, también lo que
+se descartó y por qué: **Ventas › Candidatos ›** el botón **Recepciones**,
+arriba a la derecha de la lista, al lado del título. Cada fila dice si se creó el candidato, si se marcó como posible
+duplicado o por qué se descartó —«faltan: email», «sin correo ni teléfono», un
+robot que rellenó el campo oculto, o que se pasó el tope por hora del canal—,
+con lo que llegó. Si alguien te dice «rellené el formulario y no me habéis
+llamado», ahí está la respuesta.
+
+Hay dos formas de poner el formulario en la web, y las dos las prepara quien
+administra las integraciones:
+
+- **Un formulario propio** de la web, con la dirección pública del canal y su
+  clave (**Ventas › Candidatos › CANDIDATOS › Canales de captura**; la clave se
+  enseña una sola vez al crear el canal, y si se pierde se rota).
+- **El formulario ya hecho del CRM**, que se pega en la página con una línea y
+  un token del canal. Pide nombre, apellidos, empresa, correo, teléfono y
+  mensaje; sin correo ni teléfono no deja enviar, porque sin forma de contestar
+  el candidato no serviría. Lo que se pega en la web es esto (quien mantiene la
+  web pone las dos direcciones del CRM y el token, que pide su servidor):
+
+  ```html
+  <script type="module" src="https://<dirección del CRM>/embebido.js"></script>
+  <contecrm-componente componente="formulario-alta"
+    api="https://<dirección de la API>/api/v1" token="…"></contecrm-componente>
+  ```
+
+  El token sólo se puede pedir para un canal que quien lo pide puede ver en el
+  CRM; si no, el CRM contesta que no puede ver ese registro.
+
+A quien rellena el formulario se le contesta siempre lo mismo, «Recibido», se
+haya creado o descartado: un mensaje distinto le enseñaría a un robot qué
+cambiar.
+
 ---
 
 ## Partners y canal indirecto (sección 3.4)
@@ -2889,7 +2925,8 @@ el primer día, y en cuanto cambias uno la lista pasa a ser tuya entera.
 
 - Cada valor tiene un **rótulo** —lo que se lee— y un **código** —lo que se
   guarda—. El rótulo se cambia cuando quieras; el código no, porque lo llevan
-  escrito los registros que ya lo usan.
+  escrito los registros que ya lo usan. El código admite hasta 120 caracteres, y
+  cabe entero en todos los sitios donde se usa.
 - Un valor que dejas de usar **se retira, no se borra**. Deja de ofrecerse en
   los formularios y los registros antiguos siguen enseñando su etiqueta. Si se
   borrara, tus informes de años anteriores quedarían en códigos sueltos.
@@ -3777,6 +3814,31 @@ registros. En **Lo que veo de mis empresas hijas** ves lo que cada una te
 comparte; las que no comparten nada salen como «No compartido». Si eres de la
 plataforma, **Colgar una empresa de otra** pone la matriz y la relación.
 
+### Cambiar un ajuste
+
+**Administrar › Usuarios y empresa › Empresas y unidades**, y en el selector de
+arriba (**EMPRESAS Y UNIDADES · …**) elige **Ajustes**. Salen todos los
+ajustes de la instalación —unos trescientos—, también los de cada parte del
+producto: el preaviso de un contrato de proveedor, el margen mínimo de una
+oferta, las horas de aviso del SLA, la telefonía, las lecciones aprendidas.
+Escribe parte de la clave en **Buscar en esta lista** (por ejemplo
+`preaviso`), despliega la fila con la flecha de la derecha y pulsa **Editar**:
+pon el **Valor** y pulsa **Guardar cambios**. En **Más campos** eliges el
+ámbito —toda la instalación, tu empresa, una unidad o una persona— cuando el
+ajuste lo admite.
+
+- **Origen** te dice de dónde sale el valor que se aplica: «entorno» es el de
+  fábrica; «tenant», el que ha puesto tu empresa.
+- Con **Columnas** puedes añadir el servicio (qué parte del producto lo lee),
+  el mínimo y el máximo que admite y el ámbito más bajo en el que se puede
+  fijar.
+- Un valor fuera de sus límites no se guarda y el aviso dice cuáles son.
+- El cambio se aplica en un segundo, sin reiniciar nada, y queda en el
+  historial (abajo).
+
+Hasta el 10-11-2026 los ajustes propios de cada parte del producto no salían
+aquí y sólo se podían cambiar en la instalación.
+
 ### Ver y deshacer un cambio de configuración
 
 **Administrar › Entornos y despliegue › Historial de la configuración.** Elige un
@@ -4395,6 +4457,50 @@ calcula la casa y la **Diferencia** en rojo cuando no cuadra.
   modelo atendería sin sacar el dato de la región.
 - **Si eres proveedor**, en tu portal, «Tus papeles con nosotros» dice ahora
   también para qué estás homologado y hasta cuándo.
+
+### Las listas de tu empresa: roles, relaciones, funciones y resultados de llamada (administración)
+
+Cinco listas que antes venían cerradas con el producto ahora las decide tu
+empresa:
+
+| Lista | Dónde se usa |
+|---|---|
+| **Roles en la compra** | el papel de cada persona en una oportunidad (decisor, económico, prescriptor…) |
+| **Roles en el equipo de cuenta** | quién lleva una cuenta y como qué (KAM, técnico, soporte…) |
+| **Relaciones entre personas** | el mapa de influencia de una cuenta (reporta a, aliado, detractor…) |
+| **Funciones de contacto de proveedor** | para qué se llama a cada contacto de un proveedor |
+| **Resultados de una llamada** | lo que eliges al colgar en el marcador |
+
+**Dónde**: **Administrar › Herramientas de plataforma › Gestor de objetos**, y
+en el desplegable de pestañas que hay junto al título, la lista que quieras.
+Con **Nuevo** añades un valor (un código en minúsculas y sin espacios, su
+rótulo y su orden); abriendo uno le cambias el rótulo o el orden, o lo
+retiras. Retirar no borra: lo que ya lo usa lo sigue enseñando. La pestaña
+**Vocabularios de negocio** dice, servicio a servicio, cuáles siguen con los
+valores de fábrica y cuáles ya son de tu empresa.
+
+**Los marcados como «fijo» no se pueden retirar**, sólo renombrar: el CRM hace
+algo con ellos. «Decisor» y «económico» son los que mide la cobertura de una
+compra; «escalado» es a quien se llama cuando un proveedor falla; y en las
+llamadas, «hablado» pide la nota, «pide que no le llamen» marca la ficha como
+«no contactar» (es una obligación legal), «número erróneo» marca el teléfono y
+«reprogramar» crea la siguiente llamada. Si lo intentas, te lo dice.
+
+**Una relación nueva que sea una opinión sobre alguien** —«hostil», por
+ejemplo— márcala con `{"opinion": true}` en su campo *extra*: así, como
+«aliado» y «detractor», exigirá el motivo al anotarla.
+
+### La hora a la que escriben las cadencias (administración)
+
+Una cadencia que pide días laborables no toca a nadie de noche ni en fin de
+semana. Desde el 10-11-2026 **las horas son las del reloj de tu empresa** (la
+zona horaria de sus ajustes), también cuando cambia la hora en octubre y en
+marzo; antes se miraban en hora universal y en España la ventana se corría una
+o dos horas. Se cambian en **Ajustes**: `cadencia_hora_desde` (8: antes no se
+escribe), `cadencia_hora_hasta` (19: desde esa hora pasa al día siguiente) y
+`cadencia_hora_reprograma` (9: a qué hora se recoloca lo que caía fuera). Vale
+también para el **primer** toque: si inscribes a alguien un viernes por la
+noche, el primer correo sale el lunes a las 9, no esa misma noche.
 
 ## Qué hacer cuando algo no sale
 

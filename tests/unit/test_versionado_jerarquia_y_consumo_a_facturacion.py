@@ -139,12 +139,13 @@ def test_volver_a_un_cambio_sin_valor_previo_quita_el_del_ambito(
     rt.fijar(db, "idioma", "fr", ambito="tenant", ambito_id=str(tenant_id))
     db.flush()
     primero = historial(db, tenant_id, clave="idioma")[0]
-    # Forzado: en este entorno el efectivo de partida puede no ser None.
+    # Sin forzarlo: el ámbito no tenía valor propio, y eso es lo que se apunta.
+    # Antes se apuntaba el efectivo y la prueba tenía que poner el `None` a mano,
+    # que es justo lo que escondía el fallo (10-11-2026).
     fila = db.execute(
         select(VersionAjuste).where(VersionAjuste.id == UUID(primero["id"]))
     ).scalar_one()
-    fila.valor_anterior = None
-    db.flush()
+    assert fila.valor_anterior is None
 
     salida = volver_a(db, UUID(primero["id"]), tenant_id=tenant_id)
     assert salida["heredado"] is True

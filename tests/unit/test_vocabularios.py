@@ -159,3 +159,38 @@ def test_cada_vocabulario_sabe_quien_lo_declara() -> None:
     declarados = {n: v.servicio for n, v in voc._REGISTRO.items() if n.startswith("motivos_")}
     assert declarados, "no se ve ningún vocabulario de ventas: el recorrido no mira"
     assert set(declarados.values()) == {"sales"}, declarados
+
+
+# ── Los que el código lee uno a uno (10-11-2026) ──────────────────────────
+
+
+def test_un_valor_fijo_se_renombra_pero_no_se_retira(db: Any, tenant_id: UUID) -> None:
+    """«pide_que_no_le_llamen» apunta una exclusión; retirarlo no cambiaría una
+    lista: apagaría en silencio una obligación legal. Se puede renombrar, no
+    retirar, y aunque una carga a mano lo deje inactivo se sigue admitiendo."""
+    from crmcore.authz.principal import Principal
+    from crmcore.errors import Conflicto
+    from crmcore.http.vocabulario_router import CambioValor, crear_router_vocabulario
+
+    voc.registrar("pruebas_fijos", DEFECTOS, etiqueta="Con fijos", fijos=("precio",))
+    try:
+        rutas = {r.name: r.endpoint for r in crear_router_vocabulario("pruebas").routes}
+        quien = Principal(id=uuid4(), tenant_id=tenant_id, permisos=frozenset({"*:*"}))
+
+        with pytest.raises(Conflicto) as e:
+            rutas["retirar"]("pruebas_fijos", "precio", db, quien)
+        assert e.value.error_code == "vocabulario.valor_fijo"
+        renombrado = rutas["cambiar"](
+            "pruebas_fijos", "precio", CambioValor(etiqueta="Precio cerrado"), db, quien
+        )
+        assert renombrado["etiqueta"] == "Precio cerrado" and renombrado["fijo"] is True
+        # Uno que no es fijo sí se retira.
+        assert rutas["retirar"]("pruebas_fijos", "plazo", db, quien)["activo"] is False
+
+        fila = next(f for f in voc.filas(db, "pruebas_fijos") if f.valor == "precio")
+        fila.activo = False
+        db.flush()
+        assert "precio" in voc.valores(db, "pruebas_fijos")
+        assert "plazo" not in voc.valores(db, "pruebas_fijos")
+    finally:
+        voc._REGISTRO.pop("pruebas_fijos", None)

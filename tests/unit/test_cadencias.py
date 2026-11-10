@@ -29,6 +29,22 @@ def uow(db: Any, tenant_id: UUID) -> UnidadDeTrabajo:
     return UnidadDeTrabajo(db=db, tenant_id=tenant_id)
 
 
+@pytest.fixture
+def en_horario(monkeypatch: pytest.MonkeyPatch) -> datetime:
+    """El «ahora» de la cadencia, dentro de la ventana: el último laborable a las 10 UTC.
+
+    Inscribir respeta la ventana, así que una prueba que inscribe y avanza en
+    seguida dependía de la hora a la que se pasara: de noche o en fin de semana
+    el primer paso quedaba para mañana y no se ejecutaba nada.
+    """
+    dia = datetime.now(timezone.utc).replace(hour=10, minute=0, second=0, microsecond=0)
+    dia -= timedelta(days=1)
+    while dia.weekday() >= 5:
+        dia -= timedelta(days=1)
+    monkeypatch.setattr(cad, "_ahora", lambda: dia)
+    return dia
+
+
 def _cadencia(uow: UnidadDeTrabajo, **kw: Any) -> cad.Cadencia:
     base: dict[str, Any] = {
         "clave": "prospeccion",
@@ -163,7 +179,9 @@ def test_no_se_sale_dos_veces(uow: UnidadDeTrabajo) -> None:
 # ── Avanzar (CRM-03.03.01.01) ─────────────────────────────────────────────
 
 
-def test_avanzar_ejecuta_el_paso_y_programa_el_siguiente(uow: UnidadDeTrabajo) -> None:
+def test_avanzar_ejecuta_el_paso_y_programa_el_siguiente(
+    uow: UnidadDeTrabajo, en_horario: datetime
+) -> None:
     fila = _cadencia(uow)
     inscripcion = cad.inscribir(uow, fila.id, email="a@b.c")
     salida = cad.avanzar(uow, uow.tenant_id)
@@ -172,7 +190,9 @@ def test_avanzar_ejecuta_el_paso_y_programa_el_siguiente(uow: UnidadDeTrabajo) -
     assert inscripcion.proximo_at is not None
 
 
-def test_el_paso_manual_se_marca_como_manual(uow: UnidadDeTrabajo, db: Any) -> None:
+def test_el_paso_manual_se_marca_como_manual(
+    uow: UnidadDeTrabajo, db: Any, en_horario: datetime
+) -> None:
     """Mandar un correo no es lo mismo que llamar, y una herramienta que finge que
     sí acaba con cadencias de cinco correos que nadie llamó."""
     from sqlalchemy import select
@@ -184,7 +204,9 @@ def test_el_paso_manual_se_marca_como_manual(uow: UnidadDeTrabajo, db: Any) -> N
     assert toque.canal == "llamada"
 
 
-def test_la_cadencia_termina_sola_al_acabar_los_pasos(uow: UnidadDeTrabajo) -> None:
+def test_la_cadencia_termina_sola_al_acabar_los_pasos(
+    uow: UnidadDeTrabajo, en_horario: datetime
+) -> None:
     fila = _cadencia(uow, pasos=[{"canal": "llamada", "espera_dias": 0}])
     inscripcion = cad.inscribir(uow, fila.id, email="a@b.c")
     cad.avanzar(uow, uow.tenant_id)
@@ -206,6 +228,61 @@ def test_de_noche_se_empuja_a_la_manana_siguiente(uow: UnidadDeTrabajo) -> None:
     assert cad._siguiente_laborable(noche, True).hour == 9
 
 
+def test_la_ventana_es_la_del_reloj_del_tenant_tambien_al_cambiar_la_hora(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Las 8, 9 y 19 se comparaban con la hora UTC: en Madrid la ventana iba de
+    9 a 20 en invierno y de 10 a 21 en verano. Ahora es la del tenant, con sus
+    ajustes, y las 9 son las 9 de su reloj a los dos lados del cambio de hora
+    (Madrid pasa de UTC+2 a UTC+1 el 25-10-2026)."""
+    from zoneinfo import ZoneInfo
+
+    from crmcore.runtime import settings as rt
+
+    madrid = ZoneInfo("Europe/Madrid")
+    rt.fijar(db, "zona_horaria", "Europe/Madrid", ambito="tenant", ambito_id=str(tenant_id))
+    rt.fijar(db, "cadencia_hora_hasta", 18, ambito="tenant", ambito_id=str(tenant_id))
+    ventana = cad.ventana_envio(db)
+    assert ventana.zona == madrid and (ventana.desde, ventana.hasta) == (8, 18)
+
+    # Lunes 19-10, 16:30 UTC = 18:30 en Madrid (verano): fuera de la ventana
+    # del tenant, aunque en UTC fueran las 16:30 y la vieja la diera por buena.
+    verano = cad._siguiente_laborable(
+        datetime(2026, 10, 19, 16, 30, tzinfo=timezone.utc), True, ventana
+    )
+    assert verano == datetime(2026, 10, 20, 7, 0, tzinfo=timezone.utc)
+    # Lunes 26-10, la misma hora local tras el cambio: las 9 siguen siendo
+    # las 9, que ahora en UTC son las 8.
+    invierno = cad._siguiente_laborable(
+        datetime(2026, 10, 26, 17, 30, tzinfo=timezone.utc), True, ventana
+    )
+    assert invierno == datetime(2026, 10, 27, 8, 0, tzinfo=timezone.utc)
+    assert verano.astimezone(madrid).hour == invierno.astimezone(madrid).hour == 9
+    # Viernes 23-10 a las 10:00 de Madrid más tres días: cae el lunes 26 a las
+    # 10:00 de Madrid, no a las 9 —sumar en UTC habría corrido una hora—.
+    viernes = datetime(2026, 10, 23, 10, 0, tzinfo=madrid)
+    lunes = cad._siguiente_laborable(viernes + timedelta(days=3), True, ventana)
+    assert lunes.astimezone(madrid) == datetime(2026, 10, 26, 10, 0, tzinfo=madrid)
+
+
+def test_el_primer_paso_tambien_espera_a_la_ventana(
+    uow: UnidadDeTrabajo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Inscribir un viernes a las 23 UTC programaba el primer toque para «ya»: la
+    siguiente pasada lo mandaba de noche. Tiene que quedar para el lunes a la
+    hora de recolocar, y una pasada de ahora no puede ejecutarlo."""
+    viernes_noche = datetime(2026, 3, 13, 23, 0, tzinfo=timezone.utc)
+    assert viernes_noche.weekday() == 4
+    monkeypatch.setattr(cad, "_ahora", lambda: viernes_noche)
+    fila = _cadencia(uow)
+    inscripcion = cad.inscribir(uow, fila.id, email="a@b.c")
+    proximo = cad._con_tz(inscripcion.proximo_at)
+    assert proximo is not None
+    local = proximo.astimezone(cad.ventana_envio(uow.db).zona)
+    assert local.weekday() == 0 and local.hour == 9
+    assert cad.avanzar(uow, uow.tenant_id)["ejecutados"] == []
+
+
 def test_si_no_se_pide_laborable_no_se_toca(uow: UnidadDeTrabajo) -> None:
     sabado = datetime(2026, 3, 7, 3, 0, tzinfo=timezone.utc)
     assert cad._siguiente_laborable(sabado, False) == sabado
@@ -218,7 +295,7 @@ def test_sin_pendientes_no_se_dice_que_todo_va_bien(uow: UnidadDeTrabajo) -> Non
 # ── La cola (CRM-03.03.01.02) ─────────────────────────────────────────────
 
 
-def test_la_cola_dice_por_que_esta_cada_cosa(uow: UnidadDeTrabajo) -> None:
+def test_la_cola_dice_por_que_esta_cada_cosa(uow: UnidadDeTrabajo, en_horario: datetime) -> None:
     """Una prioridad sin explicación se ignora: si no se dice por qué algo está
     arriba, la gente baja hasta encontrar lo que reconoce."""
     yo = uuid4()
@@ -228,7 +305,7 @@ def test_la_cola_dice_por_que_esta_cada_cosa(uow: UnidadDeTrabajo) -> None:
     assert cola["entradas"][0]["por_que"].startswith("Toca el paso 1")
 
 
-def test_lo_mas_atrasado_sube(uow: UnidadDeTrabajo) -> None:
+def test_lo_mas_atrasado_sube(uow: UnidadDeTrabajo, en_horario: datetime) -> None:
     yo = uuid4()
     fila = _cadencia(uow)
     reciente = cad.inscribir(uow, fila.id, email="reciente@b.c", responsable_id=yo)
@@ -297,7 +374,9 @@ def test_la_apertura_sale_sin_tasa_y_con_su_advertencia(uow: UnidadDeTrabajo, db
     assert "filtros" in fila["aviso_apertura"]
 
 
-def test_responder_cuenta_en_la_plantilla(uow: UnidadDeTrabajo, db: Any) -> None:
+def test_responder_cuenta_en_la_plantilla(
+    uow: UnidadDeTrabajo, db: Any, en_horario: datetime
+) -> None:
     db.add(cad.PlantillaCorreo(tenant_id=uow.tenant_id, clave="primero", nombre="P", asunto="x"))
     db.flush()
     fila = _cadencia(uow)

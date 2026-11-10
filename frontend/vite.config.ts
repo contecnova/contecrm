@@ -1,12 +1,83 @@
 import react from "@vitejs/plugin-react";
+import { createHash } from "node:crypto";
+import { readdirSync, statSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { build, defineConfig, type Plugin } from "vite";
+
+/**
+ * `/embebido.js` en el servidor de desarrollo (CRM-00.02.03.05).
+ *
+ * El componente incrustable tiene su propia construcción
+ * (`vite.embebido.config.ts`) y en la imagen lo sirve nginx en esa misma ruta.
+ * En la pila local no lo servía nadie: se podía construir y no había dirección
+ * desde la que pegarlo en una web. Aquí se construye al pedirlo —y otra vez
+ * sólo si su código ha cambiado— con la misma configuración que la imagen, así
+ * que lo que se prueba en local es lo que se publica.
+ *
+ * Las cabeceras son las de nginx salvo la caché: aquí `no-cache` con `ETag`,
+ * para que un cambio se vea al recargar; allí una hora. Las dos sin
+ * credenciales: se carga desde webs ajenas y no tiene nada que ver con la
+ * sesión de la consola.
+ */
+function servirEmbebido(): Plugin {
+  const carpeta = fileURLToPath(new URL("./src/embebido", import.meta.url));
+  let hecho: { huella: string; codigo: string; etag: string } | null = null;
+
+  const huellaDelCodigo = () =>
+    readdirSync(carpeta)
+      .map((f) => `${f}:${statSync(`${carpeta}/${f}`).mtimeMs}`)
+      .join("|");
+
+  async function construir(): Promise<{ codigo: string; etag: string }> {
+    const huella = huellaDelCodigo();
+    if (hecho?.huella === huella) return hecho;
+    const salida = await build({
+      configFile: fileURLToPath(new URL("./vite.embebido.config.ts", import.meta.url)),
+      logLevel: "silent",
+      build: { write: false },
+    });
+    const lotes = Array.isArray(salida) ? salida : [salida];
+    const trozo = lotes
+      .flatMap((l) => ("output" in l ? l.output : []))
+      .find((o) => o.type === "chunk" && o.fileName === "embebido.js");
+    if (!trozo || trozo.type !== "chunk") throw new Error("embebido.js no se ha construido");
+    const etag = `"${createHash("sha256").update(trozo.code).digest("hex").slice(0, 16)}"`;
+    hecho = { huella, codigo: trozo.code, etag };
+    return hecho;
+  }
+
+  return {
+    name: "contecrm-embebido",
+    apply: "serve",
+    configureServer(servidor) {
+      servidor.middlewares.use("/embebido.js", (pet, res, siguiente) => {
+        if (pet.method !== "GET" && pet.method !== "HEAD") return siguiente();
+        construir()
+          .then(({ codigo, etag }) => {
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+            res.setHeader("X-Content-Type-Options", "nosniff");
+            res.setHeader("Cache-Control", "no-cache");
+            res.setHeader("ETag", etag);
+            if (pet.headers["if-none-match"] === etag) {
+              res.statusCode = 304;
+              res.end();
+              return;
+            }
+            res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+            res.end(pet.method === "HEAD" ? undefined : codigo);
+          })
+          .catch(siguiente);
+      });
+    },
+  };
+}
 
 // La dirección del gateway NO se compila: se lee en ejecución de `/config.json`
 // (ver `src/lib/config.ts`). Aquí solo se declara el proxy del servidor de
 // desarrollo, para que en local no haga falta CORS.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), servirEmbebido()],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
     // El puerto y el destino del proxy salen del MISMO sitio que los del resto

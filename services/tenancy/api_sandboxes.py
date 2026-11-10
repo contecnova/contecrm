@@ -53,13 +53,17 @@ class CaducadosIn(BaseModel):
         "webhook—: un token válido en pruebas es una puerta abierta a producción."
     ),
 )
-def plan(cuerpo: PlanIn, principal: AutenticadoDep) -> Any:
+def plan(cuerpo: PlanIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.runtime import settings as rt
+
     return sbx.plan_de_copia(
         proposito=cuerpo.proposito,
         porcentaje=cuerpo.porcentaje,
         anonimizar=cuerpo.anonimizar,
         motivo_sin_anonimizar=cuerpo.motivo_sin_anonimizar,
         pedido_por=principal.id,
+        # Cuánto se copia sin avisar lo decide el tenant.
+        aviso_pct=int(rt.efectivo("sandbox_copia_aviso_pct", db)),
     )
 
 

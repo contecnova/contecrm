@@ -456,6 +456,14 @@ TOPES_POR_IP: dict[str, tuple[str, str]] = {
         "aprobacion_enlace_intentos_por_ip",
         "aprobacion_enlace_ventana_s",
     ),
+    # Lo que escribe desde la web de otro: el formulario público de captura y
+    # el formulario incrustado. Cada uno con su contador; el tope por canal y
+    # hora, que es de lo que se escribe, lo pone `sales`.
+    "/captura/": ("captura_publica_intentos_por_ip", "captura_publica_ventana_s"),
+    "/api/v1/embebido/formulario-alta": (
+        "captura_publica_intentos_por_ip",
+        "captura_publica_ventana_s",
+    ),
 }
 
 # El portal es **un solo espacio de direcciones** y lo sirven varios servicios.

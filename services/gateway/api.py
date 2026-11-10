@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
@@ -27,7 +27,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
-from services.gateway import anomalias, empuje, operatividad, proxy
+from services.gateway import anomalias, empuje, incrustable, operatividad, proxy
 from services.gateway import sesion as sesion_gw
 from services.gateway import superficie_api as superficie
 from services.gateway.sesion import crear_router_sesion
@@ -1234,24 +1234,13 @@ class TokenEmbebido(BaseModel):
     )
 
 
-# Lo mínimo que necesita cada componente para pintar, y nada más. No hereda los
-# permisos de quien lo pide: si los heredara, el token de un escaparate llevaría
-# dentro los de un administrador.
-PERMISOS_DE_COMPONENTE: dict[str, list[str]] = {
-    "ficha-cuenta": ["party:read"],
-    "lista-casos": ["case:read"],
-    "formulario-alta": ["lead:write"],
-    "estado-pedido": ["sales:read"],
-}
-
-
 @router.post(
     "/sdk/componentes/token",
     # Dos comprobaciones, y hacen falta las dos. Ésta es la estática y
     # auditable: **poder incrustar algo del CRM en una web de fuera es una
     # decisión de integración**, no algo que venga con saber leer una cuenta.
     # La fina —que quien lo pide pueda ver ESE registro— va dentro, porque
-    # depende del componente que se pida y no se puede escribir aquí.
+    # depende del registro y la contesta el servicio dueño.
     dependencies=[Depends(exige_permiso("integracion:write"))],
     summary="Un token acotado para incrustar un componente (CRM-00.02.03.05)",
     description=(
@@ -1263,14 +1252,24 @@ PERMISOS_DE_COMPONENTE: dict[str, list[str]] = {
         "por la página: basta con abrir las herramientas del navegador."
     ),
 )
-def token_embebido(datos: TokenEmbebido, principal: AutenticadoDep) -> Any:
+async def token_embebido(datos: TokenEmbebido, principal: AutenticadoDep) -> Any:
     from crmcore import embebido
 
-    # Quien pide el token tiene que poder ver eso: si no, cualquiera con sesión
-    # fabricaría un token para un registro que él mismo no puede abrir.
-    permisos = PERMISOS_DE_COMPONENTE.get(datos.componente, [])
+    embebido.validar(datos.componente, datos.objeto)
+    # El token lleva sólo lo mínimo para pintar el componente, de la misma
+    # tabla que mira el servicio que lo atiende, y quien lo pide tiene que
+    # tener eso mismo.
+    permisos = embebido.PERMISOS_DE_COMPONENTE.get(datos.componente, [])
     for permiso in permisos:
         principal.exigir(permiso)
+
+    # **Y tiene que poder ver ESE registro.** El comentario lo decía y no se
+    # hacía: bastaba con el permiso, así que cualquiera con `integracion:write`
+    # fabricaba un token para una cuenta que no le estaba compartida y la
+    # publicaba en una web. Se pregunta al servicio dueño, con la identidad de
+    # quien lo pide, por la ficha del registro: la visibilidad —permiso,
+    # compartición, unidad de negocio— vive allí y no se copia aquí.
+    await _exigir_que_lo_ve(principal, datos.objeto, datos.objeto_id)
 
     assert principal.tenant_id is not None  # `AutenticadoDep` no deja pasar sin tenant
     return embebido.emitir(
@@ -1280,6 +1279,55 @@ def token_embebido(datos: TokenEmbebido, principal: AutenticadoDep) -> Any:
         tenant_id=principal.tenant_id,
         permisos=permisos,
         minutos=datos.minutos,
+    )
+
+
+async def _exigir_que_lo_ve(principal: Any, objeto: str, objeto_id: UUID) -> None:
+    """Pregunta al servicio dueño si este principal puede abrir el registro.
+
+    Cerrado por defecto: si el servicio no contesta, o contesta algo que no es
+    un sí ni un no, no se emite. Un token en una web pública es lo último que
+    se da por si acaso.
+    """
+    from crmcore import embebido
+    from crmcore.errors import Prohibido
+
+    s = get_settings()
+    ruta = f"{s.api_prefix.rstrip('/')}" + embebido.RUTA_DEL_OBJETO[objeto].format(id=objeto_id)
+    nombre = rutas.servicio_de(ruta)
+    destino = _destinos.get(nombre) if nombre else None
+    if _cliente is None or destino is None:
+        raise NoDisponible(
+            "No se puede comprobar ahora que puedas ver ese registro",
+            error_code="embebido.no_se_puede_comprobar",
+            detalle={"servicio": nombre or ""},
+        )
+    try:
+        respuesta = await _cliente.get(
+            f"{destino.url_base}{ruta}",
+            headers=proxy.cabeceras_de_identidad(principal, s.secret_key.get_secret_value()),
+            timeout=s.http_interno_timeout_s,
+        )
+    except httpx.HTTPError:
+        raise NoDisponible(
+            "No se puede comprobar ahora que puedas ver ese registro",
+            error_code="embebido.no_se_puede_comprobar",
+            detalle={"servicio": nombre},
+        )
+    if respuesta.status_code == 200:
+        return
+    if respuesta.status_code in (403, 404):
+        # Lo mismo para «no existe» que para «no lo ves»: distinguirlos le
+        # diría a quien prueba qué identificadores existen.
+        raise Prohibido(
+            "No puedes ver ese registro, así que no puedes incrustarlo",
+            error_code="embebido.registro_no_visible",
+            detalle={"objeto": objeto},
+        )
+    raise NoDisponible(
+        "No se puede comprobar ahora que puedas ver ese registro",
+        error_code="embebido.no_se_puede_comprobar",
+        detalle={"servicio": nombre, "estado": respuesta.status_code},
     )
 
 
@@ -1382,6 +1430,158 @@ async def _tope_por_ip(ruta: str, request: Request) -> None:
             return
 
 
+# ── Lo que se llama desde la web de otro (ver `services/gateway/incrustable.py`)
+
+
+def _componente_en_la_puerta(componente: str, principal: PrincipalDep) -> Any:
+    """Que el token sea de ESTE componente, ya en la puerta.
+
+    La comprobación de verdad —registro, tenant y alcance— la hace el servicio
+    con `exige_componente`. Ésta es la de la puerta: un token de «ficha-cuenta»
+    no llega ni a pedir la lista de casos. Y lleva la marca `admite_componente`,
+    sin la cual `contexto_autenticado` no deja entrar un token de componente en
+    esta ruta del gateway — ni en ninguna otra.
+    """
+    from crmcore import embebido
+
+    objeto = embebido.OBJETO_DE_COMPONENTE.get(componente)
+    if objeto is None:
+        raise NoEncontrado(
+            f"No hay ningún componente «{componente}»",
+            error_code="embebido.componente_desconocido",
+            detalle={"admitidos": sorted(embebido.OBJETO_DE_COMPONENTE)},
+        )
+    embebido.registro_del_token(principal, componente=componente, objeto=objeto)
+    return principal
+
+
+_componente_en_la_puerta.admite_componente = True  # type: ignore[attr-defined]
+
+
+@router.api_route(
+    "/embebido/{componente}",
+    methods=["GET", "POST"],
+    summary="Lo que pide un componente incrustado en la web de otro (CRM-00.02.03.05)",
+    description=(
+        "La única ruta del gateway que acepta un **token de componente**: el "
+        "resto lo rechaza aunque lleve tenant. Se reenvía al servicio dueño de "
+        "lo que enseña, que vuelve a comprobar el registro y el alcance.\n\n"
+        "Lo que escribe —el formulario de alta— lleva además el tope por IP y "
+        "el tamaño máximo de la captura pública."
+    ),
+    include_in_schema=False,
+)
+async def proxy_embebido(
+    componente: str,
+    request: Request,
+    principal: Annotated[Any, Depends(_componente_en_la_puerta)],
+) -> Response:
+    if request.method == "POST":
+        await incrustable.cuerpo_acotado(request)
+    return await _proxiar(f"{get_settings().api_prefix}/embebido/{componente}", request, principal)
+
+
+def _portal_en_la_puerta(principal: PrincipalDep) -> Any:
+    """La puerta del portal en el gateway: lleva la marca `admite_portal`.
+
+    Sin ella, `contexto_autenticado` no deja entrar un token de portal en
+    ninguna ruta del gateway —tampoco en el proxy general, que es por donde
+    llegaba a todas las de los servicios—. Quién es y qué secciones tiene lo
+    vuelve a comprobar el servicio con `PortalDep`; aquí sólo se le deja pasar
+    hasta él. Una sesión del CRM también entra, y es el servicio quien la
+    rechaza (`portal.sesion_no_es_de_portal`).
+    """
+    return principal
+
+
+_portal_en_la_puerta.admite_portal = True  # type: ignore[attr-defined]
+
+
+@router.api_route(
+    "/portal/mi/{resto:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    summary="Lo que pide el cliente desde su portal (CRM-04.03.02.01)",
+    description=(
+        "La única ruta del gateway que acepta un **token de portal**: el resto "
+        "lo rechaza aunque lleve tenant. Se reenvía al servicio dueño de la "
+        "sección, que comprueba el acceso y la sección."
+    ),
+    include_in_schema=False,
+)
+async def proxy_portal(
+    resto: str,
+    request: Request,
+    principal: Annotated[Any, Depends(_portal_en_la_puerta)],
+) -> Response:
+    return await _proxiar(f"{get_settings().api_prefix}/portal/mi/{resto}", request, principal)
+
+
+# Se reenvía POR SU NOMBRE y no abriendo un prefijo: el gateway sólo reenviaba
+# `/api/*` y la captura —sin prefijo de versión, ver `services/sales/api.py`—
+# contestaba 404 desde fuera (medido el 10-11-2026).
+@router_proxy.post(
+    "/captura/{tenant_id}/{clave}",
+    summary="Recibir un lead desde el formulario de una web (CRM-01.01.03.02)",
+    description=(
+        "La puerta pública de la captura: la llama el formulario de contacto "
+        "de la web del cliente.\n\n"
+        "Sin identidad —la autoriza la clave del canal (`X-Captura-Secreto`)— y "
+        "con lo que es de la puerta: tope por IP "
+        "(`CAPTURA_PUBLICA_INTENTOS_POR_IP` por `CAPTURA_PUBLICA_VENTANA_S`), "
+        "cuerpo máximo (`CAPTURA_PUBLICA_MAX_BYTES`) y webs admitidas "
+        "(`INCRUSTABLE_ORIGENES`). La trampa, el tope por hora y los "
+        "obligatorios son del canal.\n\n"
+        "Contesta **siempre lo mismo**, se cree o se descarte."
+    ),
+)
+async def captura_publica(tenant_id: UUID, clave: str, request: Request) -> Response:
+    # Lo barato primero: el tope por IP y el tamaño no necesitan a nadie.
+    await _tope_por_ip("/captura/", request)
+    cuerpo = await incrustable.cuerpo_acotado(request)
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+    destino = _destinos.get("sales")
+    if destino is None:
+        raise NoDisponible(
+            "El servicio «sales» no está desplegado en esta instalación",
+            error_code="gateway.servicio_no_desplegado",
+            detalle={"servicio": "sales"},
+        )
+    # Un tenant suspendido, o sin ventas contratadas, no recibe leads por la
+    # puerta de atrás: la misma comprobación que el resto de la API.
+    destino_tenancy = _destinos.get("tenancy")
+    if destino_tenancy is not None:
+        await operatividad.exigir(_cliente, destino_tenancy.url_base, tenant_id, "POST")
+        await operatividad.exigir_capacidad(_cliente, destino_tenancy.url_base, tenant_id, "sales")
+
+    from crmcore.tenancy.context import contexto_actual
+
+    cabeceras = {
+        k: v for k, v in request.headers.items() if k.lower() in incrustable.CABECERAS_DE_CAPTURA
+    }
+    rid = contexto_actual().request_id
+    if rid:
+        cabeceras["x-request-id"] = rid
+    s = get_settings()
+    respuesta = await proxy.reenviar(
+        _cliente,
+        url_base=destino.url_base,
+        metodo="POST",
+        ruta=f"/captura/{tenant_id}/{clave}",
+        query="",
+        cabeceras=cabeceras,
+        cuerpo=cuerpo,
+        # Sin identidad: no hay nadie. Lo que autoriza es la clave del canal.
+        identidad={},
+        timeout_s=s.http_interno_timeout_s,
+    )
+    return Response(
+        content=respuesta.content,
+        status_code=respuesta.status_code,
+        media_type=respuesta.headers.get("content-type"),
+    )
+
+
 @router_proxy.api_route(
     "/api/{ruta:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
@@ -1393,6 +1593,17 @@ async def _tope_por_ip(ruta: str, request: Request) -> None:
     include_in_schema=False,
 )
 async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Response:
+    return await _proxiar(f"/api/{ruta}", request, principal)
+
+
+async def _proxiar(ruta_completa: str, request: Request, principal: Any) -> Response:
+    """Todo lo que pasa entre recibir una petición de la API y devolverla.
+
+    Aparte del enrutado porque lo comparten el proxy general y la puerta de
+    los componentes embebidos (`proxy_embebido`): las dos tienen que pasar por
+    la operatividad del tenant, el acceso contextual y el freno de anomalías, y
+    dos copias de esto se separan a la primera.
+    """
     if _cliente is None:
         raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
 
@@ -1406,10 +1617,9 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
     # llamada anónima y volvía un «hace falta autenticarse» genérico, con el que
     # el navegador no sabe si le toca renovar o mandar a la pantalla de entrada.
     rechazada = cookie_rechazada()
-    if rechazada is not None and f"/api/{ruta}" not in rutas.RUTAS_DE_SESION:
+    if rechazada is not None and ruta_completa not in rutas.RUTAS_DE_SESION:
         raise rechazada
 
-    ruta_completa = f"/api/{ruta}"
     # Las públicas que se pueden atacar probando —un token en una ruta sin
     # sesión— llevan su propio tope por IP, contado AQUÍ: detrás del gateway
     # todas las peticiones llegan con la dirección del gateway.

@@ -179,7 +179,7 @@ def test_el_gateway_lo_llama_de_verdad_antes_de_reenviar() -> None:
 
     from services.gateway import api
 
-    fuente = inspect.getsource(api.proxy_api)
+    fuente = inspect.getsource(api._proxiar)  # el cuerpo común del proxy
     assert "operatividad.exigir" in fuente, (
         "El proxy del gateway ya no comprueba si el tenant puede operar. Es el "
         "único paso obligado de la API: sin esta llamada, un tenant suspendido "
@@ -275,7 +275,7 @@ def test_el_proxy_comprueba_el_plan_antes_de_reenviar() -> None:
 
     from services.gateway import api
 
-    fuente = inspect.getsource(api.proxy_api)
+    fuente = inspect.getsource(api._proxiar)  # el cuerpo común del proxy
     assert "operatividad.exigir_capacidad" in fuente, (
         "El proxy ya no comprueba el plan: se puede usar un módulo no contratado "
         "sabiéndose la URL, y ninguna otra prueba lo nota."

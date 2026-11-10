@@ -34,6 +34,65 @@ from crmcore.errors import NoAutenticado, Prohibido
 # entonces esta comprobación dejaría de significar lo que dice.
 TIPO = "componente"
 
+# Qué tipo de registro enseña cada componente y qué alcance lleva su token. Una
+# sola tabla para quien emite el token (el gateway) y quien lo atiende (cada
+# servicio, con `crmcore.http.deps.exige_componente`): con dos, el día que no
+# coincidan el token sale bien y la ruta lo rechaza —o al revés—.
+#
+# El alcance es lo mínimo para pintar eso y nada más. No hereda los permisos de
+# quien lo pide: si los heredara, el token de un escaparate llevaría dentro los
+# de un administrador.
+OBJETO_DE_COMPONENTE: dict[str, str] = {
+    "ficha-cuenta": "cuenta",
+    "lista-casos": "cuenta",
+    "formulario-alta": "formulario",
+    "estado-pedido": "pedido",
+}
+# Dónde se pregunta si quien PIDE el token puede ver ese registro: la ficha del
+# servicio dueño, con su identidad. Ahí está toda la visibilidad —permiso,
+# compartición, unidad de negocio— y repetirla en el gateway sería escribir
+# otra respuesta a «¿puede ver esto?», que es la que se queda corta.
+RUTA_DEL_OBJETO: dict[str, str] = {
+    "cuenta": "/accounts/{id}",
+    "formulario": "/captura/canales/{id}",
+    "pedido": "/pedidos/{id}",
+}
+PERMISOS_DE_COMPONENTE: dict[str, list[str]] = {
+    "ficha-cuenta": ["party:read"],
+    "lista-casos": ["case:read"],
+    "formulario-alta": ["lead:write"],
+    "estado-pedido": ["sales:read"],
+}
+
+
+def validar(componente: str, objeto: str) -> None:
+    """Que el componente exista y enseñe ese tipo de objeto.
+
+    Aparte de `emitir` porque quien emite pregunta antes al servicio dueño si
+    quien lo pide puede ver el registro, y esa pregunta no tiene sentido —ni
+    se sabe a quién hacerla— con un componente o un objeto que no casan.
+    """
+    from crmcore.errors import ErrorValidacion
+    from crmcore.sdk import COMPONENTES
+
+    if componente not in COMPONENTES:
+        raise ErrorValidacion(
+            f"Componente desconocido: «{componente}»",
+            error_code="embebido.componente_desconocido",
+            detalle={"admitidos": list(COMPONENTES)},
+        )
+
+    esperado = OBJETO_DE_COMPONENTE.get(componente)
+    if esperado and objeto != esperado:
+        # Un token de «ficha-cuenta» sobre un pedido sale bien y la ruta lo
+        # rechaza después: quien integra ve un 403 en la web de su cliente sin
+        # saber por qué. Se dice al emitirlo, que es cuando se puede corregir.
+        raise ErrorValidacion(
+            f"El componente «{componente}» enseña un «{esperado}», no un «{objeto}»",
+            error_code="embebido.objeto_no_corresponde",
+            detalle={"objeto": esperado},
+        )
+
 
 def emitir(
     *,
@@ -53,17 +112,8 @@ def emitir(
     import jwt
 
     from crmcore.config import get_settings
-    from crmcore.sdk import COMPONENTES
 
-    if componente not in COMPONENTES:
-        from crmcore.errors import ErrorValidacion
-
-        raise ErrorValidacion(
-            f"Componente desconocido: «{componente}»",
-            error_code="embebido.componente_desconocido",
-            detalle={"admitidos": list(COMPONENTES)},
-        )
-
+    validar(componente, objeto)
     s = get_settings()
     ahora = datetime.now(timezone.utc)
     caduca = ahora + timedelta(minutes=max(1, minutos))
