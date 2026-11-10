@@ -285,6 +285,27 @@ arrancar_docker() {
   mostrar_acceso
 }
 
+# Un NATS con JetStream para la pila local, en Docker, con la misma imagen que
+# el compose. No arranca el daemon de Docker: si no está, se sigue sin bus.
+# `127.0.0.1` y no `localhost`: macOS resuelve `localhost` a `::1` primero, el
+# contenedor escucha en IPv4 y la conexión se rechaza en bucle.
+asegurar_nats_local() {
+  command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 || return 1
+  local nombre="contecrm-nats-local" puerto="${NATS_LOCAL_PUERTO:-4222}"
+  local imagen
+  imagen=$(awk '/^  nats:/ {f=1} f && /image:/ {print $2; exit}' docker-compose.yml)
+  if ! docker ps --format '{{.Names}}' | grep -qx "$nombre"; then
+    if docker ps -a --format '{{.Names}}' | grep -qx "$nombre"; then
+      docker start "$nombre" >/dev/null || return 1
+    else
+      docker run -d --name "$nombre" --restart unless-stopped \
+        -p "127.0.0.1:${puerto}:4222" "$imagen" -js >/dev/null || return 1
+    fi
+  fi
+  export NATS_URL="nats://127.0.0.1:${puerto}"
+  ok "NATS en 127.0.0.1:${puerto} (contenedor $nombre)"
+}
+
 arrancar_local() {
   titulo "Arrancando en local (sin Docker)"
   [[ -d .venv ]] || { malo "Falta el entorno. Ejecuta primero: ./setup.sh instalar"; exit 1; }
@@ -297,7 +318,18 @@ arrancar_local() {
 
   export DATABASE_URL="$uri"
   export DATABASE_ADMIN_URL="$uri"
-  export BUS_BACKEND="${BUS_BACKEND:-memoria}"
+  # El bus de verdad si hay Docker: con el de memoria cada proceso tiene el
+  # suyo y NINGÚN evento cruza servicios —aprobaciones, firmas, avisos—, así
+  # que en local no se veía nada de lo que en producción va por NATS (medido
+  # el 10-11-2026). Quien fije BUS_BACKEND a mano manda.
+  if [[ -z "${BUS_BACKEND:-}" ]]; then
+    if asegurar_nats_local; then
+      export BUS_BACKEND=nats
+    else
+      export BUS_BACKEND=memoria
+      aviso "Sin Docker: bus en memoria. Los eventos no cruzan servicios."
+    fi
+  fi
   export ENV=dev
 
   # ── Las direcciones de contecintelligence, desde FUERA de Docker ───────────
@@ -369,6 +401,7 @@ arrancar_local() {
   for s in "${SERVICIOS[@]}"; do
     liberar_puerto_propio "$s" "$(puerto_de "$s")"
   done
+  rematar_colgados
   for w in "${WORKERS[@]}"; do
     local svc_w="${w%%:*}" mod_w="${w##*:}" pidf
     pidf="$VAR/pid/${svc_w}-${mod_w}.pid"
@@ -581,6 +614,25 @@ liberar_puerto_propio() {
   else
     aviso "$s: el puerto $puerto lo tiene otro proceso (pid $pid); no lo toco"
   fi
+}
+
+# Los procesos de servicio de ESTE repositorio que siguen vivos sin atender
+# puerto: recibieron la señal de parar, soltaron el puerto y se quedaron
+# esperando a hilos que no terminan. Medido el 10-11-2026: dos generaciones
+# enteras (26 procesos) colgadas así tras dos reinicios, y sus tareas de fondo
+# seguían cogiendo trabajos de la cola con el código de la víspera. Se llama
+# después de liberar los puertos, cuando ya no debería quedar ninguno; sólo se
+# tocan los que tienen como directorio de trabajo este repositorio.
+rematar_colgados() {
+  local raiz pid dir n=0
+  raiz="$(pwd -P)"
+  for pid in $(ps -Ao pid=,command= | awk '/(uvicorn|python -m) services\.[a-z_]+\./ {print $1}'); do
+    dir=$(lsof -a -d cwd -p "$pid" -Fn 2>/dev/null | awk '/^n/ {print substr($0, 2)}')
+    [[ "$dir" == "$raiz" ]] || continue
+    matar_de_verdad "$pid" && n=$((n + 1))
+  done
+  (( n > 0 )) && info "Parados $n procesos de servicio colgados de arranques anteriores"
+  return 0
 }
 
 matar_de_verdad() {

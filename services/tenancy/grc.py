@@ -34,7 +34,7 @@ from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
-from sqlalchemy import Boolean, Date, DateTime, Index, Integer, String, Text, func, select
+from sqlalchemy import Boolean, Date, DateTime, Index, Integer, String, Text, func, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -127,6 +127,23 @@ class Control(Base):
     # `gates`, `politicas_abac`… Vacío = la aporta una persona.
     fuente_evidencia: Mapped[str] = mapped_column(String(60), nullable=False, default="")
 
+    # De dónde sale el control cuando no lo escribió una persona
+    # (CRM-07.03.02.12): `familia` (uno por familia del catálogo),
+    # `segregacion` (uno por regla), `tcsec` (uno por requisito) o
+    # `recertificacion`. Vacío = escrito a mano. `referencia` es el objeto al
+    # que está enlazado —la familia, la regla, el requisito— y es lo que deja
+    # ir del control a su origen y volver.
+    origen: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="", server_default=text("''")
+    )
+    referencia: Mapped[str] = mapped_column(
+        String(80), nullable=False, default="", server_default=text("''")
+    )
+    # El tenant lo ha cambiado: reinstalar los de serie ya no lo pisa.
+    ajustado: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -135,6 +152,85 @@ class Control(Base):
     )
 
     __table_args__ = (Index("uq_grc_control", "tenant_id", "codigo", unique=True),)
+
+
+class Hallazgo(Base):
+    """Algo que un control ha encontrado mal, con su riesgo (CRM-07.03.02.13).
+
+    Hoy los abre la segregación: cada conflicto sin excepción es uno. Se
+    cierra solo cuando deja de verse —porque se resolvió o porque se aprobó la
+    excepción—, y se dice cuál de las dos: un hallazgo que desaparece sin
+    motivo es uno que nadie sabe si se arregló.
+    """
+
+    __tablename__ = "grc_hallazgos"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    codigo: Mapped[str] = mapped_column(String(120), nullable=False)
+    control_codigo: Mapped[str] = mapped_column(String(40), nullable=False)
+    origen: Mapped[str] = mapped_column(String(20), nullable=False)
+    referencia: Mapped[str] = mapped_column(
+        String(80), nullable=False, default="", server_default=text("''")
+    )
+    # La persona afectada, cuando la hay.
+    sujeto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    titulo: Mapped[str] = mapped_column(String(300), nullable=False)
+    detalle: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    riesgo_codigo: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="", server_default=text("''")
+    )
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="abierto", server_default=text("'abierto'")
+    )
+    motivo_cierre: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="", server_default=text("''")
+    )
+    detectado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    cerrado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("uq_grc_hallazgo", "tenant_id", "codigo", unique=True),)
+
+
+class Evidencia(Base):
+    """Una prueba con fecha de caducidad que sostiene un control.
+
+    La excepción aprobada de la segregación y la campaña cerrada de revisión de
+    accesos son pruebas que valen un tiempo: pasada la fecha, ya no prueban
+    nada, y el control lo tiene que ver (CRM-07.03.02.13, CRM-07.03.02.15).
+    """
+
+    __tablename__ = "grc_evidencias"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    control_codigo: Mapped[str] = mapped_column(String(40), nullable=False)
+    origen: Mapped[str] = mapped_column(String(20), nullable=False)
+    # El objeto que la genera en su servicio: el id de la excepción o de la
+    # campaña. Con él se vuelve del GRC al sitio donde se decidió.
+    referencia: Mapped[str] = mapped_column(String(80), nullable=False)
+    descripcion: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", server_default=text("''")
+    )
+    datos: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    caduca_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("uq_grc_evidencia", "tenant_id", "origen", "referencia", unique=True),
+        Index("ix_grc_evidencias_control", "tenant_id", "control_codigo"),
+    )
 
 
 class EvaluacionControl(Base):
@@ -362,7 +458,7 @@ def evaluar_control(
         control_codigo=control_codigo,
         fecha=cuando,
         resultado=resultado,
-        evidencia=evidencia or _evidencia_automatica(db, tenant_id, control),
+        evidencia=evidencia or _evidencia_automatica(db, tenant_id, control, por=por),
         observaciones=observaciones,
         plan_accion=plan_accion,
         proxima_at=cuando + timedelta(days=DIAS_FRECUENCIA.get(control.frecuencia, 91)),
@@ -374,7 +470,9 @@ def evaluar_control(
     return fila
 
 
-def _evidencia_automatica(db: Session, tenant_id: UUID, control: Control) -> dict[str, Any]:
+def _evidencia_automatica(
+    db: Session, tenant_id: UUID, control: Control, *, por: UUID | None = None
+) -> dict[str, Any]:
     """La prueba que el propio sistema ya genera (CRM-07.03.02.08).
 
     Adjuntar la evidencia a mano es como un GRC se queda desactualizado el
@@ -387,6 +485,13 @@ def _evidencia_automatica(db: Session, tenant_id: UUID, control: Control) -> dic
     fuente = control.fuente_evidencia
     if not fuente:
         return {}
+    # Las fuentes de los controles de serie —trazabilidad, segregación, TCSEC,
+    # revisión de accesos— preguntan a otros servicios con la identidad de
+    # quien evalúa, y viven en `grc_serie` (CRM-07.03.02.12).
+    from services.tenancy import grc_serie
+
+    if fuente in grc_serie.FUENTES:
+        return grc_serie.medir(db, tenant_id, control, por=por)["evidencia"]
     # Con SAVEPOINT: una fuente que no se sabe leer tiene que quedarse en una
     # evidencia con su error, y un `try` a secas no lo consigue —deja la sesión
     # envenenada y el control SIGUIENTE muere con `InFailedSqlTransaction`, así
@@ -485,7 +590,27 @@ def cobertura(db: Session, tenant_id: UUID, *, solo_hechas: bool = False) -> dic
         .scalars()
         .all()
     )
+    # **Anclado no es comprobado** (CRM-07.03.02.12). Un control de serie
+    # anclado a una familia entera pone la cobertura «con control» al cien por
+    # cien el día que se instala, sin haber mirado nada. Por eso se cuenta
+    # aparte lo VERIFICADO: la capacidad tiene un control cuya última
+    # evaluación dio «efectivo» y no ha pasado su plazo. Es la cifra que dice
+    # lo que hay; la otra dice lo que se ha declarado.
+    dia = hoy(db)
+    ultimas = _ultimas_evaluaciones(db, tenant_id)
+    # Por control, qué capacidades deja verificadas su última evaluación en
+    # plazo: todas si salió «efectivo»; si salió «parcial» y la fuente dice
+    # cuáles comprobó, ésas. Lo inefectivo o vencido no verifica nada.
+    verifica: dict[str, set[str] | None] = {}
+    for codigo, ev in ultimas.items():
+        if ev["proxima_at"] and date.fromisoformat(ev["proxima_at"]) < dia:
+            continue
+        if ev["resultado"] == "efectivo":
+            verifica[codigo] = None
+        elif ev["resultado"] == "parcial" and isinstance(ev.get("capacidades_verificadas"), list):
+            verifica[codigo] = set(ev["capacidades_verificadas"])
     por_capacidad: dict[str, list[str]] = {}
+    verificadas: set[str] = set()
     huerfanos: list[dict[str, Any]] = []
     for control in controles:
         fuera = [c for c in (control.capacidades or []) if c not in todas]
@@ -494,16 +619,24 @@ def cobertura(db: Session, tenant_id: UUID, *, solo_hechas: bool = False) -> dic
         for cid in control.capacidades or []:
             if cid in universo:
                 por_capacidad.setdefault(cid, []).append(control.codigo)
+                if control.codigo in verifica and (
+                    verifica[control.codigo] is None or cid in verifica[control.codigo]
+                ):
+                    verificadas.add(cid)
 
     sin_control = sorted(cid for cid in universo if cid not in por_capacidad)
     # Agrupado por sección: una lista de cuatrocientos identificadores no la
     # lee nadie, y por sección se ve de un vistazo qué área está descubierta.
     por_seccion: dict[str, dict[str, int]] = {}
     for cid, cap in universo.items():
-        fila = por_seccion.setdefault(cap["seccion"], {"total": 0, "con_control": 0})
+        fila = por_seccion.setdefault(
+            cap["seccion"], {"total": 0, "con_control": 0, "verificadas": 0}
+        )
         fila["total"] += 1
         if cid in por_capacidad:
             fila["con_control"] += 1
+        if cid in verificadas:
+            fila["verificadas"] += 1
 
     return {
         "medible": True,
@@ -516,6 +649,9 @@ def cobertura(db: Session, tenant_id: UUID, *, solo_hechas: bool = False) -> dic
         # lo entregado y la cobertura sobre todo salen iguales — con lo que la
         # distinción que este informe existe para enseñar no se ve.
         "pct": round(len(por_capacidad) / len(universo) * 100, 2) if universo else 0.0,
+        # Las que tienen un control evaluado «efectivo» y en plazo.
+        "verificadas": len(verificadas),
+        "pct_verificado": round(len(verificadas) / len(universo) * 100, 2) if universo else 0.0,
         "por_seccion": {
             nombre: {
                 **datos,
@@ -604,7 +740,15 @@ def _ultimas_evaluaciones(db: Session, tenant_id: UUID) -> dict[str, dict[str, A
         db.execute(
             select(EvaluacionControl)
             .where(EvaluacionControl.tenant_id == tenant_id)
-            .order_by(EvaluacionControl.fecha.desc())
+            # Con la hora de alta detrás: dos evaluaciones del mismo día salían
+            # en cualquier orden, y «la última» podía ser la de la mañana. Y el
+            # id al final, que es ordenado en el tiempo: dentro de una misma
+            # transacción `now()` es el mismo para las dos.
+            .order_by(
+                EvaluacionControl.fecha.desc(),
+                EvaluacionControl.created_at.desc(),
+                EvaluacionControl.id.desc(),
+            )
         )
         .scalars()
         .all()
@@ -617,6 +761,10 @@ def _ultimas_evaluaciones(db: Session, tenant_id: UUID) -> dict[str, dict[str, A
                 "fecha": fila.fecha.isoformat(),
                 "resultado": fila.resultado,
                 "proxima_at": fila.proxima_at.isoformat() if fila.proxima_at else None,
+                # Cuando la fuente dice capacidad a capacidad qué comprobó
+                # (CRM-07.03.02.12): la cobertura lo cuenta aunque el control
+                # entero no salga efectivo.
+                "capacidades_verificadas": (fila.evidencia or {}).get("capacidades_verificadas"),
             },
         )
     return ultimas
@@ -800,6 +948,28 @@ def panel(db: Session, tenant_id: UUID) -> dict[str, Any]:
                 "orden": 1,
             }
         )
+    # Lo que un control ha encontrado mal y sigue abierto: un conflicto de
+    # segregación sin excepción es una persona que hoy puede hacer las dos
+    # mitades de algo que se separó a propósito (CRM-07.03.02.13).
+    hallazgos = (
+        db.execute(
+            select(Hallazgo)
+            .where(Hallazgo.tenant_id == tenant_id, Hallazgo.estado == "abierto")
+            .order_by(Hallazgo.detectado_at)
+        )
+        .scalars()
+        .all()
+    )
+    for h in hallazgos:
+        urgente.append(
+            {
+                "que": h.titulo,
+                "por_que_urge": "Hallazgo abierto del control "
+                f"{h.control_codigo}: se resuelve o se aprueba con motivo y caducidad",
+                "control": h.control_codigo,
+                "orden": 2,
+            }
+        )
     for fila in datos_vencidos["controles_no_efectivos"]:
         urgente.append(
             {
@@ -844,6 +1014,12 @@ def panel(db: Session, tenant_id: UUID) -> dict[str, Any]:
         # nombre equivocado acertaba por casualidad justo en ese caso, que es
         # lo que lo mantuvo escondido.
         "cobertura_pct": datos_cobertura.get("pct") if hay_con_que_medir else None,
+        # Lo anclado a un control evaluado «efectivo» y en plazo: lo comprobado,
+        # no lo declarado (CRM-07.03.02.12).
+        "cobertura_verificada_pct": (
+            datos_cobertura.get("pct_verificado") if hay_con_que_medir else None
+        ),
+        "hallazgos_abiertos": len(hallazgos),
         "lo_que_urge": sorted(urgente, key=lambda f: f["orden"]),
         "detalle": datos_vencidos,
         # La diferencia entre «se cumple» y «no hay nada con lo que comprobarlo»,

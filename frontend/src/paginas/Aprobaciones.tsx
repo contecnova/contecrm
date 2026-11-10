@@ -29,6 +29,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import { MiRevisionDeAccesos } from "@/componentes/MiRevisionDeAccesos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { usePuedeOperar } from "@/lib/permisos";
@@ -132,6 +133,9 @@ export function Aprobaciones() {
       {fallo && corpus?.activo !== false && corpus?.alcanzable !== false ? (
         <Fallo error={fallo} />
       ) : null}
+      {/* La revisión de accesos que me toca (CRM-07.03.02.15): también es
+          algo que espera una decisión mía, y por eso va en esta bandeja. */}
+      <MiRevisionDeAccesos />
       <div className="mt-4">
         {solicitudes === null && !fallo && corpus === null ? (
           <Cargando />

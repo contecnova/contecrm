@@ -45,6 +45,7 @@ from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
 from services.tenancy.api_ciclo_vida import ROUTERS_CICLO_VIDA
 from services.tenancy.api_compromisos import ROUTERS_COMPROMISOS
 from services.tenancy.api_grc import ROUTERS_GRC
+from services.tenancy.api_grc_serie import ROUTERS_GRC_SERIE
 from services.tenancy.api_jerarquia import ROUTERS_JERARQUIA
 from services.tenancy.api_marca import ROUTERS_MARCA
 from services.tenancy.api_sandboxes import ROUTERS_SANDBOXES
@@ -812,6 +813,7 @@ ROUTERS = [
     *ROUTERS_CATALOGOS,
     *ROUTERS_BYOK,
     *ROUTERS_GRC,
+    *ROUTERS_GRC_SERIE,
     *ROUTERS_TCSEC,
     *ROUTERS_COMPROMISOS,
     *ROUTERS_SUITE,

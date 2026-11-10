@@ -158,6 +158,43 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=100,
             campo_settings="tcsec_mfa_minima_pct",
         ),
+        # Controles de serie del GRC (CRM-07.03.02.12 a CRM-07.03.02.15)
+        _c(
+            "grc_serie_frecuencia",
+            "str",
+            "GRC: cada cuánto se evalúan los controles de serie por familia del catálogo",
+            opciones=("diario", "semanal", "mensual", "trimestral", "semestral", "anual"),
+            campo_settings="grc_serie_frecuencia",
+        ),
+        _c(
+            "grc_sod_riesgo_por_nivel",
+            "json",
+            "GRC: probabilidad e impacto del riesgo de cada regla de segregación, por nivel",
+            campo_settings="grc_sod_riesgo_por_nivel",
+        ),
+        _c(
+            "recertificacion_plazo_dias",
+            "int",
+            "Revisión de accesos: días que tiene cada responsable para contestar",
+            minimo=1,
+            maximo=365,
+            campo_settings="recertificacion_plazo_dias",
+        ),
+        _c(
+            "recertificacion_frecuencia",
+            "str",
+            "Revisión de accesos: cada cuánto toca una campaña (frecuencia de su control)",
+            opciones=("mensual", "trimestral", "semestral", "anual"),
+            campo_settings="recertificacion_frecuencia",
+        ),
+        _c(
+            "recertificacion_al_cerrar",
+            "str",
+            "Revisión de accesos: qué hacer al cerrar con lo no contestado (marcar o retirar)",
+            opciones=("marcar", "retirar"),
+            campo_settings="recertificacion_al_cerrar",
+            sensible=True,
+        ),
         _c(
             "aprobacion_presupuesto_etapas",
             "json",

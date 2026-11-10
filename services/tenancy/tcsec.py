@@ -546,6 +546,31 @@ def _atestacion(ctx: Contexto, req: Requisito) -> Resultado:
     return CUMPLE, f"Atestiguado el {ultima.fecha.isoformat()}.", datos
 
 
+def requisito(clave: str) -> Requisito | None:
+    return _POR_CLAVE.get(clave)
+
+
+def medir_requisito(
+    db: Session, tenant_id: UUID, principal_id: UUID, clave: str, cache: dict[str, Any]
+) -> Resultado:
+    """Mide un requisito automático, para dejarlo como evidencia en el GRC.
+
+    Lo usa el control `TCSEC-<clave>` al evaluarse (CRM-07.03.02.14). La caché
+    es la de la evaluación entera: los informes de cumplimiento de cada servicio
+    sirven a varios requisitos y pedirlos una vez por requisito es pagar la
+    verificación de todas las cadenas varias veces.
+    """
+    req = _POR_CLAVE.get(clave)
+    if req is None or req.comprobar is None:
+        return SIN_MEDIR, "Este requisito no se mide: se atestigua.", {}
+    ctx = Contexto(db=db, tenant_id=tenant_id, principal_id=principal_id, _cache=cache)
+    try:
+        return req.comprobar(ctx)
+    except Exception as exc:  # noqa: BLE001 — se dice, no se esconde
+        logger.warning("tcsec.comprobacion_fallida", requisito=clave, error=str(exc))
+        return SIN_MEDIR, f"La comprobación falló: {str(exc)[:200]}", {}
+
+
 def evaluar(db: Session, tenant_id: UUID, principal_id: UUID) -> dict[str, Any]:
     """Cada requisito con su estado, y el nivel que alcanza la instalación."""
     ctx = Contexto(db=db, tenant_id=tenant_id, principal_id=principal_id, _cache={})
@@ -635,7 +660,7 @@ def atestiguar(
         )
     ).scalar_one_or_none()
     if existe is None:
-        grc.guardar_control(
+        nuevo = grc.guardar_control(
             db,
             tenant_id=tenant_id,
             codigo=req.control,
@@ -645,6 +670,9 @@ def atestiguar(
             frecuencia="anual",
             marcos=[{"marco": "TCSEC", "referencia": f"{req.nivel} {req.titulo}"}],
         )
+        # Enlazado a su requisito, como los que instala el GRC de serie
+        # (CRM-07.03.02.14): del control se vuelve a la pantalla TCSEC.
+        nuevo.origen, nuevo.referencia = "tcsec", req.clave
     ev = grc.evaluar_control(
         db,
         tenant_id=tenant_id,

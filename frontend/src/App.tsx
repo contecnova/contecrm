@@ -186,6 +186,15 @@ const Tcsec = pantalla(
   () => import("@/paginas/Tcsec"),
   (m) => m.Tcsec,
 );
+// Los controles del GRC y la revisión de accesos (CRM-07.03.02.12 a .15).
+const ControlesGrc = pantalla(
+  () => import("@/paginas/ControlesGrc"),
+  (m) => m.ControlesGrc,
+);
+const RevisionAccesos = pantalla(
+  () => import("@/paginas/RevisionAccesos"),
+  (m) => m.RevisionAccesos,
+);
 const HistorialDeAjustes = pantalla(
   () => import("@/paginas/HistorialDeAjustes"),
   (m) => m.HistorialDeAjustes,
@@ -569,6 +578,8 @@ export function App() {
             />
             <Route path="/sla-de-proveedores" element={<SlaProveedores />} />
             <Route path="/tcsec" element={<Tcsec />} />
+            <Route path="/controles-grc" element={<ControlesGrc />} />
+            <Route path="/revision-accesos" element={<RevisionAccesos />} />
             <Route
               path="/historial-de-ajustes"
               element={<HistorialDeAjustes />}

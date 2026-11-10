@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**784 capacidades**: 🔧 3 en-curso · ✅ 781 hecho
+**788 capacidades**: 🔧 3 en-curso · ✅ 785 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1083,7 +1083,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-110 capacidades · ✅ 110
+114 capacidades · ✅ 114
 
 ### 7.1 Administración funcional
 
@@ -1146,6 +1146,10 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.03.02.09` | Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales | A | 2 | core | ✅ | — |
 | `CRM-07.03.02.10` | Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo | A | 2 | core | ✅ | — |
 | `CRM-07.03.02.11` | Clasificacion TCSEC de la instalacion: requisitos por nivel medidos sobre el sistema o atestiguados con evidencia en el GRC, nivel alcanzado e informe para auditoria | B | 2 | tenancy | ✅ | — |
+| `CRM-07.03.02.12` | Controles de serie por familia del catalogo, anclados a sus capacidades hechas y con evidencia automatica (comprobacion registrada y cadena de auditoria), instalables, ajustables y desactivables; la cobertura cuenta aparte lo verificado | A | 2 | tenancy | ✅ | — |
+| `CRM-07.03.02.13` | La segregacion de funciones dentro del GRC: cada regla un control preventivo con su riesgo, cada conflicto sin excepcion un hallazgo y cada excepcion aprobada una evidencia con caducidad | A | 2 | tenancy | ✅ | — |
+| `CRM-07.03.02.14` | Los requisitos TCSEC como controles del GRC: los medidos dejan su medida como evidencia al evaluarse y los atestiguados la de quien da fe | A | 2 | tenancy | ✅ | — |
+| `CRM-07.03.02.15` | Revision periodica de accesos: campanas por responsable con plazo, confirmar o retirar con la retirada aplicada en identidad, lo no contestado marcado y avisado, y el resultado como evidencia del control de accesos | A | 2 | identity | ✅ | — |
 
 ### 7.4 Front oficial de referencia
 

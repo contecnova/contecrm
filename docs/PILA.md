@@ -292,7 +292,7 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
     preguntas sobre los datos, resúmenes, extracción, compromisos de
     reuniones— pasado contra el modelo real, con el acierto a la vista y un
     aviso si baja; y corregir hasta que acierte.
-  - [ ] **Todo bajo el GRC** (entrada 11).
+  - [x] **Todo bajo el GRC** (entrada 11), hecho el 10-11-2026.
   - [ ] **Lo que queda fuera del front**: 32 colecciones publicadas sin
     pantalla que las abra (`TOPE_SIN_PUERTA`) y 91 capacidades que ninguna
     prueba nombra (`TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE`).
@@ -327,20 +327,29 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
   - **No hay revisión periódica de accesos** (recertificación: cada
     responsable confirma o retira lo que tiene su gente).
 - **A construir**:
-  - [ ] Controles de serie anclados a las capacidades, por familia, con su
+  - [x] Controles de serie anclados a las capacidades, por familia, con su
     evidencia automática (el audit trail, los gates, los certificados), hasta
     que la cobertura mida de verdad lo que hay —con el informe de los dos
     sentidos que ya existe—.
-  - [ ] La segregación como control del GRC: cada regla es un control
+  - [x] La segregación como control del GRC: cada regla es un control
     preventivo, cada conflicto sin excepción un hallazgo con su riesgo, cada
     excepción aprobada una evidencia con caducidad.
-  - [ ] TCSEC entero en el GRC: los 15 requisitos como controles, los
+  - [x] TCSEC entero en el GRC: los 15 requisitos como controles, los
     medidos con su evidencia automática al evaluarse.
-  - [ ] Revisión de accesos: campañas periódicas por responsable, con
+  - [x] Revisión de accesos: campañas periódicas por responsable, con
     confirmar o retirar y la retirada aplicada de verdad en identity; el
     resultado, evidencia del control de accesos.
-  - [ ] Todo en Administrar › Gobierno y cumplimiento, enlazado en los dos
+  - [x] Todo en Administrar › Gobierno y cumplimiento, enlazado en los dos
     sentidos (del control a la regla o el requisito, y de vuelta).
+- **Hecho el 10-11-2026**: 785 de 785 capacidades ancladas a un control de serie
+  y 398 verificadas con evidencia (antes 0); segregación y TCSEC dentro del
+  GRC; revisión de accesos con retirada real. Quitada la pestaña genérica
+  «Controles», que enseñaba lo mismo que la pantalla nueva.
+- **Pendiente**:
+  - [ ] **El organigrama no se puede fijar desde ninguna pantalla** (sólo llega
+    por SCIM o SSO). Sin él no hay quién apruebe un presupuesto en el tenant de
+    plataforma y la revisión de accesos cae entera en el revisor por defecto.
+    Hace falta una pantalla para decir quién depende de quién.
 
 ## Dependen de otros
 

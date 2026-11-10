@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Opciones } from "@/componentes/Formulario";
@@ -95,6 +96,11 @@ export function Segregacion() {
   const [permisos, setPermisos] = useState<string[]>([]);
   // La regla que se está escribiendo: una existente o una nueva («»).
   const [editando, setEditando] = useState<Regla | null>(null);
+  // Cada regla es un control preventivo del GRC (CRM-07.03.02.13): su código,
+  // para ir del uno al otro. Desde el control se llega aquí con `?regla=`.
+  const [controlDe, setControlDe] = useState<Record<string, string>>({});
+  const [params] = useSearchParams();
+  const pedida = params.get("regla") ?? "";
 
   const cargar = useCallback(() => {
     llamar<{ roles: string[]; reglas: FilaMatriz[] }>(
@@ -108,8 +114,34 @@ export function Segregacion() {
     llamar<{ violaciones: Violacion[] }>("/api/v1/segregacion/violaciones")
       .then((r) => setViolaciones(r.datos?.violaciones ?? []))
       .catch(() => setViolaciones([]));
+    llamar<{ codigo: string; origen: string; referencia: string }[]>(
+      "/api/v1/grc/controles",
+    )
+      .then((r) =>
+        setControlDe(
+          Object.fromEntries(
+            (Array.isArray(r.datos) ? r.datos : [])
+              .filter((c) => c.origen === "segregacion")
+              .map((c) => [c.referencia, c.codigo]),
+          ),
+        ),
+      )
+      .catch(() => setControlDe({}));
   }, []);
   useEffect(cargar, [cargar]);
+  useEffect(() => {
+    const regla = reglas.find((r) => r.codigo === pedida);
+    if (regla) setEditando(regla);
+  }, [reglas, pedida]);
+
+  // Lo que se cambia aquí llega al GRC en el momento: controles, hallazgos y
+  // evidencias. Si quien lo cambia no puede escribir en el GRC, se queda para
+  // la próxima sincronización y no se le enseña un error que no es suyo.
+  const recargar = useCallback(() => {
+    void llamar("/api/v1/grc/segregacion/sincronizar", { metodo: "POST" })
+      .catch(() => undefined)
+      .finally(cargar);
+  }, [cargar]);
   useEffect(() => {
     void listar<Usuario>("/api/v1/usuarios?limite=200")
       .then(setUsuarios)
@@ -141,7 +173,7 @@ export function Segregacion() {
         },
       );
       setAviso(t("segregacion.cargadas", { n: r.datos.anadidas }));
-      cargar();
+      recargar();
     } catch (e) {
       setFallo(e);
     }
@@ -241,6 +273,15 @@ export function Segregacion() {
                   >
                     {f.nombre}
                   </button>
+                  {controlDe[f.regla] ? (
+                    <Link
+                      to={`/controles-grc?control=${encodeURIComponent(controlDe[f.regla] ?? "")}`}
+                      className="btn-link ml-2 text-rotulo"
+                      title={t("segregacion.suControl")}
+                    >
+                      {controlDe[f.regla]}
+                    </Link>
+                  ) : null}
                 </Casilla>
                 <Casilla className="text-center">
                   <span
@@ -289,7 +330,7 @@ export function Segregacion() {
           alGuardar={(codigo) => {
             setEditando(null);
             setAviso(t("segregacion.guardada", { codigo }));
-            cargar();
+            recargar();
           }}
         />
       ) : null}
@@ -298,7 +339,7 @@ export function Segregacion() {
         <Conflictos
           violaciones={violaciones}
           nombre={nombre}
-          alCambiar={cargar}
+          alCambiar={recargar}
         />
         <Simulador usuarios={usuarios} roles={matriz.roles} />
       </div>

@@ -259,6 +259,9 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         # Verificarse uno mismo con su app, para las operaciones sensibles: no
         # concede nada que no tenga ya, sólo demuestra que es quien dice.
         "reverificar_mfa": "el usuario demuestra su propio segundo factor",
+        # La revisión de accesos la contesta el responsable al que se asignó,
+        # sea cual sea su rol; a cualquier otro, 403 `recert.no_es_tuya`.
+        "decidir": "contesta su propia revisión de accesos; el servicio exige ser el revisor",
         # Y quitarlo, por lo mismo: es el segundo factor de quien llama, no el
         # de otro. Lo que lo protege no es un permiso —todo el mundo tiene el
         # suyo— sino haberse verificado hace poco: lleva

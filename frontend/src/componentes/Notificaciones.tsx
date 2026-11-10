@@ -44,6 +44,15 @@ interface Aviso {
 }
 
 /** A qué módulo pertenece cada tipo de objeto que puede avisar. */
+/**
+ * Avisos que llevan a una pantalla propia y no a la ficha de un módulo. La
+ * revisión de accesos se contesta en la bandeja de aprobaciones
+ * (CRM-07.03.02.15): un aviso que no llevara allí obligaría a buscarla.
+ */
+const PANTALLA_DE: Record<string, string> = {
+  campana_recertificacion: "/aprobaciones",
+};
+
 const MODULO_DE: Record<string, string> = {
   cuenta: "cuentas",
   contacto: "cuentas",
@@ -192,9 +201,20 @@ export function Notificaciones() {
                     ) : null}
                   </>
                 );
+                const pantalla = a.objeto_tipo
+                  ? PANTALLA_DE[a.objeto_tipo]
+                  : undefined;
                 return (
                   <li key={a.id}>
-                    {modulo && a.objeto_id ? (
+                    {pantalla ? (
+                      <Link
+                        to={pantalla}
+                        onClick={() => setAbierto(false)}
+                        className="block px-3 py-2 hover:bg-paper-light"
+                      >
+                        {contenido}
+                      </Link>
+                    ) : modulo && a.objeto_id ? (
                       <Link
                         to={`/m/${modulo}/${a.objeto_tipo}/${a.objeto_id}`}
                         onClick={() => setAbierto(false)}

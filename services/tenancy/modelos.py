@@ -296,6 +296,8 @@ from services.tenancy.facturacion import CorteConsumo  # noqa: E402,F401
 from services.tenancy.grc import (  # noqa: E402
     Control,
     EvaluacionControl,
+    Evidencia,
+    Hallazgo,
     Riesgo,
 )
 from services.tenancy.marca import MarcaTenant  # noqa: E402,F401
@@ -320,6 +322,8 @@ __all__ = [
     "VersionAjuste",
     "Control",
     "EvaluacionControl",
+    "Evidencia",
+    "Hallazgo",
     "Riesgo",
     "PoliticaAbac",
     "VersionPoliticaAbac",

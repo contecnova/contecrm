@@ -1941,16 +1941,12 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         ],
         permiso: "tenant:read",
       },
-      {
-        nombre: "Controles",
-        listar: "/api/v1/grc/controles",
-        // Del marco normativo a las capacidades que lo sostienen: un control sin
-        // saber a qué marco responde es trabajo que nadie sabe por qué se hace.
-        resumen: ["/api/v1/grc/marcos"],
-        servicio: "tenancy",
-        columnas: ["codigo", "nombre", "tipo", "frecuencia", "activo"],
-        permiso: "tenant:read",
-      },
+      // Los controles tienen pantalla propia desde el 10-11-2026 (Administrar ›
+      // Gobierno y cumplimiento › Controles del GRC): de serie, de la
+      // segregación y del TCSEC, con su evidencia y su enlace de vuelta. La
+      // pestaña genérica enseñaba el mismo registro en otro sitio, y dos
+      // sitios para lo mismo no dicen cuál manda. Los marcos, en el panel de
+      // Gobierno.
       // La segregación de funciones tiene pantalla propia (/segregacion, en
       // Administrar › Gobierno): matriz, reglas, conflictos y excepciones.
       // Las tres apuntaban a `party` y se llamaban «Retención», «Bloqueos

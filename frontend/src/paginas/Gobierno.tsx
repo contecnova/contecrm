@@ -32,6 +32,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -51,6 +52,9 @@ interface Panel {
   controles_evaluados: number;
   /** Sólo cuando hay con qué medir: un 0 % y un «no se sabe» son lo contrario. */
   cobertura_pct: number | null;
+  /** Lo anclado a un control evaluado «efectivo» y en plazo (CRM-07.03.02.12). */
+  cobertura_verificada_pct?: number | null;
+  hallazgos_abiertos?: number;
   lo_que_urge: Urgente[];
   medible: boolean;
   porque: string;
@@ -130,6 +134,11 @@ export function Gobierno() {
         titulo={t("grc.titulo")}
         icono="verified_user"
         entradilla={t("grc.entradilla")}
+        acciones={
+          <Link to="/controles-grc" className="btn-secondary">
+            {t("grc.irAControles")}
+          </Link>
+        }
       />
 
       {/* Un panel vacío en verde es el que más tranquiliza y el que peor
@@ -151,6 +160,13 @@ export function Gobierno() {
               ? t("grc.sinMedir")
               : t("grc.pct", { pct: panel.cobertura_pct })}
           </p>
+          {/* Anclado no es comprobado: la cifra de arriba sube al instalar los
+              controles de serie; ésta sólo con evaluaciones en plazo. */}
+          {panel.cobertura_verificada_pct != null ? (
+            <p className="text-rotulo text-ink-muted">
+              {t("grc.verificada", { pct: panel.cobertura_verificada_pct })}
+            </p>
+          ) : null}
         </div>
         <div className="card p-3">
           <p className="text-rotulo text-ink-muted">

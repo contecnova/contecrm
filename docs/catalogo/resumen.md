@@ -13,7 +13,7 @@
 | 4 — Servicio y atención al cliente | 62 | 61 | 1 | 0 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
 | 6 — Productividad y colaboración | 58 | 56 | 2 | 0 |
-| 7 — Administración, ALM y gobierno | 110 | 110 | 0 | 0 |
+| 7 — Administración, ALM y gobierno | 114 | 114 | 0 | 0 |
 | 8 — Requisitos no funcionales | 12 | 12 | 0 | 0 |
 | 9 — Proveedores, coste y capacidad | 20 | 20 | 0 | 0 |
 
@@ -22,7 +22,7 @@
 | Criticidad | Total | Hecho |
 |---|--:|--:|
 | C — Core | 311 | 310 |
-| A — Avanzado | 427 | 425 |
+| A — Avanzado | 431 | 429 |
 | D — Diferencial | 44 | 44 |
 
 ## Por fase
@@ -31,7 +31,7 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 180 | 180 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 182 | 182 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 222 | 221 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 226 | 225 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 51 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 65 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 50 |
@@ -39,7 +39,7 @@
 
 ## Reutilización
 
-**329 de 784** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**329 de 788** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|

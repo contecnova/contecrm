@@ -427,6 +427,28 @@ class _LimitsSettings(BaseSettings):
     # cuenta sin segundo factor es la que se usa para entrar.
     tcsec_mfa_minima_pct: int = Field(100, ge=0, le=100)
 
+    # ── Controles de serie del GRC (CRM-07.03.02.12 a CRM-07.03.02.15) ─────
+    # Cada cuánto se evalúan los controles de serie por familia del catálogo.
+    grc_serie_frecuencia: str = "trimestral"
+    # Probabilidad e impacto (1 a 5) del riesgo que se registra por cada regla
+    # de segregación, según el nivel de la regla.
+    grc_sod_riesgo_por_nivel: dict[str, list[int]] = Field(
+        default_factory=lambda: {
+            "bajo": [2, 2],
+            "medio": [3, 3],
+            "alto": [3, 4],
+            "critico": [4, 5],
+        }
+    )
+    # Días que tiene cada responsable para contestar una revisión de accesos.
+    recertificacion_plazo_dias: int = Field(14, ge=1, le=365)
+    # Cada cuánto toca una campaña de revisión de accesos: es la frecuencia del
+    # control del GRC que la recoge como evidencia.
+    recertificacion_frecuencia: str = "trimestral"
+    # Qué se hace con lo no contestado al cerrar la campaña: «marcar» lo deja
+    # marcado como vencido; «retirar» quita el acceso que nadie confirmó.
+    recertificacion_al_cerrar: str = "marcar"
+
     # ── Aprobación de presupuestos ─────────────────────────────────────────
     # Quién aprueba un presupuesto que se pasa de la matriz de descuentos: las
     # etapas del motor de aprobaciones (origen jerarquia, rol, usuario, campo o

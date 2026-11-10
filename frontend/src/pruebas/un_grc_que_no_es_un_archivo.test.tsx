@@ -12,8 +12,13 @@
  *    consta como cobertura y no cubre nada, que es peor que no tenerlo.
  */
 
-import { render, screen } from "@testing-library/react";
+import { render as pintar, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// El panel enlaza a los controles del GRC (CRM-07.03.02.12): necesita router.
+const render = (ui: ReactElement) => pintar(<MemoryRouter>{ui}</MemoryRouter>);
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -49,7 +54,8 @@ const CON_DATOS = {
   lo_que_urge: [
     {
       que: "Control C-AUD evaluado como «no efectivo»",
-      por_que_urge: "Está declarado y no protege: peor que no tenerlo, porque consta",
+      por_que_urge:
+        "Está declarado y no protege: peor que no tenerlo, porque consta",
       orden: 2,
     },
   ],
@@ -66,7 +72,8 @@ const VACIO = {
   cobertura_pct: null,
   lo_que_urge: [],
   medible: false,
-  porque: "No hay controles declarados ni evaluaciones: no se puede comprobar nada.",
+  porque:
+    "No hay controles declarados ni evaluaciones: no se puede comprobar nada.",
   todo_en_orden: false,
 };
 

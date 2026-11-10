@@ -708,6 +708,25 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
     permiso: "user:read",
     recursos: ["segregacion"],
   },
+  // Los controles del GRC con su origen —familia, regla, requisito o campaña—,
+  // su evidencia y sus hallazgos (CRM-07.03.02.12 a CRM-07.03.02.14).
+  {
+    area: "gobierno",
+    a: "/controles-grc",
+    clave: "nav.controlesGrc",
+    icono: "fact_check",
+    permiso: "tenant:read",
+  },
+  // Lanzar y seguir las campañas de revisión de accesos (CRM-07.03.02.15).
+  // Lo que contesta cada responsable va en SU bandeja, la de aprobaciones.
+  {
+    area: "gobierno",
+    a: "/revision-accesos",
+    clave: "nav.revisionAccesos",
+    icono: "how_to_reg",
+    permiso: "user:read",
+    recursos: ["recertificacion"],
+  },
   {
     area: "gobierno",
     a: "/cumplimiento",

@@ -142,6 +142,9 @@ class _ServicioSettings(BaseSettings):
     tarea_reverificaciones_intervalo_s: int = Field(3_600, ge=60, le=86_400)
     tarea_informes_intervalo_s: int = Field(300, ge=30, le=86_400)
     tarea_purgas_intervalo_s: int = Field(3_600, ge=60, le=86_400)
+    # Cada cuánto se miran las revisiones de accesos fuera de plazo para
+    # marcarlas y avisar a su responsable (CRM-07.03.02.15).
+    tarea_recertificacion_intervalo_s: int = Field(3_600, ge=60, le=86_400)
 
     # Y el interruptor de TODOS los relevos de tareas, no de uno. Encendido en
     # producción, que es donde las tareas tienen que correr.

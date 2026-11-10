@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**336 ajustes** en total, de los cuales **114** son editables en caliente por tenant.
+**343 ajustes** en total, de los cuales **121** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -196,7 +196,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CLAVES_LLAMADAS_DIAS` | — | `35` | 1–3650 | Cuántos días se guardan. Un mes cubre el panel del mes y la pregunta de «qué pasó la semana pasada»; más es un registro de acceso, que es otra cosa. |
 | `SUPERFICIE_COSTE_MAXIMO` | — | `50` | 1–100000 | Coste máximo de una consulta a la superficie, y días que vive un sandbox. |
 | `SANDBOX_DIAS` | — | `30` | 1–3650 |  |
-| `SANDBOX_API_OBJETOS` | — |  |  | Qué colecciones llena de datos sintéticos el sandbox de API si quien lo pide no dice cuáles, y cuántas filas por colección (CRM-00.02.01.15). |
+| `SANDBOX_API_OBJETOS` | — |  |  | Qué colecciones llena de datos sintéticos el sandbox de API si quien lo pide no dice cuáles, y cuántas filas por colección (CRM-00.02.01.15). Sin `opportunities` de serie: una oportunidad exige un embudo con sus etapas, y un tenant de pruebas recién creado no tiene ninguno —medido el 09-11-2026… |
 | `SANDBOX_API_FILAS_POR_OBJETO` | — | `10` | 1–500 |  |
 | `SANDBOX_API_DOMINIO_CORREO` | — | `example.com` |  | El dominio de los correos sintéticos: uno reservado para ejemplos (RFC 2606), que pasa la validación y no entrega a nadie. |
 | `SANDBOX_COPIA_LOTE` | — | `500` | 1–10000 | Filas por inserción al copiar un tenant a su sandbox (CRM-07.02.01.02). Una tabla ancha lo baja sola para no pasar del tope de parámetros de Postgres; esto es el máximo, no lo que siempre se usa. |
@@ -227,6 +227,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `PLAN_DIAS_SIN_TOCAR` | — | `21` | 1–3650 | Días sin tocar un plan conjunto tras los que se avisa. |
 | `CADENCIA_MINIMO_DIAS` | — | `30` | 1–3650 | Duración mínima de una cadencia, en días. |
 | `MARCADOR_ABANDONO_MAXIMO_PCT` | — | `3.0` | 0.0–100.0 | Abandono máximo tolerado en el marcador, en porcentaje. Lo fija la ley en varios países; por eso se puede ajustar pero no quitar. |
+| `MARCADOR_GRABAR_POR_POLITICA` | 🔥 `marcador_grabar_por_politica` | `False` |  | Si la política del tenant es grabar las llamadas del marcador. Apagado por defecto: grabar exige avisar y un plazo de borrado, y eso lo decide quien opera, no el producto. |
+| `MARCADOR_ESPERA_S` | 🔥 `marcador_espera_s` | `20.0` | 1.0–120.0 | Segundos que el marcador espera a la telefonía (integration) al llamar. |
 | `GRC_UMBRAL_RIESGO_ALTO` | — | `12` | 1–1000 | Puntuación a partir de la cual un riesgo de GRC es alto. |
 | `SUITE_MAX_INTENTOS` | — | `5` | 1–1000 | Intentos de sincronización de la suite antes de rendirse. |
 | `DUPLICADOS_UMBRAL_DEFECTO` | — | `0.72` | 0.0–1.0 | Similitud por defecto para encolar un duplicado cuando el tenant no la ha fijado. |
@@ -284,6 +286,11 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `TRANSICIONES_PROHIBIDAS` | 🔥 `transiciones_prohibidas` |  |  | Transiciones que este tenant QUITA de las que el código admite. Solo quita: añadir un estado que el código no conoce dejaría el registro en un limbo que ningún `if` sabe manejar. {"oportunidad": {"perdida": ["abierta"]}} significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:… |
 | `MAQUINAS_DE_ESTADO` | 🔥 `maquinas_de_estado` |  |  | Los estados de cada objeto tal como los ha configurado la empresa: nombres, orden, colores, estados propios y transiciones (CRM-00.04.01.07). Vacío = los de fábrica. Se edita desde Administrar, no a mano. |
 | `TCSEC_MFA_MINIMA_PCT` | 🔥 `tcsec_mfa_minima_pct` | `100` | 0–100 | Qué parte de las personas tiene que tener segundo factor para dar por cumplida la responsabilidad individual de C2. Cien por defecto: una sola cuenta sin segundo factor es la que se usa para entrar. |
+| `GRC_SERIE_FRECUENCIA` | 🔥 `grc_serie_frecuencia` | `trimestral` |  | Cada cuánto se evalúan los controles de serie por familia del catálogo. |
+| `GRC_SOD_RIESGO_POR_NIVEL` | 🔥 `grc_sod_riesgo_por_nivel` |  |  | Probabilidad e impacto (1 a 5) del riesgo que se registra por cada regla de segregación, según el nivel de la regla. |
+| `RECERTIFICACION_PLAZO_DIAS` | 🔥 `recertificacion_plazo_dias` | `14` | 1–365 | Días que tiene cada responsable para contestar una revisión de accesos. |
+| `RECERTIFICACION_FRECUENCIA` | 🔥 `recertificacion_frecuencia` | `trimestral` |  | Cada cuánto toca una campaña de revisión de accesos: es la frecuencia del control del GRC que la recoge como evidencia. |
+| `RECERTIFICACION_AL_CERRAR` | 🔥 `recertificacion_al_cerrar` | `marcar` |  | Qué se hace con lo no contestado al cerrar la campaña: «marcar» lo deja marcado como vencido; «retirar» quita el acceso que nadie confirmó. |
 | `APROBACION_PRESUPUESTO_ETAPAS` | 🔥 `aprobacion_presupuesto_etapas` |  |  | Quién aprueba un presupuesto que se pasa de la matriz de descuentos: las etapas del motor de aprobaciones (origen jerarquia, rol, usuario, campo o unidad). De serie, el superior directo de quien lo envía. Hasta el 09-11-2026 el presupuesto se quedaba en «en aprobación» para siempre: el aviso… |
 | `APROBACION_ENLACE_VALIDEZ_HORAS` | 🔥 `aprobacion_enlace_validez_horas` | `72` | 1–720 | Horas que vale el enlace del correo. Es una credencial que viaja por un buzón que se puede reenviar: tres días cubren un fin de semana sin dejarla viva una semana entera. |
 | `APROBACION_ENLACE_POR_CORREO` | 🔥 `aprobacion_enlace_por_correo` | `True` |  | Si al abrirse una etapa se manda a cada aprobador su enlace por correo. Apagado, el enlace sólo sale cuando alguien lo pide desde la ficha. |

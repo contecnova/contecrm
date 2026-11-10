@@ -28,7 +28,7 @@ def _tareas() -> list[Any]:
     """
     from crmcore.config import get_settings
     from crmcore.db.session import sesion
-    from crmcore.tareas import Tarea
+    from crmcore.tareas import Tarea, por_tenant
 
     from services.identity.factores import purgar_desafios
     from services.identity.sso import purgar_estados
@@ -59,7 +59,34 @@ def _tareas() -> list[Any]:
         Tarea("identity.estados_sso", cada, _purga(purgar_estados, "borrados")),
         Tarea("identity.aserciones_saml", cada, _purga(purgar_aserciones, "borradas")),
         Tarea("identity.desafios_mfa", cada, _purga(purgar_desafios, "borrados")),
+        # Lo no contestado a tiempo en una revisión de accesos se marca y se
+        # avisa (CRM-07.03.02.15). Por tenant, y sólo los que tienen campañas
+        # abiertas: los saca de su propia tabla.
+        Tarea(
+            "identity.recertificacion_vencidas",
+            get_settings().tarea_recertificacion_intervalo_s,
+            por_tenant(_tenants_con_campanas, _marcar_vencidas),
+        ),
     ]
+
+
+def _tenants_con_campanas() -> list[Any]:
+    from crmcore.db.session import sesion
+
+    from services.identity.recertificacion import tenants_con_campanas_abiertas
+
+    with sesion(sistema=True) as db:
+        return tenants_con_campanas_abiertas(db)
+
+
+def _marcar_vencidas(tenant_id: Any) -> dict[str, Any]:
+    from crmcore.db.session import sesion
+    from crmcore.tenancy.context import con_contexto
+
+    from services.identity.recertificacion import marcar_vencidas
+
+    with con_contexto(tenant_id=tenant_id, origen="tareas"), sesion(tenant_id) as db:
+        return marcar_vencidas(db, tenant_id)
 
 
 async def _al_arrancar() -> None:

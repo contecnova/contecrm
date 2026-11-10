@@ -9,12 +9,14 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar } from "@/lib/api";
 import { fechaHora } from "@/lib/formato";
+import { usePuedeOperar } from "@/lib/permisos";
 import { cn } from "@/lib/utiles";
 
 interface Requisito {
@@ -53,6 +55,10 @@ export function Tcsec() {
   const [fallo, setFallo] = useState<unknown>(null);
   const [midiendo, setMidiendo] = useState(false);
   const [aviso, setAviso] = useState("");
+  // Desde el control del GRC se llega aquí con `?requisito=` (CRM-07.03.02.14).
+  const [params] = useSearchParams();
+  const elegido = params.get("requisito") ?? "";
+  const puede = usePuedeOperar();
 
   const medir = useCallback(() => {
     setMidiendo(true);
@@ -65,6 +71,12 @@ export function Tcsec() {
       .finally(() => setMidiendo(false));
   }, []);
   useEffect(medir, [medir]);
+  useEffect(() => {
+    if (ev && elegido)
+      document
+        .getElementById(`requisito-${elegido}`)
+        ?.scrollIntoView({ block: "center" });
+  }, [ev, elegido]);
 
   async function descargar() {
     try {
@@ -80,6 +92,22 @@ export function Tcsec() {
       enlace.click();
       URL.revokeObjectURL(url);
       setAviso(t("tcsec.descargado", { fichero: r.datos.fichero }));
+    } catch (e) {
+      setFallo(e);
+    }
+  }
+
+  // Lo medido queda como evidencia de los controles TCSEC del GRC
+  // (CRM-07.03.02.14): la medida de esta pantalla no se guarda sola.
+  async function alGrc() {
+    try {
+      const r = await llamar<{
+        controles: number;
+        por_resultado: Record<string, number>;
+      }>("/api/v1/grc/controles/evaluar-automaticos?origen=tcsec", {
+        metodo: "POST",
+      });
+      setAviso(t("tcsec.enElGrc", { n: r.datos.controles }));
     } catch (e) {
       setFallo(e);
     }
@@ -107,6 +135,16 @@ export function Tcsec() {
               <Icono nombre="refresh" tamano="sm" />
               {midiendo ? t("tcsec.midiendo") : t("tcsec.medir")}
             </button>
+            {puede("POST", "/api/v1/grc/controles/evaluar-automaticos") ? (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => void alGrc()}
+              >
+                <Icono nombre="fact_check" tamano="sm" />
+                {t("tcsec.dejarEnGrc")}
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn-primary"
@@ -172,8 +210,9 @@ export function Tcsec() {
                   key={r.clave}
                   r={r}
                   falta={
-                    n.nivel === ev.siguiente &&
-                    ev.falta_para_el_siguiente.includes(r.clave)
+                    (n.nivel === ev.siguiente &&
+                      ev.falta_para_el_siguiente.includes(r.clave)) ||
+                    r.clave === elegido
                   }
                   alCambiar={medir}
                 />
@@ -221,7 +260,10 @@ function FilaRequisito({
   }
 
   return (
-    <li className={cn("py-3 text-dato", falta && "bg-paper-light/40")}>
+    <li
+      id={`requisito-${r.clave}`}
+      className={cn("py-3 text-dato", falta && "bg-paper-light/40")}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2">
@@ -231,8 +273,17 @@ function FilaRequisito({
             <span className="font-medium text-ink">{r.titulo}</span>
             <span className="text-rotulo text-ink-faint">
               {r.clave} ·{" "}
-              {r.como === "automatico" ? t("tcsec.medido") : t("tcsec.atestiguado")}
+              {r.como === "automatico"
+                ? t("tcsec.medido")
+                : t("tcsec.atestiguado")}
             </span>
+            {/* Su control en el GRC, con la evidencia que deja al evaluarse. */}
+            <Link
+              to={`/controles-grc?control=TCSEC-${r.clave}`}
+              className="btn-link text-rotulo"
+            >
+              {t("tcsec.suControl", { codigo: `TCSEC-${r.clave}` })}
+            </Link>
           </div>
           <p className="text-rotulo text-ink-faint">{r.exige}</p>
           <p className="mt-0.5 text-ink-muted">{r.detalle}</p>

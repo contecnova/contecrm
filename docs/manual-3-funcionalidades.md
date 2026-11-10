@@ -4414,6 +4414,71 @@ Tres reglas que hacen que el nivel signifique algo:
 para adjuntarlo a una auditoría. El mínimo de segundo factor para C2 es el
 ajuste `tcsec_mfa_minima_pct` (100 % de serie), en Administración.
 
+### Todo lo que hay, controlado por el GRC (`CRM-07.03.02.12` a `CRM-07.03.02.15`)
+
+Pedido el 09-11-2026: que todo lo que hay en la aplicación esté controlado por
+el GRC, con algo como el TCSEC y el DEM de Infor para los accesos, todo
+enlazado. Medido ese día en el tenant de plataforma: **0 de 781 capacidades
+hechas tenían control**, la segregación no dejaba nada en el GRC, del TCSEC
+sólo pasaban por él los cuatro requisitos atestiguados y no había revisión
+periódica de accesos.
+
+**Controles de serie por familia (`CRM-07.03.02.12`).** En **Administrar ›
+Gobierno y cumplimiento › Controles del GRC**, «Instalar los de serie» crea un
+control por cada familia del catálogo (`CRM-XX.YY`, 34 hoy) anclado a sus
+capacidades hechas, con la fuente de evidencia `trazabilidad`: la comprobación
+registrada de cada capacidad en el catálogo y la integridad de la cadena de
+auditoría de cada servicio que la sirve. Se pueden **ajustar** (editarlos los
+marca como ajustados) y **desactivar**; reinstalar trae lo nuevo —una familia
+que estrena capacidad, una regla nueva— y no pisa lo ajustado ni enciende lo
+desactivado. Al evaluarse, la familia se pone al día con las capacidades hechas
+de ese momento.
+
+**Anclado no es comprobado.** La cobertura tiene ahora dos cifras: la
+**anclada** (capacidades con un control activo: sube al cien por cien el día que
+se instalan los de serie, y dice lo declarado) y la **verificada** (capacidades
+cuyo control dio por buena una evaluación en plazo: dice lo comprobado). Una
+evaluación «parcial» de una familia verifica las capacidades que sí comprobó,
+no las demás; una «inefectiva» o vencida no verifica nada. Medido el
+10-11-2026 en el tenant de plataforma, con las cuatro capacidades de este
+bloque ya hechas: **785 de 785 ancladas y 398 de 785 verificadas** (las que
+tienen comprobación registrada en el catálogo y la cadena de su servicio
+intacta).
+
+**La segregación dentro del GRC (`CRM-07.03.02.13`).** Cada regla de
+segregación es un **control preventivo** con su **riesgo** (probabilidad e
+impacto según el nivel de la regla, ajuste `grc_sod_riesgo_por_nivel`); cada
+conflicto sin excepción es un **hallazgo** abierto contra ese riesgo, y cada
+excepción aprobada una **evidencia que caduca** el día que caduca la excepción.
+Cuando el conflicto deja de verse, el hallazgo se cierra diciendo si se
+resolvió o se exceptuó. Los datos los pone identidad y el GRC los pide por
+HTTP: al evaluar el control, con «Traer la segregación», y cada vez que se
+guarda una regla o se aprueba una excepción en Segregación de funciones.
+
+**TCSEC entero en el GRC (`CRM-07.03.02.14`).** Los 15 requisitos son
+controles `TCSEC-<clave>`. Los once medidos dejan la medida como evidencia al
+evaluarse («Dejar la medida en el GRC» en Clasificación TCSEC, o «Evaluar los
+automáticos»); lo que no se pudo medir **no se evalúa**. Los cuatro
+atestiguados siguen siendo de una persona.
+
+**Revisión periódica de accesos (`CRM-07.03.02.15`).** En **Administrar ›
+Gobierno y cumplimiento › Revisión de accesos** se lanza una campaña con plazo
+(ajuste `recertificacion_plazo_dias`, 14 días de serie): una revisión por cada
+rol y conjunto de permisos de cada persona activa, para su **superior**; quien
+no lo tiene va al revisor por defecto de la campaña. Cada responsable lo
+contesta en su **bandeja de aprobaciones**: confirmar, o retirar con motivo.
+**Retirar quita el acceso en el momento** —el rol sale de la persona, se
+cierran sus sesiones en esa empresa y queda en la auditoría—. Lo no contestado
+a tiempo se marca y se avisa al responsable y a quien lanzó la campaña; al
+cerrar, se queda marcado o se retira según `recertificacion_al_cerrar`. El
+resultado es la evidencia del control `REC-ACCESOS`: efectivo con una campaña
+cerrada dentro de su frecuencia (`recertificacion_frecuencia`) y sin vencidas.
+
+**Enlazado en los dos sentidos.** Cada control lleva a su regla, su requisito o
+sus campañas, y esas pantallas vuelven a su control. Los controles escritos a
+mano siguen en Riesgos y controles; los sembrados con fuentes que el sistema no
+sabe leer (`auditoria`, `marketing`…) salen «sin poder medir».
+
 ---
 
 ## 42. El front oficial, y la consola que se construye sola

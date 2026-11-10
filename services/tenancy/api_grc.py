@@ -126,7 +126,10 @@ def listar_controles(db: DbDep, principal: AutenticadoDep) -> Any:
         .scalars()
         .all()
     )
-    return [_control(f) for f in filas]
+    # Con la última evaluación: la lista de controles es donde se mira si
+    # cada uno se ha comprobado, y pedirla aparte es abrir otra pantalla.
+    ultimas = grc._ultimas_evaluaciones(db, principal.tenant_id)
+    return [{**_control(f), "ultima_evaluacion": ultimas.get(f.codigo)} for f in filas]
 
 
 @router_grc.put(
@@ -145,9 +148,12 @@ def guardar_control(
 ) -> Any:
     cuerpo = datos.model_dump()
     cuerpo["marcos"] = [m.model_dump() for m in datos.marcos]
-    return _control(
-        grc.guardar_control(uow.db, tenant_id=principal.tenant_id, codigo=codigo, **cuerpo)
-    )
+    fila = grc.guardar_control(uow.db, tenant_id=principal.tenant_id, codigo=codigo, **cuerpo)
+    # Un control de serie que la empresa cambia pasa a ser suyo: reinstalar
+    # los de serie ya no lo pisa (CRM-07.03.02.12).
+    if fila.origen:
+        fila.ajustado = True
+    return _control(fila)
 
 
 @router_grc.post(
@@ -306,6 +312,11 @@ def _control(fila: Any) -> dict[str, Any]:
         "riesgos": list(fila.riesgos or []),
         "marcos": list(fila.marcos or []),
         "fuente_evidencia": fila.fuente_evidencia,
+        # De dónde sale y a qué está enlazado: la familia, la regla, el
+        # requisito o la campaña (CRM-07.03.02.12).
+        "origen": fila.origen,
+        "referencia": fila.referencia,
+        "ajustado": fila.ajustado,
     }
 
 

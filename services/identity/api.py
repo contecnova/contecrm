@@ -1739,6 +1739,7 @@ from services.identity import retencion as _retencion_identity  # noqa: E402,F40
 from services.identity.api_factores import ROUTERS_FACTORES  # noqa: E402
 from services.identity.api_mfa_proveedor import ROUTERS_MFA_PROVEEDOR  # noqa: E402
 from services.identity.api_politicas import ROUTERS_POLITICAS  # noqa: E402
+from services.identity.api_recertificacion import ROUTERS_RECERTIFICACION  # noqa: E402
 from services.identity.api_scim import ROUTERS_SCIM  # noqa: E402
 from services.identity.api_sod import ROUTERS_SOD  # noqa: E402
 
@@ -1761,6 +1762,7 @@ ROUTERS = [
     router_idp,
     *ROUTERS_POLITICAS,
     *ROUTERS_SOD,
+    *ROUTERS_RECERTIFICACION,
     *ROUTERS_SCIM,
     *ROUTERS_FACTORES,
     *ROUTERS_MFA_PROVEEDOR,

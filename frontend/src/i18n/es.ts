@@ -150,6 +150,8 @@ export default {
     segregacion: "Segregación de funciones",
     slaProveedores: "SLA de proveedores",
     tcsec: "Clasificación TCSEC",
+    controlesGrc: "Controles del GRC",
+    revisionAccesos: "Revisión de accesos",
     historialAjustes: "Historial de la configuración",
     grupoEmpresas: "Grupo de empresas",
     consumoFacturacion: "Consumo para facturación",
@@ -631,6 +633,20 @@ export default {
     copiarComoBorrador: "Copiar como borrador",
     copiada:
       "Copiada como «{{clave}}»: {{estado}}. Ajústala y publícala cuando esté lista.",
+  },
+  miRevision: {
+    titulo: "Revisión de accesos de tu gente",
+    ayuda:
+      "Confirma lo que siguen necesitando y retira lo que no. Retirar lo quita en el momento y pide motivo.",
+    hasta: "hasta el {{fecha}}",
+    vencio: "venció el {{fecha}}",
+    tipos: { rol: "Rol", conjunto: "Conjunto de permisos" },
+    fueraDePlazo: "fuera de plazo",
+    confirmar: "Confirmar",
+    retirar: "Retirar",
+    motivo: "Por qué se retira",
+    retirarYa: "Retirar el acceso",
+    decisiones: { confirmado: "Confirmado", retirado: "Retirado" },
   },
   aprobaciones: {
     titulo: "Aprobaciones de documentos",

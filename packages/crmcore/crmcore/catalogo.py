@@ -62,6 +62,9 @@ def capacidades() -> dict[str, dict[str, Any]]:
                         "fase": cap.get("fase"),
                         "servicio": cap.get("svc", ""),
                         "estado": cap.get("estado", "pendiente"),
+                        # Cómo se comprobó, con fecha: es la evidencia que el
+                        # control de serie de su familia lee (CRM-07.03.02.12).
+                        "visto": str(cap.get("visto") or ""),
                         "modulo": f"{modulo['id']} · {modulo['nombre']}",
                         "seccion": f"{seccion['id']} · {seccion['nombre']}",
                         "seccion_id": seccion["id"],

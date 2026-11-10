@@ -2357,7 +2357,7 @@ def sembrar_gobierno(api: Api) -> None:
                     {"marco": "ISO 27001", "referencia": "A.8.12"},
                     {"marco": "RGPD", "referencia": "art. 32"},
                 ],
-                "fuente_evidencia": "auditoria",
+                "fuente_evidencia": "audit_trail",
             },
         ),
         (
@@ -2374,7 +2374,7 @@ def sembrar_gobierno(api: Api) -> None:
                     {"marco": "RGPD", "referencia": "art. 6"},
                     {"marco": "LSSI", "referencia": "art. 21"},
                 ],
-                "fuente_evidencia": "marketing",
+                "fuente_evidencia": "trazabilidad",
             },
         ),
         (
@@ -2387,7 +2387,7 @@ def sembrar_gobierno(api: Api) -> None:
                 "frecuencia": "mensual",
                 "activo": True,
                 "riesgos": ["RSK-003"],
-                "fuente_evidencia": "pipeline",
+                "fuente_evidencia": "trazabilidad",
             },
         ),
         (
@@ -2400,7 +2400,7 @@ def sembrar_gobierno(api: Api) -> None:
                 "frecuencia": "continuo",
                 "activo": True,
                 "marcos": [{"marco": "SOX", "referencia": "302"}],
-                "fuente_evidencia": "identidad",
+                "fuente_evidencia": "segregacion",
             },
         ),
     ]

@@ -5523,10 +5523,19 @@ principal de máquina y sólo `contact:write`).
 
 ### 4.6.60 El bus en vivo en la pila local
 
-- **Cómo se enciende.** `setup.sh arrancar` pone `BUS_BACKEND=memoria`: cada
-  proceso tiene su bus y ningún evento cruza servicios. Para el bus de verdad,
-  un NATS con JetStream en Docker y arrancar con
-  `BUS_BACKEND=nats NATS_URL=nats://127.0.0.1:4222 SIN_VECINOS=1 ./setup.sh arrancar`.
+- **Cómo se enciende.** Desde el 10-11-2026, `setup.sh arrancar` levanta solo
+  un NATS con JetStream en Docker (contenedor `contecrm-nats-local`, la imagen
+  del compose, puerto `NATS_LOCAL_PUERTO`, 4222 por defecto) y arranca con
+  `BUS_BACKEND=nats`. Sin Docker en marcha sigue con `BUS_BACKEND=memoria` y lo
+  avisa: cada proceso tiene su bus y ningún evento cruza servicios. Quien fije
+  `BUS_BACKEND` a mano manda.
+- **Procesos colgados.** Un servicio que recibe la señal de parar suelta el
+  puerto y puede quedarse esperando a hilos que no terminan; medido ese día,
+  26 procesos de dos arranques anteriores seguían vivos y cogiendo trabajos de
+  la cola. `arrancar` los para ahora con `rematar_colgados` (sólo los que
+  tienen este repositorio como directorio de trabajo), escalando a `kill -9`.
+  Para reiniciar un servicio suelto, `./setup.sh parar` y `arrancar`, no un
+  `kill` a mano.
   **`127.0.0.1` y no `localhost`**: macOS resuelve `localhost` a `::1` primero,
   el contenedor escucha en IPv4 y la conexión se rechaza en bucle
   (`bus_nats.error Connection refused`).
@@ -5538,6 +5547,58 @@ principal de máquina y sólo `contact:write`).
   aprobadores), porque el `except` confirma la misma transacción para emitir
   `approval.decided`. Ahora `crear` va en `begin_nested()`. Prueba:
   `test_orchestrator_sin_aprobadores_no_aprueba_solo`.
+
+
+### 4.6.61 Todo controlado por el GRC: controles de serie, segregación, TCSEC y revisión de accesos (CRM-07.03.02.12 a CRM-07.03.02.15)
+
+- **Dónde.** `services/tenancy/grc_serie.py` (instalar, sincronizar, medir y
+  evaluar) y `api_grc_serie.py`; `services/identity/recertificacion.py` y
+  `api_recertificacion.py`. Pantallas: `ControlesGrc.tsx` (`/controles-grc`),
+  `RevisionAccesos.tsx` (`/revision-accesos`) y `MiRevisionDeAccesos.tsx`
+  dentro de `Aprobaciones.tsx`.
+- **Modelo.** `grc_controles` gana `origen` (`familia`, `segregacion`, `tcsec`,
+  `recertificacion` o vacío), `referencia` (la familia, la regla o el
+  requisito) y `ajustado`; tablas nuevas `grc_hallazgos` y `grc_evidencias`
+  (migración tenancy `1a5333924500`). En identity, `recert_campanas` y
+  `recert_revisiones` (migración `5154dbedd6f1`).
+- **Rutas de tenancy.** `GET|POST /grc/de-serie`,
+  `POST /grc/controles/evaluar-automaticos[?origen=]`,
+  `POST /grc/controles/{codigo}/evaluar-automatico`,
+  `POST /grc/controles/{codigo}/activo`, `GET /grc/controles/{codigo}`,
+  `POST /grc/segregacion/sincronizar`, `GET /grc/hallazgos`,
+  `GET /grc/evidencias`. `GET /grc/controles` trae `origen`, `referencia`,
+  `ajustado` y `ultima_evaluacion`; la cobertura, `verificadas` y
+  `pct_verificado`; el panel, `cobertura_verificada_pct` y
+  `hallazgos_abiertos`.
+- **Rutas de identity** (prefijo `recertificacion`, dado de alta en
+  `crmcore.rutas_de_api`): `GET|POST /recertificacion/campanas`,
+  `GET /recertificacion/campanas/{id}`, `POST …/{id}/cerrar`,
+  `POST /recertificacion/vencidas`, `GET /recertificacion/mias`,
+  `POST /recertificacion/revisiones/{id}/decision` (sólo el responsable) y
+  `GET /recertificacion/resumen` (lo que lee el GRC).
+- **Ningún servicio importa a otro.** Tenancy pide a identity reglas,
+  conflictos, excepciones, nombres y el resumen de campañas con
+  `crmcore.http.interno.invocar`, firmado con la identidad de quien evalúa; y
+  a cada servicio su `/cumplimiento/informe` para la cadena de auditoría. Lo
+  que no contesta se anota en la evidencia y el control **no se evalúa**.
+- **Fuentes de evidencia nuevas**: `trazabilidad` (el `visto` de cada
+  capacidad del catálogo —`crmcore.catalogo` lo expone ahora— y la cadena de
+  los servicios desplegados que la sirven; la evidencia lleva
+  `capacidades_verificadas`, que es lo que cuenta la cobertura verificada
+  aunque el control salga «parcial»), `segregacion`, `tcsec` y
+  `recertificacion`. `evaluar_automaticos` evalúa cada control en su
+  SAVEPOINT y con una caché común: el informe de cada servicio se pide una vez.
+- **La última evaluación** se ordena por fecha, alta e id: dos evaluaciones del
+  mismo día salían en cualquier orden.
+- **Tarea periódica** en identity: `identity.recertificacion_vencidas`, cada
+  `TAREA_RECERTIFICACION_INTERVALO_S` (3.600 s), por tenant con campañas
+  abiertas.
+- **Ajustes** (Settings y editables en caliente): `grc_serie_frecuencia`
+  (trimestral), `grc_sod_riesgo_por_nivel`, `recertificacion_plazo_dias` (14),
+  `recertificacion_frecuencia` (trimestral) y `recertificacion_al_cerrar`
+  (`marcar`; `retirar` quita lo no confirmado, sensible).
+- **Pruebas**: `tests/unit/test_todo_controlado_por_el_grc.py`, siete, una por
+  comportamiento.
 
 ## 5. Operación
 

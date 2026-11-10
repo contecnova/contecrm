@@ -100,7 +100,7 @@ cuál mirar sin leerlos todos.
 | **Herramientas de plataforma** | lo que se modela y lo que se publica: Gestor de objetos, Contrato de la API |
 | **Automatización** | Procesos y orquestación, y el Editor de procesos |
 | **Entornos y despliegue** | Operación, Promoción entre entornos, Despliegues y desvíos, Ciclo de vida del cliente, Estado |
-| **Gobierno y cumplimiento** | Riesgos y controles, Plataforma y cumplimiento, Panel de cumplimiento, Segregación de funciones, Clasificación TCSEC |
+| **Gobierno y cumplimiento** | Riesgos y controles, Plataforma y cumplimiento, Panel de cumplimiento, Segregación de funciones, Controles del GRC, Revisión de accesos, Clasificación TCSEC |
 
 Hasta el 03-11-2026 eran dos: «Automatización», con dos entradas, y
 «Configuración», con dieciocho —entre ellas «Ayuda» y «Estado», que no ajustan
@@ -3193,6 +3193,47 @@ con sus requisitos:
 
 **«Volver a medir»** repite la medida; **«Descargar el informe»** baja el
 resultado en un documento para la auditoría.
+
+### Controles del GRC: que todo lo que hay tenga su control
+
+En **Administrar › Gobierno y cumplimiento › Controles del GRC**.
+
+1. **«Instalar los de serie»** crea un control por cada familia del catálogo,
+   uno por regla de segregación, uno por requisito TCSEC y el de la revisión de
+   accesos. Se puede repetir: trae lo nuevo y no toca lo que hayas cambiado.
+2. **«Evaluar los automáticos»** los evalúa todos con la evidencia que pone el
+   sistema. Lo que no se ha podido medir no se evalúa y dice por qué.
+3. Arriba, dos coberturas: **anclada** (lo que tiene control) y **verificada**
+   (lo que una evaluación en plazo dio por bueno). La que dice cómo estás es la
+   segunda.
+4. Pulsa un control para ver su última evaluación con la evidencia, sus
+   hallazgos y sus evidencias con caducidad; **«Evaluar ahora»** lo evalúa
+   solo a él e **«Ir a la regla / al requisito / a las campañas»** te lleva a
+   su origen. La casilla **Activo** lo desactiva (queda como ajustado).
+5. **«Traer la segregación»** pone al día los controles de segregación: cada
+   conflicto sin excepción es un hallazgo, y cada excepción aprobada una
+   evidencia hasta su caducidad.
+
+Desde **Segregación de funciones**, cada regla enseña su control; desde
+**Clasificación TCSEC**, cada requisito el suyo, y **«Dejar la medida en el
+GRC»** guarda lo medido como evidencia.
+
+### Revisión de accesos: cada responsable confirma o retira lo de su gente
+
+En **Administrar › Gobierno y cumplimiento › Revisión de accesos**.
+
+1. Escribe el **nombre** de la campaña, el **plazo en días** (vacío: el de la
+   empresa) y el **revisor por defecto** para quien no tiene superior, y pulsa
+   **«Lanzar»**. A cada responsable le llega un aviso.
+2. En la tabla ves el avance de cada campaña y cuántas revisiones están
+   **fuera de plazo**. **«Marcar y avisar lo vencido»** lo hace sin esperar a
+   la tarea periódica; **«Cerrar»** termina la campaña.
+3. Pulsa una campaña para verla por responsable.
+
+**Si eres responsable**: abre **Aprobar documentos** (tu bandeja de
+aprobaciones, o el aviso de la campana). En **«Revisión de accesos de tu
+gente»**, para cada rol de cada persona pulsa **«Confirmar»**, o **«Retirar»**,
+escribe por qué y **«Retirar el acceso»**: se le quita en ese momento.
 
 ### Dos preguntas que se hacen en «Identidad y seguridad»
 
