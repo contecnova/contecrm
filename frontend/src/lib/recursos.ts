@@ -23,7 +23,7 @@ import type { Modulo, Recurso } from "@/lib/modulos";
 import { objetoDe } from "@/lib/modulos";
 
 export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
-  tenants: [
+  "tenants": [
     {
       nombre: "Compromisos",
       listar: "/api/v1/compromisos",
@@ -160,10 +160,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "tenancy:read",
     },
   ],
-  contrato: [
+  "contrato": [
     { nombre: "Servicios", listar: "/api/v1/servicios", servicio: "gateway" },
   ],
-  procesos: [
+  "procesos": [
     {
       nombre: "Definiciones",
       // Las dos las hace el EDITOR DE PROCESOS (`/procesos`, en el menú de
@@ -485,7 +485,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "aprobacion:read",
     },
   ],
-  modelo: [
+  "modelo": [
     {
       nombre: "Objetos",
       principal: true,
@@ -621,7 +621,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "metadata:read",
     },
   ],
-  acceso: [
+  "acceso": [
     {
       nombre: "Seguimientos",
       listar: "/api/v1/seguimientos",
@@ -736,7 +736,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       servicio: "identity",
     },
   ],
-  operacion: [
+  "operacion": [
     {
       nombre: "Modelo canónico",
       objeto: "objeto_canonico",
@@ -930,7 +930,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "firma:read",
     },
   ],
-  cuentas: [
+  "cuentas": [
     // Cuentas primero: es el módulo «Cuentas y contactos» y abría por la cola
     // de excepciones de calidad, así que lo primero al entrar en clientes era
     // una lista de problemas.
@@ -1075,7 +1075,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       ],
     },
   ],
-  proveedores: [
+  "proveedores": [
     {
       nombre: "Proveedores",
       principal: true,
@@ -1206,7 +1206,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "party:read",
     },
   ],
-  actividades: [
+  "actividades": [
     {
       nombre: "Plantillas",
       listar: "/api/v1/plantillas-actividad",
@@ -1230,7 +1230,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "activity:read",
     },
   ],
-  lecciones: [
+  "lecciones": [
     {
       nombre: "Lecciones aprendidas",
       principal: true,
@@ -1285,7 +1285,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
     },
   ],
-  oportunidades: [
+  "oportunidades": [
     {
       nombre: "Ofertas",
       objeto: "presupuesto",
@@ -1433,7 +1433,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
     },
   ],
-  leads: [
+  "leads": [
     { nombre: "Cadencias", listar: "/api/v1/cadencias", servicio: "sales" },
     {
       nombre: "Plantillas de correo",
@@ -1495,7 +1495,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
     },
     { nombre: "Toques", listar: "/api/v1/origen/toques", servicio: "sales" },
   ],
-  prevision: [
+  "prevision": [
     {
       nombre: "Territorios",
       objeto: "territorio",
@@ -1576,7 +1576,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "forecast:read",
     },
   ],
-  canal: [
+  "canal": [
     {
       nombre: "Portal del partner",
       listar: "/api/v1/portal-partner/mis-registros",
@@ -1669,7 +1669,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       servicio: "sales",
     },
   ],
-  campo: [
+  "campo": [
     {
       nombre: "Órdenes de trabajo",
       principal: true,
@@ -1757,7 +1757,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       servicio: "integration",
     },
   ],
-  postventa: [
+  "postventa": [
     {
       nombre: "Devoluciones",
       principal: true,
@@ -1802,7 +1802,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       servicio: "service",
     },
   ],
-  ia: [
+  "ia": [
     // Quién presta el servicio, con qué modelo y a qué coste. Es la primera
     // pregunta de cualquiera que firme una factura de IA.
     {
@@ -1979,7 +1979,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "integracion:read",
     },
   ],
-  explotacion: [
+  "explotacion": [
     // La explotación la resuelve contecintelligence de forma frontless
     // (RT-4). Aquí se enseña el estado del enlace y lo que se ha consultado:
     // los informes se abren allí, con la identidad del usuario.
@@ -2121,7 +2121,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       servicio: "analytics",
     },
   ],
-  gobierno: [
+  "gobierno": [
     {
       nombre: "Riesgos",
       principal: true,
@@ -2177,7 +2177,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       servicio: "party",
     },
   ],
-  segmentos: [
+  "segmentos": [
     {
       nombre: "Segmentos",
       principal: true,
@@ -2244,7 +2244,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "marketing:read",
     },
   ],
-  campanas: [
+  "campanas": [
     {
       nombre: "Papelera",
       icono: "delete",
@@ -2313,7 +2313,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "campana:read",
     },
   ],
-  casos: [
+  "casos": [
     // CSAT, CES y NPS del periodo, juntos: mirarlos por separado es cómo se
     // acaba citando el que mejor sale.
     {
@@ -2477,7 +2477,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       permiso: "case:read",
     },
   ],
-  omnicanal: [
+  "omnicanal": [
     // Las conversaciones no tienen listado general a propósito: se trabajan
     // desde la consola de agente, que las da junto a los casos en una sola
     // cola. Una lista aparte reintroduciría la bandeja por canal que la
@@ -2500,7 +2500,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
     // La conversación como registro, con su historial, su transferencia y
     // su escalado a persona. El canal ya se veía; la conversación no.
   ],
-  conocimiento: [
+  "conocimiento": [
     {
       nombre: "Artículos",
       principal: true,
@@ -2532,13 +2532,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
     // no lo veía nadie que pudiera aprobarlo (medido el 10-11-2026).
     {
       nombre: "Comunidad por moderar",
-      objeto: "hilo_comunidad",
+      // Es la misma lista que «Comunidad», filtrada: la fila abre el hilo en su
+      // pestaña. Declarar `objeto` aquí haría dos pestañas del mismo módulo
+      // diciendo ser el mismo tipo, y la paleta no sabría a cuál llevar.
+      abre: { modulo: "conocimiento", objeto: "hilo_comunidad", campo: "id" },
       listar: "/api/v1/comunidad/hilos?incluir_moderacion=true",
       servicio: "service",
       columnas: ["titulo", "estado", "categoria", "created_at"],
     },
   ],
-  canales: [
+  "canales": [
     {
       nombre: "Canales",
       principal: true,
@@ -2563,7 +2566,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       columnas: ["dominio", "uso", "spf", "dkim", "dmarc"],
     },
   ],
-  contenido: [
+  "contenido": [
     {
       nombre: "Reglas de contenido",
       principal: true,

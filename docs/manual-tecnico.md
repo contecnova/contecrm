@@ -7043,7 +7043,7 @@ composición sin clave ajena de `integridad._es_composicion`— y la tabla tiene
 papelera). `identidad._al_guardar` (el `before_flush` que ya las anotaba) hace
 que sigan a su contacto por cualquier vía —ficha, borrado masivo, restaurar,
 purgar—: si cambia `deleted_at` del contacto, copia el valor a sus señales con
-un `UPDATE` (a la papelera, inactivas: el guard de borrados las esconde de
+una actualización (a la papelera, inactivas: el guard de borrados las esconde de
 `resolver`, `proponer_uniones` e `identidades_de`; restaurado, vuelven con sus
 `veces`); si el contacto se purga (`session.deleted`), se borran. `observar` y
 `_anotar` buscan la existente con `con_borrados` para no chocar con
