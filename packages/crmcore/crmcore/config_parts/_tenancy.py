@@ -56,6 +56,15 @@ class _TenancySettings(BaseSettings):
     # acerca al límite (CRM-00.01.06.06). Avisar al 100 % es avisar tarde.
     quota_aviso_pct: int = Field(80, ge=1, le=100)
 
+    # ── Baja de un tenant ─────────────────────────────────────────────────
+    # Días de recuperación desde que se pide la baja hasta que sus datos se
+    # pueden destruir; es también el plazo que tienen los servicios para
+    # contestar al inventario documental. Una baja instantánea convierte un
+    # error administrativo en una pérdida irreversible. Era un 30 escrito en
+    # `cambiar_estado`; es una cláusula de contrato y cada plataforma tiene la
+    # suya.
+    tenant_baja_dias_recuperacion: int = Field(30, ge=1, le=365)
+
     # ── Alta de tenants ───────────────────────────────────────────────────
     # Alta autoservicio. Apagada por defecto: un despliegue empresarial da de
     # alta a sus tenants por API o por consola, y dejar abierto el alta pública

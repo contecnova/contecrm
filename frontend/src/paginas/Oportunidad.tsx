@@ -52,6 +52,7 @@ import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
+import { GenerarDocumento } from "@/componentes/GenerarDocumento";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
@@ -652,6 +653,9 @@ export function Oportunidad() {
             />
             <ElPlanConElCliente plan={plan} />
             <LaFirma id={op.id} alCambiar={cargar} />
+            <div className="lg:col-span-2">
+              <GenerarDocumento objeto="oportunidad" id={op.id} />
+            </div>
           </div>
         ) : (
           <DetallesDelRegistro

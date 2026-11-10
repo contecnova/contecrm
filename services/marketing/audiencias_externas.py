@@ -47,9 +47,9 @@ logger = get_logger(__name__)
 # comerciales no es aceptar que tu dirección se suba a una red de anuncios.
 BASES_PUBLICIDAD = ("consentimiento_publicidad", "interes_legitimo_documentado")
 
-# Mínimo de personas para mandar una audiencia. Con menos, la plataforma no puede
-# anonimizar nada y el segmento se convierte en señalar a alguien con el dedo.
-MINIMO_AUDIENCIA = 100
+# El mínimo de personas para mandar una audiencia es el ajuste
+# `audiencia_minimo`. Aquí había un 100 propio: la sincronización ya leía el
+# ajuste y este camino no, así que cambiarlo en Admin movía uno y no el otro.
 
 # Canales que no se pueden cancelar una vez lanzados. No es un detalle técnico:
 # cambia cómo se diseña el recorrido, porque un paso irreversible en medio obliga
@@ -71,7 +71,11 @@ def _trocear(valor: str) -> str:
 
 
 def preparar_audiencia(
-    *, personas: list[dict[str, Any]], plataforma: str, finalidad: str
+    *,
+    personas: list[dict[str, Any]],
+    plataforma: str,
+    finalidad: str,
+    minimo: int | None = None,
 ) -> dict[str, Any]:
     """Prepara lo que se le manda a la plataforma, **quitando a quien no puede ir**.
 
@@ -104,7 +108,11 @@ def preparar_audiencia(
             continue
         dentro.append({"hash": _trocear(correo)})
 
-    demasiado_pequena = len(dentro) < MINIMO_AUDIENCIA
+    if minimo is None:
+        from services.marketing.ajustes import valor
+
+        minimo = int(valor("audiencia_minimo"))
+    demasiado_pequena = len(dentro) < minimo
     return {
         "plataforma": plataforma,
         "finalidad": finalidad,
@@ -115,7 +123,7 @@ def preparar_audiencia(
         "se_puede_mandar": not demasiado_pequena,
         "van_en_claro": False,
         "porque": (
-            f"Solo {len(dentro)} personas. Por debajo de {MINIMO_AUDIENCIA} la "
+            f"Solo {len(dentro)} personas. Por debajo de {minimo} la "
             "plataforma no puede anonimizar nada y el segmento se convierte en señalar "
             "a alguien con el dedo."
             if demasiado_pequena

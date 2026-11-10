@@ -476,6 +476,19 @@ CLAVES: dict[str, ClaveAjuste] = {
             sensible=True,
         ),
         _c(
+            "tenant_baja_dias_recuperacion",
+            "int",
+            (
+                "Días desde que se pide la baja de un tenant hasta que sus datos "
+                "se pueden destruir"
+            ),
+            minimo=1,
+            maximo=365,
+            campo_settings="tenant_baja_dias_recuperacion",
+            minimo_ambito="tier",
+            sensible=True,
+        ),
+        _c(
             "quota_aviso_pct",
             "int",
             "Porcentaje de consumo que dispara el aviso",

@@ -142,6 +142,61 @@ def listar(db: DbDep, principal: AutenticadoDep) -> Any:
     )
 
 
+class CompartirPregunta(BaseModel):
+    publicada: bool = Field(
+        ...,
+        description=(
+            "`true` la ve todo el equipo; `false` vuelve a ser sólo de su autor. "
+            "Publicar es una decisión de quien la afinó, no algo que pase al guardarla"
+        ),
+    )
+    roles: list[str] | None = Field(
+        None, description="Para acotar a quién le sale. Vacía, a todo el equipo"
+    )
+
+
+@router.patch(
+    "/preguntas/{pregunta_id}",
+    dependencies=[Depends(exige_permiso("analitica:consultar"))],
+    summary="Publicar una pregunta para todo el equipo, o retirarla",
+    description=(
+        "Sólo su autor o quien administra la explotación. Una pregunta publicada "
+        "por otro se usaría como si su autor la hubiera dado por buena."
+    ),
+)
+def compartir(
+    pregunta_id: UUID, datos: CompartirPregunta, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    return fte.compartir_pregunta(
+        uow,
+        pregunta_id,
+        publicada=datos.publicada,
+        roles=datos.roles,
+        usuario_id=principal.id,
+        puede_administrar=principal.tiene("analitica:administrar"),
+    )
+
+
+@router.get(
+    "/campos-publicados",
+    dependencies=[Depends(exige_permiso("analitica:consultar"))],
+    summary="Qué objetos y campos se pueden usar al convertir una pregunta en informe",
+    description=(
+        "Lo que la fuente registrada publica de verdad, no el metamodelo: un "
+        "informe sobre un campo que la fuente no tiene se guarda bien y falla al "
+        "abrirlo. Vacío significa que la fuente no está registrada todavía."
+    ),
+)
+def campos_publicados(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.analytics.informes import AGREGADOS, PERIODOS
+
+    return {
+        "objetos": fte.objetos_publicados(db, principal.tenant_id),
+        "agregados": list(AGREGADOS),
+        "periodos": list(PERIODOS),
+    }
+
+
 class PublicarComoInforme(BaseModel):
     definicion: dict[str, Any] = Field(
         ...,
@@ -173,8 +228,18 @@ class PublicarComoInforme(BaseModel):
         "vive en la cabeza de quien supo preguntar, y cuando se va se va con él."
     ),
 )
-def publicar(pregunta_id: UUID, datos: PublicarComoInforme, uow: UowDep) -> Any:
-    return fte.publicar_como_informe(uow, pregunta_id, definicion=datos.definicion)
+def publicar(
+    pregunta_id: UUID, datos: PublicarComoInforme, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    # Los campos se comprueban contra lo que publica la fuente, igual que al
+    # crear un informe a mano: si no, el informe nacido de la pregunta se
+    # guardaba con un campo inventado y fallaba al abrirlo.
+    from services.analytics.api_informes import _comprobar_campos
+
+    avisos = _comprobar_campos(uow.db, principal.tenant_id, datos.definicion)
+    salida = fte.publicar_como_informe(uow, pregunta_id, definicion=datos.definicion)
+    salida["avisos"] = list(salida.get("avisos") or []) + avisos
+    return salida
 
 
 # Los trabajos de este servicio. Sin este router, el alta de fuente devolvía un

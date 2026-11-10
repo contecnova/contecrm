@@ -1080,20 +1080,21 @@ def _ex_clasificacion(llamar: Callable[..., dict[str, Any]], e: dict[str, Any], 
         "sentimiento": sentimiento if sentimiento in SENTIMIENTOS else "neutro",
         "intencion": intencion if intencion in INTENCIONES else "otro",
         "confianza": confianza,
-        # El umbral por defecto de `clasificar`.
-        "concluyente": confianza >= _umbral_de_clasificar(),
+        # El umbral con el que concluye `clasificar`.
+        "concluyente": confianza >= _umbral_de_clasificar(getattr(uow, "db", None)),
     }
 
 
-def _umbral_de_clasificar() -> float:
+def _umbral_de_clasificar(db: Any = None) -> float:
     """El umbral de confianza con el que `conversacion.clasificar` concluye.
 
-    Se lee de su firma y no se copia: si alguien lo cambia allí, la evaluación
-    mide con el mismo número que el producto.
+    Es el mismo ajuste que lee `clasificar` (`conversacion_umbral_confianza`),
+    no una copia: si el tenant lo cambia, la evaluación mide con el mismo
+    número que el producto.
     """
-    from services.intelligence.conversacion import clasificar
+    from services.intelligence.conversacion import umbrales_de_clasificar
 
-    return float(inspect.signature(clasificar).parameters["umbral_confianza"].default)
+    return umbrales_de_clasificar(db)[0]
 
 
 def _ex_acciones(llamar: Callable[..., dict[str, Any]], e: dict[str, Any], uow: Any) -> dict:

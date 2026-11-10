@@ -604,6 +604,68 @@ def documentos_de_carpeta(
     return list((cuerpo or {}).get("items") or [])
 
 
+def subir_documento(
+    *,
+    titulo: str,
+    nombre: str,
+    datos: bytes,
+    tipo_mime: str,
+    token_usuario: str,
+    carpeta_id: str | None = None,
+    idempotencia: str = "",
+) -> dict[str, Any]:
+    """Da de alta un fichero en el corpus, en el área del CRM. Devuelve su ficha.
+
+    Multipart, que es lo que pide `POST /api/v1/documents` de contecmind: el
+    `_llamar` de arriba sólo sabe de JSON. Los errores se traducen igual, para
+    que quien llame distinga «no está» de «no te deja» de «se ha caído».
+
+    Con `idempotencia`, reintentar una subida que se cortó por el camino no deja
+    dos documentos en el corpus.
+    """
+    from crmcore.errors import ErrorDependencia, Prohibido
+    from crmcore.red import cliente_seguro
+
+    s = _config()
+    formulario: dict[str, str] = {"title": titulo[:500], "area_id": _area(token_usuario)}
+    if carpeta_id:
+        formulario["folder_id"] = carpeta_id
+    cabeceras = {"Authorization": f"Bearer {token_usuario}"}
+    if idempotencia:
+        cabeceras["Idempotency-Key"] = idempotencia
+    with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+        respuesta = cli.post(
+            s.dms_base_url.rstrip("/") + "/api/v1/documents",
+            data=formulario,
+            files={"file": (nombre, datos, tipo_mime or "application/octet-stream")},
+            headers=cabeceras,
+        )
+    if respuesta.status_code == 401:
+        raise NoDisponible(
+            "El gestor documental ha rechazado la identidad del usuario",
+            error_code="documental.identidad_rechazada",
+        )
+    if respuesta.status_code == 403:
+        raise Prohibido(
+            "El gestor documental no deja subir documentos con esta identidad",
+            error_code="documental.sin_permiso",
+        )
+    if respuesta.status_code >= 500:
+        raise NoDisponible(
+            f"El gestor documental ha fallado ({respuesta.status_code})"
+            + (f": {_motivo(respuesta)}" if _motivo(respuesta) else ""),
+            error_code="documental.gestor_fallo",
+        )
+    if respuesta.status_code >= 400:
+        raise ErrorDependencia(
+            f"El gestor documental ha rechazado el documento ({respuesta.status_code})"
+            + (f": {_motivo(respuesta)}" if _motivo(respuesta) else ""),
+            error_code="documental.peticion_rechazada",
+            detalle={"codigo_http": respuesta.status_code, "motivo": _motivo(respuesta)},
+        )
+    return dict(respuesta.json())
+
+
 def mover_documento(documento_id: str, *, carpeta_id: str | None, token_usuario: str) -> None:
     """Mueve un documento a otra carpeta. `carpeta_id` nulo lo deja en la raíz."""
     _llamar(

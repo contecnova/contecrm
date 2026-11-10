@@ -103,14 +103,19 @@ class RespuestaSocialIn(BaseModel):
         "consentimiento del boletín: aceptar correos comerciales no es aceptar "
         "que tu dirección se suba a una red de anuncios. Se comprueba persona a "
         "persona, no por segmento.\n\n"
-        "Lo que sale va **troceado**, nunca en claro. Y por debajo de cien "
-        "personas no se manda: la plataforma no puede anonimizar nada y el "
+        "Lo que sale va **troceado**, nunca en claro. Y por debajo del mínimo "
+        "(`audiencia_minimo`) no se manda: la plataforma no puede anonimizar nada y el "
         "segmento se convierte en señalar a alguien con el dedo."
     ),
 )
-def audiencia(cuerpo: AudienciaIn, principal: AutenticadoDep) -> Any:
+def audiencia(cuerpo: AudienciaIn, principal: AutenticadoDep, db: DbDep) -> Any:
+    from services.marketing.ajustes import valor
+
     return aud.preparar_audiencia(
-        personas=cuerpo.personas, plataforma=cuerpo.plataforma, finalidad=cuerpo.finalidad
+        personas=cuerpo.personas,
+        plataforma=cuerpo.plataforma,
+        finalidad=cuerpo.finalidad,
+        minimo=int(valor("audiencia_minimo", db)),
     )
 
 

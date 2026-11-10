@@ -86,7 +86,9 @@ class ContactoIn(BaseModel):
 
 class RiesgoIn(BaseModel):
     proveedores: list[dict[str, Any]] = Field(default_factory=list)
-    umbral_concentracion: float = 40.0
+    # Sin valor, el del tenant (`riesgo_concentracion_pct`). Era un 40 propio que
+    # no seguía al ajuste que ya leía el cálculo de compras.
+    umbral_concentracion: float | None = Field(None, ge=1.0, le=100.0)
 
 
 class EvaluarIn(BaseModel):
@@ -439,10 +441,17 @@ def a_quien_llamo(
         "medible: se puede opinar, que no es lo mismo."
     ),
 )
-def riesgo(cuerpo: RiesgoIn, principal: AutenticadoDep) -> Any:
-    return prv.riesgo_de_dependencia(
-        proveedores=cuerpo.proveedores, umbral_concentracion=cuerpo.umbral_concentracion
-    )
+def riesgo(cuerpo: RiesgoIn, principal: AutenticadoDep, db: DbDep) -> Any:
+    from crmcore.runtime.settings import efectivo
+
+    from services.party.ajustes import ajustes
+
+    umbral = cuerpo.umbral_concentracion
+    if umbral is None:
+        umbral = float(
+            efectivo("riesgo_concentracion_pct", db, default=ajustes().riesgo_concentracion_pct)
+        )
+    return prv.riesgo_de_dependencia(proveedores=cuerpo.proveedores, umbral_concentracion=umbral)
 
 
 @router_proveedores.post(

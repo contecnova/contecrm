@@ -1673,7 +1673,9 @@ const pantallas = {
       mensual: "Cada mes",
     },
     hora: "Hora",
+    horaEnZona: "Hora ({{zona}})",
     aLas: "a las {{h}} h",
+    aLasEnZona: "a las {{h}} h ({{zona}})",
     programar: "Programar la instantánea",
     tomarAhora: "Tomar una ahora",
     programada: "Instantánea programada.",
@@ -4003,9 +4005,62 @@ const pantallas = {
     sinMirar:
       "Aprobados sin haber visto los cambios: {{pasos}}. Es una firma sobre algo que ya no es lo que se firmó.",
   },
+  // Generar un documento desde la ficha (CRM-06.01.01.06).
+  generarDocumento: {
+    titulo: "Generar documento",
+    porque:
+      "Elige la plantilla y se rellena con los datos de este registro, su cuenta, su contacto y sus líneas. Revisa, completa lo que falte y sale un PDF que queda como adjunto del registro.",
+    sinPlantillas: "No hay plantillas para este tipo de registro",
+    sinPlantillasDetalle:
+      "Se crean en Administrar › Entornos y despliegue › Operación, pestaña «Plantillas de documento».",
+    plantilla: "Plantilla",
+    elegir: "Elige una plantilla…",
+    opcion: "{{nombre}} · {{idioma}} · v{{version}}",
+    rellenar: "Rellenar con este registro",
+    conQueSale:
+      "Sale con la marca {{marca}}, en «{{idioma}}» y con {{lineas}} líneas.",
+    marcaDelTenant: "de la empresa",
+    faltan: "Faltan {{cuantos}}: {{cuales}}. Escríbelos antes de generar.",
+    completo: "Están todos los datos.",
+    falta: "Falta",
+    aMano: "A mano",
+    delRegistro: "de {{campo}}",
+    generar: "Generar el PDF",
+    generando: "Generando…",
+    guardado: "Guardado como adjunto del registro:",
+    archivado: "Archivado también en el corpus documental.",
+    sinArchivar:
+      "No se ha archivado en el corpus documental: {{motivo}}. El PDF está guardado igual.",
+  },
   // Movidos desde es.ts el 10-11-2026: sólo los usan pantallas diferidas, y
   // en el diccionario de apertura pesaban en la primera descarga.
   explotacion: {
+    // Publicar para el equipo y convertir en informe (10-11-2026).
+    publicar: "Publicar para el equipo",
+    retirar: "Dejar de publicar",
+    publicando: "Guardando…",
+    convertir: "Convertir en informe",
+    convertirPorque:
+      "Un informe no se rehace con cada pregunta: se congela con lo que digas aquí y se puede programar y mandar.",
+    objeto: "Sobre qué",
+    agruparPor: "Agrupar por",
+    sinAgrupar: "Sin agrupar",
+    periodo: "Por periodo",
+    sinPeriodo: "Sin periodo",
+    agregado: "Qué calcular",
+    campo: "De qué campo",
+    crearInforme: "Crear el informe",
+    informeCreado: "Informe creado: «{{clave}}».",
+    sinCampos:
+      "La fuente todavía no está registrada: regístrala para saber qué objetos y campos se pueden usar.",
+    agregados: {
+      suma: "Suma",
+      media: "Media",
+      minimo: "Mínimo",
+      maximo: "Máximo",
+      cuenta: "Cuántos hay",
+      cuenta_distinta: "Cuántos distintos",
+    },
     dondeSeConstruyen: "¿Y dónde se hacen los informes y los cuadros?",
     dondeSeConstruyenPorque:
       "Preguntar se hace aquí. Construir informes, cuadros de mando y sus envíos se hace en contecintelligence, que es el producto que los tiene: se abre con tu identidad, así que ves lo mismo que verías aquí y nada más.",

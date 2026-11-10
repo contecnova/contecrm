@@ -35,6 +35,10 @@ class AjustesService(Settings):
     # El rango llega a una semana porque hay soportes con SLA de días, donde
     # avisar con cuatro horas es avisar cuando ya no da tiempo a nada.
     sla_riesgo_horas: float = Field(4.0, ge=0.25, le=168.0)
+    # Porcentaje consumido del plazo de un SLA a partir del cual el caso sale
+    # en «van a incumplir» (`/sla/en-riesgo`). Era un 80 escrito como defecto
+    # de la ruta, que la pantalla nunca cambia.
+    sla_riesgo_umbral_pct: int = Field(80, ge=1, le=100)
 
     # ── SLA del proveedor frente al prometido (CRM-09.01.01.08) ───────────
     # Lo que tardamos NOSOTROS entre que el cliente avisa y el proveedor se
@@ -50,6 +54,16 @@ class AjustesService(Settings):
 
 registrar_claves(
     [
+        ClaveAjuste(
+            clave="sla_riesgo_umbral_pct",
+            tipo="int",
+            descripcion=(
+                "Porcentaje del plazo del SLA consumido a partir del cual un caso " "va a incumplir"
+            ),
+            minimo=1,
+            maximo=100,
+            campo_settings="sla_riesgo_umbral_pct",
+        ),
         ClaveAjuste(
             clave="sla_riesgo_horas",
             tipo="float",

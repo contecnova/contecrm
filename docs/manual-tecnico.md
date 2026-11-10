@@ -5750,10 +5750,141 @@ como fuente; el alta fallaba y, detrás, todo informe fallaba también.
   una lista (`roles = '["cliente"]'`, 2 en vez de 6); «no se puede abrir la
   copia local de esta fuente» en los dos componentes del «Cuadro de
   dirección», también con la fuente rehecha.
-- **Pendiente, de aquí**: la hora de `ProgramacionInforme` es UTC y la
-  pantalla la pide como si fuera local; y `./setup.sh arrancar` no barre los
+- **Pendiente, de aquí**: `./setup.sh arrancar` no barre los
   workers huérfanos (sí `parar`): había 42 de cuatro arranques, y un alta la
   cogía uno con la configuración vieja.
+
+### Barrido de constantes y la hora de los informes programados (10-11-2026)
+
+**Método** (repetible): `.venv/bin/python scripts/barrido_constantes.py .`,
+y `--detalle <categoría>` para la lista. Recorre por AST `services/**` y
+`packages/crmcore/crmcore/**` sin pruebas, `ajustes.py`, `config_parts`,
+`runtime/keys.py` ni `config.py`. Da **candidatos, no veredictos**: cada uno se
+mira a mano. No es un gate.
+
+**Medido** (589 ficheros):
+
+| Categoría | Qué cuenta | Antes | Después |
+|---|---|---|---|
+| `plazo` | `timedelta(days/weeks/hours=N)` literal | 6 | 5 |
+| `parametro` | defecto numérico con nombre de negocio | 165 | 162 |
+| `constante_num` | `MAYUSCULAS = número` de módulo | 25 | 23 |
+| `comparacion` | número no trivial en una comparación | 278 | 278 |
+| `lista_str` | `MAYUSCULAS = (textos…)` de módulo | 400 | 401 |
+
+Revisados a mano: los 6 plazos, las 25 constantes y los 165 parámetros. Las
+comparaciones y las listas **no** se han recorrido una a una.
+
+- **Lo que no es hardcodeado**, y se queda: los `limite=`/`tope=` de un listado
+  (paginación; la ruta los recibe), las ventanas `dias=` de un panel que la
+  petición pasa, versiones de formato y de contrato (`VERSION_SOBRE`,
+  `FORMATO_MANIFIESTO`…), constantes físicas o de estándar (`RADIO_TIERRA_M`,
+  `CONTRASTE_MINIMO` 4,5 de WCAG, `PARAMETROS_POSTGRES`), y márgenes técnicos
+  (`MARGEN_RENOVACION` de una suscripción, `RETENCION_HORAS` de idempotencia).
+- **Convertido en ajuste** (Settings + `ClaveAjuste`, editable en Admin):
+
+| Clave | Defecto | Dónde estaba | Dónde se lee |
+|---|---|---|---|
+| `informes_tope_fallos_seguidos` | 3 | `correr_programadas(tope_fallos=3)` | `informes.correr_programadas`, una vez antes del bucle |
+| `sla_riesgo_umbral_pct` | 80 | `Query(80)` de `GET /sla/en-riesgo` | la ruta, si no viene en la petición |
+| `cuenta_dias_fiable_financiero` | 2 | constante de `cuenta_360` | `cuenta_360.puede_comprometer` |
+| `cuenta_plan_dias_caducidad` | 90 | defecto de `plan_caducado` | `GET /planes-cuenta/{id}/caducado` |
+| `conversacion_umbral_confianza` | 0,6 | defecto de `clasificar` y del cuerpo | `conversacion.umbrales_de_clasificar`, también la evaluación de la IA |
+| `conversacion_umbral_escalado` | 0,8 | ídem | ídem |
+| `tenant_baja_dias_recuperacion` | 30 | `cambiar_estado` (`timedelta(days=30)`) | `tenancy.servicio.cambiar_estado`; núcleo, ámbito mínimo `tier`, sensible |
+
+- **Un ajuste que ya existía y un camino que no lo leía** (la familia del
+  «constante con otro nombre»): `audiencia_minimo` lo leía la sincronización y
+  `preparar_audiencia` tenía su `MINIMO_AUDIENCIA = 100`; el cuerpo de `POST
+  /proveedores/riesgo` traía `umbral_concentracion = 40.0` y no seguía a
+  `riesgo_concentracion_pct`, que sí leía compras. Los dos leen ya el ajuste.
+- **Escrito y sin enchufar**: `APROBADORES_DESBLOQUEO = 2` (identity) sólo
+  sale en la respuesta de `cambio_de_dispositivo`; ningún flujo exige esos
+  aprobadores. Convertirlo en ajuste no cambiaría nada: se deja anotado.
+
+**La hora de una programación de informe.** `ProgramacionInforme.hora` se
+calculaba sobre UTC y la pantalla la pedía como local: «a las 7» corría a las
+08:00 (invierno) o 09:00 (verano) en la Península. Ahora:
+
+- `informes.zona_de_programacion(db)` resuelve la zona **del tenant**
+  (`zona_horaria`, con usuario y unidad quitados del contexto: el barrido no
+  tiene usuario y la misma programación no puede moverse según quién la creó).
+- `_siguiente_ejecucion(prog, desde, zona)` cuenta días de calendario en esa
+  zona y fija la hora de reloj en cada uno; `proxima_at` se guarda en UTC. El
+  cambio de hora no la mueve (23 h y 25 h entre ejecuciones esos domingos).
+- `programar` y `correr_programadas` la leen una vez (fuera del bucle). Sin
+  migración: la columna `hora` no cambia, cambia cómo se lee. Una programación
+  ya existente corre una vez más a su `proxima_at` antigua y desde ahí se
+  recalcula bien.
+- La API devuelve `zona` en `POST /informes/{id}/programar` y en `GET
+  /informes/programaciones` (arriba y en cada línea); la pantalla
+  (`AnalisisCrm.tsx`) pone «Hora (Europe/Madrid)» y «a las 7 h (Europe/Madrid)».
+- Prueba: `tests/unit/test_informes.py::test_a_las_7_es_a_las_7_del_tenant_tambien_con_el_cambio_de_hora`
+  (invierno, verano, las dos noches del cambio, semanal y mensual cruzándolo).
+- **Queda**: `SuscripcionCuadro` (cuadros de mando) guarda `hora` y
+  `proxima_at = ahora + 1 día`, y ningún barrido la ejecuta.
+
+**Documentos desde la ficha del registro (CRM-06.01.01.06).** Medido el
+10-11-2026: la generación funcionaba con datos escritos a mano, sacaba texto y
+«guardarlo» era cosa de contecmind. Ahora:
+
+- **Rutas** (integration, `services/integration/api_buzon.py`, permiso
+  `adjunto:subir`): `GET /plantillas-documento/para/{objeto}`, `POST
+  /plantillas-documento/desde-registro/preparar` (cada marcador con `valor`,
+  `origen` —`registro`, `a_mano`, `falta`— y `campo`; `faltan`; `avisos`) y
+  `POST /plantillas-documento/desde-registro/generar` (201: `adjunto` con su
+  ruta de descarga y `corpus: {archivado, motivo}`). `PUT
+  /plantillas-documento/{clave}/mapeo` (`integracion:write`) guarda una versión
+  nueva con el mismo cuerpo.
+- **Datos** (`services/integration/documento_registro.py`): se leen con
+  `crmcore.http.interno.invocar` y la identidad de quien genera, de las rutas del
+  ajuste `documento_fuentes` (objeto → `ruta`, `lineas`, `por_cuenta`,
+  `nombre`). Todo `<tipo>_id` del registro cuyo tipo esté declarado se lee como
+  relacionado; sin contacto, el primero de la cuenta. Un relacionado que no se
+  puede leer —o que viene tapado— es un **aviso**; el registro, un error. El
+  presupuesto se lee por `/presupuestos/{id}/documento`, que no trae coste ni
+  margen (y ahora sí `contacto_id` y `oportunidad_id`).
+- **Resolución de un marcador**: lo escrito a mano; el `mapeo` de la plantilla
+  (`"campo"` o `{"campo", "formato"}`, formatos `auto`, `texto`, `importe`,
+  `numero`, `fecha`); su propio nombre en los datos; y su nombre como campo del
+  registro. Un registro entero toma su nombre. `auto` formatea con
+  `crmcore.i18n.Localizacion` en el idioma de la plantilla: fecha ISO como
+  fecha, decimal con `moneda` al lado como importe.
+- **PDF**: `crmcore/documental/pdf.py`, el chasis de contecweb
+  (`app/services/reports/pdf.py`) traído con la marca y el papel como
+  parámetros. `reportlab==4.4.10` en `requirements.txt`. Marca: la de la
+  plantilla, la del registro o el `nombre_producto` de la marca blanca activa
+  (`GET /api/v1/marca`, con la identidad de quien genera); colores de la marca
+  activa o del ajuste `documento_pdf_colores`. Ajustes: `documento_pdf_papel`,
+  `documento_pdf_margen_cm`, `documento_pdf_columnas_lineas`,
+  `documento_pdf_totales`, `documento_nombre_fichero`, `documento_espera_s`.
+- **Guardado**: multipart a `POST /api/v1/adjuntos/{objeto}` del servicio dueño.
+  Si falla, se lanza `documento.adjunto_no_guardado` y la constancia se deshace.
+  Después, `POST /api/v1/documentos/{objeto}/{id}/archivar-adjunto/{adjunto}`
+  (nueva en `crmcore/http/documental_router.py`, permiso `documento:enlazar`):
+  sube el adjunto a contecmind (`cliente.subir_documento`, multipart a
+  `/api/v1/documents`), lo coloca en la carpeta del registro y lo enlaza. Su
+  fallo nunca rompe la generación; `documento_archivar_en_corpus` lo apaga.
+- **Modelo y migración** `integration/20261110_0825_plantillas_con_mapeo_marca_y_pdf_`:
+  `plantillas_documento.marca`, `objetos`, `mapeo`, `con_lineas`;
+  `documentos_generados.adjunto_id`, `formato`.
+- **Pantalla**: `frontend/src/componentes/GenerarDocumento.tsx`, en
+  `Oportunidad`, `Presupuesto`, `Cuenta` y la ficha genérica (`Ficha.tsx`,
+  donde recarga «Adjuntos» al terminar). Se esconde si el objeto no está en
+  `documento_fuentes` o si quien mira recibe 403.
+- **Pruebas**: `tests/unit/test_documento_desde_registro.py` (resolución y
+  faltan; PDF guardado como adjunto con el corpus caído; sin adjunto no hay
+  constancia).
+
+**Preguntas guardadas: publicar y convertir en informe (CRM-05.01.04.06).**
+`PATCH /explotacion/preguntas/{id}` (`{publicada, roles?}`; sólo su autor o
+`analitica:administrar`, `fuente.compartir_pregunta`) y `GET
+/explotacion/campos-publicados` (objetos y campos de
+`FuenteRegistrada.campos_por_objeto`, agregados y periodos). `POST
+/explotacion/preguntas/{id}/publicar` comprueba ahora los campos con
+`_comprobar_campos`, igual que `POST /informes`. Pantalla: `Explotacion.tsx`,
+botones en cada tarjeta. Prueba:
+`tests/unit/test_explotacion_fuente.py::test_solo_su_autor_publica_una_pregunta_para_el_equipo`.
 
 ## 5. Operación
 

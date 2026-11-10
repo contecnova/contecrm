@@ -240,7 +240,7 @@ def cambiar_estado(
         elif nuevo == "en_baja":
             tenant.baja_solicitada_at = ahora
             # Se pide ya el inventario del corpus documental a todos los servicios
-            # (RT-5): la ventana de recuperación da treinta días para que contesten,
+            # (RT-5): la ventana de recuperación les da sus días para que contesten,
             # y el certificado de destrucción se compone con sus respuestas. Pedirlo
             # en el momento de destruir no daría tiempo a nadie.
             from crmcore.documental.inventario import solicitar_inventario
@@ -248,8 +248,12 @@ def cambiar_estado(
             solicitar_inventario(uow.db, tenant_id=tenant.id, motivo="baja")
             # Ventana de recuperación antes de que los datos sean destruibles. Una
             # baja instantánea convierte un error administrativo en una pérdida
-            # irreversible.
-            tenant.datos_borrables_at = ahora + timedelta(days=30)
+            # irreversible. Su duración es el ajuste
+            # `tenant_baja_dias_recuperacion` (era un 30 aquí).
+            from crmcore.runtime.settings import efectivo
+
+            dias = int(efectivo("tenant_baja_dias_recuperacion", uow.db))
+            tenant.datos_borrables_at = ahora + timedelta(days=dias)
         elif nuevo == "activo":
             tenant.suspendido_at = None
             tenant.baja_solicitada_at = None

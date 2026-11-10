@@ -42,6 +42,7 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
+import { GenerarDocumento } from "@/componentes/GenerarDocumento";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -240,9 +241,12 @@ export function Presupuesto() {
           aprobarla—: se guardaba y no se enseñaba, y quien lo envió no sabía
           qué hacer. Mientras sigue en aprobación no sale: los motivos ya los
           dice el aviso de la política, más abajo, y dos veces sobra. */}
-      {presupuesto.motivo_aprobacion && presupuesto.estado !== "en_aprobacion" ? (
+      {presupuesto.motivo_aprobacion &&
+      presupuesto.estado !== "en_aprobacion" ? (
         <p role="status" className="card mb-4 p-3 text-dato text-ink-muted">
-          <span className="section-label mr-2">{t("presupuesto.aprobacion")}</span>
+          <span className="section-label mr-2">
+            {t("presupuesto.aprobacion")}
+          </span>
           {presupuesto.motivo_aprobacion}
         </p>
       ) : null}
@@ -352,10 +356,16 @@ export function Presupuesto() {
                     </p>
                     <ul className="mt-1 space-y-0.5">
                       {costes.cambios.map((c) => (
-                        <li key={c.referencia} className="font-mono text-rotulo text-ink-muted">
+                        <li
+                          key={c.referencia}
+                          className="font-mono text-rotulo text-ink-muted"
+                        >
                           {t("presupuesto.costeLinea", {
                             referencia: c.referencia,
-                            antes: importe(c.coste_en_la_oferta, presupuesto.moneda),
+                            antes: importe(
+                              c.coste_en_la_oferta,
+                              presupuesto.moneda,
+                            ),
                             hoy: importe(c.coste_hoy, presupuesto.moneda),
                           })}
                         </li>
@@ -363,7 +373,10 @@ export function Presupuesto() {
                     </ul>
                   </div>
                 ) : costes && costes.comparadas > 0 ? (
-                  <p className="mt-1 text-rotulo text-ink-faint" data-testid="costes-al-dia">
+                  <p
+                    className="mt-1 text-rotulo text-ink-faint"
+                    data-testid="costes-al-dia"
+                  >
                     {t("presupuesto.costeIgual")}
                   </p>
                 ) : null}
@@ -439,7 +452,7 @@ export function Presupuesto() {
                 {!documento ? (
                   <button
                     type="button"
-                    className="btn-secundario mt-2"
+                    className="btn-secondary mt-2"
                     onClick={verDocumento}
                   >
                     {t("presupuesto.verDocumento")}
@@ -468,6 +481,9 @@ export function Presupuesto() {
                   </div>
                 )}
               </section>
+              <div className="lg:col-span-2">
+                <GenerarDocumento objeto="presupuesto" id={id} />
+              </div>
             </div>
           </>
         ) : (

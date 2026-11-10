@@ -32,6 +32,7 @@ import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
+import { GenerarDocumento } from "@/componentes/GenerarDocumento";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { accionesDe, subColeccionesDe, type Accion } from "@/lib/acciones";
@@ -145,6 +146,9 @@ export function Ficha() {
   const { superficie, tiene } = useSuperficie();
 
   const [pestana, setPestana] = useState<Pestana | null>(null);
+  // Sube al generar un documento: el PDF se guarda como adjunto y el panel
+  // de adjuntos tiene que volver a pedirse para enseñarlo.
+  const [adjuntosVersion, setAdjuntosVersion] = useState(0);
   /**
    * El registro lo carga ESTA pantalla, no la pestaña.
    *
@@ -595,7 +599,17 @@ export function Ficha() {
                   id={id}
                 />
                 {puedeTener("adjuntos") ? (
-                  <Adjuntos tipo={tipo} id={id} />
+                  <Adjuntos key={adjuntosVersion} tipo={tipo} id={id} />
+                ) : null}
+                {/* Generar un documento desde este registro: sólo sale en los
+                    tipos que la configuración del servidor admite. El PDF
+                    llega a «Adjuntos», que se recarga al terminar. */}
+                {puedeTener("adjuntos") && id ? (
+                  <GenerarDocumento
+                    objeto={tipo}
+                    id={id}
+                    alGenerar={() => setAdjuntosVersion((v) => v + 1)}
+                  />
                 ) : null}
                 {puedeTener("documentos") ? (
                   <Documentos tipo={tipo} id={id} nombre={nombre} />

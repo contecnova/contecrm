@@ -14,9 +14,12 @@ nadie relee un contrato de doce páginas antes de mandarlo.
 **Las cláusulas bloqueadas no se editan.** Si fuese un aviso, se saltaría el día
 que hay prisa — que es el día en que se manda sin la cláusula que la obliga.
 
-**El documento generado se enlaza al corpus, no se guarda aquí.** Guardarlo en el
-CRM daría dos copias que divergen, y la del CRM sin política de borrado ni
-antivirus.
+**El documento generado se guarda como adjunto del registro** (10-11-2026).
+Antes se decía que su sitio era el corpus de contecmind y que aquí no se
+guardaba; con contecmind caído, eso era lo mismo que no guardarlo en ninguna
+parte. El adjunto sí tiene política de borrado, análisis y retención —son los
+del registro— y no depende de nadie. Si el corpus está disponible se archiva
+además allí y se enlaza; si no, se dice y no falla nada.
 
 **Y queda dicho de qué versión de plantilla salió.** Cuando una cláusula resulta
 estar mal, la pregunta no es cuál está mal: es **a quién se le mandó**, y sin la
@@ -82,6 +85,25 @@ class PlantillaDocumento(Base, TimestampMixin, SoftDeleteMixin):
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # La marca con la que sale el PDF. Vacía, la del tenant. Va en la plantilla
+    # y no en el registro porque un grupo con tres marcas tiene una oferta por
+    # marca, y quien genera no tiene que acordarse de cuál toca.
+    marca: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    # De qué registros se puede generar. Vacía, de cualquiera.
+    objetos: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # De dónde sale cada marcador cuando se genera desde un registro:
+    # `{"contacto": "contacto.nombre_completo", "importe": {"campo":
+    # "registro.importe", "formato": "importe"}}`. Lo que no está aquí se busca
+    # por su propio nombre en el registro y sus relacionados.
+    mapeo: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    # Si el PDF lleva la tabla de líneas del registro cuando las tiene.
+    con_lineas: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "clave", "version", name="uq_plantilla_doc"),
@@ -100,8 +122,13 @@ class DocumentoGenerado(Base):
     plantilla_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     objeto: Mapped[str] = mapped_column(String(60), nullable=False, default="")
     objeto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    # El documento vive en el corpus; aquí solo su identificador.
+    # El identificador en el corpus, si se archivó allí. Vacío si no.
     documento_id: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    # El adjunto del registro donde quedó guardado, si se guardó.
+    adjunto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    formato: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="texto", server_default="texto"
+    )
     generado_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -122,6 +149,10 @@ def guardar_plantilla(
     nombre: str = "",
     idioma: str = "es",
     clausulas_bloqueadas: list[str] | None = None,
+    marca: str = "",
+    objetos: list[str] | None = None,
+    mapeo: dict[str, Any] | None = None,
+    con_lineas: bool = True,
 ) -> PlantillaDocumento:
     """Guarda una versión NUEVA de la plantilla.
 
@@ -139,6 +170,7 @@ def guardar_plantilla(
         raise ErrorValidacion(
             "Una plantilla vacía genera documentos vacíos", error_code="plantilla.vacia"
         )
+    validar_mapeo(mapeo or {})
 
     anteriores = (
         db.execute(
@@ -162,10 +194,47 @@ def guardar_plantilla(
         version=max((f.version for f in anteriores), default=0) + 1,
         clausulas_bloqueadas=list(clausulas_bloqueadas or []),
         vigente=True,
+        marca=marca,
+        objetos=list(objetos or []),
+        mapeo=dict(mapeo or {}),
+        con_lineas=con_lineas,
     )
     db.add(nueva)
     db.flush()
     return nueva
+
+
+# `auto` decide por el dato: una fecha ISO sale como fecha y un importe que
+# lleva su moneda al lado sale como importe. `texto` lo deja tal cual.
+FORMATOS_MARCADOR = ("auto", "texto", "importe", "numero", "fecha")
+
+
+def validar_mapeo(mapeo: dict[str, Any]) -> None:
+    """Un mapeo mal escrito se rechaza al guardar, no al generar delante del cliente."""
+    for marcador, origen in mapeo.items():
+        if isinstance(origen, str):
+            campo, formato = origen, "auto"
+        elif isinstance(origen, dict):
+            campo, formato = str(origen.get("campo") or ""), str(origen.get("formato") or "auto")
+        else:
+            campo, formato = "", ""
+        if not campo.strip() or not re.fullmatch(r"[\w.]+", campo):
+            raise ErrorValidacion(
+                f"El marcador «{marcador}» no dice de qué campo sale",
+                error_code="plantilla.mapeo_sin_campo",
+                detalle={"marcador": marcador},
+            )
+        if formato not in FORMATOS_MARCADOR:
+            raise ErrorValidacion(
+                f"Formato «{formato}» desconocido en el marcador «{marcador}»",
+                error_code="plantilla.mapeo_formato",
+                detalle={"admitidos": list(FORMATOS_MARCADOR)},
+            )
+
+
+def vigente(db: Session, tenant_id: UUID, clave: str) -> PlantillaDocumento:
+    """La versión vigente de una plantilla, o `NoEncontrado`."""
+    return _vigente(db, tenant_id, clave)
 
 
 def marcadores(cuerpo: str) -> list[str]:
@@ -216,9 +285,8 @@ def generar(
     existe porque hay borradores que se completan a mano; lo que no puede pasar
     es que sea el comportamiento por defecto.
 
-    Devuelve el texto: **guardarlo es del corpus documental**, no de aquí. Dos
-    copias del mismo contrato divergen, y la del CRM sería la que no tiene ni
-    política de borrado ni antivirus.
+    Devuelve el texto. Guardarlo —como adjunto del registro y, si se puede, en el
+    corpus— es de quien genera desde la ficha (`services.integration.documento_registro`).
     """
     plantilla = _vigente(db, tenant_id, clave)
     pedidos = marcadores(plantilla.cuerpo)
@@ -264,7 +332,7 @@ def generar(
     # generan y acaban en un correo sin pasar por el gestor, y ésos son
     # exactamente los que después nadie puede rastrear. `documento_id` va vacío
     # mientras no esté archivado, y eso es un dato, no un hueco.
-    anotar_generado(
+    constancia = anotar_generado(
         db,
         tenant_id=tenant_id,
         clave=clave,
@@ -292,10 +360,11 @@ def generar(
             "expresa. Hay que completarlo a mano antes de mandarlo."
         ),
         "donde_se_guarda": (
-            "En el corpus documental, enlazado al registro. Aquí no se guarda el "
-            "documento: dos copias del mismo contrato divergen."
+            "Generado desde la ficha del registro, el PDF queda como adjunto suyo "
+            "y, si el corpus documental está disponible, archivado también allí."
         ),
         "generado_at": datetime.now(timezone.utc).isoformat(),
+        "constancia_id": str(constancia.id),
     }
 
 
@@ -348,6 +417,8 @@ def quien_recibio(db: Session, tenant_id: UUID, *, clave: str, version: int) -> 
         "documentos": [
             {
                 "documento_id": f.documento_id,
+                "adjunto_id": str(f.adjunto_id) if f.adjunto_id else None,
+                "formato": f.formato,
                 "objeto": f.objeto,
                 "objeto_id": str(f.objeto_id) if f.objeto_id else None,
                 "generado_at": f.created_at.isoformat(),

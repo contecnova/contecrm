@@ -971,6 +971,52 @@ def guardar_pregunta(
     return fila
 
 
+def compartir_pregunta(
+    uow: UnidadDeTrabajo,
+    pregunta_id: UUID,
+    *,
+    publicada: bool,
+    roles: list[str] | None,
+    usuario_id: UUID | None,
+    puede_administrar: bool,
+) -> dict[str, Any]:
+    """Publica una pregunta para todo el equipo, o la retira.
+
+    **Sólo su autor, o quien administra la explotación.** La guardaba sin
+    publicar y no había forma de publicarla (medido el 10-11-2026): el campo
+    existía, la lista de «publicadas» también, y ningún botón llegaba a él.
+    """
+    from crmcore.errors import NoEncontrado, Prohibido
+
+    pregunta = uow.db.get(PreguntaGuardada, pregunta_id)
+    if pregunta is None or pregunta.tenant_id != uow.tenant_id:
+        raise NoEncontrado("La pregunta no existe", error_code="analytics.pregunta_no_encontrada")
+    es_autor = pregunta.autor_id is not None and pregunta.autor_id == usuario_id
+    if not es_autor and not puede_administrar:
+        raise Prohibido(
+            "Sólo quien la guardó puede publicarla o retirarla",
+            error_code="analytics.pregunta_ajena",
+        )
+    pregunta.publicada = publicada
+    if roles is not None:
+        pregunta.roles = list(roles)
+    uow.db.flush()
+    return {
+        "id": str(pregunta.id),
+        "publicada": pregunta.publicada,
+        "roles": list(pregunta.roles or []),
+    }
+
+
+def objetos_publicados(db: Session, tenant_id: UUID) -> dict[str, list[str]]:
+    """Cada objeto que publica la fuente registrada, con sus campos."""
+    fila = db.execute(
+        select(FuenteRegistrada).where(FuenteRegistrada.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    publicados = dict(getattr(fila, "campos_por_objeto", None) or {})
+    return {k: sorted(str(c) for c in (v or [])) for k, v in sorted(publicados.items())}
+
+
 def publicar_como_informe(
     uow: UnidadDeTrabajo, pregunta_id: UUID, *, definicion: dict[str, Any]
 ) -> dict[str, Any]:

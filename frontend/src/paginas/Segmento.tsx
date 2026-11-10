@@ -352,7 +352,7 @@ export function Segmento() {
                 {segmento.dinamico ? (
                   <button
                     type="button"
-                    className="btn-secundario mt-3"
+                    className="btn-secondary mt-3"
                     disabled={congelando}
                     onClick={() => void congelar()}
                   >
@@ -391,7 +391,7 @@ export function Segmento() {
                   </select>
                   <button
                     type="button"
-                    className="btn-secundario"
+                    className="btn-secondary"
                     disabled={!contra || midiendo}
                     onClick={() => void medirSolape()}
                   >

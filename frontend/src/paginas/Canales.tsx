@@ -161,7 +161,7 @@ export function Canales() {
           />
           <button
             type="button"
-            className="btn-secundario"
+            className="btn-secondary"
             disabled={!canal || !destino.trim() || comprobando}
             onClick={() => void comprobar()}
           >

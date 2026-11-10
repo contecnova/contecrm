@@ -311,6 +311,10 @@ class GuardarPlantillaDoc(BaseModel):
     nombre: str = ""
     idioma: str = "es"
     clausulas_bloqueadas: list[str] | None = None
+    marca: str = Field("", max_length=120, description="Vacía, la del tenant")
+    objetos: list[str] | None = Field(None, description="Vacía, sirve para cualquier registro")
+    mapeo: dict[str, Any] | None = Field(None, description="Marcador → campo del registro")
+    con_lineas: bool = True
 
 
 class GenerarDocumento(BaseModel):
@@ -387,6 +391,142 @@ def generar_documento(cuerpo: GenerarDocumento, uow: UowDep, principal: Autentic
         permitir_incompleto=cuerpo.permitir_incompleto,
         documento_id=cuerpo.documento_id,
     )
+
+
+# ── Desde la ficha del registro ───────────────────────────────────────────
+# Con `adjunto:subir` y no con `integracion:read`: quien genera la oferta desde
+# su oportunidad es un comercial, y lo que hace es colgarle un adjunto. Lo que
+# puede leer del registro y de sus relacionados lo deciden los servicios que
+# los tienen, con su identidad.
+
+
+class DesdeRegistro(BaseModel):
+    clave: str = Field(..., min_length=1, max_length=80)
+    objeto: str = Field(..., min_length=1, max_length=60)
+    objeto_id: UUID
+    datos: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Lo que la persona escribe a mano, por marcador. Gana a lo leído del "
+            "registro: es lo último que alguien decidió"
+        ),
+    )
+    permitir_incompleto: bool = False
+
+
+class MapeoPlantilla(BaseModel):
+    mapeo: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            'Marcador → campo: `{"contacto": "contacto.nombre_completo"}` o '
+            '`{"importe": {"campo": "registro.importe", "formato": "importe"}}`'
+        ),
+    )
+    objetos: list[str] | None = Field(None, description="Vacía, sirve para cualquier registro")
+    marca: str | None = Field(None, max_length=120)
+    con_lineas: bool | None = None
+
+
+@router_plantillas.get(
+    "/para/{objeto}",
+    dependencies=[Depends(exige_permiso("adjunto:subir"))],
+    summary="Las plantillas que sirven para este tipo de registro",
+)
+def plantillas_para(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.integration import documento_registro as dr
+
+    return {
+        "objeto": objeto,
+        "admitido": objeto in dr.objetos_admitidos(db),
+        "plantillas": dr.plantillas_para(db, principal.tenant_id, objeto),
+    }
+
+
+@router_plantillas.post(
+    "/desde-registro/preparar",
+    dependencies=[Depends(exige_permiso("adjunto:subir"))],
+    summary="Qué saldría desde este registro, y qué falta",
+    description=(
+        "Lee el registro y sus relacionados —cuenta, contacto, líneas, importes— "
+        "del servicio que los tiene, **con la identidad de quien pide**, y "
+        "devuelve cada marcador con su valor, de dónde sale y si falta. No "
+        "genera ni guarda nada."
+    ),
+)
+def preparar_desde_registro(cuerpo: DesdeRegistro, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.integration import documento_registro as dr
+
+    salida = dr.preparar(
+        db,
+        principal,
+        clave=cuerpo.clave,
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        a_mano=cuerpo.datos,
+    )
+    return {k: v for k, v in salida.items() if not k.startswith("_")}
+
+
+@router_plantillas.post(
+    "/desde-registro/generar",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("adjunto:subir"))],
+    summary="Generar el PDF desde el registro y guardarlo como adjunto suyo",
+    description=(
+        "Compone con los datos del registro y lo escrito a mano, saca el PDF con "
+        "la marca y el idioma de la plantilla y lo **guarda como adjunto del "
+        "registro**, que no depende de contecmind. Si el corpus documental "
+        "responde, lo archiva además allí y lo enlaza; si no, `corpus.motivo` "
+        "dice por qué y no falla nada. Si falta un dato no genera, salvo "
+        "`permitir_incompleto`."
+    ),
+)
+def generar_desde_registro(cuerpo: DesdeRegistro, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.integration import documento_registro as dr
+
+    return dr.generar(
+        uow.db,
+        principal,
+        clave=cuerpo.clave,
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        a_mano=cuerpo.datos,
+        permitir_incompleto=cuerpo.permitir_incompleto,
+    )
+
+
+@router_plantillas.put(
+    "/{clave}/mapeo",
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="De qué campo del registro sale cada marcador",
+    description=(
+        "Guarda una **versión nueva** de la plantilla con el mismo cuerpo y el "
+        "mapeo nuevo: cambiar de dónde sale un dato cambia lo que se manda, y "
+        "«a quién se le mandó» tiene que poder contestarse por versión."
+    ),
+)
+def guardar_mapeo(
+    clave: str, cuerpo: MapeoPlantilla, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from crmcore.documental.plantillas import guardar_plantilla as guardar
+    from crmcore.documental.plantillas import vigente
+
+    actual = vigente(uow.db, principal.tenant_id, clave)
+    fila = guardar(
+        uow.db,
+        tenant_id=principal.tenant_id,
+        clave=clave,
+        cuerpo=actual.cuerpo,
+        tipo=actual.tipo,
+        nombre=actual.nombre,
+        idioma=actual.idioma,
+        clausulas_bloqueadas=list(actual.clausulas_bloqueadas or []),
+        marca=actual.marca if cuerpo.marca is None else cuerpo.marca,
+        objetos=list(actual.objetos or []) if cuerpo.objetos is None else cuerpo.objetos,
+        mapeo=cuerpo.mapeo,
+        con_lineas=actual.con_lineas if cuerpo.con_lineas is None else cuerpo.con_lineas,
+    )
+    return {"clave": fila.clave, "version": fila.version, "mapeo": fila.mapeo}
 
 
 @router_plantillas.get(

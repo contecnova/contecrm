@@ -42,16 +42,17 @@ import csv
 import io
 import re
 from collections.abc import Callable
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from crmcore.consultas import OPERADORES_DE_FILTRO
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
-from crmcore.fechas import hoy
+from crmcore.fechas import hoy, zona_del_tenant
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -1131,21 +1132,55 @@ def _texto(valor: Any) -> str:
 # ── Programación y distribución (CRM-05.01.01.06) ─────────────────────────
 
 
-def _siguiente_ejecucion(programacion: ProgramacionInforme, desde: datetime) -> datetime:
-    base = desde.replace(hour=programacion.hora, minute=0, second=0, microsecond=0)
+def zona_de_programacion(db: Any) -> ZoneInfo:
+    """La zona en la que se lee la `hora` de una programación: la del **tenant**.
+
+    Se guardaba y se ejecutaba en UTC mientras la pantalla la pedía como hora
+    local: «a las 7» salía a las 08:00 en la Península en invierno y a las 09:00
+    en verano. Ahora la hora es de reloj de pared en la zona del tenant.
+
+    Es la del tenant y no la de quien la crea: la ejecuta un barrido sin
+    usuario, y si al crearla contara el ajuste personal de alguien y al
+    ejecutarla el del tenant, la misma programación se movería sola. Por eso se
+    resuelve sin usuario ni unidad en el contexto.
+    """
+    from crmcore.tenancy.context import con_contexto
+
+    with con_contexto(user_id=None, business_unit_id=None):
+        return zona_del_tenant(db)
+
+
+def _siguiente_ejecucion(
+    programacion: ProgramacionInforme, desde: datetime, zona: tzinfo = timezone.utc
+) -> datetime:
+    """El próximo instante (en UTC) en que toca, con la hora leída en `zona`.
+
+    Se cuenta en días de calendario de la zona y se fija la hora de reloj en
+    cada uno; así el cambio de hora no la mueve: «a las 7» sigue siendo a las 7
+    el domingo del cambio y la semana siguiente. Sumar 24 h a un instante, que
+    es lo que se hacía, no lo garantiza.
+    """
+    desde = _con_tz(desde) or _ahora()
+    dia_local = desde.astimezone(zona).date()
+
+    def a_las(dia: date) -> datetime:
+        return datetime(dia.year, dia.month, dia.day, programacion.hora, tzinfo=zona).astimezone(
+            timezone.utc
+        )
+
     if programacion.periodicidad == "diaria":
-        return base if base > desde else base + timedelta(days=1)
+        candidato = a_las(dia_local)
+        return candidato if candidato > desde else a_las(dia_local + timedelta(days=1))
     if programacion.periodicidad == "semanal":
         objetivo = programacion.dia_semana if programacion.dia_semana is not None else 0
-        dias = (objetivo - base.weekday()) % 7
-        candidato = base + timedelta(days=dias)
-        return candidato if candidato > desde else candidato + timedelta(days=7)
-    dia = programacion.dia_mes or 1
-    mes, anio = base.month, base.year
-    candidato = base.replace(day=min(dia, 28))
+        dia = dia_local + timedelta(days=(objetivo - dia_local.weekday()) % 7)
+        candidato = a_las(dia)
+        return candidato if candidato > desde else a_las(dia + timedelta(days=7))
+    dia_mes = min(programacion.dia_mes or 1, 28)
+    candidato = a_las(dia_local.replace(day=dia_mes))
     if candidato <= desde:
-        mes, anio = (mes % 12 + 1, anio + (1 if mes == 12 else 0))
-        candidato = candidato.replace(year=anio, month=mes)
+        mes, anio = dia_local.month % 12 + 1, dia_local.year + (1 if dia_local.month == 12 else 0)
+        candidato = a_las(date(anio, mes, dia_mes))
     return candidato
 
 
@@ -1198,14 +1233,14 @@ def programar(
         omitir_si_vacio=omitir_si_vacio,
         accion=accion,
     )
-    fila.proxima_at = _siguiente_ejecucion(fila, _ahora())
+    fila.proxima_at = _siguiente_ejecucion(fila, _ahora(), zona_de_programacion(uow.db))
     uow.db.add(fila)
     uow.db.flush()
     return fila
 
 
 def correr_programadas(
-    uow: UnidadDeTrabajo, tenant_id: UUID, *, tope_fallos: int = 3
+    uow: UnidadDeTrabajo, tenant_id: UUID, *, tope_fallos: int | None = None
 ) -> dict[str, Any]:
     """Ejecuta lo que toca y lo manda.
 
@@ -1214,8 +1249,22 @@ def correr_programadas(
     gente supone que no había nada que contar— y eso convierte un fallo en un
     punto ciego de semanas; pero seguir intentándolo cada día contra un informe
     roto llena la bandeja de todo el mundo con el mismo error.
+
+    El tope es el ajuste `informes_tope_fallos_seguidos` (era un 3 escrito
+    aquí). Ajuste y zona se leen **una vez**, antes del bucle: cada lectura va a
+    la base de datos.
     """
+    from crmcore.runtime import settings as rt
+
+    from services.analytics.ajustes import ajustes
+
     ahora = _ahora()
+    if tope_fallos is None:
+        tope_fallos = int(
+            rt.efectivo("informes_tope_fallos_seguidos", uow.db)
+            or ajustes().informes_tope_fallos_seguidos
+        )
+    zona = zona_de_programacion(uow.db)
     pendientes = (
         uow.db.execute(
             select(ProgramacionInforme).where(
@@ -1297,7 +1346,7 @@ def correr_programadas(
                 desactivadas.append(str(programacion.id))
         finally:
             programacion.ultima_at = ahora
-            programacion.proxima_at = _siguiente_ejecucion(programacion, ahora)
+            programacion.proxima_at = _siguiente_ejecucion(programacion, ahora, zona)
 
     uow.db.flush()
     return {

@@ -527,6 +527,8 @@ function SeccionInstantaneas() {
   const [tendencia, setTendencia] = useState<Tendencia | null>(null);
   const [periodicidad, setPeriodicidad] = useState<string>("semanal");
   const [hora, setHora] = useState(7);
+  // La zona en la que se lee la hora: la del tenant, que da el servidor.
+  const [zona, setZona] = useState("");
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
 
@@ -543,16 +545,17 @@ function SeccionInstantaneas() {
 
   const cargar = useCallback(() => {
     if (!informe) return;
-    llamar<{ programaciones: Programacion[] }>(
+    llamar<{ programaciones: Programacion[]; zona?: string }>(
       "/api/v1/informes/programaciones",
     )
-      .then((r) =>
+      .then((r) => {
+        setZona(r.datos?.zona ?? "");
         setProgramaciones(
           (r.datos?.programaciones ?? []).filter(
             (p) => p.informe_id === informe && p.accion === "instantanea",
           ),
-        ),
-      )
+        );
+      })
       .catch(setFallo);
     llamar<Tendencia>(`/api/v1/informes/${informe}/tendencia`)
       .then((r) => setTendencia(r.datos))
@@ -645,7 +648,9 @@ function SeccionInstantaneas() {
                 </select>
               </label>
               <label className="flex flex-col text-rotulo text-ink-muted">
-                {t("analisisCrm.hora")}
+                {zona
+                  ? t("analisisCrm.horaEnZona", { zona })
+                  : t("analisisCrm.hora")}
                 <input
                   type="number"
                   min={0}
@@ -689,7 +694,9 @@ function SeccionInstantaneas() {
                           defaultValue: p.periodicidad,
                         })}
                         {" · "}
-                        {t("analisisCrm.aLas", { h: p.hora })}
+                        {zona
+                          ? t("analisisCrm.aLasEnZona", { h: p.hora, zona })
+                          : t("analisisCrm.aLas", { h: p.hora })}
                       </span>
                       <p className="text-rotulo text-ink-faint">
                         {t("analisisCrm.proxima", {

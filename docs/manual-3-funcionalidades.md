@@ -9589,6 +9589,14 @@ pregunta en lenguaje natural hasta dar con la respuesta buena, y entonces esa
 respuesta se congela. Sin este paso, lo que funciona vive en la cabeza de quien
 supo preguntar, y cuando se va se va con él.
 
+**Las dos cosas tienen botón** (10-11-2026; antes sólo existían por API):
+«Publicar para el equipo» —y «Dejar de publicar»— en cada pregunta propia, que
+sólo puede usar su autor o quien administra la explotación; y «Convertir en
+informe», que pide sobre qué objeto, por qué campo agrupar (con periodo si es una
+fecha) y qué calcular, ofreciendo **sólo los objetos y campos que la fuente
+registrada publica de verdad**, y comprobándolos al guardar como se comprueba un
+informe hecho a mano.
+
 Se publica desde una **definición estructurada**, no desde el texto de la
 pregunta: una pregunta en lenguaje natural puede dar dos consultas distintas en dos
 días —el modelo cambia—, y un informe programado que cambia solo de significado es
@@ -12331,9 +12339,26 @@ cliente anterior. Eso funciona hasta que alguien no borra un nombre.
 - **Cada cambio es una versión nueva.** Cuando una cláusula resulta estar mal, la
   pregunta no es cuál está mal: es **a quién se le mandó**, y sin versiones la
   respuesta es «no consta».
-- **El documento se enlaza al corpus, no se guarda aquí.** Dos copias del mismo
-  contrato divergen, y la del CRM sería la que no tiene ni política de borrado ni
-  antivirus.
+- **Se genera desde la ficha del registro** (10-11-2026): oportunidad,
+  presupuesto, cuenta, contrato y pedido, y cualquier otro tipo que se declare
+  en el ajuste `documento_fuentes`. Los datos los rellena el sistema leyendo, por
+  HTTP y con la identidad de quien genera, el registro y sus relacionados
+  —cuenta, contacto, líneas, importes y cualquier `<objeto>_id` declarado—. La
+  persona sólo revisa y completa: cada marcador dice de qué campo salió o que
+  **falta**, y sin completarlo no se genera.
+- **El mapeo de marcadores a campos es de cada plantilla** (`mapeo`, con formato
+  `importe`, `fecha`, `numero`, `texto` o `auto`) y se le puede acotar a qué
+  registros sirve (`objetos`). Lo que no está mapeado se busca por su nombre:
+  `{{cuenta.nombre}}` funciona sin configurar nada.
+- **Sale en PDF, con la marca y el idioma de la plantilla**, con el mismo motor
+  con el que la casa saca la cotización en PDF: cabecera con la marca, el texto,
+  la tabla de líneas y los totales, con los números, las fechas y los rótulos en
+  el idioma de la plantilla.
+- **Queda guardado como adjunto del registro**, con su retención y su análisis, y
+  sin depender de contecmind. Si el corpus documental responde, se archiva además
+  allí, en la carpeta del registro, y se enlaza; si no, se dice por qué y no falla
+  nada. La constancia de la versión guarda el adjunto y, si lo hay, el documento
+  del corpus.
 
 ## Lo que faltaba de la firma electrónica (`CRM-06.01.02`)
 
@@ -16775,6 +16800,36 @@ Google, lo que declare su perfil) con la credencial de la conexión y el
 consentimiento de quien la crea, y guarda el enlace en la actividad; desde una
 cuenta, crea la actividad de reunión con él. La forma de la petición es
 configuración del perfil. Sin suite conectada, el botón dice por qué no.
+
+## Lo que pasa a ser configurable (10-11-2026)
+
+Umbrales y plazos que decidían algo de negocio y estaban escritos en el código.
+Ahora son ajustes: se cambian desde la consola de administración, en
+**Ajustes**, por su clave, por empresa (o por plan, el de la baja), sin tocar
+código. El valor de siempre es el de partida.
+
+- **Fallos seguidos de un informe programado** antes de desactivarlo y avisar
+  (`informes_tope_fallos_seguidos`, 3).
+- **Cuándo un caso «va a incumplir»**: el porcentaje del plazo del SLA ya
+  consumido (`sla_riesgo_umbral_pct`, 80 %).
+- **Cuántos días vale el estado financiero del ERP** para bloquear una oferta
+  (`cuenta_dias_fiable_financiero`, 2).
+- **Cuándo caduca un plan de cuenta** sin revisar (`cuenta_plan_dias_caducidad`,
+  90 días).
+- **Confianza para dar por buena la clasificación** de lo que dice el cliente
+  en una conversación (`conversacion_umbral_confianza`, 0,6) y **para
+  escalarla** a una persona (`conversacion_umbral_escalado`, 0,8).
+- **Días de recuperación tras pedir la baja** de una empresa, antes de que sus
+  datos se puedan destruir (`tenant_baja_dias_recuperacion`, 30). Es sensible:
+  la consola pide confirmación.
+
+Y dos ajustes que ya existían y un camino no respetaba: el **mínimo de personas
+de una audiencia publicitaria** (`audiencia_minimo`) y el **porcentaje de
+concentración en un proveedor** (`riesgo_concentracion_pct`) valen ahora
+también al prepararla a mano y al pedir el riesgo de dependencia.
+
+La **hora de una instantánea o un envío programado** es la de la zona horaria
+de la empresa, y la pantalla la dice al lado.
 
 ## Lo que la API servía y ninguna pantalla abría (10-11-2026)
 

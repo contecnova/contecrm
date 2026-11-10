@@ -416,8 +416,10 @@ class Resumir(BaseModel):
 class Clasificar(BaseModel):
     conversacion_id: UUID
     texto: str = Field(..., min_length=1)
-    umbral_confianza: float = 0.6
-    umbral_escalado: float = 0.8
+    # Sin valor, los del tenant (`conversacion_umbral_confianza` y
+    # `conversacion_umbral_escalado`).
+    umbral_confianza: float | None = Field(None, ge=0.0, le=1.0)
+    umbral_escalado: float | None = Field(None, ge=0.0, le=1.0)
 
 
 @router_anomalias.get(

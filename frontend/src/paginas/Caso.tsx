@@ -717,7 +717,7 @@ function EscribirloEnConocimiento({
       <div className="flex gap-2">
         <button
           type="button"
-          className="btn-secundario"
+          className="btn-secondary"
           disabled={!titulo.trim() || guardando}
           onClick={() => void crear()}
         >

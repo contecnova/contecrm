@@ -156,8 +156,18 @@ def listar_sla(db: DbDep, principal: AutenticadoDep) -> Any:
     ),
 )
 def en_riesgo(
-    db: DbDep, principal: AutenticadoDep, umbral_pct: int = Query(80, ge=1, le=100)
+    db: DbDep,
+    principal: AutenticadoDep,
+    umbral_pct: int | None = Query(
+        None, ge=1, le=100, description="Sin valor, el del tenant (`sla_riesgo_umbral_pct`)"
+    ),
 ) -> Any:
+    if umbral_pct is None:
+        from crmcore.runtime import settings as rt
+
+        umbral_pct = int(
+            rt.efectivo("sla_riesgo_umbral_pct", db, default=ajustes().sla_riesgo_umbral_pct)
+        )
     return svc.en_riesgo(db, principal.tenant_id, umbral_pct=umbral_pct)
 
 

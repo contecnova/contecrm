@@ -71,9 +71,9 @@ RELACIONES_QUE_SON_OPINION = ("aliado", "detractor")
 ESTADOS_FINANCIEROS = ("al_corriente", "vigilancia", "deuda_vencida", "bloqueado")
 
 # Cuántos días puede tener la proyección financiera antes de que no valga para
-# bloquear. Bloquear una oferta con un dato de hace tres semanas es casi peor que
-# no bloquear: el comercial deja de creerse el bloqueo.
-DIAS_FIABLE_FINANCIERO = 2
+# bloquear es el ajuste `cuenta_dias_fiable_financiero` (era un 2 aquí).
+# Bloquear una oferta con un dato de hace tres semanas es casi peor que no
+# bloquear: el comercial deja de creerse el bloqueo.
 
 
 def _ahora() -> datetime:
@@ -335,7 +335,7 @@ def guardar_plan(
 
 
 def plan_caducado(
-    *, revisado_at: datetime | None, dias: int = 90, ahora: datetime | None = None
+    *, revisado_at: datetime | None, dias: int | None = None, ahora: datetime | None = None
 ) -> dict[str, Any]:
     """Si este plan lleva demasiado sin revisarse.
 
@@ -344,6 +344,10 @@ def plan_caducado(
     seguimiento se enseña igual y nadie mira la fecha.
     """
     momento = ahora or _ahora()
+    if dias is None:
+        from services.party.ajustes import ajustes
+
+        dias = ajustes().cuenta_plan_dias_caducidad
     if revisado_at is None:
         return {
             "caducado": True,
@@ -471,7 +475,18 @@ def puede_comprometer(
         if vigente
         else None
     )
-    fiable = antiguedad is not None and antiguedad <= DIAS_FIABLE_FINANCIERO
+    from crmcore.runtime.settings import efectivo
+
+    from services.party.ajustes import ajustes
+
+    dias_fiable = int(
+        efectivo(
+            "cuenta_dias_fiable_financiero",
+            db,
+            default=ajustes().cuenta_dias_fiable_financiero,
+        )
+    )
+    fiable = antiguedad is not None and antiguedad <= dias_fiable
 
     if fila.bloqueado:
         return {

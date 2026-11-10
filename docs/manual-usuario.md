@@ -2125,6 +2125,18 @@ según lo que se haya preguntado—, con **Ver como tabla** arriba a la derecha 
   quieres y se vuelve a preguntar con la pregunta de antes precisada.
 - **Guardar la pregunta**, debajo de la respuesta, la deja en «Mis preguntas sin
   publicar» para no volver a escribirla.
+- **Publicar para el equipo**, en la tarjeta de una pregunta tuya, la pasa a
+  «Preguntas publicadas» y la ve todo el equipo; **Dejar de publicar** la
+  devuelve a las tuyas. Sólo la puede publicar quien la guardó (o quien
+  administra la explotación).
+- **Convertir en informe**, en la misma tarjeta, abre debajo cuatro preguntas:
+  **Sobre qué** (oportunidad, cuenta…), **Agrupar por** (por ejemplo «etapa»;
+  si es una fecha, también **Por periodo**), **Qué calcular** (suma, media,
+  cuántos hay…) y **De qué campo**. **Crear el informe** lo deja como informe
+  del CRM, que se puede programar y mandar; la tarjeta pasa a llevar la marca
+  «Es informe». Sólo salen los objetos y campos que el CRM publica para
+  preguntar: si la lista sale vacía, primero hay que registrar el CRM como
+  fuente.
 - Ve sólo lo que tú ves en las fichas: la pregunta viaja con tu identidad.
 
 ---
@@ -2171,8 +2183,10 @@ lo que tú puedes ver:
 - **Instantáneas programadas**: elige el informe, la frecuencia y la hora y
   pulsa **Programar la instantánea**; **Tomar una ahora** guarda la de hoy. A la
   derecha, la tendencia. **Quitar** deja de tomarlas sin borrar las tomadas.
-  Ojo con la hora: hoy se interpreta en **UTC**, así que «7» es a las 8 en
-  invierno en la Península; la línea «Próxima» dice la hora local real.
+  La hora es la de la **zona horaria de la empresa**, y la pantalla la dice al
+  lado («Hora (Europe/Madrid)»): «7» es a las 7 de allí, también el domingo
+  del cambio de hora. La zona es la de la ficha de la empresa (su ajuste
+  `zona_horaria`).
 - **Consulta al lake del cliente**: elige la fuente y el objeto, los campos si
   no los quieres todos y cuántas filas, y pulsa **Consultar**. El tope lo pone
   la fuente; si hay más, se dice.
@@ -2632,6 +2646,36 @@ el administrador pone la dirección pública del CRM en el ajuste
 Cuando alguien pregunta desde el chat por un registro, se contesta con lo que
 **esa persona** puede ver en el CRM, identificada por su correo. Si su correo no
 es el de nadie del CRM, no se contesta con datos.
+
+### Generar un documento desde la ficha
+
+Una oferta, un contrato o una carta se generan **desde el registro**, sin
+copiar datos a mano:
+
+1. Abre la ficha: **Ventas → Oportunidades → (una oportunidad)**; en el mismo
+   módulo, pestaña **Ofertas → (un presupuesto)** o **Contratos → (uno)**; o
+   **Clientes → Cuentas → (una cuenta)**. En la oportunidad, el presupuesto y
+   el contrato, pestaña **Relacionado** (en el contrato, debajo de
+   **Adjuntos**); en la cuenta, la columna de la derecha.
+2. Despliega **Generar documento**, elige la **Plantilla** y pulsa **Rellenar
+   con este registro**. Cada dato sale ya escrito, con «de contacto», «de
+   registro.importe»… al lado para que sepas de dónde viene.
+3. Lo que el registro no sabe sale marcado **Falta**, y arriba lo dice: «Faltan
+   2: contacto, oportunidad». Escríbelo en su casilla (sale marcado **A mano**).
+   Puedes corregir también lo que vino rellenado.
+4. **Generar el PDF**. Sale con la marca y el idioma de la plantilla, y con las
+   líneas y los totales si el registro los tiene. Queda **guardado como adjunto
+   del registro**: el enlace aparece debajo y en el panel **Adjuntos**.
+5. Debajo se dice si se ha archivado también en el corpus documental. Si no ha
+   podido («Este tenant no tiene organización asignada en el gestor
+   documental», por ejemplo), el PDF está guardado igual.
+
+De qué campo sale cada dato de la plantilla lo decide quien la administra:
+**Administrar → Entornos y despliegue → Operación**, pestaña **Plantillas de
+documento**, **Nuevo**, y en **Más campos** el **Mapeo** (por ejemplo
+`{"cliente": "cuenta.nombre"}`), los **Objetos** para los que sirve, la
+**Marca** y si lleva la tabla de **líneas**. Cada cambio guarda una versión
+nueva de la plantilla.
 
 ---
 

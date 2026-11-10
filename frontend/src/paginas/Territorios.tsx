@@ -160,7 +160,7 @@ export function Territorios() {
         </p>
         <button
           type="button"
-          className="btn btn-secundario"
+          className="btn btn-secondary"
           onClick={() => void simular()}
           disabled={simulando}
         >

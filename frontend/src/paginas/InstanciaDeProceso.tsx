@@ -85,7 +85,11 @@ interface Analitica {
   cuello_de_botella: string | null;
   // Quién tarda más en responder sus tareas, con tres o más: lo calculaba la
   // API y la pantalla no lo pintaba (CRM-00.03.05.16).
-  personas_mas_lentas?: { usuario_id: string; tareas: number; horas_medias: number }[];
+  personas_mas_lentas?: {
+    usuario_id: string;
+    tareas: number;
+    horas_medias: number;
+  }[];
   pasos: {
     paso: string;
     tipo: string;
@@ -420,7 +424,7 @@ function Rescate({
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <button
           type="button"
-          className="btn btn-secundario"
+          className="btn btn-secondary"
           onClick={() =>
             void pedir("/reintentar", {}, t("instancia.hechoReintento"))
           }
@@ -454,7 +458,7 @@ function Rescate({
         </p>
         <button
           type="button"
-          className="btn btn-secundario mt-2"
+          className="btn btn-secondary mt-2"
           disabled={!destino || motivoCorto}
           onClick={() =>
             void pedir(
@@ -485,7 +489,7 @@ function Rescate({
         </p>
         <button
           type="button"
-          className="btn btn-secundario mt-2"
+          className="btn btn-secondary mt-2"
           disabled={motivoCorto}
           onClick={() => {
             let valores: Record<string, unknown>;

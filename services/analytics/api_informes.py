@@ -209,7 +209,12 @@ def plan(informe_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
 
 class Programar(BaseModel):
     periodicidad: str = Field("semanal", description="diaria · semanal · mensual")
-    hora: int = Field(7, ge=0, le=23)
+    hora: int = Field(
+        7,
+        ge=0,
+        le=23,
+        description="Hora de reloj en la zona horaria del tenant (la devuelve `zona`)",
+    )
     dia_semana: int | None = Field(None, ge=0, le=6)
     dia_mes: int | None = Field(None, ge=1, le=31)
     formato: str = "csv"
@@ -242,7 +247,11 @@ class Programar(BaseModel):
 )
 def programar(informe_id: UUID, datos: Programar, uow: UowDep) -> Any:
     fila = inf.programar(uow, informe_id, **datos.model_dump())
-    return {"id": str(fila.id), "proxima_at": fila.proxima_at.isoformat()}
+    return {
+        "id": str(fila.id),
+        "proxima_at": fila.proxima_at.isoformat(),
+        "zona": str(inf.zona_de_programacion(uow.db)),
+    }
 
 
 @router.post(
@@ -250,8 +259,8 @@ def programar(informe_id: UUID, datos: Programar, uow: UowDep) -> Any:
     dependencies=[Depends(exige_permiso("informe:write"))],
     summary="Ejecutar y mandar lo que toca",
     description=(
-        "Un informe programado que falla **avisa**, y a los tres fallos seguidos "
-        "se desactiva y se dice: seguir intentándolo cada día contra un informe "
+        "Un informe programado que falla **avisa**, y a los fallos seguidos que "
+        "diga `informes_tope_fallos_seguidos` se desactiva y se dice: seguir intentándolo cada día contra un informe "
         "roto llena la bandeja de todo el mundo con el mismo error."
     ),
 )
@@ -403,6 +412,8 @@ def listar_programaciones(db: DbDep, principal: AutenticadoDep) -> Any:
             select(Informe).where(Informe.tenant_id == principal.tenant_id)
         ).scalars()
     }
+    # Una lectura y fuera del bucle: va a la base de datos.
+    zona = str(inf.zona_de_programacion(db))
     salida = []
     for f in filas:
         destinatarios = [str(d) for d in (f.destinatarios or [])]
@@ -414,6 +425,9 @@ def listar_programaciones(db: DbDep, principal: AutenticadoDep) -> Any:
                 "informe": vivos.get(f.informe_id, ""),
                 "periodicidad": f.periodicidad,
                 "hora": f.hora,
+                # La hora es de reloj en esta zona; la tabla genérica la enseña
+                # al lado en vez de dejar un número sin referencia.
+                "zona": zona,
                 "dia_semana": f.dia_semana,
                 "dia_mes": f.dia_mes,
                 "formato": f.formato,
@@ -433,6 +447,9 @@ def listar_programaciones(db: DbDep, principal: AutenticadoDep) -> Any:
     return {
         "programaciones": salida,
         "cuantas": len(salida),
+        # En qué zona se lee la `hora` de cada línea: la del tenant. Sin decirlo,
+        # «a las 7» no dice de dónde.
+        "zona": zona,
         "que_significa": (
             "No hay ningún informe programado: todo lo que se mira, se mira entrando."
             if not salida

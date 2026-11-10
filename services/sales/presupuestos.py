@@ -1005,6 +1005,10 @@ def documento(db: Session, tenant_id: UUID, presupuesto_id: UUID) -> dict[str, A
         "fecha": presupuesto.created_at.date().isoformat() if presupuesto.created_at else None,
         "valido_hasta": str(presupuesto.valido_hasta) if presupuesto.valido_hasta else None,
         "cuenta_id": str(presupuesto.cuenta_id) if presupuesto.cuenta_id else None,
+        # Con quién y de qué venta: el documento generado desde la ficha los usa
+        # para «Estimado/a {{contacto}}» y para nombrar la oportunidad.
+        "contacto_id": str(presupuesto.contacto_id) if presupuesto.contacto_id else None,
+        "oportunidad_id": (str(presupuesto.oportunidad_id) if presupuesto.oportunidad_id else None),
         "titulo": presupuesto.titulo,
         "moneda": presupuesto.moneda,
         "lineas": [

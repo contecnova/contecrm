@@ -466,3 +466,19 @@ def test_dos_altas_de_la_fuente_a_la_vez_son_la_misma(db: Any, tenant_id: UUID) 
     db.flush()
     tercera = encolar_registro(db, tenant_id=tenant_id, forzar=True, pedido_por=None)
     assert tercera.id != primera.id
+
+
+def test_solo_su_autor_publica_una_pregunta_para_el_equipo(uow: UnidadDeTrabajo) -> None:
+    """Se guardaba sin publicar y no había forma de publicarla (10-11-2026)."""
+    from crmcore.errors import Prohibido
+
+    yo, otro = uuid4(), uuid4()
+    fila = fte.guardar_pregunta(uow, clave="mia", titulo="Mía", pregunta="?", autor_id=yo)
+    with pytest.raises(Prohibido):
+        fte.compartir_pregunta(
+            uow, fila.id, publicada=True, roles=None, usuario_id=otro, puede_administrar=False
+        )
+    fte.compartir_pregunta(
+        uow, fila.id, publicada=True, roles=None, usuario_id=yo, puede_administrar=False
+    )
+    assert len(fte.preguntas_de(uow.db, uow.tenant_id, usuario_id=otro)) == 1

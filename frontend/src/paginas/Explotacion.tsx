@@ -209,7 +209,7 @@ export function Explotacion() {
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {publicadas.map((p) => (
-              <Tarjeta key={p.id} pregunta={p} />
+              <Tarjeta key={p.id} pregunta={p} alCambiar={cargar} />
             ))}
           </ul>
         )}
@@ -228,7 +228,7 @@ export function Explotacion() {
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {mias.map((p) => (
-              <Tarjeta key={p.id} pregunta={p} />
+              <Tarjeta key={p.id} pregunta={p} alCambiar={cargar} />
             ))}
           </ul>
         )}
@@ -546,8 +546,35 @@ function claveDe(pregunta: string): string {
   );
 }
 
-function Tarjeta({ pregunta }: { pregunta: Pregunta }) {
+function Tarjeta({
+  pregunta,
+  alCambiar,
+}: {
+  pregunta: Pregunta;
+  alCambiar: () => void;
+}) {
   const { t } = useTranslation();
+  const [enCurso, setEnCurso] = useState(false);
+  const [convirtiendo, setConvirtiendo] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  /** Publicarla para todo el equipo, o retirarla. Sólo su autor. */
+  async function publicar(publicada: boolean) {
+    setEnCurso(true);
+    setFallo(null);
+    try {
+      await llamar(`/api/v1/explotacion/preguntas/${pregunta.id}`, {
+        metodo: "PATCH",
+        cuerpo: { publicada },
+      });
+      alCambiar();
+    } catch (e: unknown) {
+      setFallo(e instanceof ErrorApi ? e.titulo : t("explotacion.noGuardada"));
+    } finally {
+      setEnCurso(false);
+    }
+  }
+
   return (
     <li className="rounded-lg border border-ink-dim/40 bg-paper-light p-3">
       <div className="flex flex-wrap items-baseline gap-2">
@@ -562,6 +589,248 @@ function Tarjeta({ pregunta }: { pregunta: Pregunta }) {
       <p className="mt-1 text-rotulo text-ink-faint">
         {t("explotacion.vecesUsada", { veces: pregunta.veces_usada })}
       </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {pregunta.propia ? (
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={enCurso}
+            onClick={() => void publicar(!pregunta.publicada)}
+          >
+            <Icono
+              nombre={pregunta.publicada ? "visibility_off" : "groups"}
+              tamano="sm"
+            />
+            {enCurso
+              ? t("explotacion.publicando")
+              : pregunta.publicada
+                ? t("explotacion.retirar")
+                : t("explotacion.publicar")}
+          </button>
+        ) : null}
+        {!pregunta.informe_id ? (
+          <button
+            type="button"
+            className="btn-secondary"
+            aria-expanded={convirtiendo}
+            onClick={() => setConvirtiendo((v) => !v)}
+          >
+            <Icono nombre="table_chart" tamano="sm" />
+            {t("explotacion.convertir")}
+          </button>
+        ) : null}
+      </div>
+      {fallo ? (
+        <p role="alert" className="mt-2 text-dato text-danger">
+          {fallo}
+        </p>
+      ) : null}
+      {convirtiendo && !pregunta.informe_id ? (
+        <ConvertirEnInforme pregunta={pregunta} alCrear={alCambiar} />
+      ) : null}
     </li>
+  );
+}
+
+interface CamposPublicados {
+  objetos: Record<string, string[]>;
+  agregados: string[];
+  periodos: string[];
+}
+
+/**
+ * Convertir la pregunta en informe (CRM-05.01.04.06).
+ *
+ * El servidor lo pedía con la definición estructurada y no había botón
+ * (medido el 10-11-2026). Se pide estructurada a propósito: una pregunta en
+ * lenguaje natural puede dar dos consultas distintas en dos días, y un informe
+ * programado que cambia solo de significado es peor que no tenerlo. Los
+ * objetos y campos que se ofrecen son los que la fuente publica de verdad:
+ * uno inventado se guardaría bien y fallaría al abrirlo.
+ */
+function ConvertirEnInforme({
+  pregunta,
+  alCrear,
+}: {
+  pregunta: Pregunta;
+  alCrear: () => void;
+}) {
+  const { t } = useTranslation();
+  const [campos, setCampos] = useState<CamposPublicados | null>(null);
+  const [objeto, setObjeto] = useState("");
+  const [agrupar, setAgrupar] = useState("");
+  const [periodo, setPeriodo] = useState("");
+  const [agregado, setAgregado] = useState("cuenta");
+  const [campo, setCampo] = useState("");
+  const [enCurso, setEnCurso] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
+  const [hecho, setHecho] = useState<string | null>(null);
+
+  useEffect(() => {
+    llamar<CamposPublicados>("/api/v1/explotacion/campos-publicados")
+      .then((r) => {
+        setCampos(r.datos);
+        setObjeto(Object.keys(r.datos.objetos)[0] ?? "");
+      })
+      .catch((e: unknown) =>
+        setFallo(
+          e instanceof ErrorApi ? e.titulo : t("explotacion.sinRespuesta"),
+        ),
+      );
+  }, [t]);
+
+  const disponibles = campos?.objetos[objeto] ?? [];
+  const necesitaCampo = agregado !== "cuenta";
+
+  async function crear() {
+    setEnCurso(true);
+    setFallo(null);
+    try {
+      const definicion = {
+        objeto,
+        tipo: agrupar ? "agrupado" : "tabular",
+        agrupaciones: agrupar
+          ? [{ campo: agrupar, ...(periodo ? { periodo } : {}) }]
+          : [],
+        metricas: [
+          {
+            agregado,
+            ...(necesitaCampo ? { campo } : {}),
+            como: necesitaCampo ? `${agregado}_${campo}` : "cuantos",
+          },
+        ],
+      };
+      const r = await llamar<{ clave: string }>(
+        `/api/v1/explotacion/preguntas/${pregunta.id}/publicar`,
+        { metodo: "POST", cuerpo: { definicion } },
+      );
+      setHecho(r.datos.clave);
+      alCrear();
+    } catch (e: unknown) {
+      setFallo(
+        e instanceof ErrorApi ? e.titulo : t("explotacion.sinRespuesta"),
+      );
+    } finally {
+      setEnCurso(false);
+    }
+  }
+
+  if (!campos && !fallo) return <Cargando />;
+
+  return (
+    <div className="mt-3 flex flex-col gap-2 border-t border-ink-dim/30 pt-3">
+      <p className="text-rotulo text-ink-faint">
+        {t("explotacion.convertirPorque")}
+      </p>
+      {campos && Object.keys(campos.objetos).length === 0 ? (
+        <p className="text-dato text-warning">{t("explotacion.sinCampos")}</p>
+      ) : campos ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("explotacion.objeto")}
+            <select
+              className="input-base"
+              value={objeto}
+              onChange={(e) => {
+                setObjeto(e.target.value);
+                setAgrupar("");
+                setCampo("");
+              }}
+            >
+              {Object.keys(campos.objetos).map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("explotacion.agruparPor")}
+            <select
+              className="input-base"
+              value={agrupar}
+              onChange={(e) => setAgrupar(e.target.value)}
+            >
+              <option value="">{t("explotacion.sinAgrupar")}</option>
+              {disponibles.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          {agrupar ? (
+            <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+              {t("explotacion.periodo")}
+              <select
+                className="input-base"
+                value={periodo}
+                onChange={(e) => setPeriodo(e.target.value)}
+              >
+                <option value="">{t("explotacion.sinPeriodo")}</option>
+                {campos.periodos.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+            {t("explotacion.agregado")}
+            <select
+              className="input-base"
+              value={agregado}
+              onChange={(e) => setAgregado(e.target.value)}
+            >
+              {campos.agregados.map((a) => (
+                <option key={a} value={a}>
+                  {t(`explotacion.agregados.${a}`, { defaultValue: a })}
+                </option>
+              ))}
+            </select>
+          </label>
+          {necesitaCampo ? (
+            <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
+              {t("explotacion.campo")}
+              <select
+                className="input-base"
+                value={campo}
+                onChange={(e) => setCampo(e.target.value)}
+              >
+                <option value="" />
+                {disponibles.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+      ) : null}
+      <div>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={
+            enCurso || !objeto || (necesitaCampo && !campo) || hecho !== null
+          }
+          onClick={() => void crear()}
+        >
+          {t("explotacion.crearInforme")}
+        </button>
+      </div>
+      {hecho ? (
+        <p role="status" className="text-dato text-success">
+          {t("explotacion.informeCreado", { clave: hecho })}
+        </p>
+      ) : null}
+      {fallo ? (
+        <p role="alert" className="text-dato text-danger">
+          {fallo}
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -72,6 +72,69 @@ class AjustesIntegration(Settings):
     telefonia_resultado_numero_erroneo: str = "numero_erroneo"
     telefonia_estado_telefono_erroneo: str = "erroneo"
 
+    # ── Documentos desde la ficha del registro (CRM-06.01.01.06) ──────────
+    # De dónde se leen los datos de cada tipo de registro, por HTTP y con la
+    # identidad de quien genera. `{id}` es el del registro. `lineas`, si el
+    # registro las tiene en otra ruta; `nombre`, el campo que lo nombra en el
+    # fichero y en la carpeta del corpus. Un objeto nuevo se añade aquí, sin
+    # tocar código. El presupuesto se lee por su ruta de documento, que es la
+    # que NO trae el coste ni el margen.
+    documento_fuentes: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "oportunidad": {
+                "ruta": "/api/v1/opportunities/{id}",
+                "lineas": "/api/v1/opportunities/{id}/lineas",
+                "nombre": "nombre",
+            },
+            "presupuesto": {"ruta": "/api/v1/presupuestos/{id}/documento", "nombre": "numero"},
+            "contrato": {"ruta": "/api/v1/contratos/{id}", "nombre": "numero"},
+            "pedido": {"ruta": "/api/v1/pedidos/{id}", "nombre": "numero"},
+            "cuenta": {"ruta": "/api/v1/accounts/{id}", "nombre": "nombre"},
+            "contacto": {
+                "ruta": "/api/v1/contacts/{id}",
+                "por_cuenta": "/api/v1/contacts?cuenta_id={id}&limite=1",
+                "nombre": "nombre_completo",
+            },
+        }
+    )
+    # Cuánto se espera a cada servicio al leer el registro o guardar el PDF.
+    documento_espera_s: float = Field(20.0, ge=1.0, le=120.0)
+    # El papel y el margen del PDF. Letter para quien imprime en Estados Unidos.
+    documento_pdf_papel: str = "A4"
+    documento_pdf_margen_cm: float = Field(2.0, ge=0.5, le=5.0)
+    # Los colores del PDF cuando el tenant no tiene marca configurada. Los de la
+    # interfaz, para que el documento se parezca a la pantalla desde la que sale.
+    documento_pdf_colores: dict[str, str] = Field(
+        default_factory=lambda: {
+            "acento": "#0176d3",
+            "cabecera_tabla": "#014486",
+            "texto": "#181818",
+            "texto_suave": "#444444",
+            "fila_alterna": "#f3f3f3",
+            "fila_par": "#ffffff",
+        }
+    )
+    # Qué campo de cada línea va en cada columna del PDF: el primero que la
+    # línea traiga. Son nombres de campo, no textos; los títulos van en el
+    # idioma de la plantilla.
+    documento_pdf_columnas_lineas: dict[str, list[str]] = Field(
+        default_factory=lambda: {
+            "descripcion": ["descripcion", "nombre", "sku"],
+            "cantidad": ["cantidad"],
+            "precio": ["precio", "precio_final", "precio_unitario"],
+            "total": ["total", "importe"],
+        }
+    )
+    # Los totales del registro que se ponen bajo las líneas, en este orden, si
+    # el registro los trae.
+    documento_pdf_totales: list[str] = Field(
+        default_factory=lambda: ["subtotal", "descuento_total", "total"]
+    )
+    # Cómo se llama el fichero. `{plantilla}`, `{registro}` y `{fecha}`.
+    documento_nombre_fichero: str = "{plantilla}-{registro}-{fecha}.pdf"
+    # Si además del adjunto se archiva en el corpus documental cuando responde.
+    documento_archivar_en_corpus: bool = True
+
 
 registrar_claves(
     [
@@ -197,6 +260,67 @@ registrar_claves(
             tipo="str",
             descripcion="Estado que se escribe en el teléfono del contacto cuando el número es erróneo",
             campo_settings="telefonia_estado_telefono_erroneo",
+        ),
+        ClaveAjuste(
+            clave="documento_fuentes",
+            tipo="json",
+            descripcion=(
+                "De qué ruta se leen los datos de cada tipo de registro al generar un "
+                "documento desde su ficha (ruta, líneas y campo que lo nombra)"
+            ),
+            campo_settings="documento_fuentes",
+        ),
+        ClaveAjuste(
+            clave="documento_espera_s",
+            tipo="float",
+            descripcion="Segundos que se espera a cada servicio al generar un documento",
+            minimo=1.0,
+            maximo=120.0,
+            campo_settings="documento_espera_s",
+        ),
+        ClaveAjuste(
+            clave="documento_pdf_papel",
+            tipo="str",
+            descripcion="Papel del PDF de los documentos generados (A4 o LETTER)",
+            campo_settings="documento_pdf_papel",
+        ),
+        ClaveAjuste(
+            clave="documento_pdf_margen_cm",
+            tipo="float",
+            descripcion="Margen del PDF de los documentos generados, en centímetros",
+            minimo=0.5,
+            maximo=5.0,
+            campo_settings="documento_pdf_margen_cm",
+        ),
+        ClaveAjuste(
+            clave="documento_pdf_colores",
+            tipo="json",
+            descripcion="Colores del PDF cuando el tenant no tiene marca configurada",
+            campo_settings="documento_pdf_colores",
+        ),
+        ClaveAjuste(
+            clave="documento_pdf_columnas_lineas",
+            tipo="json",
+            descripcion="Qué campo de cada línea va en cada columna del PDF (el primero presente)",
+            campo_settings="documento_pdf_columnas_lineas",
+        ),
+        ClaveAjuste(
+            clave="documento_pdf_totales",
+            tipo="json",
+            descripcion="Totales del registro que se ponen bajo las líneas del PDF, en orden",
+            campo_settings="documento_pdf_totales",
+        ),
+        ClaveAjuste(
+            clave="documento_nombre_fichero",
+            tipo="str",
+            descripcion="Nombre del PDF generado: {plantilla}, {registro} y {fecha}",
+            campo_settings="documento_nombre_fichero",
+        ),
+        ClaveAjuste(
+            clave="documento_archivar_en_corpus",
+            tipo="bool",
+            descripcion="Archivar también en el corpus documental el PDF generado, si responde",
+            campo_settings="documento_archivar_en_corpus",
         ),
         ClaveAjuste(
             clave="chat_url_crm",

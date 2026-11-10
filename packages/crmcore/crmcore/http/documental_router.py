@@ -78,6 +78,16 @@ class EnlaceEntrada(BaseModel):
     )
 
 
+class ArchivarAdjuntoEntrada(BaseModel):
+    titulo: str = Field("", max_length=300, description="Vacío, el nombre del fichero")
+    rol: str = Field("", max_length=80, description="Para qué está enlazado: «oferta», «contrato»")
+    etiqueta: str = Field(
+        "",
+        max_length=200,
+        description="Nombre legible del registro: con él, el documento va a su carpeta",
+    )
+
+
 class PedirAprobacion(BaseModel):
     aprobadores: list[str] = Field(
         default_factory=list,
@@ -315,6 +325,88 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
             "documento_id": enlace.documento_id,
             "carpeta_id": enlace.carpeta_id,
         }
+
+    @router.post(
+        "/{objeto_tipo}/{objeto_id}/archivar-adjunto/{adjunto_id}",
+        status_code=status.HTTP_201_CREATED,
+        dependencies=[Depends(exige_permiso("documento:enlazar"))],
+        summary="Archivar en el corpus un adjunto del registro",
+        description=(
+            "Sube al gestor documental un fichero que ya es adjunto de este "
+            "registro, lo coloca en la carpeta del registro y lo enlaza. El "
+            "adjunto **se queda donde estaba**: es la copia del CRM, con la "
+            "retención y el análisis del registro, y no depende de que el gestor "
+            "responda.\n\n"
+            "Si el gestor no está, contesta su error con el motivo —desactivado, "
+            "sin organización, caído— y no toca nada: quien llama decide si eso "
+            "es un fallo o un aviso."
+        ),
+    )
+    def archivar_adjunto(
+        objeto_tipo: str,
+        objeto_id: UUID,
+        adjunto_id: UUID,
+        uow: UowDep,
+        principal: AutenticadoDep,
+        datos: ArchivarAdjuntoEntrada | None = Body(None),
+    ) -> Any:
+        from crmcore.datos.adjuntos import Adjunto, leer
+        from crmcore.documental import cliente, enlazar, organizacion_de
+        from crmcore.errors import NoEncontrado
+
+        _validar(objeto_tipo)
+        datos = datos or ArchivarAdjuntoEntrada()
+        fila = uow.db.get(Adjunto, adjunto_id)
+        if (
+            fila is None
+            or fila.deleted_at is not None
+            or fila.objeto_tipo != objeto_tipo
+            or fila.objeto_id != objeto_id
+        ):
+            raise NoEncontrado("Adjunto no encontrado", error_code="adjunto.no_existe")
+        token = cliente.canjear_token(
+            organizacion=organizacion_de(uow.db, principal.tenant_id),
+            sujeto=str(principal.id),
+            rol=cliente.rol_para(principal.permisos, principal.es_admin_plataforma),
+        ).token
+        contenido = leer(uow.db, adjunto_id, usuario_id=principal.id)
+        carpeta_id = ""
+        if datos.etiqueta:
+            try:
+                carpeta_id = (
+                    cliente.carpeta_de_registro(
+                        objeto=objeto_tipo, etiqueta=datos.etiqueta, token_usuario=token
+                    )
+                    or ""
+                )
+            except Exception as exc:  # noqa: BLE001 — sin carpeta se sube a la raíz del área
+                from crmcore.logging import get_logger
+
+                get_logger(__name__).warning(
+                    "documental.archivar_sin_carpeta", objeto=objeto_tipo, error=str(exc)[:200]
+                )
+        subido = cliente.subir_documento(
+            titulo=datos.titulo or fila.nombre,
+            nombre=fila.nombre,
+            datos=contenido,
+            tipo_mime=fila.tipo_mime,
+            token_usuario=token,
+            carpeta_id=carpeta_id or None,
+            idempotencia=f"adjunto-{adjunto_id}",
+        )
+        documento_id = str(subido.get("id") or "")
+        enlace = enlazar(
+            uow.db,
+            tenant_id=principal.tenant_id,
+            objeto_tipo=objeto_tipo,
+            objeto_id=objeto_id,
+            documento_id=documento_id,
+            titulo=datos.titulo or fila.nombre,
+            rol=datos.rol,
+            carpeta_id=carpeta_id,
+            por=principal.id,
+        )
+        return {"documento_id": documento_id, "carpeta_id": carpeta_id, "enlace_id": str(enlace.id)}
 
     @router.delete(
         "/{objeto_tipo}/{objeto_id}/{enlace_id}",

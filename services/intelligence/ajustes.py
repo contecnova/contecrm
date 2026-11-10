@@ -222,6 +222,13 @@ class AjustesIntelligence(Settings):
     # Acierto mínimo por función. Por debajo, la ejecución lo marca y se avisa
     # por el sistema de avisos de la casa.
     ia_evaluacion_umbral: float = Field(0.9, ge=0.0, le=1.0)
+
+    # ── Clasificar lo que dice el cliente en una conversación (CRM-04.02.02.07)
+    # Confianza mínima para dar la clasificación por concluyente, y la que hace
+    # falta para escalar a una persona. Eran 0,6 y 0,8 escritos como defecto
+    # del cálculo y del cuerpo de la petición.
+    conversacion_umbral_confianza: float = Field(0.6, ge=0.0, le=1.0)
+    conversacion_umbral_escalado: float = Field(0.8, ge=0.0, le=1.0)
     # Cada cuántas horas se pasa sola, por tenant. 0 la apaga.
     ia_evaluacion_cada_horas: int = Field(168, ge=0, le=8_760)
     # A quién más se avisa si baja (identificadores de usuario separados por
@@ -387,6 +394,25 @@ registrar_claves(
             minimo=1,
             maximo=20,
             campo_settings="ia_variantes_maximas",
+        ),
+        ClaveAjuste(
+            clave="conversacion_umbral_confianza",
+            tipo="float",
+            descripcion=(
+                "Confianza mínima para dar por concluyente la clasificación de lo "
+                "que dice el cliente"
+            ),
+            minimo=0.0,
+            maximo=1.0,
+            campo_settings="conversacion_umbral_confianza",
+        ),
+        ClaveAjuste(
+            clave="conversacion_umbral_escalado",
+            tipo="float",
+            descripcion="Confianza mínima para escalar una conversación a una persona",
+            minimo=0.0,
+            maximo=1.0,
+            campo_settings="conversacion_umbral_escalado",
         ),
         ClaveAjuste(
             clave="ia_evaluacion_umbral",

@@ -53,6 +53,14 @@ class AjustesParty(Settings):
     # alternativa homologada es un riesgo. Era un 40 escrito en el cálculo.
     riesgo_concentracion_pct: float = Field(40.0, ge=1.0, le=100.0)
 
+    # Días que puede tener el estado financiero replicado del ERP para seguir
+    # valiendo como bloqueo de una oferta. Con más, el comercial deja de
+    # creerse el bloqueo. Era un 2 escrito en `cuenta_360`.
+    cuenta_dias_fiable_financiero: int = Field(2, ge=0, le=90)
+    # Días sin revisar tras los que un plan de cuenta se da por caducado. Era
+    # un 90 escrito como defecto del cálculo.
+    cuenta_plan_dias_caducidad: int = Field(90, ge=7, le=730)
+
     # Cuántos descartes seguidos hacen sospechar de una regla de duplicados.
     # Por debajo de cinco, un par de descartes legítimos ya la acusan.
     stewardship_descartes_para_sospechar: int = Field(5, ge=2, le=100)
@@ -315,6 +323,25 @@ registrar_claves(
             minimo=0,
             maximo=60,
             campo_settings="compras_dias_propios_entrega",
+        ),
+        ClaveAjuste(
+            clave="cuenta_dias_fiable_financiero",
+            tipo="int",
+            descripcion=(
+                "Días que puede tener el estado financiero del ERP para seguir "
+                "bloqueando una oferta"
+            ),
+            minimo=0,
+            maximo=90,
+            campo_settings="cuenta_dias_fiable_financiero",
+        ),
+        ClaveAjuste(
+            clave="cuenta_plan_dias_caducidad",
+            tipo="int",
+            descripcion="Días sin revisar tras los que un plan de cuenta se da por caducado",
+            minimo=7,
+            maximo=730,
+            campo_settings="cuenta_plan_dias_caducidad",
         ),
         ClaveAjuste(
             clave="riesgo_concentracion_pct",

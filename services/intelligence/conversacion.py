@@ -337,13 +337,28 @@ def resumir(
     }
 
 
+def umbrales_de_clasificar(db: Any = None) -> tuple[float, float]:
+    """(confianza, escalado) del tenant: los ajustes `conversacion_umbral_*`."""
+    from crmcore.runtime.settings import efectivo
+
+    from services.intelligence.ajustes import ajustes
+
+    a = ajustes()
+    return (
+        float(
+            efectivo("conversacion_umbral_confianza", db, default=a.conversacion_umbral_confianza)
+        ),
+        float(efectivo("conversacion_umbral_escalado", db, default=a.conversacion_umbral_escalado)),
+    )
+
+
 def clasificar(
     uow: UnidadDeTrabajo,
     *,
     conversacion_id: UUID,
     texto: str,
-    umbral_confianza: float = 0.6,
-    umbral_escalado: float = 0.8,
+    umbral_confianza: float | None = None,
+    umbral_escalado: float | None = None,
 ) -> dict[str, Any]:
     """Sentimiento e intención de lo que acaba de decir el cliente
     (CRM-04.02.02.07).
@@ -385,6 +400,10 @@ def clasificar(
     if intencion not in INTENCIONES:
         intencion = "otro"
     confianza = max(0.0, min(1.0, float(salida.get("confianza") or 0)))
+    if umbral_confianza is None or umbral_escalado is None:
+        defecto_confianza, defecto_escalado = umbrales_de_clasificar(uow.db)
+        umbral_confianza = defecto_confianza if umbral_confianza is None else umbral_confianza
+        umbral_escalado = defecto_escalado if umbral_escalado is None else umbral_escalado
     concluyente = confianza >= float(umbral_confianza)
 
     escalar = bool(

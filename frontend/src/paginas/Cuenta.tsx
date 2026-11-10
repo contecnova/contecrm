@@ -58,6 +58,7 @@ import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
+import { GenerarDocumento } from "@/componentes/GenerarDocumento";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar, listarPagina } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
@@ -838,6 +839,8 @@ export function Cuenta() {
                   </li>
                 ))}
               </Relacionados>
+
+              <GenerarDocumento objeto="cuenta" id={id} />
             </aside>
           </div>
 

@@ -583,7 +583,14 @@ def plan_caducado(plan_cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) ->
     fila = db.get(PlanCuenta, plan_cuenta_id)
     if fila is None or fila.tenant_id != principal.tenant_id:
         raise NoEncontrado("Ese plan no existe", error_code="party.plan_no_existe")
-    return c360.plan_caducado(revisado_at=fila.revisado_at)
+    from crmcore.runtime.settings import efectivo
+
+    from services.party.ajustes import ajustes
+
+    dias = int(
+        efectivo("cuenta_plan_dias_caducidad", db, default=ajustes().cuenta_plan_dias_caducidad)
+    )
+    return c360.plan_caducado(revisado_at=fila.revisado_at, dias=dias)
 
 
 class MapaIn(BaseModel):

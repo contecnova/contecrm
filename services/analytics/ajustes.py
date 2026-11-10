@@ -32,6 +32,12 @@ class AjustesAnalytics(Settings):
     # Un año: cubre un ciclo de venta largo sin mezclar el equipo de hace tres.
     analisis_dias_ventana: int = Field(365, ge=7, le=3650)
 
+    # ── Informes programados (CRM-05.01.01.06) ───────────────────────────
+    # Fallos seguidos tras los que una programación se desactiva y se dice.
+    # Era un 3 escrito en el barrido: con pocos, un corte de una noche apaga
+    # un informe sano; con muchos, uno roto llena bandejas con el mismo error.
+    informes_tope_fallos_seguidos: int = Field(3, ge=1, le=30)
+
 
 registrar_claves(
     [
@@ -58,6 +64,16 @@ registrar_claves(
             minimo=7,
             maximo=3650,
             campo_settings="analisis_dias_ventana",
+        ),
+        ClaveAjuste(
+            clave="informes_tope_fallos_seguidos",
+            tipo="int",
+            descripcion=(
+                "Fallos seguidos tras los que un informe programado se desactiva " "y se avisa"
+            ),
+            minimo=1,
+            maximo=30,
+            campo_settings="informes_tope_fallos_seguidos",
         ),
     ]
 )

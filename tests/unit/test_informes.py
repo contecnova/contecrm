@@ -398,6 +398,49 @@ def test_la_programacion_calcula_su_proxima_vez(uow: UnidadDeTrabajo) -> None:
     assert programacion.proxima_at > datetime.now(timezone.utc)
 
 
+def test_a_las_7_es_a_las_7_del_tenant_tambien_con_el_cambio_de_hora() -> None:
+    """La hora se guardaba y se ejecutaba en UTC y la pantalla la pedía local:
+    «a las 7» salía a las 08:00 en la Península en invierno y a las 09:00 en
+    verano. Se lee en la zona del tenant y se fija por día de calendario, así
+    que el domingo del cambio no la mueve."""
+    from zoneinfo import ZoneInfo
+
+    madrid = ZoneInfo("Europe/Madrid")
+    diaria = inf.ProgramacionInforme(periodicidad="diaria", hora=7)
+
+    def local(instante: datetime) -> tuple[date, int]:
+        en_madrid = instante.astimezone(madrid)
+        return en_madrid.date(), en_madrid.hour
+
+    # Invierno (UTC+1): las 7 de Madrid son las 06:00 UTC, no las 07:00.
+    invierno = inf._siguiente_ejecucion(
+        diaria, datetime(2026, 1, 15, 3, 0, tzinfo=timezone.utc), madrid
+    )
+    assert invierno == datetime(2026, 1, 15, 6, 0, tzinfo=timezone.utc)
+    # Verano (UTC+2): las 05:00 UTC.
+    verano = inf._siguiente_ejecucion(
+        diaria, datetime(2026, 7, 15, 3, 0, tzinfo=timezone.utc), madrid
+    )
+    assert verano == datetime(2026, 7, 15, 5, 0, tzinfo=timezone.utc)
+    # Las dos noches de cambio de hora: desde la ejecución del sábado, la del
+    # domingo sigue siendo a las 7 en Madrid (23 h y 25 h después).
+    for sabado in (date(2026, 3, 28), date(2026, 10, 24)):
+        a_las_7 = datetime(sabado.year, sabado.month, sabado.day, 7, tzinfo=madrid)
+        siguiente = inf._siguiente_ejecucion(diaria, a_las_7.astimezone(timezone.utc), madrid)
+        assert local(siguiente) == (sabado + timedelta(days=1), 7)
+    # Semanal y mensual cruzando el cambio, también a las 7.
+    semanal = inf.ProgramacionInforme(periodicidad="semanal", hora=7, dia_semana=0)
+    lunes = inf._siguiente_ejecucion(
+        semanal, datetime(2026, 3, 24, 12, 0, tzinfo=timezone.utc), madrid
+    )
+    assert local(lunes) == (date(2026, 3, 30), 7)
+    mensual = inf.ProgramacionInforme(periodicidad="mensual", hora=7, dia_mes=1)
+    primero = inf._siguiente_ejecucion(
+        mensual, datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc), madrid
+    )
+    assert local(primero) == (date(2026, 11, 1), 7)
+
+
 def test_un_informe_programado_que_falla_avisa(uow: UnidadDeTrabajo) -> None:
     """Un informe que deja de llegar no se echa de menos: la gente supone que no
     había nada que contar, y eso convierte un fallo en un punto ciego de

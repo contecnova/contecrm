@@ -1109,7 +1109,7 @@ function RenombrarYLlevarse({
         </p>
         <button
           type="button"
-          className="btn btn-secundario mt-2"
+          className="btn btn-secondary mt-2"
           onClick={() => void descargar()}
           disabled={bajando}
         >
