@@ -206,8 +206,8 @@ export function Organigrama() {
           onClick={() => setElegida(p.usuario_id)}
           aria-current={p.usuario_id === elegida ? "true" : undefined}
           className={cn(
-            "flex w-full flex-wrap items-baseline gap-2 rounded px-2 py-1 text-left text-dato hover:bg-surface-2",
-            p.usuario_id === elegida && "bg-surface-2 font-semibold",
+            "flex w-full flex-wrap items-baseline gap-2 rounded px-2 py-1 text-left text-dato hover:bg-paper-light",
+            p.usuario_id === elegida && "bg-paper-light font-semibold",
             !p.activa && "text-ink-faint",
           )}
           style={{ paddingLeft: `${nivel * 1.25 + 0.5}rem` }}
@@ -310,7 +310,7 @@ export function Organigrama() {
                   <li key={p.usuario_id}>
                     <button
                       type="button"
-                      className="flex w-full flex-wrap items-baseline gap-2 rounded px-2 py-1 text-left text-dato hover:bg-surface-2"
+                      className="flex w-full flex-wrap items-baseline gap-2 rounded px-2 py-1 text-left text-dato hover:bg-paper-light"
                       onClick={() => setElegida(p.usuario_id)}
                     >
                       <span className="text-ink">{p.nombre}</span>
