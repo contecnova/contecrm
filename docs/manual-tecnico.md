@@ -5403,7 +5403,7 @@ principal de máquina y sólo `contact:write`).
   `ContextoMiddleware` guarda la cabecera y los trozos de la ruta en un
   `ContextVar` (sólo en POST, PUT, PATCH y DELETE con `If-Match`), y un oyente
   `before_flush` de la sesión compara la versión de cada objeto con
-  `VersionMixin` (salvo `VERSION_ES_DE_NEGOCIO`) que está modificado o borrado
+  `VersionMixin` (salvo los modelos cuya versión es de negocio) que está modificado o borrado
   y cuyo `id` va en la ruta. El borrado reversible es una modificación de
   `deleted_at`, así que entra.
 - **Una vez por registro y petición**: tras la primera escritura la versión ya
