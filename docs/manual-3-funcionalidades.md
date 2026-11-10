@@ -1988,6 +1988,14 @@ lo manda. Rechazada, con cambios pedidos o **sin nadie que pueda aprobarla**,
 vuelve a borrador y la ficha dice por qué: una cadena sin aprobadores no
 aprueba sola.
 
+Visto en vivo el 10-11-2026 con el bus de verdad (NATS): ida y vuelta entre
+ventas y el motor en dos segundos. Salió un defecto: cuando no había quién
+aprobara, el presupuesto volvía a borrador pero en la bandeja quedaba una
+aprobación **pendiente** a medio crear que nadie podía resolver. Arreglado: o
+se crea entera o no se crea. En el tenant de plataforma no hay organigrama
+replicado, así que ahí hoy ningún presupuesto se puede aprobar: hace falta
+decir quién aprueba (el ajuste de etapas o el organigrama).
+
 Los objetos **propios del tenant** son el caso distinto: no tienen código
 detrás, así que ahí la declaración de metadatos **es** la máquina entera y sí
 define los estados.

@@ -170,3 +170,11 @@ def test_orchestrator_sin_aprobadores_no_aprueba_solo(
         and e.sobre.get("data", e.sobre).get("objeto_id") == str(pid)
         for e in salientes
     ), [e.sobre for e in salientes]
+    # Y sin una aprobación a medias en la bandeja: se quedaba pendiente y nadie
+    # la podía resolver (medido con el bus de verdad el 10-11-2026).
+    from services.orchestrator.aprobaciones import SolicitudAprobacion
+
+    assert (
+        db.execute(select(SolicitudAprobacion).where(SolicitudAprobacion.objeto_id == pid)).first()
+        is None
+    )

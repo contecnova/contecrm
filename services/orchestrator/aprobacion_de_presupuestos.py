@@ -45,16 +45,24 @@ async def consumir(mensaje: Any) -> None:
         etapas = rt.efectivo("aprobacion_presupuesto_etapas", uow.db) or []
         motivos = datos.get("motivos") or []
         try:
-            apr.crear(
-                uow,
-                politica="presupuesto",
-                objeto="presupuesto",
-                objeto_id=UUID(str(presupuesto_id)),
-                etapas=list(etapas),
-                contexto={k: v for k, v in datos.items() if k != "solicitante_id"},
-                solicitante_id=UUID(str(solicitante)) if solicitante else None,
-                titulo=f"Presupuesto {datos.get('numero', '')}: " + "; ".join(map(str, motivos)),
-            )
+            # En un punto de guardado: `crear` escribe la aprobación ANTES de
+            # resolver quién aprueba, y si eso falla lo escrito se quedaba —el
+            # `except` confirma la misma transacción para avisar a sales—.
+            # Medido el 10-11-2026 con el bus de verdad: el presupuesto volvía
+            # a borrador «sin aprobadores» y en la bandeja quedaba una
+            # aprobación pendiente que nadie podía resolver.
+            with uow.db.begin_nested():
+                apr.crear(
+                    uow,
+                    politica="presupuesto",
+                    objeto="presupuesto",
+                    objeto_id=UUID(str(presupuesto_id)),
+                    etapas=list(etapas),
+                    contexto={k: v for k, v in datos.items() if k != "solicitante_id"},
+                    solicitante_id=UUID(str(solicitante)) if solicitante else None,
+                    titulo=f"Presupuesto {datos.get('numero', '')}: "
+                    + "; ".join(map(str, motivos)),
+                )
         except CrmError as exc:
             # Nadie a quien pedírselo —cadena vacía, o quien lo envía no está en
             # el organigrama—: se dice y se devuelve, no se aprueba solo. Dejar

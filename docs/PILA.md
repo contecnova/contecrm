@@ -278,7 +278,11 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
   contecintelligence; nunca mentir, todo completo, medir, nada hardcodeado,
   ultra configurable, la mejor experiencia de usuario».
 - **Por orden**:
-  - [ ] **El bus en vivo.** Nunca se ha visto: en local no hay NATS. Levantar
+  - [x] **El bus en vivo** (10-11-2026): NATS en Docker, 156 consumidores, la
+    aprobación de presupuestos hace ida y vuelta en 2 s; arreglada la
+    aprobación a medias que quedaba pendiente. Pendiente: el tenant de
+    plataforma no tiene organigrama ni etapas de aprobación (nadie puede
+    aprobar un presupuesto ahí), y CRM-00.04.04.06 sin ver. Era: Levantar
     uno con JetStream (hay Docker) y recorrer todo lo que cruza servicios
     —aprobación de presupuestos, firma que mueve la etapa, avisos de
     automatización al chat, CRM-00.04.04.06—, arreglando lo que falle.

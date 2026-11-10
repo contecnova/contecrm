@@ -5521,6 +5521,24 @@ principal de máquina y sólo `contact:write`).
   evita las palabras que marcan afirmaciones.
 - **Pruebas**: `tests/unit/test_ia_evaluacion.py`, sin modelo real.
 
+### 4.6.60 El bus en vivo en la pila local
+
+- **Cómo se enciende.** `setup.sh arrancar` pone `BUS_BACKEND=memoria`: cada
+  proceso tiene su bus y ningún evento cruza servicios. Para el bus de verdad,
+  un NATS con JetStream en Docker y arrancar con
+  `BUS_BACKEND=nats NATS_URL=nats://127.0.0.1:4222 SIN_VECINOS=1 ./setup.sh arrancar`.
+  **`127.0.0.1` y no `localhost`**: macOS resuelve `localhost` a `::1` primero,
+  el contenedor escucha en IPv4 y la conexión se rechaza en bucle
+  (`bus_nats.error Connection refused`).
+- **Medido el 10-11-2026**: 13 conexiones, 1 stream y 156 consumidores. La
+  aprobación de un presupuesto hace ida y vuelta sales → orchestrator → sales
+  en 2 s.
+- **Defecto que salió**: `aprobacion_de_presupuestos.consumir` dejaba una
+  `SolicitudAprobacion` pendiente cuando `apr.crear` fallaba a mitad (sin
+  aprobadores), porque el `except` confirma la misma transacción para emitir
+  `approval.decided`. Ahora `crear` va en `begin_nested()`. Prueba:
+  `test_orchestrator_sin_aprobadores_no_aprueba_solo`.
+
 ## 5. Operación
 
 ### 5.1 Copias y restauración
