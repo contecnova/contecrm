@@ -330,10 +330,22 @@ def _proponer_accion(
 
 
 def _hoy_iso() -> str:
-    """La fecha de hoy, para que «este año» o «el mes pasado» se traduzcan bien."""
-    from datetime import date
+    """La fecha de hoy, para que «este año» o «el mes pasado» se traduzcan bien.
 
-    return date.today().isoformat()
+    Es el día **del cliente** (`crmcore.fechas.hoy(db)`), con una sesión del
+    tenant del contexto: el puerto lo llaman los registrados (traductor,
+    proponedor, resumidor) sin sesión, y con el reloj de la máquina «ayer» de
+    madrugada en Madrid era el día anterior. Sin tenant en el contexto no hay
+    zona que leer y se queda en UTC.
+    """
+    from crmcore.db.session import sesion
+    from crmcore.fechas import hoy
+    from crmcore.tenancy.context import contexto_actual
+
+    if contexto_actual().tenant_id is None:
+        return hoy().isoformat()
+    with sesion() as db:
+        return hoy(db).isoformat()
 
 
 def _extraer(

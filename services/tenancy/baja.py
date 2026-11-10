@@ -25,12 +25,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 from uuid import UUID
 
 from crmcore.db.base import Base
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy, zona_del_tenant
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -320,7 +321,7 @@ def exportar(
         manifiesto[nombre] = {"filas": registros, "bytes": len(cuerpo), "sha256": sha}
         total += registros
 
-    leeme = _leeme(tenant_id, manifiesto).encode("utf-8")
+    leeme = _leeme(tenant_id, manifiesto, generada=hoy(db)).encode("utf-8")
     almacen.guardar(f"{tenant_id}/_exportaciones/{exportacion.id}/LEEME.md", leeme)
     manifiesto["LEEME.md"] = {
         "filas": 0,
@@ -351,8 +352,12 @@ def exportar(
     return exportacion
 
 
-def _leeme(tenant_id: UUID, manifiesto: dict[str, Any]) -> str:
-    """El documento que hace que la exportación se pueda leer sin este producto."""
+def _leeme(tenant_id: UUID, manifiesto: dict[str, Any], *, generada: date) -> str:
+    """El documento que hace que la exportación se pueda leer sin este producto.
+
+    `generada` es el día **del cliente** en que se hizo: lo pone quien tiene la
+    sesión. Con el de UTC, una exportación de las 00:30 en Madrid decía ayer.
+    """
     filas = "\n".join(
         f"| `{nombre}` | {datos['filas']} | {datos['bytes']} | `{datos['sha256'][:16]}…` |"
         for nombre, datos in sorted(manifiesto.items())
@@ -360,7 +365,7 @@ def _leeme(tenant_id: UUID, manifiesto: dict[str, Any]) -> str:
     return f"""# Exportación de datos
 
 Tenant `{tenant_id}` · formato `{FORMATO}` versión {VERSION_FORMATO} ·
-generada el {datetime.now(timezone.utc).date().isoformat()}.
+generada el {generada.isoformat()}.
 
 ## Qué hay aquí
 
@@ -638,7 +643,15 @@ def _rehacer_exportacion(db: Session, exportacion: Exportacion) -> None:
     """
     from crmcore.almacen import get_almacen
 
-    leeme = _leeme(exportacion.tenant_id, exportacion.manifiesto or {}).encode("utf-8")
+    # El día en que se GENERÓ, no el de la purga: el LEEME se rehace después.
+    generada = (
+        exportacion.created_at.astimezone(zona_del_tenant(db)).date()
+        if exportacion.created_at
+        else hoy(db)
+    )
+    leeme = _leeme(exportacion.tenant_id, exportacion.manifiesto or {}, generada=generada).encode(
+        "utf-8"
+    )
     get_almacen().guardar(
         f"{exportacion.tenant_id}/_exportaciones/{exportacion.id}/LEEME.md", leeme
     )

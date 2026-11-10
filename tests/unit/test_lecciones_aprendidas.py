@@ -180,6 +180,18 @@ def test_al_perder_nace_una_leccion_obligatoria_que_se_firma_entera(
     fila = lec.al_cerrar(trabajo, perdida, ganada=False)
     assert fila.obligatoria and fila.estado == "pendiente" and fila.motivo == "precio"
     quien = Principal(id=uuid4(), tenant_id=tenant_id, permisos=frozenset({"*:*"}))
+    from crmcore import vocabulario
+
+    vocabulario.materializar(db, "factores_leccion", tenant_id)
+    db.add(
+        vocabulario.ValorVocabulario(
+            tenant_id=tenant_id,
+            vocabulario="factores_leccion",
+            valor="condiciones_pago",
+            etiqueta="Condiciones de pago",
+        )
+    )
+    db.flush()
     with pytest.raises(ErrorValidacion):
         lec.firmar(
             trabajo,
@@ -196,10 +208,13 @@ def test_al_perder_nace_una_leccion_obligatoria_que_se_firma_entera(
         que_paso="Llegamos con un descuento del 20 % en la última semana.",
         senal_temprana="Pidió precio en la primera reunión y no lo dimos.",
         que_hariamos_distinto="Dar una horquilla de precio en la primera reunión.",
-        factores=["precio", "descuento_tardio"],
+        # Uno que añadió la empresa: los factores son su vocabulario
+        # (`factores_leccion`), no la tupla del código.
+        factores=["precio", "descuento_tardio", "condiciones_pago"],
         principal=quien,
     )
     assert firmada.estado == "firmada" and firmada.firmada_por == quien.id
+    assert "condiciones_pago" in firmada.factores
     assert firmada.hechos["oportunidad"]["motivo_perdida"] == "precio"
     patrones = lec.patrones(db, tenant_id)
     assert patrones["firmadas"] == 1 and patrones["factores_en_las_perdidas"]["precio"] == 1
@@ -214,11 +229,12 @@ def test_el_borrador_de_la_ia_se_lee_y_no_inventa_factores() -> None:
     borrador = lec._leer_borrador(
         'Aquí va:\n{"que_paso": "Se perdió por precio", "senal_temprana": "Pidió '
         'precio pronto", "que_hariamos_distinto": "Horquilla al principio", '
-        '"factores": ["precio", "astrologia"]}'
+        '"factores": ["precio", "astrologia"]}',
+        frozenset(lec.FACTORES),
     )
     assert borrador["factores"] == ["precio"]
     assert borrador["que_hariamos_distinto"] == "Horquilla al principio"
-    assert lec._leer_borrador("texto suelto")["que_paso"] == "texto suelto"
+    assert lec._leer_borrador("texto suelto", frozenset())["que_paso"] == "texto suelto"
 
 
 def test_las_cerradas_de_antes_reciben_su_leccion_sin_obligar(

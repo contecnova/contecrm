@@ -127,7 +127,11 @@ def ficha(leccion_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
         if fila.estado == "firmada" and fila.hechos
         else lec.expediente(db, fila.oportunidad_id, principal)
     )
-    return {**_a_dict(fila), "expediente": hechos, "factores_posibles": list(lec.FACTORES)}
+    return {
+        **_a_dict(fila),
+        "expediente": hechos,
+        "factores_posibles": sorted(lec.factores_validos(db)),
+    }
 
 
 @router_lecciones.post(
@@ -148,7 +152,12 @@ class FirmarIn(BaseModel):
     que_paso: str = Field(..., min_length=1, max_length=8_000)
     senal_temprana: str = Field("", max_length=4_000)
     que_hariamos_distinto: str = Field("", max_length=8_000)
-    factores: list[str] = Field(default_factory=list, description=" · ".join(lec.FACTORES))
+    factores: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Del vocabulario `factores_leccion` del tenant; de fábrica: " + " · ".join(lec.FACTORES)
+        ),
+    )
 
 
 @router_lecciones.post(

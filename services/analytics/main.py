@@ -68,6 +68,38 @@ def _correr_para(tenant_id: Any) -> dict[str, Any]:
         return dict(correr_programadas(uow, tenant_id))
 
 
+def _tenants_con_suscripciones() -> list[Any]:
+    """Los tenants con alguna suscripción a cuadro activa, de nuestra tabla."""
+    from crmcore.db.session import sesion
+    from sqlalchemy import select
+
+    from services.analytics.cuadros import SuscripcionCuadro
+
+    with sesion(sistema=True) as db:
+        return list(
+            db.execute(
+                select(SuscripcionCuadro.tenant_id)
+                .where(SuscripcionCuadro.activa.is_(True))
+                .distinct()
+            )
+            .scalars()
+            .all()
+        )
+
+
+def _suscripciones_para(tenant_id: Any) -> dict[str, Any]:
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+
+    from services.analytics.cuadros import correr_suscripciones
+
+    with (
+        con_contexto(tenant_id=tenant_id, origen="tareas"),
+        unidad_de_trabajo(tenant_id) as uow,
+    ):
+        return dict(correr_suscripciones(uow, tenant_id))
+
+
 def _tareas() -> list[Any]:
     """El barrido de informes programados, que no ejecutaba nadie.
 
@@ -83,7 +115,15 @@ def _tareas() -> list[Any]:
             "analytics.informes_programados",
             get_settings().tarea_informes_intervalo_s,
             por_tenant(_tenants_con_programaciones, _correr_para),
-        )
+        ),
+        # Las suscripciones a cuadros (CRM-05.01.02.05) guardaban hora y
+        # próxima ejecución y nadie las ejecutaba. Mismo intervalo que los
+        # informes: las dos cosas son «a las 7, en la hora del tenant».
+        Tarea(
+            "analytics.suscripciones_cuadro",
+            get_settings().tarea_informes_intervalo_s,
+            por_tenant(_tenants_con_suscripciones, _suscripciones_para),
+        ),
     ]
 
 

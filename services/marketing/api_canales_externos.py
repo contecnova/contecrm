@@ -466,8 +466,10 @@ class UsoIn(BaseModel):
         "sitios."
     ),
 )
-def se_puede_usar(cuerpo: UsoIn, principal: AutenticadoDep) -> Any:
-    return act.se_puede_usar(activo=cuerpo.activo, uso=cuerpo.uso)
+def se_puede_usar(cuerpo: UsoIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.fechas import hoy
+
+    return act.se_puede_usar(activo=cuerpo.activo, uso=cuerpo.uso, hoy=hoy(db))
 
 
 @router_activos.get(

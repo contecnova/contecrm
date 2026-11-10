@@ -912,7 +912,8 @@ def evaluar_riesgo(
     minutos_desde_otro_pais: int | None = None,
     dias_sin_entrar: int = 0,
     operacion_sensible: bool = False,
-    dias_para_considerar_ausencia: int = 30,
+    dias_para_considerar_ausencia: int | None = None,
+    minutos_salto_imposible: int | None = None,
 ) -> dict[str, Any]:
     """Si hay que pedir el segundo factor **ahora** (CRM-00.05.01.21).
 
@@ -940,7 +941,16 @@ def evaluar_riesgo(
         )
     elif not pais_conocido:
         motivos.append("pais_nuevo")
-    if minutos_desde_otro_pais is not None and minutos_desde_otro_pais < 120:
+    # Los dos umbrales son ajustes (`mfa_minutos_salto_imposible`,
+    # `mfa_dias_ausencia`; eran 120 y 30). La entrada los pasa con el valor del
+    # tenant; sin ellos, el del `.env`.
+    from crmcore.config import get_settings
+
+    if minutos_salto_imposible is None:
+        minutos_salto_imposible = get_settings().mfa_minutos_salto_imposible
+    if dias_para_considerar_ausencia is None:
+        dias_para_considerar_ausencia = get_settings().mfa_dias_ausencia
+    if minutos_desde_otro_pais is not None and minutos_desde_otro_pais < minutos_salto_imposible:
         # Dos países en dos horas: o hay un avión imposible o hay dos personas.
         # Es la señal más fiable de las seis y por eso va sola al principio.
         motivos.append("salto_imposible")

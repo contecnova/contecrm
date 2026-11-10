@@ -173,3 +173,17 @@ def test_los_enlaces_pendientes_se_pueden_mirar(uow: Any, usuario: Any) -> None:
     assert pendientes[0]["ip_solicitud"] == "10.0.0.9"
     assert pendientes[0]["caducado"] is False
     assert uuid4() is not None
+
+
+def test_el_alta_y_el_cambio_exigen_el_minimo_del_ajuste(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`hashear_contrasena` tenía un 12 escrito: subir `contrasena_minimo`
+    endurecía el restablecer y dejaba igual el alta y el cambio."""
+    from crmcore.config import get_settings
+
+    from services.identity.servicio import hashear_contrasena
+
+    monkeypatch.setattr(get_settings(), "contrasena_minimo", 16)
+    with pytest.raises(ErrorValidacion) as fallo:
+        hashear_contrasena("catorce-letras")
+    assert "16" in str(fallo.value)
+    assert hashear_contrasena("dieciseis-letras")

@@ -120,11 +120,23 @@ class SuscripcionCuadro(Base, TimestampMixin):
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     # diaria | semanal | mensual
     periodicidad: Mapped[str] = mapped_column(String(20), nullable=False, default="semanal")
+    # Hora de reloj en la zona del TENANT, como la de una programación de
+    # informe: se calcula con el mismo `informes._siguiente_ejecucion`.
     hora: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    # Lunes = 0. Sin él, la semanal sale en lunes y la mensual el día 1.
+    dia_semana: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    dia_mes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Por dónde llega: uno de `crmcore.datos.seguimiento.CANALES`. Lo entrega el
+    # repartidor de identity, como cualquier otro aviso.
+    canal: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="app", server_default="app"
+    )
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     proxima_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    ultima_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ultimo_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "cuadro_id", "usuario_id", name="uq_suscripcion_cuadro"),
@@ -954,34 +966,148 @@ def suscribirse(
     usuario_id: UUID,
     periodicidad: str = "semanal",
     hora: int = 8,
+    canal: str = "app",
+    dia_semana: int | None = None,
+    dia_mes: int | None = None,
 ) -> SuscripcionCuadro:
     """Pide que el cuadro llegue solo.
 
     Uno se suscribe **a sí mismo**: suscribir a otro convierte un cuadro en correo
     no deseado que el receptor no sabe cómo parar, y lo que hace es marcarlo como
     basura — y con él, todo lo que mande el CRM.
+
+    La `hora` es de reloj en la zona del tenant y la próxima ejecución se
+    calcula con `informes._siguiente_ejecucion`, el mismo cálculo que las
+    programaciones de informe. Antes se guardaba `ahora + 1 día` y ningún
+    barrido la leía.
     """
-    ya = uow.db.execute(
+    from crmcore.datos.seguimiento import CANALES
+
+    from services.analytics import informes as inf
+
+    if periodicidad not in ("diaria", "semanal", "mensual"):
+        raise ErrorValidacion(
+            f"Periodicidad «{periodicidad}» no válida.",
+            error_code="cuadro.periodicidad_no_valida",
+            detalle={"validas": ["diaria", "semanal", "mensual"]},
+        )
+    if canal not in CANALES:
+        raise ErrorValidacion(
+            f"Canal «{canal}» no válido.",
+            error_code="cuadro.canal_no_valido",
+            detalle={"validos": list(CANALES)},
+        )
+    if not 0 <= hora <= 23:
+        raise ErrorValidacion("La hora va de 0 a 23.", error_code="cuadro.hora_no_valida")
+    ya = suscripcion_de(uow, cuadro_id=cuadro_id, usuario_id=usuario_id)
+    fila = ya or SuscripcionCuadro(
+        tenant_id=uow.tenant_id, cuadro_id=cuadro_id, usuario_id=usuario_id
+    )
+    fila.activa = True
+    fila.periodicidad = periodicidad
+    fila.hora = hora
+    fila.canal = canal
+    fila.dia_semana = dia_semana
+    fila.dia_mes = dia_mes
+    fila.ultimo_error = None
+    fila.proxima_at = inf._siguiente_ejecucion(fila, _ahora(), inf.zona_de_programacion(uow.db))
+    if ya is None:
+        uow.db.add(fila)
+    uow.db.flush()
+    return fila
+
+
+def suscripcion_de(
+    uow: UnidadDeTrabajo, *, cuadro_id: UUID, usuario_id: UUID
+) -> SuscripcionCuadro | None:
+    """La suscripción de una persona a un cuadro, activa o no."""
+    return uow.db.execute(
         select(SuscripcionCuadro).where(
             SuscripcionCuadro.tenant_id == uow.tenant_id,
             SuscripcionCuadro.cuadro_id == cuadro_id,
             SuscripcionCuadro.usuario_id == usuario_id,
         )
     ).scalar_one_or_none()
-    if ya is not None:
-        ya.activa = True
-        ya.periodicidad = periodicidad
-        ya.hora = hora
-        uow.db.flush()
-        return ya
-    fila = SuscripcionCuadro(
-        tenant_id=uow.tenant_id,
-        cuadro_id=cuadro_id,
-        usuario_id=usuario_id,
-        periodicidad=periodicidad,
-        hora=hora,
-        proxima_at=_ahora() + timedelta(days=1),
+
+
+def correr_suscripciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
+    """Manda los cuadros a quien se suscribió y le toca (CRM-05.01.02.05).
+
+    **Estaban escritas y sin enchufar**: se guardaba la hora y una próxima
+    ejecución, y ningún barrido las leía. Lo llama la tarea
+    `analytics.suscripciones_cuadro` del relevo de tareas de analytics.
+
+    Lo que sale es el evento `dashboard.delivered` con el destinatario y el
+    canal de la suscripción; el consumidor de avisos de identity lo convierte en
+    una notificación y su repartidor la entrega (app, correo…), con la franja
+    de silencio del usuario. **No lleva las cifras**: el barrido no tiene los
+    roles de quien se suscribió, y calcularlas con los de sistema mandaría por
+    correo lo que esa persona no puede ver. Lleva el cuadro, y al abrirlo se
+    calcula con sus permisos.
+
+    Un cuadro borrado o desactivado apaga la suscripción y deja el motivo.
+    La zona del tenant se lee una vez, fuera del bucle.
+    """
+    from services.analytics import informes as inf
+    from services.analytics.informes import CuadroMando
+
+    ahora = _ahora()
+    zona = inf.zona_de_programacion(uow.db)
+    pendientes = (
+        uow.db.execute(
+            select(SuscripcionCuadro).where(
+                SuscripcionCuadro.tenant_id == tenant_id,
+                SuscripcionCuadro.activa.is_(True),
+                SuscripcionCuadro.proxima_at.isnot(None),
+                SuscripcionCuadro.proxima_at <= ahora,
+            )
+        )
+        .scalars()
+        .all()
     )
-    uow.db.add(fila)
+    ids = {s.cuadro_id for s in pendientes}
+    cuadros = (
+        {
+            c.id: c
+            for c in uow.db.execute(
+                select(CuadroMando).where(
+                    CuadroMando.tenant_id == tenant_id, CuadroMando.id.in_(ids)
+                )
+            ).scalars()
+        }
+        if ids
+        else {}
+    )
+    mandadas: list[str] = []
+    apagadas: list[dict[str, str]] = []
+    for s in pendientes:
+        cuadro = cuadros.get(s.cuadro_id)
+        s.ultima_at = ahora
+        if cuadro is None or not cuadro.activo:
+            s.activa = False
+            s.ultimo_error = "El cuadro ya no existe o está desactivado."
+            apagadas.append({"suscripcion": str(s.id), "motivo": s.ultimo_error})
+            continue
+        uow.emitir(
+            "dashboard.delivered",
+            subject=("cuadro_mando", cuadro.id),
+            data={
+                "cuadro_id": str(cuadro.id),
+                "suscripcion_id": str(s.id),
+                "usuario_id": str(s.usuario_id),
+                "titulo": f"Tu cuadro «{cuadro.nombre}»",
+                "cuerpo": cuadro.descripcion or "",
+                "canales": [s.canal],
+            },
+            dedup_key=f"cuadro:{s.id}:{s.proxima_at.isoformat() if s.proxima_at else ''}",
+        )
+        s.ultimo_error = None
+        s.proxima_at = inf._siguiente_ejecucion(s, ahora, zona)
+        mandadas.append(str(s.id))
     uow.db.flush()
-    return fila
+    return {
+        "revisadas": len(pendientes),
+        "mandadas": mandadas,
+        "apagadas": apagadas,
+        "medible": bool(pendientes),
+    }

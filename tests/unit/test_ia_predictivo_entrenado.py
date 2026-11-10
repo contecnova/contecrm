@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import math
 import random
-from datetime import date, timedelta
+from datetime import timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -33,6 +33,7 @@ import pytest
 from crmcore.authz.principal import Principal
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, Prohibido
+from crmcore.fechas import hoy
 from sqlalchemy import select
 
 from services.intelligence import acciones_asistente as acc
@@ -48,7 +49,7 @@ from tests.unit.test_ia_generativa import (  # noqa: F401
     uow,
 )
 
-HOY = date.today()
+HOY = hoy()
 
 
 def _historico(semilla: int = 1, *, senal: bool = True, n: int = 500) -> list[dict[str, Any]]:
@@ -163,7 +164,7 @@ def test_los_rasgos_de_una_oportunidad_no_miran_el_futuro() -> None:
     }
     despues = {**antes, "id": "b", "created_at": "2025-06-01", "fecha_cierre_real": "2025-08-01"}
     esta = {**antes, "id": "c", "created_at": "2025-03-01", "estado_significa": "abierto"}
-    r = pre.rasgos_oportunidad(esta, pre.Historial([antes, despues, esta]))
+    r = pre.rasgos_oportunidad(esta, pre.Historial([antes, despues, esta]), hoy=HOY)
     assert r["cuenta_ganadas_previas"] == 1
 
 

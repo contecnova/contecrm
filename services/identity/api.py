@@ -97,6 +97,8 @@ def login(datos: Credenciales, request: Request) -> Any:
         # Se pide **sólo si hay factor que pedir**: a quien no tiene ninguno
         # configurado no se le puede exigir uno aquí, y negarle la entrada por
         # algo que no puede resolver lo deja fuera sin salida.
+        from crmcore.runtime.settings import efectivo as _efectivo
+
         from services.identity import factores as _fa
 
         riesgo = _fa.evaluar_riesgo(
@@ -106,7 +108,9 @@ def login(datos: Credenciales, request: Request) -> Any:
                 tenant_id,
                 ip=request.client.host if request.client else "",
                 huella=datos.huella_dispositivo or "",
-            )
+            ),
+            dias_para_considerar_ausencia=int(_efectivo("mfa_dias_ausencia", db)),
+            minutos_salto_imposible=int(_efectivo("mfa_minutos_salto_imposible", db)),
         )
         # Con el proveedor del tenant (CRM-00.05.01.22) también hay factor que
         # pedir aunque la persona no tenga TOTP propio.

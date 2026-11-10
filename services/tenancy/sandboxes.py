@@ -229,7 +229,7 @@ def comprobar_reglas(*, campos_personales: list[str], reglas: dict[str, str]) ->
     }
 
 
-def caducados(*, sandboxes: list[dict[str, Any]], hoy: date | None = None) -> dict[str, Any]:
+def caducados(*, sandboxes: list[dict[str, Any]], hoy: date) -> dict[str, Any]:
     """Qué entornos hay que refrescar o apagar.
 
     El sandbox que se creó para una migración hace año y medio sigue ahí con los
@@ -237,7 +237,9 @@ def caducados(*, sandboxes: list[dict[str, Any]], hoy: date | None = None) -> di
     acceso. No es una molestia de orden: es una copia de datos de clientes viviendo
     en un sitio del que ya nadie se acuerda.
     """
-    momento = hoy or _hoy()
+    # `hoy` lo pone quien tiene la sesión (`_hoy(db)`, la ruta con
+    # `fechas.hoy(db)`): con el reloj de UTC, de madrugada vencía un día antes.
+    momento = hoy
     vencidos, por_vencer = [], []
     for caja in sandboxes:
         creado = caja.get("creado")

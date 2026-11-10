@@ -502,8 +502,10 @@ def ejecutar_metrica(
         "porcentaje: marcarlas al 0 % las pinta como un desastre que no ha pasado."
     ),
 )
-def cohortes(datos: Cohortes) -> Any:
-    return coh.cohortes(**datos.model_dump())
+def cohortes(datos: Cohortes, db: DbDep) -> Any:
+    from crmcore.fechas import hoy
+
+    return coh.cohortes(**{**datos.model_dump(), "hoy": datos.hoy or hoy(db)})
 
 
 @router_analisis.post(
@@ -515,8 +517,10 @@ def cohortes(datos: Cohortes) -> Any:
         "negocio de dos años mueve la media de todo el trimestre."
     ),
 )
-def embudo(datos: Embudo) -> Any:
-    return coh.embudo(**datos.model_dump())
+def embudo(datos: Embudo, db: DbDep) -> Any:
+    from crmcore.fechas import hoy
+
+    return coh.embudo(**datos.model_dump(), hoy=hoy(db))
 
 
 @router_analisis.post(

@@ -30,6 +30,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.audit.chain import registrar
 from crmcore.datos.estados import con_significado, significa
 from crmcore.db.base import Base, TimestampMixin
@@ -59,8 +60,12 @@ from services.sales import ajustes as _ajustes  # noqa: E402,F401
 
 ESTADOS = ("pendiente", "firmada")
 RESULTADOS = ("ganada", "perdida")
-# Lo que puede pesar en una pérdida o en una victoria. Lista cerrada a propósito:
-# es lo que permite agrupar y contar patrones; un texto libre no se agrupa.
+# Lo que puede pesar en una pérdida o en una victoria. Lista cerrada a propósito
+# —es lo que permite agrupar y contar patrones; un texto libre no se agrupa—,
+# pero **de la empresa**: éstos son los de fábrica del vocabulario
+# `factores_leccion` (`crmcore.vocabulario`), y la empresa añade o retira los
+# suyos en Oportunidades → «Factores de una lección». Se valida contra
+# `vocabulario.valores(db, "factores_leccion")`, no contra esta tupla.
 FACTORES = (
     "precio",
     "descuento_tardio",
@@ -97,6 +102,21 @@ ROTULO_FACTOR = {
     "propuesta_de_valor": "la propuesta de valor",
     "otro": "otros motivos",
 }
+
+vocabulario.registrar(
+    "factores_leccion",
+    FACTORES,
+    etiqueta="Factores de una lección",
+    descripcion=(
+        "Lo que pesó en una oportunidad ganada o perdida. Se eligen al firmar la "
+        "lección y son lo que agrupa los patrones."
+    ),
+)
+
+
+def factores_validos(db: Session) -> frozenset[str]:
+    """Los factores que este tenant admite: los suyos, o los de fábrica."""
+    return vocabulario.valores(db, "factores_leccion")
 
 
 class LeccionOportunidad(Base, TimestampMixin):
@@ -507,9 +527,7 @@ def expediente(db: Session, oportunidad_id: UUID, principal: Any) -> dict[str, A
     u = umbrales(db)
     recorrido = _recorrido(db, op.id)
     abierta = (
-        ((op.fecha_cierre_real or datetime.now(timezone.utc).date()) - op.created_at.date()).days
-        if op.created_at
-        else None
+        ((op.fecha_cierre_real or hoy(db)) - op.created_at.date()).days if op.created_at else None
     )
     hechos: dict[str, Any] = {
         "oportunidad": {
@@ -632,6 +650,7 @@ def proponer_con_ia(db: Session, fila: LeccionOportunidad, principal: Any) -> di
     from crmcore import ia_ficha
 
     hechos = expediente(db, fila.oportunidad_id, principal)
+    validos = factores_validos(db)
     salida = ia_ficha.pedir(
         "/api/v1/ia/generar",
         {
@@ -639,6 +658,8 @@ def proponer_con_ia(db: Session, fila: LeccionOportunidad, principal: Any) -> di
             "datos": {
                 "nombre": fila.titulo or "la oportunidad",
                 "resultado": fila.resultado,
+                # Los del tenant, no los de fábrica: la plantilla los nombra.
+                "factores": ", ".join(sorted(validos)),
             },
             "contexto": [
                 {
@@ -654,7 +675,7 @@ def proponer_con_ia(db: Session, fila: LeccionOportunidad, principal: Any) -> di
         },
         principal,
     )
-    propuesta = _leer_borrador(str((salida or {}).get("texto") or ""))
+    propuesta = _leer_borrador(str((salida or {}).get("texto") or ""), validos)
     fila.propuesta_ia = {
         **propuesta,
         "propuesta_id": (salida or {}).get("propuesta_id"),
@@ -665,7 +686,7 @@ def proponer_con_ia(db: Session, fila: LeccionOportunidad, principal: Any) -> di
     return {"leccion_id": str(fila.id), "propuesta": fila.propuesta_ia, "hechos": hechos}
 
 
-def _leer_borrador(texto: str) -> dict[str, Any]:
+def _leer_borrador(texto: str, validos: frozenset[str]) -> dict[str, Any]:
     """El borrador viene en JSON; si no, se deja el texto entero en «qué pasó»."""
     import json
     import re
@@ -678,7 +699,7 @@ def _leer_borrador(texto: str) -> dict[str, Any]:
                 "que_paso": str(datos.get("que_paso") or ""),
                 "senal_temprana": str(datos.get("senal_temprana") or ""),
                 "que_hariamos_distinto": str(datos.get("que_hariamos_distinto") or ""),
-                "factores": [f for f in datos.get("factores") or [] if f in FACTORES],
+                "factores": [f for f in datos.get("factores") or [] if f in validos],
             }
         except ValueError:
             pass
@@ -709,12 +730,13 @@ def firmar(
             "la siguiente oportunidad parecida va a leer.",
             error_code="leccion.incompleta",
         )
-    desconocidos = sorted(set(factores) - set(FACTORES))
+    validos = factores_validos(uow.db)
+    desconocidos = sorted(set(factores) - validos)
     if desconocidos:
         raise ErrorValidacion(
             f"Factores desconocidos: {', '.join(desconocidos)}",
             error_code="leccion.factor_desconocido",
-            detalle={"validos": list(FACTORES)},
+            detalle={"validos": sorted(validos)},
         )
     if not fila.hechos:
         fila.hechos = expediente(uow.db, fila.oportunidad_id, principal)

@@ -1343,6 +1343,10 @@ def salud_de_envio(db: Session, tenant_id: UUID, *, dias: int = 30) -> dict[str,
 
     duros = int(por_tipo.get("duro", 0))
     quejas = int(por_tipo.get("queja", 0))
+    from services.marketing.ajustes import valor
+
+    umbral_duro = float(valor("envio_umbral_rebote_duro_pct", db))
+    umbral_queja = float(valor("envio_umbral_queja_pct", db))
     return {
         "dias": dias,
         "enviados": enviados,
@@ -1351,12 +1355,15 @@ def salud_de_envio(db: Session, tenant_id: UUID, *, dias: int = 30) -> dict[str,
         "quejas": quejas,
         "tasa_rebote_duro_pct": _tasa(duros),
         "tasa_queja_pct": _tasa(quejas),
-        # Los umbrales son los que usan los proveedores grandes. Van aquí para
-        # que el número signifique algo: sin referencia, «0,3 %» no dice si hay
-        # que actuar hoy o no.
-        "umbral_rebote_duro_pct": 2.0,
-        "umbral_queja_pct": 0.1,
-        "en_riesgo": bool(enviados and ((_tasa(duros) or 0) > 2.0 or (_tasa(quejas) or 0) > 0.1)),
+        # Los umbrales van en la respuesta para que el número signifique algo:
+        # sin referencia, «0,3 %» no dice si hay que actuar hoy o no. Son los
+        # ajustes `envio_umbral_rebote_duro_pct` y `envio_umbral_queja_pct`
+        # (2,0 y 0,1 de fábrica, los de los proveedores grandes).
+        "umbral_rebote_duro_pct": umbral_duro,
+        "umbral_queja_pct": umbral_queja,
+        "en_riesgo": bool(
+            enviados and ((_tasa(duros) or 0) > umbral_duro or (_tasa(quejas) or 0) > umbral_queja)
+        ),
         "medible": enviados > 0,
     }
 

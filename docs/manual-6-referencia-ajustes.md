@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**346 ajustes** en total, de los cuales **124** son editables en caliente por tenant.
+**349 ajustes** en total, de los cuales **126** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -123,6 +123,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `MFA_ENABLED` | — | `True` |  |  |
 | `MFA_OBLIGATORIA` | 🔥 `mfa_obligatoria` | `False` |  | Exigir MFA a todo el mundo. Lo normal es exigirla por rol (se configura por tenant); esto es el interruptor global para instalaciones que la quieren obligatoria sin excepciones. |
 | `MFA_OBLIGATORIA_ROLES` | 🔥 `mfa_obligatoria_roles` |  |  | MFA obligatoria **por rol** (CRM-00.05.01.06): a quién se le exige el segundo factor aunque no lo haya activado. Vacío = manda el interruptor de arriba, como antes. Con roles, se exige a quien tenga alguno de ellos en la empresa en la que entra; el interruptor global sigue sumando, nunca… |
+| `MFA_MINUTOS_SALTO_IMPOSIBLE` | 🔥 `mfa_minutos_salto_imposible` | `120` | 5–1440 | MFA adaptativa (CRM-00.05.01.21): minutos entre entradas desde dos países por debajo de los cuales es un «salto imposible», y días sin entrar a partir de los que volver cuenta como cambio de contexto. Eran 120 y 30 escritos en `factores.evaluar_riesgo` (barrido del 10-11-2026). |
+| `MFA_DIAS_AUSENCIA` | 🔥 `mfa_dias_ausencia` | `30` | 1–365 |  |
 | `TOTP_VENTANA_PASOS` | — | `1` | 0–10 | Ventana de códigos TOTP aceptados hacia atrás y adelante, para absorber relojes desajustados. Cada paso son 30 s; 1 = ±30 s. |
 | `OTP_SMS_ENABLED` | 🔥 `otp_sms_enabled` | `False` |  | Van apagados por defecto, y a propósito: el SMS es el factor más débil de los que hay —se intercepta con un cambio de SIM que no depende de nadie de aquí—, y encenderlo tiene que ser una decisión consciente de quien acepta ese riesgo, no el estado de fábrica. |
 | `OTP_EMAIL_ENABLED` | 🔥 `otp_email_enabled` | `False` |  |  |
@@ -233,6 +235,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `GRC_UMBRAL_RIESGO_ALTO` | — | `12` | 1–1000 | Puntuación a partir de la cual un riesgo de GRC es alto. |
 | `SUITE_MAX_INTENTOS` | — | `5` | 1–1000 | Intentos de sincronización de la suite antes de rendirse. |
 | `DUPLICADOS_UMBRAL_DEFECTO` | — | `0.72` | 0.0–1.0 | Similitud por defecto para encolar un duplicado cuando el tenant no la ha fijado. |
+| `DOMINIOS_CORREO_GENERICOS` | — |  |  | Dominios de correo que NO identifican una empresa (dos clientes pueden tener los dos una dirección de gmail): no cuentan como señal de duplicado. Era la constante `normalizacion.DOMINIOS_GENERICOS`; cada país tiene los suyos y la lista de fábrica es la de España. Se lee sin sesión —`dominio_de`… |
 | `IDENTIDAD_UMBRAL_PROPUESTA` | — | `80` | 1–10000 | Puntuación a partir de la cual se PROPONE una fusión de identidades y a partir de la cual se ejecuta sola. La segunda es destructiva, y por eso está muy por encima: por debajo decide una persona. |
 | `IDENTIDAD_UMBRAL_AUTOMATICO` | — | `150` | 1–10000 |  |
 | `CARGA_FILAS_POR_VUELTA` | — | `200` | 1–100000 | Filas por vuelta del cargador y vueltas máximas. El producto de los dos es el techo de una carga: subir el primero va más rápido y ocupa más memoria; subir el segundo alarga la carga sin ocupar más. |

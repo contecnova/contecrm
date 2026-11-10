@@ -13,9 +13,19 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Cuadros } from "@/paginas/Cuadros";
+
+// La pantalla lee `?cuadro=<id>` (el enlace del aviso de una suscripción).
+function pintar(ruta = "/cuadros") {
+  return render(
+    <MemoryRouter initialEntries={[ruta]}>
+      <Cuadros />
+    </MemoryRouter>,
+  );
+}
 
 let respuestas: Record<string, unknown> = {};
 const llamadas: { ruta: string; cuerpo?: unknown }[] = [];
@@ -66,10 +76,11 @@ describe("un componente de cuadro de mando", () => {
         columnas: ["nombre", "importe"],
         filas: [["ACME", 10, 3, 7]],
         incompleto: true,
-        aviso_plan: "El motor ha devuelto 4 columnas y este informe solo sabe nombrar 2.",
+        aviso_plan:
+          "El motor ha devuelto 4 columnas y este informe solo sabe nombrar 2.",
       },
     };
-    render(<Cuadros />);
+    pintar();
     expect(
       await screen.findByText(/El motor ha devuelto 4 columnas/),
     ).toBeInTheDocument();
@@ -84,11 +95,14 @@ describe("un componente de cuadro de mando", () => {
         columnas: ["nombre"],
         filas: [["ACME"]],
         incompleto: true,
-        aviso_datos: "El listado de este objeto no pagina, así que las cifras no son el total.",
+        aviso_datos:
+          "El listado de este objeto no pagina, así que las cifras no son el total.",
       },
     };
-    render(<Cuadros />);
-    expect(await screen.findByText(/las cifras no son el total/)).toBeInTheDocument();
+    pintar();
+    expect(
+      await screen.findByText(/las cifras no son el total/),
+    ).toBeInTheDocument();
   });
 
   it("cuando todo cuadra no enseña ningún aviso", async () => {
@@ -101,7 +115,7 @@ describe("un componente de cuadro de mando", () => {
         filas: [["ACME", 10]],
       },
     };
-    render(<Cuadros />);
+    pintar();
     await screen.findByText("Pipeline");
     expect(screen.queryByText(/El motor ha devuelto/)).toBeNull();
     expect(screen.queryByText(/no son el total/)).toBeNull();
@@ -122,12 +136,52 @@ describe("un componente de cuadro de mando", () => {
     URL.createObjectURL = vi.fn(() => "blob:x");
     URL.revokeObjectURL = vi.fn();
 
-    render(<Cuadros />);
-    const boton = await screen.findByRole("button", { name: /cuadros\.descargar/ });
+    pintar();
+    const boton = await screen.findByRole("button", {
+      name: /cuadros\.descargar/,
+    });
     await userEvent.click(boton);
 
-    const csv = llamadas.filter((l) => (l.cuerpo as { formato?: string })?.formato === "csv");
+    const csv = llamadas.filter(
+      (l) => (l.cuerpo as { formato?: string })?.formato === "csv",
+    );
     expect(csv.length, "no pidió el CSV al servidor").toBe(1);
     expect(csv[0]?.ruta).toContain("/api/v1/informes/i1/ejecutar");
+  });
+
+  it("recibirlo manda el canal elegido y abre el cuadro del enlace del aviso", async () => {
+    respuestas = {
+      "/api/v1/cuadros-mando": [
+        { ...CUADRO, id: "c1", nombre: "Ventas", componentes: [] },
+        { ...CUADRO, id: "c2", nombre: "Dirección", componentes: [] },
+      ],
+      "/api/v1/cuadros-mando/suscripciones/mia": null,
+      "/api/v1/notificaciones/canales": { canales: ["app", "correo"] },
+      "/api/v1/cuadros-mando/suscripciones": {
+        periodicidad: "semanal",
+        hora: 8,
+        canal: "correo",
+        activa: true,
+        zona: "Europe/Madrid",
+        proxima_at: null,
+        ultimo_error: null,
+      },
+    };
+    pintar("/cuadros?cuadro=c2");
+    const elegir = await screen.findByLabelText("cuadros.elegir");
+    expect((elegir as HTMLSelectElement).value).toBe("c2");
+
+    await userEvent.selectOptions(
+      await screen.findByLabelText("cuadros.canal"),
+      "correo",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /cuadros\.recibir/ }),
+    );
+    const alta = llamadas.find(
+      (l) => l.ruta === "/api/v1/cuadros-mando/suscripciones" && l.cuerpo,
+    );
+    expect(alta?.cuerpo).toMatchObject({ cuadro_id: "c2", canal: "correo" });
+    expect(await screen.findByText(/cuadros\.teLlega/)).toBeInTheDocument();
   });
 });

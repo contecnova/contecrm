@@ -12,11 +12,12 @@ es de lo que el GRC hace con la respuesta.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Iterator
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore.fechas import hoy
 from starlette.testclient import TestClient
 
 pytestmark = pytest.mark.db
@@ -85,7 +86,7 @@ class Identidad:
     """Lo que contestaría identity a tenancy, editable entre llamadas."""
 
     def __init__(self) -> None:
-        manana = (date.today() + timedelta(days=30)).isoformat()
+        manana = (hoy() + timedelta(days=30)).isoformat()
         self.usuario = str(uuid4())
         self.exento = str(uuid4())
         self.reglas = [
@@ -392,7 +393,7 @@ def test_lo_no_contestado_a_tiempo_se_marca_y_se_avisa_crm_07_03_02_15(
         json={"nombre": "Tarde", "revisor_por_defecto": str(quien)},
     )
     campana = db.get(rec.CampanaRecertificacion, UUID(r.json()["id"]))
-    campana.plazo_at = date.today() - timedelta(days=1)
+    campana.plazo_at = hoy() - timedelta(days=1)
     db.flush()
 
     r = identidad.post("/api/v1/recertificacion/vencidas", headers=cabeceras)
@@ -432,4 +433,4 @@ def test_la_campana_cerrada_es_la_evidencia_del_control_de_accesos_crm_07_03_02_
     assert r.json()["resultado"] == "efectivo", r.text
     evidencias = tenancy.get("/api/v1/grc/evidencias?control=REC-ACCESOS", headers=cabeceras).json()
     assert evidencias[0]["referencia"] == cerrada["id"]
-    assert evidencias[0]["caduca_at"] == (date.today() + timedelta(days=91)).isoformat()
+    assert evidencias[0]["caduca_at"] == (hoy() + timedelta(days=91)).isoformat()

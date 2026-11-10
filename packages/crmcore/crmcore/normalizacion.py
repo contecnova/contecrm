@@ -227,30 +227,12 @@ def dominio_de(email_o_web: str | None) -> str:
     valor = valor.split("/")[0].split("?")[0]
     valor = valor.removeprefix("www.")
     # Los dominios de correo genéricos NO identifican una empresa: dos clientes
-    # distintos pueden tener los dos una dirección de gmail.
-    return "" if valor in DOMINIOS_GENERICOS else valor
+    # distintos pueden tener los dos una dirección de gmail. La lista es el
+    # ajuste `dominios_correo_genericos` (era la constante DOMINIOS_GENERICOS).
+    from crmcore.config import get_settings
 
-
-DOMINIOS_GENERICOS = frozenset(
-    {
-        "gmail.com",
-        "hotmail.com",
-        "outlook.com",
-        "outlook.es",
-        "yahoo.com",
-        "yahoo.es",
-        "icloud.com",
-        "me.com",
-        "live.com",
-        "msn.com",
-        "aol.com",
-        "protonmail.com",
-        "proton.me",
-        "gmx.com",
-        "terra.es",
-        "telefonica.net",
-    }
-)
+    genericos = {d.strip().lower() for d in get_settings().dominios_correo_genericos}
+    return "" if valor in genericos else valor
 
 
 def normalizar_telefono(telefono: str | None, pais: str = "ES") -> str:

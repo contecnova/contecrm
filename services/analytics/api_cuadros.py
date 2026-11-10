@@ -200,7 +200,10 @@ def revocar(enlace_id: UUID, uow: UowDep) -> Any:
 class Suscribirse(BaseModel):
     cuadro_id: UUID
     periodicidad: str = Field("semanal", description="diaria · semanal · mensual")
-    hora: int = Field(8, ge=0, le=23)
+    hora: int = Field(8, ge=0, le=23, description="Hora de reloj en la zona del tenant")
+    canal: str = Field("app", description="app · correo · push · sms · webhook")
+    dia_semana: int | None = Field(None, ge=0, le=6, description="Lunes = 0; sólo semanal")
+    dia_mes: int | None = Field(None, ge=1, le=28, description="Sólo mensual")
 
 
 @router.post(
@@ -221,11 +224,69 @@ def suscribirse(datos: Suscribirse, uow: UowDep, principal: AutenticadoDep) -> A
         usuario_id=principal.id,
         periodicidad=datos.periodicidad,
         hora=datos.hora,
+        canal=datos.canal,
+        dia_semana=datos.dia_semana,
+        dia_mes=datos.dia_mes,
     )
+    return _suscripcion_out(fila, uow)
+
+
+def _suscripcion_out(fila: Any, uow: Any) -> dict[str, Any]:
+    from services.analytics.informes import zona_de_programacion
+
     return {
         "id": str(fila.id),
+        "cuadro_id": str(fila.cuadro_id),
+        "periodicidad": fila.periodicidad,
+        "hora": fila.hora,
+        "dia_semana": fila.dia_semana,
+        "dia_mes": fila.dia_mes,
+        "canal": fila.canal,
+        "activa": fila.activa,
+        "zona": str(zona_de_programacion(uow.db)),
         "proxima_at": fila.proxima_at.isoformat() if fila.proxima_at else None,
+        "ultima_at": fila.ultima_at.isoformat() if fila.ultima_at else None,
+        "ultimo_error": fila.ultimo_error,
     }
+
+
+@router.get(
+    "/suscripciones/mia",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Mi suscripción a un cuadro",
+    description="La de quien pregunta; `null` si no está suscrito.",
+)
+def mi_suscripcion(cuadro_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = cua.suscripcion_de(uow, cuadro_id=cuadro_id, usuario_id=principal.id)
+    return _suscripcion_out(fila, uow) if fila is not None else None
+
+
+@router.post(
+    "/suscripciones/{cuadro_id}/baja",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Dejar de recibir un cuadro",
+    description="Sólo la propia: se apaga, no se borra.",
+)
+def baja(cuadro_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = cua.suscripcion_de(uow, cuadro_id=cuadro_id, usuario_id=principal.id)
+    if fila is None:
+        return None
+    fila.activa = False
+    uow.db.flush()
+    return _suscripcion_out(fila, uow)
+
+
+@router.post(
+    "/suscripciones/correr",
+    dependencies=[Depends(exige_permiso("informe:write"))],
+    summary="Mandar ya las suscripciones que tocan",
+    description=(
+        "Lo mismo que hace la tarea `analytics.suscripciones_cuadro` cada "
+        "intervalo, para el tenant de quien llama."
+    ),
+)
+def correr_suscripciones(uow: UowDep, principal: AutenticadoDep) -> Any:
+    return cua.correr_suscripciones(uow, principal.tenant_id)
 
 
 # ── Incrustar fuera: dos puertas, y ninguna pide sesión del CRM ───────────

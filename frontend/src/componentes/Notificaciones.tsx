@@ -49,8 +49,11 @@ interface Aviso {
  * revisión de accesos se contesta en la bandeja de aprobaciones
  * (CRM-07.03.02.15): un aviso que no llevara allí obligaría a buscarla.
  */
+// `{id}` se cambia por el `objeto_id` del aviso.
 const PANTALLA_DE: Record<string, string> = {
   campana_recertificacion: "/aprobaciones",
+  // La suscripción a un cuadro de mando (CRM-05.01.02.05) abre ese cuadro.
+  cuadro_mando: "/cuadros?cuadro={id}",
 };
 
 const MODULO_DE: Record<string, string> = {
@@ -202,7 +205,10 @@ export function Notificaciones() {
                   </>
                 );
                 const pantalla = a.objeto_tipo
-                  ? PANTALLA_DE[a.objeto_tipo]
+                  ? PANTALLA_DE[a.objeto_tipo]?.replace(
+                      "{id}",
+                      a.objeto_id ?? "",
+                    )
                   : undefined;
                 return (
                   <li key={a.id}>

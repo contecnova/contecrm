@@ -120,6 +120,13 @@ def test_el_subject_de_publicar_y_el_de_suscribirse_son_hermanos() -> None:
     from crmcore.bus.memoria import _coincide
 
     assert _coincide(publicado, patron)
+    # «Todo» recibe cualquier tipo, también con puntos; y un patrón concreto no
+    # se traga lo que va detrás (10-11-2026: con `*.*` no llegaba nada en NATS).
+    todo = subject_patron("contecrm", "*")
+    assert todo == "contecrm.*.>"
+    assert _coincide(publicado, todo)
+    assert not _coincide(publicado, "contecrm.*.*")
+    assert not _coincide(f"contecrm.{tenant}.account.health.scored.v2", patron)
 
 
 async def test_el_manejador_reconoce_el_tipo_del_evento() -> None:

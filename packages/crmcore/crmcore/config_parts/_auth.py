@@ -65,6 +65,12 @@ class _AuthSettings(BaseSettings):
     # la empresa en la que entra; el interruptor global sigue sumando, nunca
     # restando. Se cambia por empresa desde Identidad y seguridad.
     mfa_obligatoria_roles: list[str] = Field(default_factory=list)
+    # MFA adaptativa (CRM-00.05.01.21): minutos entre entradas desde dos países
+    # por debajo de los cuales es un «salto imposible», y días sin entrar a
+    # partir de los que volver cuenta como cambio de contexto. Eran 120 y 30
+    # escritos en `factores.evaluar_riesgo` (barrido del 10-11-2026).
+    mfa_minutos_salto_imposible: int = Field(120, ge=5, le=1_440)
+    mfa_dias_ausencia: int = Field(30, ge=1, le=365)
     # Ventana de códigos TOTP aceptados hacia atrás y adelante, para absorber
     # relojes desajustados. Cada paso son 30 s; 1 = ±30 s.
     totp_ventana_pasos: int = Field(1, ge=0, le=10)

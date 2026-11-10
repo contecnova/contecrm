@@ -43,9 +43,15 @@ PREFIJO_CLAVE = "crm_"
 
 
 def hashear_contrasena(contrasena: str) -> str:
-    if len(contrasena) < 12:
+    # El mínimo es `contrasena_minimo` (Settings), el mismo que exige el
+    # restablecer. Aquí había un 12 escrito: subir el ajuste endurecía el
+    # restablecer y dejaba igual el alta y el cambio de contraseña.
+    from crmcore.config import get_settings
+
+    minimo = get_settings().contrasena_minimo
+    if len(contrasena) < minimo:
         raise ErrorValidacion(
-            "La contraseña debe tener al menos 12 caracteres",
+            f"La contraseña debe tener al menos {minimo} caracteres",
             error_code="auth.contrasena_corta",
         )
     return _hasher.hash(contrasena)

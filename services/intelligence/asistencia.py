@@ -323,12 +323,15 @@ def proximos_pasos(
 
     pasos: list[dict[str, Any]] = []
     dias = int(utiles.get("dias_sin_contacto") or 0)
-    if dias >= 14:
+    # Ajustes `asistencia_dias_sin_contacto` y `…_urgente` (eran 14 y 30).
+    dias_aviso = int(_ajuste_runtime(db, "asistencia_dias_sin_contacto"))
+    dias_urgente = int(_ajuste_runtime(db, "asistencia_dias_sin_contacto_urgente"))
+    if dias >= dias_aviso:
         pasos.append(
             {
                 "que": "Retomar el contacto",
                 "porque": f"Llevan {dias} días sin ninguna interacción",
-                "urgencia": "alta" if dias >= 30 else "media",
+                "urgencia": "alta" if dias >= dias_urgente else "media",
             }
         )
     if utiles.get("presupuesto_abierto") and not utiles.get("reunion_de_cierre"):

@@ -579,6 +579,27 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="mfa_obligatoria_roles",
             sensible=True,
         ),
+        _c(
+            "mfa_minutos_salto_imposible",
+            "int",
+            (
+                "Minutos entre entradas desde dos países por debajo de los que se "
+                "pide el segundo factor (salto imposible)"
+            ),
+            minimo=5,
+            maximo=1440,
+            campo_settings="mfa_minutos_salto_imposible",
+            sensible=True,
+        ),
+        _c(
+            "mfa_dias_ausencia",
+            "int",
+            "Días sin entrar a partir de los que se pide el segundo factor al volver",
+            minimo=1,
+            maximo=365,
+            campo_settings="mfa_dias_ausencia",
+            sensible=True,
+        ),
         # Segundo factor y gobierno del SSO (CRM-00.05.01.13 .. .25). Todos
         # editables en caliente: el día que hay que apagar el SMS porque el
         # proveedor está caído, o forzar el SSO tras un incidente, esperar a un

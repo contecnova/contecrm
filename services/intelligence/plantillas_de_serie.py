@@ -68,10 +68,7 @@ DE_SERIE: dict[str, dict[str, Any]] = {
             "(qué pasó, con los datos que lo muestran), `senal_temprana` (qué señal "
             "se vio antes y no se atendió, o vacío si no la hubo), "
             "`que_hariamos_distinto` (qué haríamos distinto, concreto) y `factores` "
-            "(lista con los que apliquen de: precio, descuento_tardio, competidor, "
-            "sin_decisor, decisor_en_contra, sin_presupuesto_cliente, plazo, "
-            "producto_no_encaja, seguimiento_flojo, demasiado_tiempo_en_etapa, "
-            "fecha_movida, relacion, propuesta_de_valor, otro). Apóyate en las "
+            "(lista con los que apliquen de: {{factores}}). Apóyate en las "
             "`senales` y en la comparación con las ganadas; no supongas nada que "
             "el expediente no diga."
         ),

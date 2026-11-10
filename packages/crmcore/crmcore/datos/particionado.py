@@ -78,19 +78,6 @@ RETENCIONES = {
 }
 
 
-def _hoy(db: Any = None) -> date:
-    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
-
-    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
-    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
-    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
-    Madrid la respuesta sin sesión es **la de ayer**.
-    """
-    from crmcore.fechas import hoy as _hoy_del_cliente
-
-    return _hoy_del_cliente(db)
-
-
 def plan_de_particion(
     *, tabla: str, estrategia: str, meses_en_caliente: int = _particion_meses_en_caliente()
 ) -> dict[str, Any]:
@@ -138,7 +125,7 @@ def plan_de_particion(
 
 
 def particiones_a_crear(
-    *, ultima_existente: date, meses_por_delante: int = 3, hoy: date | None = None
+    *, ultima_existente: date, meses_por_delante: int = 3, hoy: date
 ) -> dict[str, Any]:
     """Qué particiones hay que crear antes de que hagan falta.
 
@@ -147,7 +134,7 @@ def particiones_a_crear(
     la transacción de un usuario, y con un bloqueo de tabla. Eso es un incidente
     con fecha conocida.
     """
-    momento = hoy or _hoy()
+    momento = hoy  # el día del cliente, que pone la ruta con `fechas.hoy(db)`
     objetivo = momento + timedelta(days=31 * meses_por_delante)
     este_mes = date(momento.year, momento.month, 1)
     faltan: list[str] = []
@@ -177,7 +164,7 @@ def particiones_a_crear(
     }
 
 
-def se_puede_archivar(*, fila: dict[str, Any], hoy: date | None = None) -> dict[str, Any]:
+def se_puede_archivar(*, fila: dict[str, Any], hoy: date) -> dict[str, Any]:
     """Si una fila se puede mover a frío, **y qué lo impide**.
 
     Lo que está bajo obligación legal, en un litigio o con una solicitud de acceso
@@ -185,7 +172,7 @@ def se_puede_archivar(*, fila: dict[str, Any], hoy: date | None = None) -> dict[
     accidente y romper otra obligación a la vez — y la que se rompe suele ser la
     cara.
     """
-    momento = hoy or _hoy()
+    momento = hoy  # el día del cliente, que pone la ruta con `fechas.hoy(db)`
     impedimentos = [
         {"motivo": clave, "porque": RETENCIONES[clave]} for clave in RETENCIONES if fila.get(clave)
     ]
@@ -225,9 +212,7 @@ def se_puede_archivar(*, fila: dict[str, Any], hoy: date | None = None) -> dict[
     }
 
 
-def archivar(
-    *, filas: list[dict[str, Any]], destino: str, hoy: date | None = None
-) -> dict[str, Any]:
+def archivar(*, filas: list[dict[str, Any]], destino: str, hoy: date) -> dict[str, Any]:
     """Prepara el archivado, **sin borrar nada**.
 
     Lo archivado **se sigue pudiendo consultar** y se dice dónde está. Un CRM al
@@ -240,7 +225,7 @@ def archivar(
             "Archivar sin decir a dónde es borrar con otro nombre",
             error_code="archivado.sin_destino",
         )
-    momento = hoy or _hoy()
+    momento = hoy  # el día del cliente, que pone la ruta con `fechas.hoy(db)`
     mueven, se_quedan = [], []
     for fila in filas:
         veredicto = se_puede_archivar(fila=fila, hoy=momento)

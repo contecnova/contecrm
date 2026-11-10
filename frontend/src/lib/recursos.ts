@@ -1139,6 +1139,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         permiso: "opportunity:read",
         columnas: ["titulo", "detalle", "hasta", "enviado_at"],
       },
+      // Los factores que se eligen al firmar una lección. Eran una tupla del
+      // código; ahora son el vocabulario `factores_leccion` de la empresa, y
+      // esta pestaña es donde añade o retira los suyos (10-11-2026).
+      {
+        nombre: "Factores de una lección",
+        listar: "/api/v1/sales/vocabularios/factores_leccion",
+        servicio: "sales",
+        columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
+      },
   ],
   "oportunidades": [
       {

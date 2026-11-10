@@ -1687,6 +1687,13 @@ su lección.
 Una lección firmada **no se cambia**: es lo que se sabía al firmarla. Si algo
 estaba mal, se dice en la siguiente.
 
+**Los factores los decide tu empresa.** En **Ventas › Lecciones aprendidas**,
+pestaña **«Factores de una lección»**, están los que se pueden marcar al firmar
+(precio, descuento tardío, competidor…). Quien administra puede añadir los
+suyos —por ejemplo separar «condiciones de pago» de «precio»— o desactivar los
+que no use; desactivar no borra, y las lecciones que ya lo llevan lo siguen
+enseñando. La propuesta de la IA elige entre los de tu empresa.
+
 **En una oportunidad abierta**, el panel **«Lo que dicen las lecciones»**
 enseña:
 
@@ -2138,6 +2145,27 @@ según lo que se haya preguntado—, con **Ver como tabla** arriba a la derecha 
   preguntar: si la lista sale vacía, primero hay que registrar el CRM como
   fuente.
 - Ve sólo lo que tú ves en las fichas: la pregunta viaja con tu identidad.
+
+### Que un panel te llegue solo
+
+**Analítica → Paneles**, elige el panel en el desplegable de arriba a la
+derecha. Debajo del título está la franja para recibirlo:
+
+1. **Cada**: cada día, cada semana o cada mes (la semanal sale el lunes y la
+   mensual el día 1).
+2. **Hora (Europe/Madrid)**: la hora de reloj **de tu empresa**, la que sale
+   entre paréntesis. «A las 8» es a las 8 también la semana del cambio de hora.
+3. **Por**: la bandeja del CRM (la campana de arriba), correo, notificación del
+   móvil, SMS o webhook. Las opciones las da el servidor.
+4. Pulsa **Recibirlo**. Debajo queda escrito «Te llega cada semana a las 8 h
+   (Europe/Madrid) por correo. La próxima: …». **Guardar** cambia lo elegido y
+   **Dejar de recibirlo** lo para.
+
+Lo que llega es el aviso con el nombre del panel; al pulsarlo se abre ese
+panel. **Las cifras se calculan al abrirlo, con tus permisos**: no viajan
+dentro del correo, para que nunca lleguen a un buzón cifras que tú no podrías
+ver. Te suscribes tú, y sólo a ti: no se puede apuntar a otra persona. Si el
+panel se borra, la suscripción se apaga y lo dice debajo, en rojo.
 
 ---
 

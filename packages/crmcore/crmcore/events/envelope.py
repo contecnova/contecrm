@@ -293,5 +293,14 @@ def subject_patron(prefijo: str, patron: str) -> str:
     El comodín es `*` —un solo segmento— y no `>`: `>` se tragaría también lo que
     viniera detrás del tipo, y un evento `account.created.v2` acabaría en el
     consumidor de `account.created`.
+
+    **Salvo para «todo»** (`patron == "*"`): ahí `prefijo.*.*` sólo casaba con
+    tipos de UN segmento, y todos los tipos llevan punto (`account.created`).
+    Medido el 10-11-2026 con NATS de verdad: los cuatro consumidores de todo
+    —avisos de identity, perfiles de marketing, reglas de automatización y
+    webhooks— no recibían nada, y la tabla de notificaciones seguía vacía.
+    `>` es justo «el tipo entero, tenga los puntos que tenga».
     """
+    if patron == "*":
+        return f"{prefijo}.*.>"
     return f"{prefijo}.*.{patron}"

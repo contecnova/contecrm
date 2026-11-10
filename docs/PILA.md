@@ -315,7 +315,18 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
     contecintelligence (las instantáneas y las preguntas que pasan por él no
     se han visto en vivo) y medir una a una las cinco piezas que la
     comparativa dice traer. contecmind sigue caído por la entrada 9.
-  - [ ] **Barrido de constantes** en el código entero: hoy no está medido, y
+  - [x] **Barrido de constantes** (10-11-2026, `scripts/barrido_constantes.py`):
+    20 umbrales de negocio pasan a ajuste, tres ajustes que existían ya se leen
+    y lo que queda va con su motivo. Pendientes: vocabularios candidatos
+    (roles de compra, funciones de contacto, resultados del marcador, motivos
+    de suspensión…), algunos umbrales (transcripción, caso parecido, sandbox)
+    y la ventana horaria de las cadencias, que se evalúa en UTC.
+  - [x] **El bus entregaba nada a los consumidores de «todo»** (10-11-2026):
+    `contecrm.*.*` no casa con tipos con punto; 30 consumidores (avisos,
+    reglas, webhooks, perfiles, cachés y extensiones de cada servicio) no
+    recibían nada en NATS. El bus en memoria lo escondía. Ahora `contecrm.*.>`
+    y el de memoria con las reglas de NATS.
+  - Era: **Barrido de constantes** en el código entero: hoy no está medido, y
     sin medirlo no se puede decir «nada hardcodeado».
   - [ ] **El rediseño pantalla por pantalla**, con medidas de usabilidad
     (clics y tiempo por tarea frecuente), no sólo a ojo.

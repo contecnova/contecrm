@@ -49,7 +49,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from services.sales.lecciones import FACTORES, ROTULO_FACTOR, LeccionOportunidad
+from services.sales.lecciones import ROTULO_FACTOR, LeccionOportunidad
 
 logger = get_logger(__name__)
 
@@ -333,7 +333,9 @@ def _texto_indexable(fila: LeccionOportunidad) -> str:
         f"Qué pasó: {fila.que_paso or ''}",
         f"Señal temprana: {fila.senal_temprana or ''}",
         f"Qué haríamos distinto: {fila.que_hariamos_distinto or ''}",
-        "Factores: " + ", ".join(f for f in fila.factores or [] if f in FACTORES),
+        # Se validaron al firmar contra el vocabulario del tenant: filtrar aquí
+        # por los de fábrica dejaba fuera del índice los que añadió la empresa.
+        "Factores: " + ", ".join(fila.factores or []),
         "Señales: " + " ".join(senales),
     ]
     return "\n".join(partes)

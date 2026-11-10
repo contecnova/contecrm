@@ -209,7 +209,10 @@ def planificar_envio(
 
 
 def comparar_con_hora_fija(
-    *, con_optimizacion: dict[str, Any], sin_optimizacion: dict[str, Any]
+    *,
+    con_optimizacion: dict[str, Any],
+    sin_optimizacion: dict[str, Any],
+    minimo_concluyente: int,
 ) -> dict[str, Any]:
     """Si personalizar la hora ha servido de algo.
 
@@ -231,11 +234,13 @@ def comparar_con_hora_fija(
         "tasa_con": round(con * 100, 2),
         "tasa_sin": round(sin * 100, 2),
         "diferencia_pp": round((con - sin) * 100, 2),
-        "concluyente": minimo >= 500,
+        # El mínimo es el ajuste `momento_minimo_envios_concluyente` (era 500);
+        # lo pone la ruta, que tiene la sesión.
+        "concluyente": minimo >= minimo_concluyente,
         "que_significa": (
             f"Con solo {minimo} envíos en la rama más pequeña, la diferencia no es "
             "concluyente: cabe entera dentro del ruido."
-            if minimo < 500
+            if minimo < minimo_concluyente
             else (
                 "Personalizar la hora mejora la respuesta."
                 if con > sin

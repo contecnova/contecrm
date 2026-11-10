@@ -96,6 +96,20 @@ ANALYTICS_SOURCE_REGISTERED = registrar(
     )
 )
 
+DASHBOARD_DELIVERED = registrar(
+    TipoEvento(
+        tipo="dashboard.delivered",
+        version=1,
+        productor="analytics",
+        descripcion=(
+            "Le toca a una suscripción a un cuadro de mando. Lleva el "
+            "destinatario y el canal que la suscripción declara; identity lo "
+            "convierte en un aviso y su repartidor lo entrega. No lleva cifras: "
+            "se calculan al abrir el cuadro, con los permisos de quien lo abre"
+        ),
+        campos=("cuadro_id", "suscripcion_id", "usuario_id", "titulo", "canales"),
+    )
+)
 DASHBOARD_ALERT_FIRED = registrar(
     TipoEvento(
         tipo="dashboard.alert.fired",

@@ -1268,7 +1268,9 @@ comprueba el cálculo.
 
 Las dos mitades de esa regla:
 
-- **Al calcular**: recibe `hoy: date | None = None` y no llames a `date.today()`.
+- **Al calcular**: recibe `hoy: date` **obligatorio** y no llames a
+  `date.today()` ni caigas al reloj si no viene (`hoy or _hoy()` era el día de
+  UTC con otro aspecto; desde el 10-11-2026 ninguna función pura lo hace).
 - **Al llamar**: pásale `fechas.hoy(db)`. Eso es el día **donde está el cliente**,
   no donde está el servidor.
 
@@ -5542,6 +5544,14 @@ principal de máquina y sólo `contact:write`).
 - **Medido el 10-11-2026**: 13 conexiones, 1 stream y 156 consumidores. La
   aprobación de un presupuesto hace ida y vuelta sales → orchestrator → sales
   en 2 s.
+- **Los consumidores de «todo» no recibían nada** (medido el 10-11-2026):
+  `subject_patron(prefijo, "*")` daba `contecrm.*.*`, que en NATS sólo casa
+  con tipos de un segmento, y todos llevan punto. Eran 30 consumidores —avisos
+  de identity, reglas de automatización, webhooks, perfiles de marketing y la
+  caché y las extensiones de cada servicio—. El bus en memoria lo escondía
+  porque traducía a `fnmatch`, donde `*` cruza puntos. Ahora «todo» es
+  `contecrm.*.>` y `bus/memoria._coincide` aplica las reglas exactas de NATS.
+  Visto en vivo: los 30 con todos los eventos entregados.
 - **Defecto que salió**: `aprobacion_de_presupuestos.consumir` dejaba una
   `SolicitudAprobacion` pendiente cuando `apr.crear` fallaba a mitad (sin
   aprobadores), porque el `except` confirma la misma transacción para emitir
@@ -5821,8 +5831,8 @@ calculaba sobre UTC y la pantalla la pedía como local: «a las 7» corría a la
   (`AnalisisCrm.tsx`) pone «Hora (Europe/Madrid)» y «a las 7 h (Europe/Madrid)».
 - Prueba: `tests/unit/test_informes.py::test_a_las_7_es_a_las_7_del_tenant_tambien_con_el_cambio_de_hora`
   (invierno, verano, las dos noches del cambio, semanal y mensual cruzándolo).
-- **Queda**: `SuscripcionCuadro` (cuadros de mando) guarda `hora` y
-  `proxima_at = ahora + 1 día`, y ningún barrido la ejecuta.
+- `SuscripcionCuadro` (cuadros de mando) usa ya el mismo cálculo: ver
+  «Suscripciones a paneles, «hoy» del cliente y segundo barrido» más abajo.
 
 **Documentos desde la ficha del registro (CRM-06.01.01.06).** Medido el
 10-11-2026: la generación funcionaba con datos escritos a mano, sacaba texto y
@@ -5885,6 +5895,148 @@ calculaba sobre UTC y la pantalla la pedía como local: «a las 7» corría a la
 `_comprobar_campos`, igual que `POST /informes`. Pantalla: `Explotacion.tsx`,
 botones en cada tarjeta. Prueba:
 `tests/unit/test_explotacion_fuente.py::test_solo_su_autor_publica_una_pregunta_para_el_equipo`.
+
+### Suscripciones a paneles, «hoy» del cliente y segundo barrido (10-11-2026)
+
+**Suscripciones a paneles (CRM-05.01.02.05).** Medido: `SuscripcionCuadro`
+guardaba `hora` y `proxima_at = ahora + 1 día` y ningún barrido la leía.
+
+- **Modelo y migración** `analytics/20261110_1800_suscripciones_cuadro_con_canal`
+  (revisión `8d2a1b3c4e56`): `canal` (`app` por defecto, de
+  `crmcore.datos.seguimiento.CANALES`), `dia_semana`, `dia_mes`, `ultima_at`,
+  `ultimo_error`.
+- **Cálculo**: `cuadros.suscribirse` y `cuadros.correr_suscripciones` usan
+  `informes._siguiente_ejecucion` con `informes.zona_de_programacion(db)` (zona
+  del tenant, leída una vez fuera del bucle). `_siguiente_ejecucion` acepta
+  cualquier objeto con `periodicidad`, `hora`, `dia_semana`, `dia_mes`.
+- **Barrido**: tarea `analytics.suscripciones_cuadro` en el relevo de tareas de
+  analytics (`main._tareas`), intervalo `tarea_informes_intervalo_s`, tenants de
+  la propia tabla. A mano: `POST /api/v1/cuadros-mando/suscripciones/correr`
+  (`informe:write`).
+- **Entrega**: emite `dashboard.delivered` (nuevo en `events/dominio.py` y en el
+  catálogo) con `usuario_id`, `titulo`, `cuerpo` y `canales: [canal]`.
+  `identity.notificaciones.AVISOS["dashboard.delivered"]` lo convierte en
+  `Notificacion` sólo para ese usuario (`solo_destinatarios`) y, con la regla
+  nueva `solo_canales_del_evento`, sin preferencia propia sale **sólo** por el
+  canal de la suscripción (`canales_por_defecto = canales del evento`); el
+  repartidor de identity lo entrega. No lleva cifras: el barrido no tiene los
+  roles del suscriptor.
+- Cuadro borrado o desactivado → `activa = False` y `ultimo_error`.
+- **API**: `POST /cuadros-mando/suscripciones` (cuerpo con `canal`,
+  `dia_semana`, `dia_mes`; devuelve la suscripción con `zona`), `GET
+  /cuadros-mando/suscripciones/mia?cuadro_id=`, `POST
+  /cuadros-mando/suscripciones/{cuadro_id}/baja`.
+- **Pantalla**: `Cuadros.tsx` (`RecibirCuadro`; canales de `GET
+  /notificaciones/canales`) y `?cuadro=<id>` abre ese panel; la bandeja
+  (`Notificaciones.tsx`, `PANTALLA_DE.cuadro_mando = "/cuadros?cuadro={id}"`).
+- **Pruebas**: `tests/unit/test_la_suscripcion_a_un_cuadro_llega.py` (Madrid, la
+  noche del 24 al 25-10-2026: sale a las 05:00 UTC y la siguiente a las 06:00
+  UTC; el evento de la tabla de salida acaba en un aviso sólo por correo; cuadro
+  borrado apaga la suscripción) y `frontend/src/pruebas/cuadros.test.tsx`.
+
+**«Hoy» del cliente: el guardián en verde.**
+`test_hoy_es_el_del_cliente_en_todas_partes.py` acusaba 6 sitios con sesión a
+mano y 19 sin sesión (tope 15). Ahora: 0 y 2.
+
+- Con sesión, a `fechas.hoy(db)`: `lecciones.expediente`,
+  `documento_registro.reunir` y `_nombre_fichero`, `datos_crm.embudo_crm` y
+  `actividad_crm`.
+- Funciones puras que caían al reloj si no les pasaban el día: `hoy`/`desde`
+  **obligatorio** en `plan_conjunto.estado_del_plan` y `sin_revisar`,
+  `costes.preparar_peticion`, `recoger_respuestas` y
+  `fecha_que_se_puede_prometer`, `proveedores_comercial.estado_del_contrato`,
+  `particionado.particiones_a_crear`, `se_puede_archivar` y `archivar`,
+  `sandboxes.caducados`, `activos.se_puede_usar`, `cohortes.cohortes` y
+  `embudo`, `predictivo.rasgos_oportunidad` y `_extra`. Las rutas que sólo
+  traían cuerpo (`/sandboxes/caducados`, `/activos-marketing/se-puede-usar`,
+  `/analisis/cohortes`, `/analisis/embudo`, `/momento/comparar`) reciben `db` y
+  lo ponen. Se quitan los `_hoy()` locales que quedaron sin uso.
+- `baja._leeme(…, generada=)`: el día del cliente al exportar y el de la
+  exportación (no el de la purga) al rehacerla. `puerto._hoy_iso` abre una
+  sesión del tenant del contexto.
+- **Quedan dos, con motivo** (escrito en el propio guardián, que lleva el tope a
+  2): `obs/slo.py::periodo` (el
+  mes del SLO es de la plataforma, en UTC) y `gateway/sandbox_api.py::_valor`
+  (fecha de un dato sintético; el gateway no tiene base de datos).
+  La lista de funciones que reciben el día y aun así miran el reloj baja de 3 a
+  1 (`slo.periodo`). Las pruebas que preguntaban la fecha a la
+  máquina (`test_ia_predictivo_entrenado`, `test_todo_controlado_por_el_grc`)
+  usan `fechas.hoy()`.
+
+**Segundo barrido: comparaciones y listas.** `scripts/barrido_constantes.py`
+cuenta ahora aparte `semilla_vocabulario`: una lista que se pasa a
+`vocabulario.registrar` son los valores de fábrica de un vocabulario que edita
+la empresa, no un límite.
+
+| Categoría | Al empezar | Después |
+|---|---|---|
+| `comparacion` | 288 | 279 |
+| `lista_str` | 401 | 396 (+3 `semilla_vocabulario`) |
+| `parametro` | 162 | 161 |
+
+Convertido (Settings + `ClaveAjuste`, editable en Configuración salvo donde se
+dice):
+
+| Clave | Defecto | Era | Dónde se lee |
+|---|---|---|---|
+| `contrasena_minimo` (ya existía) | 12 | un 12 en `servicio.hashear_contrasena` | `hashear_contrasena`; el alta y el cambio no seguían al ajuste que sí leía el restablecer |
+| `mfa_minutos_salto_imposible` | 120 | `evaluar_riesgo` | `identity.api` al entrar, con la sesión; sin ella, el `.env` |
+| `mfa_dias_ausencia` | 30 | defecto de `evaluar_riesgo` | ídem |
+| `territorio_excepcion_aviso_dias` | 30 | `territorios.excepciones_de` | ídem, una vez |
+| `envio_umbral_rebote_duro_pct` | 2,0 | `campanas.salud_de_envio` | ídem; también sale en la respuesta |
+| `envio_umbral_queja_pct` | 0,1 | ídem | ídem |
+| `momento_minimo_envios_concluyente` | 500 | `momento.comparar_con_hora_fija` | la ruta `/momento/comparar` |
+| `salud_cobertura_minima_pct` | 50 | `salud.medir` | ídem, una vez |
+| `salud_delta_aviso_puntos` | 5 | ídem | ídem |
+| `asistencia_dias_sin_contacto` | 14 | `asistencia.proximos_pasos` | ídem |
+| `asistencia_dias_sin_contacto_urgente` | 30 | ídem | ídem |
+| `sms_palabras_baja` | baja, stop, cancelar, unsubscribe, no | `canales.PALABRAS_BAJA` | `canales.procesar_entrante` |
+| `dominios_correo_genericos` (sólo `.env`) | gmail.com… (16) | `normalizacion.DOMINIOS_GENERICOS` | `normalizacion.dominio_de`, función pura sin sesión |
+
+Y un vocabulario nuevo, `factores_leccion` (los 14 de `lecciones.FACTORES`
+como semilla): `firmar` valida contra `lecciones.factores_validos(db)`, la ficha
+devuelve esos en `factores_posibles`, `_leer_borrador` recibe los válidos, el
+índice de consejos ya no filtra por los de fábrica y la plantilla
+`leccion_oportunidad` de intelligence recibe `{{factores}}` en vez de la lista
+escrita. Pestaña «Factores de una lección» en Lecciones (`recursos.ts`).
+Pruebas: `test_lecciones_aprendidas.py` (firma con un factor añadido por la
+empresa), `test_restablecer_contrasena.py::test_el_alta_y_el_cambio_exigen_el_minimo_del_ajuste`.
+
+**Lo que se queda, con su motivo** (recorridas las 279 y las 396):
+
+- **Comparaciones**: 152 son códigos HTTP/SMTP (protocolo); 46 son formato o
+  calendario (longitud de un NIF o un teléfono, partes de una ruta, latitud,
+  diciembre, fin de semana); 5 son épsilon numérico. De las 76 restantes:
+  definiciones de estándar (NPS 9/6, luminancia WCAG 0,03928, trimestres,
+  correlación 0,4/0,7, severidad por sigmas —el umbral de disparo ya es por
+  serie—, «factor resistente a phishing» = fuerza 3); mínimos de muestra de un
+  cálculo estadístico (10, 20, 200 ejemplos…: bajar uno no es una decisión de
+  negocio sino dar por buena una conclusión que no lo es); topes de validación
+  de entrada (12 pasos de cadencia, 200 cambios, 25 actividades, motivo de 10
+  letras, `timeout_ms` 3000, canario 1–25 %); y umbrales de operación de la
+  plataforma (`obs/presion` 0,6/0,9, `obs/escalado` 80 %, particionado), que
+  son del despliegue y no de un cliente.
+- **Listas**: 71 son estados de una máquina del sistema con código detrás de
+  cada uno —los de negocio que una empresa cambia ya tienen su máquina
+  configurable (`crmcore.datos.estados`, `con_significado`) y no se duplican—;
+  55 son protocolo (métodos HTTP, algoritmos, esquemas TLS, operadores); 63 son
+  estructura (campos, columnas, lo que no se copia); y el resto, 207, son
+  catálogos cerrados que el código interpreta valor a valor (tipos de
+  componente, de nodo, de paso, acciones): un valor nuevo sin su rama sería un
+  hueco.
+- **Candidatas a vocabulario, siguiente bloque** (se validan contra la
+  constante y no tienen rama de código, sólo son etiquetas de negocio):
+  `ingresos.ROLES_COMPRA`, `proveedores.FUNCIONES_CONTACTO`,
+  `party.servicio.ROLES_EQUIPO`, `cuenta_360.RELACIONES`,
+  `marcador.RESULTADOS`, `postventa.MOTIVOS_SUSPENSION`. Las de party y service
+  piden además la pantalla por servicio (hoy «Vocabularios de negocio» sólo
+  lista los de ventas). Y umbrales que un administrador podría querer:
+  `transcripcion` 40 %, `caso_semantico` 15 %, `convivencia` 30 días,
+  `sandboxes` 20 %.
+- **Avisado, no tocado**: la ventana horaria de las cadencias
+  (`cadencias._siguiente_laborable`: 8, 9 y 19 h) se evalúa sobre el instante
+  en UTC, no en la zona del tenant; pasarla a ajuste sin arreglar eso sería
+  dar a elegir una hora que no es la que se aplica.
 
 ## 5. Operación
 

@@ -45,10 +45,24 @@ PATRONES = ("datetime.now(timezone.utc).date()", "date.today()")
 #                   UTC todavía es diciembre y el informe que se abre solo salía
 #                   con el trimestre anterior.
 #
-# Los quince que quedan son funciones **puras** con parámetro `hoy`: no calculan
-# la fecha, la reciben, y quien las llama con sesión ya se la pasa. Bajar de ahí
-# no es arreglar nada: es quitarles la pureza.
-MAXIMO_SIN_SESION = 15
+#   10-11-2026   2  medido en 19 (había vuelto a subir) y 6 más CON sesión a
+#                   mano. Las funciones puras que recibían `hoy` y caían al
+#                   reloj si no venía (plan conjunto, costes, contrato de
+#                   proveedor, particionado, sandboxes, activos, cohortes y
+#                   embudo, rasgos de predicción) lo exigen ya: lo pone quien
+#                   tiene la sesión, y las rutas que sólo traían cuerpo reciben
+#                   `db` para ponerlo. `_leeme` de la baja recibe el día de la
+#                   exportación y `puerto._hoy_iso` abre sesión del tenant del
+#                   contexto.
+#
+# Los dos que quedan, con su motivo:
+#   · `obs/slo.py::periodo` — el mes del compromiso de servicio es de la
+#     plataforma, no de un cliente: lo cuenta el middleware de todos los
+#     tenants a la vez, y en UTC es como se mide un SLO.
+#   · `gateway/sandbox_api.py::_valor` — la fecha de un dato SINTÉTICO de un
+#     entorno de pruebas recién creado; el gateway no tiene base de datos y el
+#     tenant del sandbox nace sin zona propia (UTC).
+MAXIMO_SIN_SESION = 2
 
 
 # Ayudantes locales que resuelven «hoy». Llamarlos **sin sesión** teniéndola a
@@ -163,7 +177,7 @@ def test_ningun_calculo_de_hoy_con_sesion_a_mano_la_ignora() -> None:
 
 
 def test_los_que_no_tienen_sesion_estan_contados() -> None:
-    """Los 19 restantes no empeoran nada —siguen en UTC, como antes— pero el
+    """Los que quedan (dos, con su motivo en `MAXIMO_SIN_SESION`) siguen en UTC; el
     número no puede crecer sin que alguien lo decida."""
     _, sin_sesion = _calculos_de_hoy()
     assert len(sin_sesion) <= MAXIMO_SIN_SESION, (
@@ -231,9 +245,9 @@ def test_con_la_zona_del_cliente_el_dia_cambia(
 # su contrato y no se hace de pasada.
 #
 #   06-10-2026  3  medición inicial, al fundir aquí el guardián que estaba aparte
+#   10-11-2026  1  `cohortes` y `embudo` exigen `hoy`; sus rutas reciben `db`
+#                  y lo ponen con `fechas.hoy(db)`.
 CAEN_A_UTC_SIN_DIA = [
-    "services/analytics/cohortes.py::cohortes",
-    "services/analytics/cohortes.py::embudo",
     "packages/crmcore/crmcore/obs/slo.py::periodo",
 ]
 

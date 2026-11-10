@@ -171,9 +171,23 @@ class AjustesSales(Settings):
     # En qué embudo nace (su clave). Vacío: el embudo por defecto.
     renovacion_embudo: str = ""
 
+    # ── Territorios (CRM-03.04) ────────────────────────────────────────────
+    # Días antes de su `hasta` en que una excepción de territorio sale
+    # señalada como «vence pronto»: al caducar, la cuenta cambia de dueño.
+    # Era un 30 escrito en `excepciones_de` (barrido del 10-11-2026).
+    territorio_excepcion_aviso_dias: int = Field(30, ge=1, le=365)
+
 
 registrar_claves(
     [
+        ClaveAjuste(
+            clave="territorio_excepcion_aviso_dias",
+            tipo="int",
+            descripcion="Días antes de vencer en que una excepción de territorio sale señalada",
+            minimo=1,
+            maximo=365,
+            campo_settings="territorio_excepcion_aviso_dias",
+        ),
         ClaveAjuste(
             clave="descuento_libre_pct",
             tipo="int",

@@ -586,6 +586,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "opportunity:read",
       "o": "resumen_lecciones",
       "s": "sales"
+    },
+    {
+      "r": "/api/v1/sales/vocabularios/factores_leccion",
+      "s": "sales"
     }
   ],
   "oportunidades": [

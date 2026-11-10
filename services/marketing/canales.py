@@ -67,8 +67,8 @@ BAJAS_POR_CANAL: dict[str, str] = {
     "whatsapp": "botón de la plantilla y bloqueo del proveedor",
     "push": "permiso del navegador o del dispositivo",
 }
-# Palabras que cuentan como baja en SMS. Se comparan sin acentos ni mayúsculas.
-PALABRAS_BAJA = ("baja", "stop", "cancelar", "unsubscribe", "no")
+# Las palabras que cuentan como baja en SMS son el ajuste `sms_palabras_baja`
+# (era la constante PALABRAS_BAJA): se comparan sin acentos ni mayúsculas.
 
 
 class Canal(Base, TimestampMixin, SoftDeleteMixin):
@@ -295,7 +295,7 @@ def _sin_tildes(texto: str) -> str:
     )
 
 
-def es_palabra_de_baja(texto: str) -> bool:
+def es_palabra_de_baja(texto: str, palabras: list[str] | None = None) -> bool:
     """Si un mensaje entrante pide la baja.
 
     Se compara **la primera palabra sin acentos ni mayúsculas**: quien escribe
@@ -303,8 +303,13 @@ def es_palabra_de_baja(texto: str) -> bool:
     exacta deja sin efecto una baja que la persona sí pidió — que es lo que
     acaba en denuncia.
     """
+    if palabras is None:
+        from services.marketing.ajustes import valor
+
+        palabras = list(valor("sms_palabras_baja") or [])
+    admitidas = {_sin_tildes(p).strip() for p in palabras}
     primera = _sin_tildes(texto).split()[:1]
-    return bool(primera) and primera[0] in PALABRAS_BAJA
+    return bool(primera) and primera[0] in admitidas
 
 
 def procesar_entrante(
@@ -317,7 +322,9 @@ def procesar_entrante(
     escribe autoriza a contestarle sin plantilla.
     """
     destino = destino.strip().lower()
-    baja = es_palabra_de_baja(texto)
+    from services.marketing.ajustes import valor
+
+    baja = es_palabra_de_baja(texto, list(valor("sms_palabras_baja", uow.db) or []))
     fila = uow.db.execute(
         select(ConsentimientoCanal).where(
             ConsentimientoCanal.tenant_id == uow.tenant_id,

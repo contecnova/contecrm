@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from crmcore.http.deps import AutenticadoDep, exige_permiso
+from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
@@ -98,9 +98,13 @@ def plan(cuerpo: PlanIn, principal: AutenticadoDep) -> Any:
         "la mejora que venía del asunto del correo."
     ),
 )
-def comparar(cuerpo: CompararIn, principal: AutenticadoDep) -> Any:
+def comparar(cuerpo: CompararIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.marketing.ajustes import valor
+
     return mom.comparar_con_hora_fija(
-        con_optimizacion=cuerpo.con_optimizacion, sin_optimizacion=cuerpo.sin_optimizacion
+        con_optimizacion=cuerpo.con_optimizacion,
+        sin_optimizacion=cuerpo.sin_optimizacion,
+        minimo_concluyente=int(valor("momento_minimo_envios_concluyente", db)),
     )
 
 

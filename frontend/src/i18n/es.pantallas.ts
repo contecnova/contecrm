@@ -1989,6 +1989,24 @@ const pantallas = {
     sinComponentes: "Este cuadro no tiene componentes",
     sinComponentesDetalle: "Añade uno apuntando a un informe.",
     ignoraFiltros: "No le afectan los filtros del cuadro",
+    recibir: "Recibirlo",
+    guardarRecibir: "Guardar",
+    dejarDeRecibir: "Dejar de recibirlo",
+    cada: "Cada",
+    hora: "Hora",
+    horaEnZona: "Hora ({{zona}})",
+    canal: "Por",
+    canales: {
+      app: "La bandeja del CRM",
+      correo: "Correo",
+      push: "Notificación del móvil",
+      sms: "SMS",
+      webhook: "Webhook",
+    },
+    teLlega:
+      "Te llega {{cada}} a las {{h}} h ({{zona}}) por {{canal}}. La próxima: {{cuando}}. Las cifras se calculan al abrirlo, con tus permisos.",
+    noTeLlega:
+      "No te llega solo. Elige cada cuánto, a qué hora y por dónde, y pulsa «Recibirlo».",
   },
   cuenta: {
     jerarquia: "De qué grupo forma parte",

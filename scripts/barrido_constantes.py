@@ -12,7 +12,10 @@ ni config_parts, ni runtime/keys.py, ni config.py— y clasifica por AST:
   umbral, dias, horas, pct, margen, ventana, fallos…) que no sea técnico;
 - comparacion: un número no trivial dentro de una comparación;
 - constante_num: `MAYUSCULAS = número` a nivel de módulo;
-- lista_str: `MAYUSCULAS = (\"a\", \"b\")` (tupla, lista, set o frozenset de textos).
+- lista_str: `MAYUSCULAS = (\"a\", \"b\")` (tupla, lista, set o frozenset de textos);
+- semilla_vocabulario: una lista_str que se pasa a `vocabulario.registrar`: son
+  los valores de fábrica de un vocabulario que la empresa edita, no un límite
+  (desde el 10-11-2026 se cuentan aparte).
 
 **Da candidatos, no veredictos.** Cada uno se mira a mano: un `limite=50` de
 un listado es paginación, un `VERSION_SOBRE = 1` es protocolo y una lista de
@@ -75,6 +78,16 @@ for p in ficheros:
         arbol = ast.parse(p.read_text())
     except Exception:
         continue
+    # Las listas que siembran un vocabulario editable (`vocabulario.registrar`).
+    semillas = {
+        a.id
+        for n in ast.walk(arbol)
+        if isinstance(n, ast.Call)
+        and getattr(n.func, "attr", "") == "registrar"
+        and getattr(getattr(n.func, "value", None), "id", "") == "vocabulario"
+        for a in n.args[1:2]
+        if isinstance(a, ast.Name)
+    }
     for n in ast.walk(arbol):
         # 1. plazos: timedelta(days=30)
         if (
@@ -132,7 +145,7 @@ for p in ficheros:
                         )
                     ):
                         nota(
-                            "lista_str",
+                            "semilla_vocabulario" if nombre in semillas else "lista_str",
                             p,
                             s,
                             f"{nombre} = ({len(v.elts)} valores) {ast.unparse(v)[:70]}",

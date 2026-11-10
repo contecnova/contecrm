@@ -21,10 +21,11 @@ y la pantalla lo enseña. Un embudo de las dos mil más recientes presentado com
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from crmcore.fechas import hoy as hoy_del_cliente
 from crmcore.logging import get_logger
 from crmcore.runtime import settings as rt
 from sqlalchemy import select
@@ -317,7 +318,9 @@ def cohortes_crm(
         }
         for c in cuentas
     ]
-    salida = coh.cohortes(sujetos=sujetos, periodo=periodo, periodos=periodos, hoy=hoy)
+    salida = coh.cohortes(
+        sujetos=sujetos, periodo=periodo, periodos=periodos, hoy=hoy or hoy_del_cliente(db)
+    )
     salida["procedencia"] = lec.procedencia
     salida["sujeto"] = "cuenta"
     return salida
@@ -374,7 +377,7 @@ def embudo_crm(
     )
     nombre_de = {str(e.get("id")): str(e.get("nombre")) for e in etapas}
     ventana = _ajuste("analisis_dias_ventana", db, 365)
-    corte = desde or ((hoy or datetime.now(timezone.utc).date()) - timedelta(days=ventana))
+    corte = desde or ((hoy or hoy_del_cliente(db)) - timedelta(days=ventana))
     oportunidades = [
         o
         for o in lec.leer("oportunidad")
@@ -401,7 +404,7 @@ def embudo_crm(
     salida = coh.embudo(
         etapas=[nombre_de[str(e.get("id"))] for e in etapas],
         recorridos=recorridos,
-        hoy=hoy,
+        hoy=hoy or hoy_del_cliente(db),
         contar_saltadas=True,
     )
     lec.procedencia["historial_etapas"] = {
@@ -439,7 +442,7 @@ def actividad_crm(
     de la oportunidad—, en la misma ventana de tiempo para las dos series.
     """
     lec = lector or Lector(db, principal)
-    ahora = hoy or datetime.now(timezone.utc).date()
+    ahora = hoy or hoy_del_cliente(db)
     corte = desde or (ahora - timedelta(days=_ajuste("analisis_dias_ventana", db, 365)))
     por: dict[str, dict[str, Any]] = {}
 

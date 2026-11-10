@@ -49,26 +49,13 @@ def _acuerdo_dias_preaviso() -> int:
     return get_settings().acuerdo_dias_preaviso
 
 
-def _hoy(db: Any = None) -> date:
-    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
-
-    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
-    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
-    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
-    Madrid la respuesta sin sesión es **la de ayer**.
-    """
-    from crmcore.fechas import hoy as _hoy_del_cliente
-
-    return _hoy_del_cliente(db)
-
-
 def estado_del_contrato(
     *,
     vigente_hasta: date | None,
     renovacion_automatica: bool,
     dias_preaviso: int,
     compromisos_con_clientes: list[dict[str, Any]] | None = None,
-    hoy: date | None = None,
+    hoy: date,
 ) -> dict[str, Any]:
     """Qué hay que hacer con este contrato y cuándo, **mirando lo vendido**.
 
@@ -80,7 +67,8 @@ def estado_del_contrato(
     Y la **fecha límite de preaviso** es una fecha real: pasada, el contrato se
     renueva solo aunque nadie quisiera, y eso se descubre con la factura.
     """
-    momento = hoy or _hoy()
+    # El día del cliente, que ponen las rutas con su sesión.
+    momento = hoy
     if vigente_hasta is None:
         return {
             "estado": "sin_vigencia_declarada",

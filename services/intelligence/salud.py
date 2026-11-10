@@ -131,6 +131,15 @@ def _nivel(puntuacion: Decimal, umbrales: dict[str, int]) -> str:
     return "critica"
 
 
+def _ajuste_salud(db: Any, clave: str) -> Any:
+    from crmcore.runtime import settings as rt
+
+    from services.intelligence.ajustes import ajustes
+
+    valor = rt.efectivo(clave, db)
+    return getattr(ajustes(), clave) if valor is None else valor
+
+
 def medir(
     uow: UnidadDeTrabajo,
     *,
@@ -206,7 +215,10 @@ def medir(
     puntuacion = _redondear(acumulado / peso_cubierto)
     total = sum(int(p) for p in pesos_efectivos.values() if int(p) > 0)
     cobertura = round(100 * peso_cubierto / total, 1) if total else 0.0
-    fiable = cobertura >= 50
+    # Los dos umbrales son ajustes (eran 50 y 5): se leen una vez.
+    cobertura_minima = int(_ajuste_salud(uow.db, "salud_cobertura_minima_pct"))
+    delta_aviso = int(_ajuste_salud(uow.db, "salud_delta_aviso_puntos"))
+    fiable = cobertura >= cobertura_minima
 
     previa = (
         uow.db.execute(
@@ -231,7 +243,7 @@ def medir(
         motivo += f" Sin datos de: {', '.join(ausentes)} ({100 - cobertura:.0f}% del peso)."
     if previa is not None:
         delta = float(puntuacion) - float(previa.puntuacion)
-        if abs(delta) >= 5:
+        if abs(delta) >= delta_aviso:
             motivo += f" {'Sube' if delta > 0 else 'Baja'} {abs(delta):.0f} puntos desde la última medida."
 
     fila = SaludCuenta(

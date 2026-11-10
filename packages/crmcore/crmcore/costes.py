@@ -50,19 +50,6 @@ SENTIDOS = ("venta", "coste")
 REPARTOS = ("menor_coste", "mas_capacidad_libre", "por_acuerdo", "menor_plazo")
 
 
-def _hoy(db: Any = None) -> date:
-    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
-
-    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
-    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
-    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
-    Madrid la respuesta sin sesión es **la de ayer**.
-    """
-    from crmcore.fechas import hoy as _hoy_del_cliente
-
-    return _hoy_del_cliente(db)
-
-
 def _pct(numerador: Decimal, denominador: Decimal) -> Decimal:
     if denominador == 0:
         return Decimal(0)
@@ -348,7 +335,7 @@ def preparar_peticion(
     lineas: list[dict[str, Any]],
     fecha_limite: date,
     oportunidad_id: UUID | None,
-    hoy: date | None = None,
+    hoy: date,
 ) -> dict[str, Any]:
     """Prepara una petición de oferta ligada a lo que la motiva.
 
@@ -369,7 +356,9 @@ def preparar_peticion(
             "Una petición sin líneas pide un precio de nada",
             error_code="rfq.sin_lineas",
         )
-    momento = hoy or _hoy()
+    # El día del cliente lo pone quien tiene la sesión; caer al reloj de UTC
+    # cerraba el plazo un día antes de madrugada.
+    momento = hoy
     if fecha_limite <= momento:
         raise ErrorValidacion(
             "La fecha límite ya ha pasado: la respuesta llegaría cuando el cliente ya "
@@ -395,7 +384,7 @@ def recoger_respuestas(
     pedidas_a: list[UUID],
     respuestas: list[dict[str, Any]],
     fecha_limite: date,
-    hoy: date | None = None,
+    hoy: date,
 ) -> dict[str, Any]:
     """Qué ha contestado cada proveedor, y **quién no ha contestado**.
 
@@ -403,7 +392,9 @@ def recoger_respuestas(
     cinco no han contestado, la comparación no es entre cinco opciones, es entre
     dos — y decidir sin saberlo es creer que se ha comparado el mercado.
     """
-    momento = hoy or _hoy()
+    # El día del cliente lo pone quien tiene la sesión; caer al reloj de UTC
+    # cerraba el plazo un día antes de madrugada.
+    momento = hoy
     contestaron = {str(r.get("proveedor_id")) for r in respuestas}
     faltan = [str(p) for p in pedidas_a if str(p) not in contestaron]
     fuera_de_plazo = [
@@ -508,7 +499,7 @@ def fecha_que_se_puede_prometer(
     *,
     plazo_proveedor_dias: int | None,
     dias_propios: int = 2,
-    desde: date | None = None,
+    desde: date,
     festivos: list[date] | None = None,
 ) -> dict[str, Any]:
     """Qué fecha se le puede dar al cliente con este proveedor detrás.
@@ -520,7 +511,7 @@ def fecha_que_se_puede_prometer(
     Si el proveedor no declara plazo **no se inventa uno**: se dice que no se
     puede prometer fecha todavía, que es incómodo y es verdad.
     """
-    inicio = desde or _hoy()
+    inicio = desde
     if plazo_proveedor_dias is None:
         return {
             "se_puede_prometer": False,

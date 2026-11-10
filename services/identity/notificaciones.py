@@ -196,6 +196,21 @@ AVISOS: dict[str, dict[str, Any]] = {
         # enlace desde la ficha es un caso normal.
         "solo_destinatarios": True,
     },
+    # La suscripción a un cuadro de mando (CRM-05.01.02.05): a quien se
+    # suscribió y SÓLO a él, por el canal que declara la suscripción. Sin
+    # preferencia propia para este tipo sale sólo por ese canal; con ella, por
+    # los dos. Sin destinatario válido no cae a los seguidores del cuadro.
+    "dashboard.delivered": {
+        "objeto_tipo": "cuadro_mando",
+        "campo_id": "cuadro_id",
+        "titulo": "",
+        "titulo_campo": "titulo",
+        "cuerpo_campo": "cuerpo",
+        "destinatario_campo": "usuario_id",
+        "canales_campo": "canales",
+        "solo_canales_del_evento": True,
+        "solo_destinatarios": True,
+    },
     "automatizacion.aviso": {
         "objeto_tipo": None,
         "campo_id": "objeto_id",
@@ -375,6 +390,9 @@ async def consumir_evento(mensaje: Any) -> None:
                     )
                 )
 
+        forzados = (
+            tuple(datos.get(regla["canales_campo"]) or ()) if regla.get("canales_campo") else ()
+        )
         notificar(
             uow.db,
             tenant_id=tenant_id,
@@ -394,9 +412,13 @@ async def consumir_evento(mensaje: Any) -> None:
             # ser: quien escribe esa regla quiere que salga un correo, no que
             # salga por donde el destinatario prefiera recibir los avisos de
             # movimiento. La franja de silencio se sigue respetando.
-            canales_forzados=tuple(datos.get(regla["canales_campo"]) or ())
-            if regla.get("canales_campo")
-            else (),
+            canales_forzados=forzados,
+            # Lo que el destinatario no ha elegido para este tipo de aviso sale
+            # por lo que dice el evento y no además por la bandeja: una
+            # suscripción «por correo» llega por correo.
+            canales_por_defecto=forzados
+            if regla.get("solo_canales_del_evento") and forzados
+            else ("app",),
         )
 
 

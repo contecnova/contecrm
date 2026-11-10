@@ -51,6 +51,7 @@ from uuid import UUID
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorDependencia, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy as hoy_del_cliente
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import Boolean, DateTime, String, Text, UniqueConstraint, select
@@ -480,9 +481,12 @@ class Historial:
         return g, hasta - g, importe
 
 
-def rasgos_oportunidad(op: dict[str, Any], historial: Historial) -> dict[str, Any]:
-    """Lo que se sabía de una oportunidad cuando se abrió."""
-    momento = _fecha(op.get("created_at")) or date.today()
+def rasgos_oportunidad(op: dict[str, Any], historial: Historial, *, hoy: date) -> dict[str, Any]:
+    """Lo que se sabía de una oportunidad cuando se abrió.
+
+    `hoy` —el día del cliente— sólo cuenta si la oportunidad no trae su alta.
+    """
+    momento = _fecha(op.get("created_at")) or hoy
     g, p, imp = historial.antes("cuenta_id", op.get("cuenta_id"), momento)
     go, po, _ = historial.antes("owner_id", op.get("owner_id"), momento)
     return {
@@ -675,7 +679,7 @@ def casos_de(
             creada = _fecha(op.get("created_at"))
             if res == "abierto" or cierre is None or creada is None:
                 continue
-            r = rasgos_oportunidad(op, hist)
+            r = rasgos_oportunidad(op, hist, hoy=hoy)
             if tipo == "cierre":
                 y: float = 1 if res == "ganado" else 0
             elif tipo == "importe":
@@ -1388,7 +1392,7 @@ def puntuar_registro(
             )
             vistos = {o["id"] for o in historia}
             historia += [o for o in del_comercial if o["id"] not in vistos]
-        rasgos = rasgos_oportunidad(op, Historial(historia))
+        rasgos = rasgos_oportunidad(op, Historial(historia), hoy=hoy_del_cliente(db))
         for tipo in ("cierre", "importe", "fecha_cierre"):
             salida.append(
                 _puntuar_lineal(
@@ -1462,12 +1466,16 @@ def _puntuar_lineal(
     modelo, porque = _modelo_activo(uow.db, uow.tenant_id, tipo)
     if modelo is None:
         return _sin(tipo, porque)
-    extra = _extra(tipo, contexto, rasgos)
+    hoy = hoy_del_cliente(uow.db)
+    extra = _extra(tipo, contexto, rasgos, hoy=hoy)
     if not recalcular:
         guardada = _vigente_guardada(uow.db, uow.tenant_id, tipo, objeto_id, modelo.id)
         if guardada is not None:
             return _salida(
-                tipo, guardada, modelo, _extra(tipo, contexto, rasgos, float(guardada.valor))
+                tipo,
+                guardada,
+                modelo,
+                _extra(tipo, contexto, rasgos, float(guardada.valor), hoy=hoy),
             )
     definicion = dict(modelo.definicion or {})
     pesos = {str(k): float(v) for k, v in (modelo.pesos or {}).items()}
@@ -1493,12 +1501,17 @@ def _puntuar_lineal(
         factores=factores,
         vigencia=vigencia,
     )
-    extra = _extra(tipo, contexto, rasgos, valor)
+    extra = _extra(tipo, contexto, rasgos, valor, hoy=hoy)
     return _salida(tipo, fila, modelo, extra)
 
 
 def _extra(
-    tipo: str, op: dict[str, Any] | None, rasgos: dict[str, Any], valor: float | None = None
+    tipo: str,
+    op: dict[str, Any] | None,
+    rasgos: dict[str, Any],
+    valor: float | None = None,
+    *,
+    hoy: date,
 ) -> dict[str, Any]:
     """Lo que hace legible el número: la fecha que sale, lo declarado al lado."""
     if op is None or valor is None:
@@ -1506,9 +1519,10 @@ def _extra(
     if tipo == "importe":
         return {"declarado": float(op.get("importe") or 0), "moneda": op.get("moneda") or ""}
     if tipo == "fecha_cierre":
-        creada = _fecha(op.get("created_at")) or date.today()
+        # El día del cliente, que pone quien llama con su sesión: con el de
+        # UTC, de madrugada «pasada de lo habitual» se decidía con el de ayer.
+        creada = _fecha(op.get("created_at")) or hoy
         prevista = creada + timedelta(days=round(valor))
-        hoy = date.today()
         return {
             "fecha_prevista": max(prevista, hoy).isoformat(),
             "pasada_de_lo_habitual": prevista < hoy,

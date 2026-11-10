@@ -1465,6 +1465,7 @@ anexo_b_eventos:
   - {type: report.delivered, fase: 2, svc: analytics}
   - {type: report.failed, fase: 2, svc: analytics}
   - {type: analytics.source.registered, fase: 2, svc: analytics}
+  - {type: dashboard.delivered, fase: 2, svc: analytics}
   - {type: dashboard.alert.fired, fase: 2, svc: analytics}
   - {type: dashboard.alert.cleared, fase: 2, svc: analytics}
   - {type: cadence.step.due, fase: 2, svc: sales}

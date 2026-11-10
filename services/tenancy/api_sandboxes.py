@@ -143,8 +143,10 @@ def reglas(cuerpo: ReglasIn, principal: AutenticadoDep) -> Any:
         "en un sitio del que ya nadie se acuerda."
     ),
 )
-def caducados(cuerpo: CaducadosIn, principal: AutenticadoDep) -> Any:
-    return sbx.caducados(sandboxes=cuerpo.sandboxes)
+def caducados(cuerpo: CaducadosIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.fechas import hoy
+
+    return sbx.caducados(sandboxes=cuerpo.sandboxes, hoy=hoy(db))
 
 
 ROUTERS_SANDBOXES = [router_sandboxes]

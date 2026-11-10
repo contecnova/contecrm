@@ -23,6 +23,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy as hoy_del_cliente
 
 from services.analytics import almacen as alm
 from services.analytics import cohortes as coh
@@ -388,7 +389,9 @@ def test_lo_abierto_no_cuenta_como_perdido() -> None:
             ],
         },
     ]
-    salida = coh.embudo(etapas=["alta", "demo", "cierre"], recorridos=recorridos)
+    salida = coh.embudo(
+        etapas=["alta", "demo", "cierre"], recorridos=recorridos, hoy=hoy_del_cliente()
+    )
     cierre = salida["etapas"][2]
     assert cierre["llegaron"] == 1
     # El que sigue abierto en «demo» no cuenta como caído en «cierre».
@@ -413,7 +416,7 @@ def test_el_tiempo_entre_etapas_es_la_mediana() -> None:
                 ],
             }
         )
-    salida = coh.embudo(etapas=["alta", "demo"], recorridos=recorridos)
+    salida = coh.embudo(etapas=["alta", "demo"], recorridos=recorridos, hoy=hoy_del_cliente())
     assert salida["etapas"][0]["dias_mediana"] in (3, 4)
 
 
@@ -435,12 +438,14 @@ def test_el_embudo_senala_la_mayor_caida() -> None:
             ],
         }
     )
-    salida = coh.embudo(etapas=["alta", "demo", "cierre"], recorridos=recorridos)
+    salida = coh.embudo(
+        etapas=["alta", "demo", "cierre"], recorridos=recorridos, hoy=hoy_del_cliente()
+    )
     assert salida["mayor_caida"]["etapa"] == "demo"
 
 
 def test_sin_recorridos_no_hay_embudo_y_se_dice() -> None:
-    salida = coh.embudo(etapas=["alta", "demo"], recorridos=[])
+    salida = coh.embudo(etapas=["alta", "demo"], recorridos=[], hoy=hoy_del_cliente())
     assert salida["medible"] is False and salida["aviso"]
 
 

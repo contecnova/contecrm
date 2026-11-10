@@ -676,7 +676,11 @@ def excepciones_de(
     # Las que vencen dentro de treinta días van señaladas: una excepción que
     # caduca mueve una cuenta de dueño, y eso no puede enterarse nadie el día
     # que pasa.
-    pronto = [f for f in filas if f.hasta is not None and (f.hasta - hoy).days <= 30]
+    # Los días son el ajuste `territorio_excepcion_aviso_dias` (era un 30).
+    from crmcore.runtime.settings import efectivo
+
+    aviso_dias = int(efectivo("territorio_excepcion_aviso_dias", db))
+    pronto = [f for f in filas if f.hasta is not None and (f.hasta - hoy).days <= aviso_dias]
     return {
         "excepciones": [
             {

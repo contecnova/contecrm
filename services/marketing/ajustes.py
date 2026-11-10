@@ -139,6 +139,12 @@ class AjustesMarketing(Settings):
             "dinero fácil",
         ]
     )
+    # Palabras que, como primera de un SMS entrante, cuentan como baja. Se
+    # comparan sin acentos ni mayúsculas. Era la constante `PALABRAS_BAJA`: la
+    # ley exige que baste una palabra, y cuál depende del idioma del cliente.
+    sms_palabras_baja: list[str] = Field(
+        default_factory=lambda: ["baja", "stop", "cancelar", "unsubscribe", "no"]
+    )
     spam_acortadores: list[str] = Field(
         default_factory=lambda: ["bit.ly", "tinyurl.com", "goo.gl", "t.co", "ow.ly", "is.gd"]
     )
@@ -165,9 +171,44 @@ class AjustesMarketing(Settings):
     recorridos_avanzar_cada_s: int = Field(60, ge=5, le=3_600)
     recorridos_avance_lote: int = Field(500, ge=1, le=100_000)
 
+    # ── Salud de envío y hora de envío (barrido del 10-11-2026) ──────────
+    # Las tasas a partir de las cuales la salud de envío de una campaña sale
+    # «en riesgo». Eran 2,0 y 0,1 escritos en `salud_de_envio`: son las de los
+    # grandes proveedores de correo, y quien envía por otro canal o con otro
+    # proveedor tiene las suyas.
+    envio_umbral_rebote_duro_pct: float = Field(2.0, ge=0.01, le=50.0)
+    envio_umbral_queja_pct: float = Field(0.1, ge=0.001, le=10.0)
+    # Envíos mínimos en la rama más pequeña para dar por concluyente la
+    # comparación de la hora personalizada contra la hora fija. Era un 500.
+    momento_minimo_envios_concluyente: int = Field(500, ge=10, le=1_000_000)
+
 
 registrar_claves(
     [
+        ClaveAjuste(
+            clave="envio_umbral_rebote_duro_pct",
+            tipo="float",
+            descripcion="Tasa de rebote duro (%) a partir de la cual el envío sale en riesgo",
+            minimo=0.01,
+            maximo=50.0,
+            campo_settings="envio_umbral_rebote_duro_pct",
+        ),
+        ClaveAjuste(
+            clave="envio_umbral_queja_pct",
+            tipo="float",
+            descripcion="Tasa de quejas (%) a partir de la cual el envío sale en riesgo",
+            minimo=0.001,
+            maximo=10.0,
+            campo_settings="envio_umbral_queja_pct",
+        ),
+        ClaveAjuste(
+            clave="momento_minimo_envios_concluyente",
+            tipo="int",
+            descripcion="Envíos mínimos en la rama pequeña para concluir si la hora personalizada mejora",
+            minimo=10,
+            maximo=1000000,
+            campo_settings="momento_minimo_envios_concluyente",
+        ),
         ClaveAjuste(
             clave="dominio_promocional",
             tipo="str",
@@ -329,6 +370,12 @@ registrar_claves(
             tipo="json",
             descripcion="Palabras del asunto y del cuerpo que suenan a spam",
             campo_settings="spam_palabras",
+        ),
+        ClaveAjuste(
+            clave="sms_palabras_baja",
+            tipo="json",
+            descripcion="Palabras que, como primera de un SMS entrante, cuentan como baja",
+            campo_settings="sms_palabras_baja",
         ),
         ClaveAjuste(
             clave="spam_acortadores",

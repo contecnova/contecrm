@@ -224,7 +224,7 @@ def test_no_se_reserva_por_encima_de_lo_disponible_sin_decirlo() -> None:
 def test_sin_plazo_del_proveedor_no_se_promete_fecha() -> None:
     """Prometer sin saber es el origen de casi todos los retrasos, y el que da la
     cara después es el comercial."""
-    salida = cst.fecha_que_se_puede_prometer(plazo_proveedor_dias=None)
+    salida = cst.fecha_que_se_puede_prometer(plazo_proveedor_dias=None, desde=HOY)
     assert salida["se_puede_prometer"] is False
 
 

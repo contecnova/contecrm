@@ -19,7 +19,7 @@ que todo empeora. Aquí sale marcada como inmadura, o no sale.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -94,7 +94,7 @@ def cohortes(
     sujetos: list[dict[str, Any]],
     periodo: str = "mes",
     periodos: int = 6,
-    hoy: date | None = None,
+    hoy: date,
     minimo: int = _cohorte_minimo(),
 ) -> dict[str, Any]:
     """Retención por cohorte de alta (CRM-05.01.03.04).
@@ -122,7 +122,10 @@ def cohortes(
             error_code="cohortes.periodo_no_valido",
             detalle={"validos": list(PERIODOS)},
         )
-    ahora = hoy or datetime.now(timezone.utc).date()
+    # El día del cliente lo pone quien llama con su sesión (la ruta, con
+    # `fechas.hoy(db)`): con el de UTC, el periodo «inmaduro» cambiaba de
+    # madrugada un día antes.
+    ahora = hoy
     grupos: dict[date, list[dict[str, Any]]] = {}
     sin_alta = 0
     for sujeto in sujetos:
@@ -198,7 +201,7 @@ def embudo(
     *,
     etapas: list[str],
     recorridos: list[dict[str, Any]],
-    hoy: date | None = None,
+    hoy: date,
     contar_saltadas: bool = False,
 ) -> dict[str, Any]:
     """Conversión y tiempos entre etapas (CRM-05.01.03.05).
@@ -224,7 +227,10 @@ def embudo(
         raise ErrorValidacion(
             "Un embudo necesita al menos dos etapas.", error_code="embudo.pocas_etapas"
         )
-    ahora = hoy or datetime.now(timezone.utc).date()
+    # El día del cliente lo pone quien llama con su sesión (la ruta, con
+    # `fechas.hoy(db)`): con el de UTC, el periodo «inmaduro» cambiaba de
+    # madrugada un día antes.
+    ahora = hoy
     indice = {etapa: i for i, etapa in enumerate(etapas)}
 
     llegadas: list[int] = [0] * len(etapas)

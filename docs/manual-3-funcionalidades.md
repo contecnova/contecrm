@@ -719,7 +719,11 @@ Una comparación con menos ganadas de las configuradas
 comparar con dos ventas es una anécdota.
 
 **El post-mortem** son tres preguntas —qué pasó, qué señal temprana no vimos,
-qué haríamos distinto— y los factores. La IA puede proponerlo con el expediente
+qué haríamos distinto— y los factores. **Los factores son de la empresa**
+(vocabulario `factores_leccion`, desde el 10-11-2026): los catorce de fábrica
+son el punto de partida, y se añaden o se retiran desde la pestaña «Factores de
+una lección»; al firmar se valida contra los de la empresa, y la propuesta de
+la IA elige entre ellos. La IA puede proponerlo con el expediente
 delante; quien llevaba la venta lo corrige y lo firma. **Al firmar, el
 expediente se congela**: lo que se aprendió es lo que se sabía entonces, no lo
 que diga el CRM dentro de un año. Una lección firmada no se edita.
@@ -8371,6 +8375,11 @@ Las tasas se enseñan **con el umbral del sector al lado**: una tasa de queja de
 empezar a mandar a la carpeta de spam. Un número sin referencia no dice si hay que
 hacer algo.
 
+Los dos umbrales —2 % de rebote duro y 0,1 % de quejas, los de los proveedores
+grandes— son ajustes por empresa (`envio_umbral_rebote_duro_pct`,
+`envio_umbral_queja_pct`), porque quien envía con otro proveedor o por otro
+canal tiene los suyos.
+
 ## Módulos verticales: caracterizar el producto para un sector (`CRM-00.04.04`)
 
 La extensión sin código (`CRM-00.04.03`) resuelve «falta un campo». Esto resuelve
@@ -9724,6 +9733,21 @@ una alerta.
 Y uno se suscribe **a sí mismo**: suscribir a otro convierte un cuadro en correo
 no deseado que el receptor no sabe cómo parar, y lo que hace es marcarlo como
 basura — y con él, todo lo que mande el CRM.
+
+**La suscripción llega de verdad** (cerrado el 10-11-2026: hasta entonces se
+guardaba la hora y una próxima ejecución y ningún barrido la leía). Se elige
+cada cuánto (diaria, semanal, mensual), **a qué hora de reloj de la empresa**
+—la zona del tenant, también la semana del cambio de hora, con el mismo cálculo
+que los informes programados— y **por qué canal**: la bandeja, correo,
+notificación del móvil, SMS o webhook. Sale por el canal elegido, y sólo por
+ése salvo que la persona tenga una preferencia propia para estos avisos; la
+franja de silencio de cada uno se respeta.
+
+Lo que llega es **el aviso con el panel, no sus cifras**. El barrido no tiene
+los permisos de quien se suscribió, y calcular con los de sistema mandaría al
+buzón lo que esa persona no puede ver; el aviso abre el panel y ahí se calcula
+con los suyos. Un panel borrado o desactivado apaga la suscripción y deja el
+motivo a la vista.
 
 ### Embebido en aplicaciones externas (`CRM-05.01.02.06`)
 
@@ -12890,7 +12914,8 @@ Cada motivo se dice **con palabras**. «Por seguridad» no explica nada, y al
 tercer aviso así la gente teclea el código sin mirar, que es exactamente la
 costumbre que un atacante necesita.
 
-El **salto imposible** —dos países en dos horas— va aparte: o hay un avión que no
+El **salto imposible** —dos países en menos de dos horas, el ajuste
+`mfa_minutos_salto_imposible` (120)— va aparte: o hay un avión que no
 existe o hay dos personas, y eso no se resuelve pidiendo un código. Se pide el
 factor **y** se avisa de que hay que mirar las sesiones abiertas, porque si uno
 de los dos accesos no era la persona, el otro sigue vivo.
@@ -12901,7 +12926,9 @@ sospechosa —no hay con qué comparar, y tratarla como riesgo pediría el facto
 todo el mundo el día del alta, que es cuando menos configurado lo tiene—. Y el
 factor se pide **solo si hay factor que pedir**: a quien no tiene ninguno no se le
 puede exigir uno ahí, y negarle la entrada por algo que no puede resolver lo deja
-fuera sin salida.
+fuera sin salida. Volver tras `mfa_dias_ausencia` días (30) sin entrar también
+cuenta como cambio de contexto; los dos umbrales se ajustan por empresa desde
+Configuración.
 
 **El país es un puerto, no una dependencia.** Saber de qué país es una IP exige
 una base de datos de geolocalización, y atar el producto a un proveedor concreto

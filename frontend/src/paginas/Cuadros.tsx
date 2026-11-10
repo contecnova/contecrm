@@ -19,13 +19,21 @@
  * a los que se declaran inmunes. Y de cada componente se puede bajar al detalle:
  * un cuadro del que no se puede bajar obliga a rehacer la consulta a mano en otra
  * pantalla, y ahí ya no coinciden los números.
+ *
+ * **Recibirlo** (CRM-05.01.02.05): cada uno se suscribe a sí mismo, con la hora
+ * en la zona del tenant y el canal por el que quiere que le llegue. Lo manda la
+ * tarea `analytics.suscripciones_cuadro`; el aviso enlaza aquí con
+ * `?cuadro=<id>`, que abre ese cuadro.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Icono } from "@/componentes/Icono";
 import { ErrorApi, llamar } from "@/lib/api";
+import { fechaHora } from "@/lib/formato";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Medidor } from "@/componentes/graficas/Medidor";
 import {
@@ -131,20 +139,26 @@ export function Cuadros() {
   const [cuadros, setCuadros] = useState<Cuadro[] | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
+  // El aviso de una suscripción llega con `?cuadro=<id>`: se abre ése.
+  const [parametros] = useSearchParams();
+  const pedido = parametros.get("cuadro");
 
   const cargar = useCallback(() => {
     const control = new AbortController();
     llamar<Cuadro[]>("/api/v1/cuadros-mando", { signal: control.signal })
       .then((r) => {
         setCuadros(r.datos);
-        const defecto = r.datos.find((c) => c.por_defecto) ?? r.datos[0];
+        const defecto =
+          r.datos.find((c) => c.id === pedido) ??
+          r.datos.find((c) => c.por_defecto) ??
+          r.datos[0];
         setAbierto(defecto ? defecto.id : null);
       })
       .catch((e: unknown) => {
         if (e instanceof ErrorApi) setFallo(e);
       });
     return () => control.abort();
-  }, []);
+  }, [pedido]);
 
   useEffect(cargar, [cargar]);
 
@@ -201,6 +215,8 @@ export function Cuadros() {
         </p>
       ) : null}
 
+      <RecibirCuadro key={actual.id} cuadroId={actual.id} />
+
       {actual.componentes.length === 0 ? (
         <Vacio
           compacto
@@ -215,6 +231,174 @@ export function Cuadros() {
         </div>
       )}
     </div>
+  );
+}
+
+const PERIODICIDADES = ["diaria", "semanal", "mensual"] as const;
+
+interface Suscripcion {
+  periodicidad: string;
+  hora: number;
+  canal: string;
+  activa: boolean;
+  zona: string;
+  proxima_at: string | null;
+  ultimo_error: string | null;
+}
+
+/**
+ * Recibir el cuadro solo (CRM-05.01.02.05).
+ *
+ * Los canales se piden al servidor (`/notificaciones/canales`), no se escriben
+ * aquí. La hora es la del tenant y se dice cuál: «a las 8» sin zona se lee en
+ * la del navegador.
+ */
+function RecibirCuadro({ cuadroId }: { cuadroId: string }) {
+  const { t } = useTranslation();
+  const [actual, setActual] = useState<Suscripcion | null>(null);
+  const [canales, setCanales] = useState<string[]>(["app"]);
+  const [periodicidad, setPeriodicidad] = useState("semanal");
+  const [hora, setHora] = useState(8);
+  const [canal, setCanal] = useState("app");
+  const [fallo, setFallo] = useState<ErrorApi | null>(null);
+
+  const cargar = useCallback(() => {
+    const control = new AbortController();
+    llamar<Suscripcion | null>(
+      `/api/v1/cuadros-mando/suscripciones/mia?cuadro_id=${cuadroId}`,
+      { signal: control.signal },
+    )
+      .then((r) => {
+        setActual(r.datos);
+        if (r.datos) {
+          setPeriodicidad(r.datos.periodicidad);
+          setHora(r.datos.hora);
+          setCanal(r.datos.canal);
+        }
+      })
+      .catch((e: unknown) => {
+        if (e instanceof ErrorApi) setFallo(e);
+      });
+    llamar<{ canales: string[] }>("/api/v1/notificaciones/canales", {
+      signal: control.signal,
+    })
+      .then((r) => setCanales(r.datos.canales))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [cuadroId]);
+
+  useEffect(cargar, [cargar]);
+
+  async function guardar(): Promise<void> {
+    setFallo(null);
+    try {
+      const r = await llamar<Suscripcion>(
+        "/api/v1/cuadros-mando/suscripciones",
+        {
+          metodo: "POST",
+          cuerpo: { cuadro_id: cuadroId, periodicidad, hora, canal },
+        },
+      );
+      setActual(r.datos);
+    } catch (e) {
+      if (e instanceof ErrorApi) setFallo(e);
+    }
+  }
+
+  async function baja(): Promise<void> {
+    setFallo(null);
+    try {
+      const r = await llamar<Suscripcion>(
+        `/api/v1/cuadros-mando/suscripciones/${cuadroId}/baja`,
+        { metodo: "POST" },
+      );
+      setActual(r.datos);
+    } catch (e) {
+      if (e instanceof ErrorApi) setFallo(e);
+    }
+  }
+
+  const activa = actual?.activa === true;
+  return (
+    <section className="card p-3" aria-label={t("cuadros.recibir")}>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col text-rotulo text-ink-muted">
+          {t("cuadros.cada")}
+          <select
+            className="input-sm mt-1 w-auto"
+            value={periodicidad}
+            onChange={(e) => setPeriodicidad(e.target.value)}
+          >
+            {PERIODICIDADES.map((p) => (
+              <option key={p} value={p}>
+                {t(`analisisCrm.periodicidades.${p}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col text-rotulo text-ink-muted">
+          {actual?.zona
+            ? t("cuadros.horaEnZona", { zona: actual.zona })
+            : t("cuadros.hora")}
+          <input
+            type="number"
+            min={0}
+            max={23}
+            className="input-sm mt-1 w-20"
+            value={hora}
+            onChange={(e) => setHora(Number(e.target.value))}
+          />
+        </label>
+        <label className="flex flex-col text-rotulo text-ink-muted">
+          {t("cuadros.canal")}
+          <select
+            className="input-sm mt-1 w-auto"
+            value={canal}
+            onChange={(e) => setCanal(e.target.value)}
+          >
+            {canales.map((c) => (
+              <option key={c} value={c}>
+                {t(`cuadros.canales.${c}`, { defaultValue: c })}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => void guardar()}
+        >
+          <Icono nombre="schedule" tamano="sm" />
+          {activa ? t("cuadros.guardarRecibir") : t("cuadros.recibir")}
+        </button>
+        {activa ? (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => void baja()}
+          >
+            {t("cuadros.dejarDeRecibir")}
+          </button>
+        ) : null}
+      </div>
+      <p role="status" className="mt-2 text-rotulo text-ink-faint">
+        {activa && actual
+          ? t("cuadros.teLlega", {
+              cada: t(`analisisCrm.periodicidades.${actual.periodicidad}`),
+              h: actual.hora,
+              zona: actual.zona,
+              canal: t(`cuadros.canales.${actual.canal}`, {
+                defaultValue: actual.canal,
+              }),
+              cuando: actual.proxima_at ? fechaHora(actual.proxima_at) : "—",
+            })
+          : t("cuadros.noTeLlega")}
+      </p>
+      {actual?.ultimo_error ? (
+        <p className="text-rotulo text-danger">{actual.ultimo_error}</p>
+      ) : null}
+      {fallo ? <Fallo error={fallo} /> : null}
+    </section>
   );
 }
 

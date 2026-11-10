@@ -222,6 +222,32 @@ class _LimitsSettings(BaseSettings):
     # Similitud por defecto para encolar un duplicado cuando el tenant no la
     # ha fijado.
     duplicados_umbral_defecto: float = Field(0.72, ge=0.0, le=1.0)
+    # Dominios de correo que NO identifican una empresa (dos clientes pueden
+    # tener los dos una dirección de gmail): no cuentan como señal de
+    # duplicado. Era la constante `normalizacion.DOMINIOS_GENERICOS`; cada
+    # país tiene los suyos y la lista de fábrica es la de España. Se lee sin
+    # sesión —`dominio_de` es una función pura que llaman cuatro sitios—, así
+    # que sale del `.env` y no lleva clave en caliente.
+    dominios_correo_genericos: list[str] = Field(
+        default_factory=lambda: [
+            "gmail.com",
+            "hotmail.com",
+            "outlook.com",
+            "outlook.es",
+            "yahoo.com",
+            "yahoo.es",
+            "icloud.com",
+            "me.com",
+            "live.com",
+            "msn.com",
+            "aol.com",
+            "protonmail.com",
+            "proton.me",
+            "gmx.com",
+            "terra.es",
+            "telefonica.net",
+        ]
+    )
     # Puntuación a partir de la cual se PROPONE una fusión de identidades y a
     # partir de la cual se ejecuta sola. La segunda es destructiva, y por eso
     # está muy por encima: por debajo decide una persona.

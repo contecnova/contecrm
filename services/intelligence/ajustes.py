@@ -247,6 +247,19 @@ class AjustesIntelligence(Settings):
     # bloquear la siguiente.
     ia_evaluacion_caducidad_horas: int = Field(6, ge=1, le=168)
 
+    # ── Salud de cuenta y próximo paso (barrido del 10-11-2026) ──────────
+    # Cobertura mínima (% del peso de las señales que ha llegado) para dar la
+    # salud por fiable. Era un 50 en `salud.medir`.
+    salud_cobertura_minima_pct: int = Field(50, ge=1, le=100)
+    # Puntos que tiene que moverse la salud desde la medida anterior para
+    # decirlo en el motivo. Era un 5.
+    salud_delta_aviso_puntos: int = Field(5, ge=1, le=100)
+    # Días sin interacción a partir de los que el asistente propone retomar el
+    # contacto, y a partir de los que lo marca como urgente. Eran 14 y 30 en
+    # `asistencia.proximos_pasos`.
+    asistencia_dias_sin_contacto: int = Field(14, ge=1, le=365)
+    asistencia_dias_sin_contacto_urgente: int = Field(30, ge=1, le=730)
+
 
 # ── Cuáles se pueden afinar POR CLIENTE y cuáles no ───────────────────────
 #
@@ -261,6 +274,38 @@ class AjustesIntelligence(Settings):
 # luego no se aplica es peor que no tenerlo — quien lo pone cree que ya está.
 registrar_claves(
     [
+        ClaveAjuste(
+            clave="salud_cobertura_minima_pct",
+            tipo="int",
+            descripcion="Porcentaje del peso de las señales que tiene que llegar para dar la salud de una cuenta por fiable",
+            minimo=1,
+            maximo=100,
+            campo_settings="salud_cobertura_minima_pct",
+        ),
+        ClaveAjuste(
+            clave="salud_delta_aviso_puntos",
+            tipo="int",
+            descripcion="Puntos que tiene que moverse la salud de una cuenta para decirlo en el motivo",
+            minimo=1,
+            maximo=100,
+            campo_settings="salud_delta_aviso_puntos",
+        ),
+        ClaveAjuste(
+            clave="asistencia_dias_sin_contacto",
+            tipo="int",
+            descripcion="Días sin interacción a partir de los que el asistente propone retomar el contacto",
+            minimo=1,
+            maximo=365,
+            campo_settings="asistencia_dias_sin_contacto",
+        ),
+        ClaveAjuste(
+            clave="asistencia_dias_sin_contacto_urgente",
+            tipo="int",
+            descripcion="Días sin interacción a partir de los que retomar el contacto es urgente",
+            minimo=1,
+            maximo=730,
+            campo_settings="asistencia_dias_sin_contacto_urgente",
+        ),
         ClaveAjuste(
             clave="ia_minimo_senales",
             tipo="int",

@@ -72,19 +72,6 @@ def _plan_dias_sin_tocar() -> int:
     return get_settings().plan_dias_sin_tocar
 
 
-def _hoy(db: Any = None) -> date:
-    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
-
-    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
-    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
-    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
-    Madrid la respuesta sin sesión es **la de ayer**.
-    """
-    from crmcore.fechas import hoy as _hoy_del_cliente
-
-    return _hoy_del_cliente(db)
-
-
 class PlanConjuntoCliente(Base, TimestampMixin, SoftDeleteMixin):
     """El plan acordado con el cliente para llegar a la firma.
 
@@ -205,7 +192,7 @@ def guardar_plan(
     return fila
 
 
-def estado_del_plan(*, plan: dict[str, Any], hoy: date | None = None) -> dict[str, Any]:
+def estado_del_plan(*, plan: dict[str, Any], hoy: date) -> dict[str, Any]:
     """Cómo va, **y de quién es lo que va retrasado**.
 
     Distinguirlo es todo el valor. Si lo que se retrasa es nuestro, se aprieta
@@ -213,7 +200,9 @@ def estado_del_plan(*, plan: dict[str, Any], hoy: date | None = None) -> dict[st
     CRM es una ilusión — y eso es lo que hay que contarle al jefe antes de que
     llegue el final del trimestre.
     """
-    momento = hoy or _hoy()
+    # `hoy` es obligatorio: lo pone la ruta con `fechas.hoy(db)`. Caer al
+    # reloj aquí era el día de UTC, que de madrugada es el de ayer.
+    momento = hoy
     pasos = list(plan.get("pasos") or [])
     retrasados_nuestros: list[str] = []
     retrasados_del_cliente: list[str] = []
@@ -464,7 +453,7 @@ def calibracion(db: Session, tenant_id: UUID) -> dict[str, Any]:
 
 
 def sin_revisar(
-    *, oportunidades: list[dict[str, Any]], dias: int = 30, hoy: date | None = None
+    *, oportunidades: list[dict[str, Any]], dias: int = 30, hoy: date
 ) -> dict[str, Any]:
     """Qué oportunidades grandes llevan demasiado sin revisarse.
 
@@ -472,7 +461,9 @@ def sin_revisar(
     pequeñas cada mes es lo que hace que las revisiones se conviertan en un
     trámite que nadie prepara.
     """
-    momento = hoy or _hoy()
+    # `hoy` es obligatorio: lo pone la ruta con `fechas.hoy(db)`. Caer al
+    # reloj aquí era el día de UTC, que de madrugada es el de ayer.
+    momento = hoy
     pendientes = []
     for op in oportunidades:
         ultima = op.get("ultima_revision")

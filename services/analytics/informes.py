@@ -1151,9 +1151,13 @@ def zona_de_programacion(db: Any) -> ZoneInfo:
 
 
 def _siguiente_ejecucion(
-    programacion: ProgramacionInforme, desde: datetime, zona: tzinfo = timezone.utc
+    programacion: ProgramacionInforme | Any, desde: datetime, zona: tzinfo = timezone.utc
 ) -> datetime:
     """El próximo instante (en UTC) en que toca, con la hora leída en `zona`.
+
+    Vale para todo lo que tenga `periodicidad`, `hora`, `dia_semana` y
+    `dia_mes`: lo usan también las suscripciones a cuadros
+    (`cuadros.SuscripcionCuadro`).
 
     Se cuenta en días de calendario de la zona y se fija la hora de reloj en
     cada uno; así el cambio de hora no la mueve: «a las 7» sigue siendo a las 7

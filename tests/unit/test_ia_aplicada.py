@@ -342,6 +342,7 @@ def test_con_pocos_envios_la_mejora_no_es_concluyente() -> None:
     salida = mom.comparar_con_hora_fija(
         con_optimizacion={"enviados": 100, "respuestas": 12},
         sin_optimizacion={"enviados": 100, "respuestas": 10},
+        minimo_concluyente=500,
     )
     assert salida["concluyente"] is False
 

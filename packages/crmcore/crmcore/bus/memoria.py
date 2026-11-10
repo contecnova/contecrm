@@ -18,7 +18,7 @@ infraestructura.
 
 from __future__ import annotations
 
-import fnmatch
+import re
 from collections import defaultdict
 
 from crmcore.bus.base import Bus, Manejador, Suscripcion
@@ -100,14 +100,23 @@ class BusEnMemoria(Bus):
 def _coincide(subject: str, patron: str) -> bool:
     """Compara con los comodines de NATS: `*` un segmento, `>` el resto.
 
-    Se traduce a los de `fnmatch` para no reimplementar la coincidencia, y así
-    el backend de memoria acepta exactamente los mismos patrones que el de
-    producción — si un patrón funciona en la prueba, funciona en NATS.
+    El backend de memoria acepta exactamente los mismos patrones que el de
+    producción, con su mismo significado: si un patrón funciona en la prueba,
+    funciona en NATS.
     """
-    glob = patron.replace(">", "**").replace("*", "[^.]*")
-    if "**" in glob:
-        return subject.startswith(glob.split("**")[0])
-    return fnmatch.fnmatchcase(subject, glob.replace("[^.]*", "*"))
+    # Con las reglas EXACTAS de NATS y no con `fnmatch`: allí `*` cruza puntos,
+    # así que `contecrm.*.*` casaba en memoria con `contecrm.<t>.account.created`
+    # y en NATS no. Eso escondió el 10-11-2026 que los consumidores de «todo»
+    # no recibían nada en producción.
+    trozos = []
+    for parte in patron.split("."):
+        if parte == "*":
+            trozos.append(r"[^.]+")
+        elif parte == ">":
+            trozos.append(r".+")
+        else:
+            trozos.append(re.escape(parte))
+    return re.fullmatch(r"\.".join(trozos), subject) is not None
 
 
 # ── Utilidades de prueba ──────────────────────────────────────────────────

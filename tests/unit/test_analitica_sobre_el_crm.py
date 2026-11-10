@@ -18,6 +18,7 @@ from typing import Any, Iterator
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore.fechas import hoy as hoy_del_cliente
 from starlette.testclient import TestClient
 
 from services.analytics import cohortes as coh
@@ -38,8 +39,10 @@ def test_saltarse_una_etapa_cuenta_como_haberla_pasado() -> None:
             "pasos": [{"etapa": "a", "fecha": "2026-01-01"}, {"etapa": "b", "fecha": "2026-01-03"}],
         },
     ]
-    sin = coh.embudo(etapas=["a", "b", "c"], recorridos=recorridos)
-    con = coh.embudo(etapas=["a", "b", "c"], recorridos=recorridos, contar_saltadas=True)
+    sin = coh.embudo(etapas=["a", "b", "c"], recorridos=recorridos, hoy=hoy_del_cliente())
+    con = coh.embudo(
+        etapas=["a", "b", "c"], recorridos=recorridos, contar_saltadas=True, hoy=hoy_del_cliente()
+    )
     assert [e["llegaron"] for e in sin["etapas"]] == [2, 1, 1]
     assert sin["etapas"][2]["conversion_desde_anterior"] == 100.0
     assert [e["llegaron"] for e in con["etapas"]] == [2, 2, 1]

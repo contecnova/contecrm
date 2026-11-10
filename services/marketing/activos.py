@@ -240,7 +240,7 @@ def registrar_activo(
     return fila
 
 
-def se_puede_usar(*, activo: dict[str, Any], uso: str, hoy: date | None = None) -> dict[str, Any]:
+def se_puede_usar(*, activo: dict[str, Any], uso: str, hoy: date) -> dict[str, Any]:
     """Si este activo se puede usar **para esto y hoy**.
 
     Las tres respuestas negativas son distintas y se distinguen, porque llevan a
@@ -248,7 +248,9 @@ def se_puede_usar(*, activo: dict[str, Any], uso: str, hoy: date | None = None) 
     (hay que renovar o rehacer) y **no cubre este uso** (hay que comprar otra
     licencia o buscar otra pieza).
     """
-    momento = hoy or _hoy()
+    # `hoy` lo pone la ruta con `fechas.hoy(db)`: «caducado» con el día de
+    # UTC, de madrugada en Madrid, era caducado un día antes.
+    momento = hoy
     estado = str(activo.get("estado") or "")
     if estado != "aprobado":
         return {

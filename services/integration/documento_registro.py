@@ -33,6 +33,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.errors import ErrorDependencia, ErrorValidacion, NoEncontrado, Prohibido
+from crmcore.fechas import hoy as hoy_del_cliente
 from crmcore.logging import get_logger
 from sqlalchemy.orm import Session
 
@@ -241,7 +242,7 @@ def reunir(db: Session | None, principal: Any, *, objeto: str, objeto_id: UUID) 
     if objeto == "cuenta":
         contexto["cuenta"] = registro
 
-    contexto["hoy"] = date.today().isoformat()
+    contexto["hoy"] = hoy_del_cliente(db).isoformat()
     return {"contexto": contexto, "avisos": avisos}
 
 
@@ -621,7 +622,7 @@ def _nombre_fichero(db: Session | None, plantilla: Any, registro: str) -> str:
         nombre = patron.format(
             plantilla=plantilla.clave,
             registro=registro or "registro",
-            fecha=date.today().isoformat(),
+            fecha=hoy_del_cliente(db).isoformat(),
         )
     except (KeyError, IndexError, ValueError):
         nombre = f"{plantilla.clave}-{registro}.pdf"
