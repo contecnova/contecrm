@@ -255,7 +255,10 @@ export function plantillaDe(documento: Documento, ruta: string): string | null {
  * campos se leen del esquema de esa operación y la operación no aparecía.
  */
 export function fichaDe(documento: Documento, listar: string): string | null {
-  const base = plantillaDe(documento, listar) ?? listar;
+  // La ruta, sin la consulta que lleve la pestaña: con ella no casaba ninguna
+  // ficha y las filas de «Comunidad por moderar» no se abrían.
+  const sinConsulta = listar.split("?")[0] ?? listar;
+  const base = plantillaDe(documento, sinConsulta) ?? sinConsulta;
   const patron = new RegExp(
     `^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/\\{[a-z_]+\\}$`,
   );
@@ -503,6 +506,12 @@ function resolver(documento: Documento, esquema: Esquema): Esquema {
         ...(actual["x-vocabulario"]
           ? { "x-vocabulario": actual["x-vocabulario"] }
           : {}),
+        // Y a qué objeto apunta: un `caso_maestro_id` opcional declarado
+        // «caso» perdía la declaración aquí y el buscador ofrecía problemas
+        // (medido el 10-11-2026 al abrir un problema).
+        ...(actual.referencia ? { referencia: actual.referencia } : {}),
+        // Y la lista cerrada declarada al lado (`json_schema_extra`).
+        ...(actual.enum && !util.enum ? { enum: actual.enum } : {}),
       };
       continue;
     }

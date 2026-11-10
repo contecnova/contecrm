@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore.datos.calendario import propagar
 from crmcore.errors import Conflicto, NoEncontrado
 from crmcore.fechas import hoy
 from crmcore.http.deps import (
@@ -287,6 +288,12 @@ def crear_calendario(datos: CrearCalendario, uow: UowDep) -> Any:
     fila = CalendarioLaboral(tenant_id=uow.tenant_id, **datos.model_dump())
     uow.db.add(fila)
     uow.db.flush()
+    # A TODOS los servicios: es de donde salen los plazos de SLA de `service`.
+    # `propagar` existía y nadie lo llamaba, así que la réplica de `service`
+    # estaba vacía y todos los SLA se contaban en horas de reloj (medido el
+    # 10-11-2026: un SLA de 8 h laborables abierto a las 17:24 vencía a la
+    # 01:24 de la madrugada).
+    propagar(uow.db, fila)
     return fila
 
 
@@ -304,7 +311,27 @@ def anadir_festivo(calendario_id: UUID, datos: CrearFestivo, uow: UowDep) -> Any
     fila = Festivo(tenant_id=uow.tenant_id, calendario_id=calendario_id, **datos.model_dump())
     uow.db.add(fila)
     uow.db.flush()
+    # El calendario entero, con el festivo nuevo: es lo que replica cada servicio.
+    propagar(uow.db, cal)
     return fila
+
+
+@router_calendarios.post(
+    "/{calendario_id}/propagar",
+    summary="Volver a enviarlo a todos los servicios",
+    description=(
+        "Los plazos de SLA se calculan con la COPIA del calendario que tiene "
+        "cada servicio. Si una copia falta o se quedó atrás —un calendario "
+        "creado antes de que se propagaran—, esto la rehace sin tocar nada."
+    ),
+    dependencies=[Depends(exige_permiso("calendario:editar"))],
+)
+def repropagar(calendario_id: UUID, uow: UowDep) -> Any:
+    cal = uow.db.get(CalendarioLaboral, calendario_id)
+    if cal is None:
+        raise NoEncontrado("Calendario no encontrado", error_code="tenancy.calendario_no_existe")
+    propagar(uow.db, cal)
+    return {"id": str(cal.id), "clave": cal.clave, "enviado": True}
 
 
 @router_calendarios.get(

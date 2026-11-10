@@ -88,6 +88,9 @@ const RepartoYOrigenDelLead = diferido(() =>
 const CorreoDelContacto = diferido(() =>
   import("@/componentes/CorreoDelContacto").then((m) => m.CorreoDelContacto),
 );
+const PuntuacionDelLead = diferido(() =>
+  import("@/componentes/PuntuacionDelLead").then((m) => m.PuntuacionDelLead),
+);
 const AtribucionDeLead = diferido(() =>
   import("@/componentes/AtribucionDeLead").then((m) => m.AtribucionDeLead),
 );
@@ -221,7 +224,10 @@ export function Ficha() {
   // Todo lo que el servidor admite hacer con este registro, leído del contrato.
   // Son 144 en el sistema y ninguna se escribe a mano aquí.
   const acciones = useMemo(
-    () => (recurso ? accionesDe(superficie, recurso.listar, id, tiene) : []),
+    () =>
+      recurso
+        ? accionesDe(superficie, recurso.listar.split("?")[0] ?? "", id, tiene)
+        : [],
     [superficie, recurso, id, tiene],
   );
   // Y lo que cuelga de él: líneas, equipo, direcciones, identificadores. Son
@@ -229,7 +235,14 @@ export function Ficha() {
   // depende en qué pestaña se aterriza.
   const paneles = useMemo(
     () =>
-      recurso ? subColeccionesDe(superficie, recurso.listar, id, tiene) : [],
+      recurso
+        ? subColeccionesDe(
+            superficie,
+            recurso.listar.split("?")[0] ?? "",
+            id,
+            tiene,
+          )
+        : [],
     [superficie, recurso, id, tiene],
   );
 
@@ -416,6 +429,7 @@ export function Ficha() {
           ) : null}
           <Acciones
             acciones={acciones}
+            recurso={recurso}
             servicio={recurso?.servicio ?? ""}
             abierta={
               tipo === "lead" && accionAbierta?.clave === "convertir"
@@ -461,6 +475,11 @@ export function Ficha() {
       {/* La atribución de la venta del lead, con el importe de su oportunidad
           (CRM-02.02.01.06), y la plantilla montada con los datos de un contacto
           real en varios clientes de correo (CRM-02.03.01.06). */}
+      {/* La puntuación de marketing: calificación, ejes y el porqué
+          (CRM-02.01.02.01 a .05). */}
+      {!editando && tipo === "lead" && id ? (
+        <PuntuacionDelLead leadId={id} alCambiar={cargar} />
+      ) : null}
       {!editando && tipo === "lead" && id ? (
         <AtribucionDeLead leadId={id} lead={fila} />
       ) : null}

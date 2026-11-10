@@ -230,6 +230,35 @@ def _buscar_texto(modelo: type, consulta: Any, texto: str, usables: set[str]) ->
     return consulta.where(and_(*condiciones))
 
 
+def aplicar_busqueda(
+    modelo: type, consulta: Any, texto: str, *, principal: Any, db: Any, objeto: str
+) -> Any:
+    """`?buscar=` para un listado escrito a mano que lo declara.
+
+    Lo mismo que hace `aplicar_filtros_de_la_url` cuando la ruta no lo declara:
+    por palabras, en los campos de búsqueda del modelo que quien pregunta ve en
+    claro. Existe porque los listados escritos a mano buscaban cada uno a su
+    manera —contactos, sólo en la clave canónica, que lleva las palabras
+    ordenadas: «ZZ Contacto» no encontraba a «ZZ Contacto» y el correo no
+    encontraba a nadie (medido el 10-11-2026)—.
+    """
+    if not (texto or "").strip():
+        return consulta
+    from crmcore.authz.proyeccion import columnas_usables
+
+    tabla = getattr(modelo, "__table__", None)
+    usables = columnas_usables(
+        set(tabla.columns.keys()) if tabla is not None else set(),
+        modelo=modelo,
+        objeto=objeto,
+        roles=frozenset(getattr(principal, "roles", frozenset())),
+        es_admin=bool(getattr(principal, "es_admin_plataforma", False)),
+        tenant_id=getattr(principal, "tenant_id", None),
+        db=db,
+    )
+    return _buscar_texto(modelo, consulta, texto, usables)
+
+
 _CIERTOS = frozenset({"1", "true", "si", "sí", "verdadero"})
 _FALSOS = frozenset({"0", "false", "no", "falso"})
 

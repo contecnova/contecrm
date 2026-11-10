@@ -31,11 +31,14 @@ const DESTINO = join(LIB, "visibilidad.ts");
 /** Lee los tres datos de cada pestaña sin ejecutar TypeScript. */
 function visibilidadDe(fuente) {
   const salida = {};
-  // Cada módulo: `"ruta": [ … ],` en el primer nivel del objeto.
-  const re = /^ {2}"([a-z-]+)": \[/gm;
+  // Cada módulo: `"ruta": [ … ],` en el primer nivel del objeto, con o sin
+  // comillas: si alguien le pasa el formateador al fichero, las claves sin
+  // guion las pierde, y el generador leía 0 pestañas (10-11-2026).
+  const re = /^ {2}"?([a-z][a-z-]*)"?: \[/gm;
   let m;
   const marcas = [];
-  while ((m = re.exec(fuente)) !== null) marcas.push({ ruta: m[1], desde: m.index });
+  while ((m = re.exec(fuente)) !== null)
+    marcas.push({ ruta: m[1], desde: m.index });
   marcas.forEach(({ ruta, desde }, i) => {
     const hasta = i + 1 < marcas.length ? marcas[i + 1].desde : fuente.length;
     const trozo = fuente.slice(desde, hasta);
@@ -52,7 +55,9 @@ function visibilidadDe(fuente) {
       // con ninguna de las que publica el servidor, así que la pestaña quedaba
       // escondida para todo el mundo.
       const primero = /por_servicio:\s*\[\s*"([^"]+)"/.exec(bloque)?.[1];
-      const fila = { r: primero ? listar.replace(":servicio", primero) : listar };
+      const fila = {
+        r: primero ? listar.replace(":servicio", primero) : listar,
+      };
       if (permiso) fila.p = permiso;
       // El tipo de registro, cuando la pestaña lo declara. Lo necesita la
       // paleta para llevar un resultado de búsqueda a SU ficha: sin él, lo
@@ -77,7 +82,9 @@ function visibilidadDe(fuente) {
 const datos = visibilidadDe(readFileSync(ORIGEN, "utf8"));
 const total = Object.values(datos).reduce((n, v) => n + v.length, 0);
 if (total < 100) {
-  console.error(`Sólo se han leído ${total} pestañas: el generador no está viendo el fichero.`);
+  console.error(
+    `Sólo se han leído ${total} pestañas: el generador no está viendo el fichero.`,
+  );
   process.exit(2);
 }
 

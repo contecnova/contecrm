@@ -1135,6 +1135,18 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "service"
     },
     {
+      "r": "/api/v1/agentes",
+      "p": "case:read",
+      "o": "agente_servicio",
+      "s": "service"
+    },
+    {
+      "r": "/api/v1/colas/reglas",
+      "p": "case:read",
+      "o": "regla_reparto",
+      "s": "service"
+    },
+    {
       "r": "/api/v1/agentes/disponibles",
       "s": "service"
     },
@@ -1161,6 +1173,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/sla",
+      "s": "service"
+    },
+    {
+      "r": "/api/v1/colas",
       "o": "cola",
       "s": "service"
     },
@@ -1208,6 +1224,12 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/comunidad/hilos",
+      "o": "hilo_comunidad",
+      "s": "service"
+    },
+    {
+      "r": "/api/v1/comunidad/hilos?incluir_moderacion=true",
+      "o": "hilo_comunidad",
       "s": "service"
     }
   ],

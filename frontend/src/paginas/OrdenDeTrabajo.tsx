@@ -36,6 +36,9 @@ import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { accionesDe, type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
 
 interface Linea {
   id: string;
@@ -106,6 +109,17 @@ export function OrdenDeTrabajo() {
   const modulo = moduloDe("campo");
   const recurso = modulo ? recursoDe(modulo, "ordenes-trabajo") : undefined;
   const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
+  // Lo que se HACE con él —asignar técnico, apuntar líneas, empezar, pausar, completar, firmar y cerrar—:
+  // las rutas estaban en el contrato y la ficha sólo ofrecía «Duplicar» y
+  // «Borrar» (medido el 10-11-2026).
+  const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const acciones = accionesDe(
+    superficie,
+    "/api/v1/ordenes-trabajo",
+    id ?? "",
+    tiene,
+  );
   // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
   // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
   // hasta hoy sólo se leían entrando a editar.
@@ -170,9 +184,22 @@ export function OrdenDeTrabajo() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              extra={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+                destructiva: esIrreversible(a),
+              }))}
             />
           ) : null
         }
+      />
+      <Acciones
+        acciones={acciones}
+        servicio="service"
+        abierta={accionAbierta}
+        alCambiarAbierta={setAccionAbierta}
+        alTerminar={() => cargar()}
       />
       {confirmando ? (
         <ConfirmarBorrado

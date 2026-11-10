@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
@@ -90,7 +90,11 @@ class Asignar(BaseModel):
 
 
 class Linea(BaseModel):
-    tipo: str = Field(..., description="material · tiempo · desplazamiento · otro")
+    # Desplegable y no texto: escrito a mano, «Material» o «materiales» daban
+    # 422 y la línea no se apuntaba (medido el 10-11-2026).
+    tipo: Literal["material", "tiempo", "desplazamiento", "otro"] = Field(
+        ..., description="material · tiempo · desplazamiento · otro"
+    )
     concepto: str = ""
     cantidad: Decimal = Decimal(1)
     unidad: str = "ud"
@@ -176,8 +180,11 @@ class CrearGarantia(BaseModel):
     desde: date
     hasta: date
     tipo: str = "fabricante"
-    cobertura: list[str] = Field(
-        default_factory=list, description="piezas · mano_obra · desplazamiento"
+    # Obligatoria y como lista de opciones: el servicio rechaza una garantía
+    # que no cubre nada, y el formulario la escondía en «Más campos» como una
+    # caja de texto libre, así que el alta fallaba sin decir qué faltaba.
+    cobertura: list[Literal["piezas", "mano_obra", "desplazamiento"]] = Field(
+        ..., min_length=1, description="Qué cubre: piezas, mano de obra, desplazamiento"
     )
     referencia: str = ""
     proveedor: str = ""

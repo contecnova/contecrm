@@ -411,3 +411,22 @@ def test_fijar_el_mismo_par_y_fecha_actualiza_en_vez_de_fallar(db: Any, tenant_i
 def test_un_tipo_de_cambio_no_positivo_se_rechaza(db: Any, tenant_id: UUID) -> None:
     with pytest.raises(ErrorValidacion):
         cat.fijar_tipo_cambio(db, tenant_id=tenant_id, desde="EUR", hasta="USD", tasa=Decimal("0"))
+
+
+@pytest.mark.db
+def test_crm_04_01_02_04_un_calendario_nuevo_y_sus_festivos_se_propagan(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: Any
+) -> None:
+    """`propagar` existía y nadie lo llamaba: la copia de `service` estaba vacía
+    y todos los SLA se contaban en horas de reloj (medido el 10-11-2026)."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.tenancy import api_catalogos as api
+
+    enviados: list[str] = []
+    monkeypatch.setattr(api, "propagar", lambda _db, cal: enviados.append(cal.clave))
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    cal = api.crear_calendario(api.CrearCalendario(clave="zz_jornada", nombre="Jornada"), uow)
+    api.anadir_festivo(cal.id, api.CrearFestivo(fecha=date(2026, 12, 25), nombre="Navidad"), uow)
+    api.repropagar(cal.id, uow)
+    assert enviados == ["zz_jornada", "zz_jornada", "zz_jornada"]

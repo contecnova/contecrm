@@ -338,17 +338,21 @@ def _segmento(db: Session, tenant_id: UUID, segmento_id: UUID) -> Segmento:
 
 
 def _consulta_de(db: Session, segmento: Segmento) -> Any:
-    columnas = columnas_de(db, segmento.tenant_id, segmento.objeto)
+    return _consulta_para(db, segmento.tenant_id, segmento.objeto, segmento.definicion)
+
+
+def _consulta_para(db: Session, tenant_id: UUID, objeto: str, definicion: dict[str, Any]) -> Any:
+    columnas = columnas_de(db, tenant_id, objeto)
     modelo = columnas.pop("_modelo")
     # El día es el del CLIENTE: «altas de los últimos 30 días» calculado en UTC
     # a las 00:30 de Madrid corta por el día de ayer, y quien entró anoche no
     # recibe el envío.
-    condicion = a_condicion_sql(segmento.definicion, columnas, hoy_del_cliente(db))
+    condicion = a_condicion_sql(definicion, columnas, hoy_del_cliente(db))
     # Se devuelve el identificador del objeto de origen y no el del perfil: quien
     # consume el segmento quiere el contacto, no nuestra copia de él.
     return select(modelo.objeto_id).where(
-        modelo.tenant_id == segmento.tenant_id,
-        modelo.objeto == segmento.objeto,
+        modelo.tenant_id == tenant_id,
+        modelo.objeto == objeto,
         # Los dados de baja en origen no entran. Siguen en la tabla para que un
         # segmento congelado pueda explicar a quién incluía, pero uno dinámico no
         # puede seguir seleccionando a quien ya no existe.
@@ -426,6 +430,94 @@ def tamano(db: Session, tenant_id: UUID, segmento_id: UUID) -> dict[str, Any]:
         # devuelve lo que se congeló, y presentarlo igual que un dinámico haría
         # creer que el segmento se ha recalculado.
         "es_foto_congelada": not segmento.dinamico,
+    }
+
+
+# Los operadores que el constructor ofrece, en el orden en que se piensan. Son
+# los que tienen traducción a SQL (`a_sql`) más los temporales: ofrecer
+# «contiene» sería ofrecer algo que el servidor rechaza al guardar.
+OPERADORES = (
+    "=",
+    "!=",
+    "en",
+    "no_en",
+    ">",
+    ">=",
+    "<",
+    "<=",
+    "vacio",
+    "no_vacio",
+    "hace_menos_de_dias",
+    "hace_mas_de_dias",
+)
+
+# Lo que el perfil guarda de cualquier objeto, además de lo que trae su origen.
+_DE_TODOS = ("owner_id", "alta_at", "ultima_actividad_at")
+
+
+def atributos(db: Session, tenant_id: UUID, objeto: str) -> dict[str, Any]:
+    """Por qué se puede segmentar en un objeto, con el tipo de cada cosa.
+
+    Sale de `columnas_de`, la misma tabla que traduce a SQL: el constructor no
+    puede ofrecer un atributo que luego el guardado rechace.
+    """
+    from services.marketing.proyeccion import ORIGENES
+
+    columnas = columnas_de(db, tenant_id, objeto)
+    columnas.pop("_modelo", None)
+    # Sólo lo que algo rellena. Una columna que nadie escribe —la última compra,
+    # el cargo de una cuenta— se puede elegir y no casa nunca: el segmento sale
+    # vacío y parece que no hay nadie, cuando lo que no hay es el dato.
+    rellenos = set(ORIGENES[objeto]["campos"]) | set(_DE_TODOS)
+    if objeto != "cuenta":
+        rellenos.add("cuenta_id")
+    salida = []
+    for nombre, columna in sorted(columnas.items()):
+        propio = nombre.split(".", 1)[-1]
+        if not propio.startswith("campos.") and propio not in rellenos:
+            continue
+        try:
+            python = columna.type.python_type
+        except (NotImplementedError, AttributeError):
+            python = str
+        tipo = (
+            "fecha"
+            if python in (datetime, date)
+            else "numero"
+            if python in (int, float) or python.__name__ == "Decimal"
+            else "booleano"
+            if python is bool
+            else "texto"
+        )
+        salida.append({"atributo": nombre, "tipo": tipo})
+    return {"objeto": objeto, "atributos": salida, "operadores": list(OPERADORES)}
+
+
+def estimar(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    objeto: str,
+    definicion: dict[str, Any],
+    excluye: list[UUID] | None = None,
+) -> dict[str, Any]:
+    """Cuánta gente tendría un segmento, SIN guardarlo (CRM-02.01.01.04).
+
+    Las mismas tres cifras que el de un segmento guardado —bruto, alcanzables y
+    caídos por supresión—, calculadas con el mismo código: una estimación que
+    contara distinto que el segmento ya guardado sería una segunda verdad.
+    """
+    validar(definicion)
+    ids = list(db.execute(_consulta_para(db, tenant_id, objeto, definicion)).scalars())
+    for excluido in excluye or []:
+        fuera = set(miembros(db, tenant_id, excluido, limite=1_000_000))
+        ids = [i for i in ids if i not in fuera]
+    alcanzables, suprimidos = filtrar_suprimidos(db, tenant_id, objeto, ids)
+    return {
+        "bruto": len(ids),
+        "alcanzables": len(alcanzables),
+        "suprimidos": len(suprimidos),
+        "calculado_at": _ahora().isoformat(),
     }
 
 

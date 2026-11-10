@@ -92,7 +92,10 @@ export async function nombresDeRegistros(
   const porTipo = new Map<string, string[]>();
   for (const r of registros) {
     if (!r.objeto_tipo || !r.objeto_id) continue;
-    porTipo.set(r.objeto_tipo, [...(porTipo.get(r.objeto_tipo) ?? []), r.objeto_id]);
+    porTipo.set(r.objeto_tipo, [
+      ...(porTipo.get(r.objeto_tipo) ?? []),
+      r.objeto_id,
+    ]);
   }
   // Los tipos EN PARALELO: en serie, cuatro tipos con su viaje de red son
   // cuatro esperas seguidas para pintar una lista que ya se tiene entera.
@@ -109,4 +112,46 @@ export async function nombresDeRegistros(
     for (const [id, nombre] of lote.nombres) nombres.set(id, nombre);
   }
   return { nombres, preguntados };
+}
+
+/**
+ * El nombre de UN registro, juntando en una sola llamada por tipo todos los que
+ * se piden en el mismo instante.
+ *
+ * Lo usa la celda de una tabla: cincuenta filas con `cuenta_id` son cincuenta
+ * celdas que preguntan a la vez, y una llamada por celda serían cincuenta. Se
+ * juntan en el mismo turno y se resuelven con `nombresDeRegistros`, y lo ya
+ * resuelto se recuerda durante la sesión de la pantalla.
+ */
+const resueltos = new Map<string, Promise<string | undefined>>();
+let pendientes: { tipo: string; id: string; listo: (n?: string) => void }[] =
+  [];
+let programado = false;
+
+export function nombreEnLote(
+  tipo: string,
+  id: string,
+): Promise<string | undefined> {
+  const clave = `${tipo}:${id}`;
+  const hay = resueltos.get(clave);
+  if (hay) return hay;
+  const promesa = new Promise<string | undefined>((listo) => {
+    pendientes.push({ tipo, id, listo });
+    if (!programado) {
+      programado = true;
+      setTimeout(() => {
+        const lote = pendientes;
+        pendientes = [];
+        programado = false;
+        void nombresDeRegistros(
+          lote.map((p) => ({ objeto_tipo: p.tipo, objeto_id: p.id })),
+        ).then(
+          ({ nombres }) => lote.forEach((p) => p.listo(nombres.get(p.id))),
+          () => lote.forEach((p) => p.listo(undefined)),
+        );
+      }, 0);
+    }
+  });
+  resueltos.set(clave, promesa);
+  return promesa;
 }

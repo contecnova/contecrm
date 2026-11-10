@@ -6912,6 +6912,159 @@ está vacía —los 25 eventos `catalogos.tipo_cambio_fijado` se publicaron el
 un tipo para volver a emitirlo.
 
 
+### Recorrido de marketing en el navegador (10-11-2026)
+
+Recorridas en pantalla las capacidades `svc: marketing` hechas sin `visto`.
+Lo que fallaba y cómo quedó:
+
+- **La proyección de marketing estaba vacía de datos** (`proyeccion.py`). Los
+  eventos de alta sólo traen el nombre y no hay evento de modificación: 0
+  perfiles con estado, empleados, sector o cargo, y todos los segmentos a cero.
+  Nuevo `resincronizar(tenant_id, principal)` con `ORIGENES` (ruta pública y
+  qué columna del origen alimenta cada campo del perfil), por
+  `crmcore.http.interno.invocar` como máquina —sin el filtro de compartición—
+  con los permisos y roles de quien lo pide; tamaño de página en
+  `Settings.marketing_resincronizar_pagina`. Un objeto leído a medias no se
+  toca; los campos de `campos_tapados`/`campos_no_entregados` no se copian; alta
+  y última actividad salen del origen. Rutas: `GET /segmentos/perfiles` (de
+  cuándo es el dato) y `POST /segmentos/perfiles/sincronizar` (`segment:write`).
+- **Constructor de segmentos** (`componentes/ConstructorDeSegmento.tsx`,
+  enganchado en `Formulario.tsx` cuando el recurso es `segmento`: `definicion`
+  y `excluye`). `GET /segmentos/atributos?objeto=` (sólo lo que `columnas_de`
+  traduce y algo rellena: `ORIGENES[objeto]` + dueño, alta, última actividad,
+  cuenta y campos propios) y `POST /segmentos/estimar` (`seg.estimar`, mismo
+  `_consulta_para` y `filtrar_suprimidos` que el segmento guardado). `objeto`
+  pasa a `Literal` (desplegable). `Segmento.tsx` leía `campo` en vez de
+  `atributo` y los porcentajes salían con punto.
+- **Acciones de fila con `DELETE`** (`Acciones.tsx`): tiraban siempre el cuerpo;
+  «Levantar una supresión» exige motivo y daba 422. Ahora un `DELETE` con
+  campos los manda.
+- **Recorridos** (`recorridos.py`): `entrar_por_segmento` (al publicar y en
+  `avanzar_solos`; `tenants_con_recorridos_pendientes` incluye los tenants con
+  recorridos por segmento publicados), `entrar_por_evento` (desde
+  `proyeccion.consumir`, en la misma unidad de trabajo que el perfil para los
+  eventos de `EVENTOS`), y salida `otro_recorrido` al entrar en uno que otro
+  declara en `excluye_si_en`. `ficha()` devuelve `evento_entrada` y
+  `segmento_id`. Pantalla: el alta pide entrada, segmento o evento (los del
+  catálogo con `contacto_id` o `lead_id`), «Sale en cuanto compra» y «Cede el
+  paso a», y la ficha pinta `GET /recorridos/{id}/embudo`.
+- **Puntuación** (`puntuacion._grado` acepta `grado` o `clave`;
+  `PuntuacionDeLead.tsx` igual): panel `componentes/PuntuacionDelLead.tsx` en
+  la ficha del lead. `lead.qualified` pasa a productor `marketing` con sus
+  campos reales (`events/dominio.py`, Anexo B del catálogo) y `sales` lo consume
+  (`consumidores.consumir_cualificacion`, cola `sales-cualificacion`): guarda
+  `puntuacion` y lleva a «cualificado» al llegar a SQL si la máquina de estados
+  lo deja. La siembra (`scripts/sembrar_configuracion.py`) usaba atributos que
+  no existen en el ámbito (`sector`, `evento`, `paginas`) y tramos con `clave`;
+  ahora `lead.<dato>` y `grado`, y «Clientes activos» filtra `estado = activa`.
+
+Pruebas (sólo de lo arreglado): `test_segmentos_y_scoring.py` (la estimación
+cuenta igual que el guardado, el constructor no ofrece lo que nadie rellena, la
+puesta al día no copia lo tapado), `test_recorridos.py` (entrada por segmento
+sin repetir, por evento, salida por el prioritario),
+`test_la_calificacion_de_marketing_llega_a_ventas.py` y, en el front,
+`un_segmento_se_puede_lanzar.test.tsx` (el doble usaba `campo`).
+
+**Lo que quedó sin poder comprobar en local:** envíos reales (correo, SMS,
+postal, telemarketing), la sincronización con plataformas de anuncios sin un
+doble, y la puntuación con un modelo correcto: el modelo activo del tenant
+(`b2b_automocion` v6) se sembró con los atributos rotos y no se puede borrar una
+versión; hace falta publicar una nueva desde «Puntuación → Nuevo».
+
+### Servicio recorrido en pantalla (10-11-2026): qué se arregló y dónde
+
+**Acciones del contrato en las fichas propias.** `Articulo.tsx`, `Activo.tsx` y
+`OrdenDeTrabajo.tsx` no pintaban las acciones: ahora usan `accionesDe` sobre
+`/api/v1/conocimiento`, `/api/v1/activos` y `/api/v1/ordenes-trabajo` igual que
+`Caso.tsx`. `Acciones.tsx` acepta `recurso` y lo pasa a `Formulario` como
+`propio`, así `original_id`/`maestro_id` de una acción salen como buscador
+(`Caso`, `Ficha` y `Modulo` lo pasan).
+
+**Contrato en el front** (`lib/contrato.ts`): `resolver` conserva `referencia` y
+`enum` de un campo opcional (`anyOf`), y `fichaDe` ignora la consulta de
+`listar`; `Edicion.tsx` y `Ficha.tsx` también. **Tablas** (`Tabla.tsx`): una
+columna de persona sale con su nombre (`usePersonas`) y una `*_id` con pantalla
+con el nombre del registro (`nombres.ts › nombreEnLote`, una llamada por tipo);
+los identificadores declarados en `columnas` del recurso se ven de entrada
+(prop `declaradas`). Recursos nuevos: *Agentes*, *Reglas de reparto*,
+*Comunidad por moderar*.
+
+**Servicio de casos** (`services/service`):
+- `servicio.abrir_caso` llama a `operacion.asignar` si no viene dueño ni cola.
+- Vocabulario `motivos_cierre_caso` (`servicio.py`), exigido en `POST
+  /casos/{id}/cerrar` y `/cerrar-masiva` (`exigir_motivo_de_cierre`); no en el
+  cierre por cambio de estado, donde el motivo es el comentario de la transición.
+- `arbol_de_caso` devuelve `maestro`, `duplicados` y `asuntos`.
+- `portal.validar_cierre` + `POST /portal/mi/casos/{id}/validar-cierre`;
+  `mis_casos` devuelve `validacion_cliente` y la resolución mientras está pendiente.
+- `GET/DELETE /colas/reglas` (declarados ANTES de `/colas/{clave}`), `GET /agentes`,
+  `POST /agentes` (capacidad canal a canal), `DELETE /agentes/{usuario_id}`.
+  La consola devuelve `presencia_desde` y `configurado`.
+- Tarea `service.escalado` en `main._tareas` (`tarea_escalado_intervalo_s`, 300 s).
+  **Ojo al desplegar**: la primera pasada aplica las reglas a todo lo abierto que
+  nunca se escaló; en el tenant de demostración fueron 1.552 eventos.
+- `_calendario` cae al calendario por defecto si la clave no existe;
+  `exigir_calendario` al publicar un SLA. La ficha recibe `sla.pausado_desde`.
+- `en_riesgo` ordena lo salvable primero; `cumplimiento_desglosado` añade `cuenta_id`.
+- Problemas: `GET/POST /problemas/{id}/casos` (lista con `response_model`, para que
+  sea sub-colección), `caso_maestro_id` con `referencia: caso`, severidad con `enum`;
+  `DELETE …/casos/{caso_id}` admite quitar sin motivo y lo deja escrito.
+- Conocimiento: `esta_publicado`/`publicado_sql` (en revisión con versión
+  publicada sigue a la vista) en `leer`, `buscar`, eficacia y portal; `leer`
+  devuelve `version_publicada` y `a_la_vista`; `Publicar.audiencia` con `enum`.
+- Comunidad: `abrir_hilo_portal` llamaba a `abrir_hilo` sin el acceso (500); `hilos`
+  devuelve `id`.
+- Campo y postventa: `CrearGarantia.cobertura` obligatoria y `Literal`,
+  `Linea.tipo` `Literal`, `Resolver.tipo`/`a_cargo_de` con `enum`, suspensión de
+  expediente con `MotivoDeSuspension` (`enum` de `MOTIVOS_SUSPENSION`).
+
+**Tenancy**: `api_catalogos` llama a `crmcore.datos.calendario.propagar` al crear
+un calendario y al añadir un festivo, y `POST /calendarios/{id}/propagar` lo
+reenvía. Sin esto la copia de `service` estaba vacía.
+
+**Front**: `Caso.tsx` (relaciones con nombre, árbol en dos sentidos, panel de
+derecho que leía un campo inexistente, reloj parado, último cierre),
+`Consola.agente.tsx` (Mi presencia), `Conversacion.tsx` (macro), `Portal.tsx`
+(validar cierre, preguntar en la comunidad), `Conocimiento.tsx` (título enlaza),
+`Activo.tsx` (historial leía `cuando` y la API manda `ocurrido_at`).
+
+Pruebas: `test_casos_y_sla.py`, `test_conocimiento_y_portal.py` y
+`test_comparticion_y_catalogos.py`, las que citan `crm_04_…` del 10-11-2026.
+
+### Borrar un contacto con señales, y buscar contactos por apellido o correo (10-11-2026)
+
+**Señales de identidad.** Todo contacto con correo o teléfono daba 409
+(`integridad.referenciado`, «1 en senales_identidad»): las señales se anotan
+solas al guardar y `integridad.quien_depende` las contaba como dependencia.
+Ahora `Senal.contacto_id` lleva `info={"parte_de": True}` —la marca de
+composición sin clave ajena de `integridad._es_composicion`— y la tabla tiene
+`deleted_at` (migración `alembic/versions/party/20261110_1800_senales_siguen_a_su_contacto.py`,
+`7c3a9e51d2b4`, que además deja inactivas las de contactos que ya estaban en la
+papelera). `identidad._al_guardar` (el `before_flush` que ya las anotaba) hace
+que sigan a su contacto por cualquier vía —ficha, borrado masivo, restaurar,
+purgar—: si cambia `deleted_at` del contacto, copia el valor a sus señales con
+un `UPDATE` (a la papelera, inactivas: el guard de borrados las esconde de
+`resolver`, `proponer_uniones` e `identidades_de`; restaurado, vuelven con sus
+`veces`); si el contacto se purga (`session.deleted`), se borran. `observar` y
+`_anotar` buscan la existente con `con_borrados` para no chocar con
+`uq_senal_identidad`. Lo ya unido no se toca: `uniones_identidad` no apunta por
+`contacto_id`, y `resolver` deja de llevar un secundario a un principal que
+está en la papelera —el secundario cuenta por sí mismo, y vuelve a sumar en el
+principal si se restaura—.
+
+**Búsqueda de contactos.** `GET /contacts?buscar=` buscaba sólo en
+`clave_canonica`, que guarda las palabras ordenadas: «ZZ Contacto» no
+encontraba a «ZZ Contacto» y el correo no encontraba a nadie. Ahora llama a
+`crmcore.http.listados.aplicar_busqueda`, el mismo `_buscar_texto` del
+`?buscar=` común (por palabras, sólo campos en claro) para un listado escrito a
+mano que declara `buscar`; `Contacto.__busqueda__` = nombre, apellidos,
+`clave_canonica` (sin tildes) y correo. Lo usan el panel «Meter a alguien» de
+los recorridos y el selector de contactos.
+
+Pruebas: `tests/unit/test_calidad_del_dato_real.py`
+(`test_las_senales_siguen_a_su_contacto_a_la_papelera_y_de_vuelta`, que con la
+marca quitada da el 409, y `test_la_busqueda_de_contactos_mira_nombre_apellidos_y_correo`).
+
 ## 5. Operación
 
 ### 5.1 Copias y restauración

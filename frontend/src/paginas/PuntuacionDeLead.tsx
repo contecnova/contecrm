@@ -66,7 +66,7 @@ interface Explicacion {
   ultima_actividad_at: string | null;
   calculado_at: string;
   umbrales: { mql: Umbral; sql: Umbral } | null;
-  grados: { desde?: number; grado?: string }[];
+  grados: { desde?: number; grado?: string; clave?: string }[];
   decaimiento?: {
     puntos: number;
     cada_dias: number;
@@ -141,7 +141,12 @@ export function PuntuacionDeLead() {
   if (!explicacion) return <Cargando />;
 
   const e = explicacion;
-  const grados = e.grados ?? [];
+  // `clave` también: así sembraba los tramos la configuración inicial, y con
+  // sólo `grado` cada tramo salía como «— desde 80» (10-11-2026).
+  const grados = (e.grados ?? []).map((g) => ({
+    ...g,
+    grado: g.grado ?? g.clave,
+  }));
   const tramo = grados.find((g) => g.grado === e.grado);
 
   return (

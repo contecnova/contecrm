@@ -42,7 +42,7 @@ import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { moduloDe } from "@/lib/modulos";
-import { ErrorApi, llamar } from "@/lib/api";
+import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
@@ -268,6 +268,17 @@ export function Conversacion({ sesion }: { sesion: Sesion | null }) {
       />
 
       {puedeEscribir ? (
+        <AplicarMacro
+          conversacionId={id}
+          canal={conversacion.canal_actual}
+          alTerminar={(texto) => {
+            setAviso(texto);
+            cargar();
+          }}
+        />
+      ) : null}
+
+      {puedeEscribir ? (
         <Responder enviando={enviando} alEnviar={accion} />
       ) : (
         <p className="text-rotulo text-ink-faint">
@@ -387,5 +398,109 @@ function Responder({
         {t("conversacion.transferirDetalle")}
       </p>
     </div>
+  );
+}
+
+interface Macro {
+  clave: string;
+  nombre: string;
+  canales?: string[];
+  usos?: number;
+}
+
+/**
+ * Una respuesta rápida o una acción compuesta, aplicada aquí (CRM-04.02.02.04).
+ *
+ * Las macros se creaban y se listaban en Omnicanal › Macros, y aplicarlas sólo
+ * se podía por API: la conversación, que es donde se usan, no las ofrecía
+ * (medido el 10-11-2026). Las de este canal primero; las más usadas, antes.
+ */
+function AplicarMacro({
+  conversacionId,
+  canal,
+  alTerminar,
+}: {
+  conversacionId: string;
+  canal?: string | null;
+  alTerminar: (aviso: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [macros, setMacros] = useState<Macro[] | null>(null);
+  const [elegida, setElegida] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<unknown>("/api/v1/macros", { signal: control.signal })
+      .then((r) => setMacros(filas<Macro>(r.datos)))
+      .catch(salvoCancelacion(() => setMacros([])));
+    return () => control.abort();
+  }, []);
+
+  if (!macros || macros.length === 0) return null;
+  const delCanal = (m: Macro) =>
+    !canal || !m.canales?.length || m.canales.includes(canal);
+  const ordenadas = [
+    ...macros.filter(delCanal),
+    ...macros.filter((m) => !delCanal(m)),
+  ];
+
+  async function aplicar() {
+    if (!elegida) return;
+    setEnviando(true);
+    setFallo(null);
+    try {
+      await llamar(`/api/v1/macros/${encodeURIComponent(elegida)}/aplicar`, {
+        metodo: "POST",
+        cuerpo: { conversacion_id: conversacionId },
+      });
+      const nombre =
+        macros?.find((m) => m.clave === elegida)?.nombre ?? elegida;
+      setElegida("");
+      alTerminar(t("conversacion.macroAplicada", { nombre }));
+    } catch (error) {
+      setFallo(error);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section
+      className="flex flex-wrap items-end gap-2 rounded-lg border border-ink-dim/40 p-3"
+      aria-label={t("conversacion.macro")}
+    >
+      <label className="flex min-w-60 flex-1 flex-col gap-1">
+        <span className="text-rotulo text-ink-muted">
+          {t("conversacion.macro")}
+        </span>
+        <select
+          value={elegida}
+          onChange={(e) => setElegida(e.target.value)}
+          className="input-base"
+        >
+          <option value="">{t("conversacion.elegirMacro")}</option>
+          {ordenadas.map((m) => (
+            <option key={m.clave} value={m.clave}>
+              {delCanal(m)
+                ? m.nombre
+                : t("conversacion.macroOtroCanal", { nombre: m.nombre })}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        disabled={!elegida || enviando}
+        onClick={() => void aplicar()}
+        className="btn-secondary"
+      >
+        {enviando
+          ? t("conversacion.aplicando")
+          : t("conversacion.aplicarMacro")}
+      </button>
+      {fallo ? <Fallo error={fallo} /> : null}
+    </section>
   );
 }

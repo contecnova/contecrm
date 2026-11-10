@@ -548,3 +548,68 @@ def test_una_clase_inventada_se_rechaza() -> None:
 def test_un_recorrido_que_no_existe_da_404(uow: UnidadDeTrabajo) -> None:
     with pytest.raises(NoEncontrado):
         rec.embudo(uow.db, uow.tenant_id, uuid4())
+
+
+# ── Entrar solos y ceder el paso (CRM-02.02.02.02, .07; 10-11-2026) ─────────
+
+
+@pytest.mark.db
+def test_por_segmento_entra_el_segmento_al_publicar_y_no_repite(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: UnidadDeTrabajo
+) -> None:
+    """`entrada="segmento"` se guardaba y no lo leía nadie: publicar no metía a
+    nadie."""
+    from services.marketing import segmentos as seg
+    from services.marketing.modelos import PerfilMarketing
+
+    for i in range(3):
+        db.add(
+            PerfilMarketing(
+                tenant_id=tenant_id,
+                objeto="contacto",
+                objeto_id=uuid4(),
+                email=f"es{i}@cliente.com",
+                pais="ES",
+            )
+        )
+    db.flush()
+    segmento = seg.crear(
+        uow,
+        clave="es",
+        nombre="ES",
+        objeto="contacto",
+        definicion={"atributo": "contacto.pais", "operador": "=", "valor": "ES"},
+    )
+    fila = _recorrido(uow, entrada="segmento", segmento_id=segmento.id)
+    r = rec.publicar(uow, fila.id)
+    assert r["entrada"]["entraron"] == 3
+    assert rec.entrar_por_segmento(uow, fila)["entraron"] == 0
+
+
+@pytest.mark.db
+def test_por_evento_entra_quien_protagoniza_el_evento(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: UnidadDeTrabajo
+) -> None:
+    quien = _alcanzable(uow)
+    _publicado(uow, entrada="evento", evento_entrada="contact.created")
+    r = rec.entrar_por_evento(uow, "contact.created", {"contacto_id": str(quien)})
+    assert [x["entro"] for x in r] == [True]
+    assert rec.entrar_por_evento(uow, "lead.created", {"lead_id": str(quien)}) == []
+
+
+@pytest.mark.db
+def test_entrar_en_el_prioritario_saca_del_que_le_cede_el_paso(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: UnidadDeTrabajo
+) -> None:
+    """El motivo «otro_recorrido» existía y nada lo ponía nunca."""
+    quien = _alcanzable(uow)
+    nutricion = _publicado(uow, clave="nutricion", excluye_si_en=["cliente"])
+    cliente = _publicado(uow, clave="cliente")
+    assert rec.entrar(uow, nutricion.id, objeto_id=quien)["entro"]
+    assert rec.entrar(uow, cliente.id, objeto_id=quien)["entro"]
+    salida = db.execute(
+        __import__("sqlalchemy")
+        .select(rec.EnRecorrido)
+        .where(rec.EnRecorrido.recorrido_id == nutricion.id)
+    ).scalar_one()
+    assert (salida.estado, salida.motivo_salida) == ("salido", "otro_recorrido")

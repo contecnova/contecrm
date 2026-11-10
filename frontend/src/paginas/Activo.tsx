@@ -40,6 +40,9 @@ import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { accionesDe, type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
 import { fecha } from "@/lib/formato";
 
 interface Nodo {
@@ -55,9 +58,12 @@ interface Nodo {
 
 interface Evento {
   tipo?: string;
-  cuando?: string;
-  detalle?: Record<string, unknown>;
+  /** Cuándo pasó. Se leía `cuando`, que la API no manda: salía «—» en todos. */
+  ocurrido_at?: string;
+  descripcion?: string | null;
   activo_id?: string;
+  /** De la máquina a la que sustituyó: historia útil, pero no de ésta. */
+  de_equipo_anterior?: boolean;
 }
 
 interface Historial {
@@ -133,6 +139,12 @@ export function Activo() {
   const modulo = moduloDe("campo");
   const recurso = modulo ? recursoDe(modulo, "activo") : undefined;
   const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
+  // Lo que se HACE con él —registrar una garantía, sustituirlo, anotar el contador, moverlo de equipo—:
+  // las rutas estaban en el contrato y la ficha sólo ofrecía «Duplicar» y
+  // «Borrar» (medido el 10-11-2026).
+  const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const acciones = accionesDe(superficie, "/api/v1/activos", id ?? "", tiene);
   // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
   // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
   // hasta hoy sólo se leían entrando a editar.
@@ -198,9 +210,22 @@ export function Activo() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              extra={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+                destructiva: esIrreversible(a),
+              }))}
             />
           ) : null
         }
+      />
+      <Acciones
+        acciones={acciones}
+        servicio="service"
+        abierta={accionAbierta}
+        alCambiarAbierta={setAccionAbierta}
+        alTerminar={() => cargar()}
       />
       {confirmando ? (
         <ConfirmarBorrado
@@ -354,8 +379,16 @@ export function Activo() {
                     {eventos.map((e, i) => (
                       <li key={i} className="flex items-baseline gap-2">
                         <span className="chip-dato">{e.tipo}</span>
-                        <span className="flex-1 font-mono text-rotulo text-ink-muted">
-                          {fecha(e.cuando)}
+                        <span className="min-w-0 flex-1 truncate text-dato text-ink">
+                          {e.descripcion || ""}
+                          {e.de_equipo_anterior ? (
+                            <span className="ml-1 text-rotulo text-ink-faint">
+                              {t("activo.deEquipoAnterior")}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="font-mono text-rotulo text-ink-muted">
+                          {fecha(e.ocurrido_at)}
                         </span>
                       </li>
                     ))}

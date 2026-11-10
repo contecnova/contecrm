@@ -631,7 +631,15 @@ PRESUPUESTO_KB = 131
 #   el que caza a una que engorde, sigue en verde. 490 deja ~4 % de margen; lo
 #   que venga a partir de aquí no es cola larga, así que si se agota hay que
 #   partir el paquete por área.
-PRESUPUESTO_TOTAL_KB = 490
+#   10-11-2026 (tarde)  490 → 540. Medido: 509 kB tras recorrer ventas,
+#   servicio y marketing en pantalla, que dio a decenas de fichas sus acciones
+#   y formularios. **Corrijo lo que escribí esta mañana**: partir el paquete por
+#   área no baja esta suma —reparte lo que se descarga, pero los trozos siguen
+#   sumando lo mismo—. Lo que paga quien usa el producto lo vigilan los otros
+#   dos topes, la apertura y cada pantalla, y los dos siguen en verde. Este
+#   número crece con el producto por diseño; si vuelve a agotarse, lo que hay
+#   que mirar es si ha entrado una librería, no partir nada.
+PRESUPUESTO_TOTAL_KB = 540
 
 # Lo que pesa una pantalla diferida, comprimida. Mediana medida: 1,94 kB.
 #

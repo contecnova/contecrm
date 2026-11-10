@@ -68,6 +68,59 @@ vocabulario.registrar(
     etiquetas={"baja": "Baja", "media": "Media", "alta": "Alta", "critica": "Crítica"},
 )
 
+# Por qué se cierra un caso (CRM-04.01.01.09). Era texto libre: «resuelto»,
+# «Resuelto» y «solucionado» contaban como tres motivos y el informe de cierres
+# —para el que existe el campo— tenía tantas filas como formas de escribirlo.
+# Medido el 10-11-2026 cerrando un caso desde la ficha. Los dos fijos los
+# escribe el código: marcar un duplicado y resolver un problema cierran solos.
+VOCABULARIO_MOTIVOS_CIERRE = "motivos_cierre_caso"
+MOTIVOS_CIERRE = (
+    "resuelto",
+    "solucion_temporal",
+    "no_era_un_problema",
+    "sin_respuesta_del_cliente",
+    "fuera_de_alcance",
+    "duplicado",
+    "resuelto_por_problema",
+)
+vocabulario.registrar(
+    VOCABULARIO_MOTIVOS_CIERRE,
+    MOTIVOS_CIERRE,
+    etiqueta="Motivos de cierre de un caso",
+    descripcion=(
+        "Por qué se cerró un caso. Se elige al cerrarlo y es lo que agrupa el "
+        "informe de cierres. «Duplicado» y «resuelto por problema» los pone el "
+        "propio sistema y no se pueden retirar."
+    ),
+    fijos=("duplicado", "resuelto_por_problema"),
+    en_orden=True,
+    etiquetas={
+        "resuelto": "Resuelto",
+        "solucion_temporal": "Solución temporal",
+        "no_era_un_problema": "No era un problema",
+        "sin_respuesta_del_cliente": "Sin respuesta del cliente",
+        "fuera_de_alcance": "Fuera de alcance",
+        "duplicado": "Duplicado",
+        "resuelto_por_problema": "Resuelto por un problema",
+    },
+)
+
+
+def exigir_motivo_de_cierre(db: Session, motivo: str) -> None:
+    """Que el motivo sea uno de la lista de la empresa.
+
+    Se exige en el cierre que se ELIGE —la acción de la ficha y el cierre de
+    una incidencia masiva—, no en el que se deriva de mover el estado, donde el
+    motivo es el comentario de la transición.
+    """
+    admitidos = vocabulario.valores(db, VOCABULARIO_MOTIVOS_CIERRE)
+    if motivo not in admitidos:
+        raise ErrorValidacion(
+            f"«{motivo}» no es un motivo de cierre de la lista.",
+            error_code="service.motivo_cierre_no_valido",
+            detalle={"admitidos": sorted(admitidos)},
+        )
+
 
 def _ahora() -> datetime:
     return datetime.now(timezone.utc)
@@ -223,12 +276,46 @@ def sla_aplicable(
 
 
 def _calendario(db: Session, tenant_id: UUID, clave: str) -> CalendarioLaboral | None:
-    consulta = select(CalendarioLaboral).where(CalendarioLaboral.tenant_id == tenant_id)
+    """El calendario del SLA, o el de la empresa por defecto si ése no existe.
+
+    Una clave que no casa con ningún calendario —el SLA dice «laborable» y la
+    empresa tiene «iberia»— hacía contar en horas de RELOJ: un SLA de ocho
+    horas laborables vencía a la una de la madrugada. Medido el 10-11-2026 con
+    los tres SLA del tenant de demostración. El calendario por defecto de la
+    empresa se parece mucho más a lo pactado que el reloj, y se avisa.
+    """
+    base = select(CalendarioLaboral).where(CalendarioLaboral.tenant_id == tenant_id)
     if clave:
-        consulta = consulta.where(CalendarioLaboral.clave == clave)
-    else:
-        consulta = consulta.where(CalendarioLaboral.por_defecto.is_(True))
-    return db.execute(consulta.limit(1)).scalar_one_or_none()
+        hallado = db.execute(
+            base.where(CalendarioLaboral.clave == clave).limit(1)
+        ).scalar_one_or_none()
+        if hallado is not None:
+            return hallado
+        logger.warning(
+            "service.sla_calendario_inexistente", tenant=str(tenant_id), calendario=clave
+        )
+    return db.execute(
+        base.where(CalendarioLaboral.por_defecto.is_(True)).limit(1)
+    ).scalar_one_or_none()
+
+
+def exigir_calendario(db: Session, tenant_id: UUID, clave: str) -> None:
+    """Al publicar un SLA, que su calendario exista: lo que no exista se descubre
+    cuando ya hay casos con vencimientos mal calculados."""
+    if not clave:
+        return
+    claves = [
+        c
+        for (c,) in db.execute(
+            select(CalendarioLaboral.clave).where(CalendarioLaboral.tenant_id == tenant_id)
+        ).all()
+    ]
+    if clave not in claves:
+        raise ErrorValidacion(
+            f"No hay ningún calendario laboral «{clave}».",
+            error_code="service.calendario_inexistente",
+            detalle={"calendarios": sorted(claves)},
+        )
 
 
 def _vencimiento(
@@ -403,6 +490,15 @@ def abrir_caso(
 
     aplicar_sla(uow.db, caso, tier_cliente=tier_cliente)
     _anotar(uow.db, caso, "abierto", prioridad=prioridad, severidad=severidad)
+    # El reparto, AL ABRIR (CRM-04.01.01.05). Las reglas, la capacidad y la
+    # explicación estaban escritas y sólo se ejecutaban si alguien llamaba a
+    # `POST /colas/asignar/{caso}` a mano: ningún caso se repartía solo, todos
+    # se quedaban en la entrada sin dueño. Medido el 10-11-2026. Sólo cuando
+    # quien abre no ha dicho ya de quién es ni a qué cola va.
+    if caso.owner_id is None and not caso.equipo:
+        from services.service.operacion import asignar
+
+        asignar(uow, caso)
     from services.service.indexacion import indexar_caso
 
     indexar_caso(uow.db, caso)
@@ -896,33 +992,58 @@ def marcar_duplicado(uow: UnidadDeTrabajo, caso_id: UUID, original_id: UUID) -> 
 
 
 def arbol_de_caso(db: Session, tenant_id: UUID, caso_id: UUID) -> dict[str, Any]:
+    """De qué cuelga el caso y qué cuelga de él (CRM-04.01.01.04, CRM-04.01.01.11).
+
+    Las tres relaciones en los DOS sentidos y con el asunto de cada uno. Antes
+    salía sólo hacia abajo y sin nombre: el caso colgado de una incidencia
+    masiva no decía de cuál —el agente que lo abría no sabía que había una
+    causa común investigándose—, el original no listaba sus duplicados y el
+    padre era «cuelga de otro caso», sin decir cuál. Medido el 10-11-2026
+    recorriendo la ficha.
+    """
     caso = exigir_caso(db, caso_id)
-    hijos = (
-        db.execute(
-            select(Caso).where(
-                Caso.tenant_id == tenant_id, Caso.padre_id == caso.id, Caso.deleted_at.is_(None)
+
+    def _de(columna: Any) -> list[dict[str, Any]]:
+        filas = (
+            db.execute(
+                select(Caso)
+                .where(Caso.tenant_id == tenant_id, columna == caso.id, Caso.deleted_at.is_(None))
+                .order_by(Caso.created_at)
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
-    colgados = (
-        db.execute(
-            select(Caso).where(
-                Caso.tenant_id == tenant_id, Caso.maestro_id == caso.id, Caso.deleted_at.is_(None)
-            )
+        return [{"id": str(h.id), "asunto": h.asunto, "estado": h.estado} for h in filas]
+
+    arriba = {
+        clave: valor
+        for clave, valor in (
+            ("padre", caso.padre_id),
+            ("maestro", caso.maestro_id),
+            ("duplicado_de", caso.duplicado_de_id),
         )
-        .scalars()
-        .all()
-    )
+        if valor
+    }
+    asuntos: dict[UUID, str] = {}
+    if arriba:
+        asuntos = dict(
+            db.execute(
+                select(Caso.id, Caso.asunto).where(
+                    Caso.tenant_id == tenant_id, Caso.id.in_(list(arriba.values()))
+                )
+            ).all()
+        )
     return {
         "caso": str(caso.id),
         "padre": str(caso.padre_id) if caso.padre_id else None,
-        "hijos": [{"id": str(h.id), "asunto": h.asunto, "estado": h.estado} for h in hijos],
-        "colgados_del_maestro": [
-            {"id": str(h.id), "asunto": h.asunto, "estado": h.estado} for h in colgados
-        ],
+        "maestro": str(caso.maestro_id) if caso.maestro_id else None,
         "duplicado_de": str(caso.duplicado_de_id) if caso.duplicado_de_id else None,
+        # El asunto de los de arriba, por identificador. Uno que ya no está no
+        # aparece: la pantalla lo dice en vez de inventarle un nombre.
+        "asuntos": {str(k): v for k, v in asuntos.items()},
+        "hijos": _de(Caso.padre_id),
+        "colgados_del_maestro": _de(Caso.maestro_id),
+        "duplicados": _de(Caso.duplicado_de_id),
     }
 
 
@@ -986,7 +1107,16 @@ def en_riesgo(db: Session, tenant_id: UUID, *, umbral_pct: int = 80) -> list[dic
                 }
             )
 
-    salida.sort(key=lambda c: c["minutos_restantes"])
+    # Primero lo que AÚN se puede salvar, por lo que le queda; detrás lo ya
+    # incumplido, lo más reciente antes. Ordenado sólo por minutos, lo vencido
+    # hace dos años salía el primero y los que vencían en una hora quedaban al
+    # final de 180 filas (medido el 10-11-2026 en Casos › SLA).
+    salida.sort(
+        key=lambda c: (
+            c["ya_incumplido"],
+            -c["minutos_restantes"] if c["ya_incumplido"] else c["minutos_restantes"],
+        )
+    )
     return salida
 
 

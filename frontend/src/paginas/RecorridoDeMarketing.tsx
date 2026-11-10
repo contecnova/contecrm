@@ -34,7 +34,7 @@ import { EnviosProgramados } from "@/componentes/EnviosDeMarketing";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
-import { llamar } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
 import { fechaHora } from "@/lib/formato";
 import { colocar, type Definicion, type Nodo, type Paso } from "@/lib/grafo";
 import { cn } from "@/lib/utiles";
@@ -68,6 +68,10 @@ interface Ficha {
   nodos: Record<string, NodoRecorrido>;
   inicio: string;
   por_cuenta: boolean;
+  entrada?: string;
+  evento_entrada?: string | null;
+  excluye_si_en?: string[];
+  salidas?: { motivo?: string }[];
   estado: string;
   version: number;
   inscritos: Record<string, number>;
@@ -108,6 +112,55 @@ function AltaDeRecorrido() {
   const [nombre, setNombre] = useState("");
   const [porCuenta, setPorCuenta] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
+  // Cómo entra la gente y cuándo sale (CRM-02.02.02.02 y .07). El alta sólo
+  // pedía clave y nombre: todo recorrido nacía «manual» y sin salidas, y
+  // entrar por segmento o por evento no se podía elegir desde ninguna pantalla.
+  const [entrada, setEntrada] = useState("manual");
+  const [segmentoId, setSegmentoId] = useState("");
+  const [evento, setEvento] = useState("");
+  const [saleSiCompra, setSaleSiCompra] = useState(true);
+  const [noConvive, setNoConvive] = useState<string[]>([]);
+  const [segmentos, setSegmentos] = useState<{ id: string; nombre: string }[]>(
+    [],
+  );
+  const [eventos, setEventos] = useState<
+    { tipo: string; descripcion: string }[]
+  >([]);
+  const [otros, setOtros] = useState<{ clave: string; nombre: string }[]>([]);
+
+  useEffect(() => {
+    const control = new AbortController();
+    const { signal } = control;
+    llamar<{ id: string; nombre: string }[]>("/api/v1/segmentos", { signal })
+      .then((r) => setSegmentos(Array.isArray(r.datos) ? r.datos : []))
+      .catch(salvoCancelacion(() => setSegmentos([])));
+    // Sólo los eventos que dicen QUIÉN: sin contacto ni lead no hay a quién
+    // meter en el recorrido.
+    llamar<{ tipo: string; descripcion: string; campos: string[] }[]>(
+      "/api/v1/eventos/catalogo",
+      { signal },
+    )
+      .then((r) =>
+        setEventos(
+          (r.datos ?? []).filter(
+            (e) =>
+              e.campos.includes("contacto_id") || e.campos.includes("lead_id"),
+          ),
+        ),
+      )
+      .catch(salvoCancelacion(() => setEventos([])));
+    llamar<unknown>("/api/v1/recorridos", { signal })
+      .then((r) => {
+        const d = r.datos as { items?: unknown[] } | unknown[];
+        const filas = (Array.isArray(d) ? d : (d.items ?? [])) as {
+          clave: string;
+          nombre: string;
+        }[];
+        setOtros(filas);
+      })
+      .catch(salvoCancelacion(() => setOtros([])));
+    return () => control.abort();
+  }, []);
 
   async function crear() {
     try {
@@ -117,6 +170,21 @@ function AltaDeRecorrido() {
           clave,
           nombre,
           por_cuenta: porCuenta,
+          entrada,
+          ...(entrada === "segmento" ? { segmento_id: segmentoId } : {}),
+          ...(entrada === "evento" ? { evento_entrada: evento } : {}),
+          // Comprar a mitad del recorrido saca de él antes del paso siguiente.
+          salidas: saleSiCompra
+            ? [
+                {
+                  motivo: "conversion",
+                  condiciones: [
+                    { atributo: "persona.compro", operador: "=", valor: true },
+                  ],
+                },
+              ]
+            : [],
+          excluye_si_en: noConvive,
           inicio: "inicio",
           // El esqueleto mínimo: una acción y un final. Lo demás se dibuja.
           nodos: {
@@ -169,11 +237,100 @@ function AltaDeRecorrido() {
             />
             {t("mk.recorrido.porCuenta")}
           </label>
+          <label className="text-dato text-ink-muted">
+            {t("mk.recorrido.entrada")}
+            <select
+              className="input-base mt-1"
+              value={entrada}
+              onChange={(e) => setEntrada(e.target.value)}
+            >
+              {["manual", "segmento", "evento"].map((e) => (
+                <option key={e} value={e}>
+                  {t(`mk.recorrido.entradas.${e}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {entrada === "segmento" ? (
+            <label className="text-dato text-ink-muted">
+              {t("mk.recorrido.segmento")}
+              <select
+                className="input-base mt-1"
+                value={segmentoId}
+                onChange={(e) => setSegmentoId(e.target.value)}
+              >
+                <option value="">{t("mk.recorrido.elegir")}</option>
+                {segmentos.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {entrada === "evento" ? (
+            <label className="text-dato text-ink-muted">
+              {t("mk.recorrido.evento")}
+              <select
+                className="input-base mt-1"
+                value={evento}
+                onChange={(e) => setEvento(e.target.value)}
+              >
+                <option value="">{t("mk.recorrido.elegir")}</option>
+                {eventos.map((e) => (
+                  <option key={e.tipo} value={e.tipo}>
+                    {/* La primera frase: la descripción entera del catálogo
+                        es para integradores y desborda el desplegable. */}
+                    {e.descripcion
+                      ? e.descripcion
+                          .split(/[.:(]/)[0]!
+                          .replace(/\*/g, "")
+                          .trim()
+                      : e.tipo}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="flex items-center gap-2 text-dato text-ink-muted">
+            <input
+              type="checkbox"
+              checked={saleSiCompra}
+              onChange={(e) => setSaleSiCompra(e.target.checked)}
+            />
+            {t("mk.recorrido.saleSiCompra")}
+          </label>
+          {otros.length > 0 ? (
+            <fieldset className="text-dato text-ink-muted">
+              <legend>{t("mk.recorrido.noConvive")}</legend>
+              {otros.map((o) => (
+                <label key={o.clave} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={noConvive.includes(o.clave)}
+                    onChange={(e) =>
+                      setNoConvive((v) =>
+                        e.target.checked
+                          ? [...v, o.clave]
+                          : v.filter((c) => c !== o.clave),
+                      )
+                    }
+                  />
+                  {o.nombre}
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
           <div>
             <button
               type="button"
               className="btn-primary"
-              disabled={!clave.trim() || !nombre.trim()}
+              disabled={
+                !clave.trim() ||
+                !nombre.trim() ||
+                (entrada === "segmento" && !segmentoId) ||
+                (entrada === "evento" && !evento)
+              }
               onClick={() => void crear()}
             >
               {t("mk.recorrido.crear")}
@@ -377,6 +534,24 @@ function FichaDeRecorrido({ id }: { id: string }) {
               (ficha.inscritos.activo ?? 0) + (ficha.inscritos.esperando ?? 0),
           })}
         </p>
+        {/* Cómo entra la gente y qué la saca: sin esto, un recorrido por
+            segmento y uno manual se veían iguales. */}
+        <p className="text-rotulo text-ink-faint">
+          {t("mk.recorrido.entraPor", {
+            como: t(`mk.recorrido.entradas.${ficha.entrada ?? "manual"}`, {
+              defaultValue: ficha.entrada ?? "",
+            }),
+          })}
+          {ficha.evento_entrada ? ` · ${ficha.evento_entrada}` : ""}
+          {(ficha.salidas ?? []).length > 0
+            ? ` · ${t("mk.recorrido.saleSiCompra")}`
+            : ""}
+          {(ficha.excluye_si_en ?? []).length > 0
+            ? ` · ${t("mk.recorrido.noConviveCon", {
+                claves: (ficha.excluye_si_en ?? []).join(", "),
+              })}`
+            : ""}
+        </p>
         {aviso ? <p className="text-dato text-success">{aviso}</p> : null}
         {avisos.map((a) => (
           <p key={a} className="text-rotulo text-warning">
@@ -534,8 +709,118 @@ function FichaDeRecorrido({ id }: { id: string }) {
         />
         <Inscritos recorridoId={id} recarga={recarga} />
       </div>
+      <EmbudoDelRecorrido recorridoId={id} recarga={recarga} />
       <EnviosProgramados origen="recorrido" origenId={id} recarga={recarga} />
     </>
+  );
+}
+
+interface EmbudoRecorrido {
+  nodos: {
+    nodo: string;
+    tipo: string;
+    personas: number;
+    omitidos: number;
+    caida_pct: number | null;
+  }[];
+  dentro_ahora: number;
+  salidas_por_motivo: Record<string, number>;
+  conversion_pct: number | null;
+  tiene_ramas: boolean;
+  medible: boolean;
+}
+
+/**
+ * Cuánta gente llega a cada nodo y dónde se cae (CRM-02.02.02.08).
+ *
+ * `GET /recorridos/{id}/embudo` era real y **no lo pintaba ninguna pantalla**
+ * (medido el 10-11-2026): quien montaba un recorrido no podía ver en qué paso
+ * se le iba la gente. La barra es la proporción sobre el primer nodo.
+ */
+function EmbudoDelRecorrido({
+  recorridoId,
+  recarga,
+}: {
+  recorridoId: string;
+  recarga: number;
+}) {
+  const { t } = useTranslation();
+  const [embudo, setEmbudo] = useState<EmbudoRecorrido | null>(null);
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<EmbudoRecorrido>(`/api/v1/recorridos/${recorridoId}/embudo`, {
+      signal: control.signal,
+    })
+      .then((r) => setEmbudo(r.datos))
+      .catch(salvoCancelacion(() => setEmbudo(null)));
+    return () => control.abort();
+  }, [recorridoId, recarga]);
+  const nodosDelEmbudo = Array.isArray(embudo?.nodos) ? embudo.nodos : [];
+  const base = nodosDelEmbudo[0]?.personas ?? 0;
+  const motivos = Object.entries(embudo?.salidas_por_motivo ?? {});
+  return (
+    <section className="card mt-4 p-4" aria-label={t("mk.recorrido.embudo")}>
+      <h2 className="section-label mb-2">{t("mk.recorrido.embudo")}</h2>
+      {!embudo || base === 0 ? (
+        <Vacio titulo={t("mk.recorrido.sinEmbudo")} compacto />
+      ) : (
+        <>
+          <ul className="flex flex-col gap-2">
+            {nodosDelEmbudo.map((n) => (
+              <li
+                key={n.nodo}
+                className="grid grid-cols-[10rem_minmax(0,1fr)_auto] items-center gap-3"
+              >
+                <span className="truncate text-dato text-ink">
+                  {n.nodo}{" "}
+                  <span className="text-rotulo text-ink-faint">
+                    {t(`mk.recorrido.tipos.${n.tipo}`, {
+                      defaultValue: n.tipo,
+                    })}
+                  </span>
+                </span>
+                <span className="h-2 rounded bg-paper">
+                  <span
+                    className="block h-2 rounded bg-accent"
+                    style={{
+                      width: `${Math.round((100 * n.personas) / base)}%`,
+                    }}
+                  />
+                </span>
+                <span className="font-mono text-dato text-ink">
+                  {n.personas}
+                  {n.caida_pct !== null ? (
+                    <span className="ml-2 text-rotulo text-ink-faint">
+                      {t("mk.recorrido.caida", { pct: n.caida_pct })}
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-rotulo text-ink-muted">
+            {t("mk.recorrido.dentroAhora", { cuantos: embudo.dentro_ahora })}
+            {embudo.conversion_pct !== null
+              ? ` · ${t("mk.recorrido.conversion", { pct: embudo.conversion_pct })}`
+              : ""}
+          </p>
+          {motivos.length > 0 ? (
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {motivos.map(([motivo, cuantos]) => (
+                <li key={motivo} className="chip-dato">
+                  {t("mk.recorrido.salieron", {
+                    motivo: t(`mk.recorrido.motivosSalida.${motivo}`, {
+                      defaultValue: motivo,
+                    }),
+                    cuantos,
+                  })}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      )}
+    </section>
   );
 }
 

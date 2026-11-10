@@ -239,3 +239,77 @@ async def consumir_aprobacion(mensaje: Any) -> None:
         }.get(resultado, f"Aprobación terminada como «{resultado}».")
         detalle = str(datos.get("motivo") or "").strip()
         fila.motivo_aprobacion = f"{explicacion} {detalle}".strip()
+
+
+async def consumir_cualificacion(mensaje: Any) -> None:
+    """El traspaso a ventas cuando marketing califica un lead (CRM-02.01.02.05).
+
+    `marketing` emite `lead.qualified` al cruzar el umbral de MQL o de SQL, y
+    hasta el 10-11-2026 **no lo escuchaba nadie**: el lead pasaba a SQL en la
+    puntuación y en ventas seguía «nuevo», con la columna de puntuación vacía.
+    Aquí se recoge: la puntuación de interés queda en el lead, y al llegar a SQL
+    pasa a «cualificado» —si la máquina de estados de la empresa lo permite
+    desde donde está—. Lo que no se puede mover se dice en el registro y se deja.
+    """
+    from uuid import UUID
+
+    from crmcore.db.uow import unidad_de_trabajo
+
+    from services.sales.modelos import Lead
+    from services.sales.servicio import cambiar_estado
+
+    tipo = getattr(mensaje, "tipo", None) or (
+        mensaje.get("tipo") if isinstance(mensaje, dict) else None
+    )
+    if str(tipo or "") != "lead.qualified":
+        return
+    bruto = getattr(mensaje, "tenant_id", None) or (
+        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
+    )
+    datos = (
+        getattr(mensaje, "data", None)
+        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
+        or {}
+    )
+    if not bruto or not datos.get("lead_id"):
+        logger.warning("sales.cualificacion_sin_identificador")
+        return
+    calificacion = str(datos.get("calificacion") or "")
+    with unidad_de_trabajo(UUID(str(bruto))) as uow:
+        lead = uow.db.get(Lead, UUID(str(datos["lead_id"])))
+        if lead is None or lead.deleted_at is not None:
+            return
+        if isinstance(datos.get("interes"), int):
+            lead.puntuacion = datos["interes"]
+        if calificacion != "sql" or lead.estado == "cualificado":
+            return
+        motivos = ", ".join(str(m) for m in (datos.get("motivos") or [])[:5])
+        try:
+            cambiar_estado(
+                uow,
+                "lead",
+                lead,
+                estado="cualificado",
+                motivo=f"SQL por puntuación de marketing ({motivos})"[:500],
+            )
+        except Exception as exc:  # noqa: BLE001 — la máquina de la empresa manda
+            logger.info(
+                "sales.cualificacion_no_aplicada",
+                lead_id=str(lead.id),
+                estado=lead.estado,
+                motivo=str(exc)[:200],
+            )
+
+
+declarar_consumo(
+    Consumo(
+        consumidor="sales",
+        evento="lead.qualified",
+        campos=("lead_id", "calificacion", "interes"),
+        obligatorio=True,
+        motivo=(
+            "Recoger la calificación de marketing: la puntuación en el lead y el "
+            "paso a «cualificado» al llegar a SQL (CRM-02.01.02.05)"
+        ),
+    )
+)

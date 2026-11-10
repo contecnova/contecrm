@@ -165,6 +165,7 @@ export function Acciones({
   abierta: abiertaFuera,
   alCambiarAbierta,
   registro,
+  recurso: recursoPropio,
 }: {
   acciones: Accion[];
   /** Servicio dueño, para leer su contrato. */
@@ -191,6 +192,12 @@ export function Acciones({
    * para cambiar algo saliera rellena con lo que se quiere cambiar.
    */
   registro?: Record<string, unknown> | null;
+  /**
+   * El recurso del registro, para que los campos que apuntan a otro del
+   * MISMO tipo —`original_id`, `maestro_id`, `padre_id`— salgan como buscador
+   * y no como una caja que pide un identificador.
+   */
+  recurso?: Recurso | null;
 }) {
   const { t } = useTranslation();
   const controlada = alCambiarAbierta !== undefined;
@@ -273,8 +280,11 @@ export function Acciones({
         metodo,
         // El cuerpo lo arma el contrato: hay operaciones cuyo único campo ES
         // el cuerpo, y meterlo dentro de una llave las rompería.
+        // Un `DELETE` sin campos va sin cuerpo; con campos, con ellos. Se
+        // tiraba siempre, y «Levantar una supresión», que exige el motivo
+        // escrito, contestaba 422 con el motivo rellenado (10-11-2026).
         cuerpo:
-          metodo === "DELETE"
+          metodo === "DELETE" && (accion !== abierta || !(campos ?? []).length)
             ? undefined
             : accion.fijos
               ? {
@@ -416,6 +426,7 @@ export function Acciones({
               ) : (
                 <Formulario
                   fallo={fallo}
+                  propio={recursoPropio}
                   campos={campos}
                   valores={casillasDelRegistro(campos, registro)}
                   enviando={enviando}

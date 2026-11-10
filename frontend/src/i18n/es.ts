@@ -317,6 +317,24 @@ export default {
     vacia: "No hay nada esperando",
     vaciaDetalle: "Cuando entre una conversación aparecerá aquí.",
     sinAsunto: "(sin asunto)",
+    // Mi presencia (CRM-04.02.02.03): el reparto sólo da trabajo a quien está
+    // «disponible» u «ocupado», y no había ningún sitio donde decirlo.
+    presencia: "Mi presencia",
+    presenciaAyuda:
+      "El reparto automático sólo te da casos si estás disponible u ocupado, y nunca por encima de tu capacidad.",
+    presenciaDesde: "desde {{cuando}}",
+    sinAgente:
+      "No estás configurado como agente: el reparto no te tendrá en cuenta. Lo hace un responsable en Casos › Agentes.",
+    estados: {
+      disponible: "Disponible",
+      ocupado: "Ocupado",
+      ausente: "Ausente",
+      no_molestar: "No molestar",
+      fuera: "Fuera de turno",
+    },
+    capacidad: "Capacidad: {{detalle}}",
+    sinLimite: "sin límite",
+    guardando: "Guardando…",
   },
   avisos: {
     abrir: "Avisos",

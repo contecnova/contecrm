@@ -46,6 +46,9 @@ import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { accionesDe, type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
 
 interface Articulo {
   articulo_id: string;
@@ -55,6 +58,9 @@ interface Articulo {
   titulo: string;
   cuerpo: string;
   version: number;
+  version_publicada?: number | null;
+  /** Si su audiencia lo ve: también en revisión, con la versión publicada. */
+  a_la_vista?: boolean;
   utiles: number;
   inutiles: number;
   obsoleto: boolean;
@@ -122,6 +128,14 @@ export function Articulo() {
   const [pestana, setPestana] = useState<"relacionado" | "detalles">(
     "relacionado",
   );
+  // Escribir una versión, publicarla, traducir, valorar y retirar: las rutas
+  // cuelgan de `/conocimiento/{id}` y la ficha buscaba en
+  // `/conocimiento/articulos/{id}`, así que el menú sólo ofrecía «Duplicar» y
+  // «Borrar» y un artículo no se podía publicar desde ninguna pantalla
+  // (medido el 10-11-2026).
+  const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const acciones = accionesDe(superficie, "/api/v1/conocimiento", id, tiene);
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -193,9 +207,24 @@ export function Articulo() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              extra={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+                destructiva: esIrreversible(a),
+              }))}
             />
           ) : null
         }
+      />
+
+      <Acciones
+        acciones={acciones}
+        servicio="service"
+        abierta={accionAbierta}
+        alCambiarAbierta={setAccionAbierta}
+        alTerminar={() => cargar()}
+        registro={articulo as unknown as Record<string, unknown>}
       />
 
       {confirmando ? (
@@ -265,9 +294,13 @@ export function Articulo() {
                   {t("articulo.quienLoVe")}
                 </h2>
                 <p className="mt-2 text-dato text-ink">
-                  {t(
-                    `articulo.audiencia.${articulo.estado === "publicado" ? "publicado" : "borrador"}`,
-                  )}
+                  {articulo.estado === "en_revision" && articulo.a_la_vista
+                    ? t("articulo.audiencia.enRevision", {
+                        version: articulo.version_publicada,
+                      })
+                    : t(
+                        `articulo.audiencia.${articulo.estado === "publicado" ? "publicado" : "borrador"}`,
+                      )}
                 </p>
                 <p className="mt-2 font-mono text-dato text-ink">
                   {t("articulo.votos", {

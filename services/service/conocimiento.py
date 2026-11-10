@@ -196,6 +196,30 @@ class ValoracionArticulo(Base):
     __table_args__ = (UniqueConstraint("articulo_id", "votante", name="uq_valoracion_votante"),)
 
 
+def esta_publicado(articulo: "Articulo") -> bool:
+    """Si tiene una versión a la vista de su audiencia.
+
+    Escribir una versión nueva pasa el artículo a «en revisión» y **la
+    publicada sigue siendo la anterior** —es lo que permite corregir uno sin
+    que el cliente vea el cambio a medias—. Pero todos los filtros miraban
+    `estado == "publicado"`, así que mientras se corregía, el artículo
+    desaparecía del portal y de la búsqueda (medido el 10-11-2026).
+    """
+    return articulo.estado == "publicado" or (
+        articulo.estado == "en_revision" and articulo.version_publicada is not None
+    )
+
+
+def publicado_sql() -> Any:
+    """Lo mismo que `esta_publicado`, para una consulta."""
+    from sqlalchemy import and_
+
+    return or_(
+        Articulo.estado == "publicado",
+        and_(Articulo.estado == "en_revision", Articulo.version_publicada.is_not(None)),
+    )
+
+
 def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -694,9 +718,9 @@ def eficacia(db: Session, tenant_id: UUID, *, minimo_vistas: int = 20) -> dict[s
                     "usos_en_caso": a.usos_en_caso,
                 }
             )
-        if a.estado == "publicado" and a.vistas == 0 and a.usos_en_caso == 0:
+        if esta_publicado(a) and a.vistas == 0 and a.usos_en_caso == 0:
             huerfanos.append({"clave": a.clave, "idioma": a.idioma})
-        if a.revisar_el is not None and a.revisar_el < dia and a.estado == "publicado":
+        if a.revisar_el is not None and a.revisar_el < dia and esta_publicado(a):
             caducados.append(
                 {
                     "clave": a.clave,
@@ -706,7 +730,7 @@ def eficacia(db: Session, tenant_id: UUID, *, minimo_vistas: int = 20) -> dict[s
                 }
             )
 
-    publicados = [a for a in articulos if a.estado == "publicado"]
+    publicados = [a for a in articulos if esta_publicado(a)]
     vistas = sum(a.vistas for a in publicados)
     usos = sum(a.usos_en_caso for a in publicados)
     return {
@@ -765,7 +789,7 @@ def buscar(
         )
         .where(
             Articulo.tenant_id == tenant_id,
-            Articulo.estado == "publicado",
+            publicado_sql(),
             Articulo.audiencia.in_([a for a in AUDIENCIAS if ORDEN_AUDIENCIA[a] >= tope]),
         )
     )
@@ -813,7 +837,7 @@ def leer(
         # 404 y no 403: un 403 confirma que el artículo existe, y con eso se
         # puede recorrer el catálogo interno preguntando por identificadores.
         raise NoEncontrado("El artículo no existe", error_code="service.articulo_no_encontrado")
-    if articulo.estado != "publicado" and ORDEN_AUDIENCIA[audiencia] >= ORDEN_AUDIENCIA["cliente"]:
+    if not esta_publicado(articulo) and ORDEN_AUDIENCIA[audiencia] >= ORDEN_AUDIENCIA["cliente"]:
         raise NoEncontrado("El artículo no existe", error_code="service.articulo_no_encontrado")
 
     version = db.execute(
@@ -831,6 +855,10 @@ def leer(
         "titulo": version.titulo if version else "",
         "cuerpo": version.cuerpo if version else "",
         "version": version.version if version else None,
+        # Cuál ve su audiencia (ninguna si nunca se publicó), y si está a la
+        # vista: en revisión con una publicada SIGUE a la vista.
+        "version_publicada": articulo.version_publicada,
+        "a_la_vista": esta_publicado(articulo),
         "utiles": articulo.utiles,
         "inutiles": articulo.inutiles,
         "obsoleto": articulo.estado == "obsoleto",

@@ -172,7 +172,10 @@ def _grado(encaje: int, grados: list[Any]) -> str | None:
     )
     for tramo in tramos:
         if encaje >= int(tramo.get("desde", 0)):
-            return str(tramo.get("grado"))
+            # `clave` también: así lo sembraba la configuración inicial, y con
+            # sólo `grado` cada lead salía con la letra «None» (10-11-2026).
+            letra = tramo.get("grado") or tramo.get("clave")
+            return str(letra) if letra else None
     return None
 
 

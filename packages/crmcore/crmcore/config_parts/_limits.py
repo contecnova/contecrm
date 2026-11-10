@@ -192,6 +192,8 @@ class _LimitsSettings(BaseSettings):
     momento_minimo_interacciones: int = Field(8, ge=1, le=10_000)
     # Profundidad máxima de un segmento anidado.
     segmento_profundidad_maxima: int = Field(7, ge=1, le=50)
+    # Filas por página al resincronizar el perfil de marketing con su origen.
+    marketing_resincronizar_pagina: int = Field(200, ge=1, le=500)
     # A partir de cuántos campos por sección el diseñador avisa de que la
     # pantalla va a ser ilegible.
     disenador_aviso_campos: int = Field(15, ge=1, le=200)

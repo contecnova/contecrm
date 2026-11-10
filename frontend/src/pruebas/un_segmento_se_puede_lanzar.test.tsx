@@ -66,7 +66,8 @@ vi.mock("@/lib/api", async () => {
             es_foto_congelada: esFoto,
           },
         };
-      if (ruta.endsWith("/congelar")) return { datos: { segmento: "activos", miembros: 7000 } };
+      if (ruta.endsWith("/congelar"))
+        return { datos: { segmento: "activos", miembros: 7000 } };
       if (ruta === "/api/v1/segmentos")
         return {
           datos: [
@@ -85,12 +86,19 @@ vi.mock("@/lib/api", async () => {
           definicion: {
             op: "y",
             hijos: [
-              { campo: "estado", operador: "=", valor: "activo" },
+              // `atributo`, que es la gramática del motor. Con `campo` el doble
+              // tapaba que la pantalla leía una clave que el servidor no
+              // manda: en el navegador salía «— = "cliente"» (10-11-2026).
+              { atributo: "contacto.estado", operador: "=", valor: "activo" },
               {
                 op: "o",
                 hijos: [
-                  { campo: "sector", operador: "=", valor: "obra" },
-                  { campo: "sector", operador: "=", valor: "industria" },
+                  { atributo: "contacto.sector", operador: "=", valor: "obra" },
+                  {
+                    atributo: "contacto.sector",
+                    operador: "=",
+                    valor: "industria",
+                  },
                 ],
               },
             ],
@@ -129,7 +137,9 @@ describe("el tamaño de un segmento", () => {
     expect(await screen.findByText("7000")).toBeInTheDocument();
     // El hueco, con sus dos números: sin él, 7000 se lee como «todos».
     expect(
-      screen.getByText('segmento.deLosCuales:{"bruto":10000,"suprimidos":3000}'),
+      screen.getByText(
+        'segmento.deLosCuales:{"bruto":10000,"suprimidos":3000}',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -161,14 +171,18 @@ describe("el solapamiento", () => {
     montar();
     await screen.findByText("7000");
 
-    await userEvent.selectOptions(screen.getByLabelText("segmento.contra"), "s-2");
+    await userEvent.selectOptions(
+      screen.getByLabelText("segmento.contra"),
+      "s-2",
+    );
     await userEvent.click(screen.getByText("segmento.medir"));
 
     expect(await screen.findByText("1000")).toBeInTheDocument();
     // Los dos porcentajes: 1000 comunes es el 83 % de uno y el 1 % del otro, y
     // con un solo porcentaje la decisión sale al revés.
     expect(
-      screen.getByText('segmento.pctDeCada:{"a":83.3,"b":1}'),
+      // Con la coma de aquí.
+      screen.getByText('segmento.pctDeCada:{"a":"83,3","b":"1"}'),
     ).toBeInTheDocument();
     expect(
       screen.getByText('segmento.solos:{"a":200,"b":99000}'),
@@ -192,13 +206,24 @@ describe("la definición", () => {
     // expresar.
     expect(screen.getByText("segmento.y")).toBeInTheDocument();
     expect(screen.getByText("segmento.o")).toBeInTheDocument();
-    expect(screen.getByText("estado")).toBeInTheDocument();
-    expect(screen.getAllByText("sector")).toHaveLength(2);
+    // El dato con su nombre en palabras, no la ruta interna.
+    expect(
+      screen.getByText(
+        'constructorSegmento.atributo.estado:{"defaultValue":"contacto.estado"}',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        'constructorSegmento.atributo.sector:{"defaultValue":"contacto.sector"}',
+      ),
+    ).toHaveLength(2);
   });
 
   it("dice que resta otro segmento, que no es lo mismo que una condición negada", async () => {
     montar();
     await screen.findByText("7000");
-    expect(screen.getByText('segmento.excluye:{"cuantos":1}')).toBeInTheDocument();
+    expect(
+      screen.getByText('segmento.excluye:{"cuantos":1}'),
+    ).toBeInTheDocument();
   });
 });

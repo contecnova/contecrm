@@ -520,6 +520,38 @@ def comunicar(
     return comunicacion
 
 
+def casos_vinculados(db: Session, tenant_id: UUID, problema_id: UUID) -> list[dict[str, Any]]:
+    """Los casos atribuidos ahora mismo al problema, con lo que hace falta para leerlos.
+
+    El identificador de cada fila es el del CASO: es por el que se quita
+    (`DELETE …/casos/{caso_id}`) y el que abre su ficha.
+    """
+    from services.service.modelos import Caso
+
+    _problema(db, tenant_id, problema_id)
+    filas = db.execute(
+        select(CasoDeProblema, Caso)
+        .join(Caso, Caso.id == CasoDeProblema.caso_id)
+        .where(
+            CasoDeProblema.tenant_id == tenant_id,
+            CasoDeProblema.problema_id == problema_id,
+            CasoDeProblema.desvinculado_at.is_(None),
+            Caso.deleted_at.is_(None),
+        )
+        .order_by(CasoDeProblema.created_at)
+    ).all()
+    return [
+        {
+            "id": str(caso.id),
+            "codigo": caso.codigo,
+            "asunto": caso.asunto,
+            "estado": caso.estado,
+            "origen": vinculo.origen,
+        }
+        for vinculo, caso in filas
+    ]
+
+
 def impacto(db: Session, tenant_id: UUID, problema_id: UUID) -> dict[str, Any]:
     """A cuánta gente le ha pasado esto, y desde cuándo.
 

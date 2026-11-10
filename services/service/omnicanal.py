@@ -1104,6 +1104,12 @@ def consola(db: Session, tenant_id: UUID, agente_id: UUID) -> dict[str, Any]:
         "agente": {
             "usuario_id": str(agente_id),
             "presencia": agente.presencia if agente else "fuera",
+            # Desde cuándo, y si está configurado: sin configurar, el reparto
+            # no lo tiene en cuenta aunque se ponga «disponible», y eso se dice.
+            "presencia_desde": (
+                agente.presencia_desde.isoformat() if agente and agente.presencia_desde else None
+            ),
+            "configurado": agente is not None,
             "capacidad": (agente.capacidad if agente else {}) or {},
             "competencias": (agente.competencias if agente else []) or [],
         },

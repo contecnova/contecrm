@@ -579,3 +579,84 @@ def test_un_hilo_resuelto_si_se_convierte(
     articulo = prt.convertir_en_articulo(uow, hilo.id, clave="migrar")
     assert articulo.audiencia == "interno"
     assert hilo.articulo_id == articulo.id
+
+
+# ── Recorrido de servicio del 10-11-2026 ──────────────────────────────────
+
+
+@pytest.mark.db
+def test_crm_04_03_01_01_en_revision_el_cliente_sigue_leyendo_la_publicada(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Escribir la versión 2 dejaba el artículo fuera del portal y de la búsqueda
+    hasta publicarla: todos los filtros miraban `estado == "publicado"`."""
+    articulo, _ = _articulo(uow, revisar_el=HOY + timedelta(days=90))
+    kb.publicar(uow, articulo.id, aprobada_por=uuid4(), audiencia="cliente")
+    kb.nueva_version(uow, articulo.id, titulo="Cómo reiniciar (v2)", cuerpo="Otro texto")
+    db.flush()
+
+    leido = kb.leer(db, tenant_id, articulo.id, audiencia="cliente")
+    assert leido["titulo"] == "Cómo reiniciar" and leido["version"] == 1
+    assert [r["clave"] for r in kb.buscar(db, tenant_id, audiencia="cliente")] == ["reiniciar"]
+
+
+def _cerrado_pendiente(uow: Any, acceso: Any) -> Any:
+    caso = svc.abrir_caso(uow, asunto="No arranca", contacto_id=acceso.contacto_id)
+    svc.cerrar_caso(
+        uow, caso.id, motivo="resuelto", resolucion="Se cambió la fuente", exige_validacion=True
+    )
+    return caso
+
+
+@pytest.mark.db
+def test_crm_04_01_01_09_el_cliente_da_por_bueno_el_cierre(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any, acceso: Any
+) -> None:
+    caso = _cerrado_pendiente(uow, acceso)
+    fila = prt.mis_casos(db, acceso)[0]
+    assert fila["validacion_cliente"] == "pendiente"
+    assert fila["resolucion"] == "Se cambió la fuente"
+
+    prt.validar_cierre(uow, acceso, caso.id, conforme=True)
+    assert caso.validacion_cliente == "aceptado"
+    with pytest.raises(Conflicto):
+        prt.validar_cierre(uow, acceso, caso.id, conforme=True)
+
+
+@pytest.mark.db
+def test_crm_04_01_01_09_el_cliente_no_conforme_lo_reabre_con_su_motivo(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any, acceso: Any
+) -> None:
+    caso = _cerrado_pendiente(uow, acceso)
+    with pytest.raises(ErrorValidacion):
+        prt.validar_cierre(uow, acceso, caso.id, conforme=False, comentario="  ")
+
+    prt.validar_cierre(uow, acceso, caso.id, conforme=False, comentario="Sigue sin arrancar")
+    assert caso.reaperturas == 1
+    assert caso.validacion_cliente is None
+
+
+@pytest.mark.db
+def test_crm_04_01_01_09_el_cliente_no_valida_un_caso_que_no_es_suyo(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any, acceso: Any
+) -> None:
+    ajeno = svc.abrir_caso(uow, asunto="De otro", contacto_id=uuid4())
+    svc.cerrar_caso(uow, ajeno.id, motivo="resuelto", exige_validacion=True)
+    with pytest.raises(NoEncontrado):
+        prt.validar_cierre(uow, acceso, ajeno.id, conforme=True)
+
+
+@pytest.mark.db
+def test_crm_04_03_02_04_el_cliente_abre_un_hilo_desde_el_portal(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any, acceso: Any
+) -> None:
+    """La ruta del portal llamaba a `abrir_hilo` sin el acceso: 500 siempre."""
+    from services.service.api_conocimiento import HiloPortal, abrir_hilo_portal
+
+    class _Sesion:
+        tenant_id = acceso.tenant_id
+        acceso_id = acceso.id
+
+    acceso.secciones = ["casos", "comunidad"]
+    salida = abrir_hilo_portal(HiloPortal(titulo="¿Cada cuánto se calibra?"), uow, _Sesion())
+    assert salida["estado"] == "moderacion"

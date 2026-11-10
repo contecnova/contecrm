@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi } from "@/lib/api";
@@ -98,7 +99,15 @@ export function Conocimiento() {
               key={a.id}
               className="flex flex-wrap items-baseline gap-2 rounded-lg border border-ink-dim/40 bg-paper-light p-3"
             >
-              <span className="flex-1 text-titulo text-ink">{a.titulo}</span>
+              {/* El título ABRE el artículo: era texto suelto, y desde la
+                  lista de conocimiento no se llegaba a leer ni a publicar
+                  ninguno (medido el 10-11-2026). */}
+              <Link
+                to={`/m/conocimiento/articulo/${a.id}`}
+                className="flex-1 text-titulo text-ink hover:underline"
+              >
+                {a.titulo}
+              </Link>
               {/* Lo publicado y el borrador NO se enseñan igual: citarle a un
                   cliente un texto que nadie ha aprobado es el caso que esto
                   existe para evitar. */}

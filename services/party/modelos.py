@@ -329,6 +329,9 @@ class Contacto(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     """
 
     __tablename__ = "contactos"
+    # Dónde busca `?buscar=`: la clave canónica va sin tildes —«perez» encuentra
+    # a «Pérez»—, y el correo sólo cuenta para quien lo ve en claro.
+    __busqueda__ = ("nombre", "apellidos", "clave_canonica", "email")
 
     nombre: Mapped[str] = mapped_column(
         String(150), nullable=False, info={"anonimizar_en_copias": True}

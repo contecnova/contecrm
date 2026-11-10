@@ -747,9 +747,11 @@ LEAD_QUALIFIED = registrar(
     TipoEvento(
         tipo="lead.qualified",
         version=1,
-        productor="sales",
-        descripcion="Un lead ha pasado la cualificación y está listo para convertirse",
-        campos=("lead_id",),
+        # Lo emite la puntuación de marketing al cruzar el umbral de MQL o SQL;
+        # constaba como de `sales`, que no lo emite, y por eso nadie lo recogía.
+        productor="marketing",
+        descripcion="Un lead ha cruzado el umbral de MQL o SQL de la puntuación de marketing",
+        campos=("lead_id", "calificacion", "anterior", "interes", "encaje", "grado", "motivos"),
     )
 )
 LEAD_CONVERTED = registrar(

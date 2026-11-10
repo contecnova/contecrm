@@ -25,6 +25,7 @@ from services.sales.api_territorios import ROUTERS_TERRITORIOS
 from services.sales.consumidores import (
     consumir_aprobacion,
     consumir_comando,
+    consumir_cualificacion,
     consumir_firma,
     consumir_organigrama,
 )
@@ -165,5 +166,8 @@ app = crear_servicio(
         ("order.erp.*", consumir_respuesta_erp, f"{__name__.split('.')[1]}-erp"),
         # Lo que se decidió en la aprobación de un presupuesto (orchestrator).
         ("approval.decided", consumir_aprobacion, f"{__name__.split('.')[1]}-aprobaciones"),
+        # Marketing califica el lead (MQL/SQL) y ventas lo recoge: puntuación en
+        # la ficha y, al llegar a SQL, «cualificado» (CRM-02.01.02.05).
+        ("lead.qualified", consumir_cualificacion, f"{__name__.split('.')[1]}-cualificacion"),
     ],
 )

@@ -757,3 +757,85 @@ def test_la_regla_del_decaimiento_se_enseña_entera(
         "solo_afecta_a": "interes",
     }
     assert salida["perdido_por_inactividad"] == 25
+
+
+# ── Constructor, estimación y puesta al día (10-11-2026) ───────────────────
+
+
+@pytest.mark.db
+def test_la_estimacion_cuenta_igual_que_el_segmento_guardado(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Antes de guardar, el mismo número que dará el segmento después: dos
+    maneras de contar darían dos verdades."""
+    _perfil(db, tenant_id, email="a@x.com", pais="ES")
+    _perfil(db, tenant_id, email="b@x.com", pais="FR")
+    _perfil(db, tenant_id, pais="ES")  # sin correo: bruto sí, alcanzable no
+    definicion = {
+        "op": "y",
+        "hijos": [{"atributo": "contacto.pais", "operador": "=", "valor": "ES"}],
+    }
+    estimado = seg.estimar(db, tenant_id, objeto="contacto", definicion=definicion)
+    guardado = seg.crear(uow, clave="es", nombre="ES", objeto="contacto", definicion=definicion)
+    db.flush()
+    tamano = seg.tamano(db, tenant_id, guardado.id)
+    assert (estimado["bruto"], estimado["alcanzables"], estimado["suprimidos"]) == (2, 1, 1)
+    assert (tamano["bruto"], tamano["alcanzables"]) == (estimado["bruto"], estimado["alcanzables"])
+
+
+@pytest.mark.db
+def test_el_constructor_no_ofrece_lo_que_nadie_rellena(db: Any, tenant_id: UUID) -> None:
+    """La última compra no la escribe nadie: ofrecerla da un segmento vacío que
+    parece decir que no hay nadie."""
+    nombres = {a["atributo"] for a in seg.atributos(db, tenant_id, "cuenta")["atributos"]}
+    assert "cuenta.empleados" in nombres and "cuenta.sector" in nombres
+    assert "cuenta.ultima_compra_at" not in nombres
+    assert "cuenta.cargo" not in nombres
+
+
+@pytest.mark.db
+def test_la_puesta_al_dia_no_copia_lo_que_llega_tapado(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: Any
+) -> None:
+    """Medido el 10-11-2026: el sector llegó como «····» y se guardó. Un valor
+    tapado tiene la forma de un dato y el segmento no casaba con nadie."""
+    from types import SimpleNamespace
+
+    import crmcore.http.interno as interno
+    from crmcore.db import uow as uow_mod
+
+    from services.marketing.modelos import PerfilMarketing
+
+    cuenta = uuid4()
+    _perfil(db, tenant_id, objeto="cuenta", objeto_id=cuenta, sector="2932")
+    db.commit()
+
+    def falso(*, ruta: str, **_: Any) -> dict[str, Any]:
+        filas = (
+            [{"id": str(cuenta), "nombre": "ACME", "sector_codigo": "····", "empleados": 900}]
+            if ruta == "/api/v1/accounts"
+            else []
+        )
+        return {"ok": True, "datos": {"items": filas}, "campos_tapados": ["sector_codigo"]}
+
+    monkeypatch.setattr(interno, "invocar", falso)
+    monkeypatch.setattr(uow_mod, "unidad_de_trabajo", lambda t: _UowDe(db, t))
+    r = proy.resincronizar(tenant_id, SimpleNamespace(id=uuid4(), permisos=[], roles=[]))
+    assert r["cuenta"]["sin_claro"] == ["sector_codigo"]
+    fila = db.execute(
+        __import__("sqlalchemy").select(PerfilMarketing).where(PerfilMarketing.objeto_id == cuenta)
+    ).scalar_one()
+    assert (fila.sector, fila.empleados, fila.nombre) == ("2932", 900, "ACME")
+
+
+class _UowDe:
+    """La unidad de trabajo de la prueba sobre la sesión de la prueba."""
+
+    def __init__(self, db: Any, tenant_id: UUID) -> None:
+        self.db, self.tenant_id = db, tenant_id
+
+    def __enter__(self) -> "_UowDe":
+        return self
+
+    def __exit__(self, *_: Any) -> None:
+        self.db.flush()

@@ -97,6 +97,7 @@ router_cuentas = APIRouter(prefix="/accounts", tags=["cuentas"])
 # apuntarlo: se declara aquí, junto al router. El import va en esta línea y no
 # arriba porque este módulo importa `listados` más abajo a propósito.
 from crmcore.http.listados import (  # noqa: E402
+    aplicar_busqueda,
     aplicar_filtros_de_la_url,
     con_rollups,
     declarar_recurso,
@@ -830,9 +831,12 @@ def listar_contactos(
         objeto="contacto",
         permiso_ver_todo="contact:admin",
     )
-    if buscar:
-        patron = f"%{buscar.lower()}%"
-        consulta = consulta.where(Contacto.clave_canonica.ilike(patron))
+    # Por palabras en nombre, apellidos, correo y clave canónica (sin tildes),
+    # como el `?buscar=` común. Antes sólo miraba la clave canónica, con las
+    # palabras ordenadas: ni el correo ni «nombre apellido» encontraban a nadie.
+    consulta = aplicar_busqueda(
+        Contacto, consulta, buscar, principal=principal, db=db, objeto="contacto"
+    )
     if cuenta_id:
         consulta = consulta.join(
             RelacionContactoCuenta, RelacionContactoCuenta.contacto_id == Contacto.id

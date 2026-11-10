@@ -64,7 +64,11 @@ const CASO = {
     duplicado_de: "k-0",
   },
   historial: [
-    { tipo: "reabierto", detalle: { por_que: "volvió a fallar" }, at: "2026-10-22T08:00:00Z" },
+    {
+      tipo: "reabierto",
+      detalle: { por_que: "volvió a fallar" },
+      at: "2026-10-22T08:00:00Z",
+    },
   ],
 };
 
@@ -90,7 +94,13 @@ const SALDO = {
     sin_limite: false,
     agotado: true,
   },
-  casos: { incluidos: null, consumidos: 12, restantes: null, sin_limite: true, agotado: false },
+  casos: {
+    incluidos: null,
+    consumidos: 12,
+    restantes: null,
+    sin_limite: true,
+    agotado: false,
+  },
   vigente_hasta: "2026-12-31",
 };
 
@@ -101,7 +111,10 @@ vi.mock("@/lib/api", async () => {
   return {
     ...real,
     llamar: vi.fn(
-      async (ruta: string, opciones?: { metodo?: string; cuerpo?: unknown }) => {
+      async (
+        ruta: string,
+        opciones?: { metodo?: string; cuerpo?: unknown },
+      ) => {
         if ((opciones?.metodo ?? "GET") !== "GET") {
           // Lo que manda el MARCO al abrir la ficha —hoy el apunte de «visto
           // hace poco»— no es lo que mandó la acción del usuario, que es lo
@@ -115,9 +128,11 @@ vi.mock("@/lib/api", async () => {
         }
         let datos: unknown = CASO;
         if (ruta.startsWith("/api/v1/colas/explicar/")) datos = ASIGNACIONES;
+        // La forma REAL de `aplicable`: trae el saldo dentro. Este doble
+        // contestaba un `entitlement_id` que la API no manda, y por eso la
+        // prueba pasaba con el panel roto en todos los casos (10-11-2026).
         else if (ruta.startsWith("/api/v1/entitlements/aplicable"))
-          datos = { entitlement_id: "e-1" };
-        else if (ruta.startsWith("/api/v1/entitlements/e-1/saldo")) datos = SALDO;
+          datos = { tiene_derecho: true, clave: "soporte", saldo: SALDO };
         return { datos, version: null, retenidos: [], enmascarados: [] };
       },
     ),
@@ -149,7 +164,9 @@ describe("un caso se atiende", () => {
 
   it("dice de qué cliente es y sobre qué activo, no seis UUID sueltos", async () => {
     await montar();
-    await waitFor(() => expect(screen.getByText("caso.rel.cuenta_id")).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText("caso.rel.cuenta_id")).toBeTruthy(),
+    );
     expect(screen.getByText("caso.rel.activo_id")).toBeTruthy();
     // Lo que NO está puesto no se pinta: una lista con cuatro «—» hace creer
     // que faltan datos cuando lo que pasa es que ese caso no es de un pedido.
@@ -192,7 +209,9 @@ describe("un caso se atiende", () => {
   it("avisa de que un caso pendiente del cliente NO está cerrado", async () => {
     await montar();
     await waitFor(() =>
-      expect(screen.getByText(/caso.pendienteDelCliente.*pendiente/)).toBeTruthy(),
+      expect(
+        screen.getByText(/caso.pendienteDelCliente.*pendiente/),
+      ).toBeTruthy(),
     );
     // Y las reaperturas con el cierre: cerrado tres veces no es resuelto.
     expect(screen.getByText(/caso.reaperturas.*"cuantas":2/)).toBeTruthy();
@@ -200,7 +219,9 @@ describe("un caso se atiende", () => {
 
   it("enseña de qué cuelga, qué cuelga de él y de cuál es duplicado", async () => {
     await montar();
-    await waitFor(() => expect(screen.getByText("caso.duplicadoDe")).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText("caso.duplicadoDe")).toBeTruthy(),
+    );
     expect(screen.getByText("Pieza de repuesto")).toBeTruthy();
   });
 
@@ -225,7 +246,9 @@ describe("un caso se atiende", () => {
     // cuenta o es que nadie ha gastado, y son cosas distintas delante de un
     // cliente que pregunta.
     await waitFor(() =>
-      expect(screen.getByText(/caso.horasRestantes.*"restantes":"0.00"/)).toBeTruthy(),
+      expect(
+        screen.getByText(/caso.horasRestantes.*"restantes":"0.00"/),
+      ).toBeTruthy(),
     );
     expect(screen.getByText(/caso.casosSinLimite.*12/)).toBeTruthy();
     // Y qué pasa al agotarse, que es lo que hay que poder decirle al cliente.
@@ -268,7 +291,10 @@ describe("escribir el artículo desde el caso resuelto", () => {
 
     await userEvent.clear(cuerpo);
     await userEvent.type(cuerpo, "Se cambia el rele del motor");
-    await userEvent.type(screen.getByLabelText("caso.tituloArticulo"), "Rele del motor");
+    await userEvent.type(
+      screen.getByLabelText("caso.tituloArticulo"),
+      "Rele del motor",
+    );
     await userEvent.click(screen.getByText("caso.guardarArticulo"));
 
     await waitFor(() => expect(enviado).toHaveLength(1));

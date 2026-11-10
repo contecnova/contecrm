@@ -538,8 +538,9 @@ def test_el_historial_del_caso_se_puede_ordenar(
         .scalars()
         .all()
     )
-    assert [e.tipo for e in eventos] == ["abierto", "estado", "estado"]
-    assert len({e.created_at for e in eventos}) == 3
+    # «asignado»: el reparto corre al abrir (CRM-04.01.01.05).
+    assert [e.tipo for e in eventos] == ["abierto", "asignado", "estado", "estado"]
+    assert len({e.created_at for e in eventos}) == 4
 
 
 @pytest.mark.db
@@ -548,3 +549,75 @@ def test_no_se_ve_un_caso_de_otro_tenant(
 ) -> None:
     with pytest.raises(NoEncontrado):
         svc.exigir_caso(db, uuid4())
+
+
+# ── Recorrido de servicio del 10-11-2026 ──────────────────────────────────
+
+
+@pytest.mark.db
+def test_crm_04_01_01_09_el_motivo_de_cierre_es_de_la_lista(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Era texto libre: «resuelto», «Resuelto» y «solucionado» eran tres motivos."""
+    svc.exigir_motivo_de_cierre(db, "resuelto")
+    with pytest.raises(ErrorValidacion) as e:
+        svc.exigir_motivo_de_cierre(db, "solucionado")
+    assert "resuelto" in e.value.detalle["admitidos"]
+
+
+@pytest.mark.db
+def test_crm_04_01_01_04_el_arbol_dice_de_quien_cuelga_en_los_dos_sentidos(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """El colgado de una incidencia masiva no decía de cuál, y el original no
+    listaba sus duplicados."""
+    maestro = svc.abrir_caso(uow, asunto="Caída general")
+    colgado = svc.abrir_caso(uow, asunto="No me va")
+    copia = svc.abrir_caso(uow, asunto="No me va (otra vez)")
+    svc.enlazar_a_maestro(uow, colgado.id, maestro.id)
+    svc.marcar_duplicado(uow, copia.id, maestro.id)
+    db.flush()
+
+    abajo = svc.arbol_de_caso(db, tenant_id, maestro.id)
+    assert [c["asunto"] for c in abajo["colgados_del_maestro"]] == ["No me va"]
+    assert [c["asunto"] for c in abajo["duplicados"]] == ["No me va (otra vez)"]
+    arriba = svc.arbol_de_caso(db, tenant_id, colgado.id)
+    assert arriba["maestro"] == str(maestro.id)
+    assert arriba["asuntos"][str(maestro.id)] == "Caída general"
+
+
+@pytest.mark.db
+def test_crm_04_01_02_04_un_calendario_que_no_existe_usa_el_de_la_empresa(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Un SLA que dice «laborable» en una empresa con «iberia» contaba horas de
+    reloj: ocho horas laborables vencían de madrugada."""
+    from crmcore.datos.calendario import CalendarioLaboral
+
+    db.add(
+        CalendarioLaboral(
+            tenant_id=tenant_id,
+            clave="iberia",
+            nombre="Jornada",
+            horario={str(d): [{"desde": "08:00", "hasta": "18:00"}] for d in range(5)},
+            por_defecto=True,
+        )
+    )
+    db.flush()
+    assert svc._calendario(db, tenant_id, "laborable").clave == "iberia"
+    with pytest.raises(ErrorValidacion):
+        svc.exigir_calendario(db, tenant_id, "laborable")
+    svc.exigir_calendario(db, tenant_id, "iberia")
+
+
+@pytest.mark.db
+def test_crm_04_01_01_05_un_caso_repartido_se_puede_borrar(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Desde que el reparto corre al abrir, todo caso tiene su traza de reparto;
+    contarla como dependencia dejaba sin poder borrar ninguno."""
+    from crmcore.datos.integridad import quien_depende
+
+    caso = svc.abrir_caso(uow, asunto="Para borrar")
+    db.flush()
+    assert quien_depende(db, caso) == []

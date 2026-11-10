@@ -417,6 +417,20 @@ def exigir_seccion(acceso: AccesoPortal, seccion: str) -> None:
 # ── Lo que ve el cliente (CRM-04.03.02.01) ────────────────────────────────
 
 
+def _casos_visibles(acceso: AccesoPortal) -> Any:
+    """La consulta de los casos que este acceso puede ver, y ninguno más."""
+    from services.service.modelos import Caso
+
+    consulta = select(Caso).where(Caso.tenant_id == acceso.tenant_id, Caso.deleted_at.is_(None))
+    if acceso.nivel == "propio":
+        return consulta.where(Caso.contacto_id == acceso.contacto_id)
+    if acceso.cuenta_id is not None:
+        return consulta.where(Caso.cuenta_id == acceso.cuenta_id)
+    # Nivel de cuenta pero sin cuenta asignada: no se enseña nada. Enseñar
+    # todo «porque tiene nivel de cuenta» sería el peor fallo posible aquí.
+    return consulta.where(text("false"))
+
+
 def mis_casos(db: Session, acceso: AccesoPortal, *, limite: int = 50) -> list[dict[str, Any]]:
     """Los casos que este contacto puede ver.
 
@@ -427,16 +441,7 @@ def mis_casos(db: Session, acceso: AccesoPortal, *, limite: int = 50) -> list[di
     """
     from services.service.modelos import Caso
 
-    consulta = select(Caso).where(Caso.tenant_id == acceso.tenant_id, Caso.deleted_at.is_(None))
-    if acceso.nivel == "propio":
-        consulta = consulta.where(Caso.contacto_id == acceso.contacto_id)
-    elif acceso.cuenta_id is not None:
-        consulta = consulta.where(Caso.cuenta_id == acceso.cuenta_id)
-    else:
-        # Nivel de cuenta pero sin cuenta asignada: no se enseña nada. Enseñar
-        # todo «porque tiene nivel de cuenta» sería el peor fallo posible aquí.
-        consulta = consulta.where(text("false"))
-
+    consulta = _casos_visibles(acceso)
     filas = db.execute(consulta.order_by(Caso.created_at.desc()).limit(limite)).scalars().all()
     return [
         {
@@ -453,9 +458,70 @@ def mis_casos(db: Session, acceso: AccesoPortal, *, limite: int = 50) -> list[di
             "vence_resolucion_at": (
                 c.vence_resolucion_at.isoformat() if c.vence_resolucion_at else None
             ),
+            # Lo que se le pide que dé por bueno, cuando se le pide
+            # (CRM-04.01.01.09). La resolución es la que escribió el agente
+            # para él; sin ella, «¿está resuelto?» no se puede contestar.
+            "validacion_cliente": c.validacion_cliente,
+            "resolucion": c.resolucion if c.validacion_cliente == "pendiente" else None,
         }
         for c in filas
     ]
+
+
+def validar_cierre(
+    uow: UnidadDeTrabajo,
+    acceso: AccesoPortal,
+    caso_id: UUID,
+    *,
+    conforme: bool,
+    comentario: str = "",
+) -> Any:
+    """El cliente da por bueno el cierre, o no (CRM-04.01.01.09).
+
+    El agente podía cerrar «pendiente de que el cliente lo dé por bueno» y el
+    cliente no tenía por dónde darlo: la mitad estaba escrita y nadie podía
+    pulsarla, así que todos esos casos se quedaban pendientes para siempre.
+    Medido el 10-11-2026.
+
+    **Conforme** deja el caso cerrado y aceptado. **No conforme** lo reabre,
+    con lo que dijo el cliente como motivo y dentro de la misma ventana de
+    reapertura que tiene el agente: fuera de ella el cliente recibe el mismo
+    «abre uno nuevo» que recibiría él.
+    """
+    from services.service import servicio as svc
+    from services.service.modelos import Caso
+
+    if not acceso.activo:
+        raise Prohibido("Tu acceso está desactivado.", error_code="portal.acceso_inactivo")
+    caso = uow.db.execute(_casos_visibles(acceso).where(Caso.id == caso_id)).scalar_one_or_none()
+    # Uno que no puede ver da lo mismo que uno que no existe: distinguirlos le
+    # diría qué casos tiene otra empresa.
+    if caso is None:
+        raise NoEncontrado("No encontramos ese caso.", error_code="portal.caso_no_encontrado")
+    if caso.validacion_cliente != "pendiente":
+        raise Conflicto(
+            "Este caso no está esperando tu conformidad.",
+            error_code="portal.cierre_no_pendiente",
+        )
+    comentario = (comentario or "").strip()
+    if conforme:
+        caso.validacion_cliente = "aceptado"
+        svc._anotar(uow.db, caso, "cierre_aceptado", comentario=comentario)
+        registrar(
+            uow.db,
+            accion="caso.cierre_aceptado",
+            objeto="caso",
+            objeto_id=caso.id,
+            datos={"acceso_id": str(acceso.id)},
+            tenant_id=caso.tenant_id,
+        )
+        return caso
+    if not comentario:
+        raise ErrorValidacion(
+            "Cuéntanos qué sigue sin funcionar: es lo primero que leerá quien lo retome.",
+            error_code="portal.rechazo_sin_comentario",
+        )
+    return svc.reabrir_caso(uow, caso.id, motivo=f"El cliente no lo da por resuelto: {comentario}")
 
 
 def resumen(db: Session, acceso: AccesoPortal) -> dict[str, Any]:
@@ -836,6 +902,9 @@ def hilos(
     )
     return [
         {
+            # `id` además de `hilo_id`: sin él la fila de la lista no abría su
+            # ficha, y moderar o responder no tenían dónde pulsarse.
+            "id": str(h.id),
             "hilo_id": str(h.id),
             "titulo": h.titulo,
             "categoria": h.categoria,
@@ -908,7 +977,7 @@ def mi_conocimiento(
     chatbot no es publicado para el portal, y tratarlos igual publica en el sitio
     equivocado sin que nadie lo decida.
     """
-    from services.service.conocimiento import ORDEN_AUDIENCIA, Articulo
+    from services.service.conocimiento import ORDEN_AUDIENCIA, Articulo, publicado_sql
 
     # «cliente» y lo de debajo de él: público. Nunca partner ni interno. Se
     # calcula del orden declarado y no con una lista escrita aquí, para que
@@ -918,7 +987,7 @@ def mi_conocimiento(
 
     consulta = select(Articulo).where(
         Articulo.tenant_id == acceso.tenant_id,
-        Articulo.estado == "publicado",
+        publicado_sql(),
         Articulo.audiencia.in_(permitidas),
     )
     if busqueda.strip():

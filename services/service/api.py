@@ -107,6 +107,8 @@ class CrearSLA(BaseModel):
 def crear_sla(datos: CrearSLA, uow: UowDep, principal: AutenticadoDep) -> Any:
     from sqlalchemy import func as _func
 
+    svc.exigir_calendario(uow.db, principal.tenant_id, datos.calendario or "")
+
     ultima = uow.db.execute(
         select(_func.max(DefinicionSLA.version)).where(
             DefinicionSLA.tenant_id == principal.tenant_id,
@@ -526,6 +528,9 @@ def leer(caso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
                 caso.primera_respuesta_at.isoformat() if caso.primera_respuesta_at else None
             ),
             "pausa_acumulada_s": caso.pausa_acumulada_s,
+            # Parado AHORA, y desde cuándo: sin esto la ficha enseñaba los
+            # vencimientos como si corrieran mientras se espera al cliente.
+            "pausado_desde": caso.pausado_desde.isoformat() if caso.pausado_desde else None,
             "incumplio_primera_respuesta": caso.incumplio_primera_respuesta,
             "incumplio_resolucion": caso.incumplio_resolucion,
         },
@@ -600,8 +605,16 @@ def primera_respuesta(caso_id: UUID, uow: UowDep, principal: AutenticadoDep) -> 
 
 
 class CerrarCaso(BaseModel):
-    motivo: str = Field(min_length=1, max_length=80)
+    # De la lista de la empresa (vocabulario `motivos_cierre_caso`): el
+    # formulario la ofrece como desplegable y la ruta la valida.
+    motivo: str = Field(
+        min_length=1,
+        max_length=80,
+        json_schema_extra={"x-vocabulario": ruta_de_vocabulario(svc.VOCABULARIO_MOTIVOS_CIERRE)},
+    )
     resolucion: str = ""
+    # Si el cliente tiene que darlo por bueno desde el portal: hasta entonces
+    # el caso consta cerrado PENDIENTE de su conformidad.
     exige_validacion: bool = False
 
 
@@ -617,6 +630,7 @@ class CerrarCaso(BaseModel):
     ),
 )
 def cerrar(caso_id: UUID, datos: CerrarCaso, uow: UowDep, principal: AutenticadoDep) -> Any:
+    svc.exigir_motivo_de_cierre(uow.db, datos.motivo)
     caso = svc.cerrar_caso(
         uow,
         caso_id,
@@ -716,6 +730,7 @@ def enlazar(caso_id: UUID, datos: Enlace, uow: UowDep, principal: AutenticadoDep
     summary="Cerrar el maestro y todos los casos colgados",
 )
 def cerrar_masiva(caso_id: UUID, datos: CerrarCaso, uow: UowDep, principal: AutenticadoDep) -> Any:
+    svc.exigir_motivo_de_cierre(uow.db, datos.motivo)
     return svc.cerrar_masiva(uow, caso_id, motivo=datos.motivo, resolucion=datos.resolucion)
 
 

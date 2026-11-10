@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
@@ -25,14 +25,20 @@ router_puntuacion = APIRouter(prefix="/puntuacion", tags=["calificación de lead
 class CrearSegmento(BaseModel):
     clave: str = Field(max_length=80)
     nombre: str = Field(max_length=200)
-    objeto: str = Field("contacto", description="contacto | lead | cuenta")
+    objeto: Literal["contacto", "lead", "cuenta"] = Field(
+        "contacto", description="Sobre qué se segmenta: contacto, lead o cuenta"
+    )
     definicion: dict[str, Any] = Field(
+        # La descripción la lee también quien da de alta en pantalla, encima
+        # del constructor: va en palabras, y el árbol de ejemplo en `examples`.
         description=(
-            'Árbol anidado: {"op":"y","hijos":[{"atributo":"lead.pais",'
-            '"operador":"en","valor":["ES"]}]}. Anidado porque «(A o B) y no C» '
-            "es la consulta normal en marketing, y con una lista plana solo se "
-            "puede expresar «todo y» o «todo o»"
-        )
+            "Quién entra: condiciones agrupadas con «todas», «alguna» o "
+            "«ninguna», que se pueden anidar, porque «(A o B) y no C» es la "
+            "consulta normal en marketing"
+        ),
+        examples=[
+            {"op": "y", "hijos": [{"atributo": "lead.pais", "operador": "en", "valor": ["ES"]}]}
+        ],
     )
     dinamico: bool = True
     excluye: list[UUID] = Field(default_factory=list)
@@ -99,6 +105,80 @@ def listar(db: DbDep, principal: AutenticadoDep) -> Any:
         }
         for s in filas
     ]
+
+
+@router_segmentos.get(
+    "/atributos",
+    dependencies=[Depends(exige_permiso("segment:read"))],
+    summary="Por qué se puede segmentar un objeto",
+    description=(
+        "Los atributos del perfil de marketing —los de serie y los campos propios "
+        "del tenant— con su tipo, y los operadores que el servidor sabe calcular. "
+        "Es lo que el constructor ofrece: un atributo que luego el guardado "
+        "rechazara sería una trampa."
+    ),
+)
+def atributos(db: DbDep, principal: AutenticadoDep, objeto: str = Query(...)) -> Any:
+    return seg.atributos(db, principal.tenant_id, objeto)
+
+
+class EstimarSegmento(BaseModel):
+    objeto: Literal["contacto", "lead", "cuenta"]
+    definicion: dict[str, Any]
+    excluye: list[UUID] = Field(default_factory=list)
+
+
+@router_segmentos.post(
+    "/estimar",
+    dependencies=[Depends(exige_permiso("segment:read"))],
+    summary="Cuánta gente tendría un segmento, antes de guardarlo",
+    description=(
+        "Calcula bruto, alcanzables y caídos por supresión de una definición que "
+        "todavía no se ha guardado (CRM-02.01.01.04). Con el mismo código que el "
+        "tamaño de un segmento guardado: dos maneras de contar darían dos números."
+    ),
+)
+def estimar(datos: EstimarSegmento, db: DbDep, principal: AutenticadoDep) -> Any:
+    return seg.estimar(
+        db,
+        principal.tenant_id,
+        objeto=datos.objeto,
+        definicion=datos.definicion,
+        excluye=datos.excluye,
+    )
+
+
+@router_segmentos.get(
+    "/perfiles",
+    dependencies=[Depends(exige_permiso("segment:read"))],
+    summary="De cuándo son los datos sobre los que se segmenta",
+    description=(
+        "Cuántos perfiles hay por objeto y cuándo se pusieron al día. Un segmento "
+        "se calcula sobre esta copia, no sobre la ficha: si la copia es de hace un "
+        "mes, el recuento también."
+    ),
+)
+def perfiles(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.marketing.proyeccion import estado_de_perfiles
+
+    return estado_de_perfiles(db, principal.tenant_id)
+
+
+@router_segmentos.post(
+    "/perfiles/sincronizar",
+    dependencies=[Depends(exige_permiso("segment:write"))],
+    summary="Poner al día los perfiles con cuentas, contactos y leads",
+    description=(
+        "Lee cuentas, contactos y leads por su API, con la identidad de quien lo "
+        "pide, y vuelca en el perfil lo que sirve para segmentar. Un objeto que no "
+        "se pudo leer entero se deja como estaba y se dice: con media lista no se "
+        "puede saber quién se ha dado de baja."
+    ),
+)
+def sincronizar_perfiles(principal: AutenticadoDep) -> Any:
+    from services.marketing.proyeccion import resincronizar
+
+    return resincronizar(principal.tenant_id, principal)
 
 
 @router_segmentos.get(

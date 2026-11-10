@@ -49,7 +49,9 @@ import {
 export function useEdicion(recurso: Recurso | undefined, id: string) {
   const puedeOperar = usePuedeOperar();
   const { superficie } = useSuperficie();
-  const ruta = recurso ? `${recurso.listar}/${id}` : "";
+  // Sin la consulta: una pestaña que lista con `?incluir_moderacion=true`
+  // abría la ficha en `/hilos?incluir_moderacion=true/{id}`, que no existe.
+  const ruta = recurso ? `${recurso.listar.split("?")[0]}/${id}` : "";
   const puedeBorrar =
     Boolean(ruta) &&
     !recurso?.borrado_oculto_porque &&

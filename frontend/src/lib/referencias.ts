@@ -58,6 +58,15 @@ const SON_PERSONAS = new Set([
 ]);
 
 /**
+ * ¿Este campo es una persona de la casa? Los de la lista, y `usuario_id`, que
+ * por el sufijo ya apunta a un usuario. Lo usa la tabla para enseñar su nombre
+ * en vez de esconder la columna por técnica.
+ */
+export function esDePersona(campo: string): boolean {
+  return SON_PERSONAS.has(campo) || campo === "usuario_id";
+}
+
+/**
  * Campos que apuntan a **otro registro del mismo tipo**.
  *
  * El `padre_id` de una campaña es otra campaña; el `maestro_id` de un caso,
@@ -91,7 +100,8 @@ export function recursoDeReferencia(
   // Lo que diga el servidor manda: hay campos que apuntan a un objeto que no
   // se adivina por el nombre —`origen_id` a un contacto, `anotada_por_id` a un
   // usuario— y ahí adivinar es no enseñar nada.
-  const objeto = declarado || (SON_PERSONAS.has(campo) ? "usuario" : objetoDe(campo));
+  const objeto =
+    declarado || (SON_PERSONAS.has(campo) ? "usuario" : objetoDe(campo));
   if (!objeto) return null;
   for (const modulo of MODULOS) {
     for (const recurso of recursosDe(modulo.ruta)) {

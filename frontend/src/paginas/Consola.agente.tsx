@@ -16,6 +16,7 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Link } from "react-router-dom";
+import { fechaHora } from "@/lib/formato";
 
 interface Conversacion {
   conversacion_id: string;
@@ -47,7 +48,12 @@ interface EnCola {
 }
 
 interface Consola {
-  agente: { presencia: string };
+  agente: {
+    presencia: string;
+    presencia_desde?: string | null;
+    configurado?: boolean;
+    capacidad?: Record<string, number> | null;
+  };
   /** La cola única, **ya ordenada**. Ver abajo por qué no se ordena aquí. */
   cola: EnCola[];
   mis_casos: Caso[];
@@ -94,6 +100,8 @@ export function ConsolaAgente() {
         entradilla={t("consolaAgente.entradilla")}
         icono="headset_mic"
       />
+
+      <MiPresencia agente={consola.agente} alCambiar={cargar} />
 
       {cola.length === 0 ? (
         <Vacio
@@ -173,5 +181,105 @@ function Espera({ fila }: { fila: EnCola }) {
     <span className="text-rotulo text-ink-faint">
       {t("consolaAgente.sinReloj")}
     </span>
+  );
+}
+
+/** Los estados de presencia, en el orden en que se eligen. */
+const PRESENCIAS = [
+  "disponible",
+  "ocupado",
+  "ausente",
+  "no_molestar",
+  "fuera",
+] as const;
+
+/**
+ * Mi presencia y mi capacidad (CRM-04.02.02.03).
+ *
+ * La API la guardaba y el reparto la leía, y no había ningún sitio donde un
+ * agente pudiera decir «ahora estoy»: todos seguían «fuera de turno» y el
+ * reparto automático no le daba trabajo a nadie. Medido el 10-11-2026.
+ */
+function MiPresencia({
+  agente,
+  alCambiar,
+}: {
+  agente: Consola["agente"];
+  alCambiar: () => void;
+}) {
+  const { t } = useTranslation();
+  const [guardando, setGuardando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  async function cambiar(presencia: string) {
+    setGuardando(true);
+    setFallo(null);
+    try {
+      await llamar("/api/v1/agentes/presencia", {
+        metodo: "PUT",
+        cuerpo: { presencia },
+      });
+      alCambiar();
+    } catch (error) {
+      setFallo(error);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  const capacidad = Object.entries(agente.capacidad ?? {})
+    .map(([canal, tope]) => `${canal} ${tope}`)
+    .join(" · ");
+
+  return (
+    <section className="card p-4" aria-label={t("consolaAgente.presencia")}>
+      <div className="flex flex-wrap items-center gap-3">
+        <label
+          htmlFor="mi-presencia"
+          className="text-rotulo font-medium text-ink-muted"
+        >
+          {t("consolaAgente.presencia")}
+        </label>
+        <select
+          id="mi-presencia"
+          value={agente.presencia}
+          disabled={guardando}
+          onChange={(e) => void cambiar(e.target.value)}
+          className="input-base w-auto"
+          aria-describedby="mi-presencia-ayuda"
+        >
+          {PRESENCIAS.map((p) => (
+            <option key={p} value={p}>
+              {t(`consolaAgente.estados.${p}`)}
+            </option>
+          ))}
+        </select>
+        {agente.presencia_desde ? (
+          <span className="text-rotulo text-ink-faint">
+            {t("consolaAgente.presenciaDesde", {
+              cuando: fechaHora(agente.presencia_desde),
+            })}
+          </span>
+        ) : null}
+        {guardando ? (
+          <span className="text-rotulo text-ink-faint">
+            {t("consolaAgente.guardando")}
+          </span>
+        ) : null}
+        {agente.configurado ? (
+          <span className="text-rotulo text-ink-muted">
+            {t("consolaAgente.capacidad", {
+              detalle: capacidad || t("consolaAgente.sinLimite"),
+            })}
+          </span>
+        ) : null}
+      </div>
+      <p id="mi-presencia-ayuda" className="mt-1 text-rotulo text-ink-faint">
+        {agente.configurado === false
+          ? t("consolaAgente.sinAgente")
+          : t("consolaAgente.presenciaAyuda")}
+      </p>
+      {fallo ? <Fallo error={fallo} /> : null}
+    </section>
   );
 }

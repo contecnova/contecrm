@@ -635,7 +635,13 @@ def cumplimiento_desglosado(
             if g["con_compromiso"]
             else None
         )
-        salida.append({"clave": clave, **g, "cumplimiento_pct": pct})
+        fila: dict[str, Any] = {"clave": clave, **g, "cumplimiento_pct": pct}
+        # Por cliente, el identificador va además como `cuenta_id`: así la
+        # pantalla lo enseña con el NOMBRE de la cuenta. Con sólo `clave`,
+        # el informe era una columna de UUID (medido el 10-11-2026).
+        if por == "cuenta" and clave != "(sin asignar)":
+            fila["cuenta_id"] = clave
+        salida.append(fila)
 
     # Ordenado por el peor primero: la lista existe para actuar, y ordenarla
     # alfabéticamente obliga a buscar el problema en vez de enseñarlo.

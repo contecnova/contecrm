@@ -35,6 +35,10 @@ interface Caso {
   asunto: string;
   estado: string;
   abierto_at: string | null;
+  /** «pendiente» cuando se le pide que lo dé por bueno; «aceptado» si lo dio. */
+  validacion_cliente?: string | null;
+  /** La resolución del agente, sólo mientras espera su conformidad. */
+  resolucion?: string | null;
 }
 
 interface Mensaje {
@@ -252,7 +256,7 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
       ) : null}
 
       <NuevaPeticion sesion={sesion} alCrear={cargar} />
-      <MisCasos casos={casos} />
+      <MisCasos casos={casos} sesion={sesion} alCambiar={cargar} />
       {/* Las demás secciones, **las que este acceso concede y no más**. El
           servidor ya dice cuáles en `sesion.secciones`, y lo dice justo para
           que el portal no pinte botones que luego dan 403.
@@ -360,6 +364,7 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
   const definicion = SECCIONES[seccion];
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [fallo, setFallo] = useState("");
+  const [vuelta, setVuelta] = useState(0);
 
   useEffect(() => {
     if (!definicion) return;
@@ -387,7 +392,7 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
     return () => {
       vivo = false;
     };
-  }, [definicion, sesion.token]);
+  }, [definicion, sesion.token, vuelta]);
 
   // Una sección que el servidor concede y este portal no sabe pintar no se
   // inventa: no se enseña nada. Enseñar un recuadro vacío con su rótulo se lee
@@ -399,6 +404,12 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
       <h2 className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint">
         {definicion.titulo}
       </h2>
+      {seccion === "comunidad" ? (
+        <PreguntarALaComunidad
+          sesion={sesion}
+          alPublicar={() => setVuelta((v) => v + 1)}
+        />
+      ) : null}
       {fallo ? (
         <p role="alert" className="text-dato text-danger">
           {fallo}
@@ -695,7 +706,16 @@ function NuevaPeticion({
   );
 }
 
-function MisCasos({ casos }: { casos: Caso[] | null }) {
+function MisCasos({
+  casos,
+  sesion,
+  alCambiar,
+}: {
+  casos: Caso[] | null;
+  sesion: Sesion;
+  alCambiar: () => void;
+}) {
+  const { t } = useTranslation();
   return (
     <section className="card mb-4 p-4">
       <h2 className="mb-3 text-titulin font-medium uppercase tracking-wide text-ink-faint">
@@ -712,12 +732,153 @@ function MisCasos({ casos }: { casos: Caso[] | null }) {
               <p className="text-titulin text-ink">{c.asunto}</p>
               <p className="text-rotulo text-ink-faint">
                 {c.codigo} · {c.estado}
+                {c.validacion_cliente === "aceptado"
+                  ? ` · ${t("portalCierre.aceptado")}`
+                  : ""}
               </p>
+              {c.validacion_cliente === "pendiente" ? (
+                <ValidarCierre
+                  caso={c}
+                  sesion={sesion}
+                  alTerminar={alCambiar}
+                />
+              ) : null}
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * El cliente da por bueno el cierre, o no (CRM-04.01.01.09).
+ *
+ * El agente podía cerrar «pendiente de que el cliente lo dé por bueno» y aquí
+ * no había por dónde contestar: el caso se quedaba pendiente para siempre.
+ * «No» pide qué sigue pasando, porque es lo primero que leerá quien lo retome.
+ */
+function ValidarCierre({
+  caso,
+  sesion,
+  alTerminar,
+}: {
+  caso: Caso;
+  sesion: Sesion;
+  alTerminar: () => void;
+}) {
+  const { t } = useTranslation();
+  const [diciendoQueNo, setDiciendoQueNo] = useState(false);
+  const [comentario, setComentario] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState("");
+
+  async function contestar(conforme: boolean) {
+    setEnviando(true);
+    setFallo("");
+    try {
+      await pedir(
+        `/api/v1/portal/mi/casos/${caso.caso_id}/validar-cierre`,
+        sesion.token,
+        { metodo: "POST", cuerpo: { conforme, comentario } },
+      );
+      alTerminar();
+    } catch (error) {
+      setFallo(
+        error instanceof Error ? error.message : t("portalCierre.fallo"),
+      );
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 border-t border-ink-dim/30 pt-2">
+      <p className="text-dato font-medium text-ink">
+        {t("portalCierre.pregunta")}
+      </p>
+      {caso.resolucion ? (
+        <p className="mt-1 text-dato text-ink-muted">
+          <span className="text-rotulo text-ink-faint">
+            {t("portalCierre.resolucion")}:{" "}
+          </span>
+          {caso.resolucion}
+        </p>
+      ) : null}
+      {diciendoQueNo ? (
+        <form
+          className="mt-2 flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void contestar(false);
+          }}
+        >
+          <label
+            className="text-rotulo text-ink-faint"
+            htmlFor={`no-${caso.caso_id}`}
+          >
+            {t("portalCierre.queSigue")}
+          </label>
+          <textarea
+            id={`no-${caso.caso_id}`}
+            value={comentario}
+            onChange={(e) => setComentario(e.target.value)}
+            required
+            rows={3}
+            className="input-base"
+            aria-describedby={`no-${caso.caso_id}-ayuda`}
+          />
+          <p
+            id={`no-${caso.caso_id}-ayuda`}
+            className="text-rotulo text-ink-faint"
+          >
+            {t("portalCierre.queSigueAyuda")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={enviando || !comentario.trim()}
+              className="btn-primary"
+            >
+              {enviando
+                ? t("portalCierre.enviando")
+                : t("portalCierre.enviarNo")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDiciendoQueNo(false)}
+              className="btn-secondary"
+            >
+              {t("portalCierre.cancelar")}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={enviando}
+            onClick={() => void contestar(true)}
+            className="btn-primary"
+          >
+            {enviando ? t("portalCierre.enviando") : t("portalCierre.si")}
+          </button>
+          <button
+            type="button"
+            disabled={enviando}
+            onClick={() => setDiciendoQueNo(true)}
+            className="btn-secondary"
+          >
+            {t("portalCierre.no")}
+          </button>
+        </div>
+      )}
+      {fallo ? (
+        <p role="alert" className="mt-2 text-dato text-danger">
+          {fallo}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -982,5 +1143,85 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
         </button>
       </form>
     </section>
+  );
+}
+
+/**
+ * Preguntar en la comunidad (CRM-04.03.02.04).
+ *
+ * La comunidad se leía y no se podía escribir: la ruta para que el cliente
+ * abra un hilo existía y el portal no la ofrecía (medido el 10-11-2026). Lo
+ * que se pregunta entra en moderación antes de que lo vea nadie más.
+ */
+function PreguntarALaComunidad({
+  sesion,
+  alPublicar,
+}: {
+  sesion: Sesion;
+  alPublicar: () => void;
+}) {
+  const { t } = useTranslation();
+  const [titulo, setTitulo] = useState("");
+  const [cuerpo, setCuerpo] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState("");
+
+  async function publicar(evento: FormEvent) {
+    evento.preventDefault();
+    if (!titulo.trim()) return;
+    setEnviando(true);
+    setAviso("");
+    try {
+      await pedir("/api/v1/portal/mi/comunidad", sesion.token, {
+        metodo: "POST",
+        cuerpo: { titulo, cuerpo },
+      });
+      setTitulo("");
+      setCuerpo("");
+      setAviso(t("portalComunidad.enviada"));
+      alPublicar();
+    } catch (error) {
+      setAviso(
+        error instanceof Error ? error.message : t("portalComunidad.fallo"),
+      );
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={publicar} className="mb-3 flex flex-col gap-2">
+      <input
+        value={titulo}
+        onChange={(e) => setTitulo(e.target.value)}
+        placeholder={t("portalComunidad.titulo")}
+        aria-label={t("portalComunidad.titulo")}
+        className="input-base"
+      />
+      <textarea
+        value={cuerpo}
+        onChange={(e) => setCuerpo(e.target.value)}
+        placeholder={t("portalComunidad.cuerpo")}
+        aria-label={t("portalComunidad.cuerpo")}
+        rows={2}
+        className="input-base"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="submit"
+          disabled={enviando || !titulo.trim()}
+          className="btn-secondary"
+        >
+          {enviando
+            ? t("portalComunidad.enviando")
+            : t("portalComunidad.publicar")}
+        </button>
+        {aviso ? (
+          <span role="status" className="text-rotulo text-ink-muted">
+            {aviso}
+          </span>
+        ) : null}
+      </div>
+    </form>
   );
 }

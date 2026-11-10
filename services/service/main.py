@@ -38,6 +38,7 @@ def _tareas() -> list[Any]:
     from sqlalchemy import select
 
     from services.service.campo import PlanPreventivo, generar_preventivas
+    from services.service.operacion import ReglaEscalada, evaluar_escaladas
 
     s = get_settings()
 
@@ -57,12 +58,37 @@ def _tareas() -> list[Any]:
                 ).all()
             ]
 
+    def _tenants_con_escalado() -> list[Any]:
+        """Los que tienen reglas de escalado activas, de su propia tabla."""
+        with sesion(sistema=True) as db:
+            return [
+                t
+                for (t,) in db.execute(
+                    select(ReglaEscalada.tenant_id).where(ReglaEscalada.activa.is_(True)).distinct()
+                ).all()
+            ]
+
+    def _escalado(tenant_id: Any) -> dict[str, Any]:
+        with unidad_de_trabajo(tenant_id, sistema=True) as uow:
+            salida = evaluar_escaladas(uow, tenant_id)
+        return {"escalados": len(salida.get("escalados") or [])}
+
     def _preventivas(tenant_id: Any) -> dict[str, Any]:
         with unidad_de_trabajo(tenant_id, sistema=True) as uow:
             salida = generar_preventivas(uow)
         return {"creadas": len(salida.get("creadas") or [])}
 
     return [
+        # **Los escalados tampoco se aplican pulsando un botón** (10-11-2026):
+        # las reglas —al 90 % del SLA, al incumplir, por severidad— sólo
+        # corrían con «Aplicar las reglas de escalado ahora», así que un
+        # escalado «automático» dependía de que alguien se acordara.
+        Tarea(
+            "service.escalado",
+            int(s.tarea_escalado_intervalo_s),
+            por_tenant(_tenants_con_escalado, _escalado),
+            al_arrancar=False,
+        ),
         Tarea(
             "service.preventivas",
             int(s.tarea_purgas_intervalo_s),

@@ -360,6 +360,113 @@ def test_las_senales_se_anotan_al_guardar_y_se_proponen_y_aplican_uniones(
     assert deshecha.status_code == 200, deshecha.text
 
 
+def test_las_senales_siguen_a_su_contacto_a_la_papelera_y_de_vuelta(
+    cliente: Any, cabeceras: dict[str, str], db: Any
+) -> None:
+    """Un contacto con correo se puede borrar, y sus señales le siguen.
+
+    Medido el 10-11-2026: las señales se anotan solas al guardar y contaban como
+    dependencia, así que todo contacto con correo o teléfono daba 409 al
+    borrarlo. Y lo ya unido no se toca: el principal sigue resolviendo.
+    """
+    from datetime import timedelta
+
+    from crmcore.datos.guard_borrados import con_borrados
+    from crmcore.datos.papelera import EntradaPapelera
+    from sqlalchemy import select
+
+    from services.party.identidad import Senal
+
+    correo = f"eva.{uuid4().hex[:8]}@papelera-ident.example"
+    uno = _contacto(cliente, cabeceras, nombre="Eva", apellidos="Papelera", email=correo)
+    dos = _contacto(cliente, cabeceras, nombre="Eva P.", apellidos="Papelera", email=correo)
+    unida = cliente.post(
+        "/api/v1/calidad-dato/identidades/unir",
+        headers=cabeceras,
+        json={"principal_id": uno, "secundario_id": dos, "senales": [], "puntuacion": 80},
+    )
+    assert unida.status_code == 200, unida.text
+
+    def canales(contacto: str) -> list[str]:
+        r = cliente.get(f"/api/v1/calidad-dato/identidades/contacto/{contacto}", headers=cabeceras)
+        assert r.status_code == 200, r.text
+        return list(r.json()["canales"])
+
+    def resuelve() -> list[str]:
+        r = cliente.post(
+            "/api/v1/calidad-dato/identidades/resolver",
+            headers=cabeceras,
+            json={"senales": [{"tipo": "email", "valor": correo}]},
+        )
+        assert r.status_code == 200, r.text
+        return [c["contacto_id"] for c in r.json()["candidatos"]]
+
+    # Se borra el secundario: antes, 409 por `senales_identidad`.
+    borrado = cliente.delete(f"/api/v1/contacts/{dos}", headers=cabeceras)
+    assert borrado.status_code == 204, borrado.text
+    assert canales(dos) == []
+    # Lo unido sigue: el principal resuelve solo, sin el borrado de candidato.
+    assert resuelve() == [uno]
+
+    # Restaurado, sus señales vuelven.
+    entrada = db.execute(
+        select(EntradaPapelera).where(
+            EntradaPapelera.registro_id == UUID(dos), EntradaPapelera.restaurado_at.is_(None)
+        )
+    ).scalar_one()
+    vuelta = cliente.post(f"/api/v1/party-admin/papelera/{entrada.id}/restaurar", headers=cabeceras)
+    assert vuelta.status_code == 200, vuelta.text
+    assert canales(dos) == ["email"]
+
+    # El principal a la papelera: nadie resuelve a una ficha que no se abre.
+    assert cliente.delete(f"/api/v1/contacts/{uno}", headers=cabeceras).status_code == 204
+    assert uno not in resuelve()
+
+    # Purgado, sus señales desaparecen de la tabla, no sólo de la vista.
+    entrada = db.execute(
+        select(EntradaPapelera).where(
+            EntradaPapelera.registro_id == UUID(uno), EntradaPapelera.restaurado_at.is_(None)
+        )
+    ).scalar_one()
+    entrada.purgable_at = entrada.purgable_at - timedelta(days=3650)
+    db.flush()
+    purga = cliente.post(
+        "/api/v1/party-admin/papelera/purgar",
+        headers=cabeceras,
+        json={"motivo": "prueba de purga de señales"},
+    )
+    assert purga.status_code == 200, purga.text
+    with con_borrados(db):
+        restos = db.execute(select(Senal).where(Senal.contacto_id == UUID(uno))).scalars().all()
+    assert restos == []
+
+
+def test_la_busqueda_de_contactos_mira_nombre_apellidos_y_correo(
+    cliente: Any, cabeceras: dict[str, str]
+) -> None:
+    """Medido el 10-11-2026: sólo miraba la clave canónica, con las palabras
+    ordenadas; ni el correo ni «nombre apellido» encontraban a nadie."""
+    marca = uuid4().hex[:8]
+    correo = f"zoe.{marca}@busqueda.example"
+    _contacto(cliente, cabeceras, nombre=f"Zoe{marca}", apellidos="Quíntana Ruiz", email=correo)
+
+    def cuantos(texto: str) -> int:
+        r = cliente.get("/api/v1/contacts", headers=cabeceras, params={"buscar": texto})
+        assert r.status_code == 200, r.text
+        return len(r.json()["items"])
+
+    for texto in (
+        f"zoe{marca}",
+        "Quíntana",
+        "quintana",
+        f"ruiz zoe{marca}",
+        correo,
+        f"zoe.{marca}",
+    ):
+        assert cuantos(texto) == 1, texto
+    assert cuantos(f"zoe{marca} otro") == 0
+
+
 def test_el_barrido_anota_lo_que_ya_estaba(cliente: Any, cabeceras: dict[str, str]) -> None:
     r = cliente.post("/api/v1/calidad-dato/identidades/barrer", headers=cabeceras)
     assert r.status_code == 200, r.text

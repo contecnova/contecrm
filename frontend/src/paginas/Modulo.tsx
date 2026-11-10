@@ -1597,6 +1597,7 @@ function RecursoVista({
       {accionesDeLaColeccion.length ? (
         <Acciones
           acciones={accionesDeLaColeccion}
+          recurso={recurso}
           servicio={recurso.servicio}
           alTerminar={() => void cargar()}
         />
@@ -1737,6 +1738,7 @@ function RecursoVista({
               // ninguna, las seis primeras. Y la elección se recuerda por
               // recurso: las columnas útiles de cuentas no son las de casos.
               porDefecto={recurso.columnas?.length || 6}
+              declaradas={recurso.columnas}
               recuerdaComo={recuerdaComo}
               // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una
               // pantalla vacía es peor que no tener enlace, porque el usuario
@@ -1825,6 +1827,7 @@ function RecursoVista({
                     {ultimaDeFila ? (
                       <Acciones
                         acciones={[ultimaDeFila]}
+                        recurso={recurso}
                         servicio={recurso.servicio}
                         abierta={accionDeFila}
                         alCambiarAbierta={setAccionDeFila}

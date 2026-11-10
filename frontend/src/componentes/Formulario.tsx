@@ -43,6 +43,10 @@ import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
+import {
+  ConstructorDeSegmento,
+  ExclusionesDeSegmento,
+} from "@/componentes/ConstructorDeSegmento";
 import { EditorDeCondiciones } from "@/componentes/EditorDeCondiciones";
 import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
@@ -78,6 +82,14 @@ export interface Props {
    * edita, no hay contra qué resolverlos y salían como un identificador suelto.
    */
   recurso?: Recurso | null;
+  /**
+   * El recurso del registro sobre el que se actúa, cuando el formulario NO
+   * lo edita: el de una acción («Marcar como duplicado de otro»). No ordena
+   * los campos como `recurso` —una acción no tiene las columnas del registro—;
+   * sólo resuelve contra él los que apuntan a otro del mismo tipo. Sin esto,
+   * «Original» salía como una caja de texto que pedía el UUID del otro caso.
+   */
+  propio?: Recurso | null;
   valores?: Record<string, unknown>;
   /**
    * Lo que falló al guardar, si falló.
@@ -111,6 +123,7 @@ export function Formulario({
   textoEnviar,
   alEnviar,
   recurso,
+  propio,
   fallo,
   forzarTrasElAviso = false,
   delante: pedidosDelante = [],
@@ -257,6 +270,19 @@ export function Formulario({
   const objetoDeCondiciones = campos.some((c) => c.nombre === "objetivo")
     ? String(estado.objetivo ?? "")
     : undefined;
+  // La definición de un segmento se monta con su constructor, sobre el objeto
+  // elegido o el que pondrá el servidor si no se elige.
+  const delSegmento =
+    recurso?.objeto === "segmento"
+      ? {
+          objeto: String(
+            estado.objeto ??
+              campos.find((c) => c.nombre === "objeto")?.porDefecto ??
+              "",
+          ),
+          excluye: estado.excluye,
+        }
+      : undefined;
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-4">
@@ -271,9 +297,10 @@ export function Formulario({
             campo={campo}
             valor={estado[campo.nombre]}
             alCambiar={cambiar(campo.nombre)}
-            propio={recurso}
+            propio={propio ?? recurso}
             fallo={fallosPorCampo.get(campo.nombre)}
             objetoDeCondiciones={objetoDeCondiciones}
+            delSegmento={delSegmento}
           />
         ))}
       </div>
@@ -304,9 +331,10 @@ export function Formulario({
                   campo={campo}
                   valor={estado[campo.nombre]}
                   alCambiar={cambiar(campo.nombre)}
-                  propio={recurso}
+                  propio={propio ?? recurso}
                   fallo={fallosPorCampo.get(campo.nombre)}
                   objetoDeCondiciones={objetoDeCondiciones}
+                  delSegmento={delSegmento}
                 />
               ))}
             </div>
@@ -439,6 +467,7 @@ function Campo({
   propio,
   fallo,
   objetoDeCondiciones,
+  delSegmento,
 }: {
   campo: CampoEsquema;
   valor: unknown;
@@ -449,6 +478,8 @@ function Campo({
   fallo?: string;
   /** El objeto de la regla, si el formulario lo pide: ver `EditorDeCondiciones`. */
   objetoDeCondiciones?: string;
+  /** El objeto y las exclusiones de un segmento: ver `ConstructorDeSegmento`. */
+  delSegmento?: { objeto: string; excluye: unknown };
 }) {
   const id = `campo-${campo.nombre}`;
   const ayuda = campo.descripcion ? `${id}-ayuda` : undefined;
@@ -527,6 +558,14 @@ function Campo({
           />
           {campo.titulo}
         </label>
+      ) : campo.nombre === "excluye" && delSegmento !== undefined ? (
+        <ExclusionesDeSegmento
+          id={id}
+          valor={valor}
+          alCambiar={alCambiar}
+          objeto={delSegmento.objeto}
+          ayuda={ayuda}
+        />
       ) : campo.tipo === "lista" ? (
         <Desplegable
           comun={comun}
@@ -556,6 +595,15 @@ function Campo({
           valor={valor}
           alCambiar={alCambiar}
           id={id}
+          ayuda={ayuda}
+        />
+      ) : campo.nombre === "definicion" && delSegmento !== undefined ? (
+        <ConstructorDeSegmento
+          id={id}
+          valor={valor}
+          alCambiar={alCambiar}
+          objeto={delSegmento.objeto}
+          excluye={delSegmento.excluye}
           ayuda={ayuda}
         />
       ) : campo.nombre === "condiciones" &&

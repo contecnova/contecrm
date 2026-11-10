@@ -23,2420 +23,2596 @@ import type { Modulo, Recurso } from "@/lib/modulos";
 import { objetoDe } from "@/lib/modulos";
 
 export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
-  "tenants": [
-      {
-        nombre: "Compromisos",
-        listar: "/api/v1/compromisos",
-        servicio: "tenancy",
-      },
-      {
-        nombre: "Tenants",
-        principal: true,
-        // Con `objeto` para que cada fila se abra: suspender, reactivar,
-        // exportar y ver el consumo cuelgan del tenant, y a un registro que no
-        // se abre no se llega. Y `plan_codigo` no existe: el campo es `plan`,
-        // así que esa columna salía siempre vacía.
-        objeto: "tenant",
-        listar: "/api/v1/tenants",
-        // El estado de la clave de cifrado propia del tenant: si está revocada, lo
-        // cifrado con ella no se lee, y eso es irreversible.
-        resumen: ["/api/v1/claves-cifrado"],
-        crear: "/api/v1/tenants",
-        servicio: "tenancy",
-        solo_plataforma: true,
-        columnas: ["slug", "nombre", "estado", "plan", "region", "idioma"],
-        permiso: "tenant:read",
-      },
-      // Los calendarios laborales y los festivos: de ellos salen los plazos de
-      // los SLA, así que un festivo que falta mueve la fecha de resolución de
-      // todos los casos de ese día. Se publicaban y no se veían.
-      // Los perfiles de industria: lo que deja puesto un alta según el sector.
-      // Se declaran y nadie los veía, así que elegir uno al dar de alta un
-      // cliente era elegir a ciegas.
-      {
-        nombre: "Perfiles de industria",
-        listar: "/api/v1/ciclo-vida/perfiles",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      {
-        nombre: "Calendarios laborales",
-        // Con `objeto` para que la fila abra: los festivos y el cálculo de
-        // vencimiento cuelgan del calendario.
-        objeto: "calendario_laboral",
-        listar: "/api/v1/calendarios",
-        crear: "/api/v1/calendarios",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      {
-        nombre: "Plantillas del cliente",
-        listar: "/api/v1/plantillas",
-        crear: "/api/v1/plantillas",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      { nombre: "Planes", listar: "/api/v1/planes", servicio: "tenancy" },
-      { nombre: "Ajustes", listar: "/api/v1/ajustes", servicio: "tenancy" },
-      {
-        // El histórico de tipos de cambio. Sin él, un importe convertido no se
-        // puede explicar: «salió a 1,07» es verificable, «salió al cambio» no.
-        nombre: "Tipos de cambio",
-        listar: "/api/v1/monedas/cambios",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      {
-        nombre: "Localización",
-        listar: "/api/v1/localizacion",
-        servicio: "tenancy",
-      },
-      // El modelo de aislamiento del tenant y las migraciones entre modelos
-      // (CRM-00.01.01.01 a .05): qué tenant está en pool, en esquema propio o
-      // en instancia dedicada, y la migración de uno a otro con su ventana, su
-      // verificación y su vuelta atrás. Hasta hoy esto solo existía por API.
-      {
-        nombre: "Aislamiento",
-        listar: "/api/v1/aislamiento",
+  tenants: [
+    {
+      nombre: "Compromisos",
+      listar: "/api/v1/compromisos",
+      servicio: "tenancy",
+    },
+    {
+      nombre: "Tenants",
+      principal: true,
+      // Con `objeto` para que cada fila se abra: suspender, reactivar,
+      // exportar y ver el consumo cuelgan del tenant, y a un registro que no
+      // se abre no se llega. Y `plan_codigo` no existe: el campo es `plan`,
+      // así que esa columna salía siempre vacía.
+      objeto: "tenant",
+      listar: "/api/v1/tenants",
+      // El estado de la clave de cifrado propia del tenant: si está revocada, lo
+      // cifrado con ella no se lee, y eso es irreversible.
+      resumen: ["/api/v1/claves-cifrado"],
+      crear: "/api/v1/tenants",
+      servicio: "tenancy",
+      solo_plataforma: true,
+      columnas: ["slug", "nombre", "estado", "plan", "region", "idioma"],
+      permiso: "tenant:read",
+    },
+    // Los calendarios laborales y los festivos: de ellos salen los plazos de
+    // los SLA, así que un festivo que falta mueve la fecha de resolución de
+    // todos los casos de ese día. Se publicaban y no se veían.
+    // Los perfiles de industria: lo que deja puesto un alta según el sector.
+    // Se declaran y nadie los veía, así que elegir uno al dar de alta un
+    // cliente era elegir a ciegas.
+    {
+      nombre: "Perfiles de industria",
+      listar: "/api/v1/ciclo-vida/perfiles",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    {
+      nombre: "Calendarios laborales",
+      // Con `objeto` para que la fila abra: los festivos y el cálculo de
+      // vencimiento cuelgan del calendario.
+      objeto: "calendario_laboral",
+      listar: "/api/v1/calendarios",
+      crear: "/api/v1/calendarios",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    {
+      nombre: "Plantillas del cliente",
+      listar: "/api/v1/plantillas",
+      crear: "/api/v1/plantillas",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    { nombre: "Planes", listar: "/api/v1/planes", servicio: "tenancy" },
+    { nombre: "Ajustes", listar: "/api/v1/ajustes", servicio: "tenancy" },
+    {
+      // El histórico de tipos de cambio. Sin él, un importe convertido no se
+      // puede explicar: «salió a 1,07» es verificable, «salió al cambio» no.
+      nombre: "Tipos de cambio",
+      listar: "/api/v1/monedas/cambios",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    {
+      nombre: "Localización",
+      listar: "/api/v1/localizacion",
+      servicio: "tenancy",
+    },
+    // El modelo de aislamiento del tenant y las migraciones entre modelos
+    // (CRM-00.01.01.01 a .05): qué tenant está en pool, en esquema propio o
+    // en instancia dedicada, y la migración de uno a otro con su ventana, su
+    // verificación y su vuelta atrás. Hasta hoy esto solo existía por API.
+    {
+      nombre: "Aislamiento",
+      listar: "/api/v1/aislamiento",
       // Los tenants cuyo aislamiento no ha contrastado nadie. No es que estén mal:
-        // es que no se sabe, y contarlos con los comprobados es el verde falso.
+      // es que no se sabe, y contarlos con los comprobados es el verde falso.
       resumen: ["/api/v1/aislamiento/sin-comprobar"],
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      {
-        nombre: "Migraciones de aislamiento",
-        listar: "/api/v1/aislamiento/migraciones",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      // Dónde viven los datos de cada tenant, quién los trata por cuenta
-      // nuestra y qué transferencias internacionales hay declaradas
-      // (CRM-00.01.05.01 a .03). Es lo que se enseña en una auditoría, y hasta
-      // hoy había que pedirlo por API.
-      {
-        nombre: "Residencia",
-        listar: "/api/v1/residencia",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      {
-        nombre: "Subprocesadores",
-        listar: "/api/v1/residencia/subprocesadores",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      {
-        nombre: "Transferencias internacionales",
-        listar: "/api/v1/residencia/transferencias",
-        servicio: "tenancy",
-        permiso: "tenant:read",
-      },
-      {
-        // Entornos de pruebas con la copia de los datos (CRM-07.02.01.02): se
-        // crean, se copian —anonimizado, y por cuenta si es parcial— y se
-        // apagan desde su ficha, que dice lo que contestó cada servicio.
-        nombre: "Sandboxes",
-        objeto: "sandbox",
-        listar: "/api/v1/sandboxes",
-        crear: "/api/v1/sandboxes",
-        servicio: "tenancy",
-        // Las dos calculadoras de antes, que pedían teclear los hechos: el plan
-        // lo calcula «Nuevo» al crear, y qué hay que refrescar o apagar lo dice
-        // «Qué sandboxes hay que refrescar o apagar» con los guardados. Siguen
-        // en la API para quien gestione sus entornos fuera.
-        acciones_ocultas: ["/api/v1/sandboxes/plan", "/api/v1/sandboxes/caducados"],
-        columnas: ["nombre", "proposito", "porcentaje", "anonimiza", "estado", "caduca_el"],
-        permiso: "tenancy:read",
-      },
-    ],
-  "contrato": [
-      { nombre: "Servicios", listar: "/api/v1/servicios", servicio: "gateway" },
-    ],
-  "procesos": [
-      {
-        nombre: "Definiciones",
-        // Las dos las hace el EDITOR DE PROCESOS (`/procesos`, en el menú de
-        // Automatización), donde el lienzo es la definición: se valida y se
-        // simula sobre lo que estás mirando. Aquí el formulario genérico
-        // pediría teclear el grafo entero como pares clave/valor.
-        acciones_ocultas: [
-          "/api/v1/procesos/definiciones/simular",
-          "/api/v1/procesos/definiciones/validar",
-        ],
-        principal: true,
-        listar: "/api/v1/procesos/definiciones",
-        servicio: "orchestrator",
-        // Con la versión a la vista: sin ella, las seis versiones de un mismo
-        // proceso salían como seis filas idénticas.
-        columnas: ["nombre", "clave", "version", "estado"],
-      },
-      {
-        nombre: "Instancias",
-        objeto: "instancia",
-        listar: "/api/v1/instancias",
-        servicio: "orchestrator",
-      },
-      { nombre: "Tareas", listar: "/api/v1/tareas", servicio: "orchestrator" },
-      {
-        // Con editor propio (CRM-00.03.02.10): la fila abre
-        // `/m/procesos/tablas-decision/:clave` y «Nuevo» lleva al mismo editor
-        // vacío. El formulario genérico pintaba las reglas como texto y la
-        // ficha editaba con PATCH una tabla que se guarda entera por clave.
-        nombre: "Tablas de decisión",
-        listar: "/api/v1/tablas-decision",
-        servicio: "orchestrator",
-        alta_en: "/tablas-decision/nueva",
-        // Validar y probar son botones del editor, sobre la tabla que se está
-        // editando: aquí pedían teclear la tabla entera como pares.
-        acciones_ocultas: [
-          "/api/v1/tablas-decision/validar",
-          "/api/v1/tablas-decision/probar",
-        ],
-      },
-      {
-        nombre: "Automatizaciones",
-        listar: "/api/v1/automatizaciones",
-        servicio: "automation",
-        // La calculadora de antes, que pedía teclear los registros afectados:
-        // sigue en la API para quien la use con sus datos, y desde la ficha
-        // está «Probar», que evalúa la regla guardada.
-        acciones_ocultas: ["/api/v1/automatizaciones/probar-en-seco"],
-      },
-      // La biblioteca de plantillas (CRM-00.03.03.09): se elige de la lista y
-      // «Instalar una plantilla de la biblioteca» crea la regla apagada. Antes
-      // había que teclear la plantilla en JSON y no creaba nada.
-      {
-        nombre: "Plantillas de automatización",
-        listar: "/api/v1/automatizaciones/plantillas",
-        servicio: "automation",
-        columnas: ["nombre", "industrias", "disparador", "momento", "instalada"],
-      },
-      // Lo diferido y lo programado (CRM-00.03.03.05): lo que espera su hora
-      // y lo que ya corrió. Sin esto una diferida que no ha corrido no se
-      // distingue de una que no se disparó.
-      {
-        nombre: "Cola de automatizaciones",
-        listar: "/api/v1/automatizaciones/pendientes",
-        servicio: "automation",
-        columnas: ["origen", "objeto", "ejecutar_at", "estado", "intentos", "error"],
-      },
-      // El código del tenant (CRM-00.04.02.01, .05, .06, .07): funciones en
-      // JavaScript que corren aisladas en WebAssembly. Desde la ficha se publica
-      // una versión, se prueba, se activa, se vuelve atrás y se ve cómo va.
-      {
-        nombre: "Extensiones",
-        objeto: "extension",
-        listar: "/api/v1/extensiones",
-        crear: "/api/v1/extensiones",
-        servicio: "automation",
-        columnas: ["clave", "nombre", "origen", "version_activa", "updated_at"],
-        // El motor que las ejecuta —si está y si su huella cuadra— y sus
-        // topes de tiempo, memoria y llamadas: lo primero que se mira cuando
-        // una extensión falla sin que su código haya cambiado.
-        resumen: ["/api/v1/extensiones/motor"],
-        // Las calculadoras de antes, que pedían teclear las ejecuciones, la
-        // firma o el consumo: ahora salen de lo guardado en la ficha de cada
-        // extensión. Siguen en la API para quien integre con sus propios datos.
-        acciones_ocultas: [
-          "/api/v1/extensiones/limites",
-          "/api/v1/extensiones/capacidades",
-          "/api/v1/extensiones/versiones",
-          "/api/v1/extensiones/firma",
-          "/api/v1/extensiones/ejecucion",
-          "/api/v1/extensiones/observabilidad",
-          // Y las altas de las otras dos pestañas, que salían aquí por colgar
-          // de la misma ruta: cada una ya tiene su «Nuevo» en la suya.
-          "/api/v1/extensiones/firmantes",
-          "/api/v1/extensiones/endpoints",
-        ],
-      },
-      // Rutas del tenant servidas por el gateway en /api/v1/propios/… que
-      // ejecutan una extensión (CRM-00.04.02.04).
-      {
-        nombre: "Endpoints propios",
-        objeto: "endpoint_propio",
-        listar: "/api/v1/extensiones/endpoints",
-        crear: "/api/v1/extensiones/endpoints",
-        servicio: "automation",
-        columnas: ["metodo", "ruta", "permiso", "activo"],
-      },
-      // De quién se aceptan extensiones firmadas, con su clave pública.
-      {
-        nombre: "Firmantes de confianza",
-        objeto: "firmante_extension",
-        listar: "/api/v1/extensiones/firmantes",
-        crear: "/api/v1/extensiones/firmantes",
-        servicio: "automation",
-        columnas: ["nombre", "huella_clave", "activo"],
-      },
-      {
-        nombre: "Integraciones",
-        objeto: "conexion",
-        listar: "/api/v1/integraciones/conexiones",
-        servicio: "integration",
-      },
-      {
-        nombre: "Ejecuciones",
-        listar: "/api/v1/integraciones/ejecuciones",
-        servicio: "integration",
-      },
-      { nombre: "Webhooks", listar: "/api/v1/webhooks", servicio: "eventing" },
-      // Eran dos pestañas —«de clientes» y «de ventas»— para lo mismo, y los
-      // trabajos de analítica y de inteligencia no salían en ninguna. Una
-      // pestaña con selector: lo mismo, todos los servicios, y una entrada
-      // menos en un menú que ya tiene veinte.
-      {
-        nombre: "Trabajos de fondo",
-        objeto: "trabajo",
-        listar: "/api/v1/:servicio/trabajos",
-        por_servicio: ["party", "sales", "analytics", "intelligence"],
-        servicio: "party",
-      },
-      // El catálogo de conectores y lo instalado aquí, juntos: la pregunta real
-      // es «¿qué tengo puesto y qué versión?», no «¿qué existe?».
-      {
-        nombre: "Catálogo de conectores",
-        listar: "/api/v1/conectores",
-        servicio: "integration",
-      },
-      {
-        nombre: "Conectores instalados",
-        listar: "/api/v1/conectores/instalados",
-        servicio: "integration",
-      },
-      // La lista de canales, delante de los que no se han sabido atribuir: lo
-      // primero que se pregunta es cuáles hay, no cuáles fallaron.
-      {
-        nombre: "Canales de entrada",
-        objeto: "canal_entrada",
-        listar: "/api/v1/canales-entrada",
-        crear: "/api/v1/canales-entrada",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        // Lo que ha entrado por cada canal. Sin esto, un canal configurado y
-        // mudo se ve igual que uno que trabaja.
-        nombre: "Interacciones por canal",
-        // Sin `objeto`: una interacción no es un canal. Lo tomaba prestado de
-        // «Canales de entrada» y la ficha abría el canal equivocado.
-        listar: "/api/v1/canales-entrada/interacciones",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Entradas sin atribuir",
-        listar: "/api/v1/canales-entrada/sin-atribuir",
-        servicio: "integration",
-        // Devuelve DOS listas —`interacciones` e `interlocutores_frecuentes`—
-        // y la del listado es la primera: lo que se viene a ver aquí son las
-        // entradas que no se han podido atribuir a nadie. Sin decirlo, la
-        // pantalla no podía adivinarlo y pintaba una fila con las dos dentro.
-        clave_lista: "interacciones",
-      },
-      {
-        nombre: "Agentes: uso",
-        listar: "/api/v1/agentes-ia/uso",
-        servicio: "integration",
-      },
-      {
-        nombre: "Vistas federadas",
-        objeto: "vista_federada",
-        listar: "/api/v1/federacion/vistas",
-        servicio: "integration",
-      },
-      // El progreso de la migración, por delante de la lista de reglas: lo que
-      // se pregunta cada semana es cuánto falta.
-      // Y las reglas que gobiernan ese progreso: se veía cuánto falta y no qué
-      // regla decide a quién le toca, que es lo que hay que cambiar para que
-      // avance.
-      {
-        nombre: "Migración: reglas",
-        objeto: "regla_convivencia",
-        listar: "/api/v1/convivencia",
-        crear: "/api/v1/convivencia",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Migración: progreso",
-        listar: "/api/v1/convivencia/progreso",
-        // Devuelve varias listas: el progreso se mide por objeto; los que tienen regla sin medir son el pendiente.
-        clave_lista: "objetos",
-        servicio: "integration",
-      },
-      // Las sagas: lo que cruza servicios y hay que poder deshacer. Se
-      // publicaban desde el primer día y no salían en ninguna pantalla, así que
-      // una compensación a medias no la veía nadie.
-      {
-        nombre: "Sagas",
-        objeto: "saga",
-        listar: "/api/v1/sagas",
-        crear: "/api/v1/sagas",
-        servicio: "orchestrator",
-        permiso: "proceso:read",
-      },
-      // Lo que corre solo y lo que ha llegado. Son las dos preguntas de quien
-      // mantiene una integración —«¿se está ejecutando?» y «¿está entrando
-      // algo?»— y ninguna tenía pantalla.
-      {
-        nombre: "Ejecuciones programadas",
-        // Sin `objeto`: una ejecución programada no es un registro recibido, y
-        // además no tiene ficha —no hay `GET` de detalle—, así que declararlo
-        // sólo servía para chocar con la otra pestaña.
-        listar: "/api/v1/integraciones/programacion",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Registros recibidos",
-        objeto: "registro_recibido",
-        listar: "/api/v1/integraciones/registros-recibidos",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Transportes",
-        listar: "/api/v1/conectores/transportes",
-        // Devuelve varias listas: cuatro catálogos de igual peso: manda el primero y los otros tres salen debajo.
-        clave_lista: "protocolos",
-        servicio: "integration",
-      },
-      // Las aprobaciones del motor de flujos (CRM-00.03.05): la lista entera,
-      // no solo la bandeja de quien entra. «Aprobaciones» en la navegación
-      // llevaba a la bandeja documental, que es otra cosa: estas son las del
-      // proceso, con su delegación, su plazo y su decisión por enlace firmado.
-      // Lo que me toca decidir A MÍ (CRM-00.03.05.13). Iba como resumen de la
-      // pestaña de abajo y no se veía nunca: la bandeja es una lista y el
-      // resumen sólo pinta cifras sueltas. Cada fila abre su aprobación, que
-      // es donde se decide.
-      {
-        nombre: "Me toca decidir",
-        listar: "/api/v1/aprobaciones/bandeja",
-        servicio: "orchestrator",
-        permiso: "aprobacion:read",
-        columnas: ["titulo", "etapa", "vence_at", "va_tarde", "por_delegacion", "esperando_dias"],
-        abre: { modulo: "procesos", objeto: "aprobaciones", campo: "solicitud_id" },
-      },
-      {
-        nombre: "Aprobaciones",
-        listar: "/api/v1/aprobaciones",
-        servicio: "orchestrator",
-        permiso: "aprobacion:read",
-        acciones: [
-          {
-            ruta: "/api/v1/aprobaciones/revisar-plazos",
-            nombre: "Revisar plazos",
-            detalle: "Avisa a los que van tarde y escala a los que ya se pasaron",
-            permiso: "aprobacion:write",
-          },
-        ],
-      },
-      // **Quién decide por quién, y hasta cuándo** (CRM-00.03.05.08). Se podía
-      // delegar la firma y no leerlo: «¿quién tiene hoy la de dirección?» es
-      // la pregunta de cualquier revisión de poderes, y una delegación puesta
-      // para agosto sigue viva en marzo sin que nadie lo note. Las caducadas
-      // salen marcadas y no escondidas: una que acaba de vencer explica por
-      // qué algo que antes salía solo ahora se queda parado.
-      {
-        nombre: "Delegaciones de firma",
-        objeto: "delegacion",
-        listar: "/api/v1/aprobaciones/delegaciones",
-        servicio: "orchestrator",
-        permiso: "aprobacion:read",
-      },
-      // Los enlaces que permiten decidir SIN entrar al CRM
-      // (CRM-00.03.05.12): una credencial con patas. No se devuelve el token
-      // —en la base sólo está su hash, y ése es el punto— sino a quién
-      // representa, cuándo caduca y si ya se usó.
-      {
-        nombre: "Enlaces de decisión",
-        listar: "/api/v1/aprobaciones/enlaces",
-        servicio: "orchestrator",
-        permiso: "aprobacion:read",
-      },
-    ],
-  "modelo": [
-      {
-        nombre: "Objetos",
-        principal: true,
-        // Con `objeto` para que la fila abra. Sin esto, el modelo de datos se
-        // podía listar y nada más: los campos, las validaciones, los tipos de
-        // registro, los límites y la trazabilidad del esquema no se alcanzaban
-        // desde ninguna pantalla, aunque la API los publique entera.
-        objeto: "objeto",
-        listar: "/api/v1/metadata/objetos",
-        // El mapa de relaciones del tenant, encima de los objetos: la lista dice
-        // cuáles hay y el mapa cómo se enganchan, que es lo que se mira antes de
-        // tocar una relación.
-        resumen: ["/api/v1/metadata/relaciones/grafo"],
-        servicio: "metadata",
-        columnas: ["nombre", "etiqueta", "origen", "activo"],
-      },
-      {
-        nombre: "Relaciones",
-        objeto: "relacion_entre_objetos",
-        listar: "/api/v1/metadata/relaciones",
-        servicio: "metadata",
-      },
-      {
-        nombre: "Tipos de relación",
-        listar: "/api/v1/metadata/relaciones/tipos",
-        servicio: "metadata",
-      },
-      // Qué vocabularios de negocio hay. Los valores de uno suelto ya se veían
-      // —«Motivos de descarte»—, pero cuáles existen no: para saberlo había que
-      // probar su ruta.
-      //
-      // De los servicios que DECLARAN alguno —el router sólo se monta ahí—:
-      // ventas, clientes (party) y servicio desde el 10-11-2026. El contrato
-      // llegó a anunciar también `tenancy` porque se construían los catorce en
-      // el mismo proceso con el registro global; pedida de verdad daba 404.
-      {
-        nombre: "Vocabularios de negocio",
-        listar: "/api/v1/:servicio/vocabularios",
-        por_servicio: ["sales", "party", "service"],
-        servicio: "sales",
-        permiso: "metadata:read",
-        columnas: ["etiqueta", "nombre", "valores", "fijos", "de_fabrica"],
-      },
-      // Los vocabularios que eran listas en el código (10-11-2026). Aquí y no
-      // en su módulo de trabajo: son configuración de la empresa, y el que los
-      // cambia es quien administra. Los «fijos» los lee el código uno a uno:
-      // se renombran, no se retiran.
-      {
-        nombre: "Roles en la compra",
-        listar: "/api/v1/sales/vocabularios/roles_compra",
-        servicio: "sales",
-        permiso: "metadata:read",
-        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
-      },
-      {
-        nombre: "Roles en el equipo de cuenta",
-        listar: "/api/v1/party/vocabularios/roles_equipo_cuenta",
-        servicio: "party",
-        permiso: "metadata:read",
-        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
-      },
-      {
-        nombre: "Relaciones entre personas",
-        listar: "/api/v1/party/vocabularios/relaciones_persona",
-        servicio: "party",
-        permiso: "metadata:read",
-        columnas: ["etiqueta", "valor", "orden", "activo", "extra", "de_fabrica"],
-      },
-      {
-        nombre: "Funciones de contacto de proveedor",
-        listar: "/api/v1/party/vocabularios/funciones_contacto_proveedor",
-        servicio: "party",
-        permiso: "metadata:read",
-        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
-      },
-      {
-        nombre: "Resultados de una llamada",
-        listar: "/api/v1/service/vocabularios/resultados_llamada",
-        servicio: "service",
-        permiso: "metadata:read",
-        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
-      },
-      // La prioridad de un caso (10-11-2026): era texto libre al abrirlo. Es
-      // una escala —el orden es el de la urgencia— y «media» es fija.
-      {
-        nombre: "Prioridades de un caso",
-        listar: "/api/v1/service/vocabularios/prioridades_caso",
-        servicio: "service",
-        permiso: "metadata:read",
-        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
-      },
-      // Qué objetos admite la búsqueda de cada servicio. Sin esto, la única
-      // forma de saber si algo es buscable era buscarlo y ver si salía.
-      {
-        nombre: "Objetos buscables",
-        listar: "/api/v1/:servicio/buscar/objetos",
-        por_servicio: ["party", "sales"],
-        servicio: "party",
-        permiso: "metadata:read",
-      },
-      // Qué módulos del producto tiene puestos este cliente y cuáles hay para
-      // instalar. Con `objeto` para que la fila abra: de un módulo cuelgan si
-      // lo instalado es lo que se publicó y qué parte se usa de verdad, y a un
-      // registro que no se abre no se llega.
-      {
-        nombre: "Módulos instalados",
-        objeto: "modulo",
-        resumen: ["/api/v1/metadata/modulos/catalogo"],
-        listar: "/api/v1/metadata/modulos",
-        servicio: "metadata",
-        permiso: "metadata:read",
-      },
-      // Los entornos declarados. La pantalla de ALM los tenía escritos a mano
-      // en un desplegable mientras el servidor los publicaba: un entorno nuevo
-      // no aparecía hasta que alguien editara el front.
-      {
-        nombre: "Entornos",
-        objeto: "entorno",
-        listar: "/api/v1/entornos",
-        servicio: "metadata",
-        permiso: "metadata:read",
-      },
-      // Cómo se numera cada objeto: el patrón, el relleno, cuándo reinicia y
-      // —lo que de verdad se viene a mirar— qué código saldría el siguiente.
-      {
-        nombre: "Numeración de negocio",
-        // Los tres servicios que numeran objetos de negocio, no sólo ventas:
-        // el código legible es del objeto y el objeto vive en su servicio, así
-        // que `party` y `service` llevan el suyo y no se veían.
-        listar: "/api/v1/:servicio/numeracion",
-        por_servicio: ["sales", "party", "service"],
-        servicio: "sales",
-        permiso: "metadata:read",
-      },
-    ],
-  "acceso": [
-      {
-        nombre: "Seguimientos",
-        listar: "/api/v1/seguimientos",
-        servicio: "identity",
-      },
-      {
-        nombre: "Dispositivos de confianza",
-        listar: "/api/v1/dispositivos-confianza",
-        servicio: "identity",
-      },
-      {
-        // Con `objeto` para que las referencias a personas —quién anotó esto,
-        // de quién es esta cuota— se resuelvan a un buscador con nombres en vez
-        // de dejar un identificador a la vista.
-        nombre: "Usuarios",
-        principal: true,
-        objeto: "usuario",
-        listar: "/api/v1/usuarios",
-        borrado_oculto_porque:
-          "El DELETE desactiva igual que «Dar de baja a un usuario», que además " +
-          "pregunta a quién pasan sus registros: ofrecer los dos es ofrecer el peor.",
-      // Lo que se consume de licencias, encima de la lista: dar de alta a alguien
-        // sin saber si quedan licencias es cómo se descubre el tope al revés.
-      resumen: ["/api/v1/usuarios/licencias"],
-        servicio: "identity",
-        permiso: "user:read",
-      },
-      {
-        nombre: "Roles",
-        objeto: "rol",
-        listar: "/api/v1/roles",
-        servicio: "identity",
-        permiso: "user:read",
-      },
-      {
-        nombre: "Políticas de acceso",
-        listar: "/api/v1/politicas-acceso",
-        crear: "/api/v1/politicas-acceso/{nombre}",
-        servicio: "identity",
-        permiso: "user:read",
-        // La política entera en formato neutro, para cargarla en otro motor
-        // de decisión (CRM-00.05.02.06). Sólo se alcanzaba por API.
-        descargas: [
-          {
-            ruta: "/api/v1/politicas-acceso/publicar",
-            nombre: "Descargar en formato neutro",
-            fichero: "politica-de-acceso.json",
-            detalle: "Para cargarla en otro motor de decisión (OPA, Cedar o el del cliente)",
-            permiso: "user:read",
-          },
-        ],
-      },
-      {
-        nombre: "Claves de API",
-        // LAS VIVAS. La emisión ROTA la anterior que se llame igual —y hace
-        // bien—, así que la tabla acumula el historial de revocadas: medido el
-        // 05-11-2026, **128 filas de las que 115 estaban revocadas**, con las
-        // trece que valen enterradas entre ellas. No es basura ni un fallo de
-        // seguridad: es el rastro, y por eso no se borra. Lo que no puede es
-        // tapar lo que está en uso.
-        listar: "/api/v1/claves-api?revocada_at__vacio=true",
-        servicio: "identity",
-      },
-      {
-        // Y el rastro, a un clic. Quitarlo de la vista no es esconderlo: aquí
-        // se mira cuándo se revocó cada una y qué la sustituyó.
-        nombre: "Claves revocadas",
-        listar: "/api/v1/claves-api?revocada_at__no_vacio=true",
-        servicio: "identity",
-      },
-      // Las sesiones abiertas, y **cuáles son suplantaciones y por qué**
-      // (CRM-00.05.02.10). Entrar como otra persona exige motivo escrito —y
-      // hace bien— pero ese porqué se guardaba y no lo devolvía nadie: en la
-      // lista quedaba un identificador en una columna, y nadie sabe de quién
-      // es un UUID. Una exigencia que no se puede revisar es papeleo.
-      { nombre: "Sesiones", listar: "/api/v1/sesiones", servicio: "identity" },
-      // A quién se le avisa de qué y por dónde. Los canales de entrega y cuántos
-      // llegaron, se abrieron o rebotaron van encima: una preferencia sin saber
-      // si el canal entrega es una casilla que no hace nada.
-      {
-        nombre: "Avisos y preferencias",
-        objeto: "notificacion",
-        resumen: [
-          "/api/v1/notificaciones/canales",
-          "/api/v1/notificaciones/entregas/estadisticas",
-        ],
-        listar: "/api/v1/notificaciones/preferencias",
-        servicio: "identity",
-        permiso: "user:read",
-      },
-      // Quién ve lo de quién por regla, no por jerarquía. Se publicaba y no
-      // salía en ninguna parte: una regla de compartición que nadie ve es un
-      // acceso concedido que nadie audita.
-      {
-        nombre: "Reglas de compartición",
-        objeto: "regla_comparticion",
-        listar: "/api/v1/sharing-rules",
-        crear: "/api/v1/sharing-rules",
-        servicio: "identity",
-        permiso: "sharing:read",
-      },
-      {
-        nombre: "Proveedores de identidad",
-        listar: "/api/v1/proveedores-identidad",
-      // Qué perfiles hay declarados y qué comparte de verdad cada proveedor con la
-        // suite: lo segundo es lo que se pregunta cuando alguien no aparece.
-      resumen: ["/api/v1/proveedores-identidad/perfiles", "/api/v1/proveedores-identidad/suite"],
-        servicio: "identity",
-      },
-    ],
-  "operacion": [
-      {
-        nombre: "Modelo canónico",
-        objeto: "objeto_canonico",
-        listar: "/api/v1/modelo-canonico/objetos",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Conflictos de sincronización",
-        listar: "/api/v1/sincronizacion/conflictos",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Proveedores de servicio",
-        // **Por aquí abre el módulo.** Abría por «Cola de fallidos», que es
-        // la lista de eventos que agotaron sus reintentos: en una instalación
-        // sana está VACÍA, así que «Operación» te recibía siempre con «Aquí no
-        // hay nada todavía». Medido el 04-11-2026 recorriendo administrar: de
-        // los 25 módulos era el único que abría por una pestaña sin filas.
-        //
-        // La intención era buena —lo roto primero— y el efecto el contrario:
-        // una pantalla que siempre sale vacía enseña a no mirarla, y el día
-        // que haya algo tampoco se mira.
-        //
-        // «Proveedores configurados» es el registro del que cuelga el resto
-        // del módulo y está poblado en cualquier instalación configurada. No
-        // se eligió «Catálogo de eventos», que tiene 120 filas: es
-        // documentación para quien integra, no la operación de nadie.
-        principal: true,
-        objeto: "proveedor_servicio",
-        listar: "/api/v1/proveedores-servicio",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Canales de chat",
-        listar: "/api/v1/canales-chat",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Catálogo de eventos",
-        // Quién está escuchando el flujo de eventos de esta empresa ahora
-        // mismo, y cuánto guarda para quien se reconecte.
-        resumen: ["/api/v1/eventos/estado"],
-        listar: "/api/v1/eventos/catalogo",
-        servicio: "eventing",
-      },
-      // La cola de fallidos delante del archivo: lo que hay que mirar cuando
-      // algo va mal es lo que no salió, no lo que salió bien hace un mes.
-      {
-        nombre: "Cola de fallidos",
-        listar: "/api/v1/eventos/fallidos",
-        servicio: "eventing",
-      },
-      {
-        nombre: "Archivo de eventos",
-        listar: "/api/v1/eventos/archivo",
-        servicio: "eventing",
-      },
-      // El encargo a un proveedor externo y su rastro (CRM-00.04.05): qué se
-      // le pidió, por dónde va, qué incidencias lleva y qué documentos ha
-      // devuelto. Doce operaciones publicadas y ninguna pantalla hasta hoy.
-      {
-        nombre: "Encargos a proveedor",
-        listar: "/api/v1/encargos",
-        servicio: "integration",
-        permiso: "integracion:read",
-        acciones: [
-          {
-            ruta: "/api/v1/encargos/revisar-silencios",
-            nombre: "Revisar silencios",
-            detalle: "Marca como mudo el encargo del que el proveedor no dice nada dentro de su plazo",
-            permiso: "integracion:write",
-          },
-          {
-            ruta: "/api/v1/encargos/conciliar",
-            nombre: "Conciliar lo facturado",
-            detalle: "Lo que el proveedor factura contra lo que consta entregado",
-            permiso: "integracion:write",
-          },
-        ],
-      },
-      // Las tres vistas que convierten el encargo en algo operable: lo
-      // entregado sin prueba, el cumplimiento por proveedor y los estados que
-      // el proveedor manda y nadie ha mapeado todavía. Son hermanas del
-      // listado, no hijas de un registro, así que se declaran.
-      {
-        nombre: "Encargos: entregados sin prueba",
-        listar: "/api/v1/encargos/entregados-sin-prueba",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      // **Qué se ofertó y qué acabó costando** (CRM-09.02.01.10). El margen
-      // de una oferta es una previsión; el de verdad llega con la factura del
-      // proveedor, y casi nadie vuelve a mirarlo — por eso se descubre que un
-      // tipo de trabajo pierde dinero después de venderlo veinte veces. La
-      // cuenta existía como calculadora en analytics y no la podía alimentar
-      // nadie: quien la publicaba no tiene los encargos. Ahora la hace quien
-      // tiene el dato, y lo que no se ha facturado sale APARTADO.
-      {
-        nombre: "Coste real contra ofertado",
-        listar: "/api/v1/encargos/coste-real",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Encargos: cumplimiento por proveedor",
-        listar: "/api/v1/encargos/cumplimiento",
-        periodo: true,
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Encargos: estados sin mapear",
-        listar: "/api/v1/encargos/estados-sin-mapear",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      // Las plantillas con las que se generan los documentos y la firma hecha
-      // delante del cliente. Viven aquí, con la integración, porque es de ahí
-      // de donde salen y hacia donde van.
-      {
-        nombre: "Plantillas de documento",
-        listar: "/api/v1/plantillas-documento",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      // Los perfiles de suite y el consentimiento de cada usuario: el primero
-      // es la declaración de qué sabe hacer un proveedor —endpoints, campos,
-      // incremento y límites, como configuración y no como código—, y el
-      // segundo es con qué permiso se conectó cada buzón. Los dos se listaban
-      // por API y no salían en ninguna parte.
-      {
-        nombre: "Perfiles de suite",
-        objeto: "perfil_suite",
-        listar: "/api/v1/suites/perfiles",
-        crear: "/api/v1/suites/perfiles",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      // Y los buzones de verdad: qué correo y qué calendario de quién está
-      // conectado, con su estado. El consentimiento dice qué se autorizó; esto,
-      // qué está entrando.
-      {
-        nombre: "Buzones conectados",
-        objeto: "buzon",
-        listar: "/api/v1/buzones",
-      // Cómo va la sincronización y, sobre todo, qué NO está entrando: un buzón
-        // conectado que lleva días sin traer nada se lee como que no hay correo.
-      resumen: ["/api/v1/buzones/panel"],
-        crear: "/api/v1/buzones",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Consentimiento de suite",
-        listar: "/api/v1/suites/consentimiento",
-        crear: "/api/v1/suites/consentimiento",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      // La firma electrónica entera estaba publicada y sin una sola pestaña:
-      // los sobres, sus firmantes, sus recordatorios, su cancelación y su
-      // evidencia legal. Con `objeto` la fila abre, y las acciones sobre un
-      // sobre —mandarlo, recordar, cancelar, archivar el firmado— las resuelve
-      // sola la ficha desde la superficie.
-      {
-        nombre: "Sobres de firma",
-        objeto: "sobre_firma",
-        listar: "/api/v1/firma/sobres",
-        crear: "/api/v1/firma/sobres",
-        servicio: "integration",
-        columnas: ["referencia", "asunto", "estado", "nivel", "proveedor"],
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Proveedores de firma",
-        objeto: "proveedor_firma",
-        listar: "/api/v1/firma/proveedores",
-        crear: "/api/v1/firma/proveedores",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        nombre: "Firma presencial",
-        listar: "/api/v1/firma-presencial",
-        servicio: "integration",
-        permiso: "firma:read",
-      },
-    ],
-  "cuentas": [
-      // Cuentas primero: es el módulo «Cuentas y contactos» y abría por la cola
-      // de excepciones de calidad, así que lo primero al entrar en clientes era
-      // una lista de problemas.
-      {
-        nombre: "Cuentas",
-        principal: true,
-        objeto: "cuenta",
-        listar: "/api/v1/accounts",
-        crear: "/api/v1/accounts",
-        servicio: "party",
-        columnas: ["nombre", "estado", "sector_codigo", "owner_id"],
-        permiso: "account:read",
-        // Las que no tienen una actividad desde el corte del ajuste del tenant
-        // —también las que no la tuvieron nunca, que son las que más importan—,
-        // las diez más recientes. La última actividad es un campo calculado y
-        // el listado no filtra por él, así que la pregunta «¿a quién tenemos
-        // olvidado?» no tenía otra puerta.
-        resumen: ["/api/v1/accounts/sin-contacto?limite=10"],
-      },
-      // El plan de cuenta (CRM-01.01.01.11): a qué se ha comprometido el
-      // equipo con este cliente este año. Se publicaba entero —plan,
-      // financiero, hitos— y no se llegaba desde ninguna pantalla. Los
-      // objetivos y los riesgos se miran aparte: uno con cinco objetivos y
-      // ningún riesgo es optimista, al revés es una cuenta en problemas.
-      {
-        nombre: "Planes de cuenta",
-        objeto: "plan_cuenta",
-        listar: "/api/v1/planes-cuenta",
-        crear: "/api/v1/planes-cuenta",
-        servicio: "party",
-        permiso: "party:read",
-      },
-      // Quién ha cambiado de empresa (CRM-01.01.02.07). Es calidad del dato y
-      // es una oportunidad: conoce el producto y acaba de llegar a un sitio
-      // donde no está. Con su indicio, porque no es lo mismo que rebote su
-      // correo que que alguien lo haya visto en otra empresa.
-      {
-        // El estado financiero de la cuenta (CRM-01.01.01.12), que es de
-        // donde sale si se le puede vender más: un plan de cuenta sin eso es
-        // una lista de deseos. Con la antigüedad del dato delante: bloquear
-        // con una foto del ERP de hace tres semanas hace que el comercial
-        // deje de creerse el bloqueo.
-        nombre: "Estado financiero",
-        // Sin `objeto` declarado: lo tomaba prestado de «Planes de cuenta» y, al
-        // pinchar una fila, la ficha pedía el id de un estado financiero contra
-        // `/planes-cuenta/{id}` — 404, «no existe». Es OTRO registro: su ruta es
-        // `/planes-cuenta/financiero/{estado_financiero_id}`. Derivado de su
-        // ruta, que es única.
-        listar: "/api/v1/planes-cuenta/financiero",
-        servicio: "party",
-        permiso: "party:read",
-      },
-      {
-        nombre: "Cambios de empresa",
-        objeto: "cambio_de_empresa",
-        listar: "/api/v1/cambios-de-empresa",
-        crear: "/api/v1/cambios-de-empresa",
-        servicio: "party",
-        permiso: "party:read",
-      },
-      {
-        nombre: "Contactos",
-        objeto: "contacto",
-        listar: "/api/v1/contacts",
-        crear: "/api/v1/contacts",
-        servicio: "party",
-        columnas: ["nombre_completo", "email", "telefono"],
-        permiso: "contact:read",
-      },
-      {
-        nombre: "Calidad del dato",
-        listar: "/api/v1/calidad-dato/cola",
-        // La salud del dato encima de la cola: la cola dice qué hay que tocar hoy;
-        // la salud, si la cola está creciendo. Y qué reglas producen ruido en vez
-        // de trabajo, que es lo que explica una cola que no baja. Con los pares
-        // que parecen la misma persona y cuándo toca volver a preguntar fuera.
-        resumen: ["/api/v1/calidad-dato/salud", "/api/v1/calidad-dato/metricas", "/api/v1/calidad-dato/reglas-sospechosas", "/api/v1/calidad-dato/uniones-propuestas", "/api/v1/calidad-dato/enriquecimiento/caducidad"],
-        servicio: "party",
-        permiso: "account:read",
-      },
-      {
-        nombre: "Visitas",
-        listar: "/api/v1/visitas",
-        servicio: "party",
-        permiso: "account:read",
-      },
-      {
-        nombre: "Mapa de personas",
-        listar: "/api/v1/mapa-personas",
-        servicio: "party",
-        permiso: "contact:read",
-      },
-      // LA COLA DE DUPLICADOS NO ES UNA PESTAÑA, y es una decisión, no un
-      // olvido. Estuvo aquí hasta el 28-10-2026 y enseñaba exactamente la
-      // misma colección que la pantalla «Duplicados por resolver», pero sin
-      // poder decidir ninguna: quien entraba por aquí veía dieciocho parejas,
-      // no podía hacer nada con ellas y **no sabía que existía el otro sitio**.
-      //
-      // No eran dos vistas del mismo dato: era la misma vista, una capada. La
-      // misma colección en dos sitios sólo se sostiene cuando cada uno
-      // contesta una pregunta distinta —la ficha enseña los casos DE ESA
-      // CUENTA, el tablero enseña las oportunidades COMO EMBUDO—, y aquí no
-      // la había.
-      {
-        nombre: "Derechos del interesado",
-        objeto: "solicitud_derechos",
-        listar: "/api/v1/data-subject-requests",
-        crear: "/api/v1/data-subject-requests",
-        servicio: "party",
-        columnas: [
-          "tipo",
-          "email_solicitante",
-          "estado",
-          "vence_at",
-          "dias_restantes",
-        ],
-      },
-      {
-        nombre: "Papelera",
-        icono: "delete",
-        // Con `objeto` para que cada fila se pueda abrir: «Restaurar» cuelga de
-        // la entrada, y a una entrada que no se abre no se llega desde ninguna
-        // pantalla. Estaba la acción y no había forma de usarla.
-        objeto: "entrada_papelera",
-        // La del router compartido, la misma forma que las demás: `party-admin`
-        // tiene la suya de antes y dos caminos para lo mismo obligan a saber
-        // cuál mira cada pantalla.
-        listar: "/api/v1/party/papelera",
-        servicio: "party",
-        columnas: [
-          "etiqueta",
-          "objeto",
-          "borrado_at",
-          "dias_para_purga",
-          "en_cascada",
-        ],
-      },
-    ],
-  "proveedores": [
-      {
-        nombre: "Proveedores",
-        principal: true,
-        objeto: "proveedor",
-        listar: "/api/v1/proveedores",
-        servicio: "party",
-        // Las dos calculadoras de antes, que pedían teclear los hechos: el
-        // riesgo y la evaluación ahora se calculan con lo comprado y lo
-        // entregado de verdad —«Dónde duele…, con lo comprado de verdad» en
-        // esta lista y «Cómo va este proveedor, con las entregas…» en su
-        // ficha—. Siguen en la API para quien integre con sus propios datos.
-        acciones_ocultas: [
-          "/api/v1/proveedores/riesgo",
-          "/api/v1/proveedores/evaluacion",
-          // Y en la ficha, la baja que pedía teclear los compromisos: la
-          // cubre «Si se puede dar de baja, con lo que tiene adjudicado…».
-          "/api/v1/proveedores/{cuenta_id}/puede-darse-de-baja",
-        ],
-        columnas: [
-          "nombre",
-          "estado",
-          "sector_codigo",
-          "telefono",
-          "email",
-          "owner_id",
-        ],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Documentos que vencen",
-        listar: "/api/v1/proveedores/documentos/vencen",
-        servicio: "party",
-        // Cada fila es un documento de un proveedor, así que abre **al
-        // proveedor**: es donde se sube el renovado. Sin esto la pantalla
-        // enseñaba el problema y no había por dónde ir a arreglarlo.
-        abre: {
-          modulo: "proveedores",
-          objeto: "proveedor",
-          campo: "cuenta_id",
-        },
-        columnas: ["estado", "proveedor", "documento", "valido_hasta", "dias"],
-        permiso: "party:read",
-      },
-      // Compras al proveedor (CRM-09.02.01.04 a .09, CRM-09.01.01.04, .05,
-      // .07, .09, .10): los hechos que los cálculos de coste y de proveedor
-      // necesitaban, guardados donde nacen. Cada pestaña abre su ficha y sus
-      // acciones salen del contrato.
-      {
-        nombre: "Peticiones de oferta",
-        objeto: "peticion_oferta",
-        listar: "/api/v1/compras/peticiones",
-        servicio: "party",
-        columnas: ["descripcion", "categoria", "cantidad", "fecha_limite", "estado"],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Respuestas de proveedor",
-        objeto: "respuesta_oferta",
-        listar: "/api/v1/compras/respuestas",
-        servicio: "party",
-        columnas: ["proveedor_id", "coste_unitario", "plazo_dias", "estado", "fecha_comprometida", "entregada_el"],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Capacidad",
-        objeto: "capacidad_proveedor",
-        listar: "/api/v1/compras/capacidades",
-        servicio: "party",
-        columnas: ["proveedor_id", "categoria", "desde", "hasta", "contratada", "unidad"],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Reservas de capacidad",
-        objeto: "reserva_capacidad",
-        listar: "/api/v1/compras/reservas",
-        servicio: "party",
-        columnas: ["capacidad_id", "cantidad", "firme", "forzada", "motivo"],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Rappels",
-        objeto: "acuerdo_rappel",
-        listar: "/api/v1/compras/rappels",
-        servicio: "party",
-        columnas: ["proveedor_id", "desde", "hasta", "cerrado"],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Contratos de proveedor",
-        objeto: "contrato_proveedor",
-        listar: "/api/v1/compras/contratos",
-        servicio: "party",
-        columnas: ["proveedor_id", "numero", "vigente_hasta", "renovacion_automatica", "dias_preaviso"],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Alcance",
-        objeto: "alcance_proveedor",
-        listar: "/api/v1/compras/alcances",
-        servicio: "party",
-        columnas: ["proveedor_id", "alcance"],
-        permiso: "party:read",
-      },
-    ],
-  "actividades": [
-      {
-        nombre: "Plantillas",
-        listar: "/api/v1/plantillas-actividad",
-        servicio: "party",
-        permiso: "activity:read",
-      },
-      {
-        nombre: "Recurrencias",
-        listar: "/api/v1/recurrencias",
-        servicio: "party",
-        permiso: "activity:read",
-      },
-      {
-        nombre: "Actividades",
-        principal: true,
-        objeto: "actividad",
-        listar: "/api/v1/activities",
-        crear: "/api/v1/activities",
-        servicio: "party",
-        columnas: ["asunto", "tipo", "estado", "vence_at"],
-        permiso: "activity:read",
-      },
-    ],
-  "lecciones": [
-      {
-        nombre: "Lecciones aprendidas",
-        principal: true,
-        objeto: "leccion",
-        listar: "/api/v1/lecciones",
-        servicio: "sales",
-        permiso: "opportunity:read",
-        columnas: ["titulo", "resultado", "motivo", "estado", "factores", "importe", "cerrada_el"],
-        // Lo que se repite en las firmadas, encima de la lista: los factores
-        // que más pesan, la etapa en la que se pierde y lo que queda por firmar.
-        resumen: ["/api/v1/lecciones/patrones"],
-      },
-      // Lo que las lecciones dijeron en los momentos clave de las abiertas
-      // (CRM-03.01.01.17), cada aviso abre su oportunidad.
-      {
-        nombre: "Avisos",
-        objeto: "aviso_leccion",
-        listar: "/api/v1/avisos-lecciones",
-        servicio: "sales",
-        permiso: "opportunity:read",
-        columnas: ["titulo", "momento", "detalle", "updated_at"],
-        abre: { modulo: "oportunidades", objeto: "oportunidad", campo: "oportunidad_id" },
-      },
-      // Y el resumen periódico para quien dirige (CRM-03.01.01.18).
-      {
-        nombre: "Resúmenes",
-        objeto: "resumen_lecciones",
-        listar: "/api/v1/resumenes-lecciones",
-        servicio: "sales",
-        permiso: "opportunity:read",
-        columnas: ["titulo", "detalle", "hasta", "enviado_at"],
-      },
-      // Los factores que se eligen al firmar una lección. Eran una tupla del
-      // código; ahora son el vocabulario `factores_leccion` de la empresa, y
-      // esta pestaña es donde añade o retira los suyos (10-11-2026).
-      {
-        nombre: "Factores de una lección",
-        listar: "/api/v1/sales/vocabularios/factores_leccion",
-        servicio: "sales",
-        columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
-      },
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    {
+      nombre: "Migraciones de aislamiento",
+      listar: "/api/v1/aislamiento/migraciones",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    // Dónde viven los datos de cada tenant, quién los trata por cuenta
+    // nuestra y qué transferencias internacionales hay declaradas
+    // (CRM-00.01.05.01 a .03). Es lo que se enseña en una auditoría, y hasta
+    // hoy había que pedirlo por API.
+    {
+      nombre: "Residencia",
+      listar: "/api/v1/residencia",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    {
+      nombre: "Subprocesadores",
+      listar: "/api/v1/residencia/subprocesadores",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    {
+      nombre: "Transferencias internacionales",
+      listar: "/api/v1/residencia/transferencias",
+      servicio: "tenancy",
+      permiso: "tenant:read",
+    },
+    {
+      // Entornos de pruebas con la copia de los datos (CRM-07.02.01.02): se
+      // crean, se copian —anonimizado, y por cuenta si es parcial— y se
+      // apagan desde su ficha, que dice lo que contestó cada servicio.
+      nombre: "Sandboxes",
+      objeto: "sandbox",
+      listar: "/api/v1/sandboxes",
+      crear: "/api/v1/sandboxes",
+      servicio: "tenancy",
+      // Las dos calculadoras de antes, que pedían teclear los hechos: el plan
+      // lo calcula «Nuevo» al crear, y qué hay que refrescar o apagar lo dice
+      // «Qué sandboxes hay que refrescar o apagar» con los guardados. Siguen
+      // en la API para quien gestione sus entornos fuera.
+      acciones_ocultas: [
+        "/api/v1/sandboxes/plan",
+        "/api/v1/sandboxes/caducados",
+      ],
+      columnas: [
+        "nombre",
+        "proposito",
+        "porcentaje",
+        "anonimiza",
+        "estado",
+        "caduca_el",
+      ],
+      permiso: "tenancy:read",
+    },
   ],
-  "oportunidades": [
-      {
-        nombre: "Ofertas",
-        objeto: "presupuesto",
-        listar: "/api/v1/presupuestos",
-        servicio: "sales",
-        permiso: "quote:read",
-        // `numero` y no `codigo`, que el presupuesto no tiene: con la columna
-        // que no existe, la primera era el estado y la fila se abría pulsando
-        // «Borrador» (medido el 10-11-2026).
-        columnas: ["numero", "titulo", "estado", "total", "moneda", "valido_hasta"],
-        destacadas: ["enviar"],
+  contrato: [
+    { nombre: "Servicios", listar: "/api/v1/servicios", servicio: "gateway" },
+  ],
+  procesos: [
+    {
+      nombre: "Definiciones",
+      // Las dos las hace el EDITOR DE PROCESOS (`/procesos`, en el menú de
+      // Automatización), donde el lienzo es la definición: se valida y se
+      // simula sobre lo que estás mirando. Aquí el formulario genérico
+      // pediría teclear el grafo entero como pares clave/valor.
+      acciones_ocultas: [
+        "/api/v1/procesos/definiciones/simular",
+        "/api/v1/procesos/definiciones/validar",
+      ],
+      principal: true,
+      listar: "/api/v1/procesos/definiciones",
+      servicio: "orchestrator",
+      // Con la versión a la vista: sin ella, las seis versiones de un mismo
+      // proceso salían como seis filas idénticas.
+      columnas: ["nombre", "clave", "version", "estado"],
+    },
+    {
+      nombre: "Instancias",
+      objeto: "instancia",
+      listar: "/api/v1/instancias",
+      servicio: "orchestrator",
+    },
+    { nombre: "Tareas", listar: "/api/v1/tareas", servicio: "orchestrator" },
+    {
+      // Con editor propio (CRM-00.03.02.10): la fila abre
+      // `/m/procesos/tablas-decision/:clave` y «Nuevo» lleva al mismo editor
+      // vacío. El formulario genérico pintaba las reglas como texto y la
+      // ficha editaba con PATCH una tabla que se guarda entera por clave.
+      nombre: "Tablas de decisión",
+      listar: "/api/v1/tablas-decision",
+      servicio: "orchestrator",
+      alta_en: "/tablas-decision/nueva",
+      // Validar y probar son botones del editor, sobre la tabla que se está
+      // editando: aquí pedían teclear la tabla entera como pares.
+      acciones_ocultas: [
+        "/api/v1/tablas-decision/validar",
+        "/api/v1/tablas-decision/probar",
+      ],
+    },
+    {
+      nombre: "Automatizaciones",
+      listar: "/api/v1/automatizaciones",
+      servicio: "automation",
+      // La calculadora de antes, que pedía teclear los registros afectados:
+      // sigue en la API para quien la use con sus datos, y desde la ficha
+      // está «Probar», que evalúa la regla guardada.
+      acciones_ocultas: ["/api/v1/automatizaciones/probar-en-seco"],
+    },
+    // La biblioteca de plantillas (CRM-00.03.03.09): se elige de la lista y
+    // «Instalar una plantilla de la biblioteca» crea la regla apagada. Antes
+    // había que teclear la plantilla en JSON y no creaba nada.
+    {
+      nombre: "Plantillas de automatización",
+      listar: "/api/v1/automatizaciones/plantillas",
+      servicio: "automation",
+      columnas: ["nombre", "industrias", "disparador", "momento", "instalada"],
+    },
+    // Lo diferido y lo programado (CRM-00.03.03.05): lo que espera su hora
+    // y lo que ya corrió. Sin esto una diferida que no ha corrido no se
+    // distingue de una que no se disparó.
+    {
+      nombre: "Cola de automatizaciones",
+      listar: "/api/v1/automatizaciones/pendientes",
+      servicio: "automation",
+      columnas: [
+        "origen",
+        "objeto",
+        "ejecutar_at",
+        "estado",
+        "intentos",
+        "error",
+      ],
+    },
+    // El código del tenant (CRM-00.04.02.01, .05, .06, .07): funciones en
+    // JavaScript que corren aisladas en WebAssembly. Desde la ficha se publica
+    // una versión, se prueba, se activa, se vuelve atrás y se ve cómo va.
+    {
+      nombre: "Extensiones",
+      objeto: "extension",
+      listar: "/api/v1/extensiones",
+      crear: "/api/v1/extensiones",
+      servicio: "automation",
+      columnas: ["clave", "nombre", "origen", "version_activa", "updated_at"],
+      // El motor que las ejecuta —si está y si su huella cuadra— y sus
+      // topes de tiempo, memoria y llamadas: lo primero que se mira cuando
+      // una extensión falla sin que su código haya cambiado.
+      resumen: ["/api/v1/extensiones/motor"],
+      // Las calculadoras de antes, que pedían teclear las ejecuciones, la
+      // firma o el consumo: ahora salen de lo guardado en la ficha de cada
+      // extensión. Siguen en la API para quien integre con sus propios datos.
+      acciones_ocultas: [
+        "/api/v1/extensiones/limites",
+        "/api/v1/extensiones/capacidades",
+        "/api/v1/extensiones/versiones",
+        "/api/v1/extensiones/firma",
+        "/api/v1/extensiones/ejecucion",
+        "/api/v1/extensiones/observabilidad",
+        // Y las altas de las otras dos pestañas, que salían aquí por colgar
+        // de la misma ruta: cada una ya tiene su «Nuevo» en la suya.
+        "/api/v1/extensiones/firmantes",
+        "/api/v1/extensiones/endpoints",
+      ],
+    },
+    // Rutas del tenant servidas por el gateway en /api/v1/propios/… que
+    // ejecutan una extensión (CRM-00.04.02.04).
+    {
+      nombre: "Endpoints propios",
+      objeto: "endpoint_propio",
+      listar: "/api/v1/extensiones/endpoints",
+      crear: "/api/v1/extensiones/endpoints",
+      servicio: "automation",
+      columnas: ["metodo", "ruta", "permiso", "activo"],
+    },
+    // De quién se aceptan extensiones firmadas, con su clave pública.
+    {
+      nombre: "Firmantes de confianza",
+      objeto: "firmante_extension",
+      listar: "/api/v1/extensiones/firmantes",
+      crear: "/api/v1/extensiones/firmantes",
+      servicio: "automation",
+      columnas: ["nombre", "huella_clave", "activo"],
+    },
+    {
+      nombre: "Integraciones",
+      objeto: "conexion",
+      listar: "/api/v1/integraciones/conexiones",
+      servicio: "integration",
+    },
+    {
+      nombre: "Ejecuciones",
+      listar: "/api/v1/integraciones/ejecuciones",
+      servicio: "integration",
+    },
+    { nombre: "Webhooks", listar: "/api/v1/webhooks", servicio: "eventing" },
+    // Eran dos pestañas —«de clientes» y «de ventas»— para lo mismo, y los
+    // trabajos de analítica y de inteligencia no salían en ninguna. Una
+    // pestaña con selector: lo mismo, todos los servicios, y una entrada
+    // menos en un menú que ya tiene veinte.
+    {
+      nombre: "Trabajos de fondo",
+      objeto: "trabajo",
+      listar: "/api/v1/:servicio/trabajos",
+      por_servicio: ["party", "sales", "analytics", "intelligence"],
+      servicio: "party",
+    },
+    // El catálogo de conectores y lo instalado aquí, juntos: la pregunta real
+    // es «¿qué tengo puesto y qué versión?», no «¿qué existe?».
+    {
+      nombre: "Catálogo de conectores",
+      listar: "/api/v1/conectores",
+      servicio: "integration",
+    },
+    {
+      nombre: "Conectores instalados",
+      listar: "/api/v1/conectores/instalados",
+      servicio: "integration",
+    },
+    // La lista de canales, delante de los que no se han sabido atribuir: lo
+    // primero que se pregunta es cuáles hay, no cuáles fallaron.
+    {
+      nombre: "Canales de entrada",
+      objeto: "canal_entrada",
+      listar: "/api/v1/canales-entrada",
+      crear: "/api/v1/canales-entrada",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      // Lo que ha entrado por cada canal. Sin esto, un canal configurado y
+      // mudo se ve igual que uno que trabaja.
+      nombre: "Interacciones por canal",
+      // Sin `objeto`: una interacción no es un canal. Lo tomaba prestado de
+      // «Canales de entrada» y la ficha abría el canal equivocado.
+      listar: "/api/v1/canales-entrada/interacciones",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Entradas sin atribuir",
+      listar: "/api/v1/canales-entrada/sin-atribuir",
+      servicio: "integration",
+      // Devuelve DOS listas —`interacciones` e `interlocutores_frecuentes`—
+      // y la del listado es la primera: lo que se viene a ver aquí son las
+      // entradas que no se han podido atribuir a nadie. Sin decirlo, la
+      // pantalla no podía adivinarlo y pintaba una fila con las dos dentro.
+      clave_lista: "interacciones",
+    },
+    {
+      nombre: "Agentes: uso",
+      listar: "/api/v1/agentes-ia/uso",
+      servicio: "integration",
+    },
+    {
+      nombre: "Vistas federadas",
+      objeto: "vista_federada",
+      listar: "/api/v1/federacion/vistas",
+      servicio: "integration",
+    },
+    // El progreso de la migración, por delante de la lista de reglas: lo que
+    // se pregunta cada semana es cuánto falta.
+    // Y las reglas que gobiernan ese progreso: se veía cuánto falta y no qué
+    // regla decide a quién le toca, que es lo que hay que cambiar para que
+    // avance.
+    {
+      nombre: "Migración: reglas",
+      objeto: "regla_convivencia",
+      listar: "/api/v1/convivencia",
+      crear: "/api/v1/convivencia",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Migración: progreso",
+      listar: "/api/v1/convivencia/progreso",
+      // Devuelve varias listas: el progreso se mide por objeto; los que tienen regla sin medir son el pendiente.
+      clave_lista: "objetos",
+      servicio: "integration",
+    },
+    // Las sagas: lo que cruza servicios y hay que poder deshacer. Se
+    // publicaban desde el primer día y no salían en ninguna pantalla, así que
+    // una compensación a medias no la veía nadie.
+    {
+      nombre: "Sagas",
+      objeto: "saga",
+      listar: "/api/v1/sagas",
+      crear: "/api/v1/sagas",
+      servicio: "orchestrator",
+      permiso: "proceso:read",
+    },
+    // Lo que corre solo y lo que ha llegado. Son las dos preguntas de quien
+    // mantiene una integración —«¿se está ejecutando?» y «¿está entrando
+    // algo?»— y ninguna tenía pantalla.
+    {
+      nombre: "Ejecuciones programadas",
+      // Sin `objeto`: una ejecución programada no es un registro recibido, y
+      // además no tiene ficha —no hay `GET` de detalle—, así que declararlo
+      // sólo servía para chocar con la otra pestaña.
+      listar: "/api/v1/integraciones/programacion",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Registros recibidos",
+      objeto: "registro_recibido",
+      listar: "/api/v1/integraciones/registros-recibidos",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Transportes",
+      listar: "/api/v1/conectores/transportes",
+      // Devuelve varias listas: cuatro catálogos de igual peso: manda el primero y los otros tres salen debajo.
+      clave_lista: "protocolos",
+      servicio: "integration",
+    },
+    // Las aprobaciones del motor de flujos (CRM-00.03.05): la lista entera,
+    // no solo la bandeja de quien entra. «Aprobaciones» en la navegación
+    // llevaba a la bandeja documental, que es otra cosa: estas son las del
+    // proceso, con su delegación, su plazo y su decisión por enlace firmado.
+    // Lo que me toca decidir A MÍ (CRM-00.03.05.13). Iba como resumen de la
+    // pestaña de abajo y no se veía nunca: la bandeja es una lista y el
+    // resumen sólo pinta cifras sueltas. Cada fila abre su aprobación, que
+    // es donde se decide.
+    {
+      nombre: "Me toca decidir",
+      listar: "/api/v1/aprobaciones/bandeja",
+      servicio: "orchestrator",
+      permiso: "aprobacion:read",
+      columnas: [
+        "titulo",
+        "etapa",
+        "vence_at",
+        "va_tarde",
+        "por_delegacion",
+        "esperando_dias",
+      ],
+      abre: {
+        modulo: "procesos",
+        objeto: "aprobaciones",
+        campo: "solicitud_id",
       },
-      // El plan conjunto: lo acordado CON el cliente, con su calibración. Es
-      // del mismo ciclo que la oferta y el pedido, y se publicaba sin pestaña.
-      {
-        nombre: "Planes conjuntos",
-        objeto: "plan_conjunto",
-        listar: "/api/v1/planes-conjuntos",
-      // Cuánto se parece lo que se dice en las revisiones a lo que luego pasa, y
-        // qué lleva demasiado sin revisarse: un plan conjunto que nadie revisa es
-        // un documento, no un acuerdo.
-      resumen: ["/api/v1/planes-conjuntos/calibracion", "/api/v1/planes-conjuntos/sin-revisar"],
-        crear: "/api/v1/planes-conjuntos",
-        servicio: "sales",
-        permiso: "sales:read",
+    },
+    {
+      nombre: "Aprobaciones",
+      listar: "/api/v1/aprobaciones",
+      servicio: "orchestrator",
+      permiso: "aprobacion:read",
+      acciones: [
+        {
+          ruta: "/api/v1/aprobaciones/revisar-plazos",
+          nombre: "Revisar plazos",
+          detalle: "Avisa a los que van tarde y escala a los que ya se pasaron",
+          permiso: "aprobacion:write",
+        },
+      ],
+    },
+    // **Quién decide por quién, y hasta cuándo** (CRM-00.03.05.08). Se podía
+    // delegar la firma y no leerlo: «¿quién tiene hoy la de dirección?» es
+    // la pregunta de cualquier revisión de poderes, y una delegación puesta
+    // para agosto sigue viva en marzo sin que nadie lo note. Las caducadas
+    // salen marcadas y no escondidas: una que acaba de vencer explica por
+    // qué algo que antes salía solo ahora se queda parado.
+    {
+      nombre: "Delegaciones de firma",
+      objeto: "delegacion",
+      listar: "/api/v1/aprobaciones/delegaciones",
+      servicio: "orchestrator",
+      permiso: "aprobacion:read",
+    },
+    // Los enlaces que permiten decidir SIN entrar al CRM
+    // (CRM-00.03.05.12): una credencial con patas. No se devuelve el token
+    // —en la base sólo está su hash, y ése es el punto— sino a quién
+    // representa, cuándo caduca y si ya se usó.
+    {
+      nombre: "Enlaces de decisión",
+      listar: "/api/v1/aprobaciones/enlaces",
+      servicio: "orchestrator",
+      permiso: "aprobacion:read",
+    },
+  ],
+  modelo: [
+    {
+      nombre: "Objetos",
+      principal: true,
+      // Con `objeto` para que la fila abra. Sin esto, el modelo de datos se
+      // podía listar y nada más: los campos, las validaciones, los tipos de
+      // registro, los límites y la trazabilidad del esquema no se alcanzaban
+      // desde ninguna pantalla, aunque la API los publique entera.
+      objeto: "objeto",
+      listar: "/api/v1/metadata/objetos",
+      // El mapa de relaciones del tenant, encima de los objetos: la lista dice
+      // cuáles hay y el mapa cómo se enganchan, que es lo que se mira antes de
+      // tocar una relación.
+      resumen: ["/api/v1/metadata/relaciones/grafo"],
+      servicio: "metadata",
+      columnas: ["nombre", "etiqueta", "origen", "activo"],
+    },
+    {
+      nombre: "Relaciones",
+      objeto: "relacion_entre_objetos",
+      listar: "/api/v1/metadata/relaciones",
+      servicio: "metadata",
+    },
+    {
+      nombre: "Tipos de relación",
+      listar: "/api/v1/metadata/relaciones/tipos",
+      servicio: "metadata",
+    },
+    // Qué vocabularios de negocio hay. Los valores de uno suelto ya se veían
+    // —«Motivos de descarte»—, pero cuáles existen no: para saberlo había que
+    // probar su ruta.
+    //
+    // De los servicios que DECLARAN alguno —el router sólo se monta ahí—:
+    // ventas, clientes (party) y servicio desde el 10-11-2026. El contrato
+    // llegó a anunciar también `tenancy` porque se construían los catorce en
+    // el mismo proceso con el registro global; pedida de verdad daba 404.
+    {
+      nombre: "Vocabularios de negocio",
+      listar: "/api/v1/:servicio/vocabularios",
+      por_servicio: ["sales", "party", "service"],
+      servicio: "sales",
+      permiso: "metadata:read",
+      columnas: ["etiqueta", "nombre", "valores", "fijos", "de_fabrica"],
+    },
+    // Los vocabularios que eran listas en el código (10-11-2026). Aquí y no
+    // en su módulo de trabajo: son configuración de la empresa, y el que los
+    // cambia es quien administra. Los «fijos» los lee el código uno a uno:
+    // se renombran, no se retiran.
+    {
+      nombre: "Roles en la compra",
+      listar: "/api/v1/sales/vocabularios/roles_compra",
+      servicio: "sales",
+      permiso: "metadata:read",
+      columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+    },
+    {
+      nombre: "Roles en el equipo de cuenta",
+      listar: "/api/v1/party/vocabularios/roles_equipo_cuenta",
+      servicio: "party",
+      permiso: "metadata:read",
+      columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+    },
+    {
+      nombre: "Relaciones entre personas",
+      listar: "/api/v1/party/vocabularios/relaciones_persona",
+      servicio: "party",
+      permiso: "metadata:read",
+      columnas: ["etiqueta", "valor", "orden", "activo", "extra", "de_fabrica"],
+    },
+    {
+      nombre: "Funciones de contacto de proveedor",
+      listar: "/api/v1/party/vocabularios/funciones_contacto_proveedor",
+      servicio: "party",
+      permiso: "metadata:read",
+      columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+    },
+    {
+      nombre: "Resultados de una llamada",
+      listar: "/api/v1/service/vocabularios/resultados_llamada",
+      servicio: "service",
+      permiso: "metadata:read",
+      columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+    },
+    // La prioridad de un caso (10-11-2026): era texto libre al abrirlo. Es
+    // una escala —el orden es el de la urgencia— y «media» es fija.
+    {
+      nombre: "Prioridades de un caso",
+      listar: "/api/v1/service/vocabularios/prioridades_caso",
+      servicio: "service",
+      permiso: "metadata:read",
+      columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+    },
+    // Qué objetos admite la búsqueda de cada servicio. Sin esto, la única
+    // forma de saber si algo es buscable era buscarlo y ver si salía.
+    {
+      nombre: "Objetos buscables",
+      listar: "/api/v1/:servicio/buscar/objetos",
+      por_servicio: ["party", "sales"],
+      servicio: "party",
+      permiso: "metadata:read",
+    },
+    // Qué módulos del producto tiene puestos este cliente y cuáles hay para
+    // instalar. Con `objeto` para que la fila abra: de un módulo cuelgan si
+    // lo instalado es lo que se publicó y qué parte se usa de verdad, y a un
+    // registro que no se abre no se llega.
+    {
+      nombre: "Módulos instalados",
+      objeto: "modulo",
+      resumen: ["/api/v1/metadata/modulos/catalogo"],
+      listar: "/api/v1/metadata/modulos",
+      servicio: "metadata",
+      permiso: "metadata:read",
+    },
+    // Los entornos declarados. La pantalla de ALM los tenía escritos a mano
+    // en un desplegable mientras el servidor los publicaba: un entorno nuevo
+    // no aparecía hasta que alguien editara el front.
+    {
+      nombre: "Entornos",
+      objeto: "entorno",
+      listar: "/api/v1/entornos",
+      servicio: "metadata",
+      permiso: "metadata:read",
+    },
+    // Cómo se numera cada objeto: el patrón, el relleno, cuándo reinicia y
+    // —lo que de verdad se viene a mirar— qué código saldría el siguiente.
+    {
+      nombre: "Numeración de negocio",
+      // Los tres servicios que numeran objetos de negocio, no sólo ventas:
+      // el código legible es del objeto y el objeto vive en su servicio, así
+      // que `party` y `service` llevan el suyo y no se veían.
+      listar: "/api/v1/:servicio/numeracion",
+      por_servicio: ["sales", "party", "service"],
+      servicio: "sales",
+      permiso: "metadata:read",
+    },
+  ],
+  acceso: [
+    {
+      nombre: "Seguimientos",
+      listar: "/api/v1/seguimientos",
+      servicio: "identity",
+    },
+    {
+      nombre: "Dispositivos de confianza",
+      listar: "/api/v1/dispositivos-confianza",
+      servicio: "identity",
+    },
+    {
+      // Con `objeto` para que las referencias a personas —quién anotó esto,
+      // de quién es esta cuota— se resuelvan a un buscador con nombres en vez
+      // de dejar un identificador a la vista.
+      nombre: "Usuarios",
+      principal: true,
+      objeto: "usuario",
+      listar: "/api/v1/usuarios",
+      borrado_oculto_porque:
+        "El DELETE desactiva igual que «Dar de baja a un usuario», que además " +
+        "pregunta a quién pasan sus registros: ofrecer los dos es ofrecer el peor.",
+      // Lo que se consume de licencias, encima de la lista: dar de alta a alguien
+      // sin saber si quedan licencias es cómo se descubre el tope al revés.
+      resumen: ["/api/v1/usuarios/licencias"],
+      servicio: "identity",
+      permiso: "user:read",
+    },
+    {
+      nombre: "Roles",
+      objeto: "rol",
+      listar: "/api/v1/roles",
+      servicio: "identity",
+      permiso: "user:read",
+    },
+    {
+      nombre: "Políticas de acceso",
+      listar: "/api/v1/politicas-acceso",
+      crear: "/api/v1/politicas-acceso/{nombre}",
+      servicio: "identity",
+      permiso: "user:read",
+      // La política entera en formato neutro, para cargarla en otro motor
+      // de decisión (CRM-00.05.02.06). Sólo se alcanzaba por API.
+      descargas: [
+        {
+          ruta: "/api/v1/politicas-acceso/publicar",
+          nombre: "Descargar en formato neutro",
+          fichero: "politica-de-acceso.json",
+          detalle:
+            "Para cargarla en otro motor de decisión (OPA, Cedar o el del cliente)",
+          permiso: "user:read",
+        },
+      ],
+    },
+    {
+      nombre: "Claves de API",
+      // LAS VIVAS. La emisión ROTA la anterior que se llame igual —y hace
+      // bien—, así que la tabla acumula el historial de revocadas: medido el
+      // 05-11-2026, **128 filas de las que 115 estaban revocadas**, con las
+      // trece que valen enterradas entre ellas. No es basura ni un fallo de
+      // seguridad: es el rastro, y por eso no se borra. Lo que no puede es
+      // tapar lo que está en uso.
+      listar: "/api/v1/claves-api?revocada_at__vacio=true",
+      servicio: "identity",
+    },
+    {
+      // Y el rastro, a un clic. Quitarlo de la vista no es esconderlo: aquí
+      // se mira cuándo se revocó cada una y qué la sustituyó.
+      nombre: "Claves revocadas",
+      listar: "/api/v1/claves-api?revocada_at__no_vacio=true",
+      servicio: "identity",
+    },
+    // Las sesiones abiertas, y **cuáles son suplantaciones y por qué**
+    // (CRM-00.05.02.10). Entrar como otra persona exige motivo escrito —y
+    // hace bien— pero ese porqué se guardaba y no lo devolvía nadie: en la
+    // lista quedaba un identificador en una columna, y nadie sabe de quién
+    // es un UUID. Una exigencia que no se puede revisar es papeleo.
+    { nombre: "Sesiones", listar: "/api/v1/sesiones", servicio: "identity" },
+    // A quién se le avisa de qué y por dónde. Los canales de entrega y cuántos
+    // llegaron, se abrieron o rebotaron van encima: una preferencia sin saber
+    // si el canal entrega es una casilla que no hace nada.
+    {
+      nombre: "Avisos y preferencias",
+      objeto: "notificacion",
+      resumen: [
+        "/api/v1/notificaciones/canales",
+        "/api/v1/notificaciones/entregas/estadisticas",
+      ],
+      listar: "/api/v1/notificaciones/preferencias",
+      servicio: "identity",
+      permiso: "user:read",
+    },
+    // Quién ve lo de quién por regla, no por jerarquía. Se publicaba y no
+    // salía en ninguna parte: una regla de compartición que nadie ve es un
+    // acceso concedido que nadie audita.
+    {
+      nombre: "Reglas de compartición",
+      objeto: "regla_comparticion",
+      listar: "/api/v1/sharing-rules",
+      crear: "/api/v1/sharing-rules",
+      servicio: "identity",
+      permiso: "sharing:read",
+    },
+    {
+      nombre: "Proveedores de identidad",
+      listar: "/api/v1/proveedores-identidad",
+      // Qué perfiles hay declarados y qué comparte de verdad cada proveedor con la
+      // suite: lo segundo es lo que se pregunta cuando alguien no aparece.
+      resumen: [
+        "/api/v1/proveedores-identidad/perfiles",
+        "/api/v1/proveedores-identidad/suite",
+      ],
+      servicio: "identity",
+    },
+  ],
+  operacion: [
+    {
+      nombre: "Modelo canónico",
+      objeto: "objeto_canonico",
+      listar: "/api/v1/modelo-canonico/objetos",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Conflictos de sincronización",
+      listar: "/api/v1/sincronizacion/conflictos",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Proveedores de servicio",
+      // **Por aquí abre el módulo.** Abría por «Cola de fallidos», que es
+      // la lista de eventos que agotaron sus reintentos: en una instalación
+      // sana está VACÍA, así que «Operación» te recibía siempre con «Aquí no
+      // hay nada todavía». Medido el 04-11-2026 recorriendo administrar: de
+      // los 25 módulos era el único que abría por una pestaña sin filas.
+      //
+      // La intención era buena —lo roto primero— y el efecto el contrario:
+      // una pantalla que siempre sale vacía enseña a no mirarla, y el día
+      // que haya algo tampoco se mira.
+      //
+      // «Proveedores configurados» es el registro del que cuelga el resto
+      // del módulo y está poblado en cualquier instalación configurada. No
+      // se eligió «Catálogo de eventos», que tiene 120 filas: es
+      // documentación para quien integra, no la operación de nadie.
+      principal: true,
+      objeto: "proveedor_servicio",
+      listar: "/api/v1/proveedores-servicio",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Canales de chat",
+      listar: "/api/v1/canales-chat",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Catálogo de eventos",
+      // Quién está escuchando el flujo de eventos de esta empresa ahora
+      // mismo, y cuánto guarda para quien se reconecte.
+      resumen: ["/api/v1/eventos/estado"],
+      listar: "/api/v1/eventos/catalogo",
+      servicio: "eventing",
+    },
+    // La cola de fallidos delante del archivo: lo que hay que mirar cuando
+    // algo va mal es lo que no salió, no lo que salió bien hace un mes.
+    {
+      nombre: "Cola de fallidos",
+      listar: "/api/v1/eventos/fallidos",
+      servicio: "eventing",
+    },
+    {
+      nombre: "Archivo de eventos",
+      listar: "/api/v1/eventos/archivo",
+      servicio: "eventing",
+    },
+    // El encargo a un proveedor externo y su rastro (CRM-00.04.05): qué se
+    // le pidió, por dónde va, qué incidencias lleva y qué documentos ha
+    // devuelto. Doce operaciones publicadas y ninguna pantalla hasta hoy.
+    {
+      nombre: "Encargos a proveedor",
+      listar: "/api/v1/encargos",
+      servicio: "integration",
+      permiso: "integracion:read",
+      acciones: [
+        {
+          ruta: "/api/v1/encargos/revisar-silencios",
+          nombre: "Revisar silencios",
+          detalle:
+            "Marca como mudo el encargo del que el proveedor no dice nada dentro de su plazo",
+          permiso: "integracion:write",
+        },
+        {
+          ruta: "/api/v1/encargos/conciliar",
+          nombre: "Conciliar lo facturado",
+          detalle: "Lo que el proveedor factura contra lo que consta entregado",
+          permiso: "integracion:write",
+        },
+      ],
+    },
+    // Las tres vistas que convierten el encargo en algo operable: lo
+    // entregado sin prueba, el cumplimiento por proveedor y los estados que
+    // el proveedor manda y nadie ha mapeado todavía. Son hermanas del
+    // listado, no hijas de un registro, así que se declaran.
+    {
+      nombre: "Encargos: entregados sin prueba",
+      listar: "/api/v1/encargos/entregados-sin-prueba",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    // **Qué se ofertó y qué acabó costando** (CRM-09.02.01.10). El margen
+    // de una oferta es una previsión; el de verdad llega con la factura del
+    // proveedor, y casi nadie vuelve a mirarlo — por eso se descubre que un
+    // tipo de trabajo pierde dinero después de venderlo veinte veces. La
+    // cuenta existía como calculadora en analytics y no la podía alimentar
+    // nadie: quien la publicaba no tiene los encargos. Ahora la hace quien
+    // tiene el dato, y lo que no se ha facturado sale APARTADO.
+    {
+      nombre: "Coste real contra ofertado",
+      listar: "/api/v1/encargos/coste-real",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Encargos: cumplimiento por proveedor",
+      listar: "/api/v1/encargos/cumplimiento",
+      periodo: true,
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Encargos: estados sin mapear",
+      listar: "/api/v1/encargos/estados-sin-mapear",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    // Las plantillas con las que se generan los documentos y la firma hecha
+    // delante del cliente. Viven aquí, con la integración, porque es de ahí
+    // de donde salen y hacia donde van.
+    {
+      nombre: "Plantillas de documento",
+      listar: "/api/v1/plantillas-documento",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    // Los perfiles de suite y el consentimiento de cada usuario: el primero
+    // es la declaración de qué sabe hacer un proveedor —endpoints, campos,
+    // incremento y límites, como configuración y no como código—, y el
+    // segundo es con qué permiso se conectó cada buzón. Los dos se listaban
+    // por API y no salían en ninguna parte.
+    {
+      nombre: "Perfiles de suite",
+      objeto: "perfil_suite",
+      listar: "/api/v1/suites/perfiles",
+      crear: "/api/v1/suites/perfiles",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    // Y los buzones de verdad: qué correo y qué calendario de quién está
+    // conectado, con su estado. El consentimiento dice qué se autorizó; esto,
+    // qué está entrando.
+    {
+      nombre: "Buzones conectados",
+      objeto: "buzon",
+      listar: "/api/v1/buzones",
+      // Cómo va la sincronización y, sobre todo, qué NO está entrando: un buzón
+      // conectado que lleva días sin traer nada se lee como que no hay correo.
+      resumen: ["/api/v1/buzones/panel"],
+      crear: "/api/v1/buzones",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Consentimiento de suite",
+      listar: "/api/v1/suites/consentimiento",
+      crear: "/api/v1/suites/consentimiento",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    // La firma electrónica entera estaba publicada y sin una sola pestaña:
+    // los sobres, sus firmantes, sus recordatorios, su cancelación y su
+    // evidencia legal. Con `objeto` la fila abre, y las acciones sobre un
+    // sobre —mandarlo, recordar, cancelar, archivar el firmado— las resuelve
+    // sola la ficha desde la superficie.
+    {
+      nombre: "Sobres de firma",
+      objeto: "sobre_firma",
+      listar: "/api/v1/firma/sobres",
+      crear: "/api/v1/firma/sobres",
+      servicio: "integration",
+      columnas: ["referencia", "asunto", "estado", "nivel", "proveedor"],
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Proveedores de firma",
+      objeto: "proveedor_firma",
+      listar: "/api/v1/firma/proveedores",
+      crear: "/api/v1/firma/proveedores",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      nombre: "Firma presencial",
+      listar: "/api/v1/firma-presencial",
+      servicio: "integration",
+      permiso: "firma:read",
+    },
+  ],
+  cuentas: [
+    // Cuentas primero: es el módulo «Cuentas y contactos» y abría por la cola
+    // de excepciones de calidad, así que lo primero al entrar en clientes era
+    // una lista de problemas.
+    {
+      nombre: "Cuentas",
+      principal: true,
+      objeto: "cuenta",
+      listar: "/api/v1/accounts",
+      crear: "/api/v1/accounts",
+      servicio: "party",
+      columnas: ["nombre", "estado", "sector_codigo", "owner_id"],
+      permiso: "account:read",
+      // Las que no tienen una actividad desde el corte del ajuste del tenant
+      // —también las que no la tuvieron nunca, que son las que más importan—,
+      // las diez más recientes. La última actividad es un campo calculado y
+      // el listado no filtra por él, así que la pregunta «¿a quién tenemos
+      // olvidado?» no tenía otra puerta.
+      resumen: ["/api/v1/accounts/sin-contacto?limite=10"],
+    },
+    // El plan de cuenta (CRM-01.01.01.11): a qué se ha comprometido el
+    // equipo con este cliente este año. Se publicaba entero —plan,
+    // financiero, hitos— y no se llegaba desde ninguna pantalla. Los
+    // objetivos y los riesgos se miran aparte: uno con cinco objetivos y
+    // ningún riesgo es optimista, al revés es una cuenta en problemas.
+    {
+      nombre: "Planes de cuenta",
+      objeto: "plan_cuenta",
+      listar: "/api/v1/planes-cuenta",
+      crear: "/api/v1/planes-cuenta",
+      servicio: "party",
+      permiso: "party:read",
+    },
+    // Quién ha cambiado de empresa (CRM-01.01.02.07). Es calidad del dato y
+    // es una oportunidad: conoce el producto y acaba de llegar a un sitio
+    // donde no está. Con su indicio, porque no es lo mismo que rebote su
+    // correo que que alguien lo haya visto en otra empresa.
+    {
+      // El estado financiero de la cuenta (CRM-01.01.01.12), que es de
+      // donde sale si se le puede vender más: un plan de cuenta sin eso es
+      // una lista de deseos. Con la antigüedad del dato delante: bloquear
+      // con una foto del ERP de hace tres semanas hace que el comercial
+      // deje de creerse el bloqueo.
+      nombre: "Estado financiero",
+      // Sin `objeto` declarado: lo tomaba prestado de «Planes de cuenta» y, al
+      // pinchar una fila, la ficha pedía el id de un estado financiero contra
+      // `/planes-cuenta/{id}` — 404, «no existe». Es OTRO registro: su ruta es
+      // `/planes-cuenta/financiero/{estado_financiero_id}`. Derivado de su
+      // ruta, que es única.
+      listar: "/api/v1/planes-cuenta/financiero",
+      servicio: "party",
+      permiso: "party:read",
+    },
+    {
+      nombre: "Cambios de empresa",
+      objeto: "cambio_de_empresa",
+      listar: "/api/v1/cambios-de-empresa",
+      crear: "/api/v1/cambios-de-empresa",
+      servicio: "party",
+      permiso: "party:read",
+    },
+    {
+      nombre: "Contactos",
+      objeto: "contacto",
+      listar: "/api/v1/contacts",
+      crear: "/api/v1/contacts",
+      servicio: "party",
+      columnas: ["nombre_completo", "email", "telefono"],
+      permiso: "contact:read",
+    },
+    {
+      nombre: "Calidad del dato",
+      listar: "/api/v1/calidad-dato/cola",
+      // La salud del dato encima de la cola: la cola dice qué hay que tocar hoy;
+      // la salud, si la cola está creciendo. Y qué reglas producen ruido en vez
+      // de trabajo, que es lo que explica una cola que no baja. Con los pares
+      // que parecen la misma persona y cuándo toca volver a preguntar fuera.
+      resumen: [
+        "/api/v1/calidad-dato/salud",
+        "/api/v1/calidad-dato/metricas",
+        "/api/v1/calidad-dato/reglas-sospechosas",
+        "/api/v1/calidad-dato/uniones-propuestas",
+        "/api/v1/calidad-dato/enriquecimiento/caducidad",
+      ],
+      servicio: "party",
+      permiso: "account:read",
+    },
+    {
+      nombre: "Visitas",
+      listar: "/api/v1/visitas",
+      servicio: "party",
+      permiso: "account:read",
+    },
+    {
+      nombre: "Mapa de personas",
+      listar: "/api/v1/mapa-personas",
+      servicio: "party",
+      permiso: "contact:read",
+    },
+    // LA COLA DE DUPLICADOS NO ES UNA PESTAÑA, y es una decisión, no un
+    // olvido. Estuvo aquí hasta el 28-10-2026 y enseñaba exactamente la
+    // misma colección que la pantalla «Duplicados por resolver», pero sin
+    // poder decidir ninguna: quien entraba por aquí veía dieciocho parejas,
+    // no podía hacer nada con ellas y **no sabía que existía el otro sitio**.
+    //
+    // No eran dos vistas del mismo dato: era la misma vista, una capada. La
+    // misma colección en dos sitios sólo se sostiene cuando cada uno
+    // contesta una pregunta distinta —la ficha enseña los casos DE ESA
+    // CUENTA, el tablero enseña las oportunidades COMO EMBUDO—, y aquí no
+    // la había.
+    {
+      nombre: "Derechos del interesado",
+      objeto: "solicitud_derechos",
+      listar: "/api/v1/data-subject-requests",
+      crear: "/api/v1/data-subject-requests",
+      servicio: "party",
+      columnas: [
+        "tipo",
+        "email_solicitante",
+        "estado",
+        "vence_at",
+        "dias_restantes",
+      ],
+    },
+    {
+      nombre: "Papelera",
+      icono: "delete",
+      // Con `objeto` para que cada fila se pueda abrir: «Restaurar» cuelga de
+      // la entrada, y a una entrada que no se abre no se llega desde ninguna
+      // pantalla. Estaba la acción y no había forma de usarla.
+      objeto: "entrada_papelera",
+      // La del router compartido, la misma forma que las demás: `party-admin`
+      // tiene la suya de antes y dos caminos para lo mismo obligan a saber
+      // cuál mira cada pantalla.
+      listar: "/api/v1/party/papelera",
+      servicio: "party",
+      columnas: [
+        "etiqueta",
+        "objeto",
+        "borrado_at",
+        "dias_para_purga",
+        "en_cascada",
+      ],
+    },
+  ],
+  proveedores: [
+    {
+      nombre: "Proveedores",
+      principal: true,
+      objeto: "proveedor",
+      listar: "/api/v1/proveedores",
+      servicio: "party",
+      // Las dos calculadoras de antes, que pedían teclear los hechos: el
+      // riesgo y la evaluación ahora se calculan con lo comprado y lo
+      // entregado de verdad —«Dónde duele…, con lo comprado de verdad» en
+      // esta lista y «Cómo va este proveedor, con las entregas…» en su
+      // ficha—. Siguen en la API para quien integre con sus propios datos.
+      acciones_ocultas: [
+        "/api/v1/proveedores/riesgo",
+        "/api/v1/proveedores/evaluacion",
+        // Y en la ficha, la baja que pedía teclear los compromisos: la
+        // cubre «Si se puede dar de baja, con lo que tiene adjudicado…».
+        "/api/v1/proveedores/{cuenta_id}/puede-darse-de-baja",
+      ],
+      columnas: [
+        "nombre",
+        "estado",
+        "sector_codigo",
+        "telefono",
+        "email",
+        "owner_id",
+      ],
+      permiso: "party:read",
+    },
+    {
+      nombre: "Documentos que vencen",
+      listar: "/api/v1/proveedores/documentos/vencen",
+      servicio: "party",
+      // Cada fila es un documento de un proveedor, así que abre **al
+      // proveedor**: es donde se sube el renovado. Sin esto la pantalla
+      // enseñaba el problema y no había por dónde ir a arreglarlo.
+      abre: {
+        modulo: "proveedores",
+        objeto: "proveedor",
+        campo: "cuenta_id",
       },
-      // Los playbooks: qué hacer en cada etapa. La tabla y el selector
-      // estaban, y no había forma de meter una fila — así que el panel de la
-      // oportunidad salía siempre vacío y la capacidad constaba hecha.
-      {
-        nombre: "Playbooks",
-        objeto: "playbook",
-        listar: "/api/v1/playbooks",
-        crear: "/api/v1/playbooks",
-        servicio: "sales",
-        permiso: "opportunity:read",
-        columnas: ["clave", "titulo", "etapa", "segmento", "activo"],
-      },
-      {
-        nombre: "Pedidos",
-        objeto: "pedido",
-        listar: "/api/v1/pedidos",
-      // Los pedidos de los que el ERP no ha dicho nada: no salen como un estado
-        // del pedido, salen de comparar, y sin esto no los ve nadie.
-      resumen: ["/api/v1/pedidos/conciliacion-erp"],
-        servicio: "sales",
-        permiso: "order:read",
-      },
-      {
-        nombre: "Contratos",
-        objeto: "contrato",
-        listar: "/api/v1/contratos",
-        servicio: "sales",
-        permiso: "contract:read",
-      },
-      {
-        nombre: "Suscripciones",
-        listar: "/api/v1/suscripciones",
-      // MRR y ARR encima de las suscripciones: es la cifra por la que se mira esta
-        // lista, y calcularla a mano desde las filas es cómo salen dos números.
-      resumen: ["/api/v1/suscripciones/recurrente"],
-        servicio: "sales",
-        permiso: "contract:read",
-      },
-      {
-        nombre: "Productos",
-        objeto: "producto",
-        listar: "/api/v1/productos",
-        servicio: "sales",
-        permiso: "producto:read",
-      },
-      {
-        nombre: "Listas de precio",
-        // Con objeto: una regla de precio elige su lista por el nombre, y sin
-        // él el formulario pedía el identificador tecleado.
-        objeto: "lista_precio",
-        listar: "/api/v1/listas-precio",
-        servicio: "sales",
-        permiso: "producto:read",
-      },
-      {
-        nombre: "Metodologías",
-        listar: "/api/v1/metodologias",
-        servicio: "sales",
-      },
-      {
-        nombre: "Mi cola",
-        listar: "/api/v1/mi-cola",
-        servicio: "sales",
-        // Qué es, qué hacer y por qué. La urgencia es el orden de la lista, no
-        // un dato que leer: salía como columna «Urgencia 0».
-        columnas: ["tipo", "titulo", "por_que", "atraso_dias"],
-      },
-      {
-        nombre: "Papelera",
-        icono: "delete",
-        objeto: "entrada_papelera",
-        listar: "/api/v1/sales/papelera",
-        servicio: "sales",
-        columnas: [
-          "etiqueta",
-          "objeto",
-          "borrado_at",
-          "dias_para_purga",
-          "en_cascada",
-        ],
-      },
-      {
-        nombre: "Oportunidades",
-        principal: true,
+      columnas: ["estado", "proveedor", "documento", "valido_hasta", "dias"],
+      permiso: "party:read",
+    },
+    // Compras al proveedor (CRM-09.02.01.04 a .09, CRM-09.01.01.04, .05,
+    // .07, .09, .10): los hechos que los cálculos de coste y de proveedor
+    // necesitaban, guardados donde nacen. Cada pestaña abre su ficha y sus
+    // acciones salen del contrato.
+    {
+      nombre: "Peticiones de oferta",
+      objeto: "peticion_oferta",
+      listar: "/api/v1/compras/peticiones",
+      servicio: "party",
+      columnas: [
+        "descripcion",
+        "categoria",
+        "cantidad",
+        "fecha_limite",
+        "estado",
+      ],
+      permiso: "party:read",
+    },
+    {
+      nombre: "Respuestas de proveedor",
+      objeto: "respuesta_oferta",
+      listar: "/api/v1/compras/respuestas",
+      servicio: "party",
+      columnas: [
+        "proveedor_id",
+        "coste_unitario",
+        "plazo_dias",
+        "estado",
+        "fecha_comprometida",
+        "entregada_el",
+      ],
+      permiso: "party:read",
+    },
+    {
+      nombre: "Capacidad",
+      objeto: "capacidad_proveedor",
+      listar: "/api/v1/compras/capacidades",
+      servicio: "party",
+      columnas: [
+        "proveedor_id",
+        "categoria",
+        "desde",
+        "hasta",
+        "contratada",
+        "unidad",
+      ],
+      permiso: "party:read",
+    },
+    {
+      nombre: "Reservas de capacidad",
+      objeto: "reserva_capacidad",
+      listar: "/api/v1/compras/reservas",
+      servicio: "party",
+      columnas: ["capacidad_id", "cantidad", "firme", "forzada", "motivo"],
+      permiso: "party:read",
+    },
+    {
+      nombre: "Rappels",
+      objeto: "acuerdo_rappel",
+      listar: "/api/v1/compras/rappels",
+      servicio: "party",
+      columnas: ["proveedor_id", "desde", "hasta", "cerrado"],
+      permiso: "party:read",
+    },
+    {
+      nombre: "Contratos de proveedor",
+      objeto: "contrato_proveedor",
+      listar: "/api/v1/compras/contratos",
+      servicio: "party",
+      columnas: [
+        "proveedor_id",
+        "numero",
+        "vigente_hasta",
+        "renovacion_automatica",
+        "dias_preaviso",
+      ],
+      permiso: "party:read",
+    },
+    {
+      nombre: "Alcance",
+      objeto: "alcance_proveedor",
+      listar: "/api/v1/compras/alcances",
+      servicio: "party",
+      columnas: ["proveedor_id", "alcance"],
+      permiso: "party:read",
+    },
+  ],
+  actividades: [
+    {
+      nombre: "Plantillas",
+      listar: "/api/v1/plantillas-actividad",
+      servicio: "party",
+      permiso: "activity:read",
+    },
+    {
+      nombre: "Recurrencias",
+      listar: "/api/v1/recurrencias",
+      servicio: "party",
+      permiso: "activity:read",
+    },
+    {
+      nombre: "Actividades",
+      principal: true,
+      objeto: "actividad",
+      listar: "/api/v1/activities",
+      crear: "/api/v1/activities",
+      servicio: "party",
+      columnas: ["asunto", "tipo", "estado", "vence_at"],
+      permiso: "activity:read",
+    },
+  ],
+  lecciones: [
+    {
+      nombre: "Lecciones aprendidas",
+      principal: true,
+      objeto: "leccion",
+      listar: "/api/v1/lecciones",
+      servicio: "sales",
+      permiso: "opportunity:read",
+      columnas: [
+        "titulo",
+        "resultado",
+        "motivo",
+        "estado",
+        "factores",
+        "importe",
+        "cerrada_el",
+      ],
+      // Lo que se repite en las firmadas, encima de la lista: los factores
+      // que más pesan, la etapa en la que se pierde y lo que queda por firmar.
+      resumen: ["/api/v1/lecciones/patrones"],
+    },
+    // Lo que las lecciones dijeron en los momentos clave de las abiertas
+    // (CRM-03.01.01.17), cada aviso abre su oportunidad.
+    {
+      nombre: "Avisos",
+      objeto: "aviso_leccion",
+      listar: "/api/v1/avisos-lecciones",
+      servicio: "sales",
+      permiso: "opportunity:read",
+      columnas: ["titulo", "momento", "detalle", "updated_at"],
+      abre: {
+        modulo: "oportunidades",
         objeto: "oportunidad",
-        listar: "/api/v1/opportunities",
-        crear: "/api/v1/opportunities",
-        servicio: "sales",
-        columnas: ["nombre", "etapa", "importe", "fecha_cierre", "estado"],
-        permiso: "opportunity:read",
+        campo: "oportunidad_id",
       },
-      // «Procesos de venta» y no «Pipelines»: esto es la CONFIGURACIÓN de las
-      // etapas, no el tablero donde se mueven las oportunidades. Llamar a las
-      // dos cosas «pipeline» hace que quien busca el tablero acabe en una tabla
-      // de definiciones y concluya que el tablero ya no está.
-      {
-        nombre: "Procesos de venta",
-        objeto: "pipeline",
-        listar: "/api/v1/pipelines",
-        servicio: "sales",
-        columnas: ["nombre", "descripcion", "activo", "por_defecto"],
-      },
-      {
-        // Al vocabulario y no a `/pipeline/motivos-perdida`: esa ruta solo los
-        // enseña. La empresa decide los suyos, y esta pestaña es donde lo hace.
-        nombre: "Motivos de pérdida",
-        listar: "/api/v1/sales/vocabularios/motivos_perdida",
-        servicio: "sales",
-        columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
-      },
-    ],
-  "leads": [
-      { nombre: "Cadencias", listar: "/api/v1/cadencias", servicio: "sales" },
-      {
-        nombre: "Plantillas de correo",
-        listar: "/api/v1/plantillas-correo",
+    },
+    // Y el resumen periódico para quien dirige (CRM-03.01.01.18).
+    {
+      nombre: "Resúmenes",
+      objeto: "resumen_lecciones",
+      listar: "/api/v1/resumenes-lecciones",
+      servicio: "sales",
+      permiso: "opportunity:read",
+      columnas: ["titulo", "detalle", "hasta", "enviado_at"],
+    },
+    // Los factores que se eligen al firmar una lección. Eran una tupla del
+    // código; ahora son el vocabulario `factores_leccion` de la empresa, y
+    // esta pestaña es donde añade o retira los suyos (10-11-2026).
+    {
+      nombre: "Factores de una lección",
+      listar: "/api/v1/sales/vocabularios/factores_leccion",
+      servicio: "sales",
+      columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
+    },
+  ],
+  oportunidades: [
+    {
+      nombre: "Ofertas",
+      objeto: "presupuesto",
+      listar: "/api/v1/presupuestos",
+      servicio: "sales",
+      permiso: "quote:read",
+      // `numero` y no `codigo`, que el presupuesto no tiene: con la columna
+      // que no existe, la primera era el estado y la fila se abría pulsando
+      // «Borrador» (medido el 10-11-2026).
+      columnas: [
+        "numero",
+        "titulo",
+        "estado",
+        "total",
+        "moneda",
+        "valido_hasta",
+      ],
+      destacadas: ["enviar"],
+    },
+    // El plan conjunto: lo acordado CON el cliente, con su calibración. Es
+    // del mismo ciclo que la oferta y el pedido, y se publicaba sin pestaña.
+    {
+      nombre: "Planes conjuntos",
+      objeto: "plan_conjunto",
+      listar: "/api/v1/planes-conjuntos",
+      // Cuánto se parece lo que se dice en las revisiones a lo que luego pasa, y
+      // qué lleva demasiado sin revisarse: un plan conjunto que nadie revisa es
+      // un documento, no un acuerdo.
+      resumen: [
+        "/api/v1/planes-conjuntos/calibracion",
+        "/api/v1/planes-conjuntos/sin-revisar",
+      ],
+      crear: "/api/v1/planes-conjuntos",
+      servicio: "sales",
+      permiso: "sales:read",
+    },
+    // Los playbooks: qué hacer en cada etapa. La tabla y el selector
+    // estaban, y no había forma de meter una fila — así que el panel de la
+    // oportunidad salía siempre vacío y la capacidad constaba hecha.
+    {
+      nombre: "Playbooks",
+      objeto: "playbook",
+      listar: "/api/v1/playbooks",
+      crear: "/api/v1/playbooks",
+      servicio: "sales",
+      permiso: "opportunity:read",
+      columnas: ["clave", "titulo", "etapa", "segmento", "activo"],
+    },
+    {
+      nombre: "Pedidos",
+      objeto: "pedido",
+      listar: "/api/v1/pedidos",
+      // Los pedidos de los que el ERP no ha dicho nada: no salen como un estado
+      // del pedido, salen de comparar, y sin esto no los ve nadie.
+      resumen: ["/api/v1/pedidos/conciliacion-erp"],
+      servicio: "sales",
+      permiso: "order:read",
+    },
+    {
+      nombre: "Contratos",
+      objeto: "contrato",
+      listar: "/api/v1/contratos",
+      servicio: "sales",
+      permiso: "contract:read",
+    },
+    {
+      nombre: "Suscripciones",
+      listar: "/api/v1/suscripciones",
+      // MRR y ARR encima de las suscripciones: es la cifra por la que se mira esta
+      // lista, y calcularla a mano desde las filas es cómo salen dos números.
+      resumen: ["/api/v1/suscripciones/recurrente"],
+      servicio: "sales",
+      permiso: "contract:read",
+    },
+    {
+      nombre: "Productos",
+      objeto: "producto",
+      listar: "/api/v1/productos",
+      servicio: "sales",
+      permiso: "producto:read",
+    },
+    {
+      nombre: "Listas de precio",
+      // Con objeto: una regla de precio elige su lista por el nombre, y sin
+      // él el formulario pedía el identificador tecleado.
+      objeto: "lista_precio",
+      listar: "/api/v1/listas-precio",
+      servicio: "sales",
+      permiso: "producto:read",
+    },
+    {
+      nombre: "Metodologías",
+      listar: "/api/v1/metodologias",
+      servicio: "sales",
+    },
+    {
+      nombre: "Mi cola",
+      listar: "/api/v1/mi-cola",
+      servicio: "sales",
+      // Qué es, qué hacer y por qué. La urgencia es el orden de la lista, no
+      // un dato que leer: salía como columna «Urgencia 0».
+      columnas: ["tipo", "titulo", "por_que", "atraso_dias"],
+    },
+    {
+      nombre: "Papelera",
+      icono: "delete",
+      objeto: "entrada_papelera",
+      listar: "/api/v1/sales/papelera",
+      servicio: "sales",
+      columnas: [
+        "etiqueta",
+        "objeto",
+        "borrado_at",
+        "dias_para_purga",
+        "en_cascada",
+      ],
+    },
+    {
+      nombre: "Oportunidades",
+      principal: true,
+      objeto: "oportunidad",
+      listar: "/api/v1/opportunities",
+      crear: "/api/v1/opportunities",
+      servicio: "sales",
+      columnas: ["nombre", "etapa", "importe", "fecha_cierre", "estado"],
+      permiso: "opportunity:read",
+    },
+    // «Procesos de venta» y no «Pipelines»: esto es la CONFIGURACIÓN de las
+    // etapas, no el tablero donde se mueven las oportunidades. Llamar a las
+    // dos cosas «pipeline» hace que quien busca el tablero acabe en una tabla
+    // de definiciones y concluya que el tablero ya no está.
+    {
+      nombre: "Procesos de venta",
+      objeto: "pipeline",
+      listar: "/api/v1/pipelines",
+      servicio: "sales",
+      columnas: ["nombre", "descripcion", "activo", "por_defecto"],
+    },
+    {
+      // Al vocabulario y no a `/pipeline/motivos-perdida`: esa ruta solo los
+      // enseña. La empresa decide los suyos, y esta pestaña es donde lo hace.
+      nombre: "Motivos de pérdida",
+      listar: "/api/v1/sales/vocabularios/motivos_perdida",
+      servicio: "sales",
+      columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
+    },
+  ],
+  leads: [
+    { nombre: "Cadencias", listar: "/api/v1/cadencias", servicio: "sales" },
+    {
+      nombre: "Plantillas de correo",
+      listar: "/api/v1/plantillas-correo",
       // Qué plantillas funcionan, encima de las plantillas: la lista las ordena
-        // por nombre y la pregunta es cuál usar.
+      // por nombre y la pregunta es cuál usar.
       resumen: ["/api/v1/plantillas-correo/rendimiento"],
-        servicio: "sales",
-      },
-      {
-        // «Candidatos», como el módulo y como en Salesforce: el rótulo salía
-        // «CANDIDATOS · LEADS», que es la misma cosa dicha dos veces en dos
-        // idiomas.
-        nombre: "Candidatos",
-        principal: true,
-        objeto: "lead",
-        listar: "/api/v1/leads",
-        crear: "/api/v1/leads",
-        servicio: "sales",
-        columnas: ["nombre", "empresa", "estado", "puntuacion"],
-        // Los apellidos y el correo se rellenan en casi todas las altas.
-        alta: ["apellidos", "email"],
-        // Convertir es la acción por la que existe un lead: a la vista.
-        destacadas: ["convertir"],
-        permiso: "lead:read",
-      },
-      {
-        nombre: "Enrutamiento",
-        // Qué estrategias de reparto hay, encima de las reglas que las usan:
-        // sin ellas, escribir una regla es adivinar qué valores admite.
-        resumen: ["/api/v1/lead-routing/estrategias"],
-        listar: "/api/v1/lead-routing/reglas",
-        servicio: "sales",
-      },
-      {
-        nombre: "Canales de captura",
-        listar: "/api/v1/captura/canales",
-        servicio: "sales",
-      },
-      // De primer nivel: es donde se contesta «no me ha llegado el lead del
-      // formulario», y sólo se llegaba por el desplegable de Candidatos. No va
-      // al menú de Ventas porque tiene sus diez entradas (10-11-2026).
-      {
-        nombre: "Recepciones",
-        listar: "/api/v1/captura/recepciones",
-        servicio: "sales",
-        fija: true,
-      },
-      {
-        nombre: "Motivos de descarte",
-        listar: "/api/v1/sales/vocabularios/motivos_descarte",
-        servicio: "sales",
-        columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
-      },
-      {
-        nombre: "Campañas de origen",
-        listar: "/api/v1/origen/campanas",
-        servicio: "sales",
-      },
-      { nombre: "Toques", listar: "/api/v1/origen/toques", servicio: "sales" },
-    ],
-  "prevision": [
-      {
-        nombre: "Territorios",
-        objeto: "territorio",
-        listar: "/api/v1/territorios",
-        servicio: "sales",
-      },
-      // El módulo enseñaba el resumen del pipeline y llamaba a eso «Previsión».
-      // Las categorías, los periodos y las cuotas —que es con lo que se hace
-      // una previsión— no tenían pantalla ninguna.
-      {
-        nombre: "Categorías",
-        listar: "/api/v1/forecast/categorias",
-        servicio: "sales",
-        permiso: "forecast:read",
-      },
-      {
-        // Con `objeto` para que cada fila abra SU ficha: un periodo de
-        // previsión no es una fila, es un número que alguien defiende en un
-        // comité, y lo que hace falta para defenderlo —quién lo ajustó, si
-        // esos ajustes acercaron al real, qué se ha movido desde la última
-        // foto— vive en sus rutas hijas. Se abre por CLAVE, que es como se
-        // dirigen esas rutas.
-        nombre: "Periodos",
-        // Por aquí abre Previsiones. Abría por «Ingreso previsto», una fila
-        // con «Total 0 · Medible no» que no contesta «¿cómo va el trimestre?»,
-        // que es a lo que se entra: medido el 10-11-2026 (tarea T11), dos
-        // clics de más para llegar al periodo.
-        principal: true,
-        objeto: "periodo",
-        listar: "/api/v1/forecast/periodos",
-        servicio: "sales",
-        permiso: "forecast:read",
-      },
-      {
-        nombre: "Cuotas",
-        listar: "/api/v1/cuotas",
-        servicio: "sales",
-        permiso: "forecast:read",
-      },
-      {
-        nombre: "Consecución",
-        listar: "/api/v1/cuotas/consecucion",
-        // Devuelve varias listas: la consecución se mira cuota a cuota; el ranking es la lectura de encima.
-        clave_lista: "cuotas",
-        servicio: "sales",
-        permiso: "forecast:read",
-      },
-      {
-        nombre: "Ingreso previsto",
-        listar: "/api/v1/ingresos/previsto",
-        // Un mes por fila: el total y el «qué es» van encima.
-        clave_lista: "meses",
-        columnas: ["periodo", "importe"],
-        servicio: "sales",
-        permiso: "forecast:read",
-      },
-      {
-        nombre: "Resumen del pipeline",
-        listar: "/api/v1/pipeline/resumen",
-        servicio: "sales",
-        permiso: "opportunity:read",
-      },
-      // Las estancadas delante del resumen no: el resumen es lo que se mira
-      // cada día y esto es lo que se mira cuando el resumen no cuadra.
-      {
-        nombre: "Estancadas",
-        listar: "/api/v1/pipeline/estancadas",
-        servicio: "sales",
-      },
-      // Qué periodos tienen el objetivo cerrado, con quién lo cerró, cuándo y
-      // por qué —y los que se reabrieron, con su motivo—. Es el historial, no
-      // un interruptor: reabrir a mitad de año es legítimo y tiene que
-      // quedar rastro.
-      {
-        nombre: "Objetivos congelados",
-        listar: "/api/v1/cuotas/congelaciones",
-        servicio: "sales",
-        permiso: "forecast:read",
-      },
-    ],
-  "canal": [
-      {
-        nombre: "Portal del partner",
-        listar: "/api/v1/portal-partner/mis-registros",
-        servicio: "sales",
-        permiso: "partner:read",
-      },
-      {
-        nombre: "Partners",
-        principal: true,
-        objeto: "partner",
-        listar: "/api/v1/partners",
-        crear: "/api/v1/partners",
-        servicio: "sales",
-        columnas: ["clave", "nombre", "tipo", "canal", "estado"],
-        permiso: "partner:read",
-      },
-      // Los registros delante de los niveles: es lo que se mira todos los días,
-      // y es donde aparece el conflicto entre dos partners, que es lo que hay
-      // que decidir hoy y no la semana que viene.
-      {
-        nombre: "Registros de oportunidad",
-        listar: "/api/v1/registros-oportunidad",
-        servicio: "sales",
-        columnas: [
-          "cliente",
-          "estado",
-          "importe_estimado",
-          "protegido_hasta",
-          "en_conflicto",
-        ],
-        permiso: "partner:read",
-      },
-      {
-        nombre: "Niveles",
-        objeto: "nivel",
-        listar: "/api/v1/niveles-partner",
-        servicio: "sales",
-      },
-      {
-        nombre: "Certificaciones por caducar",
-        listar: "/api/v1/partners/certificaciones/por-caducar",
-        servicio: "sales",
-      },
-      {
-        nombre: "Fondos de marketing",
-        objeto: "fondo",
-        listar: "/api/v1/fondos-mdf",
-        crear: "/api/v1/fondos-mdf",
-        servicio: "marketing",
-        columnas: ["nombre", "desde", "hasta", "asignado", "moneda", "cerrado"],
-        permiso: "campaign:read",
-      },
-      {
-        nombre: "Solicitudes de fondos",
-        listar: "/api/v1/solicitudes-mdf",
-        servicio: "marketing",
-        columnas: [
-          "titulo",
-          "estado",
-          "solicitado",
-          "aprobado",
-          "justificado",
-          "justificar_antes_de",
-        ],
-      },
-      // Las liquidaciones cuelgan del canal *y* de la retribución interna: es
-      // el mismo motor, y enseñarlas dos veces daría dos listas del mismo dinero.
-      {
-        // Con `objeto` para que cada fila se abra: delante de una liquidación
-        // la pregunta no es cuánto, es POR QUÉ ESE NÚMERO. El desglose euro a
-        // euro, el recorte por tope y las reclamaciones viven en su detalle, y
-        // el listado sólo enseñaba el total y el estado.
-        nombre: "Liquidaciones",
-        objeto: "liquidacion",
-        listar: "/api/v1/liquidaciones",
-        servicio: "sales",
-        columnas: [
-          "estado",
-          "desde",
-          "hasta",
-          "total",
-          "moneda",
-          "pago_referencia",
-        ],
-        permiso: "commission:read",
-      },
-      {
-        nombre: "Planes de comisión",
-        listar: "/api/v1/planes-comision",
-        servicio: "sales",
-      },
-    ],
-  "campo": [
-      {
-        nombre: "Órdenes de trabajo",
-        principal: true,
-        listar: "/api/v1/ordenes-trabajo",
-        crear: "/api/v1/ordenes-trabajo",
-        servicio: "service",
-        columnas: [
-          "codigo",
-          "titulo",
-          "tipo",
-          "estado",
-          "prioridad",
-          "cita_desde",
-        ],
-        permiso: "case:read",
-      },
-      {
-        nombre: "Activos instalados",
-        objeto: "activo",
-        listar: "/api/v1/activos",
-        crear: "/api/v1/activos",
-        servicio: "service",
-        columnas: [
-          "codigo",
-          "nombre",
-          "modelo",
-          "numero_serie",
-          "estado",
-          "ubicacion",
-        ],
-        permiso: "case:read",
-      },
-      {
-        nombre: "Técnicos",
-        objeto: "tecnico",
-        listar: "/api/v1/tecnicos-campo",
-        servicio: "service",
-      },
-      // El preventivo por delante de los repuestos: es lo que hay que mirar cada
-      // semana, y los repuestos solo cuando falta uno.
-      {
-        nombre: "Planes preventivos",
-        objeto: "plan_preventivo",
-        listar: "/api/v1/planes-preventivos",
-        servicio: "service",
-      },
-      {
-        nombre: "Vencimientos",
-        listar: "/api/v1/planes-preventivos/vencimientos",
-        // Devuelve varias listas: lo que vence; los planes sin lectura de contador son el hueco de datos.
-        clave_lista: "vencimientos",
-        servicio: "service",
-      },
-      { nombre: "Repuestos", listar: "/api/v1/repuestos", servicio: "service" },
-      {
-        nombre: "Reposición",
-        listar: "/api/v1/repuestos/reposicion",
-        servicio: "service",
-      },
-      // Cada entrada y salida del almacén móvil, con su porqué. Se escribía y
-      // **no lo leía nadie**: un almacén sin histórico no se puede cuadrar, y
-      // cuando falta una pieza la pregunta es quién se la llevó y cuándo.
-      {
-        nombre: "Movimientos de almacén",
-        listar: "/api/v1/repuestos/movimientos",
-        servicio: "service",
-        columnas: ["tipo", "cantidad", "motivo", "dejo_negativo", "cuando"],
-      },
-      {
-        nombre: "Garantías por vencer",
-        listar: "/api/v1/activos/garantias/por-vencer",
-        servicio: "service",
-      },
-      {
-        nombre: "Dispositivos",
-        objeto: "dispositivo_iot",
-        listar: "/api/v1/dispositivos",
-        servicio: "integration",
-      },
-      {
-        nombre: "Aparatos callados",
-        listar: "/api/v1/dispositivos/silenciosos",
-        // Devuelve varias listas: los aparatos que llevan sin dar señal; las otras dos son subconjuntos que explican por qué.
-        clave_lista: "callados",
-        servicio: "integration",
-      },
-    ],
-  "postventa": [
-      {
-        nombre: "Devoluciones",
-        principal: true,
-        objeto: "devolucion",
-        listar: "/api/v1/devoluciones",
-        crear: "/api/v1/devoluciones",
-        servicio: "service",
-        columnas: [
-          "codigo",
-          "estado",
-          "motivo",
-          "fuera_de_plazo",
-          "disposicion",
-        ],
-        permiso: "case:read",
-      },
-      // Los expedientes ordenados por vencimiento, y los vencidos aparte: el
-      // plazo legal no es una cola de trabajo, es una fecha que se pasa.
-      {
-        nombre: "Expedientes",
-        listar: "/api/v1/expedientes",
-        servicio: "service",
-        columnas: [
-          "codigo",
-          "asunto",
-          "estado",
-          "via",
-          "vence_at",
-          "sin_acuse",
-        ],
-      },
-      {
-        nombre: "Vencen pronto",
-        listar: "/api/v1/expedientes/vencen",
-        // Devuelve varias listas: el nombre de la pestaña lo dice; lo ya vencido se enseña debajo.
-        clave_lista: "vencen_pronto",
-        servicio: "service",
-      },
-      {
-        nombre: "Problemas",
-        listar: "/api/v1/problemas",
-        servicio: "service",
-        columnas: [
-          "codigo",
-          "titulo",
-          "estado",
-          "severidad",
-          "error_conocido",
-          "solo_apano",
-        ],
-      },
-      {
-        nombre: "Correlación",
-        listar: "/api/v1/problemas/correlacion",
-        servicio: "service",
-      },
-    ],
-  "ia": [
-      // Quién presta el servicio, con qué modelo y a qué coste. Es la primera
-      // pregunta de cualquiera que firme una factura de IA.
-      {
-        nombre: "Proveedores de IA",
-        principal: true,
-        listar: "/api/v1/ia/proveedores",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-      },
-      {
-        nombre: "Modelos",
-        listar: "/api/v1/ia/modelos",
-        // Devuelve varias listas: el listado son los modelos; caducados y sin_modelo son avisos sobre ellos.
-        clave_lista: "modelos",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-      },
-      // Cómo ha ido acertando cada modelo con el tiempo. Las mediciones se
-      // anotaban desde el primer día y **no las leía nadie**: había ruta para
-      // escribir una y ninguna para verlas, así que se medía la deriva y no se
-      // miraba — que es lo contrario de para lo que se mide.
-      // Los resúmenes propuestos de una conversación, con lo que quedó
-      // pendiente. Se escribían y **no los leía nadie**: se generaban, se
-      // pagaban al proveedor de IA y se quedaban en una tabla sin puerta.
-      {
-        nombre: "Resúmenes de conversación",
-        listar: "/api/v1/ia/conversacion/resumenes",
-        servicio: "intelligence",
-        columnas: ["momento", "parcial", "mensajes_usados", "mensajes_totales", "estado"],
-        permiso: "ia:usar",
-      },
-      {
-        nombre: "Deriva de los modelos",
-        listar: "/api/v1/ia/modelos/deriva",
-        servicio: "intelligence",
-        columnas: ["metrica", "valor", "referencia", "caida", "muestras", "hasta"],
-        permiso: "ia:administrar",
-      },
-      // Un agente autónomo que nadie ve es un proceso con permisos corriendo
-      // solo. Aquí se ve cuáles hay, y desde la ficha se apagan.
-      {
-        nombre: "Agentes autónomos",
-        listar: "/api/v1/ia/agentes-autonomos",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-        acciones: [
-          {
-            ruta: "/api/v1/ia/agentes-autonomos/herramientas-desde-contrato",
-            nombre: "Herramientas desde el contrato",
-            detalle: "Las saca de las propias operaciones publicadas, en vez de escribirlas a mano",
-            permiso: "ia:administrar",
-          },
-        ],
-      },
-      {
-        nombre: "Anomalías",
-        // Si los avisos sirven de algo, encima de los avisos. Un detector que
-        // nadie confirma nunca es un detector que se acaba ignorando.
-        resumen: ["/api/v1/ia/anomalias/utilidad"],
-        listar: "/api/v1/ia/anomalias",
-        servicio: "intelligence",
-        permiso: "ia:usar",
-      },
-      // **Qué dice cada guardarraíl**, no sólo cuántas veces ha saltado
-      // (CRM-05.02.02.07). Se podían declarar y no leer: se veía que algo
-      // había cortado mil peticiones y no qué sensibilidades deja pasar, qué
-      // patrones tapa ni si corta la petición o sólo enmascara el dato — que
-      // no es lo mismo. Sin ninguna regla NO se dice «todo bien»: se dice que
-      // manda el comportamiento por defecto, que es que lo personal y lo
-      // especial no salen.
-      {
-        nombre: "Guardarraíles",
-        listar: "/api/v1/ia/guardias",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-      },
-      // Con qué texto se le pide al modelo, en su versión vigente. La
-      // plantilla ES la instrucción: cuando una respuesta empieza a salir mal,
-      // la primera pregunta es qué se le está pidiendo exactamente, y hasta
-      // hoy había que mirarlo en la base de datos.
-      {
-        nombre: "Plantillas del modelo",
-        listar: "/api/v1/ia/plantillas",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-      },
-      // Lo que las guardias NO dejaron pasar. Una guardia sin registro es una
-      // promesa: nadie sabe si ha actuado nunca.
-      {
-        nombre: "Bloqueos de las guardias",
-        listar: "/api/v1/ia/guardias/bloqueos",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-      },
-      // Las dos caras del gasto: el total con su tasa de descarte —cuánto de
-      // lo que se paga se tira— y la curva por día, que es donde se ve el
-      // salto del martes que nadie pidió.
-      {
-        nombre: "Consumo y coste",
-        // Con el presupuesto del mes encima: el coste acumulado no dice si
-        // queda margen, y «queda margen» es la decisión.
-        // Y qué modelo atendería sin que el dato salga de la región del
-        // tenant: es la pregunta de quien no puede mandar nada fuera.
-        resumen: [
-          "/api/v1/ia/presupuesto",
-          "/api/v1/ia/eleccion",
-          "/api/v1/ia/eleccion-sin-salida",
-        ],
-        listar: "/api/v1/ia/uso",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-      },
-      {
-        nombre: "Uso por día",
-        listar: "/api/v1/ia/uso/por-dia",
-        servicio: "intelligence",
-        permiso: "ia:administrar",
-      },
-      // Cuentas que el modelo marca en riesgo, que es la lista sobre la que se
-      // trabaja; la salud de una cuenta suelta ya se ve en su pantalla.
-      {
-        // La salud de TODAS las cuentas, no sólo las que están en riesgo: la
-        // lista de riesgo dice a quién llamar hoy y ésta si el modelo está
-        // midiendo algo. Con la calidad de lo que propone encima.
-        nombre: "Salud de cuentas",
-        resumen: ["/api/v1/ia/calidad"],
-        listar: "/api/v1/ia/salud",
-        servicio: "intelligence",
-      },
-      {
-        nombre: "Predicciones",
-        listar: "/api/v1/ia/prediccion",
-        servicio: "intelligence",
-      },
-      {
-        // Lo que la extracción ha sacado de documentos y correos, con sus
-        // conflictos: un campo extraído que choca con lo que hay guardado es
-        // una decisión de alguien, no un dato que se pisa solo.
-        nombre: "Campos extraídos",
-        resumen: ["/api/v1/ia/extraidos"],
-        listar: "/api/v1/ia/extraidos",
-        servicio: "intelligence",
-      },
-      {
-        nombre: "Cuentas en riesgo",
-        listar: "/api/v1/ia/salud/riesgo",
-        servicio: "intelligence",
-        permiso: "ia:usar",
-      },
-      // Herramientas que exponemos a agentes de fuera por MCP. Vive en
-      // integración y se gobierna aquí: lo que se decide es a qué puede llegar
-      // un agente que no es nuestro.
-      {
-        nombre: "Exposiciones MCP",
-        // Con `objeto` para que la fila abra: en su ficha se ve el catálogo
-        // de herramientas que recibe el agente, filtrado por permisos.
-        objeto: "exposicion_mcp",
-        listar: "/api/v1/agentes-ia/exposiciones",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-    ],
-  "explotacion": [
-      // La explotación la resuelve contecintelligence de forma frontless
-      // (RT-4). Aquí se enseña el estado del enlace y lo que se ha consultado:
-      // los informes se abren allí, con la identidad del usuario.
-      {
-        nombre: "Estado del enlace",
-        listar: "/api/v1/analitica/estado",
-        servicio: "analytics",
-      },
-      {
-        nombre: "Consultas",
-        // **Por aquí abre el módulo.** Abría por «Informes programados», que
-        // lista qué informe sale solo y a quién: en una instalación que no ha
-        // programado ninguno está vacía, así que «Informes» recibía con «Aquí
-        // no hay nada todavía». Cazado el 04-11-2026 por el barrido, después
-        // de arreglar el mismo caso en «Operación» — el mismo fallo en dos
-        // módulos, y el primero sólo lo vi recorriendo a mano.
-        //
-        // «Consultas» son las preguntas publicadas sobre los datos, que es de
-        // lo que va el módulo y está poblado desde el primer día.
-        principal: true,
-        listar: "/api/v1/analitica/consultas",
-        servicio: "analytics",
-      },
-      {
-        nombre: "Organizaciones",
-        listar: "/api/v1/analitica/organizaciones",
-        servicio: "analytics",
-        solo_plataforma: true,
-      },
-      // El diccionario de métricas delante de las tablas: la pregunta que abre
-      // la discusión es «¿qué quiere decir ingresos?», no «¿qué tablas hay?».
-      {
-        nombre: "Métricas",
-        listar: "/api/v1/metricas",
-        // Con alta y con ficha. La API tenía definir, certificar, versionar y
-        // plan desde el principio, y el front solo listaba: se veía el
-        // diccionario y no se podía tocar nada. La ficha sale de que exista un
-        // `GET /metricas/{clave}`, que es lo que faltaba al otro lado.
-        crear: "/api/v1/metricas",
-        objeto: "metrica",
-        servicio: "analytics",
-        columnas: ["clave", "nombre", "estado", "objeto", "agregacion", "unidad"],
-      },
-      // Qué hay en el almacén y de dónde sale. La frescura decía si estaba al
-      // día sin decir de QUÉ, así que el almacén se miraba por su síntoma.
-      {
-        nombre: "Tablas del almacén",
-        objeto: "tabla_analitica",
-        listar: "/api/v1/almacen/tablas",
-        // Qué se puede explotar de este tenant y cómo se describe el CRM para poder
-        // preguntarle: es lo que decide si una pregunta en lenguaje natural tiene
-        // alguna posibilidad de contestarse.
-        resumen: ["/api/v1/analitica/modelo-semantico", "/api/v1/explotacion/descripcion"],
-        servicio: "analytics",
-        permiso: "informe:read",
-      },
-      {
-        // Lo que se consulta sin copiarlo: una fuente federada que falla no
-        // deja un hueco en una tabla, deja un informe en error.
-        nombre: "Fuentes federadas",
-        // Sin `objeto`: una fuente federada no es una tabla del almacén. Lo tomaba
-        // prestado y la ficha pedía el id contra la ruta de la otra.
-        listar: "/api/v1/almacen/federadas",
-        servicio: "analytics",
-        permiso: "informe:read",
-      },
-      // **Dónde puede vivir el CRM embebido** (CRM-05.01.02.06). Se podía
-      // declarar y no leer, y es un control de seguridad: la lista de orígenes
-      // es lo que impide que cualquier página incruste el CRM y le pida datos
-      // con la sesión de quien la abra. Un origen que alguien puso para una
-      // prueba hace año y medio sigue valiendo y nadie lo sabe. Los orígenes
-      // se nombran, no se cuentan: lo que se revisa es si alguno sobra.
-      {
-        nombre: "Sitios donde se embebe",
-        objeto: "embebido",
-        listar: "/api/v1/federacion/embebidos",
-        servicio: "integration",
-        permiso: "integracion:read",
-      },
-      {
-        // admite: un enlace embebido es una ventana al dato desde fuera, y
-        // quién tiene una abierta es justo lo que hay que poder mirar.
-        nombre: "Cuadros incrustados",
-        objeto: "enlace_embebido",
-        resumen: ["/api/v1/cuadros-mando/componentes"],
-        listar: "/api/v1/cuadros-mando/embebidos",
-        servicio: "analytics",
-        permiso: "informe:read",
-      },
-      // Qué informe sale solo, cuándo y **a quién** (CRM-05.01.01.06). Se
-      // podía programar un envío y no leer ninguna de esas cuatro cosas: ni
-      // quién lo recibe, ni si uno que ya no mira nadie se sigue mandando
-      // todas las semanas. Un envío semanal a una lista que nadie revisó en
-      // dos años es la forma más habitual de que un dato salga de donde debía
-      // quedarse.
-      {
-        nombre: "Informes programados",
-        listar: "/api/v1/informes/programaciones",
-        servicio: "analytics",
-        permiso: "informe:read",
-      },
-      {
-        // Cada vez que se corrió un informe, con lo que costó. La tabla es
-        // append-only y **no la leía nadie**: se escribía en cada ejecución y
-        // ninguna ruta la devolvía, así que el coste se guardaba y no se podía
-        // mirar. El peor caso va al lado de la media, porque la media esconde
-        // justo el informe que tarda dos minutos una vez al día.
-        nombre: "Ejecuciones de informe",
-        listar: "/api/v1/informes/ejecuciones",
-        servicio: "analytics",
-        columnas: ["origen", "filas", "duracion_ms", "truncado", "ok", "cuando"],
-        permiso: "informe:read",
-      },
-      {
-        nombre: "Frescura del almacén",
-        listar: "/api/v1/almacen/frescura",
-        servicio: "analytics",
-        acciones: [
-          {
-            ruta: "/api/v1/almacen/cargar",
-            nombre: "Cargar ahora",
-            detalle:
-              "Trae las filas de cada tabla declarada. Hasta que alguien lo hace, el almacén está vacío y los informes no tienen de dónde leer.",
-            permiso: "informe:write",
-          },
-        ],
-      },
-      {
-        nombre: "Exportaciones",
-        listar: "/api/v1/almacen/destinos",
-        servicio: "analytics",
-      },
-      {
-        nombre: "Despliegue de BI",
-        listar: "/api/v1/analisis/despliegue",
-        servicio: "analytics",
-      },
-    ],
-  "gobierno": [
-      {
-        nombre: "Riesgos",
-        principal: true,
-        listar: "/api/v1/grc/riesgos",
-        // El panel de GRC encima de los riesgos: lo que no cuadra HOY, ordenado
-        // por lo que urge, y qué del producto tiene control y qué no. Un
-        // registro de riesgos sin eso es un inventario que nadie recorre.
-        resumen: ["/api/v1/grc/panel", "/api/v1/grc/pendiente", "/api/v1/grc/cobertura"],
-        servicio: "tenancy",
-        columnas: [
-          "codigo",
-          "titulo",
-          "inherente",
-          "residual",
-          "tratamiento",
-          "estado",
-        ],
-        permiso: "tenant:read",
-      },
-      // Los controles tienen pantalla propia desde el 10-11-2026 (Administrar ›
-      // Gobierno y cumplimiento › Controles del GRC): de serie, de la
-      // segregación y del TCSEC, con su evidencia y su enlace de vuelta. La
-      // pestaña genérica enseñaba el mismo registro en otro sitio, y dos
-      // sitios para lo mismo no dicen cuál manda. Los marcos, en el panel de
-      // Gobierno.
-      // La segregación de funciones tiene pantalla propia (/segregacion, en
-      // Administrar › Gobierno): matriz, reglas, conflictos y excepciones.
-      // Las tres apuntaban a `party` y se llamaban «Retención», «Bloqueos
-      // legales» y «Clases de dato»: quien las abría creía ver las de todo el
-      // sistema y veía las de clientes. Las de identidad y las de ventas no
-      // tenían pantalla. Cada servicio guarda las suyas en su esquema, así que
-      // la pestaña lleva selector en vez de apuntar a una.
-      {
-        nombre: "Retención",
-        listar: "/api/v1/:servicio/retencion/politicas",
-        por_servicio: ["party", "identity", "sales"],
-        servicio: "party",
-      },
-      {
-        nombre: "Bloqueos legales",
-        listar: "/api/v1/:servicio/retencion/bloqueos",
-        por_servicio: ["party", "identity", "sales"],
-        servicio: "party",
-      },
-      {
-        nombre: "Clases de dato",
-        listar: "/api/v1/:servicio/retencion/clases",
-        por_servicio: ["party", "identity", "sales"],
-        servicio: "party",
-      },
-    ],
-  "segmentos": [
-      {
-        nombre: "Segmentos",
-        principal: true,
-        objeto: "segmento",
-        listar: "/api/v1/segmentos",
-        crear: "/api/v1/segmentos",
-        servicio: "marketing",
-        columnas: ["clave", "nombre", "objeto", "tamano", "tamano_at"],
-        permiso: "segmento:read",
-      },
-      // «Supresiones» estaba aquí Y en «Contenido y gobierno»: el mismo
-      // registro, la misma ruta, la misma lista, en dos pantallas distintas.
-      // Se queda allí, con las renovaciones de opt-in y las categorías de
-      // preferencia, porque la pregunta que contesta es de consentimiento —«a
-      // quién no se le puede escribir»— y no de segmentación.
-      // Las audiencias que viven en una plataforma de anuncios, con su estado
-      // y su historial (CRM-02.01.01.09). Antes sólo se preparaba la lista.
-      {
-        nombre: "Audiencias publicitarias",
-        listar: "/api/v1/audiencias-publicitarias",
-        objeto: "audiencia_publicitaria",
-        alta_en: "/m/segmentos/audiencia_publicitaria/nueva",
-        columnas: ["nombre", "estado", "miembros", "ultima_sync_at"],
-        servicio: "marketing",
-        permiso: "marketing:read",
-      },
-      {
-        nombre: "Puntuación",
-        listar: "/api/v1/puntuacion/modelos",
+      servicio: "sales",
+    },
+    {
+      // «Candidatos», como el módulo y como en Salesforce: el rótulo salía
+      // «CANDIDATOS · LEADS», que es la misma cosa dicha dos veces en dos
+      // idiomas.
+      nombre: "Candidatos",
+      principal: true,
+      objeto: "lead",
+      listar: "/api/v1/leads",
+      crear: "/api/v1/leads",
+      servicio: "sales",
+      columnas: ["nombre", "empresa", "estado", "puntuacion"],
+      // Los apellidos y el correo se rellenan en casi todas las altas.
+      alta: ["apellidos", "email"],
+      // Convertir es la acción por la que existe un lead: a la vista.
+      destacadas: ["convertir"],
+      permiso: "lead:read",
+    },
+    {
+      nombre: "Enrutamiento",
+      // Qué estrategias de reparto hay, encima de las reglas que las usan:
+      // sin ellas, escribir una regla es adivinar qué valores admite.
+      resumen: ["/api/v1/lead-routing/estrategias"],
+      listar: "/api/v1/lead-routing/reglas",
+      servicio: "sales",
+    },
+    {
+      nombre: "Canales de captura",
+      listar: "/api/v1/captura/canales",
+      servicio: "sales",
+    },
+    // De primer nivel: es donde se contesta «no me ha llegado el lead del
+    // formulario», y sólo se llegaba por el desplegable de Candidatos. No va
+    // al menú de Ventas porque tiene sus diez entradas (10-11-2026).
+    {
+      nombre: "Recepciones",
+      listar: "/api/v1/captura/recepciones",
+      servicio: "sales",
+      fija: true,
+    },
+    {
+      nombre: "Motivos de descarte",
+      listar: "/api/v1/sales/vocabularios/motivos_descarte",
+      servicio: "sales",
+      columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
+    },
+    {
+      nombre: "Campañas de origen",
+      listar: "/api/v1/origen/campanas",
+      servicio: "sales",
+    },
+    { nombre: "Toques", listar: "/api/v1/origen/toques", servicio: "sales" },
+  ],
+  prevision: [
+    {
+      nombre: "Territorios",
+      objeto: "territorio",
+      listar: "/api/v1/territorios",
+      servicio: "sales",
+    },
+    // El módulo enseñaba el resumen del pipeline y llamaba a eso «Previsión».
+    // Las categorías, los periodos y las cuotas —que es con lo que se hace
+    // una previsión— no tenían pantalla ninguna.
+    {
+      nombre: "Categorías",
+      listar: "/api/v1/forecast/categorias",
+      servicio: "sales",
+      permiso: "forecast:read",
+    },
+    {
+      // Con `objeto` para que cada fila abra SU ficha: un periodo de
+      // previsión no es una fila, es un número que alguien defiende en un
+      // comité, y lo que hace falta para defenderlo —quién lo ajustó, si
+      // esos ajustes acercaron al real, qué se ha movido desde la última
+      // foto— vive en sus rutas hijas. Se abre por CLAVE, que es como se
+      // dirigen esas rutas.
+      nombre: "Periodos",
+      // Por aquí abre Previsiones. Abría por «Ingreso previsto», una fila
+      // con «Total 0 · Medible no» que no contesta «¿cómo va el trimestre?»,
+      // que es a lo que se entra: medido el 10-11-2026 (tarea T11), dos
+      // clics de más para llegar al periodo.
+      principal: true,
+      objeto: "periodo",
+      listar: "/api/v1/forecast/periodos",
+      servicio: "sales",
+      permiso: "forecast:read",
+    },
+    {
+      nombre: "Cuotas",
+      listar: "/api/v1/cuotas",
+      servicio: "sales",
+      permiso: "forecast:read",
+    },
+    {
+      nombre: "Consecución",
+      listar: "/api/v1/cuotas/consecucion",
+      // Devuelve varias listas: la consecución se mira cuota a cuota; el ranking es la lectura de encima.
+      clave_lista: "cuotas",
+      servicio: "sales",
+      permiso: "forecast:read",
+    },
+    {
+      nombre: "Ingreso previsto",
+      listar: "/api/v1/ingresos/previsto",
+      // Un mes por fila: el total y el «qué es» van encima.
+      clave_lista: "meses",
+      columnas: ["periodo", "importe"],
+      servicio: "sales",
+      permiso: "forecast:read",
+    },
+    {
+      nombre: "Resumen del pipeline",
+      listar: "/api/v1/pipeline/resumen",
+      servicio: "sales",
+      permiso: "opportunity:read",
+    },
+    // Las estancadas delante del resumen no: el resumen es lo que se mira
+    // cada día y esto es lo que se mira cuando el resumen no cuadra.
+    {
+      nombre: "Estancadas",
+      listar: "/api/v1/pipeline/estancadas",
+      servicio: "sales",
+    },
+    // Qué periodos tienen el objetivo cerrado, con quién lo cerró, cuándo y
+    // por qué —y los que se reabrieron, con su motivo—. Es el historial, no
+    // un interruptor: reabrir a mitad de año es legítimo y tiene que
+    // quedar rastro.
+    {
+      nombre: "Objetivos congelados",
+      listar: "/api/v1/cuotas/congelaciones",
+      servicio: "sales",
+      permiso: "forecast:read",
+    },
+  ],
+  canal: [
+    {
+      nombre: "Portal del partner",
+      listar: "/api/v1/portal-partner/mis-registros",
+      servicio: "sales",
+      permiso: "partner:read",
+    },
+    {
+      nombre: "Partners",
+      principal: true,
+      objeto: "partner",
+      listar: "/api/v1/partners",
+      crear: "/api/v1/partners",
+      servicio: "sales",
+      columnas: ["clave", "nombre", "tipo", "canal", "estado"],
+      permiso: "partner:read",
+    },
+    // Los registros delante de los niveles: es lo que se mira todos los días,
+    // y es donde aparece el conflicto entre dos partners, que es lo que hay
+    // que decidir hoy y no la semana que viene.
+    {
+      nombre: "Registros de oportunidad",
+      listar: "/api/v1/registros-oportunidad",
+      servicio: "sales",
+      columnas: [
+        "cliente",
+        "estado",
+        "importe_estimado",
+        "protegido_hasta",
+        "en_conflicto",
+      ],
+      permiso: "partner:read",
+    },
+    {
+      nombre: "Niveles",
+      objeto: "nivel",
+      listar: "/api/v1/niveles-partner",
+      servicio: "sales",
+    },
+    {
+      nombre: "Certificaciones por caducar",
+      listar: "/api/v1/partners/certificaciones/por-caducar",
+      servicio: "sales",
+    },
+    {
+      nombre: "Fondos de marketing",
+      objeto: "fondo",
+      listar: "/api/v1/fondos-mdf",
+      crear: "/api/v1/fondos-mdf",
+      servicio: "marketing",
+      columnas: ["nombre", "desde", "hasta", "asignado", "moneda", "cerrado"],
+      permiso: "campaign:read",
+    },
+    {
+      nombre: "Solicitudes de fondos",
+      listar: "/api/v1/solicitudes-mdf",
+      servicio: "marketing",
+      columnas: [
+        "titulo",
+        "estado",
+        "solicitado",
+        "aprobado",
+        "justificado",
+        "justificar_antes_de",
+      ],
+    },
+    // Las liquidaciones cuelgan del canal *y* de la retribución interna: es
+    // el mismo motor, y enseñarlas dos veces daría dos listas del mismo dinero.
+    {
+      // Con `objeto` para que cada fila se abra: delante de una liquidación
+      // la pregunta no es cuánto, es POR QUÉ ESE NÚMERO. El desglose euro a
+      // euro, el recorte por tope y las reclamaciones viven en su detalle, y
+      // el listado sólo enseñaba el total y el estado.
+      nombre: "Liquidaciones",
+      objeto: "liquidacion",
+      listar: "/api/v1/liquidaciones",
+      servicio: "sales",
+      columnas: [
+        "estado",
+        "desde",
+        "hasta",
+        "total",
+        "moneda",
+        "pago_referencia",
+      ],
+      permiso: "commission:read",
+    },
+    {
+      nombre: "Planes de comisión",
+      listar: "/api/v1/planes-comision",
+      servicio: "sales",
+    },
+  ],
+  campo: [
+    {
+      nombre: "Órdenes de trabajo",
+      principal: true,
+      listar: "/api/v1/ordenes-trabajo",
+      crear: "/api/v1/ordenes-trabajo",
+      servicio: "service",
+      columnas: [
+        "codigo",
+        "titulo",
+        "tipo",
+        "estado",
+        "prioridad",
+        "cita_desde",
+      ],
+      permiso: "case:read",
+    },
+    {
+      nombre: "Activos instalados",
+      objeto: "activo",
+      listar: "/api/v1/activos",
+      crear: "/api/v1/activos",
+      servicio: "service",
+      columnas: [
+        "codigo",
+        "nombre",
+        "modelo",
+        "numero_serie",
+        "estado",
+        "ubicacion",
+      ],
+      permiso: "case:read",
+    },
+    {
+      nombre: "Técnicos",
+      objeto: "tecnico",
+      listar: "/api/v1/tecnicos-campo",
+      servicio: "service",
+    },
+    // El preventivo por delante de los repuestos: es lo que hay que mirar cada
+    // semana, y los repuestos solo cuando falta uno.
+    {
+      nombre: "Planes preventivos",
+      objeto: "plan_preventivo",
+      listar: "/api/v1/planes-preventivos",
+      servicio: "service",
+    },
+    {
+      nombre: "Vencimientos",
+      listar: "/api/v1/planes-preventivos/vencimientos",
+      // Devuelve varias listas: lo que vence; los planes sin lectura de contador son el hueco de datos.
+      clave_lista: "vencimientos",
+      servicio: "service",
+    },
+    { nombre: "Repuestos", listar: "/api/v1/repuestos", servicio: "service" },
+    {
+      nombre: "Reposición",
+      listar: "/api/v1/repuestos/reposicion",
+      servicio: "service",
+    },
+    // Cada entrada y salida del almacén móvil, con su porqué. Se escribía y
+    // **no lo leía nadie**: un almacén sin histórico no se puede cuadrar, y
+    // cuando falta una pieza la pregunta es quién se la llevó y cuándo.
+    {
+      nombre: "Movimientos de almacén",
+      listar: "/api/v1/repuestos/movimientos",
+      servicio: "service",
+      columnas: ["tipo", "cantidad", "motivo", "dejo_negativo", "cuando"],
+    },
+    {
+      nombre: "Garantías por vencer",
+      listar: "/api/v1/activos/garantias/por-vencer",
+      servicio: "service",
+    },
+    {
+      nombre: "Dispositivos",
+      objeto: "dispositivo_iot",
+      listar: "/api/v1/dispositivos",
+      servicio: "integration",
+    },
+    {
+      nombre: "Aparatos callados",
+      listar: "/api/v1/dispositivos/silenciosos",
+      // Devuelve varias listas: los aparatos que llevan sin dar señal; las otras dos son subconjuntos que explican por qué.
+      clave_lista: "callados",
+      servicio: "integration",
+    },
+  ],
+  postventa: [
+    {
+      nombre: "Devoluciones",
+      principal: true,
+      objeto: "devolucion",
+      listar: "/api/v1/devoluciones",
+      crear: "/api/v1/devoluciones",
+      servicio: "service",
+      columnas: ["codigo", "estado", "motivo", "fuera_de_plazo", "disposicion"],
+      permiso: "case:read",
+    },
+    // Los expedientes ordenados por vencimiento, y los vencidos aparte: el
+    // plazo legal no es una cola de trabajo, es una fecha que se pasa.
+    {
+      nombre: "Expedientes",
+      listar: "/api/v1/expedientes",
+      servicio: "service",
+      columnas: ["codigo", "asunto", "estado", "via", "vence_at", "sin_acuse"],
+    },
+    {
+      nombre: "Vencen pronto",
+      listar: "/api/v1/expedientes/vencen",
+      // Devuelve varias listas: el nombre de la pestaña lo dice; lo ya vencido se enseña debajo.
+      clave_lista: "vencen_pronto",
+      servicio: "service",
+    },
+    {
+      nombre: "Problemas",
+      listar: "/api/v1/problemas",
+      servicio: "service",
+      columnas: [
+        "codigo",
+        "titulo",
+        "estado",
+        "severidad",
+        "error_conocido",
+        "solo_apano",
+      ],
+    },
+    {
+      nombre: "Correlación",
+      listar: "/api/v1/problemas/correlacion",
+      servicio: "service",
+    },
+  ],
+  ia: [
+    // Quién presta el servicio, con qué modelo y a qué coste. Es la primera
+    // pregunta de cualquiera que firme una factura de IA.
+    {
+      nombre: "Proveedores de IA",
+      principal: true,
+      listar: "/api/v1/ia/proveedores",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+    },
+    {
+      nombre: "Modelos",
+      listar: "/api/v1/ia/modelos",
+      // Devuelve varias listas: el listado son los modelos; caducados y sin_modelo son avisos sobre ellos.
+      clave_lista: "modelos",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+    },
+    // Cómo ha ido acertando cada modelo con el tiempo. Las mediciones se
+    // anotaban desde el primer día y **no las leía nadie**: había ruta para
+    // escribir una y ninguna para verlas, así que se medía la deriva y no se
+    // miraba — que es lo contrario de para lo que se mide.
+    // Los resúmenes propuestos de una conversación, con lo que quedó
+    // pendiente. Se escribían y **no los leía nadie**: se generaban, se
+    // pagaban al proveedor de IA y se quedaban en una tabla sin puerta.
+    {
+      nombre: "Resúmenes de conversación",
+      listar: "/api/v1/ia/conversacion/resumenes",
+      servicio: "intelligence",
+      columnas: [
+        "momento",
+        "parcial",
+        "mensajes_usados",
+        "mensajes_totales",
+        "estado",
+      ],
+      permiso: "ia:usar",
+    },
+    {
+      nombre: "Deriva de los modelos",
+      listar: "/api/v1/ia/modelos/deriva",
+      servicio: "intelligence",
+      columnas: [
+        "metrica",
+        "valor",
+        "referencia",
+        "caida",
+        "muestras",
+        "hasta",
+      ],
+      permiso: "ia:administrar",
+    },
+    // Un agente autónomo que nadie ve es un proceso con permisos corriendo
+    // solo. Aquí se ve cuáles hay, y desde la ficha se apagan.
+    {
+      nombre: "Agentes autónomos",
+      listar: "/api/v1/ia/agentes-autonomos",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+      acciones: [
+        {
+          ruta: "/api/v1/ia/agentes-autonomos/herramientas-desde-contrato",
+          nombre: "Herramientas desde el contrato",
+          detalle:
+            "Las saca de las propias operaciones publicadas, en vez de escribirlas a mano",
+          permiso: "ia:administrar",
+        },
+      ],
+    },
+    {
+      nombre: "Anomalías",
+      // Si los avisos sirven de algo, encima de los avisos. Un detector que
+      // nadie confirma nunca es un detector que se acaba ignorando.
+      resumen: ["/api/v1/ia/anomalias/utilidad"],
+      listar: "/api/v1/ia/anomalias",
+      servicio: "intelligence",
+      permiso: "ia:usar",
+    },
+    // **Qué dice cada guardarraíl**, no sólo cuántas veces ha saltado
+    // (CRM-05.02.02.07). Se podían declarar y no leer: se veía que algo
+    // había cortado mil peticiones y no qué sensibilidades deja pasar, qué
+    // patrones tapa ni si corta la petición o sólo enmascara el dato — que
+    // no es lo mismo. Sin ninguna regla NO se dice «todo bien»: se dice que
+    // manda el comportamiento por defecto, que es que lo personal y lo
+    // especial no salen.
+    {
+      nombre: "Guardarraíles",
+      listar: "/api/v1/ia/guardias",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+    },
+    // Con qué texto se le pide al modelo, en su versión vigente. La
+    // plantilla ES la instrucción: cuando una respuesta empieza a salir mal,
+    // la primera pregunta es qué se le está pidiendo exactamente, y hasta
+    // hoy había que mirarlo en la base de datos.
+    {
+      nombre: "Plantillas del modelo",
+      listar: "/api/v1/ia/plantillas",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+    },
+    // Lo que las guardias NO dejaron pasar. Una guardia sin registro es una
+    // promesa: nadie sabe si ha actuado nunca.
+    {
+      nombre: "Bloqueos de las guardias",
+      listar: "/api/v1/ia/guardias/bloqueos",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+    },
+    // Las dos caras del gasto: el total con su tasa de descarte —cuánto de
+    // lo que se paga se tira— y la curva por día, que es donde se ve el
+    // salto del martes que nadie pidió.
+    {
+      nombre: "Consumo y coste",
+      // Con el presupuesto del mes encima: el coste acumulado no dice si
+      // queda margen, y «queda margen» es la decisión.
+      // Y qué modelo atendería sin que el dato salga de la región del
+      // tenant: es la pregunta de quien no puede mandar nada fuera.
+      resumen: [
+        "/api/v1/ia/presupuesto",
+        "/api/v1/ia/eleccion",
+        "/api/v1/ia/eleccion-sin-salida",
+      ],
+      listar: "/api/v1/ia/uso",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+    },
+    {
+      nombre: "Uso por día",
+      listar: "/api/v1/ia/uso/por-dia",
+      servicio: "intelligence",
+      permiso: "ia:administrar",
+    },
+    // Cuentas que el modelo marca en riesgo, que es la lista sobre la que se
+    // trabaja; la salud de una cuenta suelta ya se ve en su pantalla.
+    {
+      // La salud de TODAS las cuentas, no sólo las que están en riesgo: la
+      // lista de riesgo dice a quién llamar hoy y ésta si el modelo está
+      // midiendo algo. Con la calidad de lo que propone encima.
+      nombre: "Salud de cuentas",
+      resumen: ["/api/v1/ia/calidad"],
+      listar: "/api/v1/ia/salud",
+      servicio: "intelligence",
+    },
+    {
+      nombre: "Predicciones",
+      listar: "/api/v1/ia/prediccion",
+      servicio: "intelligence",
+    },
+    {
+      // Lo que la extracción ha sacado de documentos y correos, con sus
+      // conflictos: un campo extraído que choca con lo que hay guardado es
+      // una decisión de alguien, no un dato que se pisa solo.
+      nombre: "Campos extraídos",
+      resumen: ["/api/v1/ia/extraidos"],
+      listar: "/api/v1/ia/extraidos",
+      servicio: "intelligence",
+    },
+    {
+      nombre: "Cuentas en riesgo",
+      listar: "/api/v1/ia/salud/riesgo",
+      servicio: "intelligence",
+      permiso: "ia:usar",
+    },
+    // Herramientas que exponemos a agentes de fuera por MCP. Vive en
+    // integración y se gobierna aquí: lo que se decide es a qué puede llegar
+    // un agente que no es nuestro.
+    {
+      nombre: "Exposiciones MCP",
+      // Con `objeto` para que la fila abra: en su ficha se ve el catálogo
+      // de herramientas que recibe el agente, filtrado por permisos.
+      objeto: "exposicion_mcp",
+      listar: "/api/v1/agentes-ia/exposiciones",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+  ],
+  explotacion: [
+    // La explotación la resuelve contecintelligence de forma frontless
+    // (RT-4). Aquí se enseña el estado del enlace y lo que se ha consultado:
+    // los informes se abren allí, con la identidad del usuario.
+    {
+      nombre: "Estado del enlace",
+      listar: "/api/v1/analitica/estado",
+      servicio: "analytics",
+    },
+    {
+      nombre: "Consultas",
+      // **Por aquí abre el módulo.** Abría por «Informes programados», que
+      // lista qué informe sale solo y a quién: en una instalación que no ha
+      // programado ninguno está vacía, así que «Informes» recibía con «Aquí
+      // no hay nada todavía». Cazado el 04-11-2026 por el barrido, después
+      // de arreglar el mismo caso en «Operación» — el mismo fallo en dos
+      // módulos, y el primero sólo lo vi recorriendo a mano.
+      //
+      // «Consultas» son las preguntas publicadas sobre los datos, que es de
+      // lo que va el módulo y está poblado desde el primer día.
+      principal: true,
+      listar: "/api/v1/analitica/consultas",
+      servicio: "analytics",
+    },
+    {
+      nombre: "Organizaciones",
+      listar: "/api/v1/analitica/organizaciones",
+      servicio: "analytics",
+      solo_plataforma: true,
+    },
+    // El diccionario de métricas delante de las tablas: la pregunta que abre
+    // la discusión es «¿qué quiere decir ingresos?», no «¿qué tablas hay?».
+    {
+      nombre: "Métricas",
+      listar: "/api/v1/metricas",
+      // Con alta y con ficha. La API tenía definir, certificar, versionar y
+      // plan desde el principio, y el front solo listaba: se veía el
+      // diccionario y no se podía tocar nada. La ficha sale de que exista un
+      // `GET /metricas/{clave}`, que es lo que faltaba al otro lado.
+      crear: "/api/v1/metricas",
+      objeto: "metrica",
+      servicio: "analytics",
+      columnas: ["clave", "nombre", "estado", "objeto", "agregacion", "unidad"],
+    },
+    // Qué hay en el almacén y de dónde sale. La frescura decía si estaba al
+    // día sin decir de QUÉ, así que el almacén se miraba por su síntoma.
+    {
+      nombre: "Tablas del almacén",
+      objeto: "tabla_analitica",
+      listar: "/api/v1/almacen/tablas",
+      // Qué se puede explotar de este tenant y cómo se describe el CRM para poder
+      // preguntarle: es lo que decide si una pregunta en lenguaje natural tiene
+      // alguna posibilidad de contestarse.
+      resumen: [
+        "/api/v1/analitica/modelo-semantico",
+        "/api/v1/explotacion/descripcion",
+      ],
+      servicio: "analytics",
+      permiso: "informe:read",
+    },
+    {
+      // Lo que se consulta sin copiarlo: una fuente federada que falla no
+      // deja un hueco en una tabla, deja un informe en error.
+      nombre: "Fuentes federadas",
+      // Sin `objeto`: una fuente federada no es una tabla del almacén. Lo tomaba
+      // prestado y la ficha pedía el id contra la ruta de la otra.
+      listar: "/api/v1/almacen/federadas",
+      servicio: "analytics",
+      permiso: "informe:read",
+    },
+    // **Dónde puede vivir el CRM embebido** (CRM-05.01.02.06). Se podía
+    // declarar y no leer, y es un control de seguridad: la lista de orígenes
+    // es lo que impide que cualquier página incruste el CRM y le pida datos
+    // con la sesión de quien la abra. Un origen que alguien puso para una
+    // prueba hace año y medio sigue valiendo y nadie lo sabe. Los orígenes
+    // se nombran, no se cuentan: lo que se revisa es si alguno sobra.
+    {
+      nombre: "Sitios donde se embebe",
+      objeto: "embebido",
+      listar: "/api/v1/federacion/embebidos",
+      servicio: "integration",
+      permiso: "integracion:read",
+    },
+    {
+      // admite: un enlace embebido es una ventana al dato desde fuera, y
+      // quién tiene una abierta es justo lo que hay que poder mirar.
+      nombre: "Cuadros incrustados",
+      objeto: "enlace_embebido",
+      resumen: ["/api/v1/cuadros-mando/componentes"],
+      listar: "/api/v1/cuadros-mando/embebidos",
+      servicio: "analytics",
+      permiso: "informe:read",
+    },
+    // Qué informe sale solo, cuándo y **a quién** (CRM-05.01.01.06). Se
+    // podía programar un envío y no leer ninguna de esas cuatro cosas: ni
+    // quién lo recibe, ni si uno que ya no mira nadie se sigue mandando
+    // todas las semanas. Un envío semanal a una lista que nadie revisó en
+    // dos años es la forma más habitual de que un dato salga de donde debía
+    // quedarse.
+    {
+      nombre: "Informes programados",
+      listar: "/api/v1/informes/programaciones",
+      servicio: "analytics",
+      permiso: "informe:read",
+    },
+    {
+      // Cada vez que se corrió un informe, con lo que costó. La tabla es
+      // append-only y **no la leía nadie**: se escribía en cada ejecución y
+      // ninguna ruta la devolvía, así que el coste se guardaba y no se podía
+      // mirar. El peor caso va al lado de la media, porque la media esconde
+      // justo el informe que tarda dos minutos una vez al día.
+      nombre: "Ejecuciones de informe",
+      listar: "/api/v1/informes/ejecuciones",
+      servicio: "analytics",
+      columnas: ["origen", "filas", "duracion_ms", "truncado", "ok", "cuando"],
+      permiso: "informe:read",
+    },
+    {
+      nombre: "Frescura del almacén",
+      listar: "/api/v1/almacen/frescura",
+      servicio: "analytics",
+      acciones: [
+        {
+          ruta: "/api/v1/almacen/cargar",
+          nombre: "Cargar ahora",
+          detalle:
+            "Trae las filas de cada tabla declarada. Hasta que alguien lo hace, el almacén está vacío y los informes no tienen de dónde leer.",
+          permiso: "informe:write",
+        },
+      ],
+    },
+    {
+      nombre: "Exportaciones",
+      listar: "/api/v1/almacen/destinos",
+      servicio: "analytics",
+    },
+    {
+      nombre: "Despliegue de BI",
+      listar: "/api/v1/analisis/despliegue",
+      servicio: "analytics",
+    },
+  ],
+  gobierno: [
+    {
+      nombre: "Riesgos",
+      principal: true,
+      listar: "/api/v1/grc/riesgos",
+      // El panel de GRC encima de los riesgos: lo que no cuadra HOY, ordenado
+      // por lo que urge, y qué del producto tiene control y qué no. Un
+      // registro de riesgos sin eso es un inventario que nadie recorre.
+      resumen: [
+        "/api/v1/grc/panel",
+        "/api/v1/grc/pendiente",
+        "/api/v1/grc/cobertura",
+      ],
+      servicio: "tenancy",
+      columnas: [
+        "codigo",
+        "titulo",
+        "inherente",
+        "residual",
+        "tratamiento",
+        "estado",
+      ],
+      permiso: "tenant:read",
+    },
+    // Los controles tienen pantalla propia desde el 10-11-2026 (Administrar ›
+    // Gobierno y cumplimiento › Controles del GRC): de serie, de la
+    // segregación y del TCSEC, con su evidencia y su enlace de vuelta. La
+    // pestaña genérica enseñaba el mismo registro en otro sitio, y dos
+    // sitios para lo mismo no dicen cuál manda. Los marcos, en el panel de
+    // Gobierno.
+    // La segregación de funciones tiene pantalla propia (/segregacion, en
+    // Administrar › Gobierno): matriz, reglas, conflictos y excepciones.
+    // Las tres apuntaban a `party` y se llamaban «Retención», «Bloqueos
+    // legales» y «Clases de dato»: quien las abría creía ver las de todo el
+    // sistema y veía las de clientes. Las de identidad y las de ventas no
+    // tenían pantalla. Cada servicio guarda las suyas en su esquema, así que
+    // la pestaña lleva selector en vez de apuntar a una.
+    {
+      nombre: "Retención",
+      listar: "/api/v1/:servicio/retencion/politicas",
+      por_servicio: ["party", "identity", "sales"],
+      servicio: "party",
+    },
+    {
+      nombre: "Bloqueos legales",
+      listar: "/api/v1/:servicio/retencion/bloqueos",
+      por_servicio: ["party", "identity", "sales"],
+      servicio: "party",
+    },
+    {
+      nombre: "Clases de dato",
+      listar: "/api/v1/:servicio/retencion/clases",
+      por_servicio: ["party", "identity", "sales"],
+      servicio: "party",
+    },
+  ],
+  segmentos: [
+    {
+      nombre: "Segmentos",
+      principal: true,
+      objeto: "segmento",
+      listar: "/api/v1/segmentos",
+      crear: "/api/v1/segmentos",
+      servicio: "marketing",
+      columnas: ["clave", "nombre", "objeto", "tamano", "tamano_at"],
+      permiso: "segmento:read",
+    },
+    // «Supresiones» estaba aquí Y en «Contenido y gobierno»: el mismo
+    // registro, la misma ruta, la misma lista, en dos pantallas distintas.
+    // Se queda allí, con las renovaciones de opt-in y las categorías de
+    // preferencia, porque la pregunta que contesta es de consentimiento —«a
+    // quién no se le puede escribir»— y no de segmentación.
+    // Las audiencias que viven en una plataforma de anuncios, con su estado
+    // y su historial (CRM-02.01.01.09). Antes sólo se preparaba la lista.
+    {
+      nombre: "Audiencias publicitarias",
+      listar: "/api/v1/audiencias-publicitarias",
+      objeto: "audiencia_publicitaria",
+      alta_en: "/m/segmentos/audiencia_publicitaria/nueva",
+      columnas: ["nombre", "estado", "miembros", "ultima_sync_at"],
+      servicio: "marketing",
+      permiso: "marketing:read",
+    },
+    {
+      nombre: "Puntuación",
+      listar: "/api/v1/puntuacion/modelos",
       // Cuántos leads llevan una versión vieja del modelo: activar una versión
-        // nueva no repuntúa lo anterior, y eso no se ve en la lista de modelos.
+      // nueva no repuntúa lo anterior, y eso no se ve en la lista de modelos.
       resumen: ["/api/v1/puntuacion/pendientes"],
-        servicio: "marketing",
-      },
-      // Los activos de marketing con su revisión y su aprobación: qué se
-      // puede usar, desde cuándo y hasta cuándo.
-      // Quién tiene que aprobar qué, antes de publicarlo. La lista de activos
-      // dice lo que hay; ésta, lo que está parado esperando a alguien.
-      {
-        nombre: "Aprobaciones de activos",
-        // Cada fila es un paso sobre un activo y abre EL ACTIVO, que es donde
-        // se ve si el conjunto se puede publicar. Declaraba `objeto` y la
-        // ficha pedía `/aprobacion/{id}`, que no existe: 405 y la fila no
-        // abría nada (medido el 10-11-2026).
-        abre: { modulo: "segmentos", objeto: "activo_marketing", campo: "objeto_id" },
-        listar: "/api/v1/activos-marketing/aprobacion",
-        servicio: "marketing",
-        permiso: "marketing:read",
-      },
-      {
-        nombre: "Activos de marketing",
-        // Con `objeto` para que la fila abra: en su ficha se ve si la versión
-        // se puede publicar ya y qué paso de aprobación falta.
+      servicio: "marketing",
+    },
+    // Los activos de marketing con su revisión y su aprobación: qué se
+    // puede usar, desde cuándo y hasta cuándo.
+    // Quién tiene que aprobar qué, antes de publicarlo. La lista de activos
+    // dice lo que hay; ésta, lo que está parado esperando a alguien.
+    {
+      nombre: "Aprobaciones de activos",
+      // Cada fila es un paso sobre un activo y abre EL ACTIVO, que es donde
+      // se ve si el conjunto se puede publicar. Declaraba `objeto` y la
+      // ficha pedía `/aprobacion/{id}`, que no existe: 405 y la fila no
+      // abría nada (medido el 10-11-2026).
+      abre: {
+        modulo: "segmentos",
         objeto: "activo_marketing",
-        listar: "/api/v1/activos-marketing",
-        // Qué hay que mirar antes de que dé un problema: un activo caducado que
-        // sigue publicado no avisa solo.
-        resumen: ["/api/v1/activos-marketing/revision"],
-        servicio: "marketing",
-        permiso: "marketing:read",
+        campo: "objeto_id",
       },
-    ],
-  "campanas": [
-      {
-        nombre: "Papelera",
-        icono: "delete",
-        objeto: "entrada_papelera",
-        listar: "/api/v1/marketing/papelera",
-        servicio: "marketing",
-        columnas: [
-          "etiqueta",
-          "objeto",
-          "borrado_at",
-          "dias_para_purga",
-          "en_cascada",
-        ],
-      },
-      // Qué hay en marcha y qué se solapa. Dos campañas al mismo público la
-      // misma semana no dan error: dan una tasa de baja que nadie explica.
-      {
-        nombre: "Calendario de campañas",
-        listar: "/api/v1/campanas/calendario",
-        // Devuelve varias listas: el calendario son las campañas; los solapamientos son el aviso sobre ellas.
-        clave_lista: "campanas",
-        periodo: true,
-        servicio: "marketing",
-        permiso: "campaign:read",
-      },
-      {
-        nombre: "Campañas",
-        principal: true,
-        objeto: "campana",
-        listar: "/api/v1/campanas",
-        crear: "/api/v1/campanas",
-        servicio: "marketing",
-        columnas: ["nombre", "estado", "canal", "desde", "hasta"],
-        permiso: "campana:read",
-      },
-      // La atribución NO se lista: se consulta por lead (`/atribucion/leads/{id}`).
-      // Ponerla aquí como lista sería inventar un endpoint que no existe, y el
-      // gate del front lo caza — que es para lo que está.
-      {
-        nombre: "Presión de contacto",
-        listar: "/api/v1/presion/reglas",
+      listar: "/api/v1/activos-marketing/aprobacion",
+      servicio: "marketing",
+      permiso: "marketing:read",
+    },
+    {
+      nombre: "Activos de marketing",
+      // Con `objeto` para que la fila abra: en su ficha se ve si la versión
+      // se puede publicar ya y qué paso de aprobación falta.
+      objeto: "activo_marketing",
+      listar: "/api/v1/activos-marketing",
+      // Qué hay que mirar antes de que dé un problema: un activo caducado que
+      // sigue publicado no avisa solo.
+      resumen: ["/api/v1/activos-marketing/revision"],
+      servicio: "marketing",
+      permiso: "marketing:read",
+    },
+  ],
+  campanas: [
+    {
+      nombre: "Papelera",
+      icono: "delete",
+      objeto: "entrada_papelera",
+      listar: "/api/v1/marketing/papelera",
+      servicio: "marketing",
+      columnas: [
+        "etiqueta",
+        "objeto",
+        "borrado_at",
+        "dias_para_purga",
+        "en_cascada",
+      ],
+    },
+    // Qué hay en marcha y qué se solapa. Dos campañas al mismo público la
+    // misma semana no dan error: dan una tasa de baja que nadie explica.
+    {
+      nombre: "Calendario de campañas",
+      listar: "/api/v1/campanas/calendario",
+      // Devuelve varias listas: el calendario son las campañas; los solapamientos son el aviso sobre ellas.
+      clave_lista: "campanas",
+      periodo: true,
+      servicio: "marketing",
+      permiso: "campaign:read",
+    },
+    {
+      nombre: "Campañas",
+      principal: true,
+      objeto: "campana",
+      listar: "/api/v1/campanas",
+      crear: "/api/v1/campanas",
+      servicio: "marketing",
+      columnas: ["nombre", "estado", "canal", "desde", "hasta"],
+      permiso: "campana:read",
+    },
+    // La atribución NO se lista: se consulta por lead (`/atribucion/leads/{id}`).
+    // Ponerla aquí como lista sería inventar un endpoint que no existe, y el
+    // gate del front lo caza — que es para lo que está.
+    {
+      nombre: "Presión de contacto",
+      listar: "/api/v1/presion/reglas",
       // A cuánta gente se ha escrito y cuántas veces, encima de las reglas que lo
-        // limitan: una regla de presión sin la presión medida es una promesa.
+      // limitan: una regla de presión sin la presión medida es una promesa.
       resumen: ["/api/v1/presion"],
-        servicio: "marketing",
-      },
-      {
-        nombre: "Rebotes",
-        // Las tasas con su umbral al lado: una lista de rebotes no dice si se
-        // está cerca de que el proveedor corte el envío, y eso es lo que decide.
-        resumen: ["/api/v1/rebotes/salud"],
-        listar: "/api/v1/rebotes",
-        servicio: "marketing",
-      },
-      // El recorrido automatizado (CRM-02.02.02): sus nodos, sus inscritos,
-      // su embudo y su publicación. Catorce operaciones sin pantalla.
-      {
-        nombre: "Recorridos",
-        listar: "/api/v1/recorridos",
-        // La fila abre el lienzo y «Nuevo» lleva a él: los nodos ya no se
-        // escriben en JSON (CRM-02.02.02.01).
-        objeto: "recorrido",
-        alta_en: "/m/campanas/recorrido/nuevo",
-        columnas: ["clave", "nombre", "estado", "version", "por_cuenta"],
-        servicio: "marketing",
-        permiso: "campana:read",
-      },
-    ],
-  "casos": [
-      // CSAT, CES y NPS del periodo, juntos: mirarlos por separado es cómo se
-      // acaba citando el que mejor sale.
-      {
-        nombre: "Satisfacción del periodo",
-        listar: "/api/v1/encuestas/resumen",
-        periodo: true,
-        servicio: "service",
-        permiso: "case:read",
-      },
-      {
-        nombre: "Encuestas",
-        objeto: "encuesta",
-        listar: "/api/v1/encuestas",
-        servicio: "service",
-      },
-      {
-        nombre: "Agentes disponibles",
-        listar: "/api/v1/agentes/disponibles",
-        servicio: "service",
-      },
-      {
-        nombre: "Papelera",
-        icono: "delete",
-        objeto: "entrada_papelera",
-        listar: "/api/v1/service/papelera",
-        servicio: "service",
-        columnas: [
-          "etiqueta",
-          "objeto",
-          "borrado_at",
-          "dias_para_purga",
-          "en_cascada",
-        ],
-      },
-      {
-        nombre: "Casos",
-        principal: true,
-        objeto: "caso",
-        listar: "/api/v1/casos",
-        crear: "/api/v1/casos",
-        servicio: "service",
-        columnas: ["codigo", "asunto", "estado", "prioridad"],
-        // Responder es lo primero que se hace con un caso; cerrar, lo último.
-        destacadas: ["responder", "cerrar"],
-        permiso: "case:read",
-      },
-      {
-        nombre: "Categorías",
-        objeto: "categoria",
-        listar: "/api/v1/categorias-caso",
-        servicio: "service",
-      },
-      // El cumplimiento del periodo: los acuerdos dicen a qué nos
-      // comprometimos y esto si se cumplió. Sin rango no se pide nada — un
-      // informe que se abre con «los últimos noventa días» da un número de un
-      // periodo que no eligió nadie.
-      {
-        nombre: "Cumplimiento del periodo",
-        listar: "/api/v1/sla/cumplimiento",
-        periodo: true,
-        servicio: "service",
-        permiso: "case:read",
-      },
-      {
-        nombre: "SLA",
-        // Los casos que van a incumplir si nadie hace nada, encima de los
-        // acuerdos: el acuerdo se lee una vez; lo que está a punto de romperse,
-        // hoy.
-        resumen: ["/api/v1/sla/en-riesgo"],
-        listar: "/api/v1/sla",
-        servicio: "service",
-      },
-      { nombre: "Colas", objeto: "cola", listar: "/api/v1/colas", servicio: "service" },
-      {
-        nombre: "Escalado",
-        listar: "/api/v1/escalado/reglas",
-        servicio: "service",
-      },
-      {
-        nombre: "Entitlements",
-        listar: "/api/v1/entitlements",
-        servicio: "service",
-      },
-      // Lo que se le debe al cliente cuando el SLA se incumple
-      // (CRM-04.01.02): el crédito calculado, quién lo aprueba y cómo quedó.
-      {
-        nombre: "Créditos de servicio",
-        listar: "/api/v1/creditos-servicio",
-        servicio: "service",
-        permiso: "case:read",
-      },
-      {
-        nombre: "Cumplimiento de SLA",
-        listar: "/api/v1/creditos-servicio/cumplimiento",
-        periodo: true,
-        servicio: "service",
-        permiso: "case:read",
-      },
-    ],
-  "omnicanal": [
-      // Las conversaciones no tienen listado general a propósito: se trabajan
-      // desde la consola de agente, que las da junto a los casos en una sola
-      // cola. Una lista aparte reintroduciría la bandeja por canal que la
-      // omnicanalidad viene a quitar.
-      {
-        nombre: "Canales",
-        principal: true,
-        listar: "/api/v1/canales-servicio",
-        crear: "/api/v1/canales-servicio",
-        servicio: "service",
-        columnas: ["nombre", "tipo", "activo"],
-        permiso: "case:read",
-      },
-      {
-        nombre: "Macros",
-        objeto: "macro",
-        listar: "/api/v1/macros",
-        servicio: "service",
-      },
-      // La conversación como registro, con su historial, su transferencia y
-      // su escalado a persona. El canal ya se veía; la conversación no.
-    ],
-  "conocimiento": [
-      {
-        nombre: "Artículos",
-        principal: true,
-        objeto: "articulo",
-        listar: "/api/v1/conocimiento/articulos",
-        // Qué artículos sirven, cuáles estorban y cuáles no usa nadie. Un gestor de
-        // conocimiento sin esto crece hasta que nadie encuentra nada.
-        resumen: ["/api/v1/conocimiento/eficacia", "/api/v1/conocimiento"],
-        crear: "/api/v1/conocimiento/articulos",
-        servicio: "service",
-        columnas: ["clave", "estado", "audiencia", "idioma", "vistas"],
-        permiso: "knowledge:read",
-      },
-      {
-        nombre: "Portal",
-        listar: "/api/v1/portal/accesos",
-        servicio: "service",
-      },
-      {
-        nombre: "Comunidad",
-        listar: "/api/v1/comunidad/hilos",
-        servicio: "service",
-      },
-    ],
-  "canales": [
-      {
-        nombre: "Canales",
-        principal: true,
-        listar: "/api/v1/canales-marketing",
-        crear: "/api/v1/canales-marketing",
-        servicio: "marketing",
-        columnas: ["clave", "nombre", "tipo", "activo"],
-        permiso: "campana:read",
-      },
-      {
-        nombre: "Landings",
-        listar: "/api/v1/landings",
-        crear: "/api/v1/landings",
-        servicio: "marketing",
-        columnas: ["clave", "titulo", "visitas", "envios"],
-      },
-      {
-        nombre: "Dominios de envío",
-        listar: "/api/v1/dominios-envio",
-        crear: "/api/v1/dominios-envio",
-        servicio: "marketing",
-        columnas: ["dominio", "uso", "spf", "dkim", "dmarc"],
-      },
-    ],
-  "contenido": [
-      {
-        nombre: "Reglas de contenido",
-        principal: true,
-        listar: "/api/v1/reglas-contenido",
-        servicio: "marketing",
-      },
-      { nombre: "Cookies", listar: "/api/v1/cookies", servicio: "marketing" },
-      {
-        nombre: "Renovación de consentimiento",
-        listar: "/api/v1/optin/renovaciones",
-        // Devuelve varias listas: lo que hay que renovar antes de que caduque; lo ya caducado va debajo.
-        clave_lista: "por_caducar",
-        servicio: "marketing",
-      },
-      {
-        nombre: "Plantillas",
-        listar: "/api/v1/correo/plantillas",
-        // Por qué dominio sale cada clase de correo. Mandar una campaña desde el
-        // dominio de las facturas quema la reputación del que cobra.
-        resumen: ["/api/v1/correo/remitente"],
-        crear: "/api/v1/correo/plantillas",
-        servicio: "marketing",
-        columnas: ["clave", "nombre", "clase", "categoria", "idioma"],
-        permiso: "campana:read",
-      },
-      {
-        nombre: "Bloques",
-        listar: "/api/v1/correo/bloques",
-        crear: "/api/v1/correo/bloques",
-        servicio: "marketing",
-        columnas: ["clave", "nombre", "tipo"],
-      },
-      {
-        nombre: "Categorías de preferencia",
-        listar: "/api/v1/preferencias/categorias",
-        crear: "/api/v1/preferencias/categorias",
-        servicio: "marketing",
-        columnas: ["clave", "nombre", "obligatoria"],
-      },
-      // A quién no se le puede escribir, pase lo que pase. Vive aquí y no en
-      // «Segmentación» —donde también estaba— porque es consentimiento: va con
-      // las renovaciones de opt-in y las categorías de preferencia, que es
-      // donde alguien lo busca cuando le preguntan por qué no salió un envío.
-      {
-        nombre: "Supresiones",
-        listar: "/api/v1/supresiones",
-        servicio: "marketing",
-      },
-    ],
+      servicio: "marketing",
+    },
+    {
+      nombre: "Rebotes",
+      // Las tasas con su umbral al lado: una lista de rebotes no dice si se
+      // está cerca de que el proveedor corte el envío, y eso es lo que decide.
+      resumen: ["/api/v1/rebotes/salud"],
+      listar: "/api/v1/rebotes",
+      servicio: "marketing",
+    },
+    // El recorrido automatizado (CRM-02.02.02): sus nodos, sus inscritos,
+    // su embudo y su publicación. Catorce operaciones sin pantalla.
+    {
+      nombre: "Recorridos",
+      listar: "/api/v1/recorridos",
+      // La fila abre el lienzo y «Nuevo» lleva a él: los nodos ya no se
+      // escriben en JSON (CRM-02.02.02.01).
+      objeto: "recorrido",
+      alta_en: "/m/campanas/recorrido/nuevo",
+      columnas: ["clave", "nombre", "estado", "version", "por_cuenta"],
+      servicio: "marketing",
+      permiso: "campana:read",
+    },
+  ],
+  casos: [
+    // CSAT, CES y NPS del periodo, juntos: mirarlos por separado es cómo se
+    // acaba citando el que mejor sale.
+    {
+      nombre: "Satisfacción del periodo",
+      listar: "/api/v1/encuestas/resumen",
+      periodo: true,
+      servicio: "service",
+      permiso: "case:read",
+    },
+    {
+      nombre: "Encuestas",
+      objeto: "encuesta",
+      listar: "/api/v1/encuestas",
+      servicio: "service",
+    },
+    // Quién atiende y con qué hueco (CRM-04.01.01.05, CRM-04.02.02.03): la
+    // capacidad por canal y las competencias se fijaban por API y no se
+    // veían en ninguna pantalla, y el reparto decidía con ellas.
+    {
+      nombre: "Agentes",
+      objeto: "agente_servicio",
+      listar: "/api/v1/agentes",
+      crear: "/api/v1/agentes",
+      servicio: "service",
+      columnas: [
+        "usuario_id",
+        "presencia",
+        "carga",
+        "capacidad_caso",
+        "capacidad_chat",
+        "capacidad_telefono",
+        "capacidad_correo",
+        "competencias",
+      ],
+      permiso: "case:read",
+    },
+    // Las reglas de reparto, que se podían crear y no ver ni quitar.
+    {
+      nombre: "Reglas de reparto",
+      objeto: "regla_reparto",
+      listar: "/api/v1/colas/reglas",
+      crear: "/api/v1/colas/reglas",
+      servicio: "service",
+      columnas: [
+        "prioridad",
+        "nombre",
+        "activa",
+        "canal",
+        "estrategia",
+        "cola",
+        "competencias",
+      ],
+      permiso: "case:read",
+    },
+    {
+      nombre: "Agentes disponibles",
+      listar: "/api/v1/agentes/disponibles",
+      servicio: "service",
+      // QUIÉN, delante. Sin columnas declaradas el identificador se
+      // escondía por técnico y la lista decía «Disponible · 0» sin decir de
+      // quién (medido el 10-11-2026).
+      columnas: [
+        "usuario_id",
+        "presencia",
+        "carga",
+        "capacidad",
+        "competencias",
+      ],
+    },
+    {
+      nombre: "Papelera",
+      icono: "delete",
+      objeto: "entrada_papelera",
+      listar: "/api/v1/service/papelera",
+      servicio: "service",
+      columnas: [
+        "etiqueta",
+        "objeto",
+        "borrado_at",
+        "dias_para_purga",
+        "en_cascada",
+      ],
+    },
+    {
+      nombre: "Casos",
+      principal: true,
+      objeto: "caso",
+      listar: "/api/v1/casos",
+      crear: "/api/v1/casos",
+      servicio: "service",
+      columnas: ["codigo", "asunto", "estado", "prioridad"],
+      // Responder es lo primero que se hace con un caso; cerrar, lo último.
+      destacadas: ["responder", "cerrar"],
+      permiso: "case:read",
+    },
+    {
+      nombre: "Categorías",
+      objeto: "categoria",
+      listar: "/api/v1/categorias-caso",
+      servicio: "service",
+    },
+    // El cumplimiento del periodo: los acuerdos dicen a qué nos
+    // comprometimos y esto si se cumplió. Sin rango no se pide nada — un
+    // informe que se abre con «los últimos noventa días» da un número de un
+    // periodo que no eligió nadie.
+    {
+      nombre: "Cumplimiento del periodo",
+      listar: "/api/v1/sla/cumplimiento",
+      periodo: true,
+      servicio: "service",
+      permiso: "case:read",
+    },
+    {
+      nombre: "SLA",
+      // Los casos que van a incumplir si nadie hace nada, encima de los
+      // acuerdos: el acuerdo se lee una vez; lo que está a punto de romperse,
+      // hoy.
+      resumen: ["/api/v1/sla/en-riesgo"],
+      listar: "/api/v1/sla",
+      servicio: "service",
+    },
+    {
+      nombre: "Colas",
+      objeto: "cola",
+      listar: "/api/v1/colas",
+      servicio: "service",
+    },
+    {
+      nombre: "Escalado",
+      listar: "/api/v1/escalado/reglas",
+      servicio: "service",
+    },
+    {
+      nombre: "Entitlements",
+      listar: "/api/v1/entitlements",
+      servicio: "service",
+    },
+    // Lo que se le debe al cliente cuando el SLA se incumple
+    // (CRM-04.01.02): el crédito calculado, quién lo aprueba y cómo quedó.
+    {
+      nombre: "Créditos de servicio",
+      listar: "/api/v1/creditos-servicio",
+      servicio: "service",
+      permiso: "case:read",
+    },
+    {
+      nombre: "Cumplimiento de SLA",
+      listar: "/api/v1/creditos-servicio/cumplimiento",
+      periodo: true,
+      servicio: "service",
+      // El cliente con su nombre, delante: es de quién es la fila.
+      columnas: [
+        "cuenta_id",
+        "clave",
+        "casos",
+        "con_compromiso",
+        "incumplidos_pr",
+        "incumplidos_res",
+        "cumplimiento_pct",
+      ],
+      permiso: "case:read",
+    },
+  ],
+  omnicanal: [
+    // Las conversaciones no tienen listado general a propósito: se trabajan
+    // desde la consola de agente, que las da junto a los casos en una sola
+    // cola. Una lista aparte reintroduciría la bandeja por canal que la
+    // omnicanalidad viene a quitar.
+    {
+      nombre: "Canales",
+      principal: true,
+      listar: "/api/v1/canales-servicio",
+      crear: "/api/v1/canales-servicio",
+      servicio: "service",
+      columnas: ["nombre", "tipo", "activo"],
+      permiso: "case:read",
+    },
+    {
+      nombre: "Macros",
+      objeto: "macro",
+      listar: "/api/v1/macros",
+      servicio: "service",
+    },
+    // La conversación como registro, con su historial, su transferencia y
+    // su escalado a persona. El canal ya se veía; la conversación no.
+  ],
+  conocimiento: [
+    {
+      nombre: "Artículos",
+      principal: true,
+      objeto: "articulo",
+      listar: "/api/v1/conocimiento/articulos",
+      // Qué artículos sirven, cuáles estorban y cuáles no usa nadie. Un gestor de
+      // conocimiento sin esto crece hasta que nadie encuentra nada.
+      resumen: ["/api/v1/conocimiento/eficacia", "/api/v1/conocimiento"],
+      crear: "/api/v1/conocimiento/articulos",
+      servicio: "service",
+      columnas: ["clave", "estado", "audiencia", "idioma", "vistas"],
+      permiso: "knowledge:read",
+    },
+    {
+      nombre: "Portal",
+      listar: "/api/v1/portal/accesos",
+      servicio: "service",
+    },
+    {
+      nombre: "Comunidad",
+      // Con `objeto`: sin él la fila no abría, y responder, aceptar la
+      // respuesta buena o convertirla en artículo no tenían dónde pulsarse.
+      objeto: "hilo_comunidad",
+      listar: "/api/v1/comunidad/hilos",
+      servicio: "service",
+    },
+    // Lo que espera moderación. La lista de arriba —a propósito— no lo
+    // enseña, y no había otra: lo que preguntaba un cliente desde el portal
+    // no lo veía nadie que pudiera aprobarlo (medido el 10-11-2026).
+    {
+      nombre: "Comunidad por moderar",
+      objeto: "hilo_comunidad",
+      listar: "/api/v1/comunidad/hilos?incluir_moderacion=true",
+      servicio: "service",
+      columnas: ["titulo", "estado", "categoria", "created_at"],
+    },
+  ],
+  canales: [
+    {
+      nombre: "Canales",
+      principal: true,
+      listar: "/api/v1/canales-marketing",
+      crear: "/api/v1/canales-marketing",
+      servicio: "marketing",
+      columnas: ["clave", "nombre", "tipo", "activo"],
+      permiso: "campana:read",
+    },
+    {
+      nombre: "Landings",
+      listar: "/api/v1/landings",
+      crear: "/api/v1/landings",
+      servicio: "marketing",
+      columnas: ["clave", "titulo", "visitas", "envios"],
+    },
+    {
+      nombre: "Dominios de envío",
+      listar: "/api/v1/dominios-envio",
+      crear: "/api/v1/dominios-envio",
+      servicio: "marketing",
+      columnas: ["dominio", "uso", "spf", "dkim", "dmarc"],
+    },
+  ],
+  contenido: [
+    {
+      nombre: "Reglas de contenido",
+      principal: true,
+      listar: "/api/v1/reglas-contenido",
+      servicio: "marketing",
+    },
+    { nombre: "Cookies", listar: "/api/v1/cookies", servicio: "marketing" },
+    {
+      nombre: "Renovación de consentimiento",
+      listar: "/api/v1/optin/renovaciones",
+      // Devuelve varias listas: lo que hay que renovar antes de que caduque; lo ya caducado va debajo.
+      clave_lista: "por_caducar",
+      servicio: "marketing",
+    },
+    {
+      nombre: "Plantillas",
+      listar: "/api/v1/correo/plantillas",
+      // Por qué dominio sale cada clase de correo. Mandar una campaña desde el
+      // dominio de las facturas quema la reputación del que cobra.
+      resumen: ["/api/v1/correo/remitente"],
+      crear: "/api/v1/correo/plantillas",
+      servicio: "marketing",
+      columnas: ["clave", "nombre", "clase", "categoria", "idioma"],
+      permiso: "campana:read",
+    },
+    {
+      nombre: "Bloques",
+      listar: "/api/v1/correo/bloques",
+      crear: "/api/v1/correo/bloques",
+      servicio: "marketing",
+      columnas: ["clave", "nombre", "tipo"],
+    },
+    {
+      nombre: "Categorías de preferencia",
+      listar: "/api/v1/preferencias/categorias",
+      crear: "/api/v1/preferencias/categorias",
+      servicio: "marketing",
+      columnas: ["clave", "nombre", "obligatoria"],
+    },
+    // A quién no se le puede escribir, pase lo que pase. Vive aquí y no en
+    // «Segmentación» —donde también estaba— porque es consentimiento: va con
+    // las renovaciones de opt-in y las categorías de preferencia, que es
+    // donde alguien lo busca cuando le preguntan por qué no salió un envío.
+    {
+      nombre: "Supresiones",
+      listar: "/api/v1/supresiones",
+      servicio: "marketing",
+    },
+  ],
 };
 
 /** Las pestañas de un módulo, o ninguna si no es suyo. */

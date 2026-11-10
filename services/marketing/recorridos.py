@@ -409,11 +409,15 @@ def publicar(uow: UnidadDeTrabajo, recorrido_id: UUID, *, principal: Any = None)
     fila.estado = "publicado"
     fila.publicado_por_id, fila.publicado_con = guardar_foto(foto(principal))
     uow.db.flush()
+    # Por segmento, los de hoy entran ya: esperar a la vuelta de la tarea haría
+    # que publicar no tuviera ningún efecto visible.
+    entrada = entrar_por_segmento(uow, fila) if fila.entrada == "segmento" else None
     return {
         "recorrido": fila.clave,
         "version": fila.version,
         "avisos": avisos,
         "avanza_solo": fila.publicado_por_id is not None,
+        **({"entrada": entrada} if entrada is not None else {}),
     }
 
 
@@ -539,6 +543,25 @@ def entrar(
     )
     uow.db.add(fila)
     uow.db.flush()
+    # Entrar aquí saca de los recorridos que no conviven con éste: los que
+    # declaran «no si está en <este>» (CRM-02.02.02.07, salida por otro
+    # recorrido prioritario). El motivo existía y nada lo ponía nunca.
+    for otro in (
+        uow.db.execute(
+            select(EnRecorrido)
+            .join(Recorrido, Recorrido.id == EnRecorrido.recorrido_id)
+            .where(
+                EnRecorrido.tenant_id == tenant_id,
+                EnRecorrido.objeto_id == objeto_id,
+                EnRecorrido.estado.in_(("activo", "esperando")),
+                EnRecorrido.recorrido_id != recorrido_id,
+                Recorrido.excluye_si_en.contains([recorrido.clave]),
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        salir(uow, otro.id, motivo="otro_recorrido")
     uow.emitir(
         "journey.entered",
         subject=("recorrido", fila.id),
@@ -550,6 +573,99 @@ def entrar(
         },
     )
     return {"entro": True, "en_recorrido_id": str(fila.id), "nodo": fila.nodo_actual}
+
+
+# ── Entrar solos: por segmento y por evento (CRM-02.02.02.02) ─────────────
+#
+# Medido el 10-11-2026: `entrada`, `segmento_id` y `evento_entrada` se
+# guardaban y **no los leía nadie**. Un recorrido «por segmento» publicado no
+# metía a nadie y uno «por evento» no escuchaba ningún evento: sólo funcionaban
+# la entrada manual y la de la API, que son la misma llamada a `entrar`.
+
+
+def entrar_por_segmento(uow: UnidadDeTrabajo, recorrido: Recorrido) -> dict[str, Any]:
+    """Mete a los miembros del segmento que aún no han pasado por el recorrido.
+
+    Se llama al publicar y en cada vuelta de la tarea: quien entra en el
+    segmento mañana entra en el recorrido mañana. Las mismas comprobaciones que
+    la entrada manual —`entrar`—, así que quien ya estuvo no repite, salvo
+    reentrada, y el suprimido no entra.
+    """
+    from services.marketing.segmentos import _segmento, miembros
+
+    if recorrido.entrada != "segmento" or recorrido.segmento_id is None:
+        return {"entraron": 0, "no_entraron": {}}
+    segmento = _segmento(uow.db, uow.tenant_id, recorrido.segmento_id)
+    dentro = set(
+        uow.db.execute(
+            select(EnRecorrido.objeto_id).where(
+                EnRecorrido.tenant_id == uow.tenant_id,
+                EnRecorrido.recorrido_id == recorrido.id,
+            )
+        ).scalars()
+    )
+    entraron = 0
+    no_entraron: dict[str, int] = {}
+    for objeto_id in miembros(uow.db, uow.tenant_id, segmento.id, limite=1_000_000):
+        # Quien ya pasó se salta sin preguntar: con reentrada vuelve a entrar
+        # cuando salga, y eso lo decide `entrar`, no una vuelta de la tarea.
+        if objeto_id in dentro:
+            continue
+        r = entrar(uow, recorrido.id, objeto_id=objeto_id, objeto=segmento.objeto)
+        if r.get("entro"):
+            entraron += 1
+        else:
+            motivo = str(r.get("motivo") or "?")
+            no_entraron[motivo] = no_entraron.get(motivo, 0) + 1
+    return {"entraron": entraron, "no_entraron": no_entraron}
+
+
+def entrar_por_evento(
+    uow: UnidadDeTrabajo, tipo: str, datos: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Mete a quien protagoniza el evento en los recorridos que lo esperan."""
+    recorridos = (
+        uow.db.execute(
+            select(Recorrido).where(
+                Recorrido.tenant_id == uow.tenant_id,
+                Recorrido.estado == "publicado",
+                Recorrido.entrada == "evento",
+                Recorrido.evento_entrada == tipo,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not recorridos:
+        return []
+    objeto, crudo = next(
+        ((o, datos.get(f"{o}_id")) for o in ("contacto", "lead") if datos.get(f"{o}_id")),
+        ("", None),
+    )
+    if not crudo:
+        return []
+    salida = []
+    for recorrido in recorridos:
+        r = entrar(uow, recorrido.id, objeto_id=UUID(str(crudo)), objeto=objeto)
+        salida.append({"recorrido": recorrido.clave, **r})
+    return salida
+
+
+def _entrar_por_segmento_todos(uow: UnidadDeTrabajo) -> dict[str, Any]:
+    resumen: dict[str, Any] = {}
+    for recorrido in (
+        uow.db.execute(
+            select(Recorrido).where(
+                Recorrido.tenant_id == uow.tenant_id,
+                Recorrido.estado == "publicado",
+                Recorrido.entrada == "segmento",
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        resumen[recorrido.clave] = entrar_por_segmento(uow, recorrido)
+    return resumen
 
 
 # ── Salidas (CRM-02.02.02.07) ─────────────────────────────────────────────
@@ -991,7 +1107,14 @@ def tenants_con_recorridos_pendientes() -> list[UUID]:
             )
             .distinct()
         ).all()
-    return sorted({t for (t,) in filas}, key=str)
+        # Y los que tienen un recorrido por segmento publicado: aunque no haya
+        # nadie dentro, en cada vuelta puede haber alguien nuevo en el segmento.
+        por_segmento = s.execute(
+            select(Recorrido.tenant_id)
+            .where(Recorrido.estado == "publicado", Recorrido.entrada == "segmento")
+            .distinct()
+        ).all()
+    return sorted({t for (t,) in filas} | {t for (t,) in por_segmento}, key=str)
 
 
 def avanzar_solos(tenant_id: UUID) -> dict[str, Any]:
@@ -1003,6 +1126,7 @@ def avanzar_solos(tenant_id: UUID) -> dict[str, Any]:
 
     with con_contexto(tenant_id=tenant_id, origen="tareas"):
         with unidad_de_trabajo(tenant_id) as uow:
+            entradas = _entrar_por_segmento_todos(uow)
             r = avanzar(
                 uow,
                 tenant_id,
@@ -1015,8 +1139,9 @@ def avanzar_solos(tenant_id: UUID) -> dict[str, Any]:
         "salidos": len(r["salidos"]),
         "omitidos": len(r["omitidos"]),
         "sin_identidad": [x["recorrido"] for x in r["sin_identidad"]],
+        "entradas_por_segmento": entradas,
     }
-    if r["pendientes"] or r["sin_identidad"]:
+    if r["pendientes"] or r["sin_identidad"] or any(e["entraron"] for e in entradas.values()):
         logger.info("recorridos.avanzados_solos", tenant=str(tenant_id), **resumen)
     return resumen
 
@@ -1332,6 +1457,8 @@ def ficha(db: Session, tenant_id: UUID, recorrido_id: UUID) -> dict[str, Any]:
         "nodos": fila.nodos or {},
         "inicio": fila.inicio,
         "entrada": fila.entrada,
+        "evento_entrada": fila.evento_entrada,
+        "segmento_id": str(fila.segmento_id) if fila.segmento_id else None,
         "salidas": fila.salidas or [],
         "excluye_si_en": fila.excluye_si_en or [],
         "dias_maximos": fila.dias_maximos,

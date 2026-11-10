@@ -36,6 +36,10 @@ import {
   FormularioDeEdicion,
   useEdicion,
 } from "@/componentes/Edicion";
+import {
+  NOMBRE_DE_OPERADOR,
+  PerfilesDeMarketing,
+} from "@/componentes/ConstructorDeSegmento";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
@@ -44,7 +48,7 @@ import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
-import { fechaHora } from "@/lib/formato";
+import { cifra, fechaHora } from "@/lib/formato";
 
 interface Segmento {
   id: string;
@@ -99,7 +103,13 @@ function Condicion({ nodo, nivel = 0 }: { nodo: unknown; nivel?: number }) {
     return (
       <div style={{ marginLeft: nivel * 12 }}>
         <span className="badge badge-muted">
-          {t(n.op === "o" ? "segmento.o" : "segmento.y")}
+          {t(
+            n.op === "o"
+              ? "segmento.o"
+              : n.op === "no"
+                ? "segmento.no"
+                : "segmento.y",
+          )}
         </span>
         {hijos.map((hijo, i) => (
           <Condicion key={i} nodo={hijo} nivel={nivel + 1} />
@@ -107,11 +117,33 @@ function Condicion({ nodo, nivel = 0 }: { nodo: unknown; nivel?: number }) {
       </div>
     );
   }
+  // `atributo` y no `campo`: es la gramática del motor. Leía `campo`, que no
+  // existe, y cada condición salía como «— = "cliente"» (medido el 10-11-2026).
+  const atributo = String(n.atributo ?? "");
+  const propio = atributo.split(".").slice(1).join(".");
+  const operador = String(n.operador ?? "=");
   return (
     <p className="text-dato text-ink" style={{ marginLeft: nivel * 12 }}>
-      <span className="font-mono">{String(n.campo ?? "—")}</span>{" "}
-      <span className="text-ink-muted">{String(n.operador ?? "")}</span>{" "}
-      <span className="font-mono">{JSON.stringify(n.valor ?? null)}</span>
+      <span>
+        {propio.startsWith("campos.")
+          ? propio.slice("campos.".length)
+          : t(`constructorSegmento.atributo.${propio}`, {
+              defaultValue: atributo || "—",
+            })}
+      </span>{" "}
+      <span className="text-ink-muted">
+        {t(
+          `constructorSegmento.op.${NOMBRE_DE_OPERADOR[operador] ?? operador}`,
+          {
+            defaultValue: operador,
+          },
+        )}
+      </span>{" "}
+      {"valor" in n ? (
+        <span className="font-mono">
+          {Array.isArray(n.valor) ? n.valor.join(", ") : String(n.valor ?? "")}
+        </span>
+      ) : null}
     </p>
   );
 }
@@ -366,6 +398,12 @@ export function Segmento() {
                     {t("segmento.porqueCongelar")}
                   </p>
                 ) : null}
+                {/* De cuándo son los datos sobre los que se cuenta, y cómo
+                    ponerlos al día: un cero sobre una copia vieja no es un
+                    cero. */}
+                <div className="mt-3 border-t border-ink-dim/30 pt-2">
+                  <PerfilesDeMarketing objeto={segmento.objeto} />
+                </div>
               </section>
 
               <section className="card p-4">
@@ -407,8 +445,15 @@ export function Segmento() {
                     tiene mil doscientos y poco si tiene cien mil. */}
                     <p className="mt-1 text-dato text-ink">
                       {t("segmento.pctDeCada", {
-                        a: solape.pct_de_a ?? "—",
-                        b: solape.pct_de_b ?? "—",
+                        // Con la coma de aquí: «66.7 %» salía con punto.
+                        a:
+                          solape.pct_de_a === null
+                            ? "—"
+                            : cifra(solape.pct_de_a),
+                        b:
+                          solape.pct_de_b === null
+                            ? "—"
+                            : cifra(solape.pct_de_b),
                       })}
                     </p>
                     <p className="mt-1 text-dato text-ink-muted">

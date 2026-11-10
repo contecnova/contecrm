@@ -1525,6 +1525,33 @@ cambian cómo se usan:
 - **Antes de mandar nada, el segmento te dice a cuánta gente afecta.** Ese número
   es el que hay que mirar: es lo que separa una campaña de un incidente.
 
+### Montar un segmento
+
+**Marketing → Segmentos → Nuevo.** Pones clave y nombre y eliges sobre qué
+segmentas (contacto, lead o cuenta). En «Definición» eliges «Quien cumpla
+todas / alguna / ninguna de estas condiciones» y vas pulsando «Añadir una
+condición» (dato, comparación y valor, todo en desplegables) o «Añadir un
+grupo» para anidar — así se escribe «(A o B) y no C» —. Debajo, **mientras
+escribes**, sale «Llegaría a N …» con el bruto y cuántos caen por supresión o
+por no tener correo, y de cuándo son los datos sobre los que cuenta. En «Más
+campos → Excluye» marcas, por su nombre, los segmentos que hay que restar.
+«Guardar» y ya está.
+
+**Si el número no cuadra con lo que ves en Cuentas o Contactos**, pulsa «Poner
+al día los datos» (en el mismo recuadro o en la ficha del segmento): vuelve a
+leer cuentas, contactos y leads y pone al día la copia sobre la que se cuenta.
+
+**Marketing → Segmentos → el segmento.** «A cuánta gente le llega» (con su
+fecha y el desglose), «Congelar en una lista fija» antes de un envío,
+«Cuánta gente comparte con otro» (eliges el otro y «Medir»: comunes y el % de
+cada uno) y «Qué condiciones lo definen», en palabras.
+
+**Supresiones y listas negras.** **Marketing → Contenido y gobierno →
+Supresiones → Nuevo**: dirección y, en «Más campos», el motivo (lista negra,
+baja, rebote…). Desde ese momento esa dirección no cuenta en ningún segmento.
+Para quitarla: en su fila, la flecha → «Levantar una supresión», con el motivo
+escrito.
+
 Si tu empresa sincroniza audiencias con plataformas de anuncios, hay un límite
 importante: **haber aceptado el boletín no es haber aceptado los anuncios**. Solo
 sale quien tiene base legal para publicidad, y las listas pequeñas no salen —
@@ -1568,10 +1595,27 @@ no avanza solo hasta que alguien lo vuelve a publicar.
 ### Dibujar un recorrido
 
 **Marketing → Campañas → Recorridos → Nuevo.** Pones la clave y el nombre (y
-«Por cuenta» si es B2B) y se abre el lienzo: añades nodos por tipo, eliges sus
-salidas a la derecha, los colocas con las flechas, «Guardar el lienzo» y
-«Publicar». Debajo, el resultado de cada prueba A/B con su ganadora, «Meter a
-alguien» y «Quién está dentro».
+«Por cuenta» si es B2B) y eliges **cómo entra la gente**: a mano o por la API;
+«Todos los de un segmento, y los que vayan entrando» (eliges el segmento); o
+«Cuando ocurre un evento» (por ejemplo, el alta de un contacto o de un lead).
+«Sale en cuanto compra» viene marcado, y en «Cede el paso a estos recorridos»
+marcas los que mandan sobre éste: quien esté en ellos no entra aquí, y quien
+entre en ellos sale de aquí. «Crear y abrir el lienzo»: añades nodos por tipo,
+eliges sus salidas a la derecha, los colocas con las flechas, «Guardar el
+lienzo» y «Publicar». **Al publicar uno por segmento, entra ya toda la gente del
+segmento**; los que lleguen después entran solos. Debajo de la cabecera se lee
+cómo entra y qué lo saca; más abajo, el resultado de cada prueba A/B, «Meter a
+alguien», «Quién está dentro» y **«Por dónde pasa la gente»**: cuántos llegan a
+cada nodo, cuánto se cae en cada paso, cuántos siguen dentro y por qué salieron
+los demás.
+
+### Puntuar un lead
+
+**Ventas → Candidatos → el lead → Puntuación de marketing → «Puntuar ahora».**
+Sale su calificación (sin calificar, MQL o SQL), el interés, el encaje y la
+letra; «Por qué esta puntuación» abre el detalle regla a regla, con lo que le
+falta para el siguiente escalón. Al llegar a SQL, el lead pasa solo a
+«cualificado» en ventas y su puntuación aparece en la lista de candidatos.
 
 ### Ver un correo como le llegará a alguien
 
@@ -2221,6 +2265,47 @@ mismo hilo del mismo caso.
   datos bancarios por voz, que es el fraude telefónico más común que existe.
 
 ---
+
+### Lo que cambia tras recorrer servicio (10-11-2026)
+
+- **Ver con qué tiene que ver un caso**: *Servicio › Casos › (el caso) ›
+  Relacionado › Con qué tiene que ver*. Cada línea lleva el nombre; púlsalo para
+  abrir el cliente, el activo o el contrato.
+- **Marcar un duplicado o colgarlo de una incidencia masiva**: *(el caso) › Más ›
+  Marcar como duplicado de otro* (o *Colgar el caso de una incidencia masiva*),
+  escribe parte del asunto del otro caso y elígelo. En *De qué cuelga y qué cuelga
+  de él* verás el otro caso por su asunto, en los dos casos.
+- **Cerrar pidiendo la conformidad del cliente**: *(el caso) › Cerrar el caso*,
+  elige el **Motivo** de la lista, escribe la **Resolución** (en *Más campos*) y
+  marca **Exige validación**. El cliente lo ve en su portal (*Tus peticiones*) y
+  pulsa *Sí, está resuelto* o *No, sigue pasando*; en el segundo caso el caso se
+  reabre con lo que escribió.
+- **Configurar a los agentes**: *Servicio › Casos › (pestaña) Agentes › Nuevo*.
+  Elige la persona, su capacidad por canal (vacío es sin límite) y sus
+  competencias. Si ya estaba, se sustituye.
+- **Reglas de reparto**: *Servicio › Casos › (pestaña) Reglas de reparto ›
+  Nuevo*. Se evalúan por prioridad; gana la primera que encaja. Para quitar una,
+  menú de la fila › *Quitar una regla de reparto*. El caso dice por qué cayó
+  donde cayó en *Por qué está aquí*.
+- **Mi presencia**: *Servicio › Consola de agente › Mi presencia*. El reparto
+  sólo te da casos si estás *Disponible* u *Ocupado*.
+- **Atribuir casos a un problema**: *Servicio › Postventa › (pestaña) Problemas ›
+  (el problema) › Relacionado › Casos atribuidos al problema › Atribuir un caso*.
+- **Reenviar un calendario laboral a todos los servicios** (si los plazos de SLA
+  salen en horas de reloj): *Administrar › Empresas y unidades › Calendarios
+  laborales › (el calendario) › Más › Volver a enviarlo a todos los servicios*.
+- **Aplicar una macro**: en la conversación, *Respuesta rápida o macro*, elige
+  una y pulsa *Aplicar*.
+- **Trabajar un artículo**: *Servicio › Conocimiento › (el artículo) › Más*:
+  *Escribir una versión nueva*, *Publicar una versión* (elige la audiencia),
+  *Traducir el artículo*, *Votar si el artículo ha servido*, *Retirar*.
+- **Moderar la comunidad**: *Servicio › Conocimiento › (pestaña) Comunidad por
+  moderar › (el hilo) › Más › Aprobar o rechazar un hilo pendiente*.
+- **Orden de trabajo, activo, garantía**: en su ficha, *Más*: *Asignar técnico y
+  cita*, *Empezar el trabajo*, *Apuntar material, tiempo o desplazamiento*,
+  *Completar el trabajo y dejar el parte*, *Firma del cliente*, *Cerrar la orden*;
+  en el activo, *Registrar una garantía* (marca qué cubre), *Sustituir el
+  equipo*, *Anotar una lectura del contador*.
 
 ## Conocimiento y autoservicio (sección 4.3)
 
@@ -3333,6 +3418,21 @@ ellos.
 Para eso está **archivar**: retira el registro de aquí en adelante, deja de
 ofrecerse en los formularios, y no toca nada de lo que ya pasó. Casi siempre es
 lo que se quería hacer.
+
+**Borrar un contacto.** *Cuentas → selector de arriba → Contactos → abre el
+contacto → Más → Borrar contactos → confirma.* Lo que el sistema anota solo
+sobre la persona —su correo y su teléfono como señales de identidad— no lo
+impide: se va con él a la papelera, deja de usarse para reconocerla y para
+proponer duplicados, y vuelve si lo recuperas (*Cuentas → botón Papelera, junto
+al título → abre la entrada → Restaurar*). Al purgarse,
+desaparece con él. Si estaba unido a otra ficha como la misma persona, la unión
+no se toca.
+
+**Buscar un contacto.** En la casilla de búsqueda del listado de contactos, en
+el selector de contactos de un formulario y en *Campañas → selector de arriba →
+Recorridos → abre el recorrido → Meter a alguien* se encuentra por nombre, por
+apellidos o por correo, con las palabras en cualquier orden y sin tildes:
+«medina laura», «perez» o el correo entero.
 
 ---
 

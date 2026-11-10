@@ -1700,8 +1700,8 @@ def sembrar_marketing(api: Api) -> None:
             "nombre": "Clientes activos",
             "objeto": "cuenta",
             "dinamico": True,
-            "descripcion": "Cuentas en estado cliente, que son las que pueden recibir novedades",
-            "definicion": {"atributo": "cuenta.estado", "operador": "=", "valor": "cliente"},
+            "descripcion": "Cuentas activas, que son las que pueden recibir novedades",
+            "definicion": {"atributo": "cuenta.estado", "operador": "=", "valor": "activa"},
         },
         {
             "clave": "grandes_cuentas",
@@ -1744,7 +1744,7 @@ def sembrar_marketing(api: Api) -> None:
             "definicion": {
                 "op": "y",
                 "hijos": [
-                    {"atributo": "cuenta.estado", "operador": "=", "valor": "cliente"},
+                    {"atributo": "cuenta.estado", "operador": "=", "valor": "activa"},
                     {"atributo": "cuenta.empleados", "operador": ">=", "valor": 500},
                 ],
             },
@@ -1762,49 +1762,59 @@ def sembrar_marketing(api: Api) -> None:
             # puntúan por separado a propósito —un becario muy interesado y un
             # director de compras que aún no ha abierto nada no son el mismo
             # caso, y un único número los confundiría—.
+            #
+            # Cada regla mira un dato del perfil de marketing del lead
+            # (`lead.<dato>`), que es el ámbito con el que se puntúa. Hasta el
+            # 10-11-2026 miraban `sector`, `evento` o `paginas` sueltos, que no
+            # existen en ese ámbito: ninguna regla casaba y todos los leads
+            # salían «sin calificar».
             "reglas_interes": [
                 {
-                    "nombre": "Ha pedido el catálogo técnico",
+                    "nombre": "Llegó por la web o por un evento",
                     "condicion": {
-                        "atributo": "evento",
-                        "operador": "=",
-                        "valor": "landing.enviada",
+                        "atributo": "lead.origen",
+                        "operador": "en",
+                        "valor": ["web", "evento", "landing", "feria"],
+                    },
+                    "puntos": 40,
+                },
+                {
+                    "nombre": "Ha dejado su correo",
+                    "condicion": {"atributo": "lead.email", "operador": "no_vacio"},
+                    "puntos": 20,
+                },
+                {
+                    "nombre": "Ya se le ha contactado",
+                    "condicion": {
+                        "atributo": "lead.estado",
+                        "operador": "en",
+                        "valor": ["contactado", "cualificado"],
                     },
                     "puntos": 15,
-                },
-                {
-                    "nombre": "Abre los correos",
-                    "condicion": {"atributo": "aperturas_30d", "operador": ">=", "valor": 3},
-                    "puntos": 10,
-                },
-                {
-                    "nombre": "Ha visitado la página de precios",
-                    "condicion": {
-                        "atributo": "paginas",
-                        "operador": "contiene",
-                        "valor": "precios",
-                    },
-                    "puntos": 10,
                 },
             ],
             "reglas_encaje": [
                 {
-                    "nombre": "Fabricante de vehículo",
-                    "condicion": {"atributo": "sector", "operador": "=", "valor": "automocion"},
+                    "nombre": "Decide la compra",
+                    "condicion": {
+                        "atributo": "lead.cargo",
+                        "operador": "en",
+                        "valor": ["Director de compras", "Directora de compras", "Gerente"],
+                    },
                     "puntos": 30,
-                },
-                {
-                    "nombre": "Más de 500 empleados",
-                    "condicion": {"atributo": "cuenta.empleados", "operador": ">=", "valor": 500},
-                    "puntos": 20,
                 },
                 {
                     "nombre": "Mercado objetivo",
                     "condicion": {
-                        "atributo": "pais",
+                        "atributo": "lead.pais",
                         "operador": "en",
                         "valor": ["ES", "FR", "DE", "PT"],
                     },
+                    "puntos": 20,
+                },
+                {
+                    "nombre": "Empresa identificada",
+                    "condicion": {"atributo": "lead.nombre", "operador": "no_vacio"},
                     "puntos": 10,
                 },
             ],
@@ -1818,11 +1828,13 @@ def sembrar_marketing(api: Api) -> None:
             "umbral_mql_encaje": 30,
             "umbral_sql_interes": 70,
             "umbral_sql_encaje": 50,
+            # `grado`, que es lo que lee el cálculo: con `clave` todos salían sin
+            # letra.
             "grados": [
-                {"clave": "A", "desde": 80},
-                {"clave": "B", "desde": 60},
-                {"clave": "C", "desde": 40},
-                {"clave": "D", "desde": 0},
+                {"grado": "A", "desde": 50},
+                {"grado": "B", "desde": 30},
+                {"grado": "C", "desde": 10},
+                {"grado": "D", "desde": 0},
             ],
         },
     )

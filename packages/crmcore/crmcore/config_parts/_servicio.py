@@ -142,6 +142,10 @@ class _ServicioSettings(BaseSettings):
     tarea_reverificaciones_intervalo_s: int = Field(3_600, ge=60, le=86_400)
     tarea_informes_intervalo_s: int = Field(300, ge=30, le=86_400)
     tarea_purgas_intervalo_s: int = Field(3_600, ge=60, le=86_400)
+    # Cada cuánto se aplican las reglas de escalado de casos (CRM-04.01.01.07).
+    # Escalar «al 90 % del SLA» con una pasada por hora deja pasar plazos de una
+    # hora enteros; cinco minutos es el grano de un SLA de primera respuesta.
+    tarea_escalado_intervalo_s: int = Field(300, ge=30, le=3_600)
     # Cada cuánto se miran las revisiones de accesos fuera de plazo para
     # marcarlas y avisar a su responsable (CRM-07.03.02.15).
     tarea_recertificacion_intervalo_s: int = Field(3_600, ge=60, le=86_400)

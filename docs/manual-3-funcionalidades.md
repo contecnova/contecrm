@@ -761,6 +761,74 @@ esto es lo que cambia para quien vende:
   ruta contestaba error a todo cambio. El prorrateo usa los días reales del
   periodo y la baja devuelve sólo lo que queda.
 
+### Servicio recorrido en pantalla (10-11-2026)
+
+Se recorrieron una a una, como un agente de soporte y como su responsable, las
+capacidades de servicio que constaban hechas sin haberse visto. Lo que no
+funcionaba se arregló; esto es lo que cambia para quien atiende:
+
+- **El caso dice con quién tiene que ver, por su nombre** (`CRM-04.01.01.03`):
+  cliente, contacto, producto, activo, contrato y pedido salen con su nombre y
+  enlazan a su ficha. Antes el cliente era «Abrir» y el resto un trozo de UUID.
+- **Duplicados, hijos e incidencias masivas se leen en los dos sentidos**
+  (`CRM-04.01.01.04`, `.11`): el caso colgado dice de qué incidencia cuelga, el
+  original lista sus duplicados, y marcar un duplicado o colgar de un maestro se
+  hace eligiendo el otro caso por su asunto, no tecleando su identificador.
+- **Los casos se reparten solos al abrirse** (`CRM-04.01.01.05`, `.06`): las
+  reglas de reparto, la capacidad por canal y las competencias existían y sólo
+  se aplicaban si alguien lo pedía a mano. Ahora hay pantallas para los
+  **agentes** (capacidad y competencias) y para las **reglas de reparto**, y la
+  **presencia** se cambia en la consola de agente.
+- **Los escalados son automáticos** (`CRM-04.01.01.07`): las reglas de escalado
+  se aplican solas cada pocos minutos (ajuste `tarea_escalado_intervalo_s`).
+  Antes sólo con el botón «Aplicar las reglas de escalado ahora».
+- **El motivo de cierre es de una lista y el cliente valida el cierre**
+  (`CRM-04.01.01.09`): los motivos son el vocabulario `motivos_cierre_caso`
+  (editable en Gestor de objetos › Vocabularios). Cerrar «exigiendo validación»
+  deja el caso pendiente del cliente, que desde el portal lo da por resuelto o lo
+  reabre diciendo qué sigue pasando.
+- **Los problemas enseñan sus casos** (`CRM-04.01.01.11`): la ficha de un problema
+  lista los casos atribuidos y permite atribuir más; el caso maestro se elige
+  entre casos.
+- **El derecho de servicio se ve en el caso** (`CRM-04.01.02.01`, `.06`): el
+  panel «Qué derecho lo cubre» no salía nunca; ahora dice qué derecho aplica y
+  cuánto queda de cada bolsa.
+- **Los SLA cuentan horas laborables de verdad** (`CRM-04.01.02.04`): los
+  calendarios laborales no llegaban nunca al servicio de casos y todos los plazos
+  se contaban en horas de reloj. Ahora se propagan al crearlos y al añadir
+  festivos, y un calendario que ya existía se reenvía con «Volver a enviarlo a
+  todos los servicios». Si un SLA nombra un calendario que no existe, se usa el
+  de la empresa por defecto. El reloj parado (esperando al cliente) se dice en la
+  ficha.
+- **«En riesgo» enseña primero lo que se puede salvar** (`CRM-04.01.02.05`), y el
+  **informe de cumplimiento por cliente** dice el nombre del cliente
+  (`CRM-04.01.02.07`).
+- **Las macros se aplican desde la conversación** (`CRM-04.02.02.04`).
+- **El artículo de conocimiento se trabaja desde su ficha** (`CRM-04.03.01.01`,
+  `.03`, `.06`): escribir versión, publicar, traducir, votar y retirar están en
+  **Más**. Mientras se corrige un artículo publicado, su audiencia **sigue
+  viendo la versión publicada**: antes desaparecía del portal y de la búsqueda.
+- **El cliente pregunta en la comunidad desde el portal** (`CRM-04.03.02.04`), y
+  lo que espera moderación tiene su lista.
+- **Órdenes de trabajo, activos y garantías se operan desde su ficha**
+  (`CRM-04.04.01.01`, `CRM-04.04.02.03`): asignar, apuntar líneas, empezar,
+  completar, firmar y cerrar; registrar una garantía (diciendo qué cubre),
+  sustituir un equipo, anotar el contador. El historial del activo dice qué pasó
+  y cuándo (`CRM-04.04.02.04`).
+- **Devoluciones y expedientes no piden escribir lo que es de una lista**
+  (`CRM-04.05.01.01`, `.03`): el tipo de resolución y el motivo para parar el
+  reloj legal se eligen.
+
+Quedan sin dar por vistos: la encuesta tras el cierre (`CRM-04.01.01.12`), que
+no se programa sola ni tiene página para contestarla; el reloj de actualización
+periódica (`CRM-04.01.02.03`), que se declara y no se calcula; la ruta del día
+del técnico (`CRM-04.04.01.02`), sin puerta en pantalla; fotos y evidencias del
+parte (`CRM-04.04.01.06`); los créditos de servicio (`CRM-04.01.02.08`), la
+visibilidad por canal (`CRM-04.03.01.02`) y el formulario web
+(`CRM-04.02.01.02`), sin recorrer del todo; y la consola embebible y la API de
+conocimiento (`CRM-04.02.02.08`, `CRM-04.03.01.07`), que son para integradores y
+no tienen pantalla de agente.
+
 ### Lecciones aprendidas (`CRM-03.01.01.15`, `CRM-07.04.03.34`)
 
 Cada oportunidad que se cierra —ganada o perdida— deja una **lección**. En las
@@ -3334,7 +3402,15 @@ manejan en la pantalla **Calidad del dato**, a la que se llega desde
   `POST /calidad-dato/identidades/observar`. Las parejas que comparten señales
   se proponen con sus señales y su puntuación, y se unen con un clic; unir no
   borra ninguna ficha y se deshace con motivo. Al anonimizar un contacto, sus
-  señales se borran.
+  señales se borran. Las señales **siguen a su contacto**: no impiden
+  borrarlo; en la papelera quedan inactivas —no resuelven ni se proponen—,
+  vuelven si se restaura y desaparecen al purgarlo. Una unión ya hecha no se
+  toca, y un principal en la papelera no recoge a nadie al resolver.
+- **Buscar contactos** por nombre, apellidos o correo, en cualquier orden y
+  sin tildes («medina laura», «perez», `ana@empresa.com`): cada palabra tiene
+  que estar en alguno de esos campos, y el correo sólo cuenta para quien lo ve
+  en claro. Es la búsqueda del listado de contactos, del selector de contactos
+  y de «Meter a alguien» en los recorridos.
 - **Umbral de coincidencia por objeto** (`CRM-01.01.04.02`). Sugerir,
   bloquear y proponer, por cuenta y por contacto; lo que no se fija sale del
   umbral general. Lo usan el alta y la cola de duplicados. El lead tiene los
@@ -8192,6 +8268,21 @@ publica sale nulo, y el segmento que dependa de él no encontrará a nadie. Es
 preferible a rellenarlo con un valor por defecto, que daría un segmento que parece
 funcionar y selecciona mal.
 
+**Ponerla al día de una vez (10-11-2026).** Medido ese día en el tenant de
+operación: 44 perfiles de cuenta para 66 cuentas vivas, 9 de 202 contactos y 15
+de 436 leads, y **ninguno** con estado, empleados, sector o cargo — los eventos
+de alta sólo traen el nombre y no hay evento de modificación. Todos los
+segmentos daban cero. Ahora «Poner al día los datos» (en el constructor y en la
+ficha del segmento, y `POST /segmentos/perfiles/sincronizar`) lee cuentas,
+contactos y leads **por su API pública**, con los permisos de quien lo pide, y
+vuelca lo que sirve para segmentar. Tres reglas: lo que el origen dice manda,
+también cuando dice «vacío»; un objeto que no se pudo leer **entero** se deja
+como estaba (con media lista no se sabe quién se ha dado de baja); y **un campo
+que llega tapado no se copia** —la primera vuelta guardó el sector como «····»
+y el cargo como «·····e IT»—. La última actividad y el alta se copian del
+origen, no se ponen a «ahora»: un volcado no es actividad. Y a la vista, en
+cada recuento, de cuándo es el dato más viejo.
+
 Los perfiles se **fusionan, no se reemplazan**: cada evento trae lo suyo —el de
 alta trae el correo, el de asignación trae el dueño— y reemplazar dejaría el
 perfil con solo lo del último. Un borrado en origen **marca de baja y no borra**:
@@ -8237,6 +8328,22 @@ La **misma definición** decide sobre uno concreto —«¿este lead entra en el
 recorrido?»— y sobre todos —el listado—. Dos gramáticas para lo mismo es cómo se
 acaba con un recorrido que admite a alguien que el segmento no lista.
 
+### El constructor y la estimación antes de guardar (`CRM-02.01.01.01`, `.02`, `.04`)
+
+Hasta el 10-11-2026 «Definición» era un editor de clave y valor con un «Editar
+como JSON»: para «(A o B) y no C» había que escribir el árbol sabiéndose los
+nombres de atributos y operadores, y el tamaño sólo se sabía después de
+guardar. Ahora es un constructor: grupos de «todas», «alguna» o «ninguna»
+(`y`, `o` y `no(o(…))` en el motor), anidables, con el dato, la comparación y
+el valor en desplegables. **Los atributos y operadores los da el servidor**
+(`GET /segmentos/atributos`): sólo los que sabe traducir a SQL **y que algo
+rellena** —ofrecer la «última compra», que no escribe nadie, daría un segmento
+vacío que parece decir que no hay nadie—. Mientras se escribe,
+`POST /segmentos/estimar` devuelve bruto, alcanzables y caídos por supresión
+**con el mismo código** que el tamaño de un segmento guardado, restando
+también los segmentos marcados en «Excluye», que ahora se eligen por su nombre
+y no por su identificador.
+
 ### El tamaño y la API de audiencias (`CRM-02.01.01.04`, `CRM-02.01.01.05`)
 
 Un número sin fecha se lee como actual aunque sea de hace tres semanas, y sobre
@@ -8255,6 +8362,12 @@ que una integración nueva se olvide de las supresiones y acabe anunciándole a
 quien pidió no ser contactado.
 
 ### Las supresiones se aplican siempre (`CRM-02.01.01.06`)
+
+Levantar una supresión desde su fila («Levantar una supresión», con el motivo
+escrito) contestaba 422 hasta el 10-11-2026: las acciones de fila con `DELETE`
+tiraban siempre el cuerpo, y ésta exige el motivo. Ahora un `DELETE` con campos
+los manda.
+
 
 Es una tabla aparte y se aplica **por encima de cualquier segmento**. Si fuera una
 condición más, bastaría con que alguien montara un segmento sin acordarse de
@@ -8322,6 +8435,18 @@ recálculo llenaría la cola de eventos idénticos y haría que la regla «avisa
 ventas cuando pase a MQL» disparara cada hora sobre el mismo lead. Y el evento
 lleva **los motivos dentro**: «lead caliente» sin el porqué obliga al comercial a
 abrir la ficha antes de llamar, y la mitad de las veces no la abre.
+
+**El traspaso, que no recogía nadie (10-11-2026).** `lead.qualified` constaba
+como evento de `sales` —que no lo emite— y no tenía consumidor: el lead pasaba a
+SQL en la puntuación y en ventas seguía «nuevo», con la columna de puntuación
+vacía. Ahora el productor declarado es `marketing`, y `sales` lo recoge: la
+puntuación de interés queda en el lead y, al llegar a SQL, pasa a
+«cualificado» si la máquina de estados de la empresa lo permite desde donde
+está (si no, se deja y se registra). En pantalla, la ficha del lead tiene
+«Puntuación de marketing» con «Puntuar ahora» y el enlace al porqué, que antes
+no enlazaba nada. Los tramos de grado se leen con `grado` o con `clave`: la
+configuración inicial los sembraba con `clave` y todos los leads salían con la
+letra «None».
 
 El modelo se **versiona**, como los SLA y el esquema del tenant: editar en
 caliente hace que las puntuaciones de ayer y las de hoy no sean comparables sin
@@ -10175,6 +10300,28 @@ solo llega una rama parece un desastre cuando está funcionando.
 
 Si el recorrido tiene ramas **se avisa**, porque entonces el camino principal es
 una aproximación y fingir que hay uno solo daría un embudo que no describe a nadie.
+
+### Cómo se entra en un recorrido y qué saca de él (`CRM-02.02.02.02`, `.07`, `.08`)
+
+Medido el 10-11-2026: `entrada`, `segmento_id` y `evento_entrada` se guardaban y
+**no los leía nadie**, y el alta sólo pedía clave y nombre. Ahora:
+
+- **Por segmento**, al publicar entra ya toda la gente del segmento, y en cada
+  vuelta de la tarea de recorridos entra quien haya llegado al segmento
+  después. Con las mismas comprobaciones que la entrada manual —quien ya
+  estuvo no repite salvo reentrada, el suprimido no entra—.
+- **Por evento**, el consumidor de marketing —que ya escucha todos los eventos
+  para el perfil— mete a quien protagoniza el evento (`contacto_id` o
+  `lead_id`) en los recorridos publicados que lo esperan, **en la misma unidad
+  de trabajo que el perfil**: en otra, el perfil recién escrito aún no se veía
+  y la entrada se rechazaba por «sin dirección». El alta ofrece sólo los
+  eventos del catálogo que dicen a quién.
+- **Ceder el paso a otro recorrido**: quien está en uno de los marcados no
+  entra; y quien entra en uno de ellos **sale de éste** con el motivo «otro
+  recorrido prioritario», que existía y nada ponía nunca.
+- **«Por dónde pasa la gente»**: `GET /recorridos/{id}/embudo` era real y no lo
+  pintaba ninguna pantalla. Ahora la ficha enseña personas por nodo, la caída
+  en cada paso, cuántos siguen dentro y las salidas por motivo.
 
 ### Recorridos por cuenta (`CRM-02.02.02.09`)
 

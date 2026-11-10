@@ -66,6 +66,62 @@ def crear_cola(datos: CrearCola, uow: UowDep, principal: AutenticadoDep) -> Any:
     return {"id": str(fila.id), "clave": fila.clave}
 
 
+# ── Reglas de reparto: verlas y quitarlas (CRM-04.01.01.05) ──────────────
+#
+# Se podían crear y no se podían ver: la regla entraba, repartía, y nadie podía
+# saber cuáles había ni quitar la que sobraba. Van ANTES de `/{clave}`, que si
+# no se queda con «reglas» como si fuera la clave de una cola.
+
+
+@router_colas.get(
+    "/reglas",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    response_model=list[dict[str, Any]],
+    summary="Reglas de reparto de casos",
+    description="En el orden en que se evalúan: gana la primera que encaja.",
+)
+def listar_reglas(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(ReglaAsignacion)
+            .where(ReglaAsignacion.tenant_id == principal.tenant_id)
+            .order_by(ReglaAsignacion.prioridad, ReglaAsignacion.nombre)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(r.id),
+            "nombre": r.nombre,
+            "prioridad": r.prioridad,
+            "activa": r.activa,
+            "canal": r.canal,
+            "estrategia": r.estrategia,
+            "cola": r.cola,
+            "competencias": list(r.competencias or []),
+            "condiciones": list(r.condiciones or []),
+        }
+        for r in filas
+    ]
+
+
+@router_colas.delete(
+    "/reglas/{regla_id}",
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Quitar una regla de reparto",
+    description="Lo ya repartido no se mueve: la traza de cada asignación guarda el nombre de la regla.",
+)
+def quitar_regla(regla_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import NoEncontrado
+
+    fila = uow.db.get(ReglaAsignacion, regla_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Esa regla no existe", error_code="service.regla_no_encontrada")
+    uow.db.delete(fila)
+    return {"id": str(regla_id), "quitada": True}
+
+
 class CambiarCola(BaseModel):
     nombre: str | None = Field(None, max_length=200)
     descripcion: str | None = None
@@ -301,6 +357,108 @@ def configurar_agente(datos: ConfigurarAgente, uow: UowDep, principal: Autentica
     fila.activo = datos.activo
     uow.db.flush()
     return {"usuario_id": str(fila.usuario_id), "capacidad": fila.capacidad}
+
+
+@router_agentes.get(
+    "",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    response_model=list[dict[str, Any]],
+    summary="Agentes de servicio",
+    description=(
+        "Todos los configurados, estén o no disponibles, con su presencia, su "
+        "capacidad por canal y sus competencias. La capacidad y las "
+        "competencias se podían fijar y no ver: el reparto por carga y "
+        "competencia decidía con datos que nadie podía revisar."
+    ),
+)
+def listar_agentes(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(AgenteServicio)
+            .where(AgenteServicio.tenant_id == principal.tenant_id)
+            .order_by(AgenteServicio.presencia, AgenteServicio.usuario_id)
+        )
+        .scalars()
+        .all()
+    )
+    carga = ope.carga_de(db, principal.tenant_id, [a.usuario_id for a in filas])
+    return [
+        {
+            "id": str(a.usuario_id),
+            "usuario_id": str(a.usuario_id),
+            "presencia": a.presencia,
+            "presencia_desde": a.presencia_desde.isoformat() if a.presencia_desde else None,
+            "carga": carga.get(a.usuario_id, 0),
+            **{f"capacidad_{c}": (a.capacidad or {}).get(c) for c in ope.CANALES},
+            "competencias": list(a.competencias or []),
+            "nivel": a.nivel,
+            "activo": a.activo,
+        }
+        for a in filas
+    ]
+
+
+class AltaAgente(BaseModel):
+    """Lo mismo que `PUT /agentes`, con la capacidad canal a canal.
+
+    Un diccionario `{"chat": 3}` en un formulario es una caja de JSON; un
+    número por canal es lo que un supervisor sabe rellenar. Vacío es «sin
+    límite», no cero.
+    """
+
+    usuario_id: UUID
+    capacidad_caso: int | None = Field(None, ge=0, le=500)
+    capacidad_chat: int | None = Field(None, ge=0, le=50)
+    capacidad_telefono: int | None = Field(None, ge=0, le=10)
+    capacidad_correo: int | None = Field(None, ge=0, le=500)
+    competencias: list[str] = Field(default_factory=list)
+    nivel: int = Field(1, ge=1, le=9)
+    activo: bool = True
+
+
+@router_agentes.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Configurar un agente",
+    description="Si ya estaba configurado, se sustituye su capacidad y sus competencias.",
+)
+def alta_agente(datos: AltaAgente, uow: UowDep, principal: AutenticadoDep) -> Any:
+    capacidad = {c: v for c in ope.CANALES if (v := getattr(datos, f"capacidad_{c}")) is not None}
+    return configurar_agente(
+        ConfigurarAgente(
+            usuario_id=datos.usuario_id,
+            capacidad=capacidad,
+            competencias=datos.competencias,
+            nivel=datos.nivel,
+            activo=datos.activo,
+        ),
+        uow,
+        principal,
+    )
+
+
+@router_agentes.delete(
+    "/{usuario_id}",
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Dejar de tratarlo como agente",
+    description="No toca sus casos: los que llevaba siguen siendo suyos.",
+)
+def quitar_agente(usuario_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import NoEncontrado
+
+    fila = uow.db.execute(
+        select(AgenteServicio).where(
+            AgenteServicio.tenant_id == principal.tenant_id,
+            AgenteServicio.usuario_id == usuario_id,
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        raise NoEncontrado(
+            "No está configurado como agente", error_code="service.agente_no_encontrado"
+        )
+    uow.db.delete(fila)
+    return {"usuario_id": str(usuario_id), "quitado": True}
 
 
 @router_agentes.get(

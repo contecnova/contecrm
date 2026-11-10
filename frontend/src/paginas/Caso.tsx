@@ -45,9 +45,11 @@ import { ResponderCaso } from "@/componentes/ResponderCaso";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
-import { fecha, fechaHora } from "@/lib/formato";
-import { moduloDe } from "@/lib/modulos";
+import { fecha, fechaHora, rotuloDeOpcion } from "@/lib/formato";
+import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
+import { nombresDeRegistros, type NombresResueltos } from "@/lib/nombres";
 import { recursoDe } from "@/lib/recursos";
+import { cn } from "@/lib/utiles";
 
 interface Asignacion {
   at: string;
@@ -86,16 +88,29 @@ interface Sla {
   vence_resolucion_at: string | null;
   primera_respuesta_at: string | null;
   pausa_acumulada_s: number;
+  /** Si el reloj está parado ahora mismo (esperando al cliente), desde cuándo. */
+  pausado_desde?: string | null;
   incumplio_primera_respuesta: boolean;
   incumplio_resolucion: boolean;
+}
+
+interface CasoRelacionado {
+  id: string;
+  asunto: string;
+  estado: string;
 }
 
 interface Arbol {
   caso: string;
   padre: string | null;
-  hijos: { id: string; asunto: string; estado: string }[];
-  colgados_del_maestro: { id: string; asunto: string; estado: string }[];
+  /** La incidencia masiva de la que cuelga, si cuelga de alguna. */
+  maestro?: string | null;
   duplicado_de: string | null;
+  /** El asunto de padre, maestro y original, por su identificador. */
+  asuntos?: Record<string, string>;
+  hijos: CasoRelacionado[];
+  colgados_del_maestro: CasoRelacionado[];
+  duplicados?: CasoRelacionado[];
 }
 
 interface Cierre {
@@ -134,14 +149,22 @@ interface Caso {
   historial: { tipo: string; detalle: Record<string, unknown>; at: string }[];
 }
 
-/** A qué pantalla lleva cada relación. Lo que no tiene ficha no se enlaza. */
-const ADONDE: Record<string, string | null> = {
-  cuenta_id: "/m/cuentas/cuenta/",
-  contacto_id: "/m/cuentas/contacto/",
-  producto_id: null,
-  activo_id: null,
-  contrato_id: null,
-  pedido_id: null,
+/**
+ * De qué tipo de registro es cada relación.
+ *
+ * Con el tipo se resuelve su NOMBRE y la pantalla que lo enseña. Antes la
+ * cuenta salía como «Cliente · Abrir» —sin decir qué cliente— y el activo,
+ * el contrato, el producto y el pedido como los ocho primeros caracteres de
+ * su UUID: el agente tenía que abrir otra pantalla para saber de quién era el
+ * caso. Medido el 10-11-2026 recorriendo la ficha de un caso.
+ */
+const TIPO_DE: Record<string, string> = {
+  cuenta_id: "cuenta",
+  contacto_id: "contacto",
+  producto_id: "producto",
+  activo_id: "activo",
+  contrato_id: "contrato",
+  pedido_id: "pedido",
 };
 
 export function Caso() {
@@ -187,16 +210,16 @@ export function Caso() {
         // es el caso no hay a quién preguntárselo.
         const cuenta = datos.relacionado_con?.cuenta_id;
         if (!cuenta) return;
-        void llamar<{ entitlement_id?: string }>(
+        // `aplicable` ya trae el saldo. Se esperaba un `entitlement_id` que
+        // la ruta no devuelve, así que el panel no salía en NINGÚN caso
+        // (medido el 10-11-2026 con un derecho recién imputado).
+        void llamar<{ tiene_derecho?: boolean; saldo?: Saldo | null }>(
           `/api/v1/entitlements/aplicable?cuenta_id=${cuenta}`,
           { signal: control.signal },
         )
           .then((r) => {
-            const cual = r.datos?.entitlement_id;
-            if (!cual) return;
-            return llamar<Saldo>(`/api/v1/entitlements/${cual}/saldo`, {
-              signal: control.signal,
-            }).then((s) => setSaldo(s.datos));
+            if (r.datos?.tiene_derecho && r.datos.saldo)
+              setSaldo(r.datos.saldo);
           })
           .catch(() => undefined);
       })
@@ -346,6 +369,7 @@ export function Caso() {
 
       <Acciones
         acciones={acciones}
+        recurso={recurso}
 
         servicio="service"
 
@@ -435,7 +459,27 @@ function ConQueTieneQueVer({
   relaciones: Record<string, string | null>;
 }) {
   const { t } = useTranslation();
-  const puestas = Object.entries(relaciones ?? {}).filter(([, v]) => v);
+  const puestas = Object.entries(relaciones ?? {}).filter(([, v]) => v) as [
+    string,
+    string,
+  ][];
+  const [resueltos, setResueltos] = useState<NombresResueltos | null>(null);
+  const clave = puestas.map(([c, v]) => `${c}:${v}`).join(",");
+
+  useEffect(() => {
+    if (!clave) return;
+    const control = new AbortController();
+    void nombresDeRegistros(
+      clave.split(",").map((par) => {
+        const [campo = "", id = ""] = par.split(":");
+        return { objeto_tipo: TIPO_DE[campo] ?? "", objeto_id: id };
+      }),
+      control.signal,
+    ).then((r) => {
+      if (!control.signal.aborted) setResueltos(r);
+    });
+    return () => control.abort();
+  }, [clave]);
 
   return (
     <section className="card p-4">
@@ -444,28 +488,39 @@ function ConQueTieneQueVer({
         <Vacio titulo={t("caso.sinRelaciones")} compacto />
       ) : (
         <ul className="divide-y divide-ink-dim/30">
-          {puestas.map(([clave, valor]) => {
-            const adonde = ADONDE[clave];
+          {puestas.map(([campo, valor]) => {
+            const tipo = TIPO_DE[campo] ?? "";
+            const nombre = resueltos?.nombres.get(valor);
+            // Un tipo que se pudo preguntar y no trae el registro: ya no
+            // existe. Uno que no se pudo preguntar: no se sabe, y se dice así.
+            const texto =
+              nombre ??
+              (resueltos === null
+                ? "…"
+                : resueltos.preguntados.has(tipo)
+                  ? t("caso.yaNoEsta")
+                  : t("caso.sinNombre"));
+            // Sólo se enlaza lo que TIENE ficha y sigue existiendo: un enlace
+            // a una pantalla que no existe parece que algo se ha roto.
+            const adonde = nombre && moduloDeObjeto(tipo);
             return (
               <li
-                key={clave}
+                key={campo}
                 className="flex items-baseline justify-between gap-3 py-1.5"
               >
                 <span className="text-rotulo text-ink-faint">
-                  {t(`caso.rel.${clave}`)}
+                  {t(`caso.rel.${campo}`)}
                 </span>
-                {/* Sólo se enlaza lo que TIENE ficha: un enlace a una pantalla
-                    que no existe parece que algo se ha roto. */}
                 {adonde ? (
                   <Link
-                    to={`${adonde}${valor}`}
-                    className="text-dato text-ink hover:underline"
+                    to={`/m/${adonde}/${tipo}/${valor}`}
+                    className="truncate text-dato text-ink hover:underline"
                   >
-                    {t("caso.abrir")}
+                    {nombre}
                   </Link>
                 ) : (
-                  <span className="text-dato text-ink-muted">
-                    {String(valor).slice(0, 8)}
+                  <span className="truncate text-dato text-ink-muted">
+                    {texto}
                   </span>
                 )}
               </li>
@@ -526,6 +581,11 @@ function ElReloj({ sla }: { sla: Sla }) {
               })}
         </li>
       </ul>
+      {sla.pausado_desde ? (
+        <p className="mt-1 text-dato text-warning">
+          {t("caso.relojParado", { desde: fechaHora(sla.pausado_desde) })}
+        </p>
+      ) : null}
       {horasEnPausa > 0 ? (
         <p className="mt-2 text-rotulo text-warning">
           {t("caso.enPausa", { horas: horasEnPausa })}
@@ -543,53 +603,87 @@ function ElReloj({ sla }: { sla: Sla }) {
  */
 function DeQuienCuelga({ arbol }: { arbol: Arbol }) {
   const { t } = useTranslation();
-  const hijos = arbol?.hijos ?? [];
-  const colgados = arbol?.colgados_del_maestro ?? [];
-  const nada =
-    !arbol?.padre &&
-    !arbol?.duplicado_de &&
-    hijos.length === 0 &&
-    colgados.length === 0;
+  const asuntos = arbol?.asuntos ?? {};
+  // Hacia arriba: de qué cuelga. Con el asunto del otro caso: «cuelga de otro
+  // caso» obligaba a pinchar para saber de cuál.
+  const arriba = (
+    [
+      ["cuelgaDe", arbol?.padre],
+      ["colgadoDe", arbol?.maestro],
+      ["duplicadoDe", arbol?.duplicado_de],
+    ] as const
+  ).filter(([, id]) => id) as [string, string][];
+  // Hacia abajo, cada relación en su grupo: un hijo, un caso colgado de una
+  // incidencia masiva y un duplicado se tratan distinto, y en una sola lista
+  // no se distinguían.
+  const abajo = (
+    [
+      ["hijos", arbol?.hijos ?? []],
+      ["colgados", arbol?.colgados_del_maestro ?? []],
+      ["duplicados", arbol?.duplicados ?? []],
+    ] as const
+  ).filter(([, lista]) => lista.length > 0);
 
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("caso.jerarquia")}</h2>
-      {nada ? (
+      {arriba.length === 0 && abajo.length === 0 ? (
         <Vacio titulo={t("caso.sinJerarquia")} compacto />
       ) : (
-        <ul className="space-y-1 text-dato">
-          {arbol.padre ? (
-            <li>
-              <Link
-                to={`/m/casos/caso/${arbol.padre}`}
-                className="text-ink hover:underline"
-              >
-                {t("caso.cuelgaDe")}
-              </Link>
-            </li>
+        <div className="space-y-2 text-dato">
+          {arriba.length > 0 ? (
+            <ul className="space-y-1">
+              {arriba.map(([clave, id]) => (
+                <li
+                  key={clave}
+                  className={cn(
+                    "flex flex-wrap items-baseline gap-x-2",
+                    clave === "duplicadoDe" && "text-warning",
+                  )}
+                >
+                  <span className="text-rotulo text-ink-faint">
+                    {t(`caso.${clave}`)}
+                  </span>
+                  {asuntos[id] ? (
+                    <Link
+                      to={`/m/casos/caso/${id}`}
+                      className="hover:underline"
+                    >
+                      {asuntos[id]}
+                    </Link>
+                  ) : (
+                    <span className="text-ink-muted">
+                      {t("caso.yaNoExiste")}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
           ) : null}
-          {arbol.duplicado_de ? (
-            <li className="text-warning">
-              <Link
-                to={`/m/casos/caso/${arbol.duplicado_de}`}
-                className="hover:underline"
-              >
-                {t("caso.duplicadoDe")}
-              </Link>
-            </li>
-          ) : null}
-          {[...hijos, ...colgados].map((h) => (
-            <li key={h.id} className="flex flex-wrap items-baseline gap-x-2">
-              <Link
-                to={`/m/casos/caso/${h.id}`}
-                className="text-ink hover:underline"
-              >
-                {h.asunto}
-              </Link>
-              <span className="chip-dato">{h.estado}</span>
-            </li>
+          {abajo.map(([clave, lista]) => (
+            <div key={clave}>
+              <p className="text-rotulo text-ink-faint">
+                {t(`caso.${clave}`, { cuantos: lista.length })}
+              </p>
+              <ul className="space-y-1">
+                {lista.map((h) => (
+                  <li
+                    key={h.id}
+                    className="flex flex-wrap items-baseline gap-x-2"
+                  >
+                    <Link
+                      to={`/m/casos/caso/${h.id}`}
+                      className="text-ink hover:underline"
+                    >
+                      {h.asunto}
+                    </Link>
+                    <span className="chip-dato">{h.estado}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );
@@ -626,8 +720,18 @@ function ComoAcabo({ cierre, casoId }: { cierre: Cierre; casoId: string }) {
           {t("caso.pendienteDelCliente", { estado: cierre.validacion_cliente })}
         </p>
       ) : null}
+      {cierre.validacion_cliente === "aceptado" ? (
+        <p className="mb-2 text-dato text-success">
+          {t("caso.aceptadoPorCliente")}
+        </p>
+      ) : null}
+      {/* Reabierto: el motivo que queda es el del cierre ANTERIOR, y así se
+          dice. Sin el rótulo, un caso en curso salía «Cómo acabó: Duplicado». */}
+      {cierre.motivo && !cierre.cerrado_at ? (
+        <p className="text-rotulo text-ink-faint">{t("caso.ultimoCierre")}</p>
+      ) : null}
       {cierre.motivo ? (
-        <span className="chip-dato">{cierre.motivo}</span>
+        <span className="chip-dato">{rotuloDeOpcion(cierre.motivo)}</span>
       ) : null}
       {cierre.resolucion ? (
         <p className="mt-1 text-dato text-ink-muted">{cierre.resolucion}</p>

@@ -35,6 +35,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
+from crmcore.datos.guard_borrados import con_borrados
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
@@ -128,11 +129,19 @@ class Senal(Base, TimestampMixin):
     pista: Mapped[str] = mapped_column(
         String(20), nullable=False, default="", info={"anonimizar_en_copias": True}
     )
+    # Parte del contacto (`parte_de`): sus señales no impiden borrarlo. Las
+    # anota el propio guardado, así que contarlas como dependencia dejaba sin
+    # poder borrar a todo contacto con correo o teléfono (medido el 10-11-2026:
+    # 409 por `senales_identidad` en un contacto recién creado).
     contacto_id: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True), nullable=True, index=True
+        PgUUID(as_uuid=True), nullable=True, index=True, info={"parte_de": True}
     )
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     origen: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    # Las señales siguen a su contacto: en la papelera quedan inactivas —el
+    # guard de borrados las esconde de resolver, proponer y la ficha—, vuelven
+    # al restaurarlo y desaparecen al purgarlo. Ver `_al_guardar`.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     peso: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     vista_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -233,14 +242,17 @@ def observar(
             "Una señal vacía no identifica a nadie.", error_code="identidad.valor_vacio"
         )
     huella, pista = normalizar(tipo, valor)
-    fila = uow.db.execute(
-        select(Senal).where(
-            Senal.tenant_id == uow.tenant_id,
-            Senal.tipo == tipo,
-            Senal.huella == huella,
-            Senal.contacto_id == contacto_id,
-        )
-    ).scalar_one_or_none()
+    # Con lo borrado a la vista: la señal de un contacto en la papelera sigue
+    # ocupando su hueco único, y sin verla se intentaba insertar otra.
+    with con_borrados(uow.db):
+        fila = uow.db.execute(
+            select(Senal).where(
+                Senal.tenant_id == uow.tenant_id,
+                Senal.tipo == tipo,
+                Senal.huella == huella,
+                Senal.contacto_id == contacto_id,
+            )
+        ).scalar_one_or_none()
     if fila is not None:
         fila.veces += 1
         fila.vista_at = _ahora()
@@ -337,6 +349,22 @@ def resolver(
                 select(Union).where(Union.tenant_id == tenant_id, Union.deshecha_at.is_(None))
             ).scalars()
         }
+        # Un principal en la papelera no recoge a nadie: devolver su
+        # identificador sería resolver a una ficha que no se puede abrir. El
+        # secundario sigue contando por sí mismo, y vuelve a sumar en el
+        # principal si se restaura.
+        if principal_de:
+            from services.party.modelos import Contacto
+
+            vivos = {
+                str(i)
+                for i in db.execute(
+                    select(Contacto.id).where(
+                        Contacto.id.in_([UUID(p) for p in set(principal_de.values())])
+                    )
+                ).scalars()
+            }
+            principal_de = {s: p for s, p in principal_de.items() if p in vivos}
         for secundario, principal in principal_de.items():
             if secundario not in coincidencias:
                 continue
@@ -689,7 +717,7 @@ def _anotar(
         if clave in vistas:
             return None
         vistas.add(clave)
-    with db.no_autoflush:
+    with db.no_autoflush, con_borrados(db):
         fila = db.execute(
             select(Senal).where(
                 Senal.tenant_id == tenant_id,
@@ -737,10 +765,18 @@ def senales_del_contacto(contacto: Any, db: Session | None = None) -> list[tuple
 
 def _al_guardar(session: Session, _contexto: Any, _instancias: Any) -> None:
     """Anota las señales de los contactos nuevos o con canal cambiado."""
-    from sqlalchemy import delete
+    from sqlalchemy import delete, update
     from sqlalchemy import inspect as inspeccionar
 
     from services.party.modelos import Contacto
+
+    # Purgado: sus señales desaparecen con él. Sin esto quedaban huellas de
+    # alguien que ya no existe, y `resolver` podía devolver su identificador.
+    for obj in list(session.deleted):
+        if isinstance(obj, Contacto) and obj.id is not None:
+            session.execute(
+                delete(Senal).where(Senal.tenant_id == obj.tenant_id, Senal.contacto_id == obj.id)
+            )
 
     vistas: set[tuple[str, str, Any]] = set()
     for obj in list(session.new) + list(session.dirty):
@@ -755,6 +791,19 @@ def _al_guardar(session: Session, _contexto: Any, _instancias: Any) -> None:
             session.execute(
                 delete(Senal).where(Senal.tenant_id == obj.tenant_id, Senal.contacto_id == obj.id)
             )
+            continue
+        # A la papelera o de vuelta: las señales le siguen. Se marcan y no se
+        # borran para que restaurar devuelva las mismas, con sus `veces`.
+        if obj in session.dirty:
+            papelera = inspeccionar(obj).attrs["deleted_at"].history  # type: ignore[index]
+            if papelera.has_changes():
+                session.execute(
+                    update(Senal)
+                    .where(Senal.tenant_id == obj.tenant_id, Senal.contacto_id == obj.id)
+                    .values(deleted_at=obj.deleted_at)
+                    .execution_options(synchronize_session=False)
+                )
+        if obj.deleted_at is not None:
             continue
         if obj in session.dirty:
             estado = inspeccionar(obj)

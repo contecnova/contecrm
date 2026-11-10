@@ -107,7 +107,9 @@ def nueva_version(
 
 class Publicar(BaseModel):
     version: int | None = None
-    audiencia: str | None = None
+    # Una de las cuatro, como desplegable: escrita a mano, «clientes» o
+    # «Cliente» daban 422 y quien publicaba no sabía qué poner.
+    audiencia: str | None = Field(None, json_schema_extra={"enum": list(kb.AUDIENCIAS)})
 
 
 @router_conocimiento.post(
@@ -554,6 +556,38 @@ def mis_casos(db: DbDep, sesion: PortalDep, limite: int = Query(50, ge=1, le=200
     return prt.mis_casos(db, acceso, limite=limite)
 
 
+class ValidarCierre(BaseModel):
+    """Si el cliente da por bueno el cierre del caso."""
+
+    conforme: bool
+    comentario: str = Field("", max_length=2000)
+
+
+@router_portal.post(
+    "/mi/casos/{caso_id}/validar-cierre",
+    dependencies=[Depends(exige_seccion_portal("casos"))],
+    summary="Dar por bueno, o no, el cierre de mi caso",
+    description=(
+        "Cuando el agente cierra pidiendo la conformidad del cliente, el caso "
+        "consta cerrado PENDIENTE hasta que el cliente contesta. Conforme lo "
+        "deja cerrado; no conforme lo reabre con lo que dijo el cliente como "
+        "motivo, dentro de la ventana de reapertura."
+    ),
+)
+def validar_mi_cierre(caso_id: UUID, datos: ValidarCierre, uow: UowDep, sesion: PortalDep) -> Any:
+    acceso = _mi_acceso(uow.db, sesion)
+    prt.exigir_seccion(acceso, "casos")
+    caso = prt.validar_cierre(
+        uow, acceso, caso_id, conforme=datos.conforme, comentario=datos.comentario
+    )
+    # Sólo lo que el cliente necesita para pintar su lista otra vez.
+    return {
+        "id": str(caso.id),
+        "estado": caso.estado,
+        "validacion_cliente": caso.validacion_cliente,
+    }
+
+
 class AbrirPeticion(BaseModel):
     """Lo que el cliente cuenta al abrir una petición.
 
@@ -677,12 +711,16 @@ class HiloPortal(BaseModel):
 def abrir_hilo_portal(datos: HiloPortal, uow: UowDep, sesion: PortalDep) -> Any:
     acceso = _mi_acceso(uow.db, sesion)
     prt.exigir_seccion(acceso, "comunidad")
+    # Con el ACCESO, que es de donde salen el tenant y el autor. Se llamaba con
+    # un `autor_contacto_id` que la función no admite y sin el acceso que sí
+    # exige: TypeError, 500, y ningún cliente pudo abrir nunca un hilo desde
+    # el portal (medido el 10-11-2026 al ofrecerlo en pantalla).
     hilo = prt.abrir_hilo(
         uow,
+        acceso,
         titulo=datos.titulo,
         cuerpo=datos.cuerpo,
         categoria=datos.categoria,
-        autor_contacto_id=acceso.contacto_id,
     )
     return {"id": str(hilo.id), "estado": hilo.estado}
 

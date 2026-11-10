@@ -9,6 +9,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.vocabularios import SEVERIDADES
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -36,6 +37,17 @@ class ConMotivo(BaseModel):
     """
 
     motivo: str = Field(..., min_length=1, max_length=1000)
+
+
+class MotivoDeSuspension(BaseModel):
+    """Parar el reloj legal sólo por un motivo de la lista.
+
+    El servicio rechaza cualquier otro, y el formulario lo pedía como texto
+    libre: escribir el motivo tal cual se diría daba 422 (medido el
+    10-11-2026). Como desplegable, se elige uno que vale.
+    """
+
+    motivo: str = Field(..., json_schema_extra={"enum": list(pv.MOTIVOS_SUSPENSION)})
 
 
 router = APIRouter(prefix="/devoluciones", tags=["postventa"])
@@ -74,8 +86,15 @@ class Inspeccionar(BaseModel):
 
 
 class Resolver(BaseModel):
-    tipo: str = Field(..., description="reparacion · sustitucion · abono · sin_accion")
-    a_cargo_de: str = "cliente"
+    # De la lista, como desplegable: escrito a mano, «Reparar» daba 422.
+    tipo: str = Field(
+        ...,
+        description="reparacion · sustitucion · abono · sin_accion",
+        json_schema_extra={"enum": list(pv.RESOLUCIONES)},
+    )
+    a_cargo_de: str = Field(
+        "cliente", json_schema_extra={"enum": ["cliente", "garantia", "cortesia"]}
+    )
     importe: Decimal | None = None
     linea_id: UUID | None = None
     orden_trabajo_id: UUID | None = None
@@ -115,11 +134,15 @@ class Responder(BaseModel):
 class AbrirProblema(BaseModel):
     titulo: str = Field(..., min_length=1, max_length=300)
     descripcion: str = ""
-    severidad: str = "media"
+    # La lista cerrada que cruza servicios: como desplegable, no como texto.
+    severidad: str = Field("media", json_schema_extra={"enum": list(SEVERIDADES)})
     categoria_id: UUID | None = None
     producto_id: UUID | None = None
     responsable_id: UUID | None = None
-    caso_maestro_id: UUID | None = None
+    # Un CASO, no otro problema. El front resuelve `*_maestro_id` contra el
+    # propio recurso —el maestro de un caso es otro caso— y aquí el buscador
+    # ofrecía problemas. Declararlo manda sobre la regla.
+    caso_maestro_id: UUID | None = Field(None, json_schema_extra={"referencia": "caso"})
     casos: list[UUID] = Field(default_factory=list)
 
 
@@ -383,7 +406,7 @@ def acusar(expediente_id: UUID, uow: UowDep, documento_id: UUID | None = Query(N
         "«mucho trabajo» y dejaría de ser un plazo."
     ),
 )
-def suspender(expediente_id: UUID, datos: ConMotivo, uow: UowDep) -> Any:
+def suspender(expediente_id: UUID, datos: MotivoDeSuspension, uow: UowDep) -> Any:
     fila = pv.suspender(uow, expediente_id, motivo=datos.motivo)
     return {"id": str(fila.id), "estado": fila.estado, "datos.motivo": fila.motivo_suspension}
 
@@ -478,6 +501,37 @@ def impacto(problema_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     return prb.impacto(db, principal.tenant_id, problema_id)
 
 
+@router_prb.get(
+    "/{problema_id}/casos",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    # Lista: así la ficha del problema la pinta como panel con su alta.
+    response_model=list[dict[str, Any]],
+    summary="Casos atribuidos al problema",
+    description=(
+        "Los casos que cuelgan de esta causa, con su asunto y su estado. La "
+        "ficha del problema no enseñaba ninguno: se podía atribuir un caso al "
+        "crearlo, tecleando su identificador, y después no se veía cuáles eran."
+    ),
+)
+def casos_del_problema(problema_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    return prb.casos_vinculados(db, principal.tenant_id, problema_id)
+
+
+class AtribuirCaso(BaseModel):
+    caso_id: UUID = Field(..., json_schema_extra={"referencia": "caso"})
+
+
+@router_prb.post(
+    "/{problema_id}/casos",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Atribuir un caso",
+)
+def atribuir(problema_id: UUID, datos: AtribuirCaso, uow: UowDep) -> Any:
+    fila = prb.vincular(uow, problema_id, caso_id=datos.caso_id)
+    return {"id": str(fila.caso_id)}
+
+
 @router_prb.post(
     "/{problema_id}/casos/{caso_id}",
     dependencies=[Depends(exige_permiso("case:write"))],
@@ -494,7 +548,12 @@ def vincular(problema_id: UUID, caso_id: UUID, uow: UowDep) -> Any:
     summary="Quitar un caso del problema, con motivo",
 )
 def desvincular(
-    problema_id: UUID, caso_id: UUID, uow: UowDep, motivo: str = Query(..., min_length=1)
+    problema_id: UUID,
+    caso_id: UUID,
+    uow: UowDep,
+    # Quitarlo desde la lista de la ficha no pregunta el motivo; se apunta que
+    # no se dio, en vez de dejar el botón contestando siempre 422.
+    motivo: str = Query("Quitado desde la ficha del problema, sin motivo escrito", min_length=1),
 ) -> Any:
     fila = prb.desvincular(uow, problema_id, caso_id=caso_id, motivo=motivo)
     return {"id": str(fila.id), "desvinculado": True}

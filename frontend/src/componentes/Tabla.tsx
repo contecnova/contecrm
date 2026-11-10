@@ -60,6 +60,10 @@ import {
   UUID,
 } from "@/lib/formato";
 import { cn } from "@/lib/utiles";
+import { nombreDe, usePersonas } from "@/lib/personas";
+import { esDePersona, recursoDeReferencia } from "@/lib/referencias";
+import { moduloDeObjeto } from "@/lib/modulos";
+import { nombreEnLote } from "@/lib/nombres";
 
 export interface Props {
   /**
@@ -80,6 +84,12 @@ export interface Props {
    * en horizontal antes de leer nada, y quien llega no sabe que puede quitarlas.
    */
   porDefecto?: number;
+  /**
+   * Las columnas que el recurso DECLARA. Un identificador declarado se enseña
+   * de entrada —con el nombre de a quién apunta—: si el recurso lo pone entre
+   * sus columnas es porque «de quién» es la pregunta de esa lista.
+   */
+  declaradas?: readonly string[];
   /**
    * Con qué nombre se recuerda la elección de columnas. Sin él no se recuerda:
    * dos tablas distintas no pueden compartir preferencia.
@@ -326,6 +336,7 @@ export function Tabla({
   titulo,
   enlace,
   porDefecto = 6,
+  declaradas,
   recuerdaComo,
   encabezado,
   acciones,
@@ -399,12 +410,17 @@ export function Tabla({
     // Los identificadores técnicos no entran de entrada: una columna de UUID
     // ocupa el ancho de tres columnas útiles y no dice nada. Siguen estando en
     // el selector para quien los necesite.
-    const utiles = disponibles.filter((c) => !esIdentificadorTecnico(c));
+    // Salvo las de PERSONA: «de quién» es lo primero que se pregunta de una
+    // fila, y se pintan con el nombre. La lista de agentes decía «Disponible ·
+    // 0» sin decir de quién (10-11-2026).
+    const utiles = disponibles.filter(
+      (c) => !esIdentificadorTecnico(c) || declaradas?.includes(c),
+    );
     return (utiles.length > 0 ? utiles : disponibles).slice(
       0,
       Math.max(1, porDefecto),
     );
-  }, [elegidas, disponibles, porDefecto]);
+  }, [elegidas, disponibles, porDefecto, declaradas]);
 
   function alternarColumna(columna: string) {
     const siguientes = visibles.includes(columna)
@@ -651,7 +667,7 @@ export function Tabla({
                 }
                 className="inline-flex items-center gap-0.5 hover:text-ink"
               >
-                {humanizar(c)}
+                {rotuloDeColumna(c)}
                 {orden?.columna === c ? (
                   <Icono
                     nombre={
@@ -850,6 +866,14 @@ export function Celda({ valor, campo }: { valor: unknown; campo: string }) {
   }
 
   const texto = escalar(valor, campo);
+  if (typeof valor === "string" && UUID.test(valor) && esDePersona(campo)) {
+    return <NombreDePersona id={valor} />;
+  }
+  // Y el de cualquier registro con pantalla: «01a17edf…» en la columna de
+  // cliente de un informe no dice de quién es la fila.
+  const tipo =
+    typeof valor === "string" && UUID.test(valor) ? tipoDeCampo(campo) : "";
+  if (tipo) return <NombreDeRegistro tipo={tipo} id={String(valor)} />;
   if (typeof valor === "string" && UUID.test(valor)) {
     // Ocho caracteres bastan para distinguir dos filas; treinta y seis de
     // hexadecimal no se leen, no se recuerdan y no se comparan de un vistazo.
@@ -864,6 +888,55 @@ export function Celda({ valor, campo }: { valor: unknown; campo: string }) {
       {texto.length > 60 ? `${texto.slice(0, 60)}…` : texto}
     </span>
   );
+}
+
+/**
+ * El rótulo de la columna. Las que apuntan a una persona o a un registro se
+ * pintan con su nombre, así que su rótulo no lleva «ID»: «Cuenta», no «Cuenta
+ * ID», que anunciaba un identificador que la celda ya no enseña.
+ */
+function rotuloDeColumna(campo: string): string {
+  const rotulo = humanizar(campo);
+  return esDePersona(campo) || tipoDeCampo(campo)
+    ? rotulo.replace(/\s+ID$/i, "")
+    : rotulo;
+}
+
+/** A qué tipo de registro apunta una columna `*_id`, si tiene pantalla. */
+function tipoDeCampo(campo: string): string {
+  if (campo === "id") return "";
+  const recurso = recursoDeReferencia(campo);
+  return recurso?.objeto && moduloDeObjeto(recurso.objeto)
+    ? recurso.objeto
+    : "";
+}
+
+/** El nombre de un registro; el identificador recortado mientras llega o si no se sabe. */
+function NombreDeRegistro({ tipo, id }: { tipo: string; id: string }) {
+  const [nombre, setNombre] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let vivo = true;
+    void nombreEnLote(tipo, id).then((n) => {
+      if (vivo) setNombre(n);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [tipo, id]);
+  return (
+    <span
+      className={nombre ? undefined : "font-mono text-rotulo text-ink-muted"}
+      title={id}
+    >
+      {nombre ?? `${id.slice(0, 8)}…`}
+    </span>
+  );
+}
+
+/** El nombre de una persona de la casa; el directorio se pide una vez por sesión. */
+function NombreDePersona({ id }: { id: string }) {
+  const personas = usePersonas();
+  return <span title={id}>{nombreDe(personas, id)}</span>;
 }
 
 function clave(fila: Record<string, unknown>, i: number): string {

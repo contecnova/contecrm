@@ -77,7 +77,13 @@ def _es_composicion(columna: Any) -> bool:
     una oferta son parte de la oferta. Si contaran como dependencia, una oferta
     con líneas no se podría borrar nunca — y una oferta sin líneas no existe.
     """
-    return any((ajena.ondelete or "").upper() == "CASCADE" for ajena in columna.foreign_keys)
+    if any((ajena.ondelete or "").upper() == "CASCADE" for ajena in columna.foreign_keys):
+        return True
+    # Entre tablas sin clave ajena declarada, la columna lo dice ella misma
+    # (`info={"parte_de": True}`): la traza de por qué se repartió un caso es
+    # del caso, y contarla como dependencia dejaba sin poder borrar cualquier
+    # caso repartido —todos, desde que el reparto corre al abrir—.
+    return bool(getattr(columna, "info", {}).get("parte_de"))
 
 
 def _tablas_que_apuntan(modelo: type) -> list[tuple[type, Any]]:

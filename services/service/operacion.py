@@ -235,7 +235,10 @@ class RegistroAsignacion(Base):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    caso_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    # Parte del caso: su traza de reparto no impide borrarlo.
+    caso_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), nullable=False, info={"parte_de": True}
+    )
     regla_nombre: Mapped[str | None] = mapped_column(String(150), nullable=True)
     asignado_a: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     cola: Mapped[str | None] = mapped_column(String(80), nullable=True)
