@@ -360,3 +360,15 @@ def test_el_middleware_no_apunta_a_un_guardian_que_no_existe() -> None:
                 RAIZ / "tests" / "unit" / fichero
             ).exists(), f"`etag.py` dice apoyarse en «{fichero}», que no existe"
     assert nombrados, "el recorrido no ha encontrado ninguna referencia que comprobar"
+
+
+def test_con_version_de_negocio_no_hay_304() -> None:
+    """La versión de un presupuesto no sube al enviarlo: con ella como ETag, el
+    navegador revalidaba, recibía 304 y la ficha seguía en «Borrador» después
+    de «Enviar». Medido el 10-11-2026 (tarea T05)."""
+    from crmcore.http.etag import comprobar_if_none_match
+
+    from services.sales.presupuestos import Presupuesto
+
+    fila = Presupuesto(numero="P-1", version=1)
+    assert comprobar_if_none_match(fila, 'W/"1"') is False

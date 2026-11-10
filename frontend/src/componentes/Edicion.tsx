@@ -91,6 +91,12 @@ type PropsDeBotones = {
   alEditar: () => void;
   alBorrar: () => void;
   extra?: OpcionDeMenu[];
+  /**
+   * Las de `extra` que van a la vista, delante de «Editar», por el último
+   * tramo de su ruta (`Recurso.destacadas`). El rótulo corto sale de
+   * `acciones.destacada.<tramo>`, y si no lo hay, el del contrato.
+   */
+  destacadas?: readonly string[];
 };
 
 export function BotonesDeRegistro(props: PropsDeBotones) {
@@ -115,11 +121,15 @@ function Botones({
   alEditar,
   alBorrar,
   extra = [],
+  destacadas = [],
   duplicar,
 }: PropsDeBotones & { duplicar: OpcionDeMenu[] }) {
   const { t } = useTranslation();
+  const tramo = (o: OpcionDeMenu) =>
+    destacadas.find((d) => o.clave === d || o.clave.endsWith(`/${d}`));
+  const aLaVista = extra.filter((o) => tramo(o));
   const opciones: OpcionDeMenu[] = [
-    ...extra,
+    ...extra.filter((o) => !tramo(o)),
     ...duplicar,
     ...(puedeBorrar
       ? [
@@ -132,9 +142,21 @@ function Botones({
         ]
       : []),
   ];
-  if (!puedeEditar && opciones.length === 0) return null;
+  if (!puedeEditar && opciones.length === 0 && aLaVista.length === 0)
+    return null;
   return (
     <MenuDeAcciones opciones={opciones} etiqueta={t("acciones.titulo")}>
+      {aLaVista.map((o) => (
+        <button
+          key={o.clave}
+          type="button"
+          onClick={o.alElegir}
+          className="btn-primary"
+          title={o.nombre}
+        >
+          {t(`acciones.destacada.${tramo(o)}`, { defaultValue: o.nombre })}
+        </button>
+      ))}
       {puedeEditar ? (
         <button type="button" onClick={alEditar} className="btn-secondary">
           {t("ficha.editar")}

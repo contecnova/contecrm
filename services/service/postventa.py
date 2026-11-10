@@ -338,10 +338,18 @@ def _devolucion(db: Session, tenant_id: UUID, devolucion_id: UUID) -> Devolucion
 
 
 def _siguiente_codigo(db: Session, tenant_id: UUID, modelo: Any, prefijo: str) -> str:
-    cuantas = (
-        db.execute(select(func.count()).select_from(modelo).where(modelo.tenant_id == tenant_id))
-    ).scalar_one()
-    return f"{prefijo}-{int(cuantas) + 1:06d}"
+    """`RMA-000123`, por el contador común: contar repetía el del último borrado."""
+    from crmcore import numeracion
+
+    return numeracion.emitir(
+        db,
+        tenant_id,
+        objeto=modelo.__name__.lower(),
+        columna=modelo.codigo,
+        patron=f"{prefijo}-{{secuencia}}",
+        relleno=6,
+        reinicio="nunca",
+    )
 
 
 # ── Devoluciones (CRM-04.05.01.01) ────────────────────────────────────────

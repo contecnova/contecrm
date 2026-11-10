@@ -1843,6 +1843,14 @@ admite_parametros_abiertos(
 )
 
 
+def _normalizar(texto: str) -> str:
+    """Para comparar títulos: sin acentos, sin mayúsculas y sin espacios de más."""
+    import unicodedata
+
+    plano = unicodedata.normalize("NFD", texto.casefold())
+    return " ".join("".join(c for c in plano if not unicodedata.combining(c)).split())
+
+
 @router.get(
     "/buscar",
     summary="Buscar en todo el CRM",
@@ -1871,7 +1879,7 @@ async def buscar_global(
     # Los servicios con índice. Se declara la lista en vez de preguntar a todos:
     # el gateway ya sabe quién tiene búsqueda, y llamar a los diez para que
     # siete devuelvan 404 multiplica por tres el tiempo de cada consulta.
-    con_indice = [s for s in ("party", "sales") if s in _destinos]
+    con_indice = [s for s in ("party", "sales", "service") if s in _destinos]
 
     # **La identidad se FIRMA, no se copia.** Esto construía las cabeceras
     # colando las `x-*` y `authorization` de la petición entrante, y la sesión
@@ -1929,7 +1937,20 @@ async def buscar_global(
         for fila in filas:
             resultados.append({**fila, "servicio": servicio})
 
-    resultados.sort(key=lambda r: float(r.get("relevancia") or 0), reverse=True)
+    # **Lo que se llama exactamente así, delante.** La relevancia de cada
+    # índice premia que la palabra salga muchas veces y cerca, y por eso al
+    # buscar «Componentes Delta» ganaba «Suministro de componentes plegables —
+    # Componentes Delta», una oportunidad, al propio cliente: el Intro llevaba
+    # a otro sitio. Medido el 10-11-2026. Primero el título idéntico, luego el
+    # que empieza por lo buscado, y dentro de cada grupo, la relevancia.
+    buscado = _normalizar(q)
+
+    def _orden(r: dict[str, Any]) -> tuple[int, float]:
+        titulo = _normalizar(str(r.get("titulo") or ""))
+        grupo = 0 if titulo == buscado else 1 if titulo.startswith(buscado) else 2
+        return grupo, -float(r.get("relevancia") or 0)
+
+    resultados.sort(key=_orden)
     if fallidos:
         logger.warning("gateway.busqueda_parcial", servicios_caidos=fallidos)
     return {

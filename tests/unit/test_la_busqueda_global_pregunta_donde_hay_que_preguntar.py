@@ -151,3 +151,46 @@ async def test_la_identidad_viaja_firmada_y_no_copiada_de_la_peticion() -> None:
     assert sin_identidad == [], f"preguntó sin identidad a: {sin_identidad}"
     assert salida["total"] == 2, salida
     assert salida["servicios_sin_responder"] == []
+
+
+@pytest.mark.asyncio
+async def test_lo_que_se_llama_exactamente_asi_va_primero() -> None:
+    """Buscar «Componentes Delta» llevaba con Intro a «Suministro de
+    componentes plegables — Componentes Delta», una oportunidad: tenía más
+    relevancia que el propio cliente. Medido el 10-11-2026 (tarea T01)."""
+    from crmcore.rutas_de_api import Destino
+
+    import services.gateway.api as api
+
+    def responder(peticion: httpx.Request) -> httpx.Response:
+        servicio = peticion.url.path.split("/")[3]
+        filas = {
+            "party": [{"objeto": "cuenta", "titulo": "Componentes Delta", "relevancia": 0.34}],
+            "sales": [
+                {
+                    "objeto": "oportunidad",
+                    "titulo": "Suministro de componentes plegables — Componentes Delta",
+                    "relevancia": 0.39,
+                },
+                {
+                    "objeto": "oportunidad",
+                    "titulo": "Componentes delta, ampliación",
+                    "relevancia": 0.2,
+                },
+            ],
+        }[servicio]
+        return httpx.Response(200, json={"resultados": filas})
+
+    api._cliente = httpx.AsyncClient(transport=httpx.MockTransport(responder))
+    api._destinos = {
+        "party": Destino(servicio="party", url_base="http://party:8000"),
+        "sales": Destino(servicio="sales", url_base="http://sales:8000"),
+    }
+    salida = await api.buscar_global(
+        _Peticion(), principal=_quien_llama(), q="componentes delta", limite=20
+    )
+    assert [r["titulo"] for r in salida["resultados"]] == [
+        "Componentes Delta",
+        "Componentes delta, ampliación",
+        "Suministro de componentes plegables — Componentes Delta",
+    ]

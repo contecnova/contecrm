@@ -353,13 +353,23 @@ def _redondear(v: Decimal) -> Decimal:
 
 
 def _siguiente(db: Session, tenant_id: UUID, modelo: Any, prefijo: str) -> str:
-    cuantos = int(
-        db.execute(
-            select(func.count()).select_from(modelo).where(modelo.tenant_id == tenant_id)
-        ).scalar_one()
-        or 0
+    """`PRE-2026-00123`, por el contador común y no contando filas.
+
+    Contar repetía el número del último borrado y el alta siguiente se caía con
+    un 409 (`uq_presupuesto_version`): medido el 10-11-2026. Ver
+    `crmcore.numeracion.emitir`.
+    """
+    from crmcore import numeracion
+
+    return numeracion.emitir(
+        db,
+        tenant_id,
+        objeto=modelo.__name__.lower(),
+        columna=modelo.numero,
+        patron=f"{prefijo}-{{anio}}-{{secuencia}}",
+        relleno=5,
+        reinicio="anual",
     )
-    return f"{prefijo}-{hoy(db).year}-{cuantos + 1:05d}"
 
 
 # ── Presupuestos (CRM-03.03.02.01, CRM-03.03.02.05) ───────────────────────
@@ -427,6 +437,19 @@ def crear(
             "Un presupuesto sin líneas no ofrece nada.",
             error_code="presupuesto.sin_lineas",
         )
+
+    # **Lo que ya dice la oportunidad no se vuelve a pedir.** El presupuesto
+    # de una oportunidad es del cliente de esa oportunidad: pedir además la
+    # cuenta y el contacto obligaba a buscar dos veces lo que ya está escrito,
+    # y a equivocarse de cuenta en una de las dos. Medido el 10-11-2026: desde
+    # la ficha de la oportunidad, el alta pedía tres referencias a mano.
+    if oportunidad_id is not None and (cuenta_id is None or contacto_id is None):
+        from services.sales.modelos import Oportunidad
+
+        origen = uow.db.get(Oportunidad, oportunidad_id)
+        if origen is not None and origen.tenant_id == tenant_id:
+            cuenta_id = cuenta_id or origen.cuenta_id
+            contacto_id = contacto_id or origen.contacto_id
 
     configuracion = cat.comprobar_configuracion(uow.db, tenant_id, lineas)
     if not configuracion["valida"]:

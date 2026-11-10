@@ -231,3 +231,68 @@ def formatear(fila: NumeracionObjeto, dia: date) -> str:
     for pieza, valor in valores.items():
         salida = salida.replace(f"{{{pieza}}}", valor)
     return salida
+
+
+def emitir(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    objeto: str,
+    columna: Any,
+    patron: str,
+    relleno: int = 5,
+    reinicio: str = "anual",
+) -> str:
+    """El siguiente código; la primera vez, declarando el contador.
+
+    Es lo que hacían a mano el caso y la oportunidad, para que lo use quien
+    todavía **contaba filas**: presupuestos, pedidos, contratos, devoluciones y
+    expedientes. Contar repetía número en cuanto se borraba uno —el recuento
+    no ve la papelera— y la restricción única tumbaba el alta siguiente con un
+    409. **Medido el 10-11-2026**: tras borrar un presupuesto, nadie podía
+    crear otro («Ya existe un registro con esos datos»).
+
+    La primera vez se arranca por el mayor código ya emitido en el periodo vivo
+    **con los borrados dentro**, que es lo único que garantiza no repetir.
+    `columna` es la del código en el modelo (`Presupuesto.numero`).
+    """
+    codigo = siguiente(db, tenant_id, objeto=objeto)
+    if codigo is not None:
+        return codigo
+    from crmcore.datos.guard_borrados import con_borrados
+
+    # Lo que va delante de la secuencia en el periodo vivo: `PRE-2026-`.
+    dia = hoy(db)
+    prefijo = patron.split("{secuencia}", 1)[0]
+    for pieza, valor in (
+        ("objeto", objeto),
+        ("anio", f"{dia.year:04d}"),
+        ("anio_corto", f"{dia.year % 100:02d}"),
+        ("mes", f"{dia.month:02d}"),
+    ):
+        prefijo = prefijo.replace(f"{{{pieza}}}", valor)
+    modelo = columna.class_
+    with con_borrados(db):
+        emitidos = (
+            db.execute(
+                select(columna).where(modelo.tenant_id == tenant_id, columna.like(f"{prefijo}%"))
+            )
+            .scalars()
+            .all()
+        )
+    ya = max(
+        (int(c[len(prefijo) :]) for c in emitidos if c and c[len(prefijo) :].isdigit()),
+        default=0,
+    )
+    declarar(
+        db,
+        tenant_id,
+        objeto=objeto,
+        patron=patron,
+        relleno=relleno,
+        reinicio=reinicio,
+        empezar_en=ya,
+    )
+    emitido = siguiente(db, tenant_id, objeto=objeto)
+    assert emitido is not None  # se acaba de declarar
+    return emitido

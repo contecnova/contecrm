@@ -2009,6 +2009,7 @@ const pantallas = {
       "No te llega solo. Elige cada cuánto, a qué hora y por dónde, y pulsa «Recibirlo».",
   },
   cuenta: {
+    nuevoCaso: "Nuevo caso",
     jerarquia: "De qué grupo forma parte",
     jerarquiaAyuda:
       "Jerarquía «{{cual}}». No es la única: la legal no es la comercial ni la de facturación, y una empresa puede depender de la matriz para firmar y de la delegación de aquí para que la atiendan.",
@@ -2515,6 +2516,7 @@ const pantallas = {
     },
   },
   oportunidad: {
+    nuevaOferta: "Nueva oferta",
     // Enviar a firma desde la oportunidad (CRM-03.03.02.07).
     firma: {
       titulo: "La firma",
@@ -4485,6 +4487,31 @@ const pantallas = {
     entradilla:
       "El enlace de un aviso lleva aquí y de aquí a la ficha del registro, en el módulo que lo enseña.",
     sinModulo: "No hay ninguna pantalla que enseñe «{{tipo}}».",
+  },
+  actividadDelRegistro: {
+    titulo: "Lo que ha pasado",
+    vacio:
+      "Todavía no hay nada apuntado. Apunta la llamada, la reunión o la respuesta que diste.",
+  },
+  convertirLead: {
+    titulo: "Convertir en cliente",
+    entradilla:
+      "Se propone lo que el lead ya dice. Revísalo y pulsa Convertir: se crean el cliente, el contacto y la oportunidad de una vez.",
+    cliente: "Cliente",
+    crearCliente: "Crear un cliente nuevo",
+    yaCreada: "El cliente creado en el intento anterior",
+    nombreCliente: "Nombre del cliente nuevo",
+    yaExisten: "O usar uno que ya existe:",
+    usar: "Usar «{{nombre}}»",
+    contacto: "Contacto",
+    crearContacto: "Crear el contacto",
+    sinPersona: "El lead no tiene nombre de persona.",
+    oportunidad: "Oportunidad",
+    crearOportunidad: "Crear la oportunidad",
+    nombreOportunidad: "Nombre de la oportunidad",
+    importe: "Importe",
+    cierre: "Fecha de cierre",
+    convertir: "Convertir",
   },
   actividad: {
     llamada: "Llamada",

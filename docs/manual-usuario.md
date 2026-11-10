@@ -269,6 +269,59 @@ opción desaparezca sin explicación.
 
 ---
 
+### Lo de cada día, en pocos clics
+
+Las doce cosas que más se hacen en un CRM, con el camino más corto. Se miden
+en cada versión (cuántos clics, cuántos campos, cuánto tarda) y se comparan
+con Salesforce; el detalle está en el manual técnico.
+
+- **Encontrar un cliente.** Pulsa el buscador de arriba (o ⌘K / Ctrl+K),
+  escribe su nombre y pulsa Intro. Si el cliente se llama exactamente como lo
+  has escrito, sale el primero, por delante de las oportunidades que lo
+  nombran. Los **casos** también se encuentran, por su código (CAS-2026-01510)
+  o por su asunto. Lo que está en la papelera no sale.
+- **Dar de alta un lead y convertirlo.** **Crear › Lead**, rellena nombre y
+  empresa (y lo que quieras de «Más campos») y **Guardar**: se abre su ficha.
+  Pulsa **Convertir**. Te propone crear el cliente con el nombre de la empresa
+  —o usar el que ya se llama así, si existe—, crear el contacto con la persona
+  del lead y abrir una oportunidad con el nombre de la empresa; puedes poner
+  ya el importe y la fecha de cierre. **Convertir** y te lleva a la
+  oportunidad. Si algo falla a medias, vuelve a pulsar: no se crea otro
+  cliente.
+- **Crear una oportunidad para un cliente.** En la ficha del cliente,
+  **Nueva oportunidad**: el cliente ya viene puesto y delante tienes nombre,
+  importe y fecha de cierre. **Guardar** te lleva a la oportunidad. La lista
+  de debajo queda filtrada a las oportunidades de ese cliente; quita el filtro
+  con la ✕ de su pastilla.
+- **Mover una oportunidad de etapa.** En su ficha, pulsa la etapa en la barra
+  de etapas.
+- **Hacer un presupuesto y enviarlo.** En la oportunidad, **Nueva oferta**:
+  la oportunidad ya viene puesta y el cliente y el contacto se toman de ella.
+  **Añadir línea**, rellena descripción, cantidad, precio (y el coste, para
+  que se pueda calcular el margen) y **Guardar**: se abre el presupuesto.
+  Pulsa **Enviar** y confirma. Si el descuento o el margen lo exigen, queda
+  **en aprobación** y te dice por qué.
+- **Registrar una llamada o una reunión.** En la ficha del cliente, de la
+  oportunidad o del caso, en **Relacionado › Lo que ha pasado**: **Llamada**,
+  **Reunión**, **Nota** o **Correo**, escribe qué ha pasado y **Apuntar**. Sale
+  debajo, en la lista de lo último apuntado.
+- **Abrir un caso para un cliente.** En la ficha del cliente, **Nuevo caso**:
+  el cliente ya viene puesto y delante tienes asunto y prioridad. **Guardar**
+  abre el caso.
+- **Responder un caso.** En el caso, **Relacionado › Lo que ha pasado ›
+  Correo**: apunta lo que le has contestado al cliente y **Apuntar**.
+- **Cerrar un caso.** En el caso, **Cerrar el caso**, elige el motivo y
+  confirma. Un caso cerrado se puede reabrir desde **Más**.
+- **Ver la previsión del trimestre.** **Previsiones** abre por los periodos;
+  pulsa el del trimestre en curso.
+- **Aprobar algo pendiente.** En **Inicio**, el bloque **Te toca decidir**
+  lista lo que espera tu decisión, con **Aprobar** y **Rechazar** al lado.
+  Pulsar el título abre la aprobación entera; **Ver todas** lleva a la bandeja
+  completa.
+
+Desde el móvil es lo mismo: los botones de arriba de una ficha bajan a otra
+línea cuando no caben.
+
 ## Tu espacio y el de tu empresa (sección 0.1)
 
 Cada empresa tiene su propio espacio, con sus datos, su configuración y su marca.

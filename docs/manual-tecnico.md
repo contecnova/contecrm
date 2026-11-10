@@ -6522,6 +6522,134 @@ Ahora apunta el valor **propio** del ámbito (`None` si no tenía), y
 sigue diciendo el efectivo. La prueba que lo cubría ponía el `None` a mano, que
 es lo que escondía el fallo; ya no lo fuerza.
 
+### 4.6.71 Usabilidad medida por tarea: antes, después y Salesforce (10-11-2026)
+
+Las doce tareas más frecuentes de un comercial, un agente de soporte y un
+responsable, hechas **por la interfaz** desde la portada y medidas con
+Playwright. Se vuelve a medir en cada bloque:
+
+    ./setup.sh arrancar
+    node frontend/scripts/medir-tareas.mjs              # las doce
+    node frontend/scripts/medir-tareas.mjs T02 T05      # sólo esas
+    MEDIR_JSON=/ruta/medida.json node frontend/scripts/medir-tareas.mjs
+
+Entra con las mismas variables de entorno que `barrido-pantallas.mjs`
+(CRM_EMPRESA, CRM_USUARIO y CRM_CLAVE, y CRM_URL para otra instalación); son
+del guion, no ajustes del producto. MEDIR_CAPTURAS es la carpeta de capturas
+de lo que falla y MEDIR_DEPURAR=1 imprime las escrituras y los 409. Sale con 1
+si no ha medido nada.
+
+**Qué cuenta.** Clics (botón, enlace, pestaña u opción; entrar en un campo
+para escribir no), teclas que hacen algo (Intro), campos rellenados,
+pantallas distintas recorridas (la portada incluida; `?r=` cuenta como otra
+lista), segundos de reloj hasta la comprobación (los de la máquina: lo que
+hace esperar el sistema) y una **estimación** del tiempo de una persona con
+el modelo KLM (1,2 s por clic, 0,28 s por carácter o tecla, 1,35 s de pensar
+por campo y por pantalla). Errores: 400, 404, 422 y 5xx de la API y
+excepciones de la página; 401, 403 y 409 no. **Hecha** quiere decir
+comprobada por la API —el lead convertido con cliente, contacto y
+oportunidad, el presupuesto enviado, el caso cerrado, la actividad colgando
+del registro—. **Bloqueo** es lo que no se puede terminar sin saber algo que
+una persona no sabe (un identificador interno) o sin salir de la ficha.
+
+Cada tarea arranca en la aplicación de su rol (Ventas o Servicio) y busca por
+el buscador de arriba, eligiendo con Intro sólo si el registro sale el
+primero. Todo lo que crea lleva «UX medida» y se borra al acabar; lo que el
+producto no deja borrar se archiva (un lead ya repartido y la oportunidad que
+nace al convertirlo) y la aprobación de la T12 queda decidida, porque el motor
+no borra aprobaciones.
+
+**Referencia de Salesforce: estimación, no medida.** Clics de Lightning
+Experience con la configuración de serie y el camino más corto conocido; no
+hay una instancia de Salesforce contra la que medir.
+
+| # | Rol | Tarea | Antes (clics · campos · pantallas · s · persona) | Después | Salesforce (est.) |
+|---|---|---|---|---|---|
+| T01 | Comercial | Encontrar un cliente por nombre | 2 · 1 · 2 · 2,0 s · ≈11 s (Intro abría una oportunidad con su nombre) | 1 + Intro · 1 · 2 · 2,3 s · ≈10 s | 2 |
+| T02 | Comercial | Alta de un lead y convertirlo en cliente, contacto y oportunidad | **Bloqueo** tras 7 clics: convertir pedía un cliente ya existente | 6 · 3 · 4 · 5,0 s · ≈29 s | 6 |
+| T03 | Comercial | Oportunidad para un cliente, con importe y cierre | 6 + Intro · 5 · 3 · 5,3 s · ≈40 s | 3 + Intro · 4 · 4 · 4,8 s · ≈33 s | 7 |
+| T04 | Comercial | Mover una oportunidad de etapa | 2 + Intro · 1 · 2 · 3,5 s · ≈14 s | 2 + Intro · 1 · 2 · 3,6 s · ≈14 s | 4 |
+| T05 | Comercial | Presupuesto de la oportunidad, y enviarlo | **Bloqueo** tras 15 clics: sin «Enviar»; «Enviado» del desplegable lo rechaza el servidor | 6 + Intro · 5 · 4 · 6,0 s · ≈34 s | 14 |
+| T06 | Comercial | Registrar una llamada en un cliente | 3 + Intro · 2 · 2 · 2,9 s · ≈22 s | igual | 4 |
+| T07 | Comercial | Registrar una reunión en una oportunidad | **Bloqueo**: la ficha no deja anotar; el alta suelta pide el identificador | 3 + Intro · 2 · 2 · 3,8 s · ≈21 s | 5 |
+| T08 | Soporte | Abrir un caso para un cliente, con prioridad | 7 + Intro · 4 · 3 · 5,6 s · ≈40 s · 1 error (422) | 3 + Intro · 3 · 4 · 3,7 s · ≈31 s · 0 | 10 |
+| T09 | Soporte | Responder un caso (anotar la respuesta) | **Bloqueo**: el buscador no encontraba casos y la ficha no tenía dónde anotar | 3 + Intro · 3 · 2 · 2,9 s · ≈30 s | 4 |
+| T10 | Soporte | Cerrar un caso con su motivo | 7 · 3 · 3 · 4,0 s · ≈27 s | 3 + Intro · 2 · 2 · 2,8 s · ≈15 s | 6 |
+| T11 | Responsable | Ver la previsión del trimestre en curso | 4 · 0 · 3 · 2,4 s · ≈9 s | 2 · 0 · 3 · 1,8 s · ≈6 s | 2 |
+| T12 | Responsable | Aprobar algo pendiente | 10 · 1 · 4 · 3,9 s · ≈19 s (Administrar › Procesos) | 1 · 0 · 1 · 0,7 s · ≈3 s | 3 |
+
+Antes: 7 de 12 terminadas y 5 bloqueos. Después: 12 de 12, cero errores.
+
+**Qué se cambió, por fricción medida:**
+
+- **Convertir en un paso** (T02). `frontend/src/componentes/ConvertirLead.tsx`:
+  propone el cliente (crearlo con la empresa del lead, o usar el que ya se
+  llama exactamente así, buscado en `/api/v1/buscar`), el contacto colgado de
+  él y la oportunidad, y lo crea en orden por `POST /accounts`,
+  `POST /contacts` y `POST /leads/{id}/convertir`; lo creado en un intento
+  fallido se reutiliza. La ficha lo monta cuando la acción abierta es
+  `convertir` de un lead.
+- **Acciones a la vista** (T02, T05, T10). `Recurso.destacadas` (último tramo
+  de la ruta) y la prop `destacadas` de `BotonesDeRegistro`: Candidatos
+  `convertir`, Casos `cerrar`, Ofertas `enviar`. El rótulo corto sale de
+  `acciones.destacada.*`. La ficha del presupuesto ofrece por fin las
+  acciones del contrato (enviar, aceptar, versión siguiente).
+- **Tras el alta, la ficha** (`Modulo.tsx`, `crear`): se navega al registro
+  creado salvo que traiga valores de una sola vez.
+- **El alta sabe de dónde se viene**: cualquier parámetro de la URL que se
+  llame como un campo del alta la rellena, y es a la vez filtro de la lista.
+  «Nueva oportunidad» y «Nuevo caso» desde el cliente llevan `cuenta_id`;
+  «Nueva oferta» desde la oportunidad, `oportunidad_id`. El servidor deduce
+  cuenta y contacto del presupuesto de la oportunidad
+  (`services/sales/presupuestos.py::crear`). La pastilla del filtro enseña el
+  nombre del registro, no su identificador (`Filtros.tsx`).
+- **Delante, lo que importa** (`Formulario.tsx`): en un alta van delante los
+  obligatorios, las columnas preferidas del recurso y lo que ya viene relleno
+  (prop `delante`).
+- **Apuntar en la oportunidad y el caso** (T07, T09):
+  `ActividadDelRegistro.tsx` (llamada, reunión, nota, correo y lo último
+  apuntado) en «Relacionado».
+- **Una confirmación, no dos** (`Acciones.tsx`): lo irreversible con
+  formulario se confirma al enviarlo; «Lo entiendo, sigue» queda para lo que
+  se ejecuta de un clic.
+- **Te toca decidir en la portada** (T12): `Inicio.tsx` pinta
+  `GET /aprobaciones/bandeja?limite=6` con «Aprobar» y «Rechazar»
+  (`POST /aprobaciones/{solicitud_id}/decidir`).
+- **Previsiones abre por los periodos** (T11): `principal` pasa de «Ingreso
+  previsto» a «Periodos» en `recursos.ts`.
+- **Buscador**: los casos entran en el índice (`services/service/indexacion.py`,
+  al abrir, cambiar de estado, cerrar y reabrir; ruta `/api/v1/service/buscar`;
+  el gateway pregunta también a `service`; migración de datos
+  `service/20261110_1200_casos_en_el_buscador` para los que ya estaban). El
+  gateway pone delante el título idéntico y luego el que empieza por lo
+  buscado. La relevancia pondera título (A), subtítulo (B) y cuerpo (D). Lo que
+  está en la papelera no se encuentra, y vuelve al restaurarlo.
+- **Fallos que salieron midiendo**: numerar contando filas repetía el número
+  del último borrado (`uq_presupuesto_version`, 409 en cada alta siguiente);
+  presupuestos, pedidos, contratos, devoluciones y expedientes pasan al
+  contador común (`crmcore.numeracion.emitir`). En los modelos cuya versión
+  es de negocio (VERSION_ES_DE_NEGOCIO en la clase) el ETag no cambia al editar y el navegador recibía 304 con el presupuesto
+  de antes: esos modelos ya no contestan 304. El desplegable de categoría del
+  caso pedía `limite` a una ruta que no lo admite (422): se reintenta sin él.
+  Las columnas de Ofertas usaban `codigo`, que el presupuesto no tiene: ahora
+  `numero`, y la fila se abre por su número.
+- **Nada se sale a 390 px**: la fila de acciones de la cabecera envuelve
+  (`DatosClave.tsx`) y la columna de la portada no se ensancha con un título
+  largo. Medido en las ocho pantallas tocadas, a 1440 y 390: cero elementos
+  fuera de su sitio.
+
+Pruebas: `convertir_un_lead_de_una_vez.test.tsx` (crea cliente y contacto
+colgado, o usa el existente sin duplicar), `formulario_usable.test.tsx`
+(delante en el alta), `lo_que_no_se_deshace_no_esta_a_mano.test.tsx` (la
+destacada sale a la vista y no se repite en el menú); en Python,
+`test_busqueda.py` (papelera y restaurar; caso por su código),
+`test_la_busqueda_global_pregunta_donde_hay_que_preguntar.py` (título
+idéntico primero), `test_cotizacion.py` (borrar el último no bloquea el
+siguiente; la cuenta sale de la oportunidad), `test_etag_de_ida_y_vuelta.py`
+(sin 304 con versión de negocio) y
+`test_lo_que_preguntan_las_pantallas_de_apoyo.py` (la bandeja de la portada
+se pide y se decide por HTTP).
+
 ## 5. Operación
 
 ### 5.1 Copias y restauración

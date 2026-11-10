@@ -679,3 +679,58 @@ def test_un_presupuesto_sin_cuenta_no_llega_a_pedido(uow: UnidadDeTrabajo, caja:
     with pytest.raises(Conflicto) as e:
         pre.aceptar(uow, fila.id)
     assert e.value.error_code == "presupuesto.sin_cuenta"
+
+
+def test_borrar_el_ultimo_presupuesto_no_bloquea_el_siguiente(
+    uow: UnidadDeTrabajo, db: Any
+) -> None:
+    """El número se sacaba contando filas, y la papelera no cuenta: tras borrar
+    el último, el siguiente pedía su mismo número y el alta se caía con un 409
+    (`uq_presupuesto_version`). Medido el 10-11-2026: nadie podía crear un
+    presupuesto más."""
+    from crmcore.datos import papelera
+
+    primero = pre.crear(uow, lineas=[{"descripcion": "uno", "precio_unitario": 10}])
+    db.flush()
+    papelera.borrar(db, primero, objeto="presupuesto")
+    db.flush()
+
+    segundo = pre.crear(uow, lineas=[{"descripcion": "dos", "precio_unitario": 10}])
+    db.flush()
+    assert segundo.numero != primero.numero
+    assert segundo.numero.startswith(f"PRE-{hoy(db).year}-")
+
+
+def test_el_presupuesto_de_una_oportunidad_lleva_su_cliente(uow: UnidadDeTrabajo, db: Any) -> None:
+    """Desde la oportunidad, el alta pedía además la cuenta y el contacto, que
+    la oportunidad ya dice: dos búsquedas de más y una ocasión de equivocarse."""
+    from crmcore.tenancy.context import con_contexto
+
+    from services.sales import servicio as svc
+    from services.sales.modelos import Etapa, Pipeline
+
+    pipeline = Pipeline(tenant_id=uow.tenant_id, clave="ventas", nombre="Ventas", por_defecto=True)
+    db.add(pipeline)
+    db.flush()
+    db.add(
+        Etapa(
+            tenant_id=uow.tenant_id,
+            pipeline_id=pipeline.id,
+            clave="contacto",
+            nombre="Primer contacto",
+            orden=1,
+            probabilidad=10,
+        )
+    )
+    db.flush()
+    cuenta_id, contacto_id = uuid4(), uuid4()
+    with con_contexto(tenant_id=uow.tenant_id):
+        op = svc.crear_oportunidad_nueva(
+            uow, nombre="Línea 3", cuenta_id=cuenta_id, contacto_id=contacto_id
+        )
+    db.flush()
+
+    fila = pre.crear(
+        uow, oportunidad_id=op.id, lineas=[{"descripcion": "x", "precio_unitario": 10}]
+    )
+    assert (fila.cuenta_id, fila.contacto_id) == (cuenta_id, contacto_id)

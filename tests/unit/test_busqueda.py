@@ -258,3 +258,54 @@ def test_una_consulta_sin_palabras_no_revienta(db: Any, tenant_id: UUID) -> None
     # Y lo normal sigue encontrándose: si esto fallara, el vacío de arriba
     # podría ser «la búsqueda está rota» en vez de «eso no es una consulta».
     assert len(buscar(db, tenant_id=tenant_id, texto="construcciones")) == 1
+
+
+# ── Lo que está en la papelera no se encuentra (10-11-2026) ───────────────
+
+
+def test_lo_que_esta_en_la_papelera_no_se_encuentra_y_vuelve_al_restaurarlo(
+    db: Any, tenant_id: UUID
+) -> None:
+    """Borrar no tocaba el índice: el buscador ofrecía la cuenta borrada, se
+    pulsaba y la ficha decía que no existe. Medido contra la pila: 40
+    resultados de cuentas ya borradas. Y restaurar tiene que devolverla sin
+    que nadie reindexe nada."""
+    from crmcore.datos import papelera
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.tenancy.context import con_contexto
+
+    from services.party import servicio as svc
+    from services.party.modelos import Cuenta
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    with con_contexto(tenant_id=tenant_id):
+        cuenta = svc.crear_cuenta(uow, nombre="Hormigones del Turia")
+        db.flush()
+        assert len(buscar(db, tenant_id=tenant_id, texto="turia")) == 1
+
+        entrada = papelera.borrar(db, cuenta, objeto="cuenta")
+        db.flush()
+        assert buscar(db, tenant_id=tenant_id, texto="turia") == []
+
+        papelera.restaurar(db, entrada.id, modelos={"cuenta": Cuenta})
+        db.flush()
+        assert len(buscar(db, tenant_id=tenant_id, texto="turia")) == 1
+
+
+@pytest.mark.db
+def test_un_caso_se_encuentra_por_su_codigo(db: Any, tenant_id: UUID) -> None:
+    """El buscador de arriba no preguntaba por casos: «CS-00777» daba «Nada
+    coincide» y el agente buscaba a mano en las cincuenta filas cargadas."""
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.tenancy.context import con_contexto
+
+    from services.service import servicio as svc
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    with con_contexto(tenant_id=tenant_id):
+        caso = svc.abrir_caso(uow, asunto="La prensa vibra al arrancar")
+    db.flush()
+
+    resultados = buscar(db, tenant_id=tenant_id, texto=caso.codigo)
+    assert [(r.objeto, r.titulo) for r in resultados] == [("caso", "La prensa vibra al arrancar")]
+    assert resultados[0].subtitulo == caso.codigo

@@ -233,8 +233,28 @@ class BuscadorPostgres:
         parseada = cast(func.websearch_to_tsquery(configuracion, consulta_texto), Text)
         pregunta = func.to_tsquery(configuracion, func.nullif(parseada, "") + ":*")
 
+        # **El título pesa más que el cuerpo, de verdad.** Con el vector de la
+        # búsqueda —todo concatenado— «Iberdrola» y «Otra empresa · proveedor
+        # de iberdrola» sacaban la MISMA relevancia, y cuál salía primero lo
+        # decidía el plan de la consulta: una prueba lo daba por cumplido por
+        # suerte, y se cayó en cuanto la consulta cambió (10-11-2026). Se
+        # ordena con pesos —título A, subtítulo B, cuerpo D— y se filtra con
+        # el vector de siempre, que es el que tiene índice.
+        ponderado = (
+            func.setweight(func.to_tsvector(configuracion, DocumentoIndexado.titulo), text("'A'"))
+            .op("||")(
+                func.setweight(
+                    func.to_tsvector(configuracion, DocumentoIndexado.subtitulo), text("'B'")
+                )
+            )
+            .op("||")(
+                func.setweight(
+                    func.to_tsvector(configuracion, DocumentoIndexado.cuerpo), text("'D'")
+                )
+            )
+        )
         seleccion = select(
-            DocumentoIndexado, func.ts_rank(vector, pregunta).label("relevancia")
+            DocumentoIndexado, func.ts_rank(ponderado, pregunta).label("relevancia")
         ).where(
             # El filtro por tenant va SIEMPRE, además de RLS. Es redundante a
             # propósito: si un día alguien consulta con una sesión sin tenant
@@ -244,6 +264,26 @@ class BuscadorPostgres:
         )
         if objetos:
             seleccion = seleccion.where(DocumentoIndexado.objeto.in_(objetos))
+
+        # **Lo que está en la papelera no se encuentra.** Borrar no tocaba el
+        # índice, y el buscador seguía ofreciendo el registro: se pulsaba y la
+        # ficha decía que no existe. Medido el 10-11-2026: 40 resultados de
+        # «UX medida» con todas esas cuentas ya borradas. Se mira la papelera
+        # —que es del mismo servicio y la misma base— y no se desindexa al
+        # borrar, para que restaurar lo devuelva al buscador sin hacer nada.
+        from crmcore.datos.papelera import EntradaPapelera
+
+        en_papelera = (
+            select(EntradaPapelera.id)
+            .where(
+                EntradaPapelera.tenant_id == DocumentoIndexado.tenant_id,
+                EntradaPapelera.objeto == DocumentoIndexado.objeto,
+                EntradaPapelera.registro_id == DocumentoIndexado.registro_id,
+                EntradaPapelera.restaurado_at.is_(None),
+            )
+            .exists()
+        )
+        seleccion = seleccion.where(~en_papelera)
 
         filas = db.execute(
             seleccion.order_by(text("relevancia DESC")).limit(min(limite, 200))

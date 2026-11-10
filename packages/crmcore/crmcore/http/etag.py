@@ -80,6 +80,14 @@ def comprobar_if_none_match(objeto: Any, if_none_match: str | None) -> bool:
     """
     if not if_none_match:
         return False
+    # **Si `version` es un dato del negocio, no dice si la fila cambió.** La
+    # versión de un presupuesto es la que se manda al cliente y no sube al
+    # enviarlo, al aceptarlo ni al corregir el título: con ella como ETag, el
+    # navegador revalidaba, recibía 304 y enseñaba el presupuesto de antes.
+    # Medido el 10-11-2026: «Enviar» contestaba «Enviado» y la ficha, recargada,
+    # seguía en «Borrador». Para esos modelos no hay 304: se manda el cuerpo.
+    if getattr(type(objeto), "VERSION_ES_DE_NEGOCIO", False):
+        return False
     if if_none_match.strip() == "*":
         return True
     actual = str(getattr(objeto, "version", ""))

@@ -90,6 +90,12 @@ export interface Props {
    * tras un 409 por duplicado. Lo pide el alta.
    */
   forzarTrasElAviso?: boolean;
+  /**
+   * Campos que van delante aunque no sean obligatorios: los que ya vienen
+   * rellenos por el camino por el que se llegó. Un valor puesto y escondido
+   * en «Más campos» no se ve, y lo que no se ve no se puede comprobar.
+   */
+  delante?: readonly string[];
 }
 
 export function Formulario({
@@ -101,6 +107,7 @@ export function Formulario({
   recurso,
   fallo,
   forzarTrasElAviso = false,
+  delante: pedidosDelante = [],
 }: Props) {
   const { t } = useTranslation();
   /** Qué dijo el servidor de cada campo, por su nombre. */
@@ -144,20 +151,32 @@ export function Formulario({
       ? campos.filter((c) => c.nombre !== "forzar")
       : campos;
     const exigidos = visibles.filter((c) => c.obligatorio);
+    const preferidas = new Set(recurso?.columnas ?? []);
     if (exigidos.length > 0) {
+      // **Y con ellos, lo que el recurso declara importante y lo que ya viene
+      // relleno.** Con sólo los obligatorios, el alta de una oportunidad era
+      // «Nombre» y nada más: el importe y la fecha de cierre —sin los que no
+      // cuenta en ninguna previsión— iban detrás de «Más campos (10)», y había
+      // que abrirlo en cada alta. Medido el 10-11-2026 (tarea T03).
+      const ponerDelante = new Set([...preferidas, ...pedidosDelante]);
+      const esDelante = (c: CampoEsquema) =>
+        c.obligatorio || ponerDelante.has(c.nombre);
       return {
-        obligatorios: exigidos,
-        opcionales: visibles.filter((c) => !c.obligatorio),
+        obligatorios: visibles.filter(esDelante),
+        opcionales: visibles.filter((c) => !esDelante(c)),
       };
     }
-    const preferidas = new Set(recurso?.columnas ?? []);
-    const delante = visibles.filter((c) => preferidas.has(c.nombre));
+    const delanteDeclarado = new Set([...preferidas, ...pedidosDelante]);
+    const delante = visibles.filter((c) => delanteDeclarado.has(c.nombre));
     if (delante.length === 0) return { obligatorios: visibles, opcionales: [] };
     return {
       obligatorios: delante,
-      opcionales: visibles.filter((c) => !preferidas.has(c.nombre)),
+      opcionales: visibles.filter((c) => !delanteDeclarado.has(c.nombre)),
     };
-  }, [campos, recurso, forzarTrasElAviso]);
+    // `pedidosDelante` por su contenido: llega como una lista nueva en cada
+    // pintado y, por referencia, recalcularía esto a cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campos, recurso, forzarTrasElAviso, pedidosDelante.join(",")]);
 
   function enviar(evento: FormEvent) {
     evento.preventDefault();
@@ -1159,7 +1178,19 @@ function Referencia({
 
   useEffect(() => {
     const control = new AbortController();
+    // Con `limite` para traer bastantes, y sin él si la ruta no lo admite: el
+    // árbol de categorías de caso contestaba 422 («esta operación no mira
+    // limite») y el desplegable se quedaba vacío. Medido el 10-11-2026 al abrir
+    // un caso: la categoría no se podía elegir.
     llamar<unknown>(`${recurso.listar}?limite=200`, { signal: control.signal })
+      .catch((error: unknown) => {
+        if (
+          error instanceof ErrorApi &&
+          error.codigo === "peticion.parametro_desconocido"
+        )
+          return llamar<unknown>(recurso.listar, { signal: control.signal });
+        throw error;
+      })
       .then((r) => setOpciones(filas<Record<string, unknown>>(r.datos)))
       .catch(salvoCancelacion(() => setFallo(true)));
     return () => control.abort();

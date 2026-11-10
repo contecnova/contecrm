@@ -695,6 +695,56 @@ def test_las_delegaciones_y_los_enlaces_se_piden_por_la_ruta(
     assert "token" not in enlaces.text and "hash_token" not in enlaces.text
 
 
+def test_lo_que_me_toca_decidir_se_decide_desde_la_portada(
+    procesos: Any, db: Any, tenant_id: UUID
+) -> None:
+    """La bandeja que pinta la portada, pedida y decidida por HTTP.
+
+    Desde el 10-11-2026 «Te toca decidir» está en Inicio con «Aprobar» y
+    «Rechazar» al lado (tarea T12: de diez clics y cuatro pantallas a uno). La
+    portada lee `solicitud_id`, `titulo`, `vence_at` y `va_tarde`, y decide
+    con `POST /aprobaciones/{solicitud_id}/decidir`: si el servidor dejara de
+    mandar el identificador con ese nombre, los botones decidirían sobre nada.
+    """
+    from crmcore.config import get_settings
+    from crmcore.http.deps import H_PERMISOS, H_TENANT, H_USER, firmar_cabeceras_internas
+
+    def como(usuario: UUID) -> dict[str, str]:
+        return firmar_cabeceras_internas(
+            {H_TENANT: str(tenant_id), H_USER: str(usuario), H_PERMISOS: "*:*"},
+            get_settings().secret_key.get_secret_value(),
+        )
+
+    pide, decide = uuid4(), uuid4()
+    alta = procesos.post(
+        "/api/v1/aprobaciones",
+        headers=como(pide),
+        json={
+            "politica": "descuento_comercial",
+            "objeto": "oportunidad",
+            "objeto_id": str(uuid4()),
+            "titulo": "Descuento del 12 %",
+            "etapas": [{"nombre": "Dirección", "origen": "usuario", "usuarios": [str(decide)]}],
+        },
+    )
+    assert alta.status_code == 201, alta.text
+
+    bandeja = procesos.get("/api/v1/aprobaciones/bandeja", headers=como(decide))
+    assert bandeja.status_code == 200, bandeja.text
+    [fila] = bandeja.json()
+    for campo in ("solicitud_id", "titulo", "vence_at", "va_tarde"):
+        assert campo in fila, f"la bandeja ya no manda «{campo}» y la portada lo pinta"
+    assert fila["titulo"] == "Descuento del 12 %"
+
+    decision = procesos.post(
+        f"/api/v1/aprobaciones/{fila['solicitud_id']}/decidir",
+        headers=como(decide),
+        json={"decision": "aprobar"},
+    )
+    assert decision.status_code == 200, decision.text
+    assert procesos.get("/api/v1/aprobaciones/bandeja", headers=como(decide)).json() == []
+
+
 def test_las_tres_listas_de_cuenta_se_piden_por_la_ruta(
     personas: Any, db: Any, tenant_id: UUID
 ) -> None:

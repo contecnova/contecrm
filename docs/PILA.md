@@ -336,6 +336,22 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
     sin medirlo no se puede decir «nada hardcodeado».
   - [ ] **El rediseño pantalla por pantalla**, con medidas de usabilidad
     (clics y tiempo por tarea frecuente), no sólo a ojo.
+    - **Medido el 10-11-2026** (`frontend/scripts/medir-tareas.mjs`, tabla en
+      el manual técnico 4.6.71): 12 tareas de comercial, soporte y
+      responsable. Antes 7 de 12 terminadas y 5 bloqueos; después 12 de 12, y
+      las doce en clics iguales o por debajo de la estimación de Salesforce
+      (estimación, no medida).
+    - **Queda**: el lead pide «Más campos» para apellidos y correo; la
+      prioridad del caso es texto libre y no una lista; el selector de
+      referencias filtra sobre las 200 primeras filas (con más clientes no
+      encuentra el resto); la búsqueda de una lista mira sólo lo cargado;
+      responder un caso apunta la respuesta pero no la manda por correo;
+      Cuentas va en «Más» de la aplicación de Ventas; el desplegable de estado
+      del presupuesto ofrece «Enviado» y el servidor lo rechaza; un contacto
+      con correo o teléfono y un lead ya repartido no se pueden borrar (sólo
+      archivar) y lo archivado sigue en el buscador; la bandeja de
+      aprobaciones es un punto ciego del guardián de contratos (su forma no
+      se resuelve en estático, aunque la fija una prueba HTTP).
   - [ ] **Rehacer la comparativa con Salesforce** capacidad por capacidad con
     lo construido desde el 05-11; el lado de Salesforce no está medido.
   - [ ] **Poblar todo**: 213 de 235 pestañas con datos; 16 vacías (unas con

@@ -40,6 +40,7 @@ import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
+import { ActividadDelRegistro } from "@/componentes/ActividadDelRegistro";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
@@ -269,6 +270,7 @@ export function Caso() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              destacadas={recurso?.destacadas}
               extra={[
                 // Derivar: a segundo nivel, a ingeniería o a una cola interna.
                 // La ruta existía y sólo se llegaba desde «Escalado»; la
@@ -372,6 +374,12 @@ export function Caso() {
               <p className="card mb-4 p-3 text-dato text-ink-muted">
                 {caso.descripcion}
               </p>
+            ) : null}
+
+            {/* Apuntar la respuesta que se le dio al cliente, delante del caso
+                y sin teclear su identificador en otra pantalla. */}
+            {!editando ? (
+              <ActividadDelRegistro objeto="caso" objetoId={id ?? ""} />
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-2">

@@ -1196,7 +1196,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/presupuestos",
         servicio: "sales",
         permiso: "quote:read",
-        columnas: ["codigo", "estado", "total", "moneda", "valido_hasta"],
+        // `numero` y no `codigo`, que el presupuesto no tiene: con la columna
+        // que no existe, la primera era el estado y la fila se abría pulsando
+        // «Borrador» (medido el 10-11-2026).
+        columnas: ["numero", "titulo", "estado", "total", "moneda", "valido_hasta"],
+        destacadas: ["enviar"],
       },
       // El plan conjunto: lo acordado CON el cliente, con su calibración. Es
       // del mismo ciclo que la oferta y el pedido, y se publicaba sin pestaña.
@@ -1334,6 +1338,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         crear: "/api/v1/leads",
         servicio: "sales",
         columnas: ["nombre", "empresa", "estado", "puntuacion"],
+        // Convertir es la acción por la que existe un lead: a la vista.
+        destacadas: ["convertir"],
         permiso: "lead:read",
       },
       {
@@ -1395,6 +1401,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // foto— vive en sus rutas hijas. Se abre por CLAVE, que es como se
         // dirigen esas rutas.
         nombre: "Periodos",
+        // Por aquí abre Previsiones. Abría por «Ingreso previsto», una fila
+        // con «Total 0 · Medible no» que no contesta «¿cómo va el trimestre?»,
+        // que es a lo que se entra: medido el 10-11-2026 (tarea T11), dos
+        // clics de más para llegar al periodo.
+        principal: true,
         objeto: "periodo",
         listar: "/api/v1/forecast/periodos",
         servicio: "sales",
@@ -1416,7 +1427,6 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Ingreso previsto",
-        principal: true,
         listar: "/api/v1/ingresos/previsto",
         servicio: "sales",
         permiso: "forecast:read",
@@ -2213,6 +2223,7 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         crear: "/api/v1/casos",
         servicio: "service",
         columnas: ["codigo", "asunto", "estado", "prioridad"],
+        destacadas: ["cerrar"],
         permiso: "case:read",
       },
       {

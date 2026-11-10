@@ -11,11 +11,13 @@
  * añadir el filtro siguiente.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
 import { humanizar } from "@/lib/formato";
+import { nombresDeRegistros } from "@/lib/nombres";
+import { objetoDe } from "@/lib/referencias";
 import {
   operadoresDe,
   parametroDe,
@@ -42,6 +44,26 @@ export function Filtros({
   const [campo, setCampo] = useState("");
   const [sufijo, setSufijo] = useState("");
   const [valor, setValor] = useState("");
+
+  // **Un filtro por un registro se lee por su nombre.** Al abrir «Nueva
+  // oportunidad» desde un cliente, la lista queda filtrada por él, y la
+  // pastilla decía «Cuenta ID es 01a1c54c-5448-…» (10-11-2026). Se pregunta
+  // el nombre a su listado; si no contesta, se queda el identificador.
+  const [nombres, setNombres] = useState<Map<string, string>>(new Map());
+  const referencias = puestos
+    .filter((f) => objetoDe(f.campo) && /^[0-9a-f-]{32,36}$/i.test(f.valor))
+    .map((f) => ({ objeto_tipo: objetoDe(f.campo) ?? "", objeto_id: f.valor }));
+  const claveReferencias = referencias.map((r) => r.objeto_id).join(",");
+  useEffect(() => {
+    if (!claveReferencias) return;
+    const control = new AbortController();
+    void nombresDeRegistros(referencias, control.signal).then((r) =>
+      setNombres(r.nombres),
+    );
+    return () => control.abort();
+    // Por los identificadores, no por la lista: llega nueva en cada pintado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveReferencias]);
 
   const tipo: TipoCampo = campo ? tipoDe(filas, campo) : "texto";
   const operadores = operadoresDe(tipo);
@@ -76,9 +98,17 @@ export function Filtros({
           className="pill inline-flex items-center gap-1"
         >
           <span className="text-rotulo">
-            {humanizar(f.campo)}{" "}
+            {nombres.has(f.valor)
+              ? humanizar(objetoDe(f.campo) ?? f.campo)
+              : humanizar(f.campo)}{" "}
             <span className="text-ink-muted">
-              {rotuloDe(t, f, tipoDe(filas, f.campo))}
+              {rotuloDe(
+                t,
+                nombres.has(f.valor)
+                  ? { ...f, valor: nombres.get(f.valor)! }
+                  : f,
+                tipoDe(filas, f.campo),
+              )}
             </span>
           </span>
           <button

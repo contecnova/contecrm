@@ -893,8 +893,14 @@ def ritmo(cuerpo: RitmoIn, principal: AutenticadoDep) -> Any:
 # comentarios internos son lo mismo: se acababan escribiendo en la descripción,
 # donde los lee el cliente si se le enseña.
 from crmcore.http.adjuntos_router import crear_router_adjuntos  # noqa: E402
+from crmcore.http.busqueda_router import crear_router_busqueda  # noqa: E402
 from crmcore.http.comentarios_router import crear_router_comentarios  # noqa: E402
 from crmcore.http.documental_router import crear_router_documental  # noqa: E402
+
+from services.service.indexacion import OBJETOS as _OBJETOS_BUSCABLES  # noqa: E402
+
+# Lo que el buscador de arriba pregunta a este servicio: los casos.
+router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/service/buscar")
 
 router_adjuntos = crear_router_adjuntos({"caso", "orden_trabajo"})
 router_comentarios = crear_router_comentarios({"caso", "orden_trabajo"})
@@ -908,6 +914,7 @@ ROUTERS = [
     router_adjuntos,
     router_comentarios,
     router_documental,
+    router_busqueda,
     *ROUTERS_OPERACION,
     *ROUTERS_OMNICANAL,
     *ROUTERS_CONOCIMIENTO,

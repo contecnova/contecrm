@@ -348,7 +348,14 @@ export function Acciones({
             {abierta.nombre}
           </h3>
 
-          {irreversible && !confirmada ? (
+          {/* **Confirmar sólo lo que se ejecuta de un clic.** Si la acción
+              tiene formulario —cerrar un caso pide el motivo—, rellenarlo y
+              pulsar ya es decidir, y el aviso va encima de él. Antes salía
+              además «Lo entiendo, sigue» y después el formulario: dos pasos
+              para una sola decisión (tarea T10, 10-11-2026). */}
+          {campos === null ? (
+            <Cargando />
+          ) : irreversible && !confirmada && campos.length === 0 ? (
             <div
               className="mt-3"
               role="alertdialog"
@@ -374,10 +381,13 @@ export function Acciones({
                 </button>
               </div>
             </div>
-          ) : campos === null ? (
-            <Cargando />
           ) : (
             <div className="mt-3">
+              {irreversible && campos.length > 0 ? (
+                <p className="mb-2 text-dato text-ink-muted" role="note">
+                  {t("acciones.noSeDeshace")}
+                </p>
+              ) : null}
               {campos.length === 0 ? (
                 // Sin campos no se enseña un formulario vacío: se ejecuta y ya.
                 <button

@@ -34,7 +34,8 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
-import { llamar, salvoCancelacion } from "@/lib/api";
+import { Error as Fallo } from "@/componentes/Estados";
+import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
 import { ALTAS } from "@/lib/altas";
 import { puede, type Sesion } from "@/lib/sesion";
@@ -60,6 +61,15 @@ interface Etapa {
   id: string;
   nombre: string;
   orden?: number | null;
+}
+
+/** Una fila de `GET /aprobaciones/bandeja`: lo que me toca decidir a mí. */
+interface PorDecidir {
+  solicitud_id: string;
+  titulo: string;
+  etapa?: string | null;
+  vence_at?: string | null;
+  va_tarde?: boolean;
 }
 
 /**
@@ -100,6 +110,10 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [embudo, setEmbudo] = useState<Oportunidad[] | null>(null);
 
+  const [porDecidir, setPorDecidir] = useState<PorDecidir[] | null>(null);
+  const [decidiendo, setDecidiendo] = useState("");
+  const [falloDecision, setFalloDecision] = useState<unknown>(null);
+  const veAprobaciones = puede(sesion, "aprobacion:read");
   const veActividades = puede(sesion, "activity:read");
   const veOportunidades = puede(sesion, "opportunity:read");
 
@@ -153,6 +167,54 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
       .catch(salvoCancelacion(() => setEtapas([])));
     return () => control.abort();
   }, [veOportunidades]);
+
+  /**
+   * Lo que espera MI decisión, en la portada y con los botones al lado.
+   *
+   * La bandeja existía, pero en Administrar › Procesos › «Me toca decidir», y
+   * al abrir una aprobación el título era «Aprobaciones» y decidir estaba en
+   * «Más». Medido el 10-11-2026 (tarea T12): diez clics y cuatro pantallas
+   * para aprobar un descuento, desde un sitio al que un responsable no entra.
+   * En Salesforce, «Elementos para aprobar» es un componente de la portada.
+   */
+  const cargarPorDecidir = useMemo(
+    () => (signal?: AbortSignal) => {
+      if (!veAprobaciones) {
+        setPorDecidir([]);
+        return;
+      }
+      llamar<PorDecidir[]>("/api/v1/aprobaciones/bandeja?limite=6", { signal })
+        // `filas` y no `r.datos` a pelo: una respuesta con otra forma no puede
+        // tumbar la portada entera, que es lo primero que se ve.
+        .then((r) => setPorDecidir(filas<PorDecidir>(r.datos)))
+        .catch(salvoCancelacion(() => setPorDecidir([])));
+    },
+    [veAprobaciones],
+  );
+  useEffect(() => {
+    const control = new AbortController();
+    cargarPorDecidir(control.signal);
+    return () => control.abort();
+  }, [cargarPorDecidir]);
+
+  async function decidir(
+    solicitudId: string,
+    decision: "aprobar" | "rechazar",
+  ) {
+    setDecidiendo(solicitudId);
+    setFalloDecision(null);
+    try {
+      await llamar(`/api/v1/aprobaciones/${solicitudId}/decidir`, {
+        metodo: "POST",
+        cuerpo: { decision },
+      });
+      cargarPorDecidir();
+    } catch (error) {
+      setFalloDecision(error);
+    } finally {
+      setDecidiendo("");
+    }
+  }
 
   // El embudo: importe por etapa, en el orden del pipeline y **no por importe**.
   // Ordenar por importe convierte un embudo en un ranking y se pierde lo único
@@ -253,7 +315,67 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
            `items-start`: sin él cada tarjeta se estira hasta la altura de la
            más alta de su fila, y un hueco así se lee como «falta algo». */
         <div className="grid items-start gap-4 lg:grid-cols-3">
-          <div className="flex flex-col gap-4">
+          {/* `min-w-0`: sin él, un título largo de la bandeja —que se corta con
+              puntos suspensivos— ensanchaba la columna hasta su texto entero
+              y a 390 px todas las tarjetas se salían por la derecha. */}
+          <div className="flex min-w-0 flex-col gap-4">
+            {/* Lo que espera mi decisión: arriba, porque mientras no decido,
+                otro está parado. */}
+            {veAprobaciones ? (
+              <Bloque
+                titulo={t("inicio.porDecidir")}
+                icono="approval"
+                vacio={t("inicio.nadaPorDecidir")}
+                ver={{
+                  a: "/m/procesos?r=Me%20toca%20decidir",
+                  texto: t("inicio.verTodas"),
+                }}
+                cuantos={porDecidir?.length ?? 0}
+              >
+                {(porDecidir || []).map((d) => (
+                  <li key={d.solicitud_id} className="py-1.5">
+                    <Link
+                      to={`/m/procesos/aprobaciones/${d.solicitud_id}`}
+                      className="block truncate text-dato text-accent hover:underline"
+                      title={d.titulo}
+                    >
+                      {d.titulo || t("inicio.sinTitulo")}
+                    </Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        disabled={decidiendo === d.solicitud_id}
+                        onClick={() => void decidir(d.solicitud_id, "aprobar")}
+                        aria-label={t("inicio.aprobarEsto", {
+                          titulo: d.titulo,
+                        })}
+                      >
+                        {t("inicio.aprobar")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={decidiendo === d.solicitud_id}
+                        onClick={() => void decidir(d.solicitud_id, "rechazar")}
+                        aria-label={t("inicio.rechazarEsto", {
+                          titulo: d.titulo,
+                        })}
+                      >
+                        {t("inicio.rechazar")}
+                      </button>
+                      {d.va_tarde ? (
+                        <span className="badge badge-danger">
+                          {t("inicio.vaTarde")}
+                        </span>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </Bloque>
+            ) : null}
+            {falloDecision ? <Fallo error={falloDecision} /> : null}
+
             {/* Lo que ya se pasó. Primero y aparte: es lo único que no espera. */}
             <Bloque
               titulo={t("inicio.vencidas")}

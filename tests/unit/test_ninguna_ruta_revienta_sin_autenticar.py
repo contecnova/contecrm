@@ -91,6 +91,7 @@ ABIERTAS_A_PROPOSITO = (
     "/api/v1/lead-routing/estrategias",
     "/api/v1/party/buscar/objetos",
     "/api/v1/sales/buscar/objetos",
+    "/api/v1/service/buscar/objetos",
     "/api/v1/notificaciones/canales",
 )
 

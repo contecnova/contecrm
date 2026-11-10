@@ -17046,3 +17046,39 @@ cliente), el cuadro incrustado (exige su ticket, no una sesión), la política
 de reintento (para pasarelas y clientes), y el cálculo de precio y la
 conversión de moneda (los aplican por dentro el presupuesto, la oportunidad y
 los servicios).
+
+## Las tareas de cada día, medidas (10-11-2026)
+
+La experiencia de uso se mide, no se supone. Doce tareas —las más frecuentes
+de un comercial, un agente de soporte y un responsable— se hacen por la
+interfaz desde la portada y se cuentan sus clics, campos, pantallas, tiempo y
+errores (`frontend/scripts/medir-tareas.mjs`; tabla y método en el manual
+técnico, 4.6.71). Antes de este bloque se terminaban 7 de 12; ahora, las 12.
+
+- **Convertir un lead en un paso.** Botón **Convertir** en la ficha del lead:
+  propone el cliente (nuevo con la empresa del lead, o el que ya se llama
+  así), el contacto colgado de él y la oportunidad, y lo crea todo de una vez.
+  Antes pedía un cliente que ya existiera y no se podía terminar desde la
+  ficha.
+- **La acción principal, a la vista.** **Convertir** en el lead, **Cerrar el
+  caso** en el caso y **Enviar** en la oferta salen junto a **Editar** en vez
+  de dentro de **Más**. La ficha del presupuesto ofrece por fin enviar,
+  aceptar y sacar la versión siguiente.
+- **El alta sabe de dónde vienes.** **Nueva oportunidad** y **Nuevo caso**
+  desde un cliente, y **Nueva oferta** desde una oportunidad, llegan con el
+  registro puesto, y lo puesto se ve delante. En un alta, delante van los
+  campos obligatorios y los que el objeto declara importantes —el importe y la
+  fecha de cierre de una oportunidad, la prioridad de un caso—.
+- **Tras guardar, la ficha.** Dar de alta lleva al registro creado, como en
+  Salesforce, para seguir con él.
+- **Apuntar en la oportunidad y en el caso.** Llamada, reunión, nota o correo
+  desde **Relacionado**, con lo último apuntado debajo.
+- **Te toca decidir, en Inicio.** Lo que espera tu aprobación, con
+  **Aprobar** y **Rechazar** al lado.
+- **Previsiones abre por los periodos**, que es donde se ve cómo va el
+  trimestre.
+- **Un buscador que encuentra lo que se busca.** Los casos por su código o su
+  asunto; el registro que se llama exactamente así, el primero; lo que está en
+  la papelera, fuera.
+- **Una confirmación, no dos.** Lo que no se deshace y lleva formulario se
+  confirma al enviarlo.

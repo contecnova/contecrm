@@ -517,11 +517,21 @@ export function Cuenta() {
                     destructiva: esIrreversible(a),
                   }))}
               />
+              {/* Con el cliente puesto: abría el alta en blanco y había que
+                  volver a buscarlo en el desplegable (tarea T03, 10-11-2026).
+                  El mismo parámetro filtra la lista a las suyas. */}
               <Link
-                to={`/m/oportunidades?r=Oportunidades&nuevo=1`}
+                to={`/m/oportunidades?r=Oportunidades&nuevo=1&cuenta_id=${encodeURIComponent(id ?? "")}`}
                 className="btn-primary"
               >
                 {t("cuenta.nuevaOportunidad")}
+              </Link>
+              {/* Y el caso, por lo mismo: se abre mirando al cliente (T08). */}
+              <Link
+                to={`/m/casos?r=Casos&nuevo=1&cuenta_id=${encodeURIComponent(id ?? "")}`}
+                className="btn-secondary"
+              >
+                {t("cuenta.nuevoCaso")}
               </Link>
             </>
           ) : null

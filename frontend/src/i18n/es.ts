@@ -227,6 +227,14 @@ export default {
     noSeDeshace:
       "Esto no se puede deshacer desde aquí. Sigue adelante solo si es lo que quieres.",
     entendido: "Lo entiendo, sigue",
+    // El rótulo corto de las acciones que van a la vista en la cabecera de la
+    // ficha (`destacadas` del recurso). El resumen del contrato es una frase
+    // —«Mandar el presupuesto al cliente»— y como botón no cabe.
+    destacada: {
+      convertir: "Convertir",
+      cerrar: "Cerrar el caso",
+      enviar: "Enviar",
+    },
   },
   inicio: {
     // Cuando las cuatro cajas de la portada salen vacías a la vez. Dice el
@@ -247,6 +255,14 @@ export default {
     nadaVencido: "Nada vencido. Bien.",
     hoy: "Para hoy",
     nadaHoy: "Nada vence hoy.",
+    porDecidir: "Te toca decidir",
+    nadaPorDecidir: "Nada espera tu decisión.",
+    sinTitulo: "(sin título)",
+    aprobar: "Aprobar",
+    rechazar: "Rechazar",
+    aprobarEsto: "Aprobar «{{titulo}}»",
+    rechazarEsto: "Rechazar «{{titulo}}»",
+    vaTarde: "va tarde",
     cierranEstaSemana: "Cierran esta semana",
     nadaCierra: "Ninguna de las tuyas cierra esta semana.",
     miEmbudo: "Mi embudo",

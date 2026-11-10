@@ -67,6 +67,7 @@ import {
   humanizar,
   importe as comoImporte,
 } from "@/lib/formato";
+import { ActividadDelRegistro } from "@/componentes/ActividadDelRegistro";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 import { cn } from "@/lib/utiles";
@@ -511,21 +512,33 @@ export function Oportunidad() {
         }
         acciones={
           !editando ? (
-            <BotonesDeRegistro
-              puedeEditar={puedeEditar}
-              puedeBorrar={puedeBorrar}
-              borrado={borrado}
-              alEditar={() => setEditando(true)}
-              alBorrar={() => setConfirmando(true)}
-              extra={acciones
-                .filter((a) => !esDeIA(a))
-                .map((a) => ({
-                  clave: a.ruta,
-                  nombre: a.nombre,
-                  alElegir: () => setAccionAbierta(a),
-                  destructiva: esIrreversible(a),
-                }))}
-            />
+            <>
+              <BotonesDeRegistro
+                puedeEditar={puedeEditar}
+                puedeBorrar={puedeBorrar}
+                borrado={borrado}
+                alEditar={() => setEditando(true)}
+                alBorrar={() => setConfirmando(true)}
+                extra={acciones
+                  .filter((a) => !esDeIA(a))
+                  .map((a) => ({
+                    clave: a.ruta,
+                    nombre: a.nombre,
+                    alElegir: () => setAccionAbierta(a),
+                    destructiva: esIrreversible(a),
+                  }))}
+              />
+              {/* La oferta se hace desde la oportunidad, con ella puesta: el
+                  cliente y el contacto los deduce el servidor. Antes había que
+                  ir a Oportunidades › Ofertas › Nuevo y elegir la oportunidad
+                  y el cliente en dos desplegables (tarea T05, 10-11-2026). */}
+              <Link
+                to={`/m/oportunidades?r=Ofertas&nuevo=1&oportunidad_id=${encodeURIComponent(id)}`}
+                className="btn-primary"
+              >
+                {t("oportunidad.nuevaOferta")}
+              </Link>
+            </>
           ) : null
         }
       />
@@ -623,40 +636,48 @@ export function Oportunidad() {
 
       <div className="mt-4">
         {editando || pestana === "relacionado" ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <LasLineas
-              lineas={lineas}
-              metricas={metricas}
-              margen={margen}
-              moneda={op.moneda}
-            />
-            <QuienDecide grupo={grupo} />
-            <QuienSeLoLleva reparto={reparto} />
-            <LoQueSeHaMovido cambios={deslizamientos} />
-            <QueFaltaParaCerrar
-              evaluacion={evaluacion}
-              playbook={playbook}
-              alMarcar={async (clave, cubierto) => {
-                if (!evaluacion?.metodologia) return;
-                const r = await llamar<Evaluacion>(
-                  `/api/v1/metodologias/${evaluacion.metodologia.id}/oportunidad/${id}`,
-                  {
-                    metodo: "PUT",
-                    cuerpo: { respuestas: { [clave]: { cubierto } } },
-                  },
-                );
-                setEvaluacion({
-                  ...r.datos,
-                  metodologia: evaluacion.metodologia,
-                });
-              }}
-            />
-            <ElPlanConElCliente plan={plan} />
-            <LaFirma id={op.id} alCambiar={cargar} />
-            <div className="lg:col-span-2">
-              <GenerarDocumento objeto="oportunidad" id={op.id} />
+          <>
+            {/* Apuntar la llamada o la reunión de esta oportunidad, aquí: antes
+              sólo se podía desde la ficha del cliente o tecleando el
+              identificador de la oportunidad en el alta suelta. */}
+            {!editando && id ? (
+              <ActividadDelRegistro objeto="oportunidad" objetoId={id} />
+            ) : null}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <LasLineas
+                lineas={lineas}
+                metricas={metricas}
+                margen={margen}
+                moneda={op.moneda}
+              />
+              <QuienDecide grupo={grupo} />
+              <QuienSeLoLleva reparto={reparto} />
+              <LoQueSeHaMovido cambios={deslizamientos} />
+              <QueFaltaParaCerrar
+                evaluacion={evaluacion}
+                playbook={playbook}
+                alMarcar={async (clave, cubierto) => {
+                  if (!evaluacion?.metodologia) return;
+                  const r = await llamar<Evaluacion>(
+                    `/api/v1/metodologias/${evaluacion.metodologia.id}/oportunidad/${id}`,
+                    {
+                      metodo: "PUT",
+                      cuerpo: { respuestas: { [clave]: { cubierto } } },
+                    },
+                  );
+                  setEvaluacion({
+                    ...r.datos,
+                    metodologia: evaluacion.metodologia,
+                  });
+                }}
+              />
+              <ElPlanConElCliente plan={plan} />
+              <LaFirma id={op.id} alCambiar={cargar} />
+              <div className="lg:col-span-2">
+                <GenerarDocumento objeto="oportunidad" id={op.id} />
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           <DetallesDelRegistro
             ruta={ruta}

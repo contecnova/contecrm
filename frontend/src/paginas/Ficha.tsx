@@ -30,6 +30,7 @@ import { nombreDelRegistro } from "@/lib/formato";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
+import { ConvertirLead } from "@/componentes/ConvertirLead";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { GenerarDocumento } from "@/componentes/GenerarDocumento";
@@ -379,6 +380,7 @@ export function Ficha() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              destacadas={recurso?.destacadas}
               extra={acciones
                 .filter((a) => !esDeIA(a))
                 .map((a) => ({
@@ -402,10 +404,24 @@ export function Ficha() {
             abierta={accionAbierta}
             alElegir={setAccionAbierta}
           />
+          {/* Convertir un lead no es el formulario del contrato —que pide un
+              cliente que ya exista—: es el paso entero, con el cliente y el
+              contacto propuestos. Ver `ConvertirLead`. */}
+          {tipo === "lead" && id && accionAbierta?.clave === "convertir" ? (
+            <ConvertirLead
+              leadId={id}
+              lead={(registro ?? {}) as Record<string, string | null>}
+              alCancelar={() => setAccionAbierta(null)}
+            />
+          ) : null}
           <Acciones
             acciones={acciones}
             servicio={recurso?.servicio ?? ""}
-            abierta={accionAbierta}
+            abierta={
+              tipo === "lead" && accionAbierta?.clave === "convertir"
+                ? null
+                : accionAbierta
+            }
             alCambiarAbierta={setAccionAbierta}
             alTerminar={cargar}
             registro={registro}

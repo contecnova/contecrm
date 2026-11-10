@@ -28,12 +28,24 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { BotonesDeRegistro } from "@/componentes/Edicion";
-import { MenuDeAcciones, type OpcionDeMenu } from "@/componentes/MenuDeAcciones";
+import {
+  MenuDeAcciones,
+  type OpcionDeMenu,
+} from "@/componentes/MenuDeAcciones";
 
 const EXTRA: OpcionDeMenu[] = [
   { clave: "a", nombre: "Añadir una dirección", alElegir: () => {} },
-  { clave: "b", nombre: "Fusionar esta cuenta con otra", alElegir: () => {}, destructiva: true },
-  { clave: "c", nombre: "Sumar a alguien al equipo de la cuenta", alElegir: () => {} },
+  {
+    clave: "b",
+    nombre: "Fusionar esta cuenta con otra",
+    alElegir: () => {},
+    destructiva: true,
+  },
+  {
+    clave: "c",
+    nombre: "Sumar a alguien al equipo de la cuenta",
+    alElegir: () => {},
+  },
 ];
 
 function barra(extra = EXTRA, alBorrar = () => {}) {
@@ -61,7 +73,9 @@ describe("lo que no se deshace no está a mano", () => {
 
   it("dentro del menú, lo destructivo va al final", () => {
     barra();
-    fireEvent.click(screen.getByRole("button", { name: /acciones\.mas|acciones\.titulo/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /acciones\.mas|acciones\.titulo/ }),
+    );
     const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
     const nombres = items.map((i) => i.textContent);
     // Las cuatro no destructivas primero, las dos que no se deshacen al final.
@@ -80,7 +94,9 @@ describe("lo que no se deshace no está a mano", () => {
   it("borrar sigue estando: se mueve, no se quita", () => {
     const alBorrar = vi.fn();
     barra(EXTRA, alBorrar);
-    fireEvent.click(screen.getByRole("button", { name: /acciones\.mas|acciones\.titulo/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /acciones\.mas|acciones\.titulo/ }),
+    );
     fireEvent.click(screen.getByRole("menuitem", { name: "ficha.eliminar" }));
     expect(alBorrar).toHaveBeenCalledOnce();
   });
@@ -110,5 +126,39 @@ describe("lo que no se deshace no está a mano", () => {
     );
     expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "acciones.mas" })).toBeNull();
+  });
+
+  it("la acción destacada del recurso sale a la vista y no se repite en el menú", () => {
+    // Convertir un lead, cerrar un caso, enviar una oferta: quedaban entre
+    // «Archivar» y «Borrar», a dos clics (tareas T02, T05 y T10, 10-11-2026).
+    const alConvertir = vi.fn();
+    render(
+      <BotonesDeRegistro
+        puedeEditar
+        puedeBorrar={false}
+        alEditar={() => {}}
+        alBorrar={() => {}}
+        destacadas={["convertir"]}
+        extra={[
+          {
+            clave: "/api/v1/leads/l-1/archivar",
+            nombre: "Archivar leads",
+            alElegir: () => {},
+          },
+          {
+            clave: "/api/v1/leads/l-1/convertir",
+            nombre: "Convertir el lead en cuenta, contacto y oportunidad",
+            alElegir: alConvertir,
+          },
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Convertir/ }));
+    expect(alConvertir).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByRole("button", { name: "acciones.titulo" }));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).queryByText(/Convertir el lead/)).toBeNull();
+    expect(within(menu).getByText("Archivar leads")).toBeInTheDocument();
   });
 });

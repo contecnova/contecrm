@@ -44,6 +44,9 @@ import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { GenerarDocumento } from "@/componentes/GenerarDocumento";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { Acciones, esIrreversible } from "@/componentes/Acciones";
+import { accionesDe, type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 import { escalar, fecha, importe } from "@/lib/formato";
@@ -146,6 +149,16 @@ export function Presupuesto() {
   const modulo = moduloDe("oportunidades");
   const recurso = modulo ? recursoDe(modulo, "presupuesto") : undefined;
   const { ruta, puedeEditar, puedeBorrar, borrado } = useEdicion(recurso, id);
+  // **Lo que se hace con el presupuesto, del contrato.** La ficha no ofrecía
+  // ninguna acción —ni enviar, ni aceptar, ni sacar la versión siguiente— y el
+  // comentario de abajo decía que «siguen en sus botones», que no existían.
+  // Lo único a mano era el desplegable de estado, que ofrecía «Enviado» y el
+  // servidor lo rechazaba: enviar pasa por el control de descuentos. Medido el
+  // 10-11-2026 (tarea T05). Ahora salen como en cualquier otra ficha, y
+  // «Enviar» a la vista (`destacadas` del recurso).
+  const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const acciones = accionesDe(superficie, "/api/v1/presupuestos", id, tiene);
   // Las mismas dos pestañas que las demás fichas: «Relacionado» es lo que
   // esta pantalla ya enseñaba y «Detalles» son los campos del registro, que
   // hasta hoy sólo se leían entrando a editar.
@@ -218,7 +231,8 @@ export function Presupuesto() {
         }}
         distintivos={
           <>
-            <span className="chip-dato font-mono">{presupuesto.numero}</span>
+            {/* El número no va de insignia: es dato clave desde que la
+                columna del recurso es la suya (`numero`, no `codigo`). */}
             <span className="text-dato text-ink-muted">
               {t("presupuesto.version", { version: presupuesto.version })}
             </span>
@@ -232,10 +246,27 @@ export function Presupuesto() {
               borrado={borrado}
               alEditar={() => setEditando(true)}
               alBorrar={() => setConfirmando(true)}
+              destacadas={recurso?.destacadas}
+              extra={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+                destructiva: esIrreversible(a),
+              }))}
             />
           ) : null
         }
       />
+
+      {!editando ? (
+        <Acciones
+          acciones={acciones}
+          servicio="sales"
+          abierta={accionAbierta}
+          alCambiarAbierta={setAccionAbierta}
+          alTerminar={() => cargar()}
+        />
+      ) : null}
 
       {/* Por qué volvió de la aprobación —rechazada, o sin nadie que pudiera
           aprobarla—: se guardaba y no se enseñaba, y quien lo envió no sabía

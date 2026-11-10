@@ -362,7 +362,10 @@ export function DatosClave({
             ) : null}
           </div>
           {acciones || puedeSeguirse ? (
-            <div className="flex shrink-0 items-center gap-2">
+            // Envuelve en vez de salirse: a 390 px, con la acción destacada
+            // al lado de Seguir, Editar y Más, la fila pasaba del ancho y
+            // «Más» quedaba cortado (medido el 10-11-2026).
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
               {/* Seguir primero, a la izquierda de editar y borrar: es donde
                   lo pone Lightning, y además lo separa de lo que cambia el
                   registro — seguir no lo toca. */}
@@ -399,7 +402,11 @@ export function DatosClave({
                     —`estado_nombre`—, manda eso: «Adjudicada», no «Ganada». */}
                 <dd
                   className="truncate text-titulo text-ink"
-                  title={escalar(fila?.[`${c}_nombre`] ?? fila?.[c], c, laMoneda)}
+                  title={escalar(
+                    fila?.[`${c}_nombre`] ?? fila?.[c],
+                    c,
+                    laMoneda,
+                  )}
                 >
                   {escalar(fila?.[`${c}_nombre`] ?? fila?.[c], c, laMoneda)}
                 </dd>

@@ -211,6 +211,17 @@ export interface Recurso {
    */
   acciones_ocultas?: string[];
   /**
+   * Las acciones del registro que van **a la vista**, en la cabecera de la
+   * ficha, y no dentro de «Más». Por su último tramo: `convertir`, `cerrar`.
+   *
+   * El menú ordena por nombre, y la acción por la que existe el registro —
+   * convertir un lead, cerrar un caso, enviar una oferta— quedaba entre
+   * «Archivar» y «Borrar», a dos clics y escondida. Medido el 10-11-2026 en
+   * las tareas T02, T05 y T10. Pocas y declaradas: con todas fuera, la
+   * cabecera vuelve a ser el menú.
+   */
+  destacadas?: string[];
+  /**
    * Por qué este registro NO ofrece su DELETE, aunque el contrato lo publique.
    *
    * Es el motivo y no un sí/no a propósito: un borrado callado sin decir qué

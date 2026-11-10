@@ -1243,6 +1243,25 @@ function RecursoVista({
     recurso.nombre,
   ]);
 
+  /**
+   * Lo que el alta ya sabe por dónde se ha llegado (`?nuevo=1&cuenta_id=…`).
+   *
+   * «Nueva oportunidad» desde la ficha de un cliente abría el alta en blanco y
+   * había que volver a buscar al cliente en el desplegable: el dato estaba en
+   * la pantalla de la que se venía. Medido el 10-11-2026 (tarea T03): tres
+   * clics y una búsqueda por un valor que nadie tenía que teclear.
+   *
+   * Vale cualquier parámetro que se llame como un campo del alta, sin lista
+   * por objeto. Y es **también filtro de la lista**, a propósito: se ven las
+   * oportunidades de ese cliente mientras se da de alta otra suya.
+   */
+  const dadosPorLaUrl = useMemo(() => {
+    if (!campos || parametros.get("nuevo") !== "1") return {};
+    const nombres = new Set(campos.map((c) => c.nombre));
+    return Object.fromEntries(
+      [...parametros.entries()].filter(([k]) => nombres.has(k)),
+    ) as Record<string, unknown>;
+  }, [campos, parametros]);
   // Duplicar: se lee el registro por su ficha y se rellenan con él los campos
   // del alta. Sólo cuando la ficha se abre por identificador —con una clave,
   // la copia chocaría con el original al guardar—.
@@ -1330,6 +1349,19 @@ function RecursoVista({
       setUnaVez(Object.keys(secretos).length ? secretos : null);
       setCreando(false);
       setFallo(null);
+      // **Se abre lo que se acaba de crear**, como hace Salesforce. Quedarse en
+      // la lista obligaba a buscar el registro nuevo para seguir con él —el
+      // lead recién dado de alta para convertirlo, la oferta para enviarla—.
+      // Medido el 10-11-2026: dos pasos más en cada alta que sigue con algo.
+      // Salvo si trae valores que sólo se enseñan una vez: ésos se leen aquí.
+      const destino =
+        !Object.keys(secretos).length && aLaFicha && !aOtroModulo
+          ? aLaFicha(respuesta.datos ?? {})
+          : null;
+      if (destino) {
+        navegar(destino);
+        return;
+      }
       if (parametros.has("duplicar")) {
         // La copia ya está: el parámetro no puede seguir abriendo el alta.
         const siguientes = new URLSearchParams(parametros);
@@ -1385,9 +1417,12 @@ function RecursoVista({
           key={
             duplicarDe
               ? `duplicar-${duplicarDe}-${Object.keys(valoresDeAlta).length}`
-              : "alta"
+              : // Los campos llegan antes de pintar el formulario, así que lo
+                // que trae la URL ya está al montarlo.
+                `alta-${Object.keys(dadosPorLaUrl).join(",")}`
           }
-          valores={valoresDeAlta}
+          valores={{ ...dadosPorLaUrl, ...valoresDeAlta }}
+          delante={Object.keys(dadosPorLaUrl)}
           forzarTrasElAviso
           fallo={fallo}
           recurso={recurso}

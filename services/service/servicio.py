@@ -383,6 +383,9 @@ def abrir_caso(
 
     aplicar_sla(uow.db, caso, tier_cliente=tier_cliente)
     _anotar(uow.db, caso, "abierto", prioridad=prioridad, severidad=severidad)
+    from services.service.indexacion import indexar_caso
+
+    indexar_caso(uow.db, caso)
     registrar(
         uow.db,
         accion="caso.abierto",
@@ -509,6 +512,11 @@ def cambiar_estado(uow: UnidadDeTrabajo, caso_id: UUID, *, estado: str, motivo: 
         if vence is not None and ahora > vence:
             caso.incumplio_resolucion = True
     _anotar(uow.db, caso, "estado", desde=anterior, hasta=estado, motivo=motivo or None)
+    from services.service.indexacion import indexar_caso
+
+    # El resultado lleva el estado: sin esto, el buscador decía «nuevo» de un
+    # caso cerrado hace un mes.
+    indexar_caso(uow.db, caso)
     return caso
 
 
@@ -572,6 +580,9 @@ def cerrar_caso(
             "cuenta_id": str(caso.cuenta_id) if caso.cuenta_id else "",
         },
     )
+    from services.service.indexacion import indexar_caso
+
+    indexar_caso(uow.db, caso)
     return caso
 
 
@@ -625,6 +636,9 @@ def reabrir_caso(
         datos={"motivo": motivo, "reaperturas": caso.reaperturas},
         tenant_id=caso.tenant_id,
     )
+    from services.service.indexacion import indexar_caso
+
+    indexar_caso(uow.db, caso)
     return caso
 
 

@@ -67,7 +67,12 @@ describe("el formulario", () => {
     // una caja estrecha con scroll, que es peor que no partir el formulario.
     const { container } = montar([
       campo({ nombre: "corto", titulo: "Corto", obligatorio: true }),
-      campo({ nombre: "notas", titulo: "Notas", tipo: "texto_largo", obligatorio: true }),
+      campo({
+        nombre: "notas",
+        titulo: "Notas",
+        tipo: "texto_largo",
+        obligatorio: true,
+      }),
     ]);
     const anchos = container.querySelectorAll(".campo-ancho");
     expect(anchos).toHaveLength(1);
@@ -117,13 +122,20 @@ describe("el formulario", () => {
     // Lo visual no puede llevarse por delante lo accesible: sin `for` y sin
     // `aria-describedby`, quien usa un lector de pantalla oye una caja suelta.
     montar([
-      campo({ nombre: "email", titulo: "Email", obligatorio: true, descripcion: "El de trabajo." }),
+      campo({
+        nombre: "email",
+        titulo: "Email",
+        obligatorio: true,
+        descripcion: "El de trabajo.",
+      }),
     ]);
     const caja = screen.getByLabelText("Email");
     expect(caja).toBeInTheDocument();
     const descrito = caja.getAttribute("aria-describedby");
     expect(descrito).toBeTruthy();
-    expect(document.getElementById(descrito!)?.textContent).toContain("El de trabajo.");
+    expect(document.getElementById(descrito!)?.textContent).toContain(
+      "El de trabajo.",
+    );
   });
 });
 
@@ -143,7 +155,14 @@ describe("un formulario sin campos obligatorios", () => {
     const { container } = render(
       <Formulario
         campos={campos}
-        recurso={{ nombre: "Oportunidades", listar: "/x", servicio: "sales", columnas: ["nombre", "importe"] } as never}
+        recurso={
+          {
+            nombre: "Oportunidades",
+            listar: "/x",
+            servicio: "sales",
+            columnas: ["nombre", "importe"],
+          } as never
+        }
         textoEnviar="Guardar"
         alEnviar={() => undefined}
       />,
@@ -165,10 +184,53 @@ describe("un formulario sin campos obligatorios", () => {
     ] as unknown as Parameters<typeof Formulario>[0]["campos"];
 
     const { container } = render(
-      <Formulario campos={campos} textoEnviar="Guardar" alEnviar={() => undefined} />,
+      <Formulario
+        campos={campos}
+        textoEnviar="Guardar"
+        alEnviar={() => undefined}
+      />,
     );
     const delante = container.querySelectorAll(".rejilla-formulario")[0];
     expect(delante?.querySelectorAll("input, select, textarea").length).toBe(2);
     expect(screen.queryByText(/formulario\.masCampos/)).toBeNull();
+  });
+
+  it("en un alta, con los obligatorios van las preferidas y lo que ya viene relleno", () => {
+    // Medido el 10-11-2026 (tarea T03): el alta de una oportunidad era
+    // «Nombre» y nada más, con el importe y la fecha detrás de «Más campos»;
+    // y el cliente que traía el enlace quedaba puesto pero escondido.
+    const campos = [
+      { nombre: "nombre", tipo: "string", obligatorio: true },
+      { nombre: "importe", tipo: "number", obligatorio: false },
+      { nombre: "cuenta_id", tipo: "string", obligatorio: false },
+      { nombre: "notas", tipo: "string", obligatorio: false },
+    ] as unknown as Parameters<typeof Formulario>[0]["campos"];
+
+    const { container } = render(
+      <Formulario
+        campos={campos}
+        recurso={
+          {
+            nombre: "Oportunidades",
+            listar: "/x",
+            servicio: "sales",
+            columnas: ["nombre", "importe"],
+          } as never
+        }
+        delante={["cuenta_id"]}
+        valores={{ cuenta_id: "c-1" }}
+        textoEnviar="Guardar"
+        alEnviar={() => undefined}
+      />,
+    );
+
+    const delante = container.querySelectorAll(".rejilla-formulario")[0];
+    // nombre (obligatorio), importe (preferida) y cuenta_id (viene relleno).
+    expect(
+      delante?.querySelectorAll(
+        "input:not([type=hidden]), select, textarea, [role=combobox]",
+      ).length,
+    ).toBe(3);
+    expect(screen.getByText(/formulario\.masCampos/)).toBeInTheDocument();
   });
 });
