@@ -231,7 +231,16 @@ class ProbarIn(BaseModel):
 )
 def motor(principal: AutenticadoDep) -> Any:
     limites = motor_js.Limites.de_ajustes()
-    return {**motor_js.estado_del_motor(), "limites": limites.__dict__}
+    estado = motor_js.estado_del_motor()
+    # La frase que lo lee, para la pestaña de Extensiones: sin ella la medida
+    # es un `listo: true` y seis números sin decir qué son.
+    que_significa = (
+        f"Motor JavaScript {estado['version']}, listo y con la huella que se fijó. "
+        "Cada ejecución se corta en cuanto pasa uno de estos topes."
+        if estado.get("listo")
+        else str(estado.get("porque") or "")
+    )
+    return {**estado, "limites": limites.__dict__, "que_significa": que_significa}
 
 
 @router_codigo.post(

@@ -2100,10 +2100,19 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
   // «qué factor pesa más», «en qué etapa se pierde». Hasta el 05-11-2026 se
   // descartaban sin decir nada, porque no eran ni una cifra ni un texto, y la
   // medida enseñaba dos números de los siete que traía.
-  const desgloses = util.filter(([, valor]) => esDesglose(valor)) as [
+  const todosLosDesgloses = util.filter(([, valor]) => esDesglose(valor)) as [
     string,
     Record<string, number>,
   ][];
+  // Un objeto de números en unidades distintas —los topes de un motor: 2.000
+  // ms, 64 MB, diez mil millones de instrucciones— no es un reparto: dibujado
+  // en barras, el mayor aplasta a los demás y todos salen «0 %». Esos van como
+  // cifras sueltas, cada una con su unidad.
+  const desgloses = todosLosDesgloses.filter(([, v]) => esUnReparto(v));
+  for (const [, valores] of todosLosDesgloses.filter(
+    ([, v]) => !esUnReparto(v),
+  ))
+    cifras.push(...Object.entries(valores));
 
   // **Sin nada que enseñar, no se enseña.** Un recuadro con marco y vacío se
   // lee como un dato que falta; y aquí es peor, porque no es un dato que
@@ -2180,6 +2189,17 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
         </Suspense>
       ))}
     </>
+  );
+}
+
+/** La unidad que lleva un campo en el nombre —`tiempo_ms`, `memoria_mb`—. */
+const UNIDAD = /_(ms|s|min|h|kb|mb|gb|pct|max|eur)$/;
+
+/** Si todas sus cifras se miden igual: si no, las barras no comparan nada. */
+function esUnReparto(valores: Record<string, number>): boolean {
+  return (
+    new Set(Object.keys(valores).map((k) => UNIDAD.exec(k)?.[1] ?? "")).size <=
+    1
   );
 }
 

@@ -4539,6 +4539,25 @@ calcula la casa y la **Diferencia** en rojo cuando no cuadra.
   modelo atendería sin sacar el dato de la región.
 - **Si eres proveedor**, en tu portal, «Tus papeles con nosotros» dice ahora
   también para qué estás homologado y hasta cuándo.
+- **A qué cuentas tenemos olvidadas.** **Ventas › Cuentas**: encima de la
+  lista, «Sin contacto» enseña las diez más recientes sin ninguna actividad
+  desde el corte de tu empresa —también las que no han tenido ninguna nunca—.
+- **¿Ya existe esta persona?** **Clientes › Duplicados**, en «¿Ya existe?»
+  elige **Una persona** en «Qué compruebas», escribe el nombre (y, si los
+  tienes, los apellidos y el correo) y pulsa **Comprobar**. Cada parecido abre
+  la ficha del contacto.
+- **Qué sabe el asistente y qué te ha propuesto.** **Analítica › Asistente
+  IA**: bajo «Conocimiento y acciones» dice cuántos fragmentos tiene indexados
+  de cada fuente; abajo, «Lo que te ha propuesto hacer» lista sus propuestas
+  con lo que pasó con cada una. Una que sigue **Pendiente de tu confirmación**
+  se confirma o se descarta desde ahí aunque hayas salido de la pantalla; si le
+  falta un dato, lo dice y hay que volver a preguntar.
+- **Administración**: en **Procesos y orquestación › Extensiones**, encima de
+  la lista, el motor que las ejecuta —si está listo— y sus topes de tiempo,
+  memoria, instrucciones, entrada, salida y líneas de registro. En
+  **Administrar › Plataforma y cumplimiento**, elige el servicio y, en
+  «Archivo de histórico», la columna **Ya archivado** dice cuántas filas de
+  cada clase hay ya en el archivo y de qué fechas.
 
 ### Las listas de tu empresa: roles, relaciones, funciones, resultados de llamada y prioridades (administración)
 

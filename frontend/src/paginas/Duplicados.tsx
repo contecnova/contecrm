@@ -467,11 +467,18 @@ interface Candidato {
  * duplicados que ya entraron, y esto es para que no entre el siguiente. Dice
  * **por qué** se propone cada uno —mismo NIF y nombre parecido llevan a
  * decisiones distintas— y abre su ficha.
+ *
+ * Y de una persona, con la misma comprobación que hace el alta de un contacto:
+ * nombre, apellidos y correo. El teléfono no entra aquí porque no bloquea —una
+ * centralita la comparten muchas personas—.
  */
 function YaExiste() {
   const { t } = useTranslation();
+  const [deQue, setDeQue] = useState<"empresa" | "persona">("empresa");
   const [nombre, setNombre] = useState("");
   const [nif, setNif] = useState("");
+  const [apellidos, setApellidos] = useState("");
+  const [email, setEmail] = useState("");
   const [candidatos, setCandidatos] = useState<Candidato[] | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
@@ -479,6 +486,16 @@ function YaExiste() {
     if (nombre.trim().length < 2) return;
     setFallo(null);
     try {
+      if (deQue === "persona") {
+        const parametros = new URLSearchParams({ nombre: nombre.trim() });
+        if (apellidos.trim()) parametros.set("apellidos", apellidos.trim());
+        if (email.trim()) parametros.set("email", email.trim());
+        const r = await llamar<Candidato[]>(
+          `/api/v1/data-quality/contacts/duplicates?${parametros.toString()}`,
+        );
+        setCandidatos(r.datos ?? []);
+        return;
+      }
       const conNif = nif.trim() ? `&nif=${encodeURIComponent(nif.trim())}` : "";
       const r = await llamar<Candidato[]>(
         `/api/v1/data-quality/accounts/duplicates?nombre=${encodeURIComponent(nombre.trim())}${conNif}`,
@@ -495,6 +512,23 @@ function YaExiste() {
       <p className="mb-2 text-rotulo text-ink-faint">
         {t("duplicados.yaExisteAyuda")}
       </p>
+      <label className="mb-2 flex items-center gap-2 text-dato text-ink-muted">
+        {t("duplicados.deQue")}
+        <select
+          className="input-base w-auto"
+          value={deQue}
+          onChange={(e) => {
+            setDeQue(e.target.value as "empresa" | "persona");
+            setCandidatos(null);
+          }}
+        >
+          {(["empresa", "persona"] as const).map((opcion) => (
+            <option key={opcion} value={opcion}>
+              {t(`duplicados.deQueOpciones.${opcion}`)}
+            </option>
+          ))}
+        </select>
+      </label>
       <form
         className="flex flex-wrap gap-2"
         onSubmit={(e) => {
@@ -506,16 +540,44 @@ function YaExiste() {
           className="input-base w-auto flex-1"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
-          placeholder={t("duplicados.nombreEmpresa")}
-          aria-label={t("duplicados.nombreEmpresa")}
+          placeholder={
+            deQue === "persona"
+              ? t("duplicados.nombrePersona")
+              : t("duplicados.nombreEmpresa")
+          }
+          aria-label={
+            deQue === "persona"
+              ? t("duplicados.nombrePersona")
+              : t("duplicados.nombreEmpresa")
+          }
         />
-        <input
-          className="input-base w-40"
-          value={nif}
-          onChange={(e) => setNif(e.target.value)}
-          placeholder={t("duplicados.nif")}
-          aria-label={t("duplicados.nif")}
-        />
+        {deQue === "persona" ? (
+          <>
+            <input
+              className="input-base w-auto flex-1"
+              value={apellidos}
+              onChange={(e) => setApellidos(e.target.value)}
+              placeholder={t("duplicados.apellidos")}
+              aria-label={t("duplicados.apellidos")}
+            />
+            <input
+              type="email"
+              className="input-base w-56"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("duplicados.email")}
+              aria-label={t("duplicados.email")}
+            />
+          </>
+        ) : (
+          <input
+            className="input-base w-40"
+            value={nif}
+            onChange={(e) => setNif(e.target.value)}
+            placeholder={t("duplicados.nif")}
+            aria-label={t("duplicados.nif")}
+          />
+        )}
         <button
           type="submit"
           className="btn-secondary"
@@ -527,7 +589,9 @@ function YaExiste() {
       {fallo ? <Fallo error={fallo} /> : null}
       {candidatos !== null && candidatos.length === 0 ? (
         <p className="mt-2 text-dato text-success">
-          {t("duplicados.noSeParece")}
+          {deQue === "persona"
+            ? t("duplicados.noSeParecePersona")
+            : t("duplicados.noSeParece")}
         </p>
       ) : null}
       {candidatos && candidatos.length > 0 ? (
@@ -538,7 +602,11 @@ function YaExiste() {
               className="flex flex-wrap items-baseline gap-2 text-dato"
             >
               <Link
-                to={`/m/cuentas/cuenta/${c.id}`}
+                to={
+                  deQue === "persona"
+                    ? `/m/cuentas/contacto/${c.id}`
+                    : `/m/cuentas/cuenta/${c.id}`
+                }
                 className="text-accent hover:underline"
               >
                 {c.nombre}

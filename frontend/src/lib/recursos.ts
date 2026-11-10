@@ -231,6 +231,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         crear: "/api/v1/extensiones",
         servicio: "automation",
         columnas: ["clave", "nombre", "origen", "version_activa", "updated_at"],
+        // El motor que las ejecuta —si está y si su huella cuadra— y sus
+        // topes de tiempo, memoria y llamadas: lo primero que se mira cuando
+        // una extensión falla sin que su código haya cambiado.
+        resumen: ["/api/v1/extensiones/motor"],
         // Las calculadoras de antes, que pedían teclear las ejecuciones, la
         // firma o el consumo: ahora salen de lo guardado en la ficha de cada
         // extensión. Siguen en la API para quien integre con sus propios datos.
@@ -906,6 +910,12 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "party",
         columnas: ["nombre", "estado", "sector_codigo", "owner_id"],
         permiso: "account:read",
+        // Las que no tienen una actividad desde el corte del ajuste del tenant
+        // —también las que no la tuvieron nunca, que son las que más importan—,
+        // las diez más recientes. La última actividad es un campo calculado y
+        // el listado no filtra por él, así que la pregunta «¿a quién tenemos
+        // olvidado?» no tenía otra puerta.
+        resumen: ["/api/v1/accounts/sin-contacto?limite=10"],
       },
       // El plan de cuenta (CRM-01.01.01.11): a qué se ha comprometido el
       // equipo con este cliente este año. Se publicaba entero —plan,

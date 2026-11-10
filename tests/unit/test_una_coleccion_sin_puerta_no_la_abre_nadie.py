@@ -207,6 +207,23 @@ FRONT = RAIZ / "frontend/src"
 #   Al abrir el flujo de eventos se vio que `GET /eventos/estado` devolvía las
 #   colas de TODOS los tenants, con su identificador, a cualquier usuario
 #   autenticado. Ahora devuelve la de quien pregunta.
+#
+#   10-11-2026  55 → 0. El contrato se reselló —de 2.409 operaciones a 3.020—
+#   y entraron 55 que antes no estaban en el sello. Recorridas:
+#
+#   · **21 las abría ya una pantalla y el gate no lo veía**: la llamada no
+#     empezaba por `/api/v1` sino por una constante —`${BASE}/golden/…` en
+#     calidad del dato, `${base}/clases` en el archivo de cada servicio— o
+#     llevaba la consulta pegada en una variable —`/ajustes/versiones${q}`—.
+#     Ahora el gate resuelve las dos, y sólo cuando no hay duda (`_constantes`).
+#   · **18 a su pantalla**: lo ya archivado de cada clase al lado de lo que se
+#     movería hoy, en el archivo de Plataforma (trece servicios); las cuentas
+#     sin contacto encima de Cuentas; el motor de las extensiones encima de las
+#     suyas; lo que tiene indexado el asistente y lo que te ha propuesto hacer,
+#     en su pantalla; y «¿ya existe?» también para una persona, en Duplicados.
+#   · **16 declaradas abajo**: el índice de filtros de cada servicio (trece),
+#     la búsqueda de `service`, el embudo en bloque y el historial de
+#     evaluaciones, que su panel ya compone.
 TOPE_SIN_PUERTA = 0
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
@@ -303,6 +320,39 @@ SIN_PUERTA_A_PROPOSITO: dict[str, str] = {
     # cambios tiene su pestaña «Tipos de cambio».
     "/api/v1/listas-precio/calcular": "el presupuesto y la oportunidad la aplican al añadir un producto",
     "/api/v1/monedas/convertir": "la aplican los servicios con el cambio de la fecha",
+    # La tercera búsqueda por servicio, como las dos de arriba: el gateway
+    # reparte la de la paleta entre `party`, `sales` y `service`.
+    "/api/v1/service/buscar": "la llama la búsqueda global, que sí tiene puerta",
+    # La lee la analítica en bloque para pintar el embudo —`datos_crm`, con su
+    # procedencia—: es el embudo, y el paso por etapas de UNA oportunidad está
+    # en su ficha. Antes eran cien llamadas, una por oportunidad.
+    "/api/v1/opportunities/historial-etapas": "la lee el embudo de la analítica, que es su pantalla",
+    # El panel de evaluación la compone —`evaluacion.panel` la llama— y pinta
+    # cada ejecución terminada como un punto de su tendencia: pedirla además
+    # sería pedir dos veces lo mismo, como la portada del portal.
+    "/api/v1/ia/evaluacion/ejecuciones": "el panel de evaluación la compone en su tendencia",
+    # Qué objetos guarda cada servicio y en qué colección vive cada uno, para
+    # quien integra y para el asistente —que las recibe como herramienta—.
+    # La pantalla de listado no la necesita: sabe sus objetos por `recursos.ts`
+    # y deduce el tipo de cada campo de las filas (`lib/filtros.ts`).
+    **{
+        f"/api/v1/{servicio}/filtros": "índice de objetos para quien integra y para el asistente"
+        for servicio in (
+            "party",
+            "sales",
+            "service",
+            "marketing",
+            "metadata",
+            "analytics",
+            "identity",
+            "orchestrator",
+            "automation",
+            "integration",
+            "intelligence",
+            "tenancy",
+            "eventing",
+        )
+    },
 }
 
 
@@ -347,16 +397,68 @@ def _colecciones() -> dict[str, str]:
     return salida
 
 
+_LITERAL = re.compile(r"`([^`]*)`|\"([^\"]*)\"|'([^']*)'")
+
+
+def _constantes(texto: str) -> tuple[dict[str, str], frozenset[str]]:
+    """Las dos clases de constante que esconden una ruta pedida en un fichero.
+
+    · **Raíz**: `const BASE = "/api/v1/calidad-dato"` y después
+      `` `${BASE}/golden/candidatas` ``. La llamada no empieza por `/api/v1` y
+      el patrón no la veía: medido el 10-11-2026, 21 colecciones abiertas
+      todos los días —las clases del archivo en los trece servicios, la
+      calidad del dato— contadas como huérfanas.
+    · **Consulta**: `const q = clave ? `?clave=…` : ""` pegada al final —
+      `` `/api/v1/ajustes/versiones${q}` ``—. Sólo cuando TODOS sus literales
+      empiezan por `?` o `&` o están vacíos, y alguno no lo está: entonces no
+      puede añadir tramos.
+
+    Un nombre con dos valores en el mismo fichero no se resuelve: no se sabe
+    cuál usa cada llamada, y dar por buenas las dos sería aflojar el gate.
+    """
+    raices: dict[str, set[str]] = {}
+    consultas: set[str] = set()
+    # En adelantado para que se solapen: el valor de `const cargar = …` llega
+    # hasta su primer `;` y se tragaría el `const q` que vive dentro.
+    for nombre, valor in re.findall(r"(?=\bconst (\w+)\s*=\s*([^;]*);)", texto):
+        valor = valor.strip()
+        raiz = re.fullmatch(r"([\"'`])(/api/v1/[^\"'`\s]*)\1", valor)
+        if raiz:
+            raices.setdefault(nombre, set()).add(raiz.group(2))
+            continue
+        literales = ["".join(g) for g in _LITERAL.findall(valor)]
+        # Con al menos uno que lo sea: `?? ""` a secas es un identificador que
+        # puede venir vacío, no una consulta, y quitarlo abriría la ficha.
+        if any(literales) and all(lit == "" or lit[0] in "?&" for lit in literales):
+            consultas.add(nombre)
+    unicas = {n: next(iter(v)) for n, v in raices.items() if len(v) == 1}
+    return unicas, frozenset(consultas)
+
+
+def _pedidas_de(texto: str) -> set[str]:
+    """Las rutas que pide UN fichero del front, crudas."""
+    raices, consultas = _constantes(texto)
+    crudas = re.findall(r'["\'`](/api/v1/[^"\'`\s]*)', texto)
+    for nombre, cola in re.findall(r"`\$\{(\w+)\}([^`\s]*)`", texto):
+        if nombre in raices:
+            crudas.append(raices[nombre] + cola)
+    salida: set[str] = set()
+    for cruda in crudas:
+        for nombre in consultas:
+            cruda = cruda.replace("${" + nombre + "}", "")
+        salida.add(cruda)
+    return salida
+
+
 @functools.cache
 def _pedidas() -> frozenset[str]:
     """Todo lo que el front pide, con las plantillas de servicio expandidas."""
-    texto = "\n".join(
-        p.read_text(encoding="utf-8", errors="ignore")
-        for p in FRONT.rglob("*.ts*")
-        if "/pruebas/" not in p.as_posix()
-    )
+    crudas: set[str] = set()
+    for p in FRONT.rglob("*.ts*"):
+        if "/pruebas/" not in p.as_posix():
+            crudas |= _pedidas_de(p.read_text(encoding="utf-8", errors="ignore"))
     salida: set[str] = set()
-    for cruda in re.findall(r'["\'`](/api/v1/[^"\'`\s]*)', texto):
+    for cruda in crudas:
         forma = re.sub(r"\$\{[^}]*\}", "{}", cruda.split("?")[0]).rstrip("/")
         salida.add(forma)
         # `:servicio` —`recursos.ts`— y `${servicio}` en el tramo del servicio

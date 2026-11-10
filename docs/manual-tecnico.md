@@ -6779,6 +6779,52 @@ servidor y cae a lo cargado, la lista de vocabulario, el desplegable de estado,
 la tabla no refiltra), `formulario_usable.test.tsx` (`alta` delante) y
 `el_rediseno_no_ha_escondido_nada.test.ts` (`delante`).
 
+### 4.6.73 Colecciones sin puerta tras resellar el contrato: 55 → 0 (10-11-2026)
+
+Resellado el contrato (`scripts/sellar_contrato.py --sellar`, de 2.409 a 3.020
+operaciones), `tests/unit/test_una_coleccion_sin_puerta_no_la_abre_nadie.py`
+vio 55 colecciones `GET` sin pantalla con `TOPE_SIN_PUERTA = 0`.
+
+**21 eran del gate.** Sólo reconocía llamadas que empiezan por `/api/v1`, y el
+front también escribe `` `${BASE}/golden/candidatas` `` (calidad del dato),
+`` `${base}/clases` `` (archivo, trece servicios) y
+`` `/api/v1/ajustes/versiones${q}` ``. `_constantes()` resuelve ahora, por
+fichero, dos clases de constante y nada más:
+
+- **raíz**: `const X = "/api/v1/…"` (o plantilla), y se sustituye en las
+  plantillas que empiezan por `${X}`. Un nombre con dos valores en el mismo
+  fichero no se resuelve.
+- **consulta**: `const q = …` cuyos literales empiezan todos por `?` o `&` o
+  están vacíos, y alguno no lo está. Se quita pegada al final. `?? ""` a secas
+  no cuenta: es un identificador que puede venir vacío.
+
+Validado una vez plantando los casos malos: dos valores para `base`, un
+`${id}` con `?? ""`, una raíz que no es `/api/v1` y una «consulta» que añade
+un tramo no se resuelven; quitar `const base` en `Archivo.tsx` vuelve a dejar
+huérfanas las clases del archivo. La primera versión daba por consulta el
+`enCurso = panel?.en_curso?.id ?? ""` de la evaluación de IA y abría una
+colección que no abre nadie: de ahí la segunda condición.
+
+**18 a pantalla**: `volumen/archivo/resumen` en `ArchivoDelServicio` (columna
+«Ya archivado»), `accounts/sin-contacto?limite=10` y `extensiones/motor` como
+`resumen` de sus pestañas, `ia/indice` y `ia/asistente/acciones` en
+`Asistente.tsx` (`LoQueSabe`, `MisAcciones`) y `data-quality/contacts/duplicates`
+en «¿Ya existe?» de Duplicados. `GET /extensiones/motor` devuelve además
+`que_significa`, y `Medida` (`Modulo.tsx`) ya no dibuja como barras un objeto
+de cifras con unidades distintas en el nombre (`_ms`, `_mb`, `_kb`, `_max`…):
+los topes del motor salían como un reparto con el combustible aplastando al
+resto y todos al «0 %». Van como cifras sueltas.
+
+**16 declaradas en la lista de excepciones del gate**, cada una con su motivo: `/{servicio}/filtros` (trece; índice para
+quien integra y para el asistente, `herramientas.py`), `service/buscar` (la
+reparte el gateway), `opportunities/historial-etapas` (la lee
+`analytics/datos_crm.py`) e `ia/evaluacion/ejecuciones` (la compone
+`evaluacion.panel`).
+
+Pruebas: el gate y `test_cada_capacidad_tiene_pantalla.py`;
+`modelos_predictivos_y_asistente.test.tsx` (una propuesta pendiente se
+confirma desde la lista con sus argumentos).
+
 
 ## 5. Operación
 

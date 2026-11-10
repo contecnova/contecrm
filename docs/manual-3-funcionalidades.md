@@ -17047,6 +17047,31 @@ de reintento (para pasarelas y clientes), y el cálculo de precio y la
 conversión de moneda (los aplican por dentro el presupuesto, la oportunidad y
 los servicios).
 
+### Tras resellar el contrato: 55 más (10-11-2026)
+
+El contrato publicado pasó de 2.409 a 3.020 operaciones y el gate vio 55
+colecciones nuevas sin pantalla. Veintiuna ya se abrían —las clases del
+archivo de cada servicio, la calidad del dato, el historial de ajustes— y el
+gate no lo veía. Las demás:
+
+- **Cuentas**: encima de la lista, las que llevan sin actividad desde el corte
+  de la empresa, también las que no tuvieron ninguna.
+- **Duplicados**: «¿Ya existe?» compara también una persona —nombre,
+  apellidos y correo— con los contactos dados de alta, sin crear nada.
+- **Asistente IA**: cuánto tiene indexado de cada fuente, y la lista de lo que
+  te ha propuesto hacer con qué pasó; lo pendiente se confirma o descarta desde
+  ahí. Dice además qué acciones te puede proponer con tu rol.
+- **Extensiones**: el motor que las ejecuta y sus topes, encima de la lista.
+- **Plataforma y cumplimiento › Archivo de histórico**: lo ya archivado de
+  cada clase, con cuántas filas y de qué fechas, al lado de lo que se movería
+  hoy. En los trece servicios.
+
+Sin pantalla, y por qué: el índice de filtros de cada servicio (lo usan quien
+integra y el asistente; la lista deduce sus filtros de las filas), la
+búsqueda de atención al cliente (la reparte la búsqueda global), el paso por
+etapas en bloque (lo lee el embudo de la analítica) y el historial de
+evaluaciones de la IA (su panel ya lo pinta como tendencia).
+
 ## Las tareas de cada día, medidas (10-11-2026)
 
 La experiencia de uso se mide, no se supone. Doce tareas —las más frecuentes

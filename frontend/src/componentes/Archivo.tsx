@@ -44,6 +44,14 @@ interface Consulta {
   hay_mas: boolean;
 }
 
+/** `GET …/archivo/resumen`: cuánto hay ya archivado de cada clase, y de cuándo. */
+interface YaArchivado {
+  clase: string;
+  filas: number;
+  desde: string | null;
+  hasta: string | null;
+}
+
 interface Informe {
   clase: string;
   candidatas: number;
@@ -69,6 +77,12 @@ export function ArchivoDelServicio({
   const [dias, setDias] = useState<Record<string, string>>({});
   const [buscar, setBuscar] = useState("");
   const [encontradas, setEncontradas] = useState<Consulta | null>(null);
+  // Lo que ya está en el archivo, al lado de lo que moverías hoy: sin ello el
+  // archivo es un agujero —nadie sabe si guarda diez filas o diez millones, ni
+  // desde cuándo— y nadie se atreve a consultarlo cuando hace falta.
+  const [yaArchivado, setYaArchivado] = useState<Record<string, YaArchivado>>(
+    {},
+  );
 
   const base = `/api/v1/${servicio}/volumen/archivo`;
 
@@ -92,6 +106,19 @@ export function ArchivoDelServicio({
         );
       })
       .catch(salvoCancelacion(setFallo));
+    // Aparte y sin tumbar el panel: que no se pueda leer el resumen no impide
+    // archivar, que es a lo que se viene.
+    llamar<{ por_clase: YaArchivado[] }>(`${base}/resumen`, {
+      signal: control.signal,
+    })
+      .then((r) =>
+        setYaArchivado(
+          Object.fromEntries(
+            (r.datos.por_clase ?? []).map((c) => [c.clase, c]),
+          ),
+        ),
+      )
+      .catch(() => setYaArchivado({}));
     return () => control.abort();
   }, [base, puedeVer]);
 
@@ -172,6 +199,7 @@ export function ArchivoDelServicio({
               t("archivo.dias"),
               t("archivo.corte"),
               t("archivo.candidatas"),
+              t("archivo.yaArchivado"),
               "",
             ]}
           >
@@ -211,6 +239,27 @@ export function ArchivoDelServicio({
                 </Casilla>
                 <Casilla>{fecha(c.corte)}</Casilla>
                 <Casilla className="text-right">{cifra(c.candidatas)}</Casilla>
+                <Casilla className="text-right">
+                  {yaArchivado[c.clase]?.filas ? (
+                    <>
+                      <span className="text-ink">
+                        {cifra(yaArchivado[c.clase]!.filas)}
+                      </span>
+                      <p className="text-rotulo text-ink-faint">
+                        {t("archivo.deA", {
+                          desde: yaArchivado[c.clase]!.desde
+                            ? fecha(yaArchivado[c.clase]!.desde!)
+                            : "—",
+                          hasta: yaArchivado[c.clase]!.hasta
+                            ? fecha(yaArchivado[c.clase]!.hasta!)
+                            : "—",
+                        })}
+                      </p>
+                    </>
+                  ) : (
+                    <span className="text-ink-faint">0</span>
+                  )}
+                </Casilla>
                 <Casilla>
                   <span className="flex gap-1">
                     <button

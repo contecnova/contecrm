@@ -128,13 +128,11 @@ describe("modelos predictivos", () => {
         <ModelosPredictivos />
       </MemoryRouter>,
     );
-    await userEvent
-      .setup()
-      .click(
-        await screen.findByRole("button", {
-          name: /modelosPredictivos.entrenar/,
-        }),
-      );
+    await userEvent.setup().click(
+      await screen.findByRole("button", {
+        name: /modelosPredictivos.entrenar/,
+      }),
+    );
     expect(
       await screen.findByText("modelosPredictivos.noPublicado"),
     ).toBeTruthy();
@@ -213,8 +211,14 @@ describe("asistente", () => {
     await u.clear(asunto);
     await u.type(asunto, "Llamar a Ebro");
     await u.click(screen.getByRole("button", { name: /asistente.confirmar/ }));
+    // La confirmación, y no la última: después se relee la lista de
+    // propuestas de abajo para que no enseñe la foto de antes.
     await waitFor(() =>
-      expect(pedidas.at(-1)).toMatchObject({
+      expect(
+        pedidas.find(
+          (p) => p.metodo === "POST" && p.ruta.includes("/acciones/"),
+        ),
+      ).toMatchObject({
         ruta: "/api/v1/ia/asistente/acciones/a1",
         metodo: "POST",
         cuerpo: { confirmar: true, argumentos: { asunto: "Llamar a Ebro" } },
@@ -260,5 +264,50 @@ describe("asistente", () => {
         "GET /api/v1/opportunities?estado=ganada&importe__mayor=50000",
       ),
     ).toBeTruthy();
+  });
+
+  it("una propuesta que sigue pendiente se retoma desde la lista", async () => {
+    // Lo que se pierde sin la lista: salir de la pantalla con la propuesta
+    // sin decidir. Confirmarla desde abajo manda SUS argumentos.
+    const futuro = new Date(Date.now() + 3_600_000).toISOString();
+    await con((ruta) =>
+      ruta === "/api/v1/ia/asistente/acciones"
+        ? {
+            acciones: [
+              {
+                id: "a9",
+                accion: "crear_nota",
+                nombre: "Crear una nota",
+                argumentos: { asunto: "Precio Ebro" },
+                campos: { asunto: { tipo: "texto" } },
+                ruta: "POST /api/v1/activities",
+                porque: "",
+                estado: "propuesta",
+                faltan: [],
+                caduca_at: futuro,
+                codigo_respuesta: null,
+                resultado: {},
+              },
+            ],
+            disponibles: [{ clave: "crear_nota", nombre: "Crear una nota" }],
+          }
+        : {},
+    );
+    const { Asistente } = await import("@/paginas/Asistente");
+    render(
+      <MemoryRouter>
+        <Asistente />
+      </MemoryRouter>,
+    );
+    const u = userEvent.setup();
+    expect(await screen.findByText("Crear una nota")).toBeTruthy();
+    await u.click(screen.getByRole("button", { name: /asistente.confirmar/ }));
+    await waitFor(() =>
+      expect(
+        pedidas.find((p) => p.metodo === "POST" && p.ruta.includes("/a9")),
+      ).toMatchObject({
+        cuerpo: { confirmar: true, argumentos: { asunto: "Precio Ebro" } },
+      }),
+    );
   });
 });

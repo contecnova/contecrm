@@ -366,6 +366,13 @@ const pantallas = {
     nif: "NIF (opcional)",
     comprobar: "Comprobar",
     noSeParece: "No se parece a ninguna empresa que ya esté dada de alta.",
+    noSeParecePersona:
+      "No se parece a ningún contacto que ya esté dado de alta.",
+    deQue: "Qué compruebas",
+    deQueOpciones: { empresa: "Una empresa", persona: "Una persona" },
+    nombrePersona: "Nombre",
+    apellidos: "Apellidos (opcional)",
+    email: "Correo (opcional)",
     entradilla:
       "Parejas que podrían ser la misma empresa, lo más probable primero y con QUÉ ha coincidido. Desde aquí se deciden: no es una lista para mirar.",
     buscar: "Buscar duplicados ahora",
@@ -602,7 +609,25 @@ const pantallas = {
       "Pregunta a lo que la casa sabe —artículos, casos resueltos, lecciones— y contesta citando; si pides que haga algo, lo propone y no lo hace hasta que lo confirmes. Y pregunta a los datos: se ejecuta contra los listados del CRM con tus permisos y te enseña la consulta.",
     conocimiento: "Conocimiento y acciones",
     conocimientoAyuda:
-      "Sólo contesta con lo que encuentra, citando. Las acciones posibles son crear una tarea o una nota, abrir un caso y capturar un lead.",
+      "Sólo contesta con lo que encuentra, citando. Si le pides que haga algo, lo propone y espera a que lo confirmes.",
+    sabeDe:
+      "Lo que tiene indexado, en fragmentos: {{fuentes}} (modelo {{modelos}}).",
+    indiceVacio:
+      "El índice de conocimiento está vacío: hasta que se indexen artículos, casos resueltos o lecciones, no tendrá con qué contestar.",
+    misAcciones: "Lo que te ha propuesto hacer",
+    puedesPedir: "Con tu rol puedes pedirle: {{acciones}}.",
+    nadaQuePedir:
+      "Con tu rol no puede proponerte ninguna acción: sólo contestar.",
+    sinPropuestas: "Todavía no te ha propuesto nada.",
+    caduca: "caduca el {{cuando}}",
+    faltan: "Falta: {{campos}}. Vuelve a preguntar con ese dato.",
+    estadoCorto: {
+      propuesta: "Pendiente de tu confirmación",
+      ejecutada: "Hecha",
+      fallida: "Falló",
+      descartada: "Descartada",
+      caducada: "Caducada",
+    },
     datos: "Pregunta a los datos",
     datosAyuda:
       "Se traduce a una consulta sobre los listados del CRM —nunca SQL— y se ejecuta con tus permisos.",
@@ -4266,6 +4291,8 @@ const pantallas = {
     criterioGuardado: "Criterio de {{clase}} guardado.",
     corte: "Corte",
     candidatas: "Hoy movería",
+    yaArchivado: "Ya archivado",
+    deA: "del {{desde}} al {{hasta}}",
     simular: "Simular",
     archivar: "Archivar",
     simulado:
