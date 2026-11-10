@@ -2218,8 +2218,9 @@ permiso de usar la IA, y lo que no puedes ver en el registro tampoco se le pasa
 al modelo.
 
 **Y en el menú de la izquierda**, dos entradas que antes sólo estaban dentro de
-otra pantalla: *Automatización → Extensiones y código propio* y *Usuarios y
-empresa → Entornos de pruebas (sandboxes)*.
+otra pantalla: *Automatización → Extensiones y código propio* y *Entornos y
+despliegue → Entornos de pruebas (sandboxes)* (hasta el 10-11-2026 estaba en
+Usuarios y empresa).
 
 ### Rellenar un contacto desde una firma
 

@@ -599,9 +599,11 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
     permiso: "account:admin",
   },
   // Los entornos de pruebas con la copia de los datos (CRM-07.02.01.02), que
-  // sólo se alcanzaban desde el selector de vistas de «Empresas».
+  // sólo se alcanzaban desde el selector de vistas de «Empresas». En
+  // «Entornos», junto al sandbox de la API y la clonación: «Usuarios y
+  // empresa» pasó de diez entradas con el organigrama (10-11-2026).
   {
-    area: "usuarios",
+    area: "entornos",
     a: "/m/tenants?r=Sandboxes",
     clave: "nav.sandboxes",
     icono: "science",

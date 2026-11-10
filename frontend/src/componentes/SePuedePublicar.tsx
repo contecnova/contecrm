@@ -37,13 +37,9 @@ export function SePuedePublicar({
 
   useEffect(() => {
     const control = new AbortController();
-    const consulta = new URLSearchParams({
-      objeto,
-      objeto_id: objetoId,
-      version: String(version),
-    });
+    // Los parámetros, escritos en la ruta: así se ve lo que se manda.
     llamar<Estado>(
-      `/api/v1/activos-marketing/aprobaciones/estado?${consulta}`,
+      `/api/v1/activos-marketing/aprobaciones/estado?objeto=${encodeURIComponent(objeto)}&objeto_id=${encodeURIComponent(objetoId)}&version=${encodeURIComponent(String(version))}`,
       {
         signal: control.signal,
       },

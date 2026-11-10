@@ -479,10 +479,9 @@ function YaExiste() {
     if (nombre.trim().length < 2) return;
     setFallo(null);
     try {
-      const consulta = new URLSearchParams({ nombre: nombre.trim() });
-      if (nif.trim()) consulta.set("nif", nif.trim());
+      const conNif = nif.trim() ? `&nif=${encodeURIComponent(nif.trim())}` : "";
       const r = await llamar<Candidato[]>(
-        `/api/v1/data-quality/accounts/duplicates?${consulta}`,
+        `/api/v1/data-quality/accounts/duplicates?nombre=${encodeURIComponent(nombre.trim())}${conNif}`,
       );
       setCandidatos(r.datos ?? []);
     } catch (e) {

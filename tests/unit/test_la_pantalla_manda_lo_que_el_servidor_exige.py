@@ -113,6 +113,11 @@ def _peticiones_del_front() -> tuple[tuple[str, str], ...]:
             # del `GET` no son los suyos.
             if RE_METODO.search(texto[encaje.end() : encaje.end() + 300]):
                 continue
+            # Ni una consulta de permiso: `puedeOperar("PUT", "/api/v1/…")` no
+            # pide nada, y con el método delante de la ruta se leía como un
+            # `GET` sin parámetros (10-11-2026, el centro de preferencias).
+            if re.search(r"puedeOperar\(\s*[\"'`][A-Z]+[\"'`],\s*$", texto[: encaje.start()][-60:]):
+                continue
             salida.append((fichero.name, encaje.group(1)))
     return tuple(salida)
 

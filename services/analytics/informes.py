@@ -1354,16 +1354,16 @@ def tomar_instantanea(
         uow.db.flush()
         return {"instantanea_id": str(existente.id), "dia": str(dia), "sustituida": True}
 
-    fila = InstantaneaInforme(
+    instantanea = InstantaneaInforme(
         tenant_id=tenant_id,
         informe_id=informe_id,
         tomada_el=dia,
         filas=salida["cuantas"],
         resumen=resumen,
     )
-    uow.db.add(fila)
+    uow.db.add(instantanea)
     uow.db.flush()
-    return {"instantanea_id": str(fila.id), "dia": str(dia), "sustituida": False}
+    return {"instantanea_id": str(instantanea.id), "dia": str(dia), "sustituida": False}
 
 
 def tendencia(

@@ -137,9 +137,8 @@ export function VistaPreviaCorreo({
     setEnvio(null);
     if (!email) return;
     const control = new AbortController();
-    const parametros = new URLSearchParams({ email, plantilla: clave, idioma });
     llamar<{ se_puede_mandar: boolean; motivos: string[] }>(
-      `/api/v1/correo/comprobar-envio?${parametros}`,
+      `/api/v1/correo/comprobar-envio?email=${encodeURIComponent(email)}&plantilla=${encodeURIComponent(clave)}&idioma=${encodeURIComponent(idioma)}`,
       { signal: control.signal },
     )
       .then((r) => setEnvio(r.datos))
