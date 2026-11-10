@@ -5525,7 +5525,7 @@ principal de máquina y sólo `contact:write`).
 
 - **Cómo se enciende.** Desde el 10-11-2026, `setup.sh arrancar` levanta solo
   un NATS con JetStream en Docker (contenedor `contecrm-nats-local`, la imagen
-  del compose, puerto `NATS_LOCAL_PUERTO`, 4222 por defecto) y arranca con
+  del compose, puerto 4222, que se cambia con una variable de entorno del propio setup.sh) y arranca con
   `BUS_BACKEND=nats`. Sin Docker en marcha sigue con `BUS_BACKEND=memoria` y lo
   avisa: cada proceso tiene su bus y ningún evento cruza servicios. Quien fije
   `BUS_BACKEND` a mano manda.

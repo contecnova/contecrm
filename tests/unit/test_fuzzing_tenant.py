@@ -157,6 +157,7 @@ ALIAS_POR_SERVICIO = {
     # Las piezas del 09-11-2026: la ruta nombra lo que es para quien la usa
     # —el perfil, la acción, la audiencia, el envío— y el modelo, de qué es.
     ("identity", "perfil_id"): "perfilmfaproveedor",
+    ("identity", "revision_id"): "revisionacceso",
     ("intelligence", "accion_id"): "accionasistente",
     ("marketing", "audiencia_id"): "audienciapublicitaria",
     ("marketing", "envio_id"): "envioprogramado",
