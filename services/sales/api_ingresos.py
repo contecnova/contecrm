@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore import fechas
 from crmcore.datos.estados import con_significado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_listado, ruta_de_vocabulario
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -62,46 +62,130 @@ class CerradasIn(BaseModel):
     )
 
 
+# Los cuatro cuerpos de abajo se rellenan DESDE LA FICHA de la oportunidad,
+# con el formulario que se saca de este contrato. Eran `str` y `dict` sueltos:
+# el formulario pedía el rol escribiéndolo, el reparto como JSON y la otra
+# oportunidad por su identificador, y ninguna pantalla los ofrecía (visto el
+# 10-11-2026). Ahora cada campo dice qué es —una lista cerrada, una persona,
+# otra oportunidad— y el formulario lo pinta como tal.
+
+
 class CalendarioIn(BaseModel):
     oportunidad_id: UUID
-    importe_total: Decimal
-    desde: date
-    meses: int
-    tipo: str = "recurrente"
-    moneda: str = "EUR"
+    importe_total: Decimal = Field(..., gt=0, description="Lo que se reparte entre los meses")
+    desde: date = Field(..., description="Primer mes del reparto")
+    meses: int = Field(..., ge=1, le=120, description="Entre cuántos meses se reparte")
+    tipo: Literal[ing.TIPOS_INGRESO] = "recurrente"  # type: ignore[valid-type]
+    moneda: str = Field("EUR", min_length=3, max_length=3)
+
+
+class ParticipacionIn(BaseModel):
+    usuario_id: UUID = Field(..., json_schema_extra={"referencia": "usuario"})
+    papel: Literal["credito", "overlay"] = Field(
+        "credito",
+        description="El crédito reparte la comisión y suma 100; el overlay es apoyo y no resta",
+    )
+    porcentaje: Decimal = Field(..., ge=0, le=100)
+    motivo: str = Field("", max_length=300)
 
 
 class RepartoIn(BaseModel):
     oportunidad_id: UUID
-    participaciones: list[dict[str, Any]] = Field(default_factory=list)
+    participaciones: list[ParticipacionIn] = Field(
+        default_factory=list,
+        description="Reemplaza el reparto anterior entero",
+    )
 
 
 class RolIn(BaseModel):
     oportunidad_id: UUID
-    contacto_id: UUID
-    rol: str
-    postura: int = 0
-    motivo: str = ""
+    contacto_id: UUID = Field(..., json_schema_extra={"referencia": "contacto"})
+    rol: str = Field(
+        ...,
+        max_length=40,
+        json_schema_extra={"x-vocabulario": ruta_de_vocabulario("roles_compra")},
+    )
+    postura: int = Field(
+        0, ge=-1, le=1, description="1 a favor, 0 neutral, -1 en contra (pide motivo)"
+    )
+    motivo: str = Field("", max_length=500)
 
 
 class RelacionIn(BaseModel):
     origen_id: UUID
-    destino_id: UUID
-    tipo: str
+    destino_id: UUID = Field(
+        ...,
+        json_schema_extra={"referencia": "oportunidad"},
+        description="La otra oportunidad: la renovación, el upsell… que sale de ésta",
+    )
+    tipo: Literal[ing.RELACIONES]  # type: ignore[valid-type]
+
+
+class PasoIn(BaseModel):
+    titulo: str = Field(..., min_length=1, max_length=300)
+    fecha: date
+    de_quien: Literal[pc.DE_QUIEN] = Field(  # type: ignore[valid-type]
+        ..., description="De quién es el paso: nuestro, del cliente o de los dos"
+    )
+    responsable: str = Field(..., min_length=1, max_length=200, description="Quién lo hace")
+    estado: Literal["pendiente", "hecho"] = "pendiente"
 
 
 class PlanIn(BaseModel):
     oportunidad_id: UUID
-    pasos: list[dict[str, Any]] = Field(default_factory=list)
+    # Con columnas, no como JSON: desde la ficha se escribía el plan en un
+    # editor de JSON sabiendo de memoria que `de_quien` vale «del_cliente»
+    # (visto el 10-11-2026).
+    pasos: list[PasoIn] = Field(
+        default_factory=list, description="Reemplaza los pasos del plan enteros"
+    )
     fecha_objetivo: date | None = None
+
+
+class AcuerdoIn(BaseModel):
+    titulo: str = Field(..., min_length=1, max_length=300)
+    responsable: str = Field(..., min_length=1, max_length=200)
+    fecha: date
 
 
 class RevisionIn(BaseModel):
     oportunidad_id: UUID
-    respuestas: dict[str, str] = Field(default_factory=dict)
-    probabilidad_declarada: int = 0
+    # Las seis preguntas, cada una con su campo: era un diccionario libre
+    # —`respuestas`— y había que saber de memoria que la clave era
+    # «que_puede_salir_mal» para que no lo rechazara (visto el 10-11-2026).
+    que_puede_salir_mal: str = Field(
+        ..., title="Qué puede salir mal", min_length=1, max_length=2000
+    )
+    que_falta_por_saber: str = Field(
+        ..., title="Qué falta por saber", min_length=1, max_length=2000
+    )
+    por_que_compra: str = Field(
+        "",
+        title="Por qué compra",
+        max_length=2000,
+        description="Qué problema le resuelve, dicho por él",
+    )
+    por_que_ahora: str = Field(
+        "",
+        title="Por qué ahora",
+        max_length=2000,
+        description="Qué pasa si no lo hace este trimestre",
+    )
+    por_que_nosotros: str = Field(
+        "",
+        title="Por qué nosotros",
+        max_length=2000,
+        description="Frente a la alternativa, incluida no hacer nada",
+    )
+    quien_decide: str = Field(
+        "",
+        title="Quién decide",
+        max_length=2000,
+        description="Y si hemos hablado con esa persona",
+    )
+    probabilidad_declarada: int = Field(0, ge=0, le=100)
     fecha_declarada: date | None = None
-    acuerdos: list[dict[str, Any]] = Field(default_factory=list)
+    acuerdos: list[AcuerdoIn] = Field(default_factory=list)
 
 
 @router_ingresos.post(
@@ -206,7 +290,9 @@ def previsto(
 )
 def reparto(cuerpo: RepartoIn, uow: UowDep) -> Any:
     return ing.repartir_credito(
-        uow, oportunidad_id=cuerpo.oportunidad_id, participaciones=cuerpo.participaciones
+        uow,
+        oportunidad_id=cuerpo.oportunidad_id,
+        participaciones=[p.model_dump(mode="json") for p in cuerpo.participaciones],
     )
 
 
@@ -311,7 +397,7 @@ def guardar_plan(cuerpo: PlanIn, uow: UowDep) -> Any:
     fila = pc.guardar_plan(
         uow,
         oportunidad_id=cuerpo.oportunidad_id,
-        pasos=cuerpo.pasos,
+        pasos=[p.model_dump(mode="json") for p in cuerpo.pasos],
         fecha_objetivo=cuerpo.fecha_objetivo,
     )
     return {"id": str(fila.id), "pasos": len(fila.pasos)}
@@ -336,10 +422,10 @@ def revision(cuerpo: RevisionIn, uow: UowDep, principal: AutenticadoDep) -> Any:
     return pc.revisar(
         uow,
         oportunidad_id=cuerpo.oportunidad_id,
-        respuestas=cuerpo.respuestas,
+        respuestas={p: getattr(cuerpo, p) for p in pc.PREGUNTAS},
         probabilidad_declarada=cuerpo.probabilidad_declarada,
         fecha_declarada=cuerpo.fecha_declarada,
-        acuerdos=cuerpo.acuerdos,
+        acuerdos=[a.model_dump(mode="json") for a in cuerpo.acuerdos],
         revisada_por=principal.id,
     )
 
@@ -441,6 +527,20 @@ def estado_del_plan(plan_conjunto_id: UUID, db: DbDep, principal: AutenticadoDep
 # tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
 # contestaba 405 y el front —que las declara listables— enseñaba una pantalla
 # vacía sin decir por qué.
+
+# Las revisiones de una oportunidad, para LEERLAS (CRM-03.01.02.06). Se
+# registraban y sólo las leía la calibración agregada: «trazable» sin poder ver
+# qué se dijo en la revisión de hace un mes ni qué se acordó (10-11-2026). Antes
+# que el listado de planes, cuya ficha `/{id}` se tragaría «/revisiones».
+montar_listado(
+    router_planes,
+    modelo=pc.RevisionOportunidad,
+    objeto="revision_oportunidad",
+    permiso="sales:read",
+    nombre="Revisiones de oportunidad",
+    ruta="/revisiones",
+    ficha=False,
+)
 
 montar_listado(
     router_planes,

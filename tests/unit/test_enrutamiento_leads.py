@@ -234,3 +234,31 @@ def test_una_regla_sin_destino_se_rechaza_al_guardarla() -> None:
             {"condiciones": [{"atributo": "lead.pais", "operador": "=", "valor": "ES"}]}
         )
     assert exc.value.error_code == "sales.regla_sin_destino"
+
+
+def test_una_regla_escrita_sin_lead_delante_tambien_encaja(db: Any, tenant_id: UUID) -> None:
+    """CRM-01.01.03.04. Las reglas del tenant decían «origen» y «empleados» a
+    secas, que en el ámbito no apuntan a nada: no encajaba ninguna y todo el
+    reparto acababa en «sin asignar» (medido el 10-11-2026)."""
+    comercial, grandes = uuid4(), uuid4()
+    _regla(
+        db,
+        tenant_id,
+        nombre="Grandes",
+        prioridad=10,
+        condiciones=[{"atributo": "empleados", "operador": ">=", "valor": 500}],
+        candidatos=[str(grandes)],
+    )
+    _regla(
+        db,
+        tenant_id,
+        nombre="RFQ",
+        prioridad=20,
+        condiciones=[{"atributo": "origen", "operador": "=", "valor": "rfq"}],
+        candidatos=[str(comercial)],
+    )
+    rfq = _lead(db, tenant_id, origen="rfq", empresa="Acme")
+    grande = _lead(db, tenant_id, empresa="Beta", campos={"empleados": 800})
+
+    assert enr.enrutar(db, rfq, tenant_id=tenant_id).regla_nombre == "RFQ"
+    assert enr.enrutar(db, grande, tenant_id=tenant_id).regla_nombre == "Grandes"

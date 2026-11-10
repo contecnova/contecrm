@@ -830,6 +830,9 @@ def cola_de_trabajo(
             }
         )
 
+    filas.extend(_leads_sin_responder(db, tenant_id, usuario_id, ahora, limite))
+    filas.extend(_oportunidades_paradas(db, tenant_id, usuario_id))
+
     filas.sort(key=lambda f: f["urgencia"])
     return {
         "entradas": filas[:limite],
@@ -838,6 +841,87 @@ def cola_de_trabajo(
         # cola, que es distinto de haberla vaciado.
         "vacia": not filas,
     }
+
+
+def _leads_sin_responder(
+    db: Session, tenant_id: UUID, usuario_id: UUID, ahora: datetime, limite: int
+) -> list[dict[str, Any]]:
+    """Los leads suyos que esperan la primera respuesta.
+
+    La cola decía «una cola, no tres» y sólo miraba las cadencias: un comercial
+    con leads nuevos sin contestar y oportunidades paradas veía «aquí no hay
+    nada» (visto el 10-11-2026). Primero los que ya se pasaron del plazo.
+    """
+    from services.sales.modelos import Lead
+
+    leads = (
+        db.execute(
+            select(Lead)
+            .where(
+                Lead.tenant_id == tenant_id,
+                Lead.owner_id == usuario_id,
+                Lead.estado == "nuevo",
+                Lead.primera_respuesta_at.is_(None),
+                Lead.convertido_at.is_(None),
+            )
+            .order_by(Lead.sla_primera_respuesta_at.asc().nulls_last())
+            .limit(limite)
+        )
+        .scalars()
+        .all()
+    )
+    salida = []
+    for lead in leads:
+        vence = _con_tz(lead.sla_primera_respuesta_at)
+        horas_fuera = int((ahora - vence).total_seconds() // 3600) if vence else 0
+        nombre = " ".join(x for x in (lead.nombre, lead.apellidos) if x) or lead.empresa or ""
+        salida.append(
+            {
+                "tipo": "lead",
+                "id": str(lead.id),
+                "lead_id": str(lead.id),
+                "titulo": nombre,
+                "por_que": (
+                    f"Lead nuevo sin primera respuesta, fuera de plazo desde hace {horas_fuera} h"
+                    if horas_fuera > 0
+                    else "Lead nuevo sin primera respuesta"
+                ),
+                # Fuera de plazo va antes que cualquier paso de cadencia.
+                "urgencia": 0 if horas_fuera > 0 else 50,
+                "atraso_dias": max(horas_fuera // 24, 0),
+            }
+        )
+    return salida
+
+
+def _oportunidades_paradas(db: Session, tenant_id: UUID, usuario_id: UUID) -> list[dict[str, Any]]:
+    """Las oportunidades suyas que pasan del umbral de su etapa (CRM-03.01.01.12).
+
+    El aviso de estancamiento va donde el comercial trabaja. En la pestaña
+    «Estancadas» de Previsiones lo ve el jefe; el dueño no se enteraba.
+    """
+    from services.sales.servicio import oportunidades_estancadas
+
+    salida = []
+    for o in oportunidades_estancadas(db, tenant_id):
+        if str(o.get("owner_id")) != str(usuario_id):
+            continue
+        exceso = int(o["dias_en_etapa"]) - int(o["limite"])
+        salida.append(
+            {
+                "tipo": "oportunidad",
+                "id": o["id"],
+                "oportunidad_id": o["id"],
+                "titulo": o["nombre"],
+                "por_que": (
+                    f"Lleva {o['dias_en_etapa']} días en «{o['etapa']}», "
+                    f"y en esa etapa se considera parada a los {o['limite']}"
+                ),
+                "urgencia": 100 - min(exceso, 90),
+                "atraso_dias": exceso,
+            }
+        )
+    return salida
 
 
 # ── Rendimiento de plantillas (CRM-03.03.01.06) ───────────────────────────
@@ -1162,6 +1246,9 @@ def evaluar(
     ).scalar_one_or_none()
     respuestas = (evaluacion.respuestas if evaluacion else {}) or {}
 
+    from crmcore.runtime import settings as rt
+
+    minimo_pct = int(rt.efectivo("metodologia_minimo_cualificada_pct", db) or 50)
     criterios = criterios_de(metodologia)
     total = sum(int(c.get("peso", 0)) for c in criterios) or 100
     logrado = 0
@@ -1188,9 +1275,13 @@ def evaluar(
         "puntuacion": round(100 * logrado / total, 1),
         "criterios": len(criterios),
         "cubiertos": len(criterios) - len(falta),
-        # Con la mitad sin contestar, la puntuación no dice si el negocio va bien:
-        # dice que no se ha cualificado. Son cosas distintas.
-        "cualificada": len(falta) <= len(criterios) / 2,
+        # Con demasiado sin contestar, la puntuación no dice si el negocio va
+        # bien: dice que no se ha cualificado. Cuánto es «demasiado» lo decide
+        # la empresa (`metodologia_minimo_cualificada_pct`); era la mitad,
+        # escrito aquí.
+        "cualificada": bool(criterios)
+        and 100 * (len(criterios) - len(falta)) >= minimo_pct * len(criterios),
+        "minimo_cualificada_pct": minimo_pct,
         # Todos, cubiertos y no, con lo que se apuntó: es lo que deja marcarlos
         # desde la ficha. Sin esto sólo se veía lo que faltaba y no había forma
         # de decir que ya se tenía.

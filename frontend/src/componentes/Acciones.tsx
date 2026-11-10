@@ -211,7 +211,12 @@ export function Acciones({
     setCampos(null);
     void contratoDe(servicio).then((documento) => {
       if (vivo)
-        setCampos(camposDe(documento, abierta.plantilla, abierta.metodo));
+        setCampos(
+          // Lo que pone la pantalla no se pregunta.
+          camposDe(documento, abierta.plantilla, abierta.metodo).filter(
+            (c) => !(c.nombre in (abierta.fijos ?? {})),
+          ),
+        );
     });
     return () => {
       vivo = false;
@@ -236,7 +241,9 @@ export function Acciones({
       if (!vivo) return;
       const cuenta: Record<string, number> = {};
       for (const a of acciones) {
-        cuenta[a.ruta] = camposDe(documento, a.plantilla, a.metodo).length;
+        cuenta[a.ruta] = camposDe(documento, a.plantilla, a.metodo).filter(
+          (c) => !(c.nombre in (a.fijos ?? {})),
+        ).length;
       }
       setCamposPorRuta(cuenta);
     });
@@ -269,7 +276,15 @@ export function Acciones({
         cuerpo:
           metodo === "DELETE"
             ? undefined
-            : cuerpoDeLosValores(campos ?? [], valores),
+            : accion.fijos
+              ? {
+                  ...(cuerpoDeLosValores(campos ?? [], valores) as Record<
+                    string,
+                    unknown
+                  >),
+                  ...accion.fijos,
+                }
+              : cuerpoDeLosValores(campos ?? [], valores),
       });
       setResultado(r.datos ?? { hecho: true });
       setAbierta(null);

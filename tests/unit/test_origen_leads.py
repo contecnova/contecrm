@@ -201,3 +201,33 @@ def test_crear_un_lead_deja_su_origen_resuelto(db: Any, tenant_id: UUID) -> None
     lead = svc.crear_lead(uow, empresa="Acme", utm={"visitante_id": "v-6"})
 
     assert lead.primer_toque["campana"] == "feria"
+
+
+def test_un_toque_posterior_por_la_api_mueve_el_ultimo_toque(db: Any, tenant_id: UUID) -> None:
+    """CRM-01.01.03.06. La API guardaba el toque y no tocaba el lead: el último
+    toque se quedaba en el del alta y el informe por campaña contaba todo como
+    «(sin campaña)» (10-11-2026). La prueba de arriba llamaba a mano a
+    `fijar_primer_y_ultimo`, que es justo lo que la API no hacía."""
+    from uuid import uuid4
+
+    from crmcore.authz.principal import Principal
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.sales import api
+
+    lead = _lead(db, tenant_id, utm={"visitante_id": "v-api", "utm_source": "google"})
+    org.registrar_alta(db, lead, tenant_id=tenant_id)
+    quien = Principal(id=uuid4(), tenant_id=tenant_id, permisos=frozenset({"*:*"}))
+
+    api.anotar_toque(
+        api.RegistrarToque(
+            lead_id=lead.id,
+            canal="correo",
+            parametros={"utm_source": "boletin", "utm_campaign": "otono-2026"},
+        ),
+        UnidadDeTrabajo(db=db, tenant_id=tenant_id),
+        quien,
+    )
+
+    assert lead.primer_toque["fuente"] == "google"
+    assert lead.ultimo_toque["campana"] == "otono-2026"

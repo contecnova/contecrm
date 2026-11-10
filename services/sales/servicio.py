@@ -641,7 +641,11 @@ def cambiar_etapa(
         faltan = criterios_incumplidos(oportunidad, origen)
         if faltan:
             raise ErrorValidacion(
-                f"No se puede salir de «{origen.nombre}»: faltan datos obligatorios",
+                # Cuáles, en el propio mensaje: es lo único que ve quien pulsa
+                # la etapa en la ficha, y «faltan datos» sin decir cuáles le
+                # obliga a abrir el detalle técnico (visto el 10-11-2026).
+                f"No se puede salir de «{origen.nombre}»: falta "
+                + ", ".join(c.replace("_", " ") for c in faltan),
                 error_code="sales.criterios_salida_incumplidos",
                 errores=[
                     {
@@ -1016,7 +1020,7 @@ def duplicar_oportunidad(
         )
     uow.db.flush()
     if lineas:
-        recalcular_total(uow.db, copia)
+        recalcular_total(uow.db, copia, anotar=False)
     registrar(
         uow.db,
         accion="oportunidad.duplicada",
@@ -1027,19 +1031,36 @@ def duplicar_oportunidad(
     return copia
 
 
-def recalcular_total(db: Session, oportunidad: Oportunidad) -> Decimal:
+def recalcular_total(db: Session, oportunidad: Oportunidad, *, anotar: bool = True) -> Decimal:
     """Suma las líneas y actualiza el importe de la oportunidad.
 
     El importe de la cabecera se mantiene calculado en vez de dejar que difiera:
     una oportunidad cuyo importe no coincide con sus líneas produce un pipeline
     que no cuadra con lo que se ha ofertado, y nadie sabe cuál de los dos creer.
+
+    Y el cambio queda en el historial de importe (CRM-03.01.01.13), como cuando
+    se edita a mano. Añadir la primera línea a una oportunidad de 60.000 € la
+    dejaba en 11.000 € sin rastro: «lo que se ha movido» seguía diciendo 60.000
+    (visto el 10-11-2026). `anotar=False` sólo para una copia recién hecha, que
+    no se ha movido: nace así.
     """
+    antes = oportunidad.importe
     total = db.execute(
         select(func.coalesce(func.sum(LineaOportunidad.total), 0)).where(
             LineaOportunidad.oportunidad_id == oportunidad.id
         )
     ).scalar_one()
     oportunidad.importe = Decimal(total)
+    if anotar and antes is not None and Decimal(antes) != oportunidad.importe:
+        from services.sales.forecast import anotar_cambio_de_prevision
+
+        anotar_cambio_de_prevision(
+            db,
+            oportunidad,
+            importe_antes=Decimal(antes),
+            fecha_antes=oportunidad.fecha_cierre,
+            motivo="Cambian las líneas",
+        )
     return oportunidad.importe
 
 

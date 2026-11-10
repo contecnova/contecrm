@@ -59,6 +59,21 @@ def test_la_implantacion_no_entra_en_el_arr() -> None:
     assert "implantacion" in salida["lo_que_no_cuenta_como_arr"]
 
 
+def test_el_tcv_de_una_linea_recurrente_es_el_contrato_entero() -> None:
+    """CRM-03.01.01.06. Las líneas de la oportunidad guardan el importe de UN
+    periodo: 2000 € al mes más 9000 € de implantación daban un TCV de 11.000 €
+    al lado de un ARR de 24.000 € (visto en la ficha el 10-11-2026)."""
+    salida = ing.metricas_de_ingreso(
+        lineas=[
+            {"tipo_ingreso": "puntual", "total": "9000"},
+            {"tipo_ingreso": "recurrente", "periodicidad": "mensual", "total": "2000"},
+        ]
+    )
+    assert salida["arr"] == "24000.00"
+    assert salida["tcv"] == "33000.00"
+    assert salida["acv"] == "33000.00"
+
+
 def test_un_tipo_de_ingreso_inventado_se_rechaza() -> None:
     with pytest.raises(ErrorValidacion) as fallo:
         ing.metricas_de_ingreso(lineas=[{"tipo": "lo_que_sea", "importe": 1}])
@@ -142,6 +157,30 @@ def test_el_overlay_no_resta_al_titular(uow: UnidadDeTrabajo, contexto_tenant: U
     )
     assert salida["credito_suma"] == "100"
     assert len(salida["overlay"]) == 1
+
+
+@pytest.mark.db
+def test_declarar_el_reparto_otra_vez_lo_reemplaza(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID
+) -> None:
+    """CRM-03.01.01.08. «Reemplazar» era un `select` que no borraba nada:
+    corregir un 60/40 a 70/30 dejaba las cuatro filas y el crédito sumaba 200
+    en la ficha y en la comisión (visto el 10-11-2026)."""
+    oportunidad, a, b = uuid4(), uuid4(), uuid4()
+    for pa, pb in ((60, 40), (70, 30)):
+        ing.repartir_credito(
+            uow,
+            oportunidad_id=oportunidad,
+            participaciones=[
+                {"usuario_id": a, "porcentaje": pa},
+                {"usuario_id": b, "porcentaje": pb},
+            ],
+        )
+    uow.db.flush()
+
+    leido = ing.lo_de_esta_oportunidad(uow.db, uow.tenant_id, oportunidad_id=oportunidad)
+    assert sorted(p["porcentaje"] for p in leido["reparto"]) == ["30.00", "70.00"]
+    assert leido["credito_cuadra"] is True
 
 
 @pytest.mark.db

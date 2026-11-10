@@ -896,91 +896,106 @@ function Lineas({
         >
           {filas.map((fila, indice) => (
             <tr key={indice} className="border-t border-ink-dim/30">
-              {columnas.map((c) => (
-                <td key={c.nombre} className="px-2 py-1">
-                  {c.tipo === "booleano" ? (
-                    // Sí o no es una casilla: escrito a mano llegaba como
-                    // texto y el servicio lo rechazaba.
-                    <input
-                      type="checkbox"
-                      aria-label={`${c.titulo}, línea ${indice + 1}`}
-                      checked={fila[c.nombre] === true}
-                      onChange={(e) =>
-                        cambiar(indice, c.nombre, e.target.checked)
-                      }
-                    />
-                  ) : c.tipo === "lista_multiple" ? (
-                    <Opciones
-                      campo={c}
-                      valor={fila[c.nombre]}
-                      alCambiar={(v) => cambiar(indice, c.nombre, v)}
-                    />
-                  ) : c.tipo === "etiquetas" ? (
-                    // Una lista de textos, separada por comas, y se manda como
-                    // lista: un texto donde va una lista daba 422 siempre.
-                    <input
-                      aria-label={`${c.titulo}, línea ${indice + 1}`}
-                      className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
-                      value={
-                        Array.isArray(fila[c.nombre])
-                          ? (fila[c.nombre] as unknown[]).join(", ")
-                          : String(fila[c.nombre] ?? "")
-                      }
-                      placeholder={t("formulario.separadoPorComas")}
-                      onChange={(e) =>
-                        cambiar(
-                          indice,
-                          c.nombre,
-                          e.target.value
-                            .split(",")
-                            .map((s) => s.trim())
-                            .filter(Boolean),
-                        )
-                      }
-                    />
-                  ) : c.opciones.length > 0 ? (
-                    <select
-                      aria-label={`${c.titulo}, línea ${indice + 1}`}
-                      className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
-                      value={String(fila[c.nombre] ?? "")}
-                      onChange={(e) =>
-                        cambiar(indice, c.nombre, e.target.value)
-                      }
-                    >
-                      <option value="">—</option>
-                      {c.opciones.map((o) => (
-                        <option key={o} value={o}>
-                          {rotuloDeOpcion(o)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      aria-label={`${c.titulo}, línea ${indice + 1}`}
-                      className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
-                      type={
-                        c.tipo === "numero"
-                          ? "number"
-                          : c.tipo === "fecha"
-                            ? "date"
-                            : "text"
-                      }
-                      value={String(fila[c.nombre] ?? "")}
-                      onChange={(e) =>
-                        cambiar(
-                          indice,
-                          c.nombre,
+              {columnas.map((c) => {
+                // Una columna que apunta a otro registro se ELIGE, igual que
+                // fuera de la tabla. Se tecleaba el identificador: el reparto
+                // de una oportunidad pedía «Usuario ID» en una caja de texto
+                // (visto el 10-11-2026).
+                const apunta = recursoDeReferencia(c.nombre, c.referencia);
+                return (
+                  <td key={c.nombre} className="px-2 py-1">
+                    {apunta ? (
+                      <Referencia
+                        campo={c}
+                        recurso={apunta}
+                        valor={fila[c.nombre]}
+                        alCambiar={(v) => cambiar(indice, c.nombre, v)}
+                        id={`linea-${indice}-${c.nombre}`}
+                      />
+                    ) : c.tipo === "booleano" ? (
+                      // Sí o no es una casilla: escrito a mano llegaba como
+                      // texto y el servicio lo rechazaba.
+                      <input
+                        type="checkbox"
+                        aria-label={`${c.titulo}, línea ${indice + 1}`}
+                        checked={fila[c.nombre] === true}
+                        onChange={(e) =>
+                          cambiar(indice, c.nombre, e.target.checked)
+                        }
+                      />
+                    ) : c.tipo === "lista_multiple" ? (
+                      <Opciones
+                        campo={c}
+                        valor={fila[c.nombre]}
+                        alCambiar={(v) => cambiar(indice, c.nombre, v)}
+                      />
+                    ) : c.tipo === "etiquetas" ? (
+                      // Una lista de textos, separada por comas, y se manda como
+                      // lista: un texto donde va una lista daba 422 siempre.
+                      <input
+                        aria-label={`${c.titulo}, línea ${indice + 1}`}
+                        className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
+                        value={
+                          Array.isArray(fila[c.nombre])
+                            ? (fila[c.nombre] as unknown[]).join(", ")
+                            : String(fila[c.nombre] ?? "")
+                        }
+                        placeholder={t("formulario.separadoPorComas")}
+                        onChange={(e) =>
+                          cambiar(
+                            indice,
+                            c.nombre,
+                            e.target.value
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          )
+                        }
+                      />
+                    ) : c.opciones.length > 0 ? (
+                      <select
+                        aria-label={`${c.titulo}, línea ${indice + 1}`}
+                        className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
+                        value={String(fila[c.nombre] ?? "")}
+                        onChange={(e) =>
+                          cambiar(indice, c.nombre, e.target.value)
+                        }
+                      >
+                        <option value="">—</option>
+                        {c.opciones.map((o) => (
+                          <option key={o} value={o}>
+                            {rotuloDeOpcion(o)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        aria-label={`${c.titulo}, línea ${indice + 1}`}
+                        className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
+                        type={
                           c.tipo === "numero"
-                            ? e.target.value === ""
-                              ? ""
-                              : Number(e.target.value)
-                            : e.target.value,
-                        )
-                      }
-                    />
-                  )}
-                </td>
-              ))}
+                            ? "number"
+                            : c.tipo === "fecha"
+                              ? "date"
+                              : "text"
+                        }
+                        value={String(fila[c.nombre] ?? "")}
+                        onChange={(e) =>
+                          cambiar(
+                            indice,
+                            c.nombre,
+                            c.tipo === "numero"
+                              ? e.target.value === ""
+                                ? ""
+                                : Number(e.target.value)
+                              : e.target.value,
+                          )
+                        }
+                      />
+                    )}
+                  </td>
+                );
+              })}
               <td className="px-2 py-1 text-right">
                 <button
                   type="button"

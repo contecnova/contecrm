@@ -75,7 +75,9 @@ vi.mock("@/lib/api", async () => {
           periodo: "2026-Q4",
           por: "familia",
           moneda: "EUR",
-          grupos: { Licencias: { importe: "90000", ponderado: "54000", lineas: 4 } },
+          grupos: {
+            Licencias: { importe: "90000", ponderado: "54000", lineas: 4 },
+          },
           grupos_sin_tipo_de_cambio: ["Servicios"],
         };
       else
@@ -87,10 +89,15 @@ vi.mock("@/lib/api", async () => {
           compromiso: "60000",
           oportunidades: 12,
           por_categoria: {
-            comprometido: { importe: "60000", ponderado: "54000", oportunidades: 4 },
+            comprometido: {
+              importe: "60000",
+              ponderado: "54000",
+              oportunidades: 4,
+            },
           },
           sin_tipo_de_cambio: [{ id: "x" }],
-          aviso: "1 oportunidades no se han podido convertir a EUR y NO están sumadas",
+          aviso:
+            "1 oportunidades no se han podido convertir a EUR y NO están sumadas",
         };
       return { datos, version: null, retenidos: [], enmascarados: [] };
     }),
@@ -109,7 +116,10 @@ async function montar() {
   return render(
     <MemoryRouter initialEntries={["/m/prevision/periodo/2026-Q4"]}>
       <Routes>
-        <Route path="/m/prevision/periodo/:clave" element={<PeriodoDePrevision />} />
+        <Route
+          path="/m/prevision/periodo/:clave"
+          element={<PeriodoDePrevision />}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -141,13 +151,16 @@ describe("un periodo de previsión se puede defender", () => {
     // El panel incómodo: con 35.000 de error ajustando y 5.000 sin tocar
     // nada, ajustar empeoró la previsión. Sin esta comparación nadie se
     // entera, porque al cerrar se mira el real contra el objetivo.
-    expect(screen.getByText(/prevision.ajustarAlejo.*35000/)).toBeTruthy();
+    // Con el formato del resto de la pantalla, no «35000.00» (10-11-2026).
+    expect(screen.getByText(/prevision.ajustarAlejo.*35\.000/)).toBeTruthy();
   });
 
   it("avisa de las empujadas MÁS DE UNA VEZ, no sólo de cuántas se movieron", async () => {
     await montar();
     await waitFor(() =>
-      expect(screen.getByText(/prevision.masDeUnaVez.*"cuantas":2/)).toBeTruthy(),
+      expect(
+        screen.getByText(/prevision.masDeUnaVez.*"cuantas":2/),
+      ).toBeTruthy(),
     );
     expect(screen.getByText("Acme")).toBeTruthy();
   });
@@ -157,7 +170,9 @@ describe("un periodo de previsión se puede defender", () => {
     await waitFor(() => expect(screen.getByText("Licencias")).toBeTruthy());
     // Un desglose al que le falta una familia entera por un tipo de cambio
     // que no estaba se lee como «esa familia no vendió nada».
-    expect(screen.getByText(/prevision.gruposSinCambio.*Servicios/)).toBeTruthy();
+    expect(
+      screen.getByText(/prevision.gruposSinCambio.*Servicios/),
+    ).toBeTruthy();
   });
 
   it("enseña las fotos con cuándo se tomaron", async () => {

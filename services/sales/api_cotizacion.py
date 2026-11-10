@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.datos.estados import con_significado
@@ -218,10 +218,11 @@ class CrearLista(BaseModel):
     # Una tarifa de coste es una lista con el sentido cambiado y su proveedor
     # (CRM-09.02.01.01). El modelo y el motor lo sabían; el alta no lo admitía,
     # así que el motor calculaba costes de tarifas que no se podían crear.
-    sentido: str = Field(
+    # Lista cerrada y no un patrón: con el patrón el formulario daba una caja de
+    # texto donde había que escribir «coste» sin tilde ni mayúscula.
+    sentido: Literal["venta", "coste"] = Field(
         "venta",
-        pattern="^(venta|coste)$",
-        description="`venta`, lo que cobramos; `coste`, lo que nos cobra un proveedor",
+        description="Venta, lo que cobramos; coste, lo que nos cobra un proveedor",
     )
     proveedor_id: UUID | None = Field(
         None, description="Obligatorio en una tarifa de coste, y prohibido en una de venta"
@@ -253,7 +254,10 @@ def crear_lista(datos: CrearLista, db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 class CrearReglaPrecio(BaseModel):
-    lista_id: UUID
+    # La lista se ELIGE y la acción es una lista cerrada: el formulario pedía
+    # el identificador de la lista tecleado y la acción escrita a mano, con las
+    # cinco válidas en la ayuda (visto el 10-11-2026).
+    lista_id: UUID = Field(..., json_schema_extra={"referencia": "lista_precio"})
     nombre: str = ""
     prioridad: int = 100
     producto_id: UUID | None = None
@@ -262,9 +266,9 @@ class CrearReglaPrecio(BaseModel):
     condiciones: list[dict[str, Any]] = Field(
         default_factory=list, description="Misma gramática que el reparto de leads y casos"
     )
-    accion: str = Field(
+    accion: Literal[cat.ACCIONES] = Field(  # type: ignore[valid-type]
         ...,
-        description="fijar · descuento_pct · descuento_importe · recargo_pct · recargo_importe",
+        description="Fijar el precio, o descontar o recargar un porcentaje o un importe",
     )
     valor: Decimal = Decimal(0)
     exclusiva: bool = Field(
@@ -296,6 +300,78 @@ def crear_regla(datos: CrearReglaPrecio, db: DbDep, principal: AutenticadoDep) -
     db.add(fila)
     db.flush()
     return {"id": str(fila.id)}
+
+
+# Las reglas de una lista, para VERLAS y quitarlas (CRM-03.03.02.03,
+# CRM-09.02.01.01). Se podían añadir y no había forma de saber qué reglas tenía
+# una lista ni en qué orden se aplican: la ficha de la lista salía sin ellas, y
+# una regla equivocada no se podía retirar (visto el 10-11-2026).
+def _lista_del_tenant(db: Any, tenant_id: UUID, lista_id: UUID) -> Any:
+    from crmcore.errors import NoEncontrado
+
+    lista = db.get(cat.ListaPrecio, lista_id)
+    if lista is None or lista.tenant_id != tenant_id:
+        raise NoEncontrado("La lista no existe", error_code="catalogo.lista_no_encontrada")
+    return lista
+
+
+@router_precios.get(
+    "/{lista_id}/reglas",
+    response_model=list[dict[str, Any]],
+    dependencies=[Depends(exige_permiso("producto:read"))],
+    summary="Reglas de la lista, en el orden en que se aplican",
+)
+def reglas_de_la_lista(lista_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import select
+
+    _lista_del_tenant(db, principal.tenant_id, lista_id)
+    filas = (
+        db.execute(
+            select(cat.ReglaPrecio)
+            .where(
+                cat.ReglaPrecio.tenant_id == principal.tenant_id,
+                cat.ReglaPrecio.lista_id == lista_id,
+            )
+            .order_by(cat.ReglaPrecio.prioridad, cat.ReglaPrecio.nombre)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            # En el orden en que se leen: el panel de la ficha enseña los
+            # primeros, y sin la acción y el valor no se sabe qué hace la regla.
+            "id": str(f.id),
+            "nombre": f.nombre,
+            "accion": f.accion,
+            "valor": str(f.valor),
+            "desde_cantidad": str(f.desde_cantidad),
+            "prioridad": f.prioridad,
+            "producto_id": str(f.producto_id) if f.producto_id else None,
+            "familia": f.familia,
+            "exclusiva": f.exclusiva,
+        }
+        for f in filas
+    ]
+
+
+@router_precios.delete(
+    "/{lista_id}/reglas/{regla_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("producto:write"))],
+    summary="Quitar una regla de la lista",
+)
+def quitar_regla(lista_id: UUID, regla_id: UUID, db: DbDep, principal: AutenticadoDep) -> None:
+    from crmcore.errors import NoEncontrado
+
+    _lista_del_tenant(db, principal.tenant_id, lista_id)
+    regla = db.get(cat.ReglaPrecio, regla_id)
+    if regla is None or regla.lista_id != lista_id or regla.tenant_id != principal.tenant_id:
+        raise NoEncontrado(
+            "La regla no es de esta lista", error_code="catalogo.regla_no_encontrada"
+        )
+    db.delete(regla)
+    db.flush()
 
 
 @router_precios.get(
@@ -346,7 +422,13 @@ class LineaEntrada(BaseModel):
 
 
 class CrearPresupuesto(BaseModel):
-    lineas: list[LineaEntrada] = Field(..., min_length=1)
+    # Vacías se toman las de la oportunidad: la oferta se hace desde ella y
+    # pedir que se vuelvan a teclear las líneas que ya tiene era el primer
+    # paso de una oferta que no cuadra con su oportunidad (10-11-2026).
+    lineas: list[LineaEntrada] = Field(
+        default_factory=list,
+        description="Si se deja vacío y hay oportunidad, se copian sus líneas",
+    )
     cuenta_id: UUID | None = None
     oportunidad_id: UUID | None = None
     contacto_id: UUID | None = None
@@ -573,6 +655,13 @@ def caducar(uow: UowDep, principal: AutenticadoDep) -> Any:
 # ── Contratos ─────────────────────────────────────────────────────────────
 
 
+class Clausula(BaseModel):
+    model_config = {"extra": "allow"}
+
+    titulo: str = Field(..., min_length=1, max_length=300)
+    texto: str = Field("", max_length=5000)
+
+
 class CrearContrato(BaseModel):
     cuenta_id: UUID
     inicio: date
@@ -588,7 +677,9 @@ class CrearContrato(BaseModel):
         description="El día del vencimiento ya es tarde para no renovar: esta es la fecha que importa",
     )
     meses_renovacion: int = Field(12, ge=1)
-    clausulas: list[dict[str, Any]] = Field(default_factory=list)
+    # Con columnas: el alta pedía las cláusulas en un editor de JSON
+    # (visto el 10-11-2026). Lo que traiga de más una integración se conserva.
+    clausulas: list[Clausula] = Field(default_factory=list)
 
 
 class CambiarEstado(BaseModel):
@@ -680,7 +771,7 @@ class AltaSuscripcion(BaseModel):
     plan: str = Field(..., min_length=1, max_length=120)
     importe_periodo: Decimal
     inicio: date
-    periodicidad: str = Field("mensual", description="mensual · trimestral · anual")
+    periodicidad: Literal["mensual", "trimestral", "anual"] = "mensual"
     contrato_id: UUID | None = None
     producto_id: UUID | None = None
     cantidad: Decimal = Decimal(1)
@@ -699,7 +790,13 @@ def alta_suscripcion(datos: AltaSuscripcion, uow: UowDep) -> Any:
 
 
 class CambioSuscripcionEntrada(BaseModel):
-    tipo: str = Field(..., description="cambio_plan · cambio_cantidad · pausa · reanudacion · baja")
+    # Lista cerrada: el formulario pedía escribir «cambio_plan» con las cinco
+    # opciones en la ayuda (visto el 10-11-2026).
+    tipo: Literal[  # type: ignore[valid-type]
+        tuple(t for t in pre.TIPOS_CAMBIO_SUSCRIPCION if t != "alta")
+    ] = Field(
+        ..., description="Qué cambia: el plan, la cantidad, una pausa, la reanudación o la baja"
+    )
     efectivo_el: date | None = None
     plan: str | None = None
     cantidad: Decimal | None = None
@@ -708,7 +805,12 @@ class CambioSuscripcionEntrada(BaseModel):
 
 
 @router_sus.post(
-    "/{suscripcion_cliente_id}/cambios",
+    # `{suscripcion_id}`, el mismo nombre que la función. Era
+    # `{suscripcion_cliente_id}`: FastAPI tomaba `suscripcion_id` por un
+    # parámetro de consulta obligatorio que nadie manda y contestaba 422 a
+    # cualquier cambio — no se podía cambiar de plan ni dar de baja una
+    # suscripción desde ningún sitio (visto el 10-11-2026).
+    "/{suscripcion_id}/cambios",
     dependencies=[Depends(exige_permiso("contract:write"))],
     summary="Cambiar una suscripción, con su prorrateo",
     description=(

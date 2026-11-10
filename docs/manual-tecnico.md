@@ -6825,6 +6825,92 @@ Pruebas: el gate y `test_cada_capacidad_tiene_pantalla.py`;
 `modelos_predictivos_y_asistente.test.tsx` (una propuesta pendiente se
 confirma desde la lista con sus argumentos).
 
+### Ventas recorrida en pantalla (10-11-2026): qué se arregló y dónde
+
+Recorrido capacidad a capacidad desde el navegador. Lo que se tocó:
+
+**Acciones que llevan el registro en el cuerpo.** `accionesDe` sólo veía las
+operaciones con el registro en la ruta. `lib/acciones.ts › accionesPorElCuerpo`
+ofrece las que lo llevan en el cuerpo, con `Accion.fijos` (los campos que pone
+la pantalla y el formulario no pregunta; `Acciones.tsx` los quita del
+formulario y los añade al cuerpo). La ficha de la oportunidad declara
+`/ingresos/{reparto,rol-compra,relacionar,calendario}` y
+`/planes-conjuntos{,/revision}`. El nombre y el permiso salen del contrato.
+
+**Cuerpos tipados** (`api_ingresos.py`, `api_cotizacion.py`): `ParticipacionIn`
+(usuario con `referencia`), `RolIn.rol` con `x-vocabulario` `roles_compra`,
+`RelacionIn.tipo` y `destino_id` (referencia `oportunidad`), `PasoIn`,
+`AcuerdoIn`, las seis preguntas de `RevisionIn` como campos, `Clausula`,
+`CrearReglaPrecio.lista_id` (referencia `lista_precio`, que pasa a ser el
+`objeto` del recurso) y `accion`, `sentido`, `periodicidad` y el tipo de
+`CambioSuscripcionEntrada` como `Literal`. `Formulario.tsx › Lineas` pinta el
+selector de registro en las columnas con referencia, y `contrato.ts` quita el
+«ID» del título de esas columnas.
+
+**Arreglos de servicio:**
+
+- `ingresos.repartir_credito` hacía `select` donde quería `delete`: el reparto
+  se acumulaba.
+- `ingresos.metricas_de_ingreso`: el TCV de una línea recurrente sin
+  `valor_total` es importe × periodos del contrato.
+- `ActualizarOportunidad.motivo_cambio`: el servicio lo leía y el esquema lo
+  tiraba. `servicio.recalcular_total` anota el cambio de importe que provocan
+  las líneas (`anotar=False` para la copia de `duplicar`).
+- `servicio.cambiar_etapa`: el mensaje de criterios incumplidos nombra los
+  campos; la ficha pinta `fallo` también con la oportunidad cargada.
+- `api._exigir_cierres(…, tenia=)`: se exige **conservar** la etapa final que
+  había, no tenerla ya.
+- `cadencias.cola_de_trabajo` añade `_leads_sin_responder` y
+  `_oportunidades_paradas` (reutiliza `servicio.oportunidades_estancadas`).
+- `cadencias.evaluar`: el umbral de «cualificada» es el ajuste
+  `metodologia_minimo_cualificada_pct` (50 por defecto, editable en Admin), y
+  devuelve `minimo_cualificada_pct`.
+- `enrutamiento.atributo_del_lead`: completa `origen` → `lead.origen` y lo que
+  no es columna → `lead.campos.<x>`. La prueba de reglas mete lo desconocido en
+  `campos` y convierte a número lo numérico.
+- `api.anotar_toque` llama a `origen.fijar_primer_y_ultimo`.
+- `forecast.deslizamiento` devuelve el nombre; `api_forecast.ajustar` calcula
+  el bruto si no llega (`calcular(...).por_categoria[categoria].importe`).
+- `api_ingresos`: `GET /planes-conjuntos/revisiones` (listado de
+  `RevisionOportunidad`, montado antes del de planes para que `/{id}` no se lo
+  trague); `previsto_por_periodo` añade `meses` como filas.
+- `presupuestos.crear` copia las líneas de la oportunidad si no llegan
+  (`_lineas_de_la_oportunidad`); `comparar_versiones` incluye el descuento.
+- `catalogo.calcular_precio`: en sentido `venta`, el coste sale de la tarifa de
+  coste si alguna regla aplica (`coste_de_tarifa`); en sentido `coste`, la base
+  es `producto.coste`. `GET`/`DELETE /listas-precio/{id}/reglas[/{regla_id}]`
+  con `response_model=list` para que la ficha lo pinte como sub-colección.
+- `api_cotizacion`: la ruta de cambios de suscripción decía
+  `{suscripcion_cliente_id}` y la función `suscripcion_id` → 422 siempre.
+  `presupuestos._prorrateo` usa los días reales del periodo
+  (`MESES_PERIODO`), `_fin_de_periodo` suma meses de calendario y la baja
+  prorratea con la `proxima_factura` de antes de borrarla.
+
+**Pantallas:** `Oportunidad.tsx` (nombres en *Quién decide* y *Quién se lo
+lleva*, enlace a la relacionada, `CategoriaDePrevision`, días en etapa,
+`LasRevisiones`, formato de *Lo que se ha movido*), `PeriodoDePrevision.tsx`
+(menú de acciones del periodo con `accionesDe`, selector de moneda desde
+`/monedas/cambios`, nombres de categoría, importes formateados),
+`Presupuesto.tsx` (qué cambió por línea, costes con céntimos),
+`Embudos.tsx` (la tabla de etapas cabe a 1440 px), `lib/formato.ts ›
+importeUnitario`, `recursos.ts` (columnas de *Mi cola*, `clave_lista` de
+*Ingreso previsto*).
+
+Pruebas (sólo de lo arreglado): `test_ingresos_y_equipo.py`
+(TCV, reparto que reemplaza), `test_forecast.py` (motivo por la API, importe de
+las líneas, nombre en el deslizamiento, bruto calculado),
+`test_editor_de_embudos.py`, `test_cadencias.py` (cola),
+`test_enrutamiento_leads.py`, `test_origen_leads.py`, `test_cotizacion.py`
+(oferta desde oportunidad, descuento en la comparación, tarifa de coste,
+reglas de la lista, baja prorrateada) y `test_ventas_por_http.py` (cambio de
+suscripción por HTTP).
+
+**Lo que quedó sin poder comprobar en local:** la previsión en otra moneda
+(`CRM-03.02.01.07`) no convierte porque la réplica de `tipos_cambio` de `sales`
+está vacía —los 25 eventos `catalogos.tipo_cambio_fijado` se publicaron el
+04-11 y el consumidor `sales-fx` no tiene ninguno— y no hay pantalla que fije
+un tipo para volver a emitirlo.
+
 
 ## 5. Operación
 

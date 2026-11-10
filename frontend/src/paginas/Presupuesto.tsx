@@ -49,7 +49,7 @@ import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
-import { escalar, fecha, importe } from "@/lib/formato";
+import { escalar, fecha, importe, importeUnitario } from "@/lib/formato";
 
 interface Presupuesto {
   id: string;
@@ -84,6 +84,8 @@ interface Cambio {
   total?: string;
   cantidad_antes?: string;
   cantidad_ahora?: string;
+  descuento_antes?: string;
+  descuento_ahora?: string;
   total_antes?: string;
   total_ahora?: string;
 }
@@ -393,11 +395,16 @@ export function Presupuesto() {
                         >
                           {t("presupuesto.costeLinea", {
                             referencia: c.referencia,
-                            antes: importe(
+                            // Con céntimos: un coste unitario que pasa de
+                            // 7 € a 7,50 € salía «7 € al ofertar, 8 € hoy».
+                            antes: importeUnitario(
                               c.coste_en_la_oferta,
                               presupuesto.moneda,
                             ),
-                            hoy: importe(c.coste_hoy, presupuesto.moneda),
+                            hoy: importeUnitario(
+                              c.coste_hoy,
+                              presupuesto.moneda,
+                            ),
                           })}
                         </li>
                       ))}
@@ -443,9 +450,15 @@ export function Presupuesto() {
                 ) : (
                   <>
                     <p className="mt-2 font-mono text-dato text-ink">
+                      {/* Con el formato del resto de la ficha: salía
+                          «15500.00 → 8000.00» debajo de «15.500 €». */}
                       {t("presupuesto.totalAntesDespues", {
-                        antes: cambios.total_antes ?? "—",
-                        ahora: cambios.total_ahora ?? "—",
+                        antes: cambios.total_antes
+                          ? importe(cambios.total_antes, presupuesto.moneda)
+                          : "—",
+                        ahora: cambios.total_ahora
+                          ? importe(cambios.total_ahora, presupuesto.moneda)
+                          : "—",
                       })}
                     </p>
                     <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
@@ -454,15 +467,49 @@ export function Presupuesto() {
                           key={`${c.linea}-${i}`}
                           className="flex items-baseline gap-2"
                         >
-                          <span className="chip-dato">{c.cambio}</span>
+                          <span className="chip-dato">
+                            {t(`presupuesto.cambio.${c.cambio}`, {
+                              defaultValue: c.cambio,
+                            })}
+                          </span>
                           <span className="flex-1 text-dato text-ink">
                             {c.linea}
                           </span>
-                          {c.cantidad_antes !== undefined ? (
-                            <span className="font-mono text-rotulo text-ink-muted">
+                          {/* Lo que cambió, y sólo eso: una línea que pasa
+                              del 10 % al 20 % de descuento se leía
+                              «10.0000 → 10.0000», la cantidad que no se
+                              había tocado. */}
+                          {c.cantidad_antes !== undefined &&
+                          Number(c.cantidad_antes) !==
+                            Number(c.cantidad_ahora) ? (
+                            <span className="text-rotulo text-ink-muted">
+                              {t("presupuesto.cantidadDeA", {
+                                antes: escalar(c.cantidad_antes),
+                                ahora: escalar(c.cantidad_ahora),
+                              })}
+                            </span>
+                          ) : null}
+                          {c.descuento_antes !== undefined &&
+                          Number(c.descuento_antes) !==
+                            Number(c.descuento_ahora) ? (
+                            <span className="text-rotulo text-ink-muted">
+                              {t("presupuesto.descuentoDeA", {
+                                antes: escalar(c.descuento_antes),
+                                ahora: escalar(c.descuento_ahora),
+                              })}
+                            </span>
+                          ) : null}
+                          {c.total_antes !== undefined ? (
+                            <span className="text-rotulo text-ink-muted">
                               {t("presupuesto.deA", {
-                                antes: c.cantidad_antes,
-                                ahora: c.cantidad_ahora,
+                                antes: importe(
+                                  c.total_antes,
+                                  presupuesto.moneda,
+                                ),
+                                ahora: importe(
+                                  c.total_ahora,
+                                  presupuesto.moneda,
+                                ),
                               })}
                             </span>
                           ) : null}

@@ -217,6 +217,16 @@ class ActualizarOportunidad(BaseModel):
     motivo_perdida: str | None = None
     competidor_ganador: str | None = None
     campos: dict[str, Any] | None = None
+    # El porqué de mover el importe o la fecha (CRM-03.01.01.13). El servicio
+    # lo leía y el esquema no lo declaraba, así que la puerta lo tiraba: la
+    # ficha avisaba «se movió sin motivo escrito» y no había donde escribirlo
+    # (visto el 10-11-2026). No se guarda en la oportunidad: va al apunte del
+    # deslizamiento.
+    motivo_cambio: str | None = Field(
+        None,
+        max_length=500,
+        description="Por qué se mueve el importe o la fecha de cierre; queda en su historial",
+    )
 
 
 class OportunidadOut(BaseModel):

@@ -27,7 +27,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 function comoTexto(esperado: string) {
   const plano = (s: string) => s.replace(/\s+/g, " ").trim();
-  return (_: string, nodo: Element | null) => plano(nodo?.textContent ?? "") === plano(esperado);
+  return (_: string, nodo: Element | null) =>
+    plano(nodo?.textContent ?? "") === plano(esperado);
 }
 
 vi.mock("react-i18next", () => ({
@@ -81,7 +82,10 @@ function montar() {
   return render(
     <MemoryRouter initialEntries={["/m/oportunidades/presupuesto/p-1"]}>
       <Routes>
-        <Route path="/m/oportunidades/presupuesto/:id" element={<Presupuesto />} />
+        <Route
+          path="/m/oportunidades/presupuesto/:id"
+          element={<Presupuesto />}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -118,11 +122,22 @@ beforeEach(() => {
     total_antes: "1000.00",
     total_ahora: "700.00",
     cambios: [
-      { linea: "Licencias", cambio: "cantidad", cantidad_antes: "10", cantidad_ahora: "7" },
+      {
+        linea: "Licencias",
+        cambio: "cantidad",
+        cantidad_antes: "10",
+        cantidad_ahora: "7",
+      },
       { linea: "Soporte", cambio: "quitada", total: "200.00" },
     ],
   };
-  costes = { hay_cambios: false, cambios: [], que_hacer: "", comparadas: 1, no_comparables: [] };
+  costes = {
+    hay_cambios: false,
+    cambios: [],
+    que_hacer: "",
+    comparadas: 1,
+    no_comparables: [],
+  };
   vi.clearAllMocks();
 });
 
@@ -142,7 +157,9 @@ describe("la aprobación", () => {
     politica = { ...politica, necesita_aprobacion: false, motivos: [] };
     montar();
     await screen.findByText("presupuesto.numeros");
-    expect(screen.queryByText("presupuesto.necesitaAprobacion")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("presupuesto.necesitaAprobacion"),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -153,7 +170,11 @@ describe("los números", () => {
     // localización del tenant: «300 €» y no «300.00». El espacio que `Intl`
     // mete entre la cifra y el símbolo es duro, así que se compara sin
     // depender de cuál sea: lo que se afirma es la cifra con su símbolo.
-    await screen.findByText(comoTexto('presupuesto.descuentoYMargen:{"descuento":"300 €","margen":"12 %"}'));
+    await screen.findByText(
+      comoTexto(
+        'presupuesto.descuentoYMargen:{"descuento":"300 €","margen":"12 %"}',
+      ),
+    );
   });
 
   it("sin coste en las líneas lo dice, en vez de enseñar un margen de cero", async () => {
@@ -173,13 +194,17 @@ describe("los números", () => {
 describe("qué cambió", () => {
   it("enseña el total antes y después, y línea a línea", async () => {
     montar();
+    // En el formato del resto de la ficha, y diciendo QUÉ cambió en la
+    // línea: salía «1000.00 → 700.00» y la cantidad aunque no cambiara.
     await screen.findByText(
-      'presupuesto.totalAntesDespues:{"antes":"1000.00","ahora":"700.00"}',
+      comoTexto(
+        'presupuesto.totalAntesDespues:{"antes":"1000 €","ahora":"700 €"}',
+      ),
     );
     expect(screen.getByText("Licencias")).toBeInTheDocument();
     expect(screen.getByText("Soporte")).toBeInTheDocument();
     expect(
-      screen.getByText('presupuesto.deA:{"antes":"10","ahora":"7"}'),
+      screen.getByText('presupuesto.cantidadDeA:{"antes":"10","ahora":"7"}'),
     ).toBeInTheDocument();
   });
 
@@ -187,7 +212,9 @@ describe("qué cambió", () => {
     cambios = { version: 1, primera: true, cambios: [] };
     montar();
     await screen.findByText("presupuesto.esLaPrimera");
-    expect(screen.queryByText(/presupuesto\.totalAntesDespues/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/presupuesto\.totalAntesDespues/),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -217,7 +244,14 @@ describe("el coste congelado", () => {
   it("si ha subido desde que se ofertó, lo dice línea a línea junto al margen", async () => {
     costes = {
       hay_cambios: true,
-      cambios: [{ referencia: "SEN-1", coste_en_la_oferta: "700", coste_hoy: "800", peor: true }],
+      cambios: [
+        {
+          referencia: "SEN-1",
+          coste_en_la_oferta: "700",
+          coste_hoy: "800",
+          peor: true,
+        },
+      ],
       que_hacer: "1 líneas cuestan más que cuando se ofertó.",
       comparadas: 1,
       no_comparables: ["Portes"],
@@ -226,11 +260,15 @@ describe("el coste congelado", () => {
     const aviso = await screen.findByTestId("costes-al-dia");
     expect(aviso.textContent).toContain("cuestan más que cuando se ofertó");
     expect(aviso.textContent).toContain("SEN-1");
-    expect(screen.getByText(/presupuesto\.costeSinComparar/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/presupuesto\.costeSinComparar/),
+    ).toBeInTheDocument();
   });
 
   it("si no ha cambiado lo dice, en vez de callar", async () => {
     montar();
-    expect((await screen.findByTestId("costes-al-dia")).textContent).toContain("presupuesto.costeIgual");
+    expect((await screen.findByTestId("costes-al-dia")).textContent).toContain(
+      "presupuesto.costeIgual",
+    );
   });
 });

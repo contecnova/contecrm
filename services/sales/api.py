@@ -392,14 +392,30 @@ def _etapas_del(db: Any, pipeline_id: UUID, principal: Any) -> tuple[Any, list[A
     return pipeline, etapas
 
 
-def _exigir_cierres(etapas: list[Any]) -> None:
-    """Un embudo sin etapa final ganada o perdida no deja cerrar ninguna venta."""
-    if not any(e.terminal and e.ganada for e in etapas):
+def _cierres(etapas: list[Any]) -> tuple[bool, bool]:
+    """Si el embudo tiene etapa final ganada y etapa final perdida."""
+    return (
+        any(e.terminal and e.ganada for e in etapas),
+        any(e.terminal and not e.ganada for e in etapas),
+    )
+
+
+def _exigir_cierres(etapas: list[Any], *, tenia: tuple[bool, bool] = (True, True)) -> None:
+    """Un embudo sin etapa final ganada o perdida no deja cerrar ninguna venta.
+
+    Se exige **conservar** la que había, no tenerla ya: un embudo recién creado
+    nace sin etapas, y al marcar la primera como ganada se rechazaba por no
+    haber todavía una perdida — con lo que un embudo nuevo no se podía
+    configurar nunca desde la pantalla, que guarda etapa a etapa (visto el
+    10-11-2026). `tenia` es lo que había antes del cambio.
+    """
+    ganada, perdida = _cierres(etapas)
+    if tenia[0] and not ganada:
         raise ErrorValidacion(
             "El embudo tiene que conservar una etapa final de ganada",
             error_code="sales.embudo_sin_ganada",
         )
-    if not any(e.terminal and not e.ganada for e in etapas):
+    if tenia[1] and not perdida:
         raise ErrorValidacion(
             "El embudo tiene que conservar una etapa final de perdida",
             error_code="sales.embudo_sin_perdida",
@@ -424,11 +440,12 @@ def editar_etapa(
     etapa = next((e for e in etapas if e.id == etapa_id), None)
     if etapa is None:
         raise NoEncontrado("La etapa no es de este embudo", error_code="sales.etapa_no_encontrada")
+    tenia = _cierres(etapas)
     for campo, valor in datos.model_dump(exclude_unset=True).items():
         setattr(etapa, campo, valor)
     if not etapa.terminal:
         etapa.ganada = False
-    _exigir_cierres(etapas)
+    _exigir_cierres(etapas, tenia=tenia)
     db.flush()
     return etapa
 
@@ -479,7 +496,7 @@ def borrar_etapa(
     if etapa is None:
         raise NoEncontrado("La etapa no es de este embudo", error_code="sales.etapa_no_encontrada")
     quedan = [e for e in etapas if e.id != etapa_id]
-    _exigir_cierres(quedan)
+    _exigir_cierres(quedan, tenia=_cierres(etapas))
     ocupadas = list(
         db.execute(
             select(Oportunidad).where(
@@ -1456,6 +1473,23 @@ def probar_reglas(ejemplo: dict, db: DbDep, principal: AutenticadoDep) -> Any:
         "asignado_at": None,
     }
     campos.update({k: v for k, v in ejemplo.items() if k in campos})
+
+    # Lo que no es una columna del lead es un campo propio de la empresa
+    # —«empleados»—, y ahí es donde lo busca la regla. Se tiraba, y una regla
+    # sobre un campo propio no se podía probar nunca (10-11-2026).
+    # El formulario de prueba manda texto: «800» se compara como número, que
+    # es como llega el campo de un lead de verdad.
+    def _como_llega(v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                return int(v) if v.strip().lstrip("-").isdigit() else float(v)
+            except ValueError:
+                return v
+        return v
+
+    propios = {k: _como_llega(v) for k, v in ejemplo.items() if k not in campos}
+    if propios:
+        campos["campos"] = {**(campos["campos"] or {}), **propios}
     falso = SimpleNamespace(**campos)
 
     # Se evalúa dentro de un savepoint que se deshace siempre: `enrutar` escribe
@@ -1549,6 +1583,18 @@ def anotar_toque(datos: RegistrarToque, uow: UowDep, principal: AutenticadoDep) 
         canal=datos.canal,
         **datos.parametros,
     )
+    # El primer y el último toque del lead, al día (CRM-01.01.03.06). Sólo se
+    # fijaban al dar de alta el lead: los toques que llegaban después —la
+    # visita que vuelve por un correo, la que cierra buscando la marca— se
+    # guardaban y el lead seguía sin último toque, así que el informe por
+    # campaña los contaba todos como «(sin campaña)» (visto el 10-11-2026).
+    if toque.lead_id is not None:
+        from services.sales.modelos import Lead
+
+        lead = uow.db.get(Lead, toque.lead_id)
+        if lead is not None and lead.tenant_id == principal.tenant_id:
+            uow.db.flush()
+            org.fijar_primer_y_ultimo(uow.db, lead, tenant_id=principal.tenant_id)
     return {"id": str(toque.id), "lead_id": str(toque.lead_id) if toque.lead_id else None}
 
 

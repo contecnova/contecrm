@@ -58,7 +58,10 @@ import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { ConsejosDeLecciones } from "@/componentes/ConsejosDeLecciones";
 import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
-import { accionesDe, type Accion } from "@/lib/acciones";
+import { accionesDe, accionesPorElCuerpo, type Accion } from "@/lib/acciones";
+import { nombresDeRegistros } from "@/lib/nombres";
+import { nombreDe, usePersonas } from "@/lib/personas";
+import { useOpciones } from "@/lib/vocabularios";
 import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
 import {
@@ -66,6 +69,8 @@ import {
   fecha,
   humanizar,
   importe as comoImporte,
+  importeUnitario,
+  rotuloDeOpcion,
 } from "@/lib/formato";
 import { ActividadDelRegistro } from "@/componentes/ActividadDelRegistro";
 import { moduloDe } from "@/lib/modulos";
@@ -195,6 +200,8 @@ interface Evaluacion {
   lo_que_falta: CriterioQueFalta[];
   siguiente_paso: string;
   cualificada: boolean;
+  /** Lo que la empresa exige para darla por cualificada, en % de criterios. */
+  minimo_cualificada_pct?: number;
 }
 
 interface Playbook {
@@ -222,6 +229,152 @@ interface EstadoDelPlan {
   la_fecha_es_creible: boolean;
   que_significa: string;
   aviso: string;
+}
+
+/**
+ * En qué categoría de la previsión cuenta esta oportunidad (CRM-03.02.01.01).
+ *
+ * El servidor clasificaba y la previsión sumaba por categoría, pero ninguna
+ * pantalla dejaba ponerla: las 59 oportunidades del trimestre salían en
+ * «pipeline» y el «commit» de la previsión era siempre cero (visto el
+ * 10-11-2026). Las categorías son las del tenant, no una lista escrita aquí.
+ */
+function CategoriaDePrevision({
+  id,
+  actual,
+  alCambiar,
+  alFallar,
+}: {
+  id: string;
+  actual: string | null;
+  alCambiar: () => void;
+  alFallar: (error: unknown) => void;
+}) {
+  const { t } = useTranslation();
+  const [categorias, setCategorias] = useState<
+    { clave: string; nombre: string; por_defecto?: boolean }[]
+  >([]);
+  useEffect(() => {
+    const control = new AbortController();
+    void listar<{ clave: string; nombre: string; por_defecto?: boolean }>(
+      "/api/v1/forecast/categorias",
+      { signal: control.signal },
+    )
+      .then(setCategorias)
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+  if (categorias.length === 0) return null;
+  const elegida = actual ?? categorias.find((c) => c.por_defecto)?.clave ?? "";
+  return (
+    <label className="mt-2 flex items-center gap-2 text-rotulo text-ink-muted">
+      {t("oportunidad.categoriaPrevision")}
+      <select
+        className="input-base !w-auto"
+        value={elegida}
+        onChange={async (e) => {
+          try {
+            await llamar(`/api/v1/forecast/oportunidades/${id}/categoria`, {
+              metodo: "PUT",
+              cuerpo: { categoria: e.target.value },
+            });
+            alCambiar();
+          } catch (error) {
+            alFallar(error);
+          }
+        }}
+      >
+        {categorias.map((c) => (
+          <option key={c.clave} value={c.clave}>
+            {c.nombre}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+interface Revision {
+  id: string;
+  created_at: string;
+  probabilidad_declarada: number;
+  fecha_declarada: string | null;
+  respuestas: Record<string, string>;
+  acuerdos: { titulo: string; responsable: string; fecha: string }[];
+}
+
+/**
+ * Las revisiones del deal, con lo que se dijo y lo que se acordó
+ * (CRM-03.01.02.06).
+ *
+ * Se registraban y no se podían leer: sólo las usaba la calibración agregada.
+ * «Trazable» es poder abrir la de hace un mes y ver qué se temía y a qué se
+ * comprometió cada uno.
+ */
+function LasRevisiones({ id }: { id: string }) {
+  const { t } = useTranslation();
+  const [revisiones, setRevisiones] = useState<Revision[]>([]);
+  useEffect(() => {
+    const control = new AbortController();
+    void listar<Revision>(
+      `/api/v1/planes-conjuntos/revisiones?oportunidad_id=${id}`,
+      { signal: control.signal },
+    )
+      .then(setRevisiones)
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [id]);
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("oportunidad.revisiones")}</h2>
+      {revisiones.length === 0 ? (
+        <Vacio titulo={t("oportunidad.sinRevisiones")} compacto />
+      ) : (
+        <ul className="lista-acotada divide-y divide-ink-dim/30">
+          {revisiones.map((r) => (
+            <li key={r.id} className="py-1.5">
+              <p className="text-dato font-medium text-ink">
+                {t("oportunidad.revisionDel", {
+                  fecha: fecha(r.created_at),
+                  pct: r.probabilidad_declarada,
+                })}
+              </p>
+              {r.respuestas.que_puede_salir_mal ? (
+                <p className="text-rotulo text-ink-muted">
+                  {t("oportunidad.queSalirMal")}:{" "}
+                  {r.respuestas.que_puede_salir_mal}
+                </p>
+              ) : null}
+              {r.respuestas.que_falta_por_saber ? (
+                <p className="text-rotulo text-ink-muted">
+                  {t("oportunidad.queFaltaSaber")}:{" "}
+                  {r.respuestas.que_falta_por_saber}
+                </p>
+              ) : null}
+              {r.acuerdos.map((a, i) => (
+                <p key={i} className="text-rotulo text-ink-faint">
+                  {t("oportunidad.acuerdo", {
+                    titulo: a.titulo,
+                    responsable: a.responsable,
+                    fecha: fecha(a.fecha),
+                  })}
+                </p>
+              ))}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Días de calendario desde una fecha hasta hoy, en la hora del navegador. */
+function diasDeCalendarioDesde(iso: string): number {
+  const desde = new Date(iso);
+  const a = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
+  const hoy = new Date();
+  const b = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  return Math.max(0, Math.round((b.getTime() - a.getTime()) / 86_400_000));
 }
 
 interface CambioDePrevision {
@@ -271,15 +424,30 @@ export function Oportunidad() {
   // Las acciones del contrato sobre la oportunidad —entre ellas «Qué hacer ahora», con IA— en el menú, igual que en la ficha del cliente. Mover de etapa no: tiene su control arriba.
   const { superficie, tiene } = useSuperficie();
   const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
-  const acciones = accionesDe(
-    superficie,
-    "/api/v1/opportunities",
-    id ?? "",
-    tiene,
-  ).filter(
-    (a) =>
-      !["/api/v1/opportunities/{oportunidad_id}/etapa"].includes(a.plantilla),
-  );
+  const acciones = [
+    ...accionesDe(superficie, "/api/v1/opportunities", id ?? "", tiene).filter(
+      (a) =>
+        !["/api/v1/opportunities/{oportunidad_id}/etapa"].includes(a.plantilla),
+    ),
+    // Las que llevan la oportunidad en el cuerpo: quién se lo lleva, quién
+    // decide, con qué otra se relaciona y cuándo se ingresa. Los paneles de
+    // abajo las enseñaban y no había desde dónde declararlas (10-11-2026).
+    ...accionesPorElCuerpo(
+      superficie,
+      {
+        "/api/v1/ingresos/reparto": { oportunidad_id: id },
+        "/api/v1/ingresos/rol-compra": { oportunidad_id: id },
+        "/api/v1/ingresos/relacionar": { origen_id: id },
+        "/api/v1/ingresos/calendario": { oportunidad_id: id },
+        // El plan con el cliente y la revisión del deal: el panel enseñaba el
+        // plan y no había desde dónde hacerlo; la revisión sólo se podía
+        // registrar desde «Planes conjuntos» eligiendo la oportunidad.
+        "/api/v1/planes-conjuntos": { oportunidad_id: id },
+        "/api/v1/planes-conjuntos/revision": { oportunidad_id: id },
+      },
+      tiene,
+    ),
+  ];
   // Las mismas dos pestañas que las demás fichas. «Relacionado» es lo que
   // esta pantalla ya enseñaba —las líneas, quién decide, el plan— y
   // «Detalles» son sus campos, que hasta hoy sólo se leían entrando a editar.
@@ -500,9 +668,8 @@ export function Oportunidad() {
             {op.codigo ? (
               <span className="badge badge-muted font-mono">{op.codigo}</span>
             ) : null}
-            {op.categoria_forecast ? (
-              <span className="chip-dato">{op.categoria_forecast}</span>
-            ) : null}
+            {/* La categoría de previsión no va aquí: tiene su selector en la
+                tarjeta del ponderado, que es donde se mira la previsión. */}
             {op.bloqueada ? (
               <span className="chip-dato chip-dato--no">
                 {t("oportunidad.bloqueada")}
@@ -542,6 +709,13 @@ export function Oportunidad() {
           ) : null
         }
       />
+
+      {/* Lo que el servidor contesta al mover de etapa o al borrar —un
+          criterio de salida sin cumplir, una etapa cerrada—, debajo de la
+          cabecera. Se guardaba en `fallo` y sólo se pintaba si no había
+          oportunidad: con la ficha cargada, el clic en la ruta no hacía nada
+          y no decía por qué (visto el 10-11-2026). */}
+      {fallo ? <Fallo error={fallo} /> : null}
 
       {confirmando ? (
         <ConfirmarBorrado
@@ -613,6 +787,26 @@ export function Oportunidad() {
             pct: op.probabilidad,
           })}
         </p>
+        {/* En qué categoría de la previsión cuenta (CRM-03.02.01.01). */}
+        {op.estado_significa === "abierto" ? (
+          <CategoriaDePrevision
+            id={op.id}
+            actual={op.categoria_forecast}
+            alCambiar={cargar}
+            alFallar={setFallo}
+          />
+        ) : null}
+        {/* Cuánto lleva en su etapa (CRM-03.01.01.12). Estaba en la lista de
+            estancadas de Previsiones y no en la ficha, que es donde se decide
+            qué hacer con ella. Días de calendario, no horas entre dos
+            instantes. */}
+        {op.etapa_desde && op.estado_significa === "abierto" ? (
+          <p className="text-rotulo text-ink-faint">
+            {t("oportunidad.enEstaEtapa", {
+              count: diasDeCalendarioDesde(op.etapa_desde),
+            })}
+          </p>
+        ) : null}
         {/* La fecha de cierre estaba aquí también, y en crudo: el panel de
             arriba decía «21/04/2027» y esta línea «2027-04-21», el mismo dato
             dos veces y con dos formatos en la misma pantalla. La pregunta la
@@ -652,7 +846,7 @@ export function Oportunidad() {
               />
               <QuienDecide grupo={grupo} />
               <QuienSeLoLleva reparto={reparto} />
-              <LoQueSeHaMovido cambios={deslizamientos} />
+              <LoQueSeHaMovido cambios={deslizamientos} moneda={op.moneda} />
               <QueFaltaParaCerrar
                 evaluacion={evaluacion}
                 playbook={playbook}
@@ -672,6 +866,7 @@ export function Oportunidad() {
                 }}
               />
               <ElPlanConElCliente plan={plan} />
+              <LasRevisiones id={op.id} />
               <LaFirma id={op.id} alCambiar={cargar} />
               <div className="lg:col-span-2">
                 <GenerarDocumento objeto="oportunidad" id={op.id} />
@@ -960,7 +1155,7 @@ function LasLineas({
       {lineas.length === 0 ? (
         <Vacio titulo={t("oportunidad.sinLineas")} compacto />
       ) : (
-        <ul className="divide-y divide-ink-dim/30">
+        <ul className="lista-acotada divide-y divide-ink-dim/30">
           {lineas.map((l) => (
             <li
               key={l.id}
@@ -971,12 +1166,12 @@ function LasLineas({
               </span>
               <span className="text-rotulo text-ink-faint">
                 {t("oportunidad.porUnidad", {
-                  cantidad: l.cantidad,
-                  precio: comoImporte(l.precio_unitario, moneda),
+                  cantidad: escalar(l.cantidad),
+                  precio: importeUnitario(l.precio_unitario, moneda),
                 })}
               </span>
               {Number(l.descuento_pct) > 0 ? (
-                <span className="chip-dato">-{l.descuento_pct} %</span>
+                <span className="chip-dato">-{escalar(l.descuento_pct)} %</span>
               ) : null}
               <span className="text-dato text-ink-muted">
                 {comoImporte(l.total, moneda)}
@@ -1064,8 +1259,35 @@ function LasLineas({
  */
 function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
   const { t } = useTranslation();
+  // QUIÉN, no sólo qué papel: el panel decía «decisor · hablado» sin decir
+  // quién es el decisor (visto el 10-11-2026). Los nombres de los papeles, de
+  // la lista de la empresa (Gestor de objetos › Roles en la compra).
+  const papeles = useOpciones({
+    opciones: [],
+    vocabulario: "sales/roles_compra",
+  });
+  const [contactos, setContactos] = useState<Map<string, string>>(new Map());
+  const ids = grupo
+    ? Object.values(grupo.roles)
+        .flat()
+        .map((p) => p.contacto_id)
+        .join(",")
+    : "";
+  useEffect(() => {
+    if (!ids) return undefined;
+    const control = new AbortController();
+    void nombresDeRegistros(
+      ids.split(",").map((x) => ({ objeto_tipo: "contacto", objeto_id: x })),
+      control.signal,
+    )
+      .then((r) => setContactos(r.nombres))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [ids]);
   if (!grupo) return null;
   const roles = Object.entries(grupo.roles);
+  const papel = (rol: string) =>
+    papeles?.find((o) => o.valor === rol)?.etiqueta ?? humanizar(rol);
 
   return (
     <section className="card p-4">
@@ -1079,7 +1301,9 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
               key={rol}
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
-              <span className="text-dato font-medium text-ink">{rol}</span>
+              <span className="text-dato font-medium text-ink">
+                {papel(rol)}
+              </span>
               {gente.map((p) => (
                 <span
                   key={p.contacto_id}
@@ -1089,6 +1313,8 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
                       : "chip-dato chip-dato--no"
                   }
                 >
+                  {contactos.get(p.contacto_id) ?? t("oportunidad.contacto")}
+                  {" · "}
                   {p.hablado
                     ? t("oportunidad.hablado")
                     : t("oportunidad.sinHablar")}
@@ -1122,6 +1348,23 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
  */
 function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
   const { t } = useTranslation();
+  // A QUIÉN va cada parte, y CUÁL es la otra oportunidad. Salían el
+  // porcentaje y el papel sin la persona, y «renovación · sale de ésta» sin
+  // decir cuál (visto el 10-11-2026).
+  const personas = usePersonas();
+  const [otras, setOtras] = useState<Map<string, string>>(new Map());
+  const ids = (reparto?.relacionadas ?? []).map((r) => r.otra_id).join(",");
+  useEffect(() => {
+    if (!ids) return undefined;
+    const control = new AbortController();
+    void nombresDeRegistros(
+      ids.split(",").map((x) => ({ objeto_tipo: "oportunidad", objeto_id: x })),
+      control.signal,
+    )
+      .then((r) => setOtras(r.nombres))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [ids]);
   if (!reparto) return null;
 
   return (
@@ -1138,9 +1381,16 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
                 className="flex flex-wrap items-baseline gap-x-3 py-1.5"
               >
                 <span className="text-dato font-medium text-ink">
-                  {p.porcentaje} %
+                  {nombreDe(personas, p.usuario_id)}
                 </span>
-                <span className="chip-dato">{p.papel}</span>
+                <span className="text-dato text-ink-muted">
+                  {escalar(p.porcentaje)} %
+                </span>
+                <span className="chip-dato">
+                  {t(`oportunidad.papel.${p.papel}`, {
+                    defaultValue: humanizar(p.papel),
+                  })}
+                </span>
                 {p.motivo ? (
                   <span className="text-rotulo text-ink-faint">{p.motivo}</span>
                 ) : null}
@@ -1154,7 +1404,9 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
                 : "mt-2 text-dato text-danger"
             }
           >
-            {t("oportunidad.creditoTotal", { total: reparto.credito_total })}
+            {t("oportunidad.creditoTotal", {
+              total: escalar(reparto.credito_total),
+            })}
             {reparto.credito_cuadra ? "" : ` · ${t("oportunidad.noCuadra")}`}
           </p>
           <p className="mt-1 text-rotulo text-ink-faint">
@@ -1174,11 +1426,17 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
                 key={`${r.tipo}-${r.otra_id}`}
                 className="text-rotulo text-ink-muted"
               >
-                <span className="chip-dato">{r.tipo}</span>{" "}
+                <span className="chip-dato">{rotuloDeOpcion(r.tipo)}</span>{" "}
                 {/* El sentido: sin él, «renovación» no dice si ésta es la que
                     se renueva o la que renueva a otra, que en el informe de
                     crecimiento son cosas opuestas. */}
-                {t(`oportunidad.sentido.${r.sentido}`)}
+                {t(`oportunidad.sentido.${r.sentido}`)}{" "}
+                <Link
+                  to={`/m/oportunidades/oportunidad/${r.otra_id}`}
+                  className="text-accent hover:underline"
+                >
+                  {otras.get(r.otra_id) ?? t("oportunidad.laOtra")}
+                </Link>
               </li>
             ))}
           </ul>
@@ -1196,8 +1454,26 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
  * deslizamiento se anota **con su motivo**, que es lo que convierte un
  * histórico en algo que se puede discutir en un comité.
  */
-function LoQueSeHaMovido({ cambios }: { cambios: CambioDePrevision[] }) {
+function LoQueSeHaMovido({
+  cambios,
+  moneda,
+}: {
+  cambios: CambioDePrevision[];
+  moneda: string;
+}) {
   const { t } = useTranslation();
+  // Con su nombre y en el formato del resto de la ficha. Salía el campo en
+  // crudo —«fecha_cierre»— y los importes con cuatro formas distintas
+  // —«50000.00 → 60000», y la diferencia sin signo—: el mismo dato que arriba
+  // se lee «60.000 €» (visto el 10-11-2026).
+  const valor = (campo: string, v: string | null) =>
+    v === null
+      ? "—"
+      : campo === "importe"
+        ? comoImporte(v, moneda)
+        : campo === "fecha_cierre"
+          ? fecha(v)
+          : v;
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("oportunidad.movimientos")}</h2>
@@ -1208,17 +1484,28 @@ function LoQueSeHaMovido({ cambios }: { cambios: CambioDePrevision[] }) {
           {cambios.map((c, i) => (
             <li key={`${c.campo}-${c.at}-${i}`} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-2 text-dato">
-                <span className="font-medium text-ink">{c.campo}</span>
-                <span className="text-ink-faint">{c.anterior ?? "—"}</span>
+                <span className="font-medium text-ink">
+                  {t(`oportunidad.campoMovido.${c.campo}`, {
+                    defaultValue: humanizar(c.campo),
+                  })}
+                </span>
+                <span className="text-ink-faint">
+                  {valor(c.campo, c.anterior)}
+                </span>
                 <Icono nombre="arrow_forward" tamano="sm" />
-                <span className="text-ink-muted">{c.nuevo ?? "—"}</span>
+                <span className="text-ink-muted">
+                  {valor(c.campo, c.nuevo)}
+                </span>
                 {c.dias_deslizados ? (
                   <span className="chip-dato chip-dato--no">
                     {t("oportunidad.deslizada", { dias: c.dias_deslizados })}
                   </span>
                 ) : null}
                 {c.delta_importe ? (
-                  <span className="chip-dato">{c.delta_importe}</span>
+                  <span className="chip-dato">
+                    {Number(c.delta_importe) > 0 ? "+" : ""}
+                    {comoImporte(c.delta_importe, moneda)}
+                  </span>
                 ) : null}
               </div>
               {c.motivo ? (
@@ -1290,10 +1577,16 @@ function QueFaltaParaCerrar({
                 : "mt-1 text-dato text-warning"
             }
           >
+            {/* Con lo que exige la empresa, y sin decir «cumple» si falta
+                algo: con dos de cuatro decía «cumple los criterios para
+                cerrarse» encima de la lista de lo que faltaba. */}
             {t(
-              evaluacion.cualificada
-                ? "oportunidad.cualificada"
-                : "oportunidad.noCualificada",
+              !evaluacion.cualificada
+                ? "oportunidad.noCualificada"
+                : evaluacion.cubiertos < evaluacion.criterios
+                  ? "oportunidad.cualificadaConHuecos"
+                  : "oportunidad.cualificada",
+              { pct: evaluacion.minimo_cualificada_pct ?? 50 },
             )}
           </p>
           {/* Todos los criterios de su metodología, para marcarlos: lo que se

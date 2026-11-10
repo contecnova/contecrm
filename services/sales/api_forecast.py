@@ -265,7 +265,13 @@ def desglose(
 class Ajuste(BaseModel):
     categoria: str = Field(max_length=40, default="commit")
     importe_ajustado: Decimal
-    importe_bruto: Decimal
+    # Lo calcula el sistema si no se manda: es el número de la categoría en
+    # el periodo, y pedírselo al responsable desde la pantalla era pedirle que
+    # copiara a mano una cifra que ya está ahí — y si la copia mal, el acierto
+    # de los ajustes se mide contra un bruto que no existió (10-11-2026).
+    importe_bruto: Decimal | None = Field(
+        None, description="Si se deja vacío, el calculado de la categoría en el periodo"
+    )
     motivo: str = Field(min_length=1, max_length=2000)
     ambito: str = Field("usuario", max_length=20)
     ambito_id: UUID | None = None
@@ -288,13 +294,24 @@ class Ajuste(BaseModel):
     ),
 )
 def ajustar(clave: str, datos: Ajuste, uow: UowDep, principal: AutenticadoDep) -> Any:
+    bruto = datos.importe_bruto
+    if bruto is None:
+        calculado = forecast.calcular(
+            uow.db,
+            principal.tenant_id,
+            periodo_clave=clave,
+            owners=[datos.ambito_id] if datos.ambito == "usuario" and datos.ambito_id else None,
+            moneda=datos.moneda,
+        )
+        suya = calculado.por_categoria.get(datos.categoria)
+        bruto = suya.importe if suya is not None else Decimal(0)
     fila = forecast.ajustar(
         uow.db,
         principal.tenant_id,
         periodo_clave=clave,
         categoria=datos.categoria,
         importe_ajustado=datos.importe_ajustado,
-        importe_bruto=datos.importe_bruto,
+        importe_bruto=bruto,
         motivo=datos.motivo,
         ambito=datos.ambito,
         ambito_id=datos.ambito_id,

@@ -314,6 +314,32 @@ def test_el_ajuste_guarda_el_bruto_al_lado(
 
 
 @pytest.mark.db
+def test_el_bruto_del_ajuste_lo_pone_el_sistema(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any, uow: Any
+) -> None:
+    """CRM-03.02.01.03. Desde la ficha del periodo se pedía teclear el bruto: el
+    número calculado, que ya está en la pantalla. Copiado mal, el acierto de
+    los ajustes se mediría contra un bruto que nunca existió (10-11-2026)."""
+    from crmcore.authz.principal import Principal
+
+    from services.sales import api_forecast
+
+    forecast.sembrar_categorias(db, tenant_id)
+    _oportunidad(db, tenant_id, pipeline, importe="1000", categoria="commit")
+    quien = Principal(id=uuid4(), tenant_id=tenant_id, permisos=frozenset({"*:*"}))
+
+    api_forecast.ajustar(
+        "2026-Q1",
+        api_forecast.Ajuste(importe_ajustado=Decimal("700"), motivo="Compras retrasa el pedido"),
+        uow,
+        quien,
+    )
+
+    filas = forecast.ajustes_de(db, tenant_id, "2026-Q1")
+    assert filas[0]["bruto"] == "1000.00" and filas[0]["delta"] == "-300.00"
+
+
+@pytest.mark.db
 def test_se_puede_saber_si_el_ajuste_acerto(
     db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any
 ) -> None:
@@ -513,6 +539,58 @@ def test_un_cambio_de_fecha_sin_cambio_de_etapa_queda_anotado(
 
 
 @pytest.mark.db
+def test_el_motivo_del_deslizamiento_pasa_la_puerta_de_la_api(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, uow: Any
+) -> None:
+    """CRM-03.01.01.13. El servicio leía `motivo_cambio` y el esquema de la API
+    no lo declaraba: lo tiraba en la puerta y la ficha avisaba «se movió sin
+    motivo escrito» sin sitio donde escribirlo (10-11-2026)."""
+    from services.sales.esquemas import ActualizarOportunidad
+
+    cuerpo = ActualizarOportunidad(
+        fecha_cierre=HOY + timedelta(days=30), motivo_cambio="El cliente aplaza el comité"
+    )
+    oportunidad = _oportunidad(db, tenant_id, pipeline, importe="1000")
+    svc.actualizar_oportunidad(
+        uow, oportunidad.id, cuerpo.model_dump(exclude_unset=True, exclude_none=True)
+    )
+    db.flush()
+
+    historial = forecast.historial_de(db, tenant_id, oportunidad.id)
+    assert historial[0]["motivo"] == "El cliente aplaza el comité"
+
+
+@pytest.mark.db
+def test_el_importe_que_mueven_las_lineas_queda_en_el_historial(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline
+) -> None:
+    """CRM-03.01.01.13. Añadir líneas recalcula el importe, y ese cambio no se
+    anotaba: una oportunidad de 60.000 € pasaba a 11.000 € sin rastro en «lo que
+    se ha movido» (10-11-2026)."""
+    from services.sales.modelos import LineaOportunidad
+
+    oportunidad = _oportunidad(db, tenant_id, pipeline, importe="1000")
+    db.add(
+        LineaOportunidad(
+            tenant_id=tenant_id,
+            oportunidad_id=oportunidad.id,
+            descripcion="línea",
+            cantidad=Decimal(1),
+            precio_unitario=Decimal(400),
+            descuento_pct=Decimal(0),
+            total=Decimal(400),
+        )
+    )
+    db.flush()
+    svc.recalcular_total(db, oportunidad)
+    db.flush()
+
+    historial = forecast.historial_de(db, tenant_id, oportunidad.id)
+    assert [(h["campo"], h["motivo"]) for h in historial] == [("importe", "Cambian las líneas")]
+    assert Decimal(historial[0]["delta_importe"]) == Decimal(-600)
+
+
+@pytest.mark.db
 def test_el_deslizamiento_cuenta_las_veces_y_no_solo_los_dias(
     db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any, uow: Any
 ) -> None:
@@ -532,6 +610,8 @@ def test_el_deslizamiento_cuenta_las_veces_y_no_solo_los_dias(
     assert salida["empujadas"] == 1
     assert salida["empujadas_mas_de_una_vez"] == 1
     assert salida["detalle"][0]["veces"] == 3
+    # Con su nombre: la pantalla pintaba «—» delante de los días (10-11-2026).
+    assert salida["detalle"][0]["nombre"] == oportunidad.nombre
 
 
 @pytest.mark.db

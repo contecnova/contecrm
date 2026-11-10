@@ -154,6 +154,41 @@ def test_el_precio_nunca_baja_de_cero(db: Any, tenant_id: UUID, caja: Any) -> No
     assert cat.calcular_precio(db, tenant_id, producto_id=caja.id)["precio"] == "0"
 
 
+def test_el_coste_de_una_venta_sale_de_la_tarifa_del_proveedor(
+    db: Any, tenant_id: UUID, caja: Any
+) -> None:
+    """CRM-09.02.01.01. Las tarifas de coste se daban de alta y no las leía
+    nadie: el coste salía siempre del catálogo y un escalado por volumen del
+    proveedor no cambiaba ningún margen (10-11-2026)."""
+    lista = _lista(db, tenant_id, clave="prov", sentido="coste", proveedor_id=uuid4())
+    _regla(db, tenant_id, lista, accion="fijar", valor=Decimal(50), producto_id=caja.id)
+    _regla(
+        db,
+        tenant_id,
+        lista,
+        accion="fijar",
+        valor=Decimal(45),
+        producto_id=caja.id,
+        desde_cantidad=Decimal(50),
+        prioridad=200,
+    )
+
+    pocas = cat.calcular_precio(db, tenant_id, producto_id=caja.id, cantidad=Decimal(10))
+    muchas = cat.calcular_precio(db, tenant_id, producto_id=caja.id, cantidad=Decimal(100))
+    assert pocas["coste"] == "50.00" and pocas["margen_pct"] == "50.00"
+    assert muchas["coste"] == "45.00"
+    assert Decimal(muchas["coste_de_tarifa"][-1]["valor"]) == 45
+
+
+def test_una_tarifa_de_coste_sin_regla_parte_del_coste_no_del_precio(
+    db: Any, tenant_id: UUID, caja: Any
+) -> None:
+    """Sin regla para el producto, «lo que nos cuesta» era lo que cobramos."""
+    _lista(db, tenant_id, clave="prov", sentido="coste", proveedor_id=uuid4())
+    salida = cat.calcular_precio(db, tenant_id, producto_id=caja.id, sentido="coste")
+    assert salida["precio"] == "60.00"
+
+
 def test_sin_coste_no_se_inventa_un_margen(db: Any, tenant_id: UUID) -> None:
     """Un margen inventado es peor que ninguno, porque se usa para decidir
     descuentos."""
@@ -268,6 +303,49 @@ def test_un_presupuesto_sin_lineas_no_ofrece_nada(uow: UnidadDeTrabajo) -> None:
         pre.crear(uow, lineas=[])
 
 
+def test_la_oferta_de_una_oportunidad_nace_con_sus_lineas(
+    uow: UnidadDeTrabajo, caja: Any, db: Any
+) -> None:
+    """CRM-03.03.02.01. «Nueva oferta» desde la oportunidad abría el alta sin
+    líneas y había que volver a teclear las que la oportunidad ya tenía
+    (10-11-2026). El precio de catálogo lo vuelve a poner el motor."""
+    from services.sales.modelos import Etapa, LineaOportunidad, Oportunidad, Pipeline
+
+    pipeline = Pipeline(tenant_id=uow.tenant_id, clave=f"p{uuid4().hex[:6]}", nombre="P")
+    db.add(pipeline)
+    db.flush()
+    etapa = Etapa(tenant_id=uow.tenant_id, pipeline_id=pipeline.id, clave="a", nombre="A")
+    db.add(etapa)
+    db.flush()
+    op = Oportunidad(
+        tenant_id=uow.tenant_id, nombre="Op", pipeline_id=pipeline.id, etapa_id=etapa.id
+    )
+    db.add(op)
+    db.flush()
+    for i, (producto, descripcion, precio) in enumerate(
+        [(caja.id, "Caja", Decimal(999)), (None, "Portes", Decimal(20))]
+    ):
+        db.add(
+            LineaOportunidad(
+                tenant_id=uow.tenant_id,
+                oportunidad_id=op.id,
+                producto_id=producto,
+                descripcion=descripcion,
+                cantidad=Decimal(2),
+                precio_unitario=precio,
+                descuento_pct=Decimal(0),
+                total=precio * 2,
+                orden=i,
+            )
+        )
+    db.flush()
+
+    fila = pre.crear(uow, lineas=[], oportunidad_id=op.id)
+
+    # 2 × 100 del catálogo (no los 999 de la oportunidad) + 2 × 20 de la libre.
+    assert fila.total == Decimal("240.00")
+
+
 def test_una_combinacion_invalida_no_llega_a_presupuesto(
     uow: UnidadDeTrabajo, caja: Any, db: Any
 ) -> None:
@@ -317,6 +395,17 @@ def test_los_cambios_entre_versiones_se_calculan_al_pedirlos(
     cambios = pre.comparar_versiones(uow.db, uow.tenant_id, v2.id)
     assert cambios["cambios"][0]["cambio"] == "modificada"
     assert cambios["cambios"][0]["cantidad_ahora"] == "3.0000"
+
+
+def test_un_cambio_solo_de_descuento_sale_en_la_comparacion(
+    uow: UnidadDeTrabajo, caja: Any
+) -> None:
+    """CRM-03.03.02.01. Una línea que pasaba del 10 % al 20 % de descuento salía
+    como «10 → 10», la cantidad, que no se había tocado (10-11-2026)."""
+    v1 = pre.crear(uow, lineas=[{"producto_id": str(caja.id), "descuento_pct": 10}])
+    v2 = pre.nueva_version(uow, v1.id, lineas=[{"producto_id": str(caja.id), "descuento_pct": 20}])
+    cambio = pre.comparar_versiones(uow.db, uow.tenant_id, v2.id)["cambios"][0]
+    assert (cambio["descuento_antes"], cambio["descuento_ahora"]) == ("10.00", "20.00")
 
 
 def test_un_presupuesto_aceptado_no_admite_otra_version(uow: UnidadDeTrabajo, caja: Any) -> None:
@@ -561,6 +650,22 @@ def test_el_historico_de_la_suscripcion_no_se_pisa(uow: UnidadDeTrabajo, db: Any
     assert cambio.plan_despues == "pro"
 
 
+def test_la_baja_devuelve_solo_los_dias_que_quedan(uow: UnidadDeTrabajo) -> None:
+    """CRM-03.03.02.09. La baja borraba la próxima factura antes de prorratear
+    y devolvía el periodo entero: -160 € por un día (10-11-2026). Y con los días
+    reales del periodo: febrero tiene 28."""
+    fila = pre.alta_suscripcion(
+        uow,
+        cuenta_id=uuid4(),
+        plan="basico",
+        importe_periodo=Decimal(280),
+        inicio=date(2027, 2, 1),
+    )
+    salida = pre.cambiar_suscripcion(uow, fila.id, tipo="baja", efectivo_el=date(2027, 2, 15))
+    # Pagado hasta el 1 de marzo: quedan 14 de 28 días → la mitad.
+    assert Decimal(salida["prorrateo"]) == Decimal("-140.00")
+
+
 def test_una_suscripcion_cancelada_no_se_cambia(uow: UnidadDeTrabajo) -> None:
     fila = pre.alta_suscripcion(
         uow, cuenta_id=uuid4(), plan="basico", importe_periodo=Decimal(100), inicio=hoy(uow.db)
@@ -734,3 +839,24 @@ def test_el_presupuesto_de_una_oportunidad_lleva_su_cliente(uow: UnidadDeTrabajo
         uow, oportunidad_id=op.id, lineas=[{"descripcion": "x", "precio_unitario": 10}]
     )
     assert (fila.cuenta_id, fila.contacto_id) == (cuenta_id, contacto_id)
+
+
+def test_las_reglas_de_una_lista_se_ven_en_orden_y_se_quitan(
+    db: Any, tenant_id: UUID, caja: Any
+) -> None:
+    """CRM-03.03.02.03. Se podían añadir reglas y no verlas ni retirarlas: la
+    ficha de la lista salía sin ellas (10-11-2026)."""
+    from crmcore.authz.principal import Principal
+
+    from services.sales import api_cotizacion as api
+
+    lista = _lista(db, tenant_id)
+    general = _regla(db, tenant_id, lista, nombre="general", prioridad=100)
+    volumen = _regla(db, tenant_id, lista, nombre="volumen", prioridad=200)
+    quien = Principal(id=uuid4(), tenant_id=tenant_id, permisos=frozenset({"*:*"}))
+
+    vistas = api.reglas_de_la_lista(lista.id, db, quien)
+    assert [r["nombre"] for r in vistas] == ["general", "volumen"]
+
+    api.quitar_regla(lista.id, general.id, db, quien)
+    assert [r["id"] for r in api.reglas_de_la_lista(lista.id, db, quien)] == [str(volumen.id)]

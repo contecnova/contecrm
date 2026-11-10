@@ -452,3 +452,29 @@ def test_el_porque_no_es_lo_que_hace_util_la_respuesta(
     assert salida["puede"] is False
     assert len(salida["motivos"]) == 1
     assert "canarias" in salida["motivos"][0]
+
+
+# ── Suscripciones: el cambio llega por HTTP (CRM-03.03.02.09) ─────────────
+
+
+def test_un_cambio_de_plan_entra_por_la_api(cliente: Any, cabeceras: dict[str, str]) -> None:
+    """La ruta decía `{suscripcion_cliente_id}` y la función `suscripcion_id`:
+    FastAPI pedía este último por la consulta y contestaba 422 a todo cambio
+    (10-11-2026). Las pruebas llamaban a la función y no lo veían."""
+    alta = cliente.post(
+        "/api/v1/suscripciones",
+        headers=cabeceras,
+        json={
+            "cuenta_id": str(uuid4()),
+            "plan": "básico",
+            "importe_periodo": "100",
+            "inicio": (HOY - timedelta(days=5)).isoformat(),
+        },
+    )
+    assert alta.status_code == 201, alta.text
+    r = cliente.post(
+        f"/api/v1/suscripciones/{alta.json()['id']}/cambios",
+        headers=cabeceras,
+        json={"tipo": "cambio_plan", "plan": "avanzado", "importe_periodo": "160"},
+    )
+    assert r.status_code == 200, r.text

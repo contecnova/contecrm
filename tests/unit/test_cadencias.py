@@ -317,6 +317,33 @@ def test_lo_mas_atrasado_sube(uow: UnidadDeTrabajo, en_horario: datetime) -> Non
     assert reciente.estado == "activa"
 
 
+def test_el_lead_sin_responder_fuera_de_plazo_encabeza_la_cola(
+    uow: UnidadDeTrabajo, en_horario: datetime
+) -> None:
+    """CRM-03.03.01.02. «Una cola, no tres» y sólo miraba las cadencias: con
+    leads nuevos sin contestar, la cola decía que no había nada (10-11-2026)."""
+    from services.sales.modelos import Lead
+
+    yo = uuid4()
+    fila = _cadencia(uow)
+    cad.inscribir(uow, fila.id, email="a@b.c", responsable_id=yo)
+    uow.db.add(
+        Lead(
+            tenant_id=uow.tenant_id,
+            nombre="Ana",
+            apellidos="Prueba",
+            estado="nuevo",
+            owner_id=yo,
+            sla_primera_respuesta_at=en_horario - timedelta(hours=5),
+        )
+    )
+    uow.db.flush()
+
+    cola = cad.cola_de_trabajo(uow.db, uow.tenant_id, yo)
+    assert [e["tipo"] for e in cola["entradas"]] == ["lead", "cadencia"]
+    assert "fuera de plazo" in cola["entradas"][0]["por_que"]
+
+
 def test_una_cola_vacia_se_dice_vacia(uow: UnidadDeTrabajo) -> None:
     assert cad.cola_de_trabajo(uow.db, uow.tenant_id, uuid4())["vacia"] is True
 

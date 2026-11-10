@@ -1870,6 +1870,44 @@ Lo demás que hay dentro, por el mismo motivo:
 
 ---
 
+### Lo que se hace desde la ficha de una oportunidad
+
+Todo sale en **Oportunidades › (la oportunidad) › Más**:
+
+- **Repartir el crédito entre comerciales.** *Añadir línea* por persona, se
+  elige la persona, el papel (*Crédito* o *Overlay*) y el porcentaje. El crédito
+  tiene que sumar 100; el overlay no resta. Volver a declararlo **reemplaza** el
+  reparto anterior. Se ve en el panel *Quién se lo lleva*, con el nombre de cada
+  uno.
+- **Qué papel tiene cada contacto en la decisión.** Se elige el contacto y el
+  papel (decisor, económico, prescriptor…; la lista se edita en Administrar ›
+  Gestor de objetos › *Roles en la compra*). Sale en *Quién decide*, con su
+  nombre, y debajo lo que falta por identificar.
+- **Enlazar dos oportunidades.** Se elige la otra oportunidad por su nombre y el
+  tipo (renovación, upsell…). Sale en *De dónde viene y qué sale de aquí*, con
+  un enlace a la otra.
+- **Repartir el importe por periodos.** Importe, primer mes y número de meses.
+  Lo repartido se ve en **Previsiones › Ingreso previsto**, un mes por fila.
+- **Guardar el plan conjunto con el cliente.** Un paso por línea: título,
+  fecha, de quién es (nuestro, del cliente o de los dos) y responsable. El panel
+  *El plan con el cliente* separa lo retrasado nuestro de lo del cliente.
+- **Registrar una revisión estructurada.** *Qué puede salir mal* y *qué falta
+  por saber* son obligatorias; los acuerdos llevan responsable y fecha. Las
+  revisiones se leen en el panel *Las revisiones del deal*.
+
+En la misma ficha, debajo del ponderado, **Cuenta en la previsión como** pone la
+categoría de previsión (pipeline, best case, commit…), y una línea dice cuántos
+días lleva en su etapa.
+
+Al editar (**Editar**), *Más campos › Motivo cambio* deja escrito por qué se
+mueve el importe o la fecha; sale en *Lo que se ha movido*. Si al pulsar una
+etapa falta algo que su embudo exige para salir, el aviso dice qué.
+
+**Nueva oferta** abre la oferta con las líneas de la oportunidad ya puestas: el
+precio de las de catálogo lo vuelve a poner el motor. En la oferta, **Más ›
+Sacar la versión siguiente** y, en la nueva, *Qué cambió respecto de la
+anterior* dice qué líneas cambian y en qué —cantidad, descuento, total—.
+
 ## Previsión y objetivos (sección 3.2)
 
 La previsión no es la suma del pipeline. Lo que verás:
@@ -1970,6 +2008,23 @@ hace falta para defenderlo.
 
 ---
 
+### Ajustar, congelar y cerrar un periodo
+
+En **Previsiones › (un periodo) › abrir**, arriba a la derecha, **Más**:
+
+- **Ajustar el número calculado**: el importe ajustado y el motivo. El bruto lo
+  pone el sistema con el calculado de la categoría; queda en *Lo que ha tocado
+  el responsable*, con su autor.
+- **Congelar la previsión de hoy**: una foto con su etiqueta. Con dos fotos,
+  *Qué ha cambiado entre dos fotos* separa lo que entra, lo que se gana, lo que
+  se pierde y lo que cambia de importe.
+- **Cerrar el periodo**: deja la foto final y ya no admite ajustes. **Reabrir**
+  pide motivo y queda contado.
+
+El selector de moneda, al lado del título, enseña el periodo convertido con el
+cambio de la fecha de cierre. *Cuánto se ha movido* nombra cada oportunidad
+empujada y enlaza con ella.
+
 ## Candidatos y trabajo diario (sección 3.3)
 
 - **Cadencias**: secuencias de correo, llamada y tarea con un ritmo definido. Se
@@ -2053,6 +2108,35 @@ haya creado o descartado: un mensaje distinto le enseñaría a un robot qué
 cambiar.
 
 ---
+
+### Tu cola
+
+**Oportunidades › Mi cola** junta lo que te toca hoy: los pasos de cadencia, tus
+leads nuevos sin primera respuesta —primero los que ya se pasaron de plazo— y
+tus oportunidades estancadas en su etapa. Cada fila dice por qué está ahí.
+
+### Probar las reglas de reparto
+
+**Candidatos › Enrutamiento › Probar las reglas contra un lead de ejemplo**:
+se escribe un lead inventado —*clave* y *valor*, por ejemplo `origen` = `rfq` o
+`empleados` = `800`— y dice qué regla lo reclamaría y a quién iría, sin guardar
+nada. Las reglas se pueden escribir con el nombre del campo a secas.
+
+### Las reglas de una lista de precios
+
+**Oportunidades › Listas de precio › (la lista) › Abrir › Relacionado ›
+Reglas de la lista**: las reglas en el orden en que se aplican, con su acción y
+su valor, y **Quitar** en cada una. Se añaden con *Añadir una regla de precio*,
+eligiendo la lista por su nombre. Una lista de **coste** de un proveedor pone el
+coste de las líneas de ese producto, con su escalado por volumen; una oferta ya
+hecha guarda el suyo y avisa si la tarifa sube después.
+
+### Cambiar o dar de baja una suscripción
+
+**Oportunidades › Suscripciones › (la suscripción) › Más › Cambiar una
+suscripción, con su prorrateo**: se elige el tipo —cambio de plan, de
+cantidad, pausa, reanudación o baja— y desde cuándo. El prorrateo cuenta los
+días reales del periodo pagado.
 
 ## Partners y canal indirecto (sección 3.4)
 

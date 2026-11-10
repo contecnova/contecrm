@@ -35,6 +35,15 @@ export interface Accion {
   clave: string;
   /** Frase corta bajo el botón, para lo que no se adivina por el rótulo. */
   detalle?: string;
+  /**
+   * Campos del cuerpo que pone la pantalla y no se preguntan.
+   *
+   * Para las acciones sobre un registro que el contrato no cuelga de su ruta:
+   * `POST /ingresos/reparto` lleva la oportunidad en el CUERPO. Desde su ficha
+   * ese campo ya se sabe, y pedirlo en el formulario sería pedir un
+   * identificador que quien mira no tiene.
+   */
+  fijos?: Record<string, unknown>;
 }
 
 const PARAMETRO = /\{[^}]+\}/g;
@@ -88,6 +97,41 @@ export function accionesDe(
 }
 
 /**
+ * Acciones de OTRA colección que actúan sobre este registro por el cuerpo.
+ *
+ * `accionesDe` sólo ve las que llevan el registro en la ruta. El reparto entre
+ * comerciales, el papel de un contacto en la compra, la relación con otra
+ * oportunidad y el calendario de ingreso lo llevan en el cuerpo
+ * (`oportunidad_id`), y por eso no salían en ninguna pantalla: el servidor las
+ * admitía y nadie podía usarlas (visto el 10-11-2026). Se nombran por su ruta
+ * —son pocas y concretas— y el nombre y el permiso siguen saliendo del
+ * contrato: si una deja de existir, deja de ofrecerse.
+ */
+export function accionesPorElCuerpo(
+  superficie: Superficie | null,
+  rutas: Record<string, Record<string, unknown>>,
+  puede: (permiso: string | null) => boolean,
+): Accion[] {
+  if (!superficie) return [];
+  const salida: Accion[] = [];
+  for (const operacion of superficie.operaciones as Operacion[]) {
+    if (operacion.metodo.toUpperCase() !== "POST") continue;
+    const fijos = rutas[operacion.ruta];
+    if (!fijos || !puede(operacion.permiso)) continue;
+    salida.push({
+      ruta: operacion.ruta,
+      plantilla: operacion.ruta,
+      metodo: operacion.metodo,
+      nombre: comoRotulo(operacion.resumen) || operacion.ruta,
+      permiso: operacion.permiso,
+      clave: operacion.ruta.split("/").pop() ?? "",
+      fijos,
+    });
+  }
+  return salida;
+}
+
+/**
  * Las acciones de una cuenta, y las de proveedor cuando lo es.
  *
  * Un proveedor es una cuenta con rol, y su ficha es la de la cuenta: pedía sólo
@@ -100,7 +144,10 @@ export function accionesDeLaCuenta(
   superficie: Superficie | null,
   id: string,
   puede: (permiso: string | null) => boolean,
-  { esProveedor, ocultas }: { esProveedor: boolean; ocultas: readonly string[] },
+  {
+    esProveedor,
+    ocultas,
+  }: { esProveedor: boolean; ocultas: readonly string[] },
 ): Accion[] {
   const ocultar = new Set(ocultas);
   return [
@@ -149,7 +196,8 @@ export function operacionesDeRegistro(
   const acciones: Operacion[] = [];
   for (const operacion of superficie.operaciones as Operacion[]) {
     const tramos = operacion.ruta.split("/");
-    if (tramos.length < base.length + 1 || tramos.length > base.length + 2) continue;
+    if (tramos.length < base.length + 1 || tramos.length > base.length + 2)
+      continue;
     if (tramos.slice(0, base.length).join("/") !== base.join("/")) continue;
     const suyo = tramos[base.length] ?? "";
     if (!suyo.startsWith("{")) continue;
@@ -383,8 +431,15 @@ export function subColeccionesDe(
     if (!panel) continue;
     const metodo = operacion.metodo.toUpperCase();
 
-    if (tramos.length === base.length + 2 && metodo === "POST" && puede(operacion.permiso)) {
-      panel.alta = { plantilla: operacion.ruta, nombre: comoRotulo(operacion.resumen) || clave };
+    if (
+      tramos.length === base.length + 2 &&
+      metodo === "POST" &&
+      puede(operacion.permiso)
+    ) {
+      panel.alta = {
+        plantilla: operacion.ruta,
+        nombre: comoRotulo(operacion.resumen) || clave,
+      };
       continue;
     }
     // Sobre un hijo: `/X/{id}/Y/{hijo}` y `/X/{id}/Y/{hijo}/accion`.
@@ -400,11 +455,14 @@ export function subColeccionesDe(
       panel.acciones.push({
         plantilla: operacion.ruta,
         metodo,
-        nombre: comoRotulo(operacion.resumen) || (tramos[base.length + 3] ?? ""),
+        nombre:
+          comoRotulo(operacion.resumen) || (tramos[base.length + 3] ?? ""),
         clave: tramos[base.length + 3] ?? "",
       });
     }
   }
 
-  return [...porClave.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  return [...porClave.values()].sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, "es"),
+  );
 }

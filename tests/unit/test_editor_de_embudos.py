@@ -96,6 +96,36 @@ def test_el_embudo_no_se_queda_sin_cierres(
     db.rollback()
 
 
+def test_un_embudo_nuevo_se_configura_etapa_a_etapa(db: Any, tenant_id: UUID) -> None:
+    """CRM-03.01.01.02. Un embudo nace sin etapas y la pantalla guarda etapa a
+    etapa: marcar la primera como ganada se rechazaba «por no conservar» una
+    perdida que nunca tuvo, y el embudo nuevo no se podía terminar (10-11-2026)."""
+    from services.sales import api
+    from services.sales.esquemas import EditarEtapa
+    from services.sales.modelos import Etapa, Pipeline
+
+    pipeline = Pipeline(tenant_id=tenant_id, clave=f"p{uuid4().hex[:6]}", nombre="Nuevo")
+    db.add(pipeline)
+    db.flush()
+    ganada, perdida = (
+        Etapa(tenant_id=tenant_id, pipeline_id=pipeline.id, clave=c, nombre=c, orden=i)
+        for i, c in enumerate(("ganada", "perdida"))
+    )
+    db.add_all([ganada, perdida])
+    db.flush()
+    quien = _quien(tenant_id)
+
+    api.editar_etapa(pipeline.id, ganada.id, EditarEtapa(terminal=True, ganada=True), db, quien)
+    api.editar_etapa(pipeline.id, perdida.id, EditarEtapa(terminal=True), db, quien)
+    assert (ganada.terminal, ganada.ganada, perdida.terminal) == (True, True, True)
+
+    # Y una vez que las tiene, las conserva.
+    with pytest.raises(ErrorValidacion) as exc:
+        api.editar_etapa(pipeline.id, perdida.id, EditarEtapa(terminal=False), db, quien)
+    assert exc.value.error_code == "sales.embudo_sin_perdida"
+    db.rollback()
+
+
 def test_quitar_una_etapa_con_oportunidades_pide_a_donde_van(
     db: Any, tenant_id: UUID, embudo: tuple[Any, dict[str, Any]]
 ) -> None:

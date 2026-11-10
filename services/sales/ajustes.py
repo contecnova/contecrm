@@ -82,6 +82,12 @@ class AjustesSales(Settings):
     # Días sin actividad tras los que una oportunidad se marca como estancada,
     # cuando su etapa no declara uno propio.
     dias_estancamiento_defecto: int = Field(30, ge=1, le=365)
+    # Porcentaje de los criterios de la metodología (por número, no por peso)
+    # que hay que tener contestados para dar la oportunidad por cualificada
+    # (CRM-03.01.02.02). Era «la mitad», escrito en el código, y la ficha
+    # decía «cumple los criterios para cerrarse» con dos de cuatro sin
+    # contestar (visto el 10-11-2026).
+    metodologia_minimo_cualificada_pct: int = Field(50, ge=1, le=100)
     # Prefijo y formato del código legible de oportunidad.
     codigo_prefijo: str = "OPP"
 
@@ -465,6 +471,17 @@ registrar_claves(
             tipo="str",
             descripcion="Clave del embudo donde nacen las renovaciones (vacío: el de por defecto)",
             campo_settings="renovacion_embudo",
+        ),
+        ClaveAjuste(
+            clave="metodologia_minimo_cualificada_pct",
+            tipo="int",
+            descripcion=(
+                "Porcentaje de criterios de la metodología contestados para dar "
+                "una oportunidad por cualificada"
+            ),
+            minimo=1,
+            maximo=100,
+            campo_settings="metodologia_minimo_cualificada_pct",
         ),
         ClaveAjuste(
             clave="dias_estancamiento_defecto",

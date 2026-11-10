@@ -827,6 +827,29 @@ export function importe(valor: unknown, moneda = "EUR"): string {
 }
 
 /**
+ * Un precio unitario, con sus céntimos cuando los tiene.
+ *
+ * `importe` redondea a euros enteros, que es lo que pide un total. Un precio
+ * unitario no: «100 × 14 €» al lado de «1420 €» era un arnés de 14,20 €
+ * (visto el 10-11-2026), y la cuenta no salía.
+ */
+export function importeUnitario(valor: unknown, moneda = "EUR"): string {
+  const numero = Number(valor ?? 0);
+  if (Number.isNaN(numero)) return String(valor ?? "");
+  if (Number.isInteger(numero)) return importe(numero, moneda);
+  try {
+    return new Intl.NumberFormat(LOCALE, {
+      style: "currency",
+      currency: moneda,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(numero);
+  } catch {
+    return NUMERO.format(numero);
+  }
+}
+
+/**
  * Campos que identifican al registro para la máquina, no para quien mira.
  *
  * `cuenta_id = 01a0cd8c-880c-7f85-96bc-0f01dce176a2` no es información: es el

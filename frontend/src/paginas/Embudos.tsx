@@ -330,7 +330,7 @@ function EditorDeEmbudo({
                   <Icono nombre="arrow_downward" tamano="sm" />
                 </button>
               </Casilla>
-              <Casilla className="min-w-[13rem]">
+              <Casilla className="min-w-[9rem]">
                 <input
                   className="input-base"
                   value={e.nombre}
@@ -400,7 +400,7 @@ function EditorDeEmbudo({
                   className="h-4 w-4 accent-accent"
                 />
               </Casilla>
-              <Casilla className="min-w-[12rem]">
+              <Casilla className="min-w-[10rem]">
                 {e.terminal ? (
                   <span className="text-rotulo text-ink-faint">—</span>
                 ) : (

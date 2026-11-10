@@ -1039,6 +1039,13 @@ const pantallas = {
     esLaPrimera: "Es la primera versión: no hay con qué compararla.",
     totalAntesDespues: "total {{antes}} → {{ahora}}",
     deA: "{{antes}} → {{ahora}}",
+    cantidadDeA: "cantidad {{antes}} → {{ahora}}",
+    descuentoDeA: "descuento {{antes}} % → {{ahora}} %",
+    cambio: {
+      anadida: "añadida",
+      quitada: "quitada",
+      modificada: "modificada",
+    },
     documento: "Cómo va a salir",
     porqueDocumento:
       "La plantilla, la marca y el idioma salen de la configuración. Descubrir en el correo del cliente que salió con la marca equivocada no tiene arreglo.",
@@ -1831,12 +1838,12 @@ const pantallas = {
       "Una etapa final cierra la venta: ganada o perdida. El embudo tiene que conservar una de cada.",
     orden: "Orden",
     nombre: "Nombre",
-    probabilidad: "Probabilidad %",
+    probabilidad: "Prob. %",
     color: "Color",
-    estancada: "Estancada a los (días)",
+    estancada: "Estancada (días)",
     final: "Final",
     ganada: "Ganada",
-    criterios: "Para salir hace falta",
+    criterios: "Para salir",
     subir: "Subir {{etapa}}",
     bajar: "Bajar {{etapa}}",
     nombreDe: "Nombre de la etapa {{etapa}}",
@@ -2584,7 +2591,9 @@ const pantallas = {
       "No hay ninguna metodología de venta activa, así que no se puede decir qué falta.",
     cubiertos:
       "{{cubiertos}} de {{criterios}} criterios · {{puntuacion}} puntos",
-    cualificada: "Cumple los criterios para cerrarse.",
+    cualificada: "Tiene contestados todos los criterios.",
+    cualificadaConHuecos:
+      "Cualificada: tiene contestado al menos el {{pct}} % de los criterios. Lo que falta sigue abajo.",
     noCualificada: "Todavía no está cualificada para cerrarse:",
     siguientePaso: "Siguiente paso: {{paso}}",
     planConjunto: "El plan con el cliente",
@@ -2605,6 +2614,16 @@ const pantallas = {
     sinEtapa: "sin etapa",
     bloqueada: "Bloqueada",
     ponderado: "{{valor}} ponderado al {{pct}} %",
+    categoriaPrevision: "Cuenta en la previsión como",
+    revisiones: "Las revisiones del deal",
+    sinRevisiones:
+      "No se ha revisado todavía. Se registra en Más › Registrar una revisión estructurada.",
+    revisionDel: "Revisión del {{fecha}} · probabilidad declarada {{pct}} %",
+    queSalirMal: "Qué puede salir mal",
+    queFaltaSaber: "Qué falta por saber",
+    acuerdo: "Acuerdo: {{titulo}} — {{responsable}}, para el {{fecha}}",
+    enEstaEtapa_one: "Lleva 1 día en esta etapa",
+    enEstaEtapa_other: "Lleva {{count}} días en esta etapa",
     lineas: "Qué se vende",
     margen: "Margen conocido: {{pct}} %",
     margenSinCoste:
@@ -2626,6 +2645,12 @@ const pantallas = {
     creditoTotal: "Crédito repartido: {{total}} %",
     noCuadra: "NO cuadra",
     relacionadas: "De dónde viene y qué sale de aquí",
+    contacto: "Contacto",
+    laOtra: "la otra oportunidad",
+    papel: {
+      credito: "Crédito",
+      overlay: "Overlay",
+    },
     sentido: {
       sale_de_aqui: "sale de ésta",
       viene_de: "viene de otra",
@@ -2634,7 +2659,11 @@ const pantallas = {
     sinMovimientos: "Ni el importe ni la fecha se han movido",
     deslizada: "{{dias}} días más tarde",
     sinMotivo:
-      "Se movió sin motivo escrito: así no se puede discutir en un comité.",
+      "Se movió sin motivo escrito: así no se puede discutir en un comité. Se escribe en Editar › Más campos › Motivo cambio.",
+    campoMovido: {
+      importe: "Importe",
+      fecha_cierre: "Fecha de cierre",
+    },
   },
   // Lo que se hace con varias filas a la vez (CRM-00.02.01.11).
   masivo: {
@@ -2765,6 +2794,7 @@ const pantallas = {
     noContesta: "No ha contestado",
   },
   prevision: {
+    moneda: "Moneda en la que se mira",
     // Por jerarquía (CRM-03.02.01.02).
     jerarquia: "Por jerarquía",
     jerarquiaAyuda:

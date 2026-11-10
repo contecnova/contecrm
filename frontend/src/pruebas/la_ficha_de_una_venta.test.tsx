@@ -245,8 +245,10 @@ describe("la ficha de una venta", () => {
 
   it("dice quién decide y, sobre todo, quién falta", async () => {
     await montar();
-    await waitFor(() => expect(screen.getByText("economico")).toBeTruthy());
-    expect(screen.getByText("oportunidad.sinHablar")).toBeTruthy();
+    // El papel con su nombre de lista (sin vocabulario cargado, humanizado)
+    // y la persona delante de «sin hablar» (10-11-2026).
+    await waitFor(() => expect(screen.getByText(/^Econ.mico$/)).toBeTruthy());
+    expect(screen.getByText(/oportunidad.sinHablar/)).toBeTruthy();
     // Lo que falta es la mitad que hace útil el panel.
     expect(
       screen.getByText("Falta el técnico y al económico no se le ha visto."),
@@ -256,7 +258,7 @@ describe("la ficha de una venta", () => {
   it("enseña el reparto y AVISA de que no cuadra", async () => {
     await montar();
     await waitFor(() =>
-      expect(screen.getByText(/oportunidad.creditoTotal.*60.00/)).toBeTruthy(),
+      expect(screen.getByText(/oportunidad.creditoTotal.*"60"/)).toBeTruthy(),
     );
     // Un 60 % solo tiene que verse como lo que es. Con repartos al 60/60 las
     // comisiones cuadran hacia arriba y el descuadre lo encuentra finanzas
@@ -320,9 +322,9 @@ describe("qué falta para poder cerrar", () => {
 
   it("y dice si está cualificada o no", async () => {
     await montar();
-    await screen.findByText("oportunidad.noCualificada");
+    await screen.findByText(/^oportunidad\.noCualificada/);
     expect(
-      screen.queryByText("oportunidad.cualificada"),
+      screen.queryByText(/^oportunidad\.cualificada/),
     ).not.toBeInTheDocument();
   });
 

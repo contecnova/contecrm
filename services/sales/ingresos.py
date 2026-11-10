@@ -44,7 +44,17 @@ from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
-from sqlalchemy import Date, Index, Numeric, String, Text, UniqueConstraint, select, text
+from sqlalchemy import (
+    Date,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    delete,
+    select,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -253,10 +263,25 @@ def metricas_de_ingreso(*, lineas: list[dict[str, Any]]) -> dict[str, Any]:
             )
         arr += Decimal(str(linea.get("importe") or 0)) * PERIODOS[periodo]
 
-    tcv = sum(
-        (Decimal(str(x.get("valor_total") or x.get("importe") or 0)) for x in lineas), Decimal(0)
-    )
     meses = max(1, int(lineas[0].get("meses_de_contrato") or 12)) if lineas else 12
+
+    # El TCV es lo que vale el contrato ENTERO. Una línea recurrente sin
+    # `valor_total` —las de una oportunidad no lo traen: guardan el importe de
+    # UN periodo— vale ese importe por los periodos que caben en el contrato.
+    # Antes se sumaba el importe a secas: una licencia de 2000 € al mes con una
+    # implantación de 9000 € daba un TCV de 11.000 € al lado de un ARR de
+    # 24.000 € — el contrato entero valiendo menos que un año suyo (visto en la
+    # ficha el 10-11-2026).
+    def _valor_del_contrato(linea: dict[str, Any]) -> Decimal:
+        if linea.get("valor_total") not in (None, ""):
+            return Decimal(str(linea["valor_total"]))
+        importe = Decimal(str(linea.get("importe") or 0))
+        if linea.get("tipo") != "recurrente":
+            return importe
+        por_anio = PERIODOS.get(str(linea.get("periodo") or "anual"), 1)
+        return importe * por_anio * meses / 12
+
+    tcv = sum((_valor_del_contrato(x) for x in lineas), Decimal(0))
 
     return {
         "arr": str(arr.quantize(Decimal("0.01"))),
@@ -371,6 +396,10 @@ def previsto_por_periodo(
 
     return {
         "periodos": {k: str(v) for k, v in sorted(por_periodo.items())},
+        # Lo mismo como filas, que es lo que pinta la pestaña «Ingreso
+        # previsto»: con el diccionario sólo salía una fila con el total y los
+        # meses no se veían en ninguna parte (10-11-2026).
+        "meses": [{"periodo": k, "importe": str(v)} for k, v in sorted(por_periodo.items())],
         "total": str(sum(por_periodo.values(), Decimal(0))),
         "medible": bool(filas),
         "que_es": (
@@ -408,8 +437,12 @@ def repartir_credito(
             detalle={"suma": str(suma)},
         )
 
+    # REEMPLAZA el reparto anterior. Era un `select` cuyo resultado no se
+    # usaba: declarar el reparto dos veces dejaba las dos filas y el crédito
+    # pasaba a sumar 200 en la ficha y en la comisión (visto el 10-11-2026,
+    # corrigiendo un reparto desde la ficha de la oportunidad).
     uow.db.execute(
-        select(ParticipacionComercial).where(
+        delete(ParticipacionComercial).where(
             ParticipacionComercial.tenant_id == uow.tenant_id,
             ParticipacionComercial.oportunidad_id == oportunidad_id,
         )

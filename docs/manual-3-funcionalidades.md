@@ -708,6 +708,59 @@ El historial de cambios de etapa guarda el **importe y la fecha de cierre en el
 momento de cada cambio**: sin eso no se puede medir el deslizamiento, que es el
 dato que explica por qué el trimestre no salió como se dijo.
 
+### Ventas recorrida en pantalla (10-11-2026)
+
+Se recorrieron una a una, como un comercial y como su jefe, las capacidades de
+ventas que constaban hechas sin haberse visto. Lo que no funcionaba se arregló;
+esto es lo que cambia para quien vende:
+
+- **Desde la ficha de la oportunidad se declara todo lo que la ficha enseña**
+  (`CRM-03.01.01.07`, `.08`, `.10`, `.11`, `CRM-01.01.02.04`, `CRM-03.01.02.05`,
+  `.06`). El reparto entre comerciales, el papel de cada contacto en la compra,
+  la relación con otra oportunidad, el calendario de ingreso, el plan con el
+  cliente y la revisión del deal salen en **Más**. Antes los paneles los
+  enseñaban y no había desde dónde declararlos. Los formularios eligen a la
+  persona, al contacto o a la otra oportunidad por su nombre, y las listas
+  cerradas —el papel, el tipo de relación, de quién es un paso— se eligen.
+- **Los paneles dicen quién.** «Quién decide» nombra al contacto, «Quién se lo
+  lleva» a la persona, y la relación enlaza la otra oportunidad. Declarar el
+  reparto otra vez **lo reemplaza**: antes se sumaba al anterior y el crédito
+  llegaba al 200 %.
+- **Las revisiones del deal se leen** en la ficha, con lo que se temía, lo que
+  faltaba por saber y cada acuerdo con su responsable y fecha.
+- **El TCV es el contrato entero** (`CRM-03.01.01.06`): una línea recurrente
+  cuenta todos sus periodos. Una licencia de 2.000 € al mes daba un TCV menor
+  que su propio ARR.
+- **Lo que se ha movido** (`CRM-03.01.01.13`) lleva el motivo que se escribe al
+  editar (*Motivo cambio*), y también el importe que cambian las líneas.
+- **Mover de etapa sin cumplir los criterios de salida avisa, y dice qué
+  falta** (`CRM-03.01.01.03`). Antes el clic no hacía nada.
+- **Un embudo nuevo se puede terminar** (`CRM-03.01.01.02`): marcar la primera
+  etapa final ya no se rechaza por no tener todavía la otra.
+- **La ficha dice cuánto lleva en su etapa** y **la cola de cada comercial
+  incluye sus leads sin primera respuesta y sus oportunidades estancadas**
+  (`CRM-03.01.01.12`, `CRM-03.03.01.02`).
+- **La categoría de previsión se pone en la ficha** (`CRM-03.02.01.01`), y
+  **el periodo de previsión se ajusta, se congela, se cierra y se reabre desde
+  su página**, en la moneda que se elija (`CRM-03.02.01.03`, `.04`, `.07`,
+  `.09`). El bruto de un ajuste lo pone el sistema.
+- **«Cualificada» dice lo que exige la empresa** (`CRM-03.01.02.02`): el mínimo
+  es un ajuste, `metodologia_minimo_cualificada_pct`, y ya no se dice «cumple
+  los criterios» con la mitad sin contestar.
+- **El enrutamiento de leads entiende «origen» o «empleados» a secas**
+  (`CRM-01.01.03.04`): esas reglas no encajaban con nada y todo acababa sin
+  asignar. Y **un toque posterior actualiza el último toque del lead**
+  (`CRM-01.01.03.06`), que es lo que cuenta el informe por campaña.
+- **La oferta hecha desde una oportunidad nace con sus líneas**, y **la
+  comparación entre versiones dice qué cambió**, descuento incluido
+  (`CRM-03.03.02.01`).
+- **El coste de una línea sale de la tarifa del proveedor** cuando hay una
+  (`CRM-09.02.01.01`, `.02`, `.03`), con su escalado por volumen; las reglas de
+  una lista se ven y se quitan en su ficha.
+- **Las suscripciones se pueden cambiar y dar de baja** (`CRM-03.03.02.09`): la
+  ruta contestaba error a todo cambio. El prorrateo usa los días reales del
+  periodo y la baja devuelve sólo lo que queda.
+
 ### Lecciones aprendidas (`CRM-03.01.01.15`, `CRM-07.04.03.34`)
 
 Cada oportunidad que se cierra —ganada o perdida— deja una **lección**. En las

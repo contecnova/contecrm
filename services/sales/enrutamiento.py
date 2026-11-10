@@ -127,6 +127,33 @@ class RegistroEnrutamiento(Base):
     __table_args__ = (Index("ix_registro_enrutamiento_lead", "tenant_id", "lead_id", "created_at"),)
 
 
+# Lo que se puede preguntar de un lead en una regla, tal como lo pone `enrutar`
+# en el ámbito. Lo que no está aquí es un campo propio de la empresa y vive en
+# `lead.campos`.
+ATRIBUTOS_DEL_LEAD = frozenset(
+    {"pais", "origen", "estado", "empresa", "email", "cargo", "campana_id", "utm", "campos"}
+)
+
+
+def atributo_del_lead(atributo: str) -> str:
+    """La ruta completa de un atributo escrito como lo escribe una persona.
+
+    Las condiciones se evalúan sobre `{"lead": {...}, "contexto": {...}}`, así
+    que «origen» a secas no apunta a nada: medido el 10-11-2026, las tres reglas
+    de un tenant estaban escritas así —«origen», «email», «empleados»— y **no
+    encajaba ninguna con ningún lead**; todo el reparto acababa en «sin
+    asignar» y la prueba de reglas lo confirmaba sin decir por qué. Se completa
+    aquí, al leer, para que valgan las reglas que ya hay: lo que es del lead va
+    a `lead.`, y lo que no, a sus campos propios (`lead.campos.`).
+    """
+    raiz = atributo.split(".", 1)[0]
+    if raiz in ("lead", "contexto"):
+        return atributo
+    if raiz in ATRIBUTOS_DEL_LEAD:
+        return f"lead.{atributo}"
+    return f"lead.campos.{atributo}"
+
+
 def _condiciones_de(regla: ReglaEnrutamiento) -> list[Condicion]:
     """Convierte el JSON de la regla en condiciones evaluables.
 
@@ -140,7 +167,7 @@ def _condiciones_de(regla: ReglaEnrutamiento) -> list[Condicion]:
         try:
             salida.append(
                 Condicion(
-                    atributo=bruto["atributo"],
+                    atributo=atributo_del_lead(bruto["atributo"]),
                     operador=bruto["operador"],
                     valor=bruto.get("valor"),
                 )

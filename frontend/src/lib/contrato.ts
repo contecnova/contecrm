@@ -461,7 +461,11 @@ function subcamposDe(documento: Documento, elemento?: Esquema): CampoEsquema[] {
       nombre,
       tipo: tipoDe(p, interno, nombre),
       obligatorio: obligatorios.has(nombre),
-      titulo: humanizar(p.title ?? nombre),
+      // «Usuario», no «Usuario ID»: se elige a alguien, igual que fuera de la
+      // tabla, y el identificador no lo ve quien lo rellena.
+      titulo: nombre.endsWith("_id")
+        ? humanizar(p.title ?? nombre).replace(/\s+ID$/, "")
+        : humanizar(p.title ?? nombre),
       descripcion: p.description ?? "",
       opciones: ((p.enum ?? interno?.enum ?? []) as unknown[]).map(String),
       maximo: p.maxLength ?? null,

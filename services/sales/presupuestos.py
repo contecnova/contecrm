@@ -409,6 +409,42 @@ def _totalizar(db: Session, presupuesto: Presupuesto) -> None:
     )
 
 
+def _lineas_de_la_oportunidad(
+    db: Session, tenant_id: UUID, oportunidad_id: UUID
+) -> list[dict[str, Any]]:
+    """Las líneas de la oportunidad, como líneas de entrada de una oferta.
+
+    El precio de las de catálogo lo vuelve a poner el motor —el de la oferta
+    es el que vale hoy para este cliente—; el de las libres se conserva, que
+    es el único que tienen.
+    """
+    from services.sales.modelos import LineaOportunidad, Oportunidad
+
+    origen = db.get(Oportunidad, oportunidad_id)
+    if origen is None or origen.tenant_id != tenant_id:
+        return []
+    filas = (
+        db.execute(
+            select(LineaOportunidad)
+            .where(LineaOportunidad.oportunidad_id == oportunidad_id)
+            .order_by(LineaOportunidad.orden, LineaOportunidad.created_at)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "producto_id": f.producto_id,
+            "descripcion": f.descripcion,
+            "cantidad": f.cantidad,
+            "descuento_pct": f.descuento_pct,
+            "precio_unitario": None if f.producto_id else f.precio_unitario,
+            "coste_unitario": f.coste_unitario,
+        }
+        for f in filas
+    ]
+
+
 def crear(
     uow: UnidadDeTrabajo,
     *,
@@ -432,6 +468,8 @@ def crear(
     pantalla que se usara, y dos canales darían dos números para el mismo cliente.
     """
     tenant_id = uow.tenant_id
+    if not lineas and oportunidad_id is not None:
+        lineas = _lineas_de_la_oportunidad(uow.db, tenant_id, oportunidad_id)
     if not lineas:
         raise ErrorValidacion(
             "Un presupuesto sin líneas no ofrece nada.",
@@ -712,13 +750,23 @@ def comparar_versiones(db: Session, tenant_id: UUID, presupuesto_id: UUID) -> di
             cambios.append({"linea": clave, "cambio": "anadida", "total": str(nueva.total)})
         elif nueva is None:
             cambios.append({"linea": clave, "cambio": "quitada", "total": str(vieja.total)})
-        elif vieja.total != nueva.total or vieja.cantidad != nueva.cantidad:
+        elif (
+            vieja.total != nueva.total
+            or vieja.cantidad != nueva.cantidad
+            or vieja.descuento_pct != nueva.descuento_pct
+        ):
+            # Con el descuento: es lo que más cambia entre versiones y lo que
+            # hay que poder ver antes de mandar la siguiente. Sólo salía la
+            # cantidad, y una línea que pasaba del 10 % al 20 % de descuento
+            # se leía «10 → 10» (visto el 10-11-2026).
             cambios.append(
                 {
                     "linea": clave,
                     "cambio": "modificada",
                     "cantidad_antes": str(vieja.cantidad),
                     "cantidad_ahora": str(nueva.cantidad),
+                    "descuento_antes": str(vieja.descuento_pct),
+                    "descuento_ahora": str(nueva.descuento_pct),
                     "total_antes": str(vieja.total),
                     "total_ahora": str(nueva.total),
                 }
@@ -1335,9 +1383,19 @@ def tenants_con_contratos() -> list[Any]:
 
 
 DIAS_PERIODO = {"mensual": 30, "trimestral": 91, "anual": 365}
+MESES_PERIODO = {"mensual": 1, "trimestral": 3, "anual": 12}
 
 
 def _fin_de_periodo(desde: date, periodicidad: str) -> date:
+    """El día en que empieza el periodo siguiente, por calendario.
+
+    Una cuota mensual que empieza el 1 de febrero vence el 1 de marzo, no el 3:
+    sumando treinta días, la segunda factura se iba corriendo un día o dos cada
+    mes y el prorrateo partía de un periodo que no es el que se cobra.
+    """
+    meses = MESES_PERIODO.get(periodicidad)
+    if meses:
+        return _sumar_meses(desde, meses)
     return desde + timedelta(days=DIAS_PERIODO.get(periodicidad, 30))
 
 
@@ -1350,7 +1408,14 @@ def _prorrateo(
     mitad de febrero con treintavos cobra de menos, y es la diferencia que el
     cliente encuentra cuando revisa la factura.
     """
-    dias_periodo = DIAS_PERIODO.get(periodicidad, 30)
+    # Los días REALES del periodo que acaba en `hasta`: noviembre tiene 30 y
+    # febrero 28. Se dividía siempre entre 30 —los treintavos que el párrafo de
+    # arriba dice que no se usan— y una baja a mitad de febrero devolvía de más.
+    meses = MESES_PERIODO.get(periodicidad)
+    if hasta is not None and meses:
+        dias_periodo = max((hasta - _sumar_meses(hasta, -meses)).days, 1)
+    else:
+        dias_periodo = DIAS_PERIODO.get(periodicidad, 30)
     fin = hasta or (desde + timedelta(days=dias_periodo))
     dias = max((fin - desde).days, 0)
     return _redondear(importe_periodo * Decimal(dias) / Decimal(dias_periodo))
@@ -1442,6 +1507,11 @@ def cambiar_suscripcion(
 
     dia = efectivo_el or hoy(uow.db)
     antes_plan, antes_importe = fila.plan, Decimal(fila.importe_periodo)
+    # Hasta cuándo está pagado, ANTES de tocar nada: la baja la borra, y el
+    # prorrateo se calculaba después, con el periodo entero. Una baja el 30 de
+    # noviembre de una cuota de 160 € al mes devolvía -160 € en vez del día que
+    # quedaba (visto el 10-11-2026).
+    pagado_hasta = fila.proxima_factura
 
     if tipo == "cambio_plan" and plan:
         fila.plan = plan
@@ -1460,10 +1530,10 @@ def cambiar_suscripcion(
 
     diferencia = Decimal(fila.importe_periodo) - antes_importe
     prorrateo = (
-        _prorrateo(diferencia, fila.periodicidad, dia, fila.proxima_factura)
+        _prorrateo(diferencia, fila.periodicidad, dia, pagado_hasta)
         if tipo in ("cambio_plan", "cambio_cantidad")
         else (
-            -_prorrateo(antes_importe, fila.periodicidad, dia, fila.proxima_factura)
+            -_prorrateo(antes_importe, fila.periodicidad, dia, pagado_hasta)
             if tipo == "baja"
             else Decimal(0)
         )

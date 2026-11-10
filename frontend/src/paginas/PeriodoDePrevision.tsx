@@ -28,12 +28,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Acciones } from "@/componentes/Acciones";
+import { MenuDeAcciones } from "@/componentes/MenuDeAcciones";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { accionesDe, type Accion } from "@/lib/acciones";
+import { useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion } from "@/lib/api";
-import { importe as comoImporte } from "@/lib/formato";
+import { importe as comoImporte, rotuloDeOpcion } from "@/lib/formato";
 import { nombreDe, usePersonas } from "@/lib/personas";
 
 interface Prevision {
@@ -86,7 +90,12 @@ interface Deslizamiento {
   empujadas: number;
   dias_empujados: number;
   empujadas_mas_de_una_vez: number;
-  detalle: { nombre?: string; dias_netos: number; veces: number }[];
+  detalle: {
+    oportunidad_id: string;
+    nombre?: string;
+    dias_netos: number;
+    veces: number;
+  }[];
 }
 
 interface NodoOrganigrama {
@@ -130,6 +139,47 @@ interface Desglose {
 export function PeriodoDePrevision() {
   const { t } = useTranslation();
   const { clave = "" } = useParams();
+  /**
+   * Lo que se hace con el periodo: ajustar el número, tomar la foto, cerrarlo
+   * y reabrirlo (CRM-03.02.01.03, .04, .09).
+   *
+   * El servidor lo admitía y la pantalla no lo ofrecía: el menú de la fila en
+   * «Periodos» sólo traía «Abrir» y «Editar», porque las acciones de un
+   * registro con ficha van en su ficha — y esta ficha no tenía ninguna. Visto
+   * el 10-11-2026: no había forma de cerrar un trimestre ni de ajustar su
+   * número desde el producto. «Jerarquía» no: es una consulta que esta misma
+   * pantalla ya pinta.
+   */
+  const { superficie, tiene } = useSuperficie();
+  const [accionAbierta, setAccionAbierta] = useState<Accion | null>(null);
+  const acciones = accionesDe(
+    superficie,
+    "/api/v1/forecast/periodos",
+    clave,
+    tiene,
+  ).filter((a) => a.clave !== "jerarquia");
+  // En qué moneda se mira (CRM-03.02.01.07). El servidor convierte con el
+  // cambio de la fecha; las monedas que se ofrecen son las que tienen cambio.
+  const [moneda, setMoneda] = useState("");
+  const [monedas, setMonedas] = useState<string[]>([]);
+  useEffect(() => {
+    const control = new AbortController();
+    void llamar<{ desde_moneda: string; hasta_moneda: string }[]>(
+      "/api/v1/monedas/cambios",
+      { signal: control.signal },
+    )
+      .then((r) =>
+        setMonedas(
+          [
+            ...new Set(
+              (r.datos ?? []).flatMap((c) => [c.desde_moneda, c.hasta_moneda]),
+            ),
+          ].sort(),
+        ),
+      )
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
   const [prevision, setPrevision] = useState<Prevision | null>(null);
   const [ajustes, setAjustes] = useState<Ajuste[]>([]);
   const [acierto, setAcierto] = useState<Acierto | null>(null);
@@ -151,9 +201,12 @@ export function PeriodoDePrevision() {
     // contrato que no se puede leer no se puede vigilar.
     const suya = encodeURIComponent(clave);
 
-    llamar<Prevision>(`/api/v1/forecast/periodos/${suya}`, {
-      signal: control.signal,
-    })
+    llamar<Prevision>(
+      `/api/v1/forecast/periodos/${suya}${moneda ? `?moneda=${moneda}` : ""}`,
+      {
+        signal: control.signal,
+      },
+    )
       .then((r) => setPrevision(r.datos))
       .catch(salvoCancelacion(setFallo));
 
@@ -187,9 +240,29 @@ export function PeriodoDePrevision() {
       .catch(() => undefined);
 
     return () => control.abort();
-  }, [clave]);
+  }, [clave, moneda]);
 
   useEffect(cargar, [cargar]);
+
+  // Los nombres de las categorías, los del tenant: el bloque pintaba la clave
+  // —«commit», «pipeline»— al lado de un «Comprometido» bien escrito.
+  const [nombresDeCategoria, setNombresDeCategoria] = useState<
+    Record<string, string>
+  >({});
+  useEffect(() => {
+    const control = new AbortController();
+    void llamar<{ clave: string; nombre: string }[]>(
+      "/api/v1/forecast/categorias",
+      { signal: control.signal },
+    )
+      .then((r) =>
+        setNombresDeCategoria(
+          Object.fromEntries((r.datos ?? []).map((c) => [c.clave, c.nombre])),
+        ),
+      )
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
 
   // El desglose se pide aparte porque depende de por qué se agrupa, y cambiar
   // de agrupación no tiene por qué recargar el resto de la pantalla.
@@ -214,12 +287,46 @@ export function PeriodoDePrevision() {
         icono="insights"
         entradilla={
           <span className="flex flex-wrap items-center gap-2">
-            <span className="chip-dato">{prevision.moneda}</span>
+            {monedas.length > 1 ? (
+              <select
+                aria-label={t("prevision.moneda")}
+                className="input-base !w-auto"
+                value={moneda || prevision.moneda}
+                onChange={(e) => setMoneda(e.target.value)}
+              >
+                {monedas.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="chip-dato">{prevision.moneda}</span>
+            )}
             <span className="text-dato text-ink-muted">
               {t("prevision.cuantas", { cuantas: prevision.oportunidades })}
             </span>
           </span>
         }
+        acciones={
+          acciones.length > 0 ? (
+            <MenuDeAcciones
+              etiqueta={t("acciones.titulo")}
+              opciones={acciones.map((a) => ({
+                clave: a.ruta,
+                nombre: a.nombre,
+                alElegir: () => setAccionAbierta(a),
+              }))}
+            />
+          ) : undefined
+        }
+      />
+      <Acciones
+        acciones={acciones}
+        servicio="sales"
+        abierta={accionAbierta}
+        alCambiarAbierta={setAccionAbierta}
+        alTerminar={() => cargar()}
       />
 
       <section className="card mb-4 p-4">
@@ -248,7 +355,7 @@ export function PeriodoDePrevision() {
               className="flex flex-wrap items-baseline gap-x-3 py-1.5"
             >
               <span className="text-dato font-medium text-ink">
-                {categoria}
+                {nombresDeCategoria[categoria] ?? categoria}
               </span>
               <span className="text-dato text-ink-muted">
                 {comoImporte(v.importe, prevision.moneda)}
@@ -328,11 +435,18 @@ function LosAjustes({
                       : "chip-dato chip-dato--no"
                   }
                 >
-                  {a.delta}
+                  {/* En el formato del resto de la pantalla: salía
+                      «2000000.00» al lado de «2.000.000 €». */}
+                  {Number(a.delta) > 0 ? "+" : ""}
+                  {comoImporte(a.delta, moneda)}
                 </span>
-                <span className="text-rotulo text-ink-faint">{a.ambito}</span>
+                <span className="text-rotulo text-ink-faint">
+                  {rotuloDeOpcion(a.ambito)}
+                </span>
                 {a.categoria ? (
-                  <span className="chip-dato">{a.categoria}</span>
+                  <span className="chip-dato">
+                    {rotuloDeOpcion(a.categoria)}
+                  </span>
                 ) : null}
               </div>
               {/* El motivo es la mitad del ajuste: sin él no se puede juzgar. */}
@@ -367,11 +481,11 @@ function LosAjustes({
               >
                 {mejoro
                   ? t("prevision.ajustarAcerco", {
-                      error: acierto.error_con_ajuste,
+                      error: comoImporte(acierto.error_con_ajuste, moneda),
                     })
                   : t("prevision.ajustarAlejo", {
-                      conAjuste: acierto.error_con_ajuste,
-                      sinAjuste: acierto.error_sin_ajuste,
+                      conAjuste: comoImporte(acierto.error_con_ajuste, moneda),
+                      sinAjuste: comoImporte(acierto.error_sin_ajuste, moneda),
                     })}
               </p>
             </>
@@ -848,7 +962,12 @@ function LoQueSeHaDeslizado({
                 key={`${d.nombre ?? ""}-${i}`}
                 className="flex flex-wrap items-baseline gap-x-3 py-1.5"
               >
-                <span className="text-dato text-ink">{d.nombre ?? "—"}</span>
+                <Link
+                  to={`/m/oportunidades/oportunidad/${d.oportunidad_id}`}
+                  className="text-dato text-accent hover:underline"
+                >
+                  {d.nombre ?? "—"}
+                </Link>
                 <span className="chip-dato chip-dato--no">
                   {t("prevision.dias", { dias: d.dias_netos })}
                 </span>

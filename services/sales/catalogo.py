@@ -317,7 +317,13 @@ def calcular_precio(
     if producto is None:
         raise NoEncontrado("El producto no existe", error_code="catalogo.producto_no_encontrado")
 
-    precio = Decimal(producto.precio_base)
+    # Una tarifa de coste parte del coste del catálogo, no del precio de venta:
+    # sin esto, una tarifa de proveedor sin regla para este producto devolvía
+    # como «lo que nos cuesta» lo que cobramos.
+    if sentido == "coste" and producto.coste is not None:
+        precio = Decimal(producto.coste)
+    else:
+        precio = Decimal(producto.precio_base)
     base = precio
     ambito = {
         "producto": {
@@ -399,6 +405,27 @@ def calcular_precio(
                 break
 
     coste = Decimal(producto.coste) if producto.coste is not None else None
+    # El coste de una venta sale de la TARIFA DEL PROVEEDOR cuando hay una que
+    # tenga regla para este producto, con su volumen y su vigencia
+    # (CRM-09.02.01.01): es el mismo motor, en sentido «coste». Se calculaba
+    # siempre con el coste fijo del catálogo y las tarifas de coste no las leía
+    # nadie: se podían dar de alta y no cambiaban ningún margen (visto el
+    # 10-11-2026 con un escalado por volumen que no se aplicaba).
+    coste_de_tarifa: list[dict[str, Any]] = []
+    if sentido == "venta":
+        tarifa = calcular_precio(
+            db,
+            tenant_id,
+            producto_id=producto_id,
+            cantidad=cantidad,
+            moneda=moneda,
+            en_fecha=en_fecha,
+            contexto=contexto,
+            sentido="coste",
+        )
+        if tarifa["reglas_aplicadas"]:
+            coste = Decimal(tarifa["precio"])
+            coste_de_tarifa = tarifa["reglas_aplicadas"]
     return {
         "producto_id": str(producto.id),
         "sku": producto.sku,
@@ -414,6 +441,8 @@ def calcular_precio(
             else None
         ),
         "reglas_aplicadas": aplicadas,
+        # De dónde sale el coste: vacío es el coste fijo del catálogo.
+        "coste_de_tarifa": coste_de_tarifa,
         # Cuando no se aplicó ninguna regla se dice, en vez de dejar creer que
         # el precio salió de un acuerdo: es la diferencia entre «le cobramos su
         # tarifa» y «le cobramos la de catálogo porque no tiene tarifa».

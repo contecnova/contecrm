@@ -1282,6 +1282,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Listas de precio",
+        // Con objeto: una regla de precio elige su lista por el nombre, y sin
+        // él el formulario pedía el identificador tecleado.
+        objeto: "lista_precio",
         listar: "/api/v1/listas-precio",
         servicio: "sales",
         permiso: "producto:read",
@@ -1291,7 +1294,14 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/metodologias",
         servicio: "sales",
       },
-      { nombre: "Mi cola", listar: "/api/v1/mi-cola", servicio: "sales" },
+      {
+        nombre: "Mi cola",
+        listar: "/api/v1/mi-cola",
+        servicio: "sales",
+        // Qué es, qué hacer y por qué. La urgencia es el orden de la lista, no
+        // un dato que leer: salía como columna «Urgencia 0».
+        columnas: ["tipo", "titulo", "por_que", "atraso_dias"],
+      },
       {
         nombre: "Papelera",
         icono: "delete",
@@ -1449,6 +1459,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Ingreso previsto",
         listar: "/api/v1/ingresos/previsto",
+        // Un mes por fila: el total y el «qué es» van encima.
+        clave_lista: "meses",
+        columnas: ["periodo", "importe"],
         servicio: "sales",
         permiso: "forecast:read",
       },

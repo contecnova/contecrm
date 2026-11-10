@@ -1167,6 +1167,7 @@ def deslizamiento(db: Session, tenant_id: UUID, periodo_clave: str) -> dict[str,
     filas = db.execute(
         select(
             CambioPrevision.oportunidad_id,
+            Oportunidad.nombre,
             func.count(),
             func.sum(CambioPrevision.dias_deslizados),
         )
@@ -1178,12 +1179,19 @@ def deslizamiento(db: Session, tenant_id: UUID, periodo_clave: str) -> dict[str,
             Oportunidad.fecha_cierre >= per.desde,
             Oportunidad.fecha_cierre <= per.hasta,
         )
-        .group_by(CambioPrevision.oportunidad_id)
+        .group_by(CambioPrevision.oportunidad_id, Oportunidad.nombre)
     ).all()
 
+    # Con su nombre: la pantalla lo pinta y salía «—» delante de «52 días, 2
+    # veces», sin decir qué venta es la que no existe (visto el 10-11-2026).
     detalle = [
-        {"oportunidad_id": str(op), "veces": int(veces), "dias_netos": int(dias or 0)}
-        for op, veces, dias in filas
+        {
+            "oportunidad_id": str(op),
+            "nombre": nombre,
+            "veces": int(veces),
+            "dias_netos": int(dias or 0),
+        }
+        for op, nombre, veces, dias in filas
     ]
     empujadas = [d for d in detalle if d["dias_netos"] > 0]
     return {
