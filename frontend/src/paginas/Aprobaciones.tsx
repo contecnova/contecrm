@@ -82,6 +82,26 @@ export function Aprobaciones() {
     return () => control.abort();
   }, []);
 
+  // A qué organización del gestor está mapeada esta empresa. Es lo primero
+  // que hay que mirar cuando el corpus «no aparece»: sin mapeo no se llama al
+  // gestor, y la bandeja vacía se leería como «nada pendiente».
+  const [organizacion, setOrganizacion] = useState<{
+    mapeada: boolean;
+    organizacion: string;
+    estado: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!corpus || corpus.activo === false) return;
+    const control = new AbortController();
+    llamar<{ mapeada: boolean; organizacion: string; estado: string }>(
+      "/api/v1/documentos/organizacion",
+      { signal: control.signal },
+    )
+      .then((r) => setOrganizacion(r.datos))
+      .catch(() => setOrganizacion(null));
+    return () => control.abort();
+  }, [corpus]);
+
   useEffect(() => {
     // Ni apagado ni caído: pedir la bandeja a un gestor que no responde solo
     // sirve para cambiar una explicación clara por el error que salga primero
@@ -128,6 +148,18 @@ export function Aprobaciones() {
         <p className="mt-4 text-titulin text-ink-muted">
           {t("aprobaciones.corpusCaido", { url: corpus.url ?? "" })}
           {corpus.error ? ` (${corpus.error})` : ""}
+        </p>
+      ) : null}
+      {organizacion ? (
+        <p
+          className={`mt-2 text-dato ${organizacion.mapeada ? "text-ink-muted" : "text-warning"}`}
+        >
+          {organizacion.mapeada
+            ? t("aprobaciones.organizacion", {
+                organizacion: organizacion.organizacion,
+                estado: organizacion.estado,
+              })
+            : t("aprobaciones.sinOrganizacion")}
         </p>
       ) : null}
       {fallo && corpus?.activo !== false && corpus?.alcanzable !== false ? (

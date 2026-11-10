@@ -2097,17 +2097,35 @@ arregla: **Analítica → Preguntas publicadas**, botón «Registrar el CRM como
 fuente consultable».
 
 El alta no es inmediata: se encola y la pantalla se queda esperando hasta dos
-minutos. Si falla, **dice por qué y con qué dirección** tiene que alcanzarnos
-contecintelligence —por ejemplo «La fuente no responde (health_check fallo). La
-dirección con la que tiene que alcanzar este CRM es
-`http://host.docker.internal:18080/api/v1`»—. Esa dirección es lo primero que
-mirar: si desde contecintelligence no se llega ahí, el alta no puede
-completarse por mucho que se reintente. La configura `CI_URL_DEL_CRM` en el
-`.env`, y `./setup.sh arrancar` la pone sola en la instalación local.
+minutos (medido el 10-11-2026: contecintelligence tarda unos dos minutos en
+leer y perfilar las entidades). Si falla, **dice por qué y con qué dirección**
+tiene que alcanzarnos contecintelligence —por ejemplo «La fuente no responde
+(health_check fallo). La dirección con la que tiene que alcanzar este CRM es
+`http://gateway:8000/api/v1`»—. Hay dos cosas que mirar, por este orden: que
+desde contecintelligence se llegue a esa dirección, y que **su** lista de salida
+(`OUTBOUND_ALLOWED_HOSTS`, en su configuración) admita ese nombre. La dirección
+la pone `CI_URL_DEL_CRM` en el `.env`; en la instalación local,
+`./setup.sh arrancar` presenta el CRM con ese mismo nombre, así que no hay que
+tocar nada más.
 
 **Mientras tanto el CRM entero sigue funcionando**: fichas, procesos, casos y
 automatizaciones. Lo único que no se puede es preguntar y pintar cuadros, y la
 propia pantalla lo enumera para que nadie dé por caído lo que no lo está.
+
+### Preguntar en lenguaje natural
+
+**Analítica → Preguntas publicadas**: escribe la pregunta en la caja (por
+ejemplo «Importe total de oportunidades por etapa») y pulsa **Preguntar**. La
+respuesta sale **ya dibujada** —barras, líneas, un número grande o una tabla,
+según lo que se haya preguntado—, con **Ver como tabla** arriba a la derecha y
+**Cómo se ha calculado** debajo, con la consulta que se usó.
+
+- **Si la pregunta es ambigua**, no se adivina: sale el motivo y unas opciones
+  como botones («Cuentas de cliente», «Cuentas contables»…). Pulsa la que
+  quieres y se vuelve a preguntar con la pregunta de antes precisada.
+- **Guardar la pregunta**, debajo de la respuesta, la deja en «Mis preguntas sin
+  publicar» para no volver a escribirla.
+- Ve sólo lo que tú ves en las fichas: la pregunta viaja con tu identidad.
 
 ---
 
@@ -2153,6 +2171,8 @@ lo que tú puedes ver:
 - **Instantáneas programadas**: elige el informe, la frecuencia y la hora y
   pulsa **Programar la instantánea**; **Tomar una ahora** guarda la de hoy. A la
   derecha, la tendencia. **Quitar** deja de tomarlas sin borrar las tomadas.
+  Ojo con la hora: hoy se interpreta en **UTC**, así que «7» es a las 8 en
+  invierno en la Península; la línea «Próxima» dice la hora local real.
 - **Consulta al lake del cliente**: elige la fuente y el objeto, los campos si
   no los quieres todos y cuántas filas, y pulsa **Consultar**. El tope lo pone
   la fuente; si hay más, se dice.
@@ -3659,6 +3679,21 @@ al tomarlo: tómalo otra vez antes de cobrar con él. El destino y si se manda
 solo cada mes los configura quien administra, en los ajustes que empiezan por
 `facturacion_`.
 
+### Decir quién depende de quién
+
+**Administrar › Usuarios y empresa › Organigrama.** A la izquierda está el
+árbol; escribe en **Buscar a una persona** si es largo. Pulsa una persona y, a
+la derecha, elige en **Depende de** su superior y pulsa **Guardar superior**:
+se mueve con todo su equipo. «Nadie (raíz)» la deja sin superior. En **Su
+equipo directo**, elige a quién pasar todo su equipo en **Pasar todo su equipo
+directo a** y pulsa **Mover el equipo**. En la lista no salen las personas de
+su propio equipo, porque formarían un círculo. La etiqueta **Del directorio**
+dice que el superior lo manda el directorio de tu empresa, y **Ajustado a
+mano** que se cambió aquí; el texto de arriba dice si el directorio pisará lo
+ajustado a mano. Un presupuesto que necesita aprobación va al superior de
+quien lo envía, y la revisión de accesos de cada persona, a su superior: sin
+superior, nadie puede aprobar sus presupuestos.
+
 ### Tu grupo de empresas
 
 **Administrar › Usuarios y empresa › Grupo de empresas.** Ves de qué empresa
@@ -4245,6 +4280,48 @@ manda sus avisos a `POST /api/v1/telefonia/avisos` con una clave de API. En
 cobros, devoluciones y anulaciones se dan de alta en **Cobro, devolución o
 anulación**. En **Hechos** se ve cada uno con lo que calculó el motor, lo que
 calcula la casa y la **Diferencia** en rojo cuando no cuadra.
+
+### Lo que estaba en la API y ahora se ve
+
+- **Por qué un lead cayó donde cayó.** **Ventas › Candidatos**, abre el lead y
+  pulsa **Ver** en «Por qué cayó aquí y cómo llegó»: a la izquierda las reglas
+  de reparto que se evaluaron (cuál ganó y por qué no encajó cada una), a la
+  derecha sus toques en orden.
+- **Qué quiere recibir un contacto.** **Ventas › Cuentas**, abre el contacto:
+  en «Lo que quiere recibir» marca o desmarca cada categoría si te lo pide por
+  teléfono (las obligatorias no se pueden quitar y lo dicen). Al lado, a qué
+  hora suele abrir.
+- **La carpeta del registro en el gestor.** En la ficha, pestaña
+  **Relacionado › Documentos**, pulsa **Ver la carpeta de este registro en el
+  gestor**: entra en sus subcarpetas pulsándolas, vuelve con el camino de
+  arriba y busca sólo dentro con **Buscar sólo dentro de esta carpeta**.
+- **Quién manda sobre un objeto durante una migración.** **Procesos y
+  orquestación**, abre una regla de convivencia: arriba sale quién manda hoy y
+  si se escribe aquí.
+- **Qué ve un agente de fuera.** **Analítica › Gobierno de la IA**, vista
+  **Exposiciones MCP**, abre una: arriba, sus herramientas.
+- **Si un activo de marketing se puede publicar.** **Marketing › Segmentos**,
+  vista **Activos de marketing** (o **Aprobaciones de activos**), abre el
+  activo: «¿Se puede publicar ya?».
+- **Qué ha cambiado en la previsión.** **Ventas › Previsiones**, abre un
+  periodo y, en «Qué ha cambiado entre dos fotos», elige **Desde la foto** y
+  **Hasta la foto**.
+- **Qué fecha prometer.** **Ventas › Coste**: escribe el plazo del proveedor
+  (y, si quieres, los días propios) y pulsa **Ver qué fecha se puede
+  prometer**.
+- **Mis huecos.** **Ventas › Plantillas y reuniones**, **Ver mis huecos**.
+- **¿Ya existe esta empresa?** **Clientes › Duplicados**, escribe el nombre
+  (y el NIF) y pulsa **Comprobar**.
+- **¿Se le puede mandar este correo?** Abre una plantilla de correo y, en
+  «Vista previa con datos reales», elige un contacto: debajo dice si se le
+  puede mandar y, si no, por qué.
+- **Administración**: en **Aprobar documentos** se ve a qué organización del
+  gestor está mapeada la empresa; en **Estado**, si la instalación necesita
+  esta interfaz; en **Operación**, vista **Catálogo de eventos**, quién escucha
+  el flujo de eventos; en **Gobierno de la IA**, vista **Consumo y coste**, qué
+  modelo atendería sin sacar el dato de la región.
+- **Si eres proveedor**, en tu portal, «Tus papeles con nosotros» dice ahora
+  también para qué estás homologado y hasta cuándo.
 
 ## Qué hacer cuando algo no sale
 

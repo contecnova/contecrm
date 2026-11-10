@@ -56,6 +56,15 @@ interface Capacidad {
   aviso: string;
 }
 
+interface FechaPrometible {
+  se_puede_prometer: boolean;
+  fecha?: string;
+  dias_del_proveedor?: number;
+  dias_propios?: number;
+  porque: string;
+  que_hacer?: string;
+}
+
 export function Coste() {
   const { t } = useTranslation();
   const [lineas, setLineas] = useState("");
@@ -64,6 +73,9 @@ export function Coste() {
   const [enOfertas, setEnOfertas] = useState("");
   const [margen, setMargen] = useState<Margen | null>(null);
   const [capacidad, setCapacidad] = useState<Capacidad | null>(null);
+  const [plazo, setPlazo] = useState("");
+  const [diasPropios, setDiasPropios] = useState("");
+  const [fecha, setFecha] = useState<FechaPrometible | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   const calcular = async () => {
@@ -89,6 +101,25 @@ export function Coste() {
       });
       const r = await llamar<Capacidad>(`/api/v1/coste/capacidad?${consulta}`);
       setCapacidad(r.datos);
+    } catch (e) {
+      setFallo(e);
+    }
+  };
+
+  // La fecha que se le puede dar al cliente. Sin plazo del
+  // proveedor se pregunta igual: la respuesta es «no se puede prometer», que
+  // es justo lo que hay que saber antes de mandar la oferta. Los días propios
+  // vacíos no se mandan: el servidor dice cuántos ha contado.
+  const mirarFecha = async () => {
+    setFallo(null);
+    try {
+      const consulta = new URLSearchParams();
+      if (plazo.trim()) consulta.set("plazo_proveedor_dias", plazo.trim());
+      if (diasPropios.trim()) consulta.set("dias_propios", diasPropios.trim());
+      const r = await llamar<FechaPrometible>(
+        `/api/v1/coste/fecha-prometible?${consulta}`,
+      );
+      setFecha(r.datos);
     } catch (e) {
       setFallo(e);
     }
@@ -158,7 +189,57 @@ export function Coste() {
         </button>
       </div>
 
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <label className="block text-dato text-ink-muted">
+          {t("coste.plazoProveedor")}
+          <input
+            type="number"
+            min={0}
+            value={plazo}
+            onChange={(e) => setPlazo(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-ink-dim/60 bg-paper px-3 py-1.5 text-dato text-ink"
+          />
+        </label>
+        <label className="block text-dato text-ink-muted">
+          {t("coste.diasPropios")}
+          <input
+            type="number"
+            min={0}
+            value={diasPropios}
+            onChange={(e) => setDiasPropios(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-ink-dim/60 bg-paper px-3 py-1.5 text-dato text-ink"
+          />
+        </label>
+      </div>
+      <div className="mt-2">
+        <button type="button" onClick={mirarFecha} className="btn-secondary">
+          {t("coste.verFecha")}
+        </button>
+      </div>
+
       {fallo ? <Fallo error={fallo} /> : null}
+
+      {fecha ? (
+        <section
+          className="mt-4 rounded-xl border border-ink-dim/60 bg-paper p-4"
+          role="status"
+        >
+          <h2 className="text-titulin font-medium text-ink">
+            {t("coste.fechaPrometible")}
+          </h2>
+          {fecha.se_puede_prometer && fecha.fecha ? (
+            <p className="mt-2 text-grande text-ink">{fecha.fecha}</p>
+          ) : (
+            <p className="mt-2 text-dato text-warning">
+              {t("coste.noSePuedePrometer")}
+            </p>
+          )}
+          <p className="mt-1 text-dato text-ink-muted">{fecha.porque}</p>
+          {fecha.que_hacer ? (
+            <p className="mt-1 text-dato text-ink">{fecha.que_hacer}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       {margen ? (
         <section

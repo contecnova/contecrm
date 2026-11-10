@@ -195,6 +195,22 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="recertificacion_al_cerrar",
             sensible=True,
         ),
+        # El organigrama fijado a mano frente al del directorio (CRM-00.03.05.07)
+        _c(
+            "organigrama_externo_manda",
+            "bool",
+            "Organigrama: el superior que manda el directorio por SCIM pisa el fijado a mano",
+            campo_settings="organigrama_externo_manda",
+            sensible=True,
+        ),
+        _c(
+            "organigrama_tope_personas",
+            "int",
+            "Organigrama: personas como máximo que enseña la pantalla del árbol",
+            minimo=10,
+            maximo=100000,
+            campo_settings="organigrama_tope_personas",
+        ),
         _c(
             "aprobacion_presupuesto_etapas",
             "json",

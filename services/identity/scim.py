@@ -52,6 +52,21 @@ ESQUEMA_GRUPO = "urn:ietf:params:scim:schemas:core:2.0:Group"
 ESQUEMA_LISTA = "urn:ietf:params:scim:api:messages:2.0:ListResponse"
 ESQUEMA_PATCH = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
 ESQUEMA_ERROR = "urn:ietf:params:scim:api:messages:2.0:Error"
+# La extensión de empresa (RFC 7643 §4.3): de ella sale el `manager`, que es el
+# superior en el organigrama.
+ESQUEMA_EMPRESA = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+
+
+def _manager(cuerpo: dict[str, Any]) -> tuple[bool, Any]:
+    """Si el recurso trae `manager` y cuál; (False, None) si no lo menciona.
+
+    No mencionarlo no es quitarlo: un `PUT` de un IdP que no gestiona el
+    organigrama no puede dejar a todo el mundo sin superior.
+    """
+    extension = cuerpo.get(ESQUEMA_EMPRESA)
+    if isinstance(extension, dict) and "manager" in extension:
+        return True, extension.get("manager")
+    return False, None
 
 
 # Tope duro de página. El RFC deja que el servidor imponga el suyo y avise en
@@ -160,8 +175,14 @@ def usuario_a_scim(usuario: Usuario, membresia: Membresia, base: str) -> dict[st
     """
     nombre = (usuario.nombre or "").strip()
     partes = nombre.split(" ", 1)
+    extension = (
+        {ESQUEMA_EMPRESA: {"manager": {"value": str(membresia.superior_id)}}}
+        if membresia.superior_id
+        else {}
+    )
     return {
-        "schemas": [ESQUEMA_USUARIO],
+        "schemas": [ESQUEMA_USUARIO, *([ESQUEMA_EMPRESA] if extension else [])],
+        **extension,
         "id": str(usuario.id),
         "externalId": str(usuario.id),
         "userName": usuario.email,
@@ -374,6 +395,9 @@ def crear_usuario(
     if "active" in cuerpo and not como_booleano(cuerpo["active"]):
         # Sí pasa: un alta de alguien que ya estaba suspendido en el directorio.
         desactivar(uow, usuario.id, tenant_id)
+    trae, manager = _manager(cuerpo)
+    if trae:
+        organigrama.superior_desde_el_directorio(uow, tenant_id, membresia, manager)
     return usuario, membresia
 
 
@@ -390,6 +414,9 @@ def actualizar_usuario(
         membresia.roles = roles
     if "active" in cuerpo:
         _fijar_actividad(uow, usuario_id, tenant_id, membresia, como_booleano(cuerpo["active"]))
+    trae, manager = _manager(cuerpo)
+    if trae:
+        organigrama.superior_desde_el_directorio(uow, tenant_id, membresia, manager)
     organigrama.publicar(uow, tenant_id, usuario_id)
     return usuario, membresia
 
@@ -465,15 +492,25 @@ def aplicar_patch(
                 roles = _roles({atributo: contenido}, uow.db, tenant_id)
                 membresia.roles = [] if accion == "remove" else roles
                 aplicadas += 1
+            elif atributo == "manager" or (
+                # Okta, sin `path`: `{"urn:…:enterprise:2.0:User": {"manager": …}}`.
+                atributo == "user" and isinstance(contenido, dict) and "manager" in contenido
+            ):
+                if atributo == "user":
+                    contenido = contenido["manager"]
+                organigrama.superior_desde_el_directorio(
+                    uow, tenant_id, membresia, None if accion == "remove" else contenido
+                )
+                aplicadas += 1
             # Lo demás se ignora a propósito: los IdP mandan decenas de
-            # atributos de directorio (departamento, oficina, manager) que aquí
+            # atributos de directorio (departamento, oficina) que aquí
             # no tienen sitio, y fallar por ellos rompería el ciclo entero.
 
     if aplicadas == 0:
         raise ErrorValidacion(
             "Ninguna operación del PatchOp afectaba a un atributo gestionable.",
             error_code="scim.patch_sin_efecto",
-            detalle={"gestionables": ["active", "userName", "displayName", "groups"]},
+            detalle={"gestionables": ["active", "userName", "displayName", "groups", "manager"]},
         )
     organigrama.publicar(uow, tenant_id, usuario_id)
     return usuario, membresia
@@ -668,6 +705,8 @@ def tipos_de_recurso(base: str) -> list[dict[str, Any]]:
             "name": "User",
             "endpoint": "/Users",
             "schema": ESQUEMA_USUARIO,
+            # Se declara para que el IdP sepa que aquí se admite el `manager`.
+            "schemaExtensions": [{"schema": ESQUEMA_EMPRESA, "required": False}],
             "meta": {"resourceType": "ResourceType", "location": f"{base}/ResourceTypes/User"},
         },
         {

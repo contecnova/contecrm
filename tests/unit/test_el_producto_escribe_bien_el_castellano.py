@@ -38,6 +38,7 @@ AMBIGUAS = {
     "completo": "`nombre_completo` es el adjetivo, no «completó»",
     "duro": "`rebote_duro` es el adjetivo, no «duró»",
     "registro": "el sustantivo, no «registró»",
+    "bajo": "`bajo_umbral` es la preposición, no «bajó»",
     "aviso": "`aviso_y_no_oposicion` es el sustantivo, no «avisó»",
     "como": "`actua_como_id` es «actúa como»",
     "este": "`solo_este_tenant` es el demostrativo",

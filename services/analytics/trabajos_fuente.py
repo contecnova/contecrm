@@ -84,7 +84,25 @@ def _ejecutar(db: Session, trabajo: Trabajo, _tope: int) -> Tanda:
 def encolar_registro(
     db: Session, *, tenant_id: UUID, forzar: bool, pedido_por: UUID | None
 ) -> Trabajo:
-    from crmcore.datos.trabajos import encolar
+    from crmcore.datos.trabajos import ESTADOS_VIVOS, encolar
+
+    # UNO A LA VEZ por tenant. Cada alta borra la fuente anterior antes de
+    # crear la suya, así que dos en paralelo se pisan: medido el 10-11-2026,
+    # la segunda borró la fuente que la primera acababa de crear y la copia
+    # local que quedó devolvía las tildes rotas («Negociaci⏎n»). Pulsar otra
+    # vez mientras hay una en marcha devuelve la que ya está en marcha.
+    en_marcha = db.execute(
+        select(Trabajo)
+        .where(
+            Trabajo.tenant_id == tenant_id,
+            Trabajo.tipo == TIPO,
+            Trabajo.estado.in_(ESTADOS_VIVOS),
+        )
+        .order_by(Trabajo.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if en_marcha is not None:
+        return en_marcha
 
     return encolar(
         db,

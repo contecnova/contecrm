@@ -114,6 +114,8 @@ PREFIJOS: dict[str, str] = {
     # La revisión periódica de accesos (CRM-07.03.02.15): quién tiene qué
     # sale de las membresías, y la retirada se aplica en ellas.
     "recertificacion": "identity",
+    # Quién depende de quién (CRM-00.03.05.07): vive en las membresías.
+    "organigrama": "identity",
     # SCIM lo llama el IdP corporativo, no el front: entra por el mismo gateway
     # y con la misma clave de API, que es lo que acota el tenant.
     "scim": "identity",

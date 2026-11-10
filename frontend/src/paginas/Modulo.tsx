@@ -30,7 +30,6 @@ import {
   Retenidos,
   Vacio,
 } from "@/componentes/Estados";
-import { Descargas } from "@/componentes/Descargas";
 import { Exportar } from "@/componentes/Exportar";
 import {
   Agrupado,
@@ -45,8 +44,6 @@ import {
   type Vista,
 } from "@/componentes/Vistas";
 import { Formulario, candidatosDe } from "@/componentes/Formulario";
-import { SecretoDeUnaVez } from "@/componentes/SecretoDeUnaVez";
-import { AccionesMasivas } from "@/componentes/AccionesMasivas";
 import { Filtros } from "@/componentes/Filtros";
 import { Tabla, leerElegidas, leerOrden } from "@/componentes/Tabla";
 import {
@@ -111,6 +108,19 @@ import { comoFilas } from "@/lib/filas";
 import { useSuperficie, useVisibilidad } from "@/lib/permisos";
 import { CabeceraDeLista } from "@/componentes/CabeceraDeLista";
 import { colorDeModulo, iconoDeGrupo } from "@/lib/navegacion";
+import { diferido } from "@/lib/diferido";
+
+// Lo que sólo sale bajo condición —filas elegidas, una clave recién creada,
+// descargas pedidas—, diferido para que no pese en todos los listados.
+const Descargas = diferido(() =>
+  import("@/componentes/Descargas").then((m) => m.Descargas),
+);
+const SecretoDeUnaVez = diferido(() =>
+  import("@/componentes/SecretoDeUnaVez").then((m) => m.SecretoDeUnaVez),
+);
+const AccionesMasivas = diferido(() =>
+  import("@/componentes/AccionesMasivas").then((m) => m.AccionesMasivas),
+);
 
 /**
  * Los campos del alta por clave: los del cuerpo, con la clave delante.

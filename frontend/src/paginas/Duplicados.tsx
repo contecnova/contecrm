@@ -182,6 +182,8 @@ export function Duplicados() {
 
       {fallo ? <Fallo error={fallo} /> : null}
 
+      <YaExiste />
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -447,5 +449,113 @@ function Lado({
         )}
       </div>
     </div>
+  );
+}
+
+interface Candidato {
+  id: string;
+  nombre: string;
+  similitud: number;
+  senales: string[];
+  concluyente: boolean;
+}
+
+/**
+ * ¿Ya existe? Comprobar una empresa antes de darla de alta.
+ *
+ * Lo mismo que hace el alta, pero sin crear nada: la cola de abajo es de los
+ * duplicados que ya entraron, y esto es para que no entre el siguiente. Dice
+ * **por qué** se propone cada uno —mismo NIF y nombre parecido llevan a
+ * decisiones distintas— y abre su ficha.
+ */
+function YaExiste() {
+  const { t } = useTranslation();
+  const [nombre, setNombre] = useState("");
+  const [nif, setNif] = useState("");
+  const [candidatos, setCandidatos] = useState<Candidato[] | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  async function comprobar() {
+    if (nombre.trim().length < 2) return;
+    setFallo(null);
+    try {
+      const consulta = new URLSearchParams({ nombre: nombre.trim() });
+      if (nif.trim()) consulta.set("nif", nif.trim());
+      const r = await llamar<Candidato[]>(
+        `/api/v1/data-quality/accounts/duplicates?${consulta}`,
+      );
+      setCandidatos(r.datos ?? []);
+    } catch (e) {
+      setFallo(e);
+    }
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("duplicados.yaExiste")}</h2>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("duplicados.yaExisteAyuda")}
+      </p>
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void comprobar();
+        }}
+      >
+        <input
+          className="input-base w-auto flex-1"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder={t("duplicados.nombreEmpresa")}
+          aria-label={t("duplicados.nombreEmpresa")}
+        />
+        <input
+          className="input-base w-40"
+          value={nif}
+          onChange={(e) => setNif(e.target.value)}
+          placeholder={t("duplicados.nif")}
+          aria-label={t("duplicados.nif")}
+        />
+        <button
+          type="submit"
+          className="btn-secondary"
+          disabled={nombre.trim().length < 2}
+        >
+          {t("duplicados.comprobar")}
+        </button>
+      </form>
+      {fallo ? <Fallo error={fallo} /> : null}
+      {candidatos !== null && candidatos.length === 0 ? (
+        <p className="mt-2 text-dato text-success">
+          {t("duplicados.noSeParece")}
+        </p>
+      ) : null}
+      {candidatos && candidatos.length > 0 ? (
+        <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+          {candidatos.map((c) => (
+            <li
+              key={c.id}
+              className="flex flex-wrap items-baseline gap-2 text-dato"
+            >
+              <Link
+                to={`/m/cuentas/cuenta/${c.id}`}
+                className="text-accent hover:underline"
+              >
+                {c.nombre}
+              </Link>
+              <span
+                className={`chip-dato ${c.concluyente ? "chip-dato--mal" : "chip-dato--aviso"}`}
+              >
+                {Math.round(c.similitud * 100)} %
+              </span>
+              <span className="text-rotulo text-ink-muted">
+                {c.senales.map((x) => humanizar(x)).join(" · ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }

@@ -44,6 +44,10 @@ export interface Payload {
   meta?: {
     verification?: Array<{ title: string; status: string; detail?: string }>;
   } | null;
+  /** Sólo con `type: "aclaracion"`: lo que contecintelligence necesita saber
+   *  antes de contestar, con las opciones que propone. */
+  preguntas?: Array<{ texto: string; opciones?: string[] }>;
+  motivo?: string;
 }
 
 /* Qué tipo se dibuja de qué forma sale de `FORMA_DE_TIPO`, en las gráficas.
@@ -70,9 +74,13 @@ function formatear(valor: unknown, unidad?: string | null): string {
 export function RespuestaAnalitica({
   payload,
   texto,
+  alAclarar,
 }: {
   payload: Payload;
   texto?: string;
+  /** Qué hacer al elegir una opción de una aclaración. Sin él, las opciones se
+   *  enseñan pero no se pueden pulsar. */
+  alAclarar?: (opcion: string) => void;
 }) {
   const { t } = useTranslation();
   const columnas = useMemo(() => {
@@ -90,7 +98,9 @@ export function RespuestaAnalitica({
         <h3 className="text-titulo font-semibold text-ink">{titulo}</h3>
       ) : null}
 
-      {payload.type === "kpi_card" ? (
+      {payload.type === "aclaracion" ? (
+        <Aclaracion payload={payload} alAclarar={alAclarar} />
+      ) : payload.type === "kpi_card" ? (
         <Numero payload={payload} columnas={columnas} />
       ) : FORMA_DE_TIPO[payload.type] ? (
         <Dibujo payload={payload} columnas={columnas} />
@@ -118,6 +128,43 @@ export function RespuestaAnalitica({
           ) : null}
         </details>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Cuando la pregunta es ambigua, contecintelligence no adivina: devuelve qué
+ * necesita saber y las opciones. Medido el 10-11-2026 con «¿Cuántas cuentas
+ * hay?»: la pantalla enseñaba el motivo y «Sin resultados», y las opciones
+ * —que eran la salida— se perdían.
+ */
+function Aclaracion({
+  payload,
+  alAclarar,
+}: {
+  payload: Payload;
+  alAclarar?: (opcion: string) => void;
+}) {
+  return (
+    <div className="mt-2 flex flex-col gap-3">
+      {(payload.preguntas || []).map((p) => (
+        <div key={p.texto}>
+          <p className="text-dato text-ink-muted">{p.texto}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {(p.opciones || []).map((o) => (
+              <button
+                key={o}
+                type="button"
+                className="pill"
+                disabled={!alAclarar}
+                onClick={() => alAclarar?.(o)}
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

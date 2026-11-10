@@ -177,7 +177,37 @@ FRONT = RAIZ / "frontend/src"
 #   ORM a mano. O sea que la capacidad constaba hecha y el selector devolvía
 #   `None` SIEMPRE, porque la tabla estaba siempre vacía. Con el listado, la
 #   ficha, el alta y la exportación son cuatro puertas de golpe.
-TOPE_SIN_PUERTA = 32
+#
+#   10-11-2026  29 → 0. Medidas 29 y no 32: tres se habían abierto por el
+#   camino. Recorridas una a una con criterio de producto:
+#
+#   · **22 a la pantalla donde se trabaja con ellas.** En la ficha del lead,
+#     por qué cayó donde cayó y sus toques en orden; en la del contacto, su
+#     centro de preferencias —editable— y a qué hora abre; en el panel de
+#     documentos de cualquier ficha, la carpeta del registro en el gestor con
+#     sus subcarpetas, sus documentos, el porqué del permiso y la búsqueda
+#     dentro de ella; en la ficha de una regla de convivencia, quién manda hoy
+#     sobre ese objeto; en la de una exposición MCP, el catálogo que recibe el
+#     agente; en la de un paso de aprobación de marketing, si el conjunto se
+#     puede publicar ya. Y en su página: la organización del gestor en
+#     Aprobaciones, si la instalación necesita la interfaz en Estado, quién
+#     escucha el flujo de eventos encima del catálogo de eventos, el modo sin
+#     salida de la región encima del consumo de IA, qué ha cambiado entre dos
+#     fotos en el periodo de previsión, la fecha que se puede prometer en Coste,
+#     mis huecos en Prospección, «¿ya existe?» en Duplicados, si a esta persona
+#     se le puede mandar la plantilla en su vista previa y las homologaciones
+#     del proveedor en su portal.
+#   · **7 declaradas abajo**, cada una con su motivo: la llama algo que no es
+#     una pantalla nuestra (el complemento de correo, el aviso de cookies de la
+#     web del cliente, el cuadro incrustado con su ticket, una pasarela que
+#     reintenta) o es una calculadora que el flujo ya aplica por dentro (precio
+#     y conversión de moneda), o es la misma pregunta acotada que la pantalla
+#     de menciones hace entera.
+#
+#   Al abrir el flujo de eventos se vio que `GET /eventos/estado` devolvía las
+#   colas de TODOS los tenants, con su identificador, a cualquier usuario
+#   autenticado. Ahora devuelve la de quien pregunta.
+TOPE_SIN_PUERTA = 0
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #
@@ -244,6 +274,35 @@ SIN_PUERTA_A_PROPOSITO: dict[str, str] = {
     # segundos. Lo consume quien integra para recibir eventos sin montar un
     # endpoint propio; una pantalla que lo «listara» se quedaría colgada.
     "/api/v1/eventos/flujo": "es un flujo que se queda abierto, no una colección",
+    # La misma pregunta, acotada a un tipo de objeto. La pantalla de menciones
+    # pide `/api/v1/comentarios/mis-menciones`, que el gateway junta de cada
+    # servicio con su `/comentarios/mis-menciones` sin tipo: una puerta por tipo
+    # obligaría a saber dónde te mencionaron para enterarte de que te mencionaron.
+    "/api/v1/comentarios/{objeto_tipo}/mis-menciones": (
+        "la misma pregunta por tipo; la pantalla de menciones pide la de todo el CRM"
+    ),
+    # Lo que el complemento de Outlook o de Gmail pinta al lado del correo (su
+    # descripción en la ruta lo dice). El complemento es una pieza del cliente
+    # de correo —entrada 8 de la pila, pendiente de terceros—, no una pantalla.
+    "/api/v1/contacts/contexto-de-correo": "la pide el complemento del cliente de correo",
+    # La consulta el aviso de cookies de la web del CLIENTE antes de activar
+    # una categoría para un visitante anónimo. Lo que se gobierna desde aquí
+    # —las decisiones registradas— tiene su pestaña en `/api/v1/cookies`.
+    "/api/v1/cookies/puede-rastrear": "la consulta el aviso de cookies de la web del cliente",
+    # Exige el ticket corto del cuadro incrustado en la cabecera, no una
+    # sesión: la pide la página ajena que incrusta el cuadro. Los enlaces se
+    # gestionan en la pestaña de cuadros incrustados.
+    "/api/v1/cuadros-mando/embebido": "exige el ticket del cuadro incrustado, no una sesión",
+    # Una regla fija —método e idempotencia— para la pasarela o el cliente que
+    # va a reintentar. No es un dato de la empresa que alguien vaya a mirar.
+    "/api/v1/despliegue/reintento": "regla para quien reintenta una llamada, no un dato",
+    # Calculadoras que el flujo ya aplica por dentro con los datos de quien
+    # está en mitad de algo: el precio lo calcula `catalogo.calcular_precio`
+    # al añadir un producto al presupuesto o a la oportunidad, y la conversión
+    # la hacen los servicios con el cambio de la fecha. El histórico de
+    # cambios tiene su pestaña «Tipos de cambio».
+    "/api/v1/listas-precio/calcular": "el presupuesto y la oportunidad la aplican al añadir un producto",
+    "/api/v1/monedas/convertir": "la aplican los servicios con el cambio de la fecha",
 }
 
 

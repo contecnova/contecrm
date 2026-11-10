@@ -1640,6 +1640,40 @@ vería en su lista. Cada análisis enseña de dónde salió cada objeto, cuánto
 registros leyó y si se recortó: un número que no dice de dónde sale no se puede
 discutir.
 
+### Medido en vivo el 10-11-2026
+
+Hasta ese día el CRM **no estaba registrado como fuente** en contecintelligence,
+así que nada de esta sección se había visto funcionar de punta a punta. Con la
+pila local y contecintelligence en Docker:
+
+- **El alta de la fuente** se hace desde la pantalla (Analítica → Preguntas
+  publicadas, «Registrar el CRM como fuente consultable») y tarda unos dos
+  minutos. Fallaba por dos cosas que no eran del CRM operativo: su lista
+  anti-SSRF no admitía `host.docker.internal` —ahora la pila local nos presenta
+  con el mismo nombre que en Docker— y el alta llevaba el plazo de una llamada
+  normal (diez segundos) en vez del de un registro.
+- **Preguntar en lenguaje natural** contesta con datos del CRM: «Importe total
+  de oportunidades por etapa» devuelve un gráfico de barras cuyas cinco cifras
+  coinciden con la suma hecha sobre las 146 oportunidades. Una pregunta ambigua
+  vuelve con opciones, que ahora se pueden pulsar, y una respuesta buena se
+  puede guardar.
+- **Cuadros desde la pregunta**: la respuesta llega ya con su forma (barras,
+  número, línea, tabla) y se dibuja sin pasar por un constructor.
+- **Instantáneas programadas**: el barrido programado corre a su hora y la
+  instantánea se guarda. Antes de que corriera de verdad ningún informe se
+  había ejecutado contra contecintelligence, y por eso nadie vio dos defectos
+  que lo impedían todo: el plan mandaba `pivote: null` (su contrato pide texto)
+  y la instantánea leía las filas como diccionarios cuando llegan como listas.
+- **Un alta a la vez**: dos altas en paralelo se pisaban —cada una borra la
+  fuente anterior— y la que quedó devolvía las tildes rotas («Negociaci⏎n»).
+  Pulsar otra vez mientras hay una en marcha devuelve la que ya corre.
+
+Lo que **no** funciona y no es de este lado: el filtro sobre una lista
+(«cuentas de cliente» compara `roles` por igualdad y da 2 donde hay 6) y los
+dos componentes del «Cuadro de dirección», para los que contecintelligence
+contesta «no se puede abrir la copia local de esta fuente» incluso con la
+fuente recién rehecha (el informe de la instantánea, en cambio, sí resuelve).
+
 ---
 
 ## 18. Buscar, sin ver lo de otro
@@ -4473,6 +4507,19 @@ a tiempo se marca y se avisa al responsable y a quien lanzó la campaña; al
 cerrar, se queda marcado o se retira según `recertificacion_al_cerrar`. El
 resultado es la evidencia del control `REC-ACCESOS`: efectivo con una campaña
 cerrada dentro de su frecuencia (`recertificacion_frecuencia`) y sin vencidas.
+
+**El organigrama se fija en pantalla (`CRM-00.03.05.07`).** En **Administrar ›
+Usuarios y empresa › Organigrama** se ve el árbol de quién depende de quién y se
+fija o cambia el superior de cada persona, que se mueve con todo su equipo; el
+equipo directo de alguien se pasa entero a otra persona (todos o ninguno). Un
+círculo no se puede cerrar: la pantalla no ofrece como superior a nadie del
+equipo de la persona y el servidor lo rechaza igual. Cada superior dice de
+dónde salió: **del directorio** (SCIM, el `manager` de la extensión de empresa)
+o **ajustado a mano**. Con `organigrama_externo_manda` (sí, de serie) el
+siguiente envío del directorio pisa lo ajustado a mano; con «no», lo ajustado a
+mano se queda. El SSO no trae el superior. De aquí salen el aprobador de los
+presupuestos (el superior de quien lo envía) y el responsable de cada revisión
+de accesos.
 
 **Enlazado en los dos sentidos.** Cada control lleva a su regla, su requisito o
 sus campañas, y esas pantallas vuelven a su control. Los controles escritos a
@@ -16728,3 +16775,64 @@ Google, lo que declare su perfil) con la credencial de la conexión y el
 consentimiento de quien la crea, y guarda el enlace en la actividad; desde una
 cuenta, crea la actividad de reunión con él. La forma de la petición es
 configuración del perfil. Sin suite conectada, el botón dice por qué no.
+
+## Lo que la API servía y ninguna pantalla abría (10-11-2026)
+
+Veintidós colecciones publicadas que no pedía ninguna pantalla, puestas donde
+se trabaja con ellas. Las siete restantes no llevan pantalla a propósito, con
+su motivo escrito en el gate (`tests/unit/test_una_coleccion_sin_puerta_no_la_abre_nadie.py`).
+
+### En la ficha
+
+- **Lead**: «Por qué cayó aquí y cómo llegó» enseña las reglas de reparto
+  evaluadas —cuál ganó y por qué no encajó cada una— y sus toques en orden,
+  con el primero y el último aparte.
+- **Contacto**: «Lo que quiere recibir» enseña su centro de preferencias, con
+  las obligatorias marcadas como tales y lo no tocado dicho como «valor por
+  defecto», y se cambia ahí mismo; y a qué hora suele abrir, que con pocas
+  aperturas no recomienda nada y lo dice.
+- **Documentos** (cualquier ficha que los admita): la carpeta del registro en
+  el gestor documental —sin crearla al mirar—, sus subcarpetas, sus
+  documentos, el porqué de tus permisos sobre ella y la búsqueda sólo dentro
+  de ella.
+- **Regla de convivencia**: quién manda hoy sobre ese objeto con todas sus
+  reglas juntas, y si se escribe aquí.
+- **Exposición MCP**: el catálogo de herramientas que recibe el agente,
+  filtrado por tus permisos, con cuántas se ocultan.
+- **Activo de marketing**: si su versión se puede publicar ya y qué paso de
+  aprobación falta; un aprobado sin haber visto los cambios sale aparte. Las
+  filas de «Aprobaciones de activos» abren el activo.
+
+### En su página
+
+- **Aprobar documentos**: a qué organización del gestor está mapeada la
+  empresa; sin mapeo, una bandeja vacía no quiere decir «nada pendiente».
+- **Estado**: si la instalación necesita la interfaz de referencia, servicio a
+  servicio; uno que no contesta cuenta como hallazgo.
+- **Catálogo de eventos**: cuántas integraciones escuchan ahora el flujo de
+  eventos de la empresa y cuántos eventos guarda para quien se reconecte.
+- **Gobierno de la IA › Consumo y coste**: qué modelo atendería sin que el dato
+  salga de la región. Sale cuando la política de IA admite una sola región;
+  con ninguna o con varias, el servidor exige decir cuál y la medida no sale.
+- **Periodo de previsión**: «Qué ha cambiado entre dos fotos» separa lo que
+  entra, lo ganado, lo perdido, lo que sale de la foto, lo que cambia de
+  importe y lo que cambia de fecha, cada causa con su número de oportunidades.
+- **Coste**: qué fecha se le puede prometer al cliente con el plazo del
+  proveedor; sin plazo declarado, dice que todavía no se puede.
+- **Plantillas y reuniones**: mis huecos para proponer una reunión, cada uno
+  diciendo si se contrastó con el calendario.
+- **Duplicados**: «¿Ya existe?» compara un nombre (y el NIF) con las empresas
+  dadas de alta sin crear nada, con por qué se parece cada una.
+- **Vista previa de una plantilla**: al elegir un contacto, si a esa dirección
+  se le puede mandar la plantilla y, si no, por qué.
+- **Portal del proveedor**: para qué está homologado y hasta cuándo.
+
+### Sin pantalla, y por qué
+
+Las menciones por tipo de objeto (la pantalla de menciones pide las de todo el
+CRM), el contexto de correo (lo pide el complemento de Outlook o Gmail), si se
+puede rastrear a un visitante (lo consulta el aviso de cookies de la web del
+cliente), el cuadro incrustado (exige su ticket, no una sesión), la política
+de reintento (para pasarelas y clientes), y el cálculo de precio y la
+conversión de moneda (los aplican por dentro el presupuesto, la oportunidad y
+los servicios).

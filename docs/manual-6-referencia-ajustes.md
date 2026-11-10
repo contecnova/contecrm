@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**343 ajustes** en total, de los cuales **121** son editables en caliente por tenant.
+**345 ajustes** en total, de los cuales **123** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -291,6 +291,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `RECERTIFICACION_PLAZO_DIAS` | 🔥 `recertificacion_plazo_dias` | `14` | 1–365 | Días que tiene cada responsable para contestar una revisión de accesos. |
 | `RECERTIFICACION_FRECUENCIA` | 🔥 `recertificacion_frecuencia` | `trimestral` |  | Cada cuánto toca una campaña de revisión de accesos: es la frecuencia del control del GRC que la recoge como evidencia. |
 | `RECERTIFICACION_AL_CERRAR` | 🔥 `recertificacion_al_cerrar` | `marcar` |  | Qué se hace con lo no contestado al cerrar la campaña: «marcar» lo deja marcado como vencido; «retirar» quita el acceso que nadie confirmó. |
+| `ORGANIGRAMA_EXTERNO_MANDA` | 🔥 `organigrama_externo_manda` | `True` |  | Si el superior que manda el directorio por SCIM pisa el que se fijó a mano en Administrar › Organigrama. Con «no», lo ajustado a mano se queda hasta que alguien lo devuelva al directorio. |
+| `ORGANIGRAMA_TOPE_PERSONAS` | 🔥 `organigrama_tope_personas` | `5000` | 10–100000 | Personas como máximo que devuelve el árbol de la pantalla: el árbol se pinta entero, así que necesita un tope como cualquier listado. |
 | `APROBACION_PRESUPUESTO_ETAPAS` | 🔥 `aprobacion_presupuesto_etapas` |  |  | Quién aprueba un presupuesto que se pasa de la matriz de descuentos: las etapas del motor de aprobaciones (origen jerarquia, rol, usuario, campo o unidad). De serie, el superior directo de quien lo envía. Hasta el 09-11-2026 el presupuesto se quedaba en «en aprobación» para siempre: el aviso… |
 | `APROBACION_ENLACE_VALIDEZ_HORAS` | 🔥 `aprobacion_enlace_validez_horas` | `72` | 1–720 | Horas que vale el enlace del correo. Es una credencial que viaja por un buzón que se puede reenviar: tres días cubren un fin de semana sin dejarla viva una semana entera. |
 | `APROBACION_ENLACE_POR_CORREO` | 🔥 `aprobacion_enlace_por_correo` | `True` |  | Si al abrirse una etapa se manda a cada aprobador su enlace por correo. Apagado, el enlace sólo sale cuando alguien lo pide desde la ficha. |

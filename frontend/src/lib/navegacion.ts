@@ -554,6 +554,17 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
     icono: "tune",
     permiso: "tenant:read",
   },
+  // Quién depende de quién (CRM-00.03.05.07). Junto a las personas y no en
+  // Gobierno: es un dato de cada persona, como sus roles; de él salen quién
+  // aprueba y quién revisa los accesos.
+  {
+    area: "usuarios",
+    a: "/organigrama",
+    clave: "nav.organigrama",
+    icono: "supervisor_account",
+    permiso: "user:read",
+    recursos: ["organigrama"],
+  },
   // El árbol de empresas y lo que cada hija comparte con su matriz
   // (CRM-00.01.03.07), y el consumo hacia facturación (CRM-00.01.06.07).
   {

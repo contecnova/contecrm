@@ -54,6 +54,8 @@ interface Rendimiento {
 interface Hueco {
   desde: string;
   hasta: string;
+  /** Si se miró contra el calendario. Uno sin contrastar no es un hueco libre. */
+  contrastado?: boolean;
 }
 
 interface Turno {
@@ -72,6 +74,8 @@ export function Prospeccion() {
   const [pidiendo, setPidiendo] = useState(false);
   const [sinNadie, setSinNadie] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
+  const [misHuecos, setMisHuecos] = useState<Hueco[] | null>(null);
+  const [falloHuecos, setFalloHuecos] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -113,6 +117,19 @@ export function Prospeccion() {
     }
   }
 
+  // Mis huecos para proponer una reunión (CRM-03.03.01.07). Esto sí es una
+  // consulta —no reparte turno—, pero va con botón igual: se pide cuando se va
+  // a proponer, no cada vez que se mira la pantalla.
+  async function verMisHuecos() {
+    setFalloHuecos(null);
+    try {
+      const r = await llamar<Hueco[]>("/api/v1/agenda/huecos?dias=5");
+      setMisHuecos(r.datos ?? []);
+    } catch (e) {
+      setFalloHuecos(e);
+    }
+  }
+
   if (fallo) return <Fallo error={fallo} reintentar={cargar} />;
 
   const plantillas = rendimiento?.plantillas ?? [];
@@ -147,7 +164,7 @@ export function Prospeccion() {
           />
           <button
             type="button"
-            className="btn-secundario"
+            className="btn-secondary"
             disabled={!equipo.trim() || pidiendo}
             onClick={() => void aQuienLeToca()}
           >
@@ -178,6 +195,50 @@ export function Prospeccion() {
             </div>
           ) : null}
         </div>
+      </section>
+
+      <section className="card mb-4 p-4">
+        <h2 className="text-titulo font-medium text-ink">
+          {t("prospeccion.misHuecos")}
+        </h2>
+        <p className="mt-1 text-rotulo text-ink-faint">
+          {t("prospeccion.misHuecosAyuda")}
+        </p>
+        <button
+          type="button"
+          className="btn-secondary mt-2"
+          onClick={() => void verMisHuecos()}
+        >
+          {t("prospeccion.verMisHuecos")}
+        </button>
+        {falloHuecos ? <Fallo error={falloHuecos} /> : null}
+        {misHuecos !== null && misHuecos.length === 0 ? (
+          <p className="mt-2 text-dato text-ink-muted">
+            {t("prospeccion.misSinHuecos")}
+          </p>
+        ) : null}
+        {misHuecos !== null && misHuecos.length > 0 ? (
+          <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+            {misHuecos.map((h) => (
+              <li
+                key={h.desde}
+                className="flex flex-wrap items-baseline gap-2 font-mono text-dato text-ink"
+              >
+                <span>
+                  {h.desde.slice(0, 16).replace("T", " ")} –{" "}
+                  {h.hasta.slice(11, 16)}
+                </span>
+                <span
+                  className={`chip-dato ${h.contrastado ? "chip-dato--si" : "chip-dato--aviso"}`}
+                >
+                  {h.contrastado
+                    ? t("prospeccion.contrastado")
+                    : t("prospeccion.sinContrastar")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
       <section>

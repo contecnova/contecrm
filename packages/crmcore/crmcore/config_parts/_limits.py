@@ -449,6 +449,15 @@ class _LimitsSettings(BaseSettings):
     # marcado como vencido; «retirar» quita el acceso que nadie confirmó.
     recertificacion_al_cerrar: str = "marcar"
 
+    # ── Organigrama (CRM-00.03.05.07) ──────────────────────────────────────
+    # Si el superior que manda el directorio por SCIM pisa el que se fijó a
+    # mano en Administrar › Organigrama. Con «no», lo ajustado a mano se queda
+    # hasta que alguien lo devuelva al directorio.
+    organigrama_externo_manda: bool = True
+    # Personas como máximo que devuelve el árbol de la pantalla: el árbol se
+    # pinta entero, así que necesita un tope como cualquier listado.
+    organigrama_tope_personas: int = Field(5000, ge=10, le=100000)
+
     # ── Aprobación de presupuestos ─────────────────────────────────────────
     # Quién aprueba un presupuesto que se pasa de la matriz de descuentos: las
     # etapas del motor de aprobaciones (origen jerarquia, rol, usuario, campo o

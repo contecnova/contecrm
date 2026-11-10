@@ -374,3 +374,95 @@ def test_el_motivo_del_ejecutor_llega_entero(
         fte._pedir_plan("http://ci.test", {"vista": "ventas", "source_id": "f1"}, "t")
     assert esperado in str(exc.value)
     assert esperado in str(exc.value.detalle.get("motivo", ""))
+
+
+def test_el_alta_en_contecintelligence_usa_el_plazo_del_registro(monkeypatch: Any) -> None:
+    """El alta allí no contesta hasta leer y perfilar cada entidad.
+
+    Medido el 10-11-2026 en vivo: con el plazo de una llamada normal (diez
+    segundos) daba «timed out» a los once, y la fuente anterior ya estaba
+    borrada. El plazo largo existía y sólo lo usaba el recorrido de la
+    superficie.
+    """
+    import contextlib
+    from types import SimpleNamespace
+
+    import httpx
+
+    plazos: list[float] = []
+
+    @contextlib.contextmanager
+    def _fabrica(timeout: float = 0, **_: Any) -> Any:
+        plazos.append(timeout)
+
+        def _transporte(peticion: httpx.Request) -> httpx.Response:
+            if peticion.method == "GET":
+                return httpx.Response(200, json=[])
+            return httpx.Response(201, json={"id": "f1"})
+
+        with httpx.Client(transport=httpx.MockTransport(_transporte)) as c:
+            yield c
+
+    ajustes = SimpleNamespace(
+        ci_base_url="http://ci.test",
+        ci_url_del_crm="http://crm.test/api/v1",
+        ci_timeout_s=10.0,
+        ci_timeout_registro_s=300.0,
+    )
+    monkeypatch.setattr("crmcore.red.cliente_seguro", _fabrica)
+    monkeypatch.setattr(cli, "_config", lambda: ajustes)
+    monkeypatch.setattr(cli, "canjear_token", lambda **_: SimpleNamespace(token="t"))
+    monkeypatch.setattr(fte, "_clave_de_lectura", lambda _t: "k")
+
+    fuente = fte._publicar({}, "acme", tenant_id=uuid4(), entidades=[{"name": "cuentas"}])
+
+    assert fuente == "f1"
+    assert plazos == [300.0]
+
+
+def test_el_plan_no_manda_vacios_a_contecintelligence(monkeypatch: Any) -> None:
+    """Su contrato declara `pivote: str = ""`; un `null` explícito es un 422.
+
+    Medido el 10-11-2026 con la primera instantánea programada que corrió en
+    vivo: «Input should be a valid string» en `pivote`.
+    """
+    import contextlib
+    from types import SimpleNamespace
+
+    mandado: dict[str, Any] = {}
+
+    def _pedir(_url: str, cuerpo: dict[str, Any], _token: str, **_: Any) -> dict[str, Any]:
+        mandado.update(cuerpo)
+        return {"columns": ["n"], "rows": [[1]]}
+
+    monkeypatch.setattr("crmcore.db.session.sesion", lambda _t: contextlib.nullcontext(None))
+    monkeypatch.setattr(fte, "_identidad_de_ejecucion", lambda *_a, **_k: ("t", "f1"))
+    monkeypatch.setattr(
+        cli, "_config", lambda: SimpleNamespace(ci_base_url="http://ci.test", ci_timeout_s=10.0)
+    )
+    monkeypatch.setattr(fte, "_pedir_plan", _pedir)
+
+    salida = fte.ejecutar_plan(
+        plan={"vista": "oportunidad", "pivote": None, "metricas": [], "_roles": []},
+        tenant_id=uuid4(),
+    )
+
+    assert salida == {"filas": [[1]]}
+    assert "pivote" not in mandado
+    assert mandado["vista"] == "oportunidad" and mandado["source_id"] == "f1"
+
+
+def test_dos_altas_de_la_fuente_a_la_vez_son_la_misma(db: Any, tenant_id: UUID) -> None:
+    """Cada alta borra la fuente anterior antes de crear la suya: dos en
+    paralelo se pisan. Medido el 10-11-2026: la segunda borró la que la primera
+    acababa de crear."""
+    from services.analytics.trabajos_fuente import encolar_registro
+
+    primera = encolar_registro(db, tenant_id=tenant_id, forzar=True, pedido_por=None)
+    segunda = encolar_registro(db, tenant_id=tenant_id, forzar=True, pedido_por=None)
+    assert segunda.id == primera.id
+
+    primera.estado = "completado"
+    db.flush()
+    tercera = encolar_registro(db, tenant_id=tenant_id, forzar=True, pedido_por=None)
+    assert tercera.id != primera.id

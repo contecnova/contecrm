@@ -296,7 +296,22 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
   - [ ] **Lo que queda fuera del front**: 32 colecciones publicadas sin
     pantalla que las abra (`TOPE_SIN_PUERTA`) y 91 capacidades que ninguna
     prueba nombra (`TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE`).
-  - [ ] **contecintelligence y contecmind**: registrar el CRM como fuente en
+  - [x] **contecintelligence** (10-11-2026): el CRM registrado como fuente;
+    preguntas en lenguaje natural, cuadros desde la pregunta e instantáneas
+    programadas funcionan en vivo. Pendiente aquí: la hora de una programación
+    se guarda en UTC y se pide como local; publicar una pregunta para todos no
+    tiene botón; la generación desde plantilla no rellena los datos del
+    registro ni saca PDF. En contecintelligence (avisar, no tocar): «cuentas de
+    cliente» da 2 donde hay 6 y los componentes del cuadro de dirección no
+    abren su fuente. contecmind sigue caído (entrada 9): firma documental y
+    respuestas que citan página sin ver.
+  - [x] **Colecciones sin pantalla** (10-11-2026): de 29 a 0; 22 en pantalla y 7
+    declaradas con su motivo. Cerrada de paso una fuga: el estado de las colas
+    de eventos enseñaba las de todos los tenants.
+  - [x] **Organigrama** (10-11-2026): Administrar › Usuarios y empresa ›
+    Organigrama; SCIM ya lo trae; la réplica sólo aplicaba el primer cambio de
+    cada persona.
+  - [ ] Era: **contecintelligence y contecmind**: registrar el CRM como fuente en
     contecintelligence (las instantáneas y las preguntas que pasan por él no
     se han visto en vivo) y medir una a una las cinco piezas que la
     comparativa dice traer. contecmind sigue caído por la entrada 9.
@@ -346,7 +361,7 @@ derivados). Quedan 323 que el código también escribe pero corrige una persona
   GRC; revisión de accesos con retirada real. Quitada la pestaña genérica
   «Controles», que enseñaba lo mismo que la pantalla nueva.
 - **Pendiente**:
-  - [ ] **El organigrama no se puede fijar desde ninguna pantalla** (sólo llega
+  - [x] **El organigrama no se puede fijar desde ninguna pantalla** (sólo llega
     por SCIM o SSO). Sin él no hay quién apruebe un presupuesto en el tenant de
     plataforma y la revisión de accesos cae entera en el revisor por defecto.
     Hace falta una pantalla para decir quién depende de quién.

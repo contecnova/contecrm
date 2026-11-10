@@ -109,6 +109,17 @@ class Membresia(Base, TimestampMixin):
     # ascendente (CRM-00.05.02.02). Es del tenant y no del usuario porque la
     # misma persona puede ser responsable en uno y colaborador en otro.
     superior_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # De dónde salió el superior: «scim» si lo mandó el directorio, «manual» si
+    # se fijó en Administrar › Organigrama, vacío si nadie lo ha fijado. Sin
+    # esto la pantalla no puede decir si lo que enseña lo pisará el próximo
+    # envío del IdP (ajuste `organigrama_externo_manda`).
+    superior_origen: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="", server_default=text("''")
+    )
+    superior_fijado_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    superior_fijado_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Atributos para ABAC: territorio, país, departamento.
     atributos: Mapped[dict[str, Any]] = mapped_column(

@@ -29,18 +29,7 @@ import {
 import { nombreDelRegistro } from "@/lib/formato";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
-import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
-import { CredencialesDeConexion } from "@/componentes/CredencialesDeConexion";
-import { ReunionEnLinea } from "@/componentes/ReunionEnLinea";
-import { ReferenciasDeSuite } from "@/componentes/ReferenciasDeSuite";
-import { Marcador } from "@/componentes/Marcador";
-import { TranscripcionDeReunion } from "@/componentes/TranscripcionDeReunion";
-import { VariantesDeCopy } from "@/componentes/VariantesDeCopy";
-import { AtribucionDeLead } from "@/componentes/AtribucionDeLead";
-import { RenovacionDeContrato } from "@/componentes/RenovacionDeContrato";
-import { VistaPreviaCorreo } from "@/componentes/VistaPreviaCorreo";
-import { ResolucionesDeDevolucion } from "@/componentes/ResolucionesDeDevolucion";
 import { PanelRelacionado } from "@/componentes/PanelRelacionado";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { SubColecciones } from "@/componentes/SubColecciones";
@@ -52,6 +41,75 @@ import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 import { DatosClave } from "@/componentes/DatosClave";
 import { AprobacionDeDocumento } from "@/paginas/Aprobaciones";
+import { diferido } from "@/lib/diferido";
+
+// Los bloques que sólo salen en un tipo de registro, diferidos: importados de
+// forma estática viajaban en la ficha de todos (10-11-2026).
+const TranscripcionDeReunion = diferido(() =>
+  import("@/componentes/TranscripcionDeReunion").then(
+    (m) => m.TranscripcionDeReunion,
+  ),
+);
+const VistaPreviaCorreo = diferido(() =>
+  import("@/componentes/VistaPreviaCorreo").then((m) => m.VistaPreviaCorreo),
+);
+const CredencialesDeConexion = diferido(() =>
+  import("@/componentes/CredencialesDeConexion").then(
+    (m) => m.CredencialesDeConexion,
+  ),
+);
+const CarpetaDelRegistro = diferido(() =>
+  import("@/componentes/CarpetaDelRegistro").then((m) => m.CarpetaDelRegistro),
+);
+const ReunionEnLinea = diferido(() =>
+  import("@/componentes/ReunionEnLinea").then((m) => m.ReunionEnLinea),
+);
+const VariantesDeCopy = diferido(() =>
+  import("@/componentes/VariantesDeCopy").then((m) => m.VariantesDeCopy),
+);
+const ReferenciasDeSuite = diferido(() =>
+  import("@/componentes/ReferenciasDeSuite").then((m) => m.ReferenciasDeSuite),
+);
+const PrediccionDelRegistro = diferido(() =>
+  import("@/componentes/PrediccionDelRegistro").then(
+    (m) => m.PrediccionDelRegistro,
+  ),
+);
+const Marcador = diferido(() =>
+  import("@/componentes/Marcador").then((m) => m.Marcador),
+);
+const RepartoYOrigenDelLead = diferido(() =>
+  import("@/componentes/RepartoYOrigenDelLead").then(
+    (m) => m.RepartoYOrigenDelLead,
+  ),
+);
+const CorreoDelContacto = diferido(() =>
+  import("@/componentes/CorreoDelContacto").then((m) => m.CorreoDelContacto),
+);
+const AtribucionDeLead = diferido(() =>
+  import("@/componentes/AtribucionDeLead").then((m) => m.AtribucionDeLead),
+);
+const ResolucionesDeDevolucion = diferido(() =>
+  import("@/componentes/ResolucionesDeDevolucion").then(
+    (m) => m.ResolucionesDeDevolucion,
+  ),
+);
+const RenovacionDeContrato = diferido(() =>
+  import("@/componentes/RenovacionDeContrato").then(
+    (m) => m.RenovacionDeContrato,
+  ),
+);
+const HerramientasDeExposicion = diferido(() =>
+  import("@/componentes/HerramientasDeExposicion").then(
+    (m) => m.HerramientasDeExposicion,
+  ),
+);
+const SePuedePublicar = diferido(() =>
+  import("@/componentes/SePuedePublicar").then((m) => m.SePuedePublicar),
+);
+const QuienMandaSobre = diferido(() =>
+  import("@/componentes/QuienMandaSobre").then((m) => m.QuienMandaSobre),
+);
 
 /**
  * Las pestañas de una ficha, con los nombres y el reparto de Lightning.
@@ -386,6 +444,40 @@ export function Ficha() {
       {!editando && tipo === "lead" && id ? (
         <AtribucionDeLead leadId={id} lead={fila} />
       ) : null}
+      {/* Por qué cayó donde cayó y por dónde llegó: las reglas de reparto
+          evaluadas y sus toques en orden. */}
+      {!editando && tipo === "lead" && id ? (
+        <RepartoYOrigenDelLead leadId={id} />
+      ) : null}
+      {/* Lo que quiere recibir y a qué hora abre: se pregunta delante del
+          contacto, antes de escribirle o de meterlo en una campaña. */}
+      {!editando && tipo === "contacto" && id && fila ? (
+        <CorreoDelContacto
+          contactoId={id}
+          email={typeof fila.email === "string" ? fila.email : ""}
+        />
+      ) : null}
+      {/* Con todas las reglas del objeto juntas, quién gana hoy. */}
+      {!editando &&
+      tipo === "regla_convivencia" &&
+      typeof fila?.objeto === "string" ? (
+        <QuienMandaSobre objeto={fila.objeto} />
+      ) : null}
+      {/* Un activo de marketing: si su versión se puede publicar ya, y qué
+          paso de aprobación falta. */}
+      {!editando && tipo === "activo_marketing" && id && fila ? (
+        <SePuedePublicar
+          objeto={tipo}
+          objetoId={id}
+          version={typeof fila.version === "number" ? fila.version : 1}
+        />
+      ) : null}
+      {/* Lo que ve un agente de fuera en esta exposición. */}
+      {!editando &&
+      tipo === "exposicion_mcp" &&
+      typeof fila?.clave === "string" ? (
+        <HerramientasDeExposicion clave={fila.clave} />
+      ) : null}
       {/* La renovación del contrato, revisada sólo para él (CRM-03.03.02.10). */}
       {!editando && tipo === "contrato" && id ? (
         <RenovacionDeContrato
@@ -687,6 +779,11 @@ function Documentos({
               id={id}
               nombre={nombre}
               alEnlazar={() => setRecargar((n) => n + 1)}
+            />
+            <CarpetaDelRegistro
+              tipo={tipo}
+              id={id}
+              nombreDelRegistro={nombre}
             />
           </>
         )}

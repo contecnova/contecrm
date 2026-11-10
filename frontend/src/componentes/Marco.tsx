@@ -35,7 +35,6 @@ import { useTranslation } from "react-i18next";
 
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { AvisoSinConexion } from "@/componentes/AvisoSinConexion";
 import { Reverificacion } from "@/componentes/Reverificacion";
 import { BarraDeAplicacion } from "@/componentes/BarraDeAplicacion";
 import { BarraLateral } from "@/componentes/BarraLateral";
@@ -72,6 +71,16 @@ import { volverASesionPropia, type Sesion } from "@/lib/sesion";
  */
 const Paleta = lazy(() =>
   import("@/componentes/Paleta").then((m) => ({ default: m.Paleta })),
+);
+
+/**
+ * La franja de «sin conexión», diferida: con red y sin nada pendiente no pinta
+ * nada, y su código —la cola en IndexedDB— no va en la apertura.
+ */
+const AvisoSinConexion = lazy(() =>
+  import("@/componentes/AvisoSinConexion").then((m) => ({
+    default: m.AvisoSinConexion,
+  })),
 );
 
 /** Lo mismo que la paleta: no se ve hasta que alguien lo pide. */
@@ -231,7 +240,9 @@ function Armazon({
             administrador que olvida que está viendo el CRM en nombre de otra
             persona toma decisiones sobre datos que no son los que cree. */}
         {sesion?.suplantado_por ? <FranjaDeSoporte sesion={sesion} /> : null}
-        <AvisoSinConexion usuario={sesion?.usuario_id ?? ""} />
+        <Suspense fallback={null}>
+          <AvisoSinConexion usuario={sesion?.usuario_id ?? ""} />
+        </Suspense>
         {/* Volver a verificarse sin salir, cuando una operación lo pide. */}
         <Reverificacion />
 

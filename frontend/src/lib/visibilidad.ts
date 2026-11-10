@@ -934,6 +934,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/agentes-ia/exposiciones",
       "p": "integracion:read",
+      "o": "exposicion_mcp",
       "s": "integration"
     }
   ],
@@ -1047,6 +1048,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/activos-marketing",
       "p": "marketing:read",
+      "o": "activo_marketing",
       "s": "marketing"
     }
   ],

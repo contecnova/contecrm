@@ -695,6 +695,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Catálogo de eventos",
+        // Quién está escuchando el flujo de eventos de esta empresa ahora
+        // mismo, y cuánto guarda para quien se reconecte.
+        resumen: ["/api/v1/eventos/estado"],
         listar: "/api/v1/eventos/catalogo",
         servicio: "eventing",
       },
@@ -1730,7 +1733,13 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Consumo y coste",
         // Con el presupuesto del mes encima: el coste acumulado no dice si
         // queda margen, y «queda margen» es la decisión.
-        resumen: ["/api/v1/ia/presupuesto", "/api/v1/ia/eleccion"],
+        // Y qué modelo atendería sin que el dato salga de la región del
+        // tenant: es la pregunta de quien no puede mandar nada fuera.
+        resumen: [
+          "/api/v1/ia/presupuesto",
+          "/api/v1/ia/eleccion",
+          "/api/v1/ia/eleccion-sin-salida",
+        ],
         listar: "/api/v1/ia/uso",
         servicio: "intelligence",
         permiso: "ia:administrar",
@@ -1777,6 +1786,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // un agente que no es nuestro.
       {
         nombre: "Exposiciones MCP",
+        // Con `objeto` para que la fila abra: en su ficha se ve el catálogo
+        // de herramientas que recibe el agente, filtrado por permisos.
+        objeto: "exposicion_mcp",
         listar: "/api/v1/agentes-ia/exposiciones",
         servicio: "integration",
         permiso: "integracion:read",
@@ -2014,13 +2026,20 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // dice lo que hay; ésta, lo que está parado esperando a alguien.
       {
         nombre: "Aprobaciones de activos",
-        objeto: "activo_marketing",
+        // Cada fila es un paso sobre un activo y abre EL ACTIVO, que es donde
+        // se ve si el conjunto se puede publicar. Declaraba `objeto` y la
+        // ficha pedía `/aprobacion/{id}`, que no existe: 405 y la fila no
+        // abría nada (medido el 10-11-2026).
+        abre: { modulo: "segmentos", objeto: "activo_marketing", campo: "objeto_id" },
         listar: "/api/v1/activos-marketing/aprobacion",
         servicio: "marketing",
         permiso: "marketing:read",
       },
       {
         nombre: "Activos de marketing",
+        // Con `objeto` para que la fila abra: en su ficha se ve si la versión
+        // se puede publicar ya y qué paso de aprobación falta.
+        objeto: "activo_marketing",
         listar: "/api/v1/activos-marketing",
         // Qué hay que mirar antes de que dé un problema: un activo caducado que
         // sigue publicado no avisa solo.

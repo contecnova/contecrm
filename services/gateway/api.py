@@ -1986,7 +1986,21 @@ async def empujar_evento(request: Request, principal: AutenticadoDep) -> Any:
     ),
 )
 async def estado_del_empuje(principal: AutenticadoDep) -> Any:
-    return empuje.estado()
+    # Sólo la cola de QUIEN pregunta. Devolvía las de todos los tenants, con su
+    # identificador, a cualquier usuario autenticado: el día que se pintó en la
+    # pestaña de eventos (10-11-2026) habría enseñado a cada cliente quiénes
+    # más hay en la instalación y cuánto se mueven.
+    suya = empuje.estado().get(str(principal.tenant_id), {"oyentes": 0, "en_cola": 0})
+    return {
+        "oyentes": suya["oyentes"],
+        "en_cola": suya["en_cola"],
+        "que_significa": (
+            "Integraciones conectadas ahora mismo al flujo de eventos de esta "
+            "empresa, y cuántos eventos recientes guarda para quien se reconecte. "
+            "Una cola sin oyentes es memoria gastada; un oyente que no recibe nada "
+            "suele ser una integración que se quedó conectada y nadie mira."
+        ),
+    }
 
 
 ROUTERS = [router, crear_router_sesion(_piezas)]

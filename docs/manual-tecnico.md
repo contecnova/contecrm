@@ -5600,6 +5600,161 @@ principal de máquina y sólo `contact:write`).
 - **Pruebas**: `tests/unit/test_todo_controlado_por_el_grc.py`, siete, una por
   comportamiento.
 
+### El organigrama, desde Administrar (CRM-00.03.05.07)
+
+Medido el 10-11-2026: nada escribía `membresias.superior_id` —SCIM ignoraba el
+`manager`, el SSO no lo trae y no había pantalla—, y `user.org.changed` salía
+con `dedup_key=org:{tenant}:{usuario}`, fija por persona: los consumidores
+(orchestrator, sales, party) deduplican por clave y aplicaban sólo el primer
+evento de cada persona. Ahora:
+
+- **Rutas** (identity, prefijo `organigrama` en `crmcore.rutas_de_api`):
+  `GET /api/v1/organigrama` (`user:read`; personas con `superior_id`,
+  `origen`, `fijado_at`, `fijado_por`, `truncado`, `externo_manda`),
+  `PUT /api/v1/organigrama/{usuario_id}/superior` y
+  `POST /api/v1/organigrama/{usuario_id}/equipo` (`user:write`). Errores:
+  `organigrama.ciclo` (409, con el `camino`), `organigrama.a_si_mismo`,
+  `organigrama.superior_inactivo` (422), `organigrama.superior_desconocido`,
+  `organigrama.persona_desconocida` (404). Mover el equipo comprueba todos
+  antes de tocar ninguno. Cada cambio queda en la auditoría
+  (`organigrama.superior`).
+- **Modelo**: `membresias.superior_origen` (`''`, `manual`, `scim`),
+  `superior_fijado_at`, `superior_fijado_por`; migración
+  `alembic/versions/identity/20261110_1200_origen_del_superior.py`.
+- **SCIM**: se lee `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`
+  › `manager` en el alta, el `PUT` y el `PATCH` (con `path` y sin él), se
+  devuelve en la representación y se declara en `ResourceTypes`. Un `manager`
+  desconocido, de baja o que cerraría un círculo se registra y se ignora, sin
+  romper el aprovisionamiento.
+- **Replicación**: `organigrama.publicar` emite `user.org.changed` sin
+  `dedup_key` (la derivada lleva el momento: cada cambio es un hecho) y, al
+  fijar un superior, publica también al superior, para que la cadena de mando
+  replicada (`orchestrator.personas_org`) no se corte en él. La revisión de
+  accesos lee `superior_id` en identity al lanzar la campaña.
+- **Ajustes** (Settings y editables en caliente): `organigrama_externo_manda`
+  (sí, sensible) y `organigrama_tope_personas` (5.000).
+- **Pantalla**: `frontend/src/paginas/Organigrama.tsx`, ruta `/organigrama`.
+- **Pruebas**: `tests/unit/test_el_organigrama_se_fija_desde_la_pantalla.py`,
+  tres: fijar y republicar con claves distintas, el círculo (también al mover
+  el equipo) y el `manager` de SCIM frente a lo ajustado a mano.
+
+### Colecciones sin puerta: de 29 a 0 (10-11-2026)
+
+El tope de colecciones sin puerta de
+`tests/unit/test_una_coleccion_sin_puerta_no_la_abre_nadie.py` baja a **0**. Medidas 29 (no 32) al empezar.
+
+- **Componentes nuevos** (`frontend/src/componentes/`), montados en
+  `paginas/Ficha.tsx` por tipo: `RepartoYOrigenDelLead` (`lead`;
+  `GET /lead-routing/leads/{id}/explicacion` y `/origen/leads/{id}/recorrido`),
+  `CorreoDelContacto` (`contacto`; `GET /canales-marketing/mejor-hora?objeto_id=`
+  y `GET`/`PUT /preferencias?email=`, el `PUT` con `origen: "ficha"`),
+  `QuienMandaSobre` (`regla_convivencia`; `/convivencia/quien-manda?objeto=`),
+  `HerramientasDeExposicion` (`exposicion_mcp`; `/agentes-ia/{clave}/herramientas`),
+  `SePuedePublicar` (`activo_marketing`; `/activos-marketing/aprobaciones/estado`
+  con la `version` del activo) y `CarpetaDelRegistro`, dentro del panel de
+  documentos (`/documentos/{tipo}/{id}/carpeta?crear=false`,
+  `/documentos/carpetas?padre=`, `/carpetas/{id}/documentos`,
+  `/carpetas/{id}/permisos`, `/documentos/buscar-en-rama`).
+- **Páginas**: `Aprobaciones.tsx` (`GET /documentos/organizacion`),
+  `Estado.tsx` (`/estado/ui-referencia`), `PeriodoDePrevision.tsx`
+  (`/forecast/waterfall?desde=&hasta=`), `Coste.tsx`
+  (`/coste/fecha-prometible`), `Prospeccion.tsx` (`/agenda/huecos`),
+  `Duplicados.tsx` (`/data-quality/accounts/duplicates?nombre=&nif=`),
+  `componentes/VistaPreviaCorreo.tsx` (`/correo/comprobar-envio`) y
+  `Portal.tsx` (`/proveedores/mi/homologaciones`).
+- **`recursos.ts`**: `resumen` con `/eventos/estado` en «Catálogo de eventos»
+  y con `/ia/eleccion-sin-salida` en «Consumo y coste» (si la política admite
+  varias regiones o ninguna, contesta 422 y `Medidas` no la pinta);
+  `objeto: "exposicion_mcp"` en «Exposiciones MCP»; `objeto: "activo_marketing"`
+  en «Activos de marketing», y «Aprobaciones de activos» pasa de `objeto` a
+  `abre` (la ficha pedía `/aprobacion/{id}`, que no existe: 405).
+  Regenerado `lib/visibilidad.ts`.
+- **Gateway**: `GET /api/v1/eventos/estado` devolvía las colas de todos los
+  tenants, con su identificador, a cualquier usuario autenticado. Ahora
+  devuelve `oyentes`, `en_cola` y `que_significa` del tenant de quien pregunta.
+- **Declaradas sin pantalla** en la lista de excepciones del mismo gate, con
+  su motivo:
+  `/comentarios/{objeto_tipo}/mis-menciones`, `/contacts/contexto-de-correo`,
+  `/cookies/puede-rastrear`, `/cuadros-mando/embebido`,
+  `/despliegue/reintento`, `/listas-precio/calcular` y `/monedas/convertir`.
+- `lib/formato.ts`: `minima`, `exposicion` y `variacion` en el diccionario de
+  palabras con tilde.
+
+### 4.6.62 Lo que se baja al abrir y lo que pesa cada pantalla (10-11-2026)
+
+- **Medido**: apertura 138 kB comprimidos (tope 127), front entero 470 (tope
+  330), `Ficha` 14,0 y `Modulo` 15,2 (tope 13 por pantalla).
+- **Diferido sin tocar números**: la cola sin conexión (`main.tsx` la importa
+  al vuelo), su franja y la ficha de llamada entrante; 22 bloques de textos
+  que sólo usan pantallas diferidas, de `es.ts` a `es.pantallas.ts` (el
+  cierre estático desde `main.tsx` decide cuáles: 48 ficheros); y en la ficha,
+  diecisiete bloques de un solo tipo de registro, con `lib/diferido.tsx` —un
+  componente que no pinta nada hasta que llega su código y después es el
+  mismo, sin `Suspense`—.
+- **Topes subidos con su motivo** en `tests/unit/test_front_oficial.py`:
+  apertura 131 (queda 130: diálogo de reverificación y menú nuevo), total 490
+  (la cola larga de pantallas está cerrada) y por pantalla 15 (`Modulo`, el
+  motor de los listados, 14,1).
+
+### contecintelligence en vivo: el CRM como fuente, preguntas e instantáneas (10-11-2026)
+
+Medido con la pila local (`SIN_VECINOS=1 ./setup.sh arrancar`) y
+contecintelligence en Docker (`localhost:8100`). El CRM no estaba registrado
+como fuente; el alta fallaba y, detrás, todo informe fallaba también.
+
+- **El alta, desde la pantalla**: Analítica → Preguntas publicadas, botón
+  «Registrar el CRM como fuente consultable» → `POST
+  /api/v1/explotacion/registrar-fuente` (202 + trabajo
+  `analitica.registrar_fuente`, worker de analytics). Tarda 80–110 s: su
+  `POST /api/sources` no contesta hasta leer y perfilar cada entidad.
+- **Por qué fallaba (1): la lista anti-SSRF de contecintelligence.** En local
+  el CRM se le daba como `host.docker.internal`, y su OUTBOUND_ALLOWED_HOSTS
+  —configuración suya— sólo nombra el alias de Docker (`gateway`). Su log lo
+  decía («host no permitido»); su respuesta, sólo «health_check fallo».
+  `setup.sh` (función asegurar_relevo_para_ci; las variables de ese bloque son del
+  script y no `Settings`) levanta ahora en la pila local un
+  relevo `contecrm-relevo-ci` (nginx) en la red CONTECRM_NETWORK
+  (`contecrm-dev_default` por defecto) con el alias del host de
+  `CI_URL_DEL_CRM`, que reenvía al gateway de la máquina; con el relevo,
+  `CI_URL_DEL_CRM` queda como en el `.env`. Imagen y plazo:
+  RELEVO_CI_IMAGEN, RELEVO_CI_PLAZO_S. No se crea si el host es de
+  máquina (`localhost`, `host.docker.internal`, una IP), si la red no existe
+  o si ya hay un contenedor con ese alias (la pila Docker). `parar` lo quita.
+  CI_URL_DEL_CRM_LOCAL sigue mandando sobre todo.
+- **Por qué fallaba (2): el plazo.** `_publicar` usaba `ci_timeout_s` (10 s)
+  para el alta; ahora `ci_timeout_registro_s` (300 s). El mensaje de rechazo
+  nombra también OUTBOUND_ALLOWED_HOSTS.
+- **Una alta a la vez** (`encolar_registro`): si hay un trabajo vivo
+  (`ESTADOS_VIVOS`) del mismo tipo y tenant, se devuelve ése. Dos en paralelo
+  se borraban la fuente una a otra.
+- **Todo informe fallaba al ejecutarse**: `ejecutar_plan` mandaba
+  `"pivote": null` y su `PlanPortable` declara `pivote: str = ""` → 422. Ahora
+  no se manda ninguna clave con `None`.
+- **La instantánea reventaba** (`tomar_instantanea`): leía las filas como
+  diccionarios y el ejecutor las devuelve como listas (`FilasDelPlan.rows`).
+  Pasa por `_en_diccionarios`, como la exportación. La prueba usaba un doble
+  que devolvía diccionarios.
+- **Pantalla** (`Explotacion.tsx`, `RespuestaAnalitica.tsx`): la respuesta
+  `type: "aclaracion"` pinta sus `preguntas[].opciones` como botones y
+  vuelve a preguntar con «pregunta (opción)»; «Guardar la pregunta» hace
+  `POST /api/v1/explotacion/preguntas` (nace sin publicar).
+- **Pruebas**: `tests/unit/test_explotacion_fuente.py` (plazo del alta, plan
+  sin vacíos, una alta a la vez), `tests/unit/test_informes.py`
+  (instantánea con filas en lista),
+  `frontend/src/pruebas/la_respuesta_se_aclara_y_se_guarda.test.tsx`.
+- **Medido en vivo**: «Importe total de oportunidades por etapa» → barras con
+  las cinco sumas iguales a las del CRM (146 oportunidades); la instantánea
+  programada a las 07:00 UTC corrió a las 07:00:03 (el error que dejó, el del
+  `pivote`, es el que se arregló); «Tomar una ahora» guarda 13 filas.
+- **Pendiente, de contecintelligence** (se avisa, no se toca): el filtro sobre
+  una lista (`roles = '["cliente"]'`, 2 en vez de 6); «no se puede abrir la
+  copia local de esta fuente» en los dos componentes del «Cuadro de
+  dirección», también con la fuente rehecha.
+- **Pendiente, de aquí**: la hora de `ProgramacionInforme` es UTC y la
+  pantalla la pide como si fuera local; y `./setup.sh arrancar` no barre los
+  workers huérfanos (sí `parar`): había 42 de cuatro arranques, y un alta la
+  cogía uno con la configuración vieja.
+
 ## 5. Operación
 
 ### 5.1 Copias y restauración

@@ -412,7 +412,12 @@ def _publicar(
             "entities": entidades,
         },
     }
-    with cliente_seguro(timeout=s.ci_timeout_s) as cli:
+    # Con el plazo del REGISTRO, no el de una llamada. El alta en
+    # contecintelligence no contesta hasta haber leído y perfilado cada
+    # entidad. Medido el 10-11-2026: con los diez segundos de una llamada
+    # normal, «timed out» a los 11 s — y la fuente anterior ya borrada. El
+    # plazo largo se había puesto al recorrido de la superficie y no a esto.
+    with cliente_seguro(timeout=s.ci_timeout_registro_s) as cli:
         # Se borra la anterior ANTES de crear la nueva. Sin esto, cada registro
         # dejaba una fuente más y solo la última funcionaba:
         #
@@ -497,7 +502,11 @@ def _porque_lo_rechazo(respuesta: Any, url_del_crm: str) -> str:
         f"contecintelligence ha rechazado el registro de la fuente "
         f"(HTTP {respuesta.status_code}): {dicho} "
         f"La dirección con la que tiene que alcanzar este CRM es «{url_del_crm}»; "
-        f"si desde contecintelligence no se llega ahí, es lo primero que mirar."
+        f"si desde contecintelligence no se llega ahí, es lo primero que mirar. "
+        # Lo segundo, y medido el 10-11-2026: llegaba, pero su lista anti-SSRF
+        # no admitía el host, y eso sólo lo dice su log. Desde aquí no se ve;
+        # se nombra para que nadie busque un fallo de red que no existe.
+        f"Lo segundo: que su lista de salida (OUTBOUND_ALLOWED_HOSTS) admita ese host."
     )
 
 
@@ -1240,7 +1249,12 @@ def ejecutar_plan(*, plan: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     # mirar su contrato. Consecuencia: **todo informe y todo componente de cuadro
     # de mando fallaba al ejecutarse**, con un «no ha podido resolver el plan»
     # que parecía del otro lado.
-    cuerpo = {k: v for k, v in plan.items() if not k.startswith("_")}
+    # Y sin los vacíos (`None`): lo que no se pide no se manda. Su contrato
+    # declara `pivote: str = ""` y un `null` explícito no es «sin pivote», es
+    # un 422. Medido el 10-11-2026 con la primera instantánea programada que
+    # corrió de verdad: «Input should be a valid string» en `pivote`, y todo
+    # informe sin pivote fallaba igual.
+    cuerpo = {k: v for k, v in plan.items() if not k.startswith("_") and v is not None}
     # La fuente registrada de este tenant: el plan dice de qué se lee, pero no
     # contra qué fuente, y allí puede haber varias.
     cuerpo["source_id"] = fuente_id

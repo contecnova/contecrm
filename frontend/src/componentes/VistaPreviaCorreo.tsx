@@ -92,6 +92,14 @@ export function VistaPreviaCorreo({
   const [vista, setVista] = useState<Vista | null>(null);
   const [cliente, setCliente] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
+  // Si a ESTA persona se le puede mandar ESTA plantilla: bloques, sus
+  // preferencias y su consentimiento, en una sola comprobación. La que se
+  // olvida siempre es la de las preferencias, y el resultado es un correo a
+  // quien se dio de baja.
+  const [envio, setEnvio] = useState<{
+    se_puede_mandar: boolean;
+    motivos: string[];
+  } | null>(null);
 
   useEffect(() => {
     const control = new AbortController();
@@ -124,6 +132,23 @@ export function VistaPreviaCorreo({
     return () => control.abort();
   }, [clave, idioma, contacto]);
 
+  const email = contactos.find((c) => c.id === contacto)?.email ?? "";
+  useEffect(() => {
+    setEnvio(null);
+    if (!email) return;
+    const control = new AbortController();
+    const parametros = new URLSearchParams({ email, plantilla: clave, idioma });
+    llamar<{ se_puede_mandar: boolean; motivos: string[] }>(
+      `/api/v1/correo/comprobar-envio?${parametros}`,
+      { signal: control.signal },
+    )
+      .then((r) => setEnvio(r.datos))
+      .catch((e) => {
+        if (!control.signal.aborted) setFallo(e);
+      });
+    return () => control.abort();
+  }, [email, clave, idioma]);
+
   const elegido = vista?.clientes.find((c) => c.clave === cliente);
   return (
     <section className="card mb-4 p-4">
@@ -151,6 +176,19 @@ export function VistaPreviaCorreo({
           ))}
         </select>
       </div>
+      {envio ? (
+        <p
+          role="status"
+          className={`mt-2 text-dato ${envio.se_puede_mandar ? "text-success" : "text-danger"}`}
+        >
+          {envio.se_puede_mandar
+            ? t("mk.vista.sePuedeMandar", { email })
+            : t("mk.vista.noSePuedeMandar", {
+                email,
+                motivos: envio.motivos.join(" · "),
+              })}
+        </p>
+      ) : null}
       {fallo ? <Fallo error={fallo} /> : null}
       {vista ? (
         <div role="status" className="mt-3 grid gap-4 lg:grid-cols-3">

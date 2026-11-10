@@ -810,9 +810,21 @@ interface Documento {
   dias?: number;
 }
 
+interface Homologacion {
+  id: string;
+  categoria: string;
+  estado: string;
+  valida_hasta: string | null;
+}
+
 function MisPapeles({ sesion }: { sesion: Sesion }) {
   const [esProveedor, setEsProveedor] = useState(false);
   const [documentos, setDocumentos] = useState<Documento[] | null>(null);
+  // Para qué está homologado y hasta cuándo. Sin esto el proveedor sabía qué
+  // papel le caducaba pero no QUÉ dejaba de poder servir si caducaba.
+  const [homologaciones, setHomologaciones] = useState<Homologacion[] | null>(
+    null,
+  );
   const [subiendo, setSubiendo] = useState(false);
   const [hecho, setHecho] = useState("");
   const [clave, setClave] = useState("");
@@ -832,6 +844,14 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
         por_vencer?: Documento[];
       }>("/api/v1/proveedores/mi/documentos", sesion.token);
       setDocumentos([...(estado.vencidos ?? []), ...(estado.por_vencer ?? [])]);
+      // Aparte y sin tumbar lo anterior: que no se puedan leer las
+      // homologaciones no puede esconder qué papel está vencido.
+      pedir<Homologacion[]>(
+        "/api/v1/proveedores/mi/homologaciones",
+        sesion.token,
+      )
+        .then(setHomologaciones)
+        .catch(() => setHomologaciones([]));
     } catch {
       // Quien no es proveedor recibe un error aquí, y eso no es un fallo que
       // haya que enseñarle: sencillamente esta sección no es para él.
@@ -894,6 +914,34 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
                     ? `venció el ${d.vence}`
                     : `vence el ${d.vence}`
                   : "sin fecha"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3 className="mb-2 text-titulin font-medium text-ink">
+        Para qué estás homologado
+      </h3>
+      {homologaciones === null ? (
+        <p className="mb-3 text-dato text-ink-faint">Cargando…</p>
+      ) : homologaciones.length === 0 ? (
+        <p className="mb-3 text-dato text-ink-faint">
+          No consta ninguna homologación a tu nombre.
+        </p>
+      ) : (
+        <ul className="lista-acotada mb-3 space-y-1.5 pr-1">
+          {homologaciones.map((h) => (
+            <li
+              key={h.id}
+              className="flex flex-wrap items-baseline gap-x-2 rounded-lg bg-paper-sunk px-3 py-2 text-titulin text-ink"
+            >
+              <span>{h.categoria}</span>
+              <span className="chip-dato">{h.estado}</span>
+              <span className="text-rotulo text-ink-faint">
+                {h.valida_hasta
+                  ? `hasta el ${h.valida_hasta}`
+                  : "sin fecha de fin"}
               </span>
             </li>
           ))}

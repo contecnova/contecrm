@@ -160,7 +160,7 @@ export function Explotacion() {
           <BotonRegistrar alTerminar={cargar} />
         </section>
       ) : (
-        <Preguntar diagnostico={diagnostico} />
+        <Preguntar diagnostico={diagnostico} alGuardar={cargar} />
       )}
 
       {/* **Dónde se construyen.** Preguntar se hace aquí; los informes, los
@@ -329,9 +329,16 @@ function BotonRegistrar({ alTerminar }: { alTerminar: () => void }) {
  * organización, así que la respuesta llega con SUS permisos: quien no ve una
  * cuenta en su ficha tampoco la ve aquí.
  */
-function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
+function Preguntar({
+  diagnostico,
+  alGuardar,
+}: {
+  diagnostico: Diagnostico;
+  alGuardar: () => void;
+}) {
   const { t } = useTranslation();
   const [texto, setTexto] = useState("");
+  const [guardada, setGuardada] = useState(false);
   // Las últimas preguntas de ESTE tenant, no solo los ejemplos de fábrica. Es
   // lo que convierte el diario de consultas en algo que sirve: la pestaña de al
   // lado lo enseña y no se puede hacer nada con él, y repetir una pregunta es
@@ -354,6 +361,7 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
   const [respuesta, setRespuesta] = useState<{
     payload: Payload;
     texto: string;
+    pregunta: string;
   } | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
 
@@ -362,6 +370,7 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
     setPensando(true);
     setFallo(null);
     setRespuesta(null);
+    setGuardada(false);
     try {
       const token = await llamar<{ token: string }>("/api/v1/analitica/token", {
         metodo: "POST",
@@ -392,7 +401,11 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
         setFallo(cuerpo.detail || t("explotacion.sinRespuesta"));
         return;
       }
-      setRespuesta({ payload: cuerpo.payload, texto: cuerpo.text || pregunta });
+      setRespuesta({
+        payload: cuerpo.payload,
+        texto: cuerpo.text || pregunta,
+        pregunta,
+      });
       // Queda anotado en el historial de consultas, que es lo que hace que la
       // pestaña de al lado tenga sentido.
       void llamar("/api/v1/analitica/consultas", {
@@ -409,6 +422,29 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
       );
     } finally {
       setPensando(false);
+    }
+  }
+
+  /**
+   * «Guarda una pregunta para no volver a escribirla» lo decía la lista vacía
+   * de abajo y no había botón (medido el 10-11-2026). Nace sin publicar: es
+   * del autor hasta que la publique.
+   */
+  async function guardar() {
+    if (!respuesta) return;
+    try {
+      await llamar("/api/v1/explotacion/preguntas", {
+        metodo: "POST",
+        cuerpo: {
+          clave: claveDe(respuesta.pregunta),
+          titulo: (respuesta.payload.title || respuesta.pregunta).slice(0, 200),
+          pregunta: respuesta.pregunta,
+        },
+      });
+      setGuardada(true);
+      alGuardar();
+    } catch (e: unknown) {
+      setFallo(e instanceof ErrorApi ? e.titulo : t("explotacion.noGuardada"));
     }
   }
 
@@ -471,9 +507,42 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
         <RespuestaAnalitica
           payload={respuesta.payload}
           texto={respuesta.texto}
+          alAclarar={(opcion) => {
+            // La opción precisa la pregunta de antes; no la sustituye.
+            const precisada = `${respuesta.pregunta} (${opcion})`;
+            setTexto(precisada);
+            void preguntar(precisada);
+          }}
         />
       ) : null}
+      {respuesta && respuesta.payload.type !== "aclaracion" ? (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={guardada}
+            onClick={() => void guardar()}
+          >
+            <Icono nombre="bookmark_add" tamano="sm" />
+            {guardada ? t("explotacion.guardada") : t("explotacion.guardar")}
+          </button>
+        </div>
+      ) : null}
     </section>
+  );
+}
+
+/** Una clave legible y estable para la pregunta: la tabla no la exige única,
+ *  pero se lee en la API y en la auditoría. */
+function claveDe(pregunta: string): string {
+  return (
+    pregunta
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "pregunta"
   );
 }
 

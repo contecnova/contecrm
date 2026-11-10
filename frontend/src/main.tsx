@@ -38,7 +38,6 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "@/App";
 import { iniciarI18n } from "@/i18n";
 import { aplicarMarca, cargarConfig } from "@/lib/config";
-import { iniciarSinConexion } from "@/lib/sinConexion";
 
 async function arrancar() {
   // La configuración se lee ANTES de montar nada: si la aplicación se monta
@@ -66,7 +65,9 @@ async function arrancar() {
 
   // Trabajar sin conexión (CRM-06.02.01.04): el service worker es de red
   // primero, así que con red no cambia nada de lo que se ve.
-  iniciarSinConexion();
+  // Diferido: con red no cambia nada de lo que se ve, y su código (la cola en
+  // IndexedDB) no tiene por qué ir en la descarga de apertura.
+  void import("@/lib/sinConexion").then((m) => m.iniciarSinConexion());
 
   const raiz = document.getElementById("root");
   if (!raiz) throw new Error("Falta el elemento #root");

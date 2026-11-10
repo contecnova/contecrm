@@ -22,7 +22,6 @@ import { Pipeline } from "@/paginas/Pipeline";
 import { Procesos } from "@/paginas/Procesos";
 import { Aprobaciones } from "@/paginas/Aprobaciones";
 import { Puesto } from "@/paginas/Puesto";
-import { LlamadaEntrante } from "@/componentes/LlamadaEntrante";
 import { llamar } from "@/lib/api";
 import { aplicarDensidad, densidadDelPerfil } from "@/lib/densidad";
 import { aplicarLocalizacion, aplicarMarcaDelTenant } from "@/lib/localizacion";
@@ -58,6 +57,13 @@ function pantalla<M, P>(
     return { default: elegir(modulo) };
   });
 }
+
+// La ficha de llamada entrante, diferida: sólo pregunta si hay telefonía
+// conectada, y la mayoría de las sesiones no la tiene.
+const LlamadaEntrante = pantalla(
+  () => import("@/componentes/LlamadaEntrante"),
+  (m) => m.LlamadaEntrante,
+);
 
 // «Administración» va diferida: se importaba de forma estática y arrastraba
 // `Tabla` —4,5 kB— a lo que se baja al abrir, que es justo lo que el
@@ -198,6 +204,10 @@ const RevisionAccesos = pantalla(
 const HistorialDeAjustes = pantalla(
   () => import("@/paginas/HistorialDeAjustes"),
   (m) => m.HistorialDeAjustes,
+);
+const Organigrama = pantalla(
+  () => import("@/paginas/Organigrama"),
+  (m) => m.Organigrama,
 );
 const GrupoDeEmpresas = pantalla(
   () => import("@/paginas/GrupoDeEmpresas"),
@@ -523,7 +533,9 @@ export function App() {
     <Marco sesion={sesion}>
       {/* La ficha emergente al entrar una llamada (CRM-04.02.01.05): en el
           marco, para que salte en cualquier pantalla. */}
-      <LlamadaEntrante />
+      <Suspense fallback={null}>
+        <LlamadaEntrante />
+      </Suspense>
       {/* La frontera va DENTRO del marco: lo que se cae es el contenido de la
           pantalla, así que el menú y la barra siguen ahí y el usuario puede
           irse a otro sitio. Sin ella, un error al pintar cualquier pantalla
@@ -584,6 +596,7 @@ export function App() {
               path="/historial-de-ajustes"
               element={<HistorialDeAjustes />}
             />
+            <Route path="/organigrama" element={<Organigrama />} />
             <Route
               path="/grupo-de-empresas"
               element={<GrupoDeEmpresas sesion={sesion} />}

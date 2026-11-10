@@ -470,14 +470,18 @@ def test_dos_instantaneas_el_mismo_dia_no_crean_dos_puntos(
 
 def test_la_instantanea_guarda_los_totales_y_no_las_filas(uow: UnidadDeTrabajo, db: Any) -> None:
     """Guardar el detalle entero convertiría la tabla en una copia del CRM que
-    crece sin fin y que nadie purga."""
+    crece sin fin y que nadie purga.
+
+    Con las filas como LISTAS, que es lo que devuelve el ejecutor de verdad: el
+    doble daba diccionarios y la primera instantánea en vivo (10-11-2026)
+    reventó con «'list' object has no attribute 'items'»."""
     from sqlalchemy import select
 
-    inf.registrar_ejecutor(_ejecutor([{"total": 10}, {"total": 5}]))
+    inf.registrar_ejecutor(_ejecutor([["a", 10], ["b", 5]]))  # type: ignore[list-item]
     fila = _informe(uow)
     inf.tomar_instantanea(uow, fila.id)
     guardada = db.execute(select(inf.InstantaneaInforme)).scalars().one()
-    assert guardada.resumen["totales"]["total"] == "15"
+    assert guardada.resumen["totales"]["importe"] == "15"
     assert "filas_detalle" not in guardada.resumen
 
 

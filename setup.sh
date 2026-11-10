@@ -306,6 +306,41 @@ asegurar_nats_local() {
   ok "NATS en 127.0.0.1:${puerto} (contenedor $nombre)"
 }
 
+# contecintelligence tiene que ver a este CRM con el MISMO nombre en los dos
+# modos. En Docker lo ve como el host de `CI_URL_DEL_CRM` (el alias del gateway
+# en la red compartida); en local el gateway corre en la máquina y se le daba
+# `host.docker.internal`, un host que su lista anti-SSRF (`OUTBOUND_ALLOWED_HOSTS`)
+# no tiene por qué admitir. Medido el 10-11-2026: el alta de la fuente fallaba
+# con «health_check fallo», y en su log, «host no permitido:
+# host.docker.internal». Su lista es suya; lo que sí es nuestro es presentarnos
+# con el nombre que ya conoce: un relevo en esa red, con ese alias, que reenvía
+# al gateway de la máquina. Todo sale del `.env`; nada se escribe aquí.
+asegurar_relevo_para_ci() {
+  command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 || return 1
+  local url host puerto red nombre="contecrm-relevo-ci" imagen="${RELEVO_CI_IMAGEN:-nginx:alpine}"
+  url=$(valor_env CI_URL_DEL_CRM)
+  [[ "$url" == http://* ]] || return 1
+  host=${url#http://}; host=${host%%/*}
+  puerto=80; [[ "$host" == *:* ]] && puerto=${host##*:}
+  host=${host%%:*}
+  # Un host de máquina no es un alias de red: no hay nada que relevar.
+  [[ "$host" =~ ^(localhost|host\.docker\.internal|[0-9.]+)$ ]] && return 1
+  red="${CONTECRM_NETWORK:-contecrm-dev_default}"
+  docker network inspect "$red" >/dev/null 2>&1 || return 1
+  docker rm -f "$nombre" >/dev/null 2>&1 || true
+  # Si la pila Docker ya tiene ese alias en la red, no se duplica.
+  local c
+  for c in $(docker ps --filter "network=$red" --format '{{.Names}}'); do
+    docker inspect "$c" --format "{{(index .NetworkSettings.Networks \"$red\").Aliases}}" 2>/dev/null \
+      | tr '[] ' '\n\n\n' | grep -qx "$host" && return 1
+  done
+  docker run -d --restart unless-stopped --name "$nombre" --network "$red" --network-alias "$host" \
+    --add-host host.docker.internal:host-gateway "$imagen" sh -c \
+    "printf 'server { listen $puerto; client_max_body_size 50m; location / { proxy_pass http://host.docker.internal:$(puerto_de gateway); proxy_set_header Host \$http_host; proxy_read_timeout ${RELEVO_CI_PLAZO_S:-300}s; } }\n' > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'" \
+    >/dev/null || return 1
+  ok "contecintelligence ve este CRM como $host:$puerto (relevo $nombre)"
+}
+
 arrancar_local() {
   titulo "Arrancando en local (sin Docker)"
   [[ -d .venv ]] || { malo "Falta el entorno. Ejecuta primero: ./setup.sh instalar"; exit 1; }
@@ -361,7 +396,14 @@ arrancar_local() {
     export URL_INTERNA_DEL_CRM="${URL_INTERNA_DEL_CRM_LOCAL:-http://localhost:$puerto_gw/api/v1}"
     # Y este CRM visto desde contecintelligence, que sí está en un contenedor:
     # para él, `localhost` es él mismo, así que sale al anfitrión.
-    export CI_URL_DEL_CRM="${CI_URL_DEL_CRM_LOCAL:-http://host.docker.internal:$puerto_gw/api/v1}"
+    # Con el relevo, el mismo nombre que en Docker; sin él, el anfitrión.
+    if [[ -n "${CI_URL_DEL_CRM_LOCAL:-}" ]]; then
+      export CI_URL_DEL_CRM="$CI_URL_DEL_CRM_LOCAL"
+    elif asegurar_relevo_para_ci; then
+      export CI_URL_DEL_CRM="$(valor_env CI_URL_DEL_CRM)"
+    else
+      export CI_URL_DEL_CRM="http://host.docker.internal:$puerto_gw/api/v1"
+    fi
   else
     aviso "CI_URL_PUBLICA vacío en .env: la explotación no podrá preguntar"
   fi
@@ -729,6 +771,8 @@ parar() {
     for p in $sueltos; do matar_de_verdad "$p" >/dev/null || true; done
     ok "Sueltos parados"
   fi
+  # El relevo hacia contecintelligence (ver `asegurar_relevo_para_ci`).
+  docker rm -f contecrm-relevo-ci >/dev/null 2>&1 || true
   [[ $parados -eq 0 ]] && info "No había nada corriendo"
   # El Postgres embebido se queda vivo a propósito: arrancarlo cuesta segundos y
   # los datos locales siguen ahí para la próxima.

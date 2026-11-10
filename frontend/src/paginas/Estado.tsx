@@ -193,6 +193,7 @@ export function Estado() {
   const [degradadas, setDegradadas] = useState<Degradadas | null>(null);
   const [presion, setPresion] = useState<Presion | null>(null);
   const [frenados, setFrenados] = useState<Frenados | null>(null);
+  const [interfaz, setInterfaz] = useState<UiReferencia | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   useEffect(() => {
@@ -233,6 +234,12 @@ export function Estado() {
       signal: control.signal,
     })
       .then((r) => setDegradadas(r.datos))
+      .catch(() => undefined);
+    // Si la instalación sigue sin depender de esta interfaz (CRM-00.02.03.02).
+    llamar<UiReferencia>("/api/v1/estado/ui-referencia", {
+      signal: control.signal,
+    })
+      .then((r) => setInterfaz(r.datos))
       .catch(() => undefined);
     return () => control.abort();
   }, []);
@@ -463,7 +470,57 @@ export function Estado() {
 
       <LaPresion presion={presion} />
       <LosFrenados frenados={frenados} />
+      <LaInterfazEsOpcional interfaz={interfaz} />
     </>
+  );
+}
+
+interface UiReferencia {
+  independiente: boolean;
+  hallazgos: { donde: string; que: string; consecuencia: string }[];
+  servicios: { servicio: string }[];
+}
+
+/**
+ * Si la instalación sigue sin necesitar esta interfaz (CRM-00.02.03.02).
+ *
+ * «Somos headless y la consola es opcional» no se pierde de golpe: se pierde
+ * con una redirección cada vez. El gateway lo mide en TODOS los servicios, y
+ * uno que no contesta sale como hallazgo y no como independiente: contarlo así
+ * daría por comprobado lo que nadie ha mirado.
+ */
+function LaInterfazEsOpcional({ interfaz }: { interfaz: UiReferencia | null }) {
+  const { t } = useTranslation();
+  if (!interfaz) return null;
+  const hallazgos = interfaz.hallazgos ?? [];
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="text-titulo font-medium text-ink">
+        {t("estado.interfaz")}
+      </h2>
+      <p
+        className={`mt-2 text-dato ${interfaz.independiente ? "text-success" : "text-warning"}`}
+      >
+        {interfaz.independiente
+          ? t("estado.interfazIndependiente", {
+              cuantos: (interfaz.servicios ?? []).length,
+            })
+          : t("estado.interfazHallazgos", { cuantos: hallazgos.length })}
+      </p>
+      {hallazgos.length > 0 ? (
+        <ul className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
+          {hallazgos.map((h, i) => (
+            <li key={`${h.donde}-${i}`} className="text-dato">
+              <span className="font-mono text-rotulo text-ink">{h.donde}</span>{" "}
+              <span className="text-ink">{h.que}</span>
+              <span className="block text-rotulo text-ink-muted">
+                {h.consecuencia}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

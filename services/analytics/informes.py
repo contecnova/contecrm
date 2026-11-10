@@ -1330,7 +1330,12 @@ def tomar_instantanea(
 
     resumen: dict[str, Any] = {"filas": salida["cuantas"]}
     numericas: dict[str, Decimal] = {}
-    for fila in salida["filas"]:
+    # Las filas vienen como LISTAS (ver `_en_diccionarios`). Aquí se leían como
+    # diccionarios y no lo cazó nadie porque ningún informe llegaba a
+    # ejecutarse; medido el 10-11-2026 en la primera instantánea que corrió:
+    # «'list' object has no attribute 'items'».
+    _, registros = _en_diccionarios(list(salida["filas"]), salida.get("columnas"))
+    for fila in registros:
         for clave, valor in fila.items():
             if isinstance(valor, (int, float, Decimal)) and not isinstance(valor, bool):
                 numericas[clave] = numericas.get(clave, Decimal(0)) + Decimal(str(valor))

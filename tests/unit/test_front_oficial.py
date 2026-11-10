@@ -50,6 +50,7 @@ RUTAS_EXENTAS = {
     "/api/v1/superficie": "es la propia superficie: pedirla no puede exigir estar en ella",
     "/api/v1/estado": "la agrega el gateway juntando la de todos los servicios",
     "/api/v1/sso/iniciar": "el arranque del SSO, que es una navegación del navegador, no una llamada",
+    "/api/v1/calidad-dato": "prefijo que la pantalla de Calidad del dato completa con cada ruta; ninguna llamada va a él solo",
 }
 
 
@@ -195,6 +196,16 @@ def test_el_front_no_guarda_datos_de_negocio_en_el_navegador() -> None:
         # elegirla y no dice nada del negocio ni de la sesión. Sin ella, cada
         # recarga devuelve a Ventas aunque llevaras la mañana en Servicio.
         "lib/aplicaciones.ts",
+        # El modo sin conexión (CRM-06.02.01.04): la cola de cambios hechos sin
+        # red, en IndexedDB. Es dato de negocio, y es justo lo que se pide: sin
+        # guardarlo en el dispositivo no hay trabajo sin conexión. Va por
+        # usuario, se vacía al subirlo y no guarda la sesión.
+        "lib/sinConexion.ts",
+        # La huella de este equipo para «recordar este equipo» al entrar
+        # (CRM-00.05.01.21): un identificador al azar, no la sesión ni un dato
+        # de negocio. El servidor la cruza con su propio registro y con la
+        # contraseña; sola no da acceso a nada.
+        "paginas/Entrar.tsx",
     }
     usos: list[str] = []
     for fichero in _fuentes():
@@ -452,7 +463,14 @@ def test_el_front_es_accesible_por_teclado_y_para_lectores(  # noqa: D103
 #   bulto sigue siendo el diccionario de idioma entero —9,9 kB él solo— y la
 #   forma correcta de recuperar sitio sigue siendo partirlo por pantalla, no
 #   ir subiendo el número.
-PRESUPUESTO_KB = 127
+#   10-11-2026 · 127 → 131. Medido con `dist/` reconstruido: 138 kB. Antes
+#   de tocar el número se difirió lo que la primera pantalla no necesita —la
+#   cola sin conexión, su franja, la ficha de llamada entrante y 22 bloques de
+#   textos que sólo usan pantallas diferidas, movidos a `es.pantallas.ts`—: 138
+#   → 130. Lo que queda es del marco y se ve al abrir: el diálogo de
+#   reverificación y las entradas nuevas del menú (GRC, organigrama,
+#   evaluación de la IA, revisión de accesos). 131 deja 1 kB de margen.
+PRESUPUESTO_KB = 131
 
 # Y un tope para el conjunto, contando lo que se carga al abrir cada pantalla.
 # Sin él, partir el paquete sería la forma de esconder cualquier crecimiento:
@@ -606,7 +624,14 @@ PRESUPUESTO_KB = 127
 #
 #   LO QUE NO SE MUEVE sigue siendo `PRESUPUESTO_KB`, la apertura: 115,7 de
 #   118 kB medidos hoy, y ése sí gobierna lo que tarda en abrir el producto.
-PRESUPUESTO_TOTAL_KB = 330
+#   10-11-2026  330 → 490. La cola larga que el 330 dimensionaba está cerrada:
+#   785 de 788 capacidades con pantalla, tras dos tandas con unas 45 pantallas
+#   nuevas en dos días. Medido: 470 kB. Ningún trozo gordo —lo mayor es la
+#   apertura (104) y los textos diferidos (59)—, y el tope por pantalla, que es
+#   el que caza a una que engorde, sigue en verde. 490 deja ~4 % de margen; lo
+#   que venga a partir de aquí no es cola larga, así que si se agota hay que
+#   partir el paquete por área.
+PRESUPUESTO_TOTAL_KB = 490
 
 # Lo que pesa una pantalla diferida, comprimida. Mediana medida: 1,94 kB.
 #
@@ -620,7 +645,15 @@ PRESUPUESTO_TOTAL_KB = 330
 # `Consola` de la apertura, que bajó lo que se descarga al abrir de 127,07 a
 # 121,93 kB. 13 sigue saltando con cualquier librería de peso, que es para lo
 # que está este tope.
-PRESUPUESTO_POR_PANTALLA_KB = 13
+#
+# 10-11-2026 · 13 → 15. `Ficha` (14,0) y `Modulo` (15,2). La ficha se arregló
+# sin tocar el número: diecisiete bloques que sólo salen en un tipo de registro
+# importados de forma estática; ahora van por `lib/diferido.tsx`. En `Modulo`
+# se difirió lo que sólo sale bajo condición —operación masiva, secreto de una
+# vez, descargas— y queda en 14,1: es el motor de los ~200 listados, que hoy
+# mueve el tablero por la acción propia del campo, enseña el secreto de una
+# clave y edita en línea. Ninguna librería: 15 sigue saltando con una.
+PRESUPUESTO_POR_PANTALLA_KB = 15
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:

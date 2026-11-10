@@ -359,6 +359,13 @@ const pantallas = {
     verMas: "Ver {{cuantas}} más",
     cuantasQuedan: "Viendo {{vistas}} de {{total}}",
     titulo: "Duplicados por resolver",
+    yaExiste: "¿Ya existe? Compruébalo antes de dar de alta",
+    yaExisteAyuda:
+      "Lo mismo que mira el alta, sin crear nada. La cola de abajo es de los duplicados que ya entraron; esto es para que no entre el siguiente.",
+    nombreEmpresa: "Nombre de la empresa",
+    nif: "NIF (opcional)",
+    comprobar: "Comprobar",
+    noSeParece: "No se parece a ninguna empresa que ya esté dada de alta.",
     entradilla:
       "Parejas que podrían ser la misma empresa, lo más probable primero y con QUÉ ha coincidido. Desde aquí se deciden: no es una lista para mirar.",
     buscar: "Buscar duplicados ahora",
@@ -739,6 +746,14 @@ const pantallas = {
       "El turno se ha consumido: al siguiente le tocará a otro. Pulsar otra vez para «ver» se salta a alguien del equipo.",
     huecos: "{{cuantos}} huecos en los próximos días.",
     sinHuecos: "No tiene ningún hueco en los próximos días.",
+    misHuecos: "Mis huecos para proponer una reunión",
+    misHuecosAyuda:
+      "Los tramos que has declarado en tu disponibilidad, de los próximos cinco días. Cada uno dice si se ha contrastado con tu calendario: uno sin contrastar es una propuesta, no una promesa.",
+    verMisHuecos: "Ver mis huecos",
+    misSinHuecos:
+      "No tienes huecos en los próximos días: o no has declarado disponibilidad, o está desactivada, o está todo pasado de la antelación mínima.",
+    contrastado: "contrastado con el calendario",
+    sinContrastar: "sin contrastar",
     plantillas: "Qué plantillas funcionan",
     porqueConcluyente:
       "Una tasa sin su número de envíos es ruido: con nueve correos, un 33 % son tres respuestas. Las que se han usado pocas veces van aparte, no compitiendo con las demás.",
@@ -1378,6 +1393,51 @@ const pantallas = {
     hasta: "Vale hasta el {{fecha}}",
     caducada: "Caducó el {{fecha}}",
   },
+  organigrama: {
+    titulo: "Organigrama",
+    entradilla:
+      "Quién depende de quién. De aquí sale a quién le toca aprobar un presupuesto —el superior de quien lo envía— y quién revisa los accesos de cada persona. Cambiar el superior de alguien lo mueve con todo su equipo.",
+    resumen:
+      "{{personas}} personas · {{sinSuperior}} en activo sin superior · {{scim}} desde el directorio (SCIM) · {{mano}} ajustadas a mano.",
+    externoManda:
+      "Lo que manda el directorio por SCIM pisa lo ajustado a mano: si una persona llega del directorio con otro superior, gana el del directorio. Se cambia con el ajuste organigrama_externo_manda.",
+    manoManda:
+      "Lo ajustado a mano se queda aunque el directorio mande otro superior; lo que nadie ha tocado sigue al directorio. Se cambia con el ajuste organigrama_externo_manda.",
+    truncado:
+      "Se enseñan las {{tope}} primeras personas por nombre (ajuste organigrama_tope_personas): el árbol está incompleto.",
+    arbol: "Árbol",
+    buscar: "Buscar a una persona",
+    nadieCoincide: "Nadie se llama así.",
+    vacio: "Esta empresa aún no tiene personas.",
+    enCirculo:
+      "{{n}} personas forman un círculo (cada una depende de otra del mismo grupo) y no cuelgan de nadie: elige un superior para una de ellas.",
+    directos: "{{n}} directos",
+    baja: "De baja",
+    deScim: "Del directorio",
+    aMano: "Ajustado a mano",
+    persona: "Persona",
+    elige: "Elige a alguien en el árbol para ver o cambiar de quién depende.",
+    fijadoEl: "Fijado el {{cuando}} por {{quien}}.",
+    alguien: "alguien que ya no está",
+    scimLoPisa:
+      "Lo manda el directorio: cambiarlo aquí dura hasta su próximo envío.",
+    scimNoLoPisa:
+      "Lo manda el directorio; si lo cambias aquí, el directorio deja de poder cambiarlo.",
+    superior: "Depende de",
+    sinSuperior: "Nadie (raíz)",
+    superiorAyuda:
+      "No salen ni ella ni las {{n}} personas de su equipo: cualquiera de ellas cerraría un círculo.",
+    guardar: "Guardar superior",
+    colgada: "{{persona}} depende ahora de {{superior}}, con todo su equipo.",
+    deRaiz: "{{persona}} ya no depende de nadie.",
+    suEquipo: "Su equipo directo: {{n}}",
+    sinEquipo: "Nadie depende directamente de esta persona.",
+    moverA: "Pasar todo su equipo directo a",
+    moverEquipo: "Mover el equipo",
+    nadie: "Nadie (quedan de raíz)",
+    equipoMovido: "Movidas {{n}} personas a {{destino}}.",
+    dependeDe: "depende de {{superior}}",
+  },
   revisionAccesos: {
     titulo: "Revisión de accesos",
     entradilla:
@@ -1901,6 +1961,11 @@ const pantallas = {
     contratada: "Capacidad contratada",
     comprometida: "Ya comprometida",
     enOfertasDato: "En ofertas abiertas (opcional)",
+    plazoProveedor: "Plazo del proveedor, en días (vacío si no lo declara)",
+    diasPropios: "Días de gestión y entrega nuestros (opcional)",
+    verFecha: "Ver qué fecha se puede prometer",
+    fechaPrometible: "Fecha que se le puede dar al cliente",
+    noSePuedePrometer: "Todavía no se puede prometer una fecha.",
   },
   cuadros: {
     informeNoExiste: "El informe «{{clave}}» ya no existe.",
@@ -2027,6 +2092,11 @@ const pantallas = {
       "Lo que se aplaza lo decide «{{servicio}}», que es el que peor va. No la media: con uno ahogado y trece holgados, la media sale tranquila y lo no crítico se difiere igual.",
     presionSinRespuesta:
       "{{cuantos}} servicio(s) no han contestado, así que esto no cubre la instalación entera.",
+    interfaz: "Si la instalación necesita esta interfaz",
+    interfazIndependiente:
+      "Los {{cuantos}} servicios contestan y ninguno depende de la interfaz de referencia: se puede apagar sin perder ninguna operación.",
+    interfazHallazgos:
+      "{{cuantos}} hallazgo(s): sitios donde la instalación depende de la interfaz, o servicios que no han contestado y por eso no se pueden dar por independientes.",
     frenados: "A quién le ha bajado la cuota el freno automático",
     nadieObservado:
       "Todavía no se ha observado a ningún tenant en este proceso.",
@@ -2695,6 +2765,23 @@ const pantallas = {
       "comparar consigo misma, y «¿cómo íbamos hace tres semanas?» es la " +
       "pregunta de todos los lunes.",
     sinFotos: "Todavía no se ha congelado ninguna foto",
+    salto: "Qué ha cambiado entre dos fotos",
+    saltoAyuda:
+      "La diferencia entre dos totales no explica nada. Elige dos fotos y se separan las causas, cada una con cuántas oportunidades la forman. Salir de la foto no es perderse: va aparte.",
+    saltoFaltanFotos:
+      "Hacen falta al menos dos fotos del periodo para compararlas.",
+    saltoDesde: "Desde la foto",
+    saltoHasta: "Hasta la foto",
+    variacion: "Variación del total: {{importe}}",
+    oportunidadesN: "{{n}} oportunidad(es)",
+    causas: {
+      entradas: "Entran en la foto",
+      ganadas: "Ganadas",
+      perdidas: "Perdidas",
+      salidas: "Salen de la foto (otro periodo o borradas)",
+      variacion_de_importe: "Cambian de importe",
+      deslizadas: "Cambian de fecha dentro del periodo",
+    },
     deslizamiento: "Cuánto se ha movido",
     sinDeslizamiento: "Ninguna oportunidad ha cambiado de fecha",
     empujadas: "{{cuantas}} empujadas, {{dias}} días en total",
@@ -3635,6 +3722,8 @@ const pantallas = {
       buscarContacto: "Buscar un contacto",
       contacto: "Contacto",
       sinContacto: "Sin contacto (campos vacíos)",
+      sePuedeMandar: "A {{email}} se le puede mandar esta plantilla.",
+      noSePuedeMandar: "A {{email}} NO se le puede mandar: {{motivos}}",
       asunto: "Asunto",
       sinDato: "Campos sin dato que saldrían vacíos: {{campos}}.",
       faltan: "Bloques que no existen: {{bloques}}.",
@@ -3819,6 +3908,550 @@ const pantallas = {
         suprimido: "está suprimido",
       },
     },
+  },
+  // Paneles de ficha que abren colecciones que no tenían pantalla
+  // (TOPE_SIN_PUERTA, 10-11-2026).
+  repartoLead: {
+    titulo: "Por qué cayó aquí y cómo llegó",
+    abrir: "Ver",
+    cerrar: "Cerrar",
+    porQue: "El reparto",
+    sinReparto:
+      "Este lead no ha pasado por las reglas de reparto: se asignó a mano o entró antes de que hubiera reglas.",
+    asignadoA: "Asignado a {{quien}}",
+    aLaCola: "A la cola «{{cola}}»",
+    resultado: {
+      gana: "gana",
+      no_encaja: "no encaja",
+      sin_candidatos_disponibles: "sin nadie disponible",
+    },
+    comoLlego: "Sus toques, en orden",
+    primero: "Primer toque",
+    ultimo: "Último toque",
+    sinToques:
+      "No hay toques registrados: llegó sin rastro de campaña, o antes de que se guardaran.",
+  },
+  correoContacto: {
+    titulo: "Lo que quiere recibir",
+    preferencias: "Centro de preferencias",
+    sinEmail:
+      "Este contacto no tiene correo, así que no tiene centro de preferencias.",
+    sinCategorias: "No hay categorías de preferencia declaradas en marketing.",
+    obligatoria: "obligatoria",
+    elegida: "elegido por la persona",
+    porDefecto: "valor por defecto, no lo ha tocado",
+    mejorHora: "A qué hora abre",
+    abreA:
+      "Suele abrir a las {{hora}}:00 ({{zona}}), sobre {{muestras}} aperturas.",
+    sinHora:
+      "Con {{muestras}} aperturas no se puede hablar de un hábito: no se recomienda ninguna hora.",
+  },
+  quienManda: {
+    titulo: "Quién manda hoy sobre «{{objeto}}»",
+    manda: "Manda {{dueno}}.",
+    duenos: {
+      heredado: "el sistema heredado",
+      nuevo: "este CRM",
+      ambos: "cualquiera de los dos sistemas",
+    },
+    seEscribeAqui: "se escribe aquí",
+    noSeEscribeAqui: "aquí no se escribe",
+    sinRegistro:
+      "Resuelto con todas las reglas activas de este objeto y sin un registro concreto: con los datos de un registro real puede ganar otra regla con condiciones.",
+  },
+  herramientasMcp: {
+    titulo: "Lo que ve un agente en esta exposición",
+    ayuda:
+      "El catálogo que recibe el agente por MCP, filtrado por los permisos de quien mira. Dos personas pueden ver catálogos distintos de la misma exposición.",
+    detenida: "La exposición está detenida.",
+    ninguna: "No hay ninguna herramienta publicada y activa.",
+    confirmacion: "pide confirmación",
+    ocultas: "{{n}} herramienta(s) no se ven con tus permisos.",
+  },
+  carpetaRegistro: {
+    ver: "Ver la carpeta de este registro en el gestor",
+    titulo: "La carpeta de este registro",
+    sinCarpeta:
+      "Todavía no tiene carpeta en el gestor: se crea al enlazar el primer documento. Mirar no la crea.",
+    camino: "Carpeta abierta",
+    buscarAqui: "Buscar sólo dentro de esta carpeta",
+    buscar: "Buscar",
+    sinResultados:
+      "Nada dentro de esta carpeta. Lo que no puedes ver tampoco sale: es el permiso, no un fallo.",
+    si: "sí",
+    no: "no",
+    acciones: {
+      read: "Leer",
+      write: "Escribir",
+      delete: "Borrar",
+      manage: "Gestionar",
+    },
+    motivos: {
+      area: "por el área",
+      no_area: "no tienes acceso al área",
+      grant_here: "permiso dado en esta carpeta",
+      grant_above: "permiso heredado de una carpeta de arriba",
+      doc_allow: "permitido en el documento",
+      doc_deny: "denegado en el documento",
+    },
+  },
+  sePuedePublicar: {
+    titulo: "¿Se puede publicar ya? (versión {{version}})",
+    si: "Sí: todos los pasos están aprobados.",
+    no: "Todavía no.",
+    pendientes: "Faltan por decidir: {{pasos}}.",
+    sinMirar:
+      "Aprobados sin haber visto los cambios: {{pasos}}. Es una firma sobre algo que ya no es lo que se firmó.",
+  },
+  // Movidos desde es.ts el 10-11-2026: sólo los usan pantallas diferidas, y
+  // en el diccionario de apertura pesaban en la primera descarga.
+  explotacion: {
+    dondeSeConstruyen: "¿Y dónde se hacen los informes y los cuadros?",
+    dondeSeConstruyenPorque:
+      "Preguntar se hace aquí. Construir informes, cuadros de mando y sus envíos se hace en contecintelligence, que es el producto que los tiene: se abre con tu identidad, así que ves lo mismo que verías aquí y nada más.",
+    abrirConstructor: "Abrir el constructor",
+
+    // La caja de preguntar y el alta de la fuente.
+    placeholder:
+      "Pregunta sobre tus datos: «¿cuántas oportunidades hay por etapa?»",
+    preguntar: "Preguntar",
+    ejemplos: "Prueba con una de estas:",
+    recientes: "Lo último que se ha preguntado aquí:",
+    pensando: "Pensando…",
+    sinRespuesta: "No se ha podido responder a eso.",
+    comoSeCalculo: "Cómo se ha calculado",
+    registrar: "Registrar el CRM como fuente consultable",
+    registrando: "Registrando…",
+    registrarDetalle:
+      "Da de alta los objetos del CRM en contecintelligence con una credencial de solo lectura. No hay nada que rellenar.",
+    registroFallido: "No se ha podido registrar la fuente.",
+    registroTarda:
+      "El registro está tardando más de lo normal. Sigue en marcha: vuelve a esta pantalla en un minuto.",
+    titulo: "Explotación",
+    entradilla:
+      "Preguntar sobre los datos del CRM sin salir de aquí. Las respuestas las " +
+      "resuelve contecintelligence con tus permisos: nunca verás más de lo que " +
+      "ves en las fichas.",
+    noDisponible: "Ahora mismo no se puede preguntar",
+    sigueFuncionando: "Esto sigue funcionando con normalidad",
+    publicadas: "Preguntas publicadas",
+    mias: "Mis preguntas sin publicar",
+    sinPublicadas: "Todavía no hay preguntas publicadas",
+    sinPublicadasDetalle:
+      "Cuando una pregunta funcione bien, publícala para que la use todo el equipo.",
+    sinMias: "No tienes preguntas guardadas",
+    sinMiasDetalle: "Guarda una pregunta para no volver a escribirla.",
+    guardar: "Guardar la pregunta",
+    guardada: "Guardada en «Mis preguntas sin publicar»",
+    noGuardada: "No se ha podido guardar la pregunta.",
+    esInforme: "Es informe",
+    vecesUsada: "Usada {{veces}} veces",
+  },
+  formulario: {
+    // El 409 por duplicado y su salida (CRM-01.01.03.03).
+    pareceDuplicado: "Ya existe algo que parece lo mismo.",
+    coincide: "coincide en {{senales}} · {{parecido}} %",
+    concluyente: "Casi seguro",
+    sinMirarContactos:
+      "No se ha podido mirar entre los contactos: el maestro de clientes no " +
+      "ha contestado. Lo de arriba son sólo los leads.",
+    esOtroCrearIgual: "Es otro, crearlo igual",
+    separadoPorComas: "Separado por comas",
+    suma: "Suma",
+    quitarLinea: "Quitar la línea",
+    // Estaba escrito en el código, en castellano y sin pasar por aquí: una
+    // frase suelta que ninguna traducción alcanzaba.
+    sinLineas: "Todavía no hay ninguna línea.",
+    elegirRegistro: "Elegir en {{recurso}}…",
+    buscarEnLista: "Buscar por nombre",
+    elegirVarios: "Elegir uno o varios…",
+    registroFueraDeLista: "Elegido (no está entre los primeros 200)",
+    quitarEleccion: "Quitar lo elegido en {{campo}}",
+    sinCoincidencias: "Nada coincide",
+    cambiar: "Cambiar",
+    identificadorAMano: "Pega aquí el identificador",
+    sinContrato:
+      "El contrato de esta operación no declara cuerpo, o no se ha podido leer.",
+    masCampos: "Más campos ({{total}})",
+    anadirValor: "Escribe y pulsa Intro",
+    anadirA: "Añadir a {{campo}}",
+    quitarValor: "Quitar «{{valor}}»",
+    clave: "clave",
+    valor: "valor",
+    claveDe: "Clave de {{campo}}",
+    valorDe: "Valor de {{campo}}",
+    editarComoJson: "Editar como JSON",
+    volverAPares: "Volver a clave y valor",
+  },
+  tabla: {
+    columnas: "Columnas ({{visibles}} de {{total}})",
+    // Las casillas para elegir filas y hacer algo con todas (CRM-00.02.01.11).
+    elegirTodas: "Elegir todas las que se ven",
+    elegirFila: "Elegir «{{nombre}}»",
+    elegirColumnas: "Qué columnas se ven",
+    masColumnas_one: "Hay 1 columna más, sin ningún dato en estas filas.",
+    masColumnas_other:
+      "Hay {{count}} columnas más, sin ningún dato en estas filas.",
+    // El rótulo para quien no ve la flecha: dice qué hará el clic, y cuando ya
+    // está ordenada, cómo está. «Ordenar por Importe» y «Importe, de menor a
+    // mayor» contestan dos preguntas distintas.
+    // La línea que Lightning pone bajo el nombre de la vista. «Elementos» y
+    // no «filas»: una fila es de la tabla y un elemento es del listado, que es
+    // lo que la persona está contando.
+    // El menú del final de cada fila, y el lápiz de una celda.
+    accionesDeFila: "Qué hacer con esta fila",
+    editarCampo: "Cambiar {{campo}}",
+    noSeGuardo: "No se guardó",
+    buscarEnLaLista: "Buscar en esta lista",
+    nadaConEso: "Ninguno de los {{total}} cargados lleva «{{que}}».",
+    // Cuando hay búsqueda se dice de CUÁNTOS, porque busca en lo cargado:
+    // «12 elementos» a secas haría creer que no hay más.
+    cuantosDeCuantos: "{{cuantos}} de {{total}} cargados",
+    cuantosElementos_one: "1 elemento",
+    cuantosElementos_other: "{{count}} elementos",
+    ordenadoAsc: "Ordenado por {{columna}}, de menor a mayor",
+    ordenadoDesc: "Ordenado por {{columna}}, de mayor a menor",
+    ordenarPor: "Ordenar por {{columna}}",
+    ordenAsc: "{{columna}}, de menor a mayor. Pulsa para invertir.",
+    ordenDesc: "{{columna}}, de mayor a menor. Pulsa para quitar el orden.",
+  },
+  // Las credenciales de una conexión (CRM-00.01.04.08). Del secreto se dice
+  // cuándo y quién, nunca el valor.
+  credenciales: {
+    titulo: "Credenciales de la conexión",
+    tipo: "Autenticación: {{tipo}}.",
+    sinCampos: "Este tipo no lleva credencial.",
+    fijar: "Fijar credenciales",
+    rotar: "Rotar credenciales",
+    probar: "Probar la conexión",
+    guardar: "Guardar cifradas",
+    cancelar: "Cancelar",
+    ninguna:
+      "Todavía no se ha fijado ninguna credencial: la conexión no podrá llamar a nadie.",
+    actual: "Versión {{version}}, fijada el {{cuando}} por {{quien}}.",
+    nadie: "alguien que no consta",
+    caduca: "Caduca el {{cuando}}.",
+    sinCaducidad: "Sin caducidad declarada: nadie avisará de rotarla.",
+    claves: "Lleva: {{claves}}. Los valores no se enseñan nunca.",
+    ultimaPrueba: "Última prueba, {{cuando}}: {{detalle}}",
+    pruebaBien: "La conexión responde: {{detalle}}",
+    pruebaMal: "La conexión falla: {{detalle}}",
+    fijada: "Credencial guardada, cifrada.",
+    rotada:
+      "Credencial rotada: la versión {{version}} sustituye a la anterior, que queda desactivada.",
+    anteriores: "Versiones anteriores ({{n}})",
+    anterior:
+      "Versión {{version}}: fijada el {{cuando}} por {{quien}}, rotada el {{rotada}}.",
+    caducaCampo: "Caduca el (opcional)",
+    ayudaRotar:
+      "Al guardar se crea una versión nueva y la anterior se desactiva. Lo que " +
+      "escribas aquí no se vuelve a enseñar.",
+    campos: {
+      api_key: "Clave de API",
+      usuario: "Usuario",
+      contrasena: "Contraseña",
+      token: "Token",
+      client_id: "Identificador de cliente (client_id)",
+      client_secret: "Secreto de cliente (client_secret)",
+    },
+  },
+  // El archivo de histórico (CRM-07.03.01.02). Aquí y no en las pantallas
+  // diferidas porque lo pinta también la ficha, que va de una pieza.
+  archivo: {
+    titulo: "Archivo de histórico",
+    ayuda:
+      "Lo viejo se archiva, no se borra: sale de la tabla viva, conserva su identificador y se sigue consultando. Cada clase se archiva a partir de sus días; vacío, los generales.",
+    sinArchivo:
+      "«{{servicio}}» no tiene archivo de histórico: no guarda nada que crezca lo bastante como para archivarlo.",
+    clase: "Clase de dato",
+    dias: "Archivar a partir de (días)",
+    diasDe: "Días a partir de los cuales se archiva {{clase}}",
+    guardarCriterio: "Guardar el criterio",
+    criterioGuardado: "Criterio de {{clase}} guardado.",
+    corte: "Corte",
+    candidatas: "Hoy movería",
+    simular: "Simular",
+    archivar: "Archivar",
+    simulado:
+      "Simulación: se archivarían {{n}} filas anteriores al {{corte}}. No se ha movido nada.",
+    archivadas:
+      "Archivadas {{n}} filas. {{bloqueo}} tenían bloqueo legal: no impide archivar, sólo destruir.",
+    consultar: "Consultar lo archivado",
+    buscarAyuda: "Identificador de un registro (vacío: lo último archivado)",
+    nada: "No hay nada archivado con ese criterio.",
+    hayMas: "Hay más: se enseñan las 50 más recientes.",
+    deCuando: "del {{original}} · archivada el {{archivada}}",
+    contenido: "Contenido archivado",
+    devolver: "Devolver a la tabla viva",
+    devuelto: "Devuelto a la tabla viva.",
+    delRegistro: "Archivado de este registro",
+  },
+  // Notas, ficheros y conversaciones de la suite vinculados por referencia
+  // (CRM-06.01.03.08, .09, .12). En la ficha, que va de una pieza.
+  referenciasSuite: {
+    titulo: "De la suite",
+    ayuda:
+      "Notas, ficheros y conversaciones que siguen en su sitio: aquí sólo se guarda el enlace, y al abrirlo se pregunta al origen si existe y si puedes verlo.",
+    vincular: "Vincular",
+    cancelar: "Cancelar",
+    guardar: "Guardar el vínculo",
+    tipo: "Qué es",
+    tipos: {
+      nota: "Nota",
+      fichero: "Fichero",
+      conversacion: "Conversación",
+    },
+    referencia: "Enlace o identificador en el origen",
+    nombre: "Nombre",
+    perfil: "Perfil de suite que sabe abrirla",
+    sinPerfil: "Ninguno (no se podrá comprobar)",
+    resumen: "Resumen escrito por ti (sólo conversaciones)",
+    exportable: "El canal deja exportar el hilo",
+    abrir: "Abrir",
+    quitar: "Quitar el vínculo",
+    vacio: "Nada vinculado todavía.",
+    estados: {
+      disponible: "Disponible: puedes verlo en el origen.",
+      sin_acceso: "Existe, pero no tienes acceso en el origen.",
+      no_existe: "Ya no está en el origen.",
+      desaparecido: "Ya no está en el origen.",
+      no_comprobable: "No se puede comprobar en el origen.",
+      error: "El origen no ha contestado.",
+    },
+    irAlOrigen: "Ir al origen",
+  },
+  exportar: {
+    boton: "Exportar",
+    bajando: "Preparando…",
+    deQue: "Exportar {{nombre}} a una hoja de cálculo",
+    listo: "Fichero descargado",
+    cortado:
+      "Fichero descargado, pero CORTADO en {{cuantas}} filas: la lista es más " +
+      "larga. Acota con un filtro antes de mandarlo a nadie.",
+    noSePudo: "No se ha podido exportar",
+    vuelveAVerificarte:
+      "Exportar en masa pide confirmar que eres tú, y lo has cancelado. Vuelve " +
+      "a pulsar Exportar y confírmalo: vale para los próximos {{minutos}} minutos.",
+    sinSegundoFactor:
+      "Exportar en masa exige un segundo factor y tu cuenta no tiene ninguno " +
+      "configurado. Actívalo en tu puesto (Puesto › Seguridad) y vuelve.",
+  },
+  // Llamar desde la ficha y anotar al colgar (CRM-03.03.01.05).
+  marcador: {
+    titulo: "Llamar",
+    numero: "Número",
+    consiente: "La persona consiente que se grabe",
+    llamar: "Llamar",
+    enCurso:
+      "Llamando a {{numero}}. Al colgar, la llamada se registra sola como actividad; anota aquí cómo fue.",
+    noSalio: "La centralita no ha podido marcar: {{error}}",
+    seGraba: "Se graba: avisa al empezar.",
+    noSeGraba: "No se graba.",
+    resultado: "Cómo fue",
+    proxima: "Volver a llamar el",
+    nota: "Qué se habló",
+    anotar: "Anotar y cerrar",
+    anotada: "Anotada.",
+    resultados: {
+      hablado: "Hablado",
+      buzon: "Buzón de voz",
+      no_contesta: "No contesta",
+      numero_erroneo: "Número erróneo",
+      persona_equivocada: "Persona equivocada",
+      pide_que_no_le_llamen: "Pide que no le llamen",
+      reprogramar: "Reprogramar",
+    },
+  },
+  reunionEnLinea: {
+    titulo: "Reunión en línea",
+    crear: "Crear reunión en línea",
+    confirmar: "Crear la sala",
+    cancelar: "Cancelar",
+    entrar: "Entrar en la reunión",
+    creadaCon: "Creada con {{perfil}} el {{cuando}}.",
+    credencial:
+      "Quien tenga este enlace entra: compártelo en la cita, no en un aviso ni en una página pública.",
+    noDisponible: "No se puede crear: {{motivo}}",
+    conQue: "Se creará con {{perfil}}.",
+    asunto: "Asunto",
+    inicio: "Empieza",
+    fin: "Termina",
+    asistentes: "Asistentes (correos)",
+    ejemploAsistentes: "ana@cliente.com, luis@cliente.com",
+    organizador: "Cuenta que organiza (si la suite la pide)",
+    ayuda:
+      "La sala se crea ahora en la suite y el enlace queda guardado en la actividad.",
+  },
+  // ── Las vistas de lista ──────────────────────────────────────────────
+  // El recorte con nombre de un listado. Sin ninguna guardada, el listado se
+  // llama «Todo», que es exactamente lo que había antes: la lista completa,
+  // sin tener que elegir nada.
+  vistas: {
+    todo: "Todo",
+    queObjeto: "Qué se está mirando",
+    queVista: "Qué vista",
+    deTodos: "de todos",
+    guardarComo: "Guardar esta vista…",
+    borrarEsta: "Borrar «{{nombre}}»",
+    comoSeLlama: "¿Cómo se llama esta vista?",
+    // Se pregunta al guardar, no después: una vista guardada «para mí» que
+    // luego resulta que la ve todo el mundo es la clase de sorpresa que hace
+    // desconfiar de la función entera.
+    paraTodos: "Que la vea todo el equipo",
+    guardada: "Vista guardada.",
+    noSeGuardo: "No se ha podido guardar la vista: {{motivo}}",
+    confirmarBorrado: "¿Borrar la vista «{{nombre}}»? No se deshace.",
+    // La compartida avisa aparte: borrarla deja sin su listado a quien la use.
+    confirmarBorradoCompartida:
+      "«{{nombre}}» la ve todo el equipo. Si la borras, se queda sin ella. No se deshace.",
+  },
+  consola: {
+    eligeArea: "Elige un área de la lista",
+    eligeAreaDetalle:
+      "Cada área agrupa las operaciones de administración que publica un servicio.",
+    titulo: "Administración",
+    intro:
+      "Todo lo que hay aquí sale del contrato de la API. No existe ninguna acción de esta consola que no sea una llamada publicada.",
+    areas: "Áreas",
+    operaciones: "Operaciones",
+    metodo: "Método",
+    ruta: "Ruta",
+    permiso: "Permiso",
+    quePuede: "Qué hace",
+    sinPermiso: "Tu rol no concede este permiso",
+    sinListado:
+      "Esta área no publica un listado; sus operaciones necesitan un identificador.",
+    incompleta_uno:
+      "No ha contestado el servicio {{servicios}}, así que falta parte de la administración.",
+    incompleta_otros:
+      "No han contestado los servicios {{servicios}}, así que falta parte de la administración.",
+    total: "{{total}} operaciones, {{administracion}} de administración",
+  },
+  llamadaEntrante: {
+    titulo: "Llamada entrante",
+    cerrar: "Cerrar el aviso de llamada",
+    ivr: "Lo que ya dijo en el IVR (no se lo vuelvas a preguntar)",
+    ultimoCaso: "Último caso: {{asunto}} ({{estado}})",
+    ultimaInteraccion: "Lo último: {{asunto}}",
+    abrirFicha: "Abrir su ficha",
+    transferir: "Transferir",
+    a: "A quién (persona, extensión o cola)",
+    resumen: "Resumen para quien la recibe",
+    pasar: "Transferir con el resumen",
+    transferida: "Transferida a {{a}} con el resumen.",
+  },
+  // La reunión en línea de una actividad o de un registro (CRM-06.01.03.10).
+  // Las resoluciones de una devolución y el abono (CRM-04.05.01.02).
+  devolucion: {
+    resoluciones: "Resoluciones: reparar, sustituir o abonar",
+    sinResoluciones:
+      "Todavía no hay ninguna. Se resuelve con «Reparar, sustituir o abonar», en las acciones de arriba.",
+    col: {
+      tipo: "Qué se hace",
+      aCargo: "A cargo de",
+      importe: "Importe",
+      abono: "Estado del abono",
+    },
+    tipo: {
+      reparacion: "Reparar",
+      sustitucion: "Sustituir",
+      abono: "Abonar",
+      sin_accion: "Sin acción",
+    },
+    anotarAbono: "Anotar lo que contestó quien factura",
+    referencia: "Referencia del abono emitido",
+    motivoRechazo: "Motivo, si se rechazó",
+    confirmarAbono: "Abono emitido",
+    rechazarAbono: "Abono rechazado",
+    abonoAnotado: "Anotado: el abono queda «{{estado}}».",
+  },
+  filtros: {
+    anadir: "Filtrar",
+    campo: "Campo",
+    operador: "Condición",
+    valor: "Valor",
+    elegirCampo: "Elige un campo…",
+    aplicar: "Aplicar",
+    cancelar: "Cancelar",
+    quitar: "Quitar el filtro de {{campo}}",
+    quitarTodos: "Quitar todos",
+    // Los rótulos dicen lo que hace la condición, no el operador: «desde» se
+    // entiende sin saber que por debajo es un `>=`.
+    desde: "desde",
+    hasta: "hasta",
+    desdeNumero: "al menos",
+    hastaNumero: "como mucho",
+    mayorQue: "más de",
+    menorQue: "menos de",
+    esIgual: "es",
+    distintoDe: "no es",
+    esAlgunoDe: "es alguno de",
+    sinValor: "sin valor",
+    conValor: "con valor",
+  },
+  // El editor de condiciones de una regla (CRM-00.04.03.05).
+  condiciones: {
+    escribeElObjetivo:
+      "Escribe el objetivo para poder elegir entre sus campos propios.",
+    sinCamposPropios:
+      "«{{objeto}}» no tiene campos propios declarados: escribe el campo a mano.",
+    ninguna: "Sin condiciones: la regla salta siempre que se dispare.",
+    campoPropio: "Campo propio de la condición {{numero}}",
+    elegirCampoPropio: "Campo propio…",
+    atributo: "Campo de la condición {{numero}}",
+    atributoEjemplo: "importe o campos.mi_campo",
+    operador: "Operador de la condición {{numero}}",
+    valor: "Valor de la condición {{numero}}",
+    quitar: "Quitar la condición {{numero}}",
+    quitarCorto: "Quitar",
+    anadir: "Añadir una condición",
+  },
+  // `/abrir/:tipo/:id`: el enlace que llevan los avisos del chat.
+  abrirRegistro: {
+    titulo: "Abrir un registro",
+    entradilla:
+      "El enlace de un aviso lleva aquí y de aquí a la ficha del registro, en el módulo que lo enseña.",
+    sinModulo: "No hay ninguna pantalla que enseñe «{{tipo}}».",
+  },
+  actividad: {
+    llamada: "Llamada",
+    email: "Correo",
+    nota: "Nota",
+    reunion: "Reunión",
+    asunto: "Qué ha pasado",
+    notas: "Detalle",
+    guardar: "Apuntar",
+    ejemplo: {
+      llamada: "Llamada con compras: piden revisar plazos",
+      email: "Enviada la oferta revisada",
+      nota: "Cambian de responsable de compras en enero",
+      reunion: "Visita a planta: revisión del plan de calidad",
+    },
+  },
+  grafica: {
+    leyenda: "Leyenda",
+    verTabla: "Ver como tabla",
+    verDibujo: "Ver como gráfica",
+    sinDatos: "No hay datos que dibujar",
+    otras: "Otras {{count}}",
+  },
+  medidor: {
+    sinObjetivo: "Sin objetivo fijado: esto es una cifra, no un medidor.",
+    cumplido: "Objetivo {{objetivo}} — cumplido",
+    faltan: "Objetivo {{objetivo}} — faltan {{falta}}",
+  },
+  subcoleccion: {
+    vacia: "Nada todavía",
+    quitar: "Quitar",
+    confirmarQuitar: "¿Quitar este elemento? No se deshace desde aquí.",
+  },
+  // El panel de IA de cada ficha: lo que estaba escondido en «Más».
+  asistenteIA: {
+    titulo: "Con IA",
+    detalle: "Lo que propone es un borrador: no se guarda ni se manda sin ti.",
+  },
+  descargas: {
+    bajado: "Bajado {{fichero}} ({{bytes}} caracteres).",
   },
 };
 

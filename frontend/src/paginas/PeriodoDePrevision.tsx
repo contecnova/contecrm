@@ -275,6 +275,7 @@ export function PeriodoDePrevision() {
         <ElDesglose desglose={desglose} por={por} alCambiar={setPor} />
         <LaJerarquia clave={clave} />
         <LasFotos fotos={fotos} />
+        <QueHaCambiado fotos={fotos} />
         <LoQueSeHaDeslizado deslizamiento={deslizamiento} />
       </div>
     </>
@@ -666,6 +667,141 @@ function LasFotos({ fotos }: { fotos: Instantanea[] }) {
           })}
         </ul>
       )}
+    </section>
+  );
+}
+
+interface Tramo {
+  cuantas: number;
+  importe?: string;
+  delta?: string;
+}
+
+interface Salto {
+  moneda: string;
+  variacion_total: string;
+  entradas: Tramo;
+  salidas: Tramo;
+  ganadas: Tramo;
+  perdidas: Tramo;
+  deslizadas: Tramo;
+  variacion_de_importe: Tramo;
+}
+
+/** Las causas, en el orden en que se cuentan en un comité. */
+const CAUSAS = [
+  "entradas",
+  "ganadas",
+  "perdidas",
+  "salidas",
+  "variacion_de_importe",
+  "deslizadas",
+] as const;
+
+/**
+ * Qué ha cambiado entre dos fotos, descompuesto.
+ *
+ * «Hemos bajado 300.000» no explica nada: puede ser una operación grande
+ * perdida, tres que se han ido al trimestre siguiente o importes que bajan, y
+ * cada una lleva a una conversación distinta. El servidor separa las causas;
+ * aquí se eligen las dos fotos y se pinta cada causa con su número de
+ * oportunidades al lado, que es lo que dice si el importe es una o veinte.
+ *
+ * Salir de la foto no es perderse, y se pinta aparte: mezclarlo inflaría la
+ * tasa de pérdida.
+ */
+function QueHaCambiado({ fotos }: { fotos: Instantanea[] }) {
+  const { t } = useTranslation();
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [salto, setSalto] = useState<Salto | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    if (!desde || !hasta || desde === hasta) {
+      setSalto(null);
+      return;
+    }
+    const control = new AbortController();
+    setFallo(null);
+    llamar<Salto>(
+      `/api/v1/forecast/waterfall?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`,
+      { signal: control.signal },
+    )
+      .then((r) => setSalto(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [desde, hasta]);
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("prevision.salto")}</h2>
+      <p className="mb-2 text-rotulo text-ink-faint">
+        {t("prevision.saltoAyuda")}
+      </p>
+      {/* Con menos de dos fotos no hay nada que comparar, y se dice: un
+          panel que no sale no le cuenta a nadie que existe. */}
+      {fotos.length < 2 ? (
+        <Vacio titulo={t("prevision.saltoFaltanFotos")} compacto />
+      ) : null}
+      <div className={fotos.length < 2 ? "hidden" : "flex flex-wrap gap-2"}>
+        {(
+          [
+            ["saltoDesde", desde, setDesde],
+            ["saltoHasta", hasta, setHasta],
+          ] as const
+        ).map(([clave, valor, poner]) => (
+          <label key={clave} className="text-dato text-ink-muted">
+            {t(`prevision.${clave}`)}
+            <select
+              className="input-base mt-1 w-auto"
+              value={valor}
+              onChange={(e) => poner(e.target.value)}
+            >
+              <option value="">—</option>
+              {fotos.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.etiqueta} · {f.tomada_at.slice(0, 10)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+      {fallo ? <Fallo error={fallo} /> : null}
+      {salto ? (
+        <>
+          <p className="mt-3 text-dato text-ink">
+            {t("prevision.variacion", {
+              importe: comoImporte(salto.variacion_total, salto.moneda),
+            })}
+          </p>
+          <ul className="mt-2 divide-y divide-ink-dim/30">
+            {CAUSAS.map((causa) => {
+              const tramo = salto[causa];
+              const cifra = tramo.importe ?? tramo.delta;
+              return (
+                <li
+                  key={causa}
+                  className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                >
+                  <span className="text-dato text-ink">
+                    {t(`prevision.causas.${causa}`)}
+                  </span>
+                  <span className="chip-dato">
+                    {t("prevision.oportunidadesN", { n: tramo.cuantas })}
+                  </span>
+                  {cifra !== undefined ? (
+                    <span className="text-dato text-ink-muted">
+                      {comoImporte(cifra, salto.moneda)}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
     </section>
   );
 }
