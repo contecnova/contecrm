@@ -622,16 +622,19 @@ tests/integration/            aislamiento real contra Postgres
 
 ## Lo que sabemos que falta
 
-No está escondido: las 15 capacidades a medias están listadas con su detalle al
-final del [Manual III](manual-3-funcionalidades.md), y el estado completo de las
-560 en [el catálogo](catalogo/estado.md). Lo más relevante para quien evalúe hoy:
+No está escondido. Medido el 10-11-2026 (`scripts/medir_comparativa.py`):
+**788 capacidades en el catálogo, 785 hechas y 3 en curso** —las apps móviles,
+el trabajo sin conexión en el móvil y el complemento de correo—, pero sólo
+**398 comprobadas con evidencia escrita**. Ésa es la cifra honesta, y lo menos
+comprobado es justo lo que más se vende: ventas, servicio y marketing.
 
-- **Idempotencia y ETag** están implementados como módulo y **no enganchados**
-  ruta por ruta.
-- **Trazas OpenTelemetry**: el contexto se propaga, falta el exportador.
-- **Bulkheads y colas por tier**: configurados, no implementados.
-- **Copias de seguridad y recuperación**: documentadas como procedimiento, sin
-  automatización propia.
+Lo pendiente, con su medida y su orden, vive en dos sitios que se mantienen al
+día y no aquí, para que este manual no vuelva a quedarse viejo:
+
+- [La pila de trabajo](PILA.md): qué falta, qué depende de otros y qué decide
+  el usuario.
+- [La comparativa con Salesforce](COMPARATIVA-SALESFORCE.md): dónde ganamos,
+  dónde empatamos y dónde nos ganan, área por área y con la evidencia al lado.
 
 ## Lo que está en la tabla, o sale por la API o dice por qué no
 

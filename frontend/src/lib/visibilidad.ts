@@ -290,6 +290,11 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "s": "service"
     },
     {
+      "r": "/api/v1/service/vocabularios/prioridades_caso",
+      "p": "metadata:read",
+      "s": "service"
+    },
+    {
       "r": "/api/v1/party/buscar/objetos",
       "p": "metadata:read",
       "s": "party"

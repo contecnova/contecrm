@@ -2887,6 +2887,23 @@ const pantallas = {
       confirmar: "Derivar",
       enviando: "Derivando…",
     },
+    // Contestar al cliente por correo desde su caso: sale de verdad, por el
+    // canal de la casa, y lo que no sale se dice.
+    responder: {
+      titulo: "Responder al cliente",
+      para: "Para",
+      paraAyuda: "Correo del cliente",
+      asunto: "Asunto",
+      asuntoAyuda: "Re: el asunto del caso y su código",
+      mensaje: "Mensaje",
+      enviar: "Enviar respuesta",
+      enviando: "Enviando…",
+      enviada: "Enviada a {{para}}. Queda en lo apuntado del caso.",
+      enviadaDeSerie:
+        "Enviada a {{para}}, con la plantilla de serie: la empresa no tiene la suya. Queda en lo apuntado del caso.",
+      noSalio:
+        "No ha salido: {{motivo}}. Queda apuntada en el caso como no enviada.",
+    },
     escribirArticulo: "Escribir esto en la base de conocimiento",
     avisoResolucion:
       "La resolución viene copiada tal cual, y casi siempre lleva el nombre del cliente, su configuración y a veces sus credenciales. Quítalo ANTES de guardar: el artículo nace en borrador e interno, pero lo que escribas aquí es lo que alguien publicará.",
@@ -4182,6 +4199,10 @@ const pantallas = {
     // Cuando hay búsqueda se dice de CUÁNTOS, porque busca en lo cargado:
     // «12 elementos» a secas haría creer que no hay más.
     cuantosDeCuantos: "{{cuantos}} de {{total}} cargados",
+    // Buscado en el servidor: entre TODOS, no entre los cargados.
+    cuantosConEso_one: "1 elemento con «{{que}}»",
+    cuantosConEso_other: "{{count}} elementos con «{{que}}»",
+    nadaConEsoEnTodos: "Ningún elemento lleva «{{que}}».",
     cuantosElementos_one: "1 elemento",
     cuantosElementos_other: "{{count}} elementos",
     ordenadoAsc: "Ordenado por {{columna}}, de menor a mayor",

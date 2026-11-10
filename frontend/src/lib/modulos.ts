@@ -57,6 +57,14 @@ export interface Recurso {
   /** Columnas preferidas. Las demás siguen estando, detrás. */
   columnas?: string[];
   /**
+   * Campos que van delante en el formulario, además de las columnas.
+   *
+   * Lo que se rellena casi siempre al dar de alta y no merece columna en la
+   * lista. Los apellidos y el correo de un lead iban detrás de «Más campos»,
+   * y había que abrirlo en cada alta. Medido el 10-11-2026 (tarea T02).
+   */
+  alta?: string[];
+  /**
    * Esta es la pestaña por la que abre el módulo.
    *
    * Antes abría **la que estuviera escrita primero**, y ese orden lo puso el

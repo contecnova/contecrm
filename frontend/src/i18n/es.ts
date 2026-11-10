@@ -234,6 +234,7 @@ export default {
       convertir: "Convertir",
       cerrar: "Cerrar el caso",
       enviar: "Enviar",
+      responder: "Responder",
     },
   },
   inicio: {

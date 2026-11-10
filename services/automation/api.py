@@ -521,6 +521,7 @@ def instalar_plantilla(cuerpo: InstalarPlantillaIn, uow: UowDep, principal: Aute
     ),
 )
 def listar_pendientes(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     estado: str = Query("", description="pendiente, hecha, fallida o descartada"),
@@ -534,6 +535,15 @@ def listar_pendientes(
         consulta = consulta.where(EjecucionPendiente.estado == estado)
     if automatizacion_id:
         consulta = consulta.where(EjecucionPendiente.automatizacion_id == automatizacion_id)
+    # Los filtros comunes y los rangos, como en cualquier otro listado.
+    consulta = aplicar_filtros_de_la_url(
+        request,
+        EjecucionPendiente,
+        consulta,
+        principal=principal,
+        db=db,
+        objeto="ejecucion_pendiente",
+    )
     return paginar_consulta(
         db,
         EjecucionPendiente,
@@ -870,4 +880,8 @@ montar_ficha(
 # marca, la ruta contesta 422 a sus propios filtros.
 admite_parametros_abiertos(
     listar, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar_pendientes,
+    "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna",
 )

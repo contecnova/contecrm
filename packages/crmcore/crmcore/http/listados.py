@@ -158,6 +158,78 @@ def _atar(col: Any, crudo: str, valor: str) -> Any:
     return literal(atado, col.type)
 
 
+# ── Buscar por texto, en el servidor ──────────────────────────────────────
+#
+# `?buscar=metalúrgica`. El buscador de cada lista y el selector de un campo que
+# apunta a otro registro filtraban **lo que ya estaba cargado**: las doscientas
+# primeras filas. Con más clientes, el que se buscaba no aparecía y la pantalla
+# decía «nada con eso» de algo que existe. Medido el 10-11-2026.
+#
+# Busca en los campos que nombran el registro —los que una persona teclea para
+# encontrarlo—, no en todos: un texto que casa con una descripción larga o con
+# una nota interna trae filas que nadie reconoce como lo buscado. Un modelo
+# puede declarar los suyos con `__busqueda__`; si no, los de esta lista que
+# tenga. **Y sólo los que quien pregunta ve en claro**: buscar por un correo
+# enmascarado lo reconstruiría a base de preguntar, igual que filtrar.
+PARAMETRO_BUSCAR = "buscar"
+CAMPOS_DE_BUSQUEDA: tuple[str, ...] = (
+    "nombre",
+    "apellidos",
+    "nombre_comercial",
+    "razon_social",
+    "empresa",
+    "asunto",
+    "titulo",
+    "codigo",
+    "numero",
+    "clave",
+    "etiqueta",
+    "email",
+    "referencia",
+)
+
+
+def campos_de_busqueda(modelo: type) -> tuple[str, ...]:
+    """En qué columnas de texto busca `?buscar=` sobre este modelo."""
+    from sqlalchemy import String
+
+    tabla = getattr(modelo, "__table__", None)
+    if tabla is None:
+        return ()
+    pedidos = tuple(getattr(modelo, "__busqueda__", ()) or CAMPOS_DE_BUSQUEDA)
+    return tuple(
+        c for c in pedidos if c in tabla.columns and isinstance(tabla.columns[c].type, String)
+    )
+
+
+def _buscar_texto(modelo: type, consulta: Any, texto: str, usables: set[str]) -> Any:
+    """Cada palabra tiene que estar en alguno de los campos de nombre.
+
+    Por palabras y no la frase entera: «laura medina» encuentra a la Laura con
+    apellido Medina, que tiene el nombre en una columna y el apellido en otra.
+    Sin distinguir mayúsculas, y con `%` y `_` tomados al pie de la letra —un
+    «50%» no es un comodín—.
+    """
+    from sqlalchemy import and_, or_
+
+    from crmcore.errors import ErrorValidacion
+
+    campos = [c for c in campos_de_busqueda(modelo) if c in usables]
+    if not campos:
+        # Se dice, no se devuelve todo: un buscador que no busca y contesta con
+        # todas las filas parece haber encontrado. La pantalla, con esto,
+        # busca en lo cargado y lo dice.
+        raise ErrorValidacion(
+            "Este listado no tiene campos en los que buscar por texto",
+            error_code="listado.sin_busqueda",
+        )
+    condiciones = []
+    for palabra in texto.split()[:8]:
+        patron = "%" + palabra.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        condiciones.append(or_(*(getattr(modelo, c).ilike(patron, escape="\\") for c in campos)))
+    return consulta.where(and_(*condiciones))
+
+
 _CIERTOS = frozenset({"1", "true", "si", "sí", "verdadero"})
 _FALSOS = frozenset({"0", "false", "no", "falso"})
 
@@ -213,10 +285,15 @@ def aplicar_filtros_de_la_url(
     from crmcore.http.parametros import SIEMPRE_ADMITIDOS, declarados_de_la_ruta
 
     suyos = declarados_de_la_ruta(request) | SIEMPRE_ADMITIDOS
+    # `buscar` lo aplica la ruta si lo declara —cuentas busca además en su
+    # clave canónica—; si no, se aplica aquí, sobre los campos de nombre.
+    texto = "" if PARAMETRO_BUSCAR in suyos else request.query_params.get(PARAMETRO_BUSCAR, "")
     crudos = {
-        k: v for k, v in request.query_params.items() if k not in _NO_SON_FILTROS and k not in suyos
+        k: v
+        for k, v in request.query_params.items()
+        if k not in _NO_SON_FILTROS and k not in suyos and k != PARAMETRO_BUSCAR
     }
-    if not crudos:
+    if not crudos and not texto.strip():
         return consulta
 
     tabla = getattr(modelo, "__table__", None)
@@ -233,6 +310,9 @@ def aplicar_filtros_de_la_url(
     # `tenant_id` nunca: lo pone la RLS, y aceptarlo daría a entender que se
     # puede pedir el de otro.
     usables = {c for c in usables if c != "tenant_id"}
+
+    if texto.strip():
+        consulta = _buscar_texto(modelo, consulta, texto, usables)
 
     for crudo, valor in crudos.items():
         nombre, _, sufijo = crudo.partition(SEPARADOR_OPERADOR)
@@ -919,10 +999,33 @@ def montar_ficha(
         _aplicar_edicion(db, fila, datos)
         return proyectar_para(principal, db, objeto=objeto, modelo=modelo)(fila)
 
+    # Los campos cuyo valor sale de un vocabulario de la empresa: se validan al
+    # guardar contra lo que la empresa tiene hoy, no contra un `enum`.
+    con_vocabulario = {
+        nombre_campo: _vocabulario_de(columna)
+        for nombre_campo, columna in campos.items()
+        if _vocabulario_de(columna)
+    }
+
     def _aplicar_edicion(db: Any, fila: Any, datos: Any) -> None:
+        from crmcore import vocabulario
+        from crmcore.errors import ErrorValidacion
+
         # `exclude_unset`: distingue «no lo toco» de «déjalo vacío». Sin esto,
         # editar el nombre borraría todos los demás campos del registro.
-        for campo, valor in datos.model_dump(exclude_unset=True).items():
+        cambios = datos.model_dump(exclude_unset=True)
+        for campo, valor in cambios.items():
+            nombre_voc = con_vocabulario.get(campo)
+            if nombre_voc and valor is not None:
+                validos = vocabulario.valores(db, nombre_voc)
+                if valor not in validos:
+                    raise ErrorValidacion(
+                        f"«{valor}» no está entre los valores de «{campo}»",
+                        error_code="vocabulario.valor_no_valido",
+                        errores=[{"campo": campo, "motivo": "No es un valor de la lista"}],
+                        detalle={"validos": sorted(validos)},
+                    )
+        for campo, valor in cambios.items():
             setattr(fila, campo, valor)
         db.flush()
 
@@ -1097,9 +1200,32 @@ def _anotacion(columna: Any) -> Any:
     except AttributeError:
         info = {}
     apunta = info.get("referencia")
-    if not apunta:
-        return None
-    return FieldInfo(default=None, json_schema_extra={"referencia": str(apunta)})
+    if apunta:
+        return FieldInfo(default=None, json_schema_extra={"referencia": str(apunta)})
+    # Y **de qué vocabulario sale su valor**, como `servicio/nombre`: la lista la
+    # decide la empresa, así que no cabe en el contrato como un `enum` —que
+    # sería la de fábrica para siempre—; el formulario la pide al vocabulario.
+    ruta = ruta_de_vocabulario(info.get("vocabulario"))
+    if ruta:
+        return FieldInfo(default=None, json_schema_extra={"x-vocabulario": ruta})
+    return None
+
+
+def ruta_de_vocabulario(nombre: Any) -> str:
+    """`servicio/nombre` de un vocabulario declarado, o «» si no lo está."""
+    from crmcore import vocabulario
+
+    definida = vocabulario.definicion(str(nombre or ""))
+    if definida is None or not definida.servicio:
+        return ""
+    return f"{definida.servicio}/{definida.nombre}"
+
+
+def _vocabulario_de(columna: Any) -> str:
+    try:
+        return str((columna.expression.info or {}).get("vocabulario") or "")
+    except AttributeError:
+        return ""
 
 
 def _opciones_de(columna: Any) -> tuple[str, ...]:
@@ -1135,6 +1261,10 @@ def _tipo_de(columna: Any) -> Any:
     editado como texto es corregible; un campo que no aparece en el formulario
     no hay forma de arreglarlo desde ninguna pantalla.
     """
+    if _vocabulario_de(columna):
+        # Texto: lo que vale lo dice el vocabulario de la empresa al guardar,
+        # no una lista cerrada en el esquema.
+        return str
     opciones = _opciones_de(columna)
     if opciones:
         from typing import Literal

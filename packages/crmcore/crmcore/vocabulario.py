@@ -32,7 +32,7 @@ su etiqueta.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -89,6 +89,9 @@ class Vocabulario:
     #: Se pueden renombrar y reordenar, pero no retirar: retirarlos no cambia
     #: una lista, apaga en silencio lo que el código hace con ellos.
     fijos: tuple[str, ...] = ()
+    #: Cómo se llaman de fábrica, cuando el código no basta: «critica» es
+    #: «Crítica». Sin rótulo, el código humanizado.
+    etiquetas: dict[str, str] = field(default_factory=dict)
 
 
 _REGISTRO: dict[str, Vocabulario] = {}
@@ -119,6 +122,8 @@ def registrar(
     etiqueta: str,
     descripcion: str = "",
     fijos: tuple[str, ...] = (),
+    en_orden: bool = False,
+    etiquetas: dict[str, str] | None = None,
 ) -> None:
     """Declara un vocabulario y los valores con los que se estrena.
 
@@ -128,6 +133,10 @@ def registrar(
 
     `fijos` son los de fábrica que el código interpreta valor a valor: siempre
     se admiten y no se pueden retirar (ver `Vocabulario.fijos`).
+
+    `en_orden` guarda los de fábrica en el orden en que se dan, en vez de por
+    orden alfabético: en una escala —baja, media, alta, crítica— el orden es el
+    dato, y el escalado sube al siguiente.
     """
     sobrantes = set(fijos) - set(defectos)
     if sobrantes:
@@ -135,10 +144,11 @@ def registrar(
     _REGISTRO[nombre] = Vocabulario(
         nombre=nombre,
         etiqueta=etiqueta,
-        defectos=tuple(sorted(defectos)),
+        defectos=tuple(defectos) if en_orden else tuple(sorted(defectos)),
         descripcion=descripcion,
         servicio=_servicio_que_llama(),
         fijos=tuple(sorted(fijos)),
+        etiquetas=dict(etiquetas or {}),
     )
 
 
@@ -236,7 +246,7 @@ def como_lista(
         {
             "id": v,
             "valor": v,
-            "etiqueta": _humanizar(v),
+            "etiqueta": definida.etiquetas.get(v) or _humanizar(v),
             "orden": (i + 1) * 10,
             "activo": True,
             "extra": {},
@@ -268,7 +278,7 @@ def materializar(db: Session, nombre: str, tenant_id: UUID) -> list[ValorVocabul
             tenant_id=tenant_id,
             vocabulario=nombre,
             valor=v,
-            etiqueta=_humanizar(v),
+            etiqueta=definida.etiquetas.get(v) or _humanizar(v),
             orden=(i + 1) * 10,
         )
         for i, v in enumerate(definida.defectos)
@@ -276,3 +286,13 @@ def materializar(db: Session, nombre: str, tenant_id: UUID) -> list[ValorVocabul
     db.add_all(creadas)
     db.flush()
     return creadas
+
+
+def valores_en_orden(db: Session, nombre: str) -> list[str]:
+    """Los valores admitidos AHORA, en el orden de la empresa.
+
+    Para lo que es una escala —la prioridad de un caso— y el código necesita
+    saber cuál va después de cuál. Con lo que tenga guardado el tenant, o los de
+    fábrica en su orden.
+    """
+    return [f["valor"] for f in sorted(como_lista(db, nombre), key=lambda f: f["orden"])]

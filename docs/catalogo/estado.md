@@ -674,7 +674,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.01.15` | Lecciones aprendidas de cada cierre: expediente comparado con las ganadas del mismo embudo, post-mortem obligatorio en las perdidas con borrador de la IA, firmado y congelado, y lo que se repite | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.16` | Consejos de las lecciones en las oportunidades abiertas: las del mismo cliente y las parecidas por significado, ganadas y perdidas, como «haz esto / no hagas esto» con la lección citada | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.17` | Avisos de las lecciones en los momentos clave de una oportunidad: al crearla, al cambiar de etapa, al mandar el presupuesto y al descontar | A | 2 | sales | ✅ | — |
-| `CRM-03.01.01.18` | Resumen semanal de lecciones para quien dirige el equipo: lo firmado, lo pendiente y lo que se repite | B | 2 | sales | ✅ | — |
+| `CRM-03.01.01.18` | Resumen semanal de lecciones para quien dirige el equipo: lo firmado, lo pendiente y lo que se repite | A | 2 | sales | ✅ | — |
 
 #### CRM-03.01.02 · Metodologías de venta
 
@@ -1145,7 +1145,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.03.02.08` | Evidencias automáticas: el audit trail, los certificados y los gates alimentan el control en vez de adjuntarse a mano | A | 1 | core | ✅ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
 | `CRM-07.03.02.09` | Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales | A | 2 | core | ✅ | — |
 | `CRM-07.03.02.10` | Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo | A | 2 | core | ✅ | — |
-| `CRM-07.03.02.11` | Clasificacion TCSEC de la instalacion: requisitos por nivel medidos sobre el sistema o atestiguados con evidencia en el GRC, nivel alcanzado e informe para auditoria | B | 2 | tenancy | ✅ | — |
+| `CRM-07.03.02.11` | Clasificacion TCSEC de la instalacion: requisitos por nivel medidos sobre el sistema o atestiguados con evidencia en el GRC, nivel alcanzado e informe para auditoria | A | 2 | tenancy | ✅ | — |
 | `CRM-07.03.02.12` | Controles de serie por familia del catalogo, anclados a sus capacidades hechas y con evidencia automatica (comprobacion registrada y cadena de auditoria), instalables, ajustables y desactivables; la cobertura cuenta aparte lo verificado | A | 2 | tenancy | ✅ | — |
 | `CRM-07.03.02.13` | La segregacion de funciones dentro del GRC: cada regla un control preventivo con su riesgo, cada conflicto sin excepcion un hallazgo y cada excepcion aprobada una evidencia con caducidad | A | 2 | tenancy | ✅ | — |
 | `CRM-07.03.02.14` | Los requisitos TCSEC como controles del GRC: los medidos dejan su medida como evidencia al evaluarse y los atestiguados la de quien da fe | A | 2 | tenancy | ✅ | — |

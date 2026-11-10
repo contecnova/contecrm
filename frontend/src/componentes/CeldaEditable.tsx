@@ -33,6 +33,7 @@ import { useTranslation } from "react-i18next";
 import { Icono } from "@/componentes/Icono";
 import type { CampoEsquema } from "@/lib/contrato";
 import { humanizar } from "@/lib/formato";
+import { useOpciones } from "@/lib/vocabularios";
 
 /** El tipo de `<input>` que le toca a un campo del contrato. */
 function tipoDeEntrada(campo: CampoEsquema): string {
@@ -62,6 +63,9 @@ export function CeldaEditable({
   const [borrador, setBorrador] = useState("");
   const [fallo, setFallo] = useState("");
   const entrada = useRef<HTMLInputElement | HTMLSelectElement>(null);
+  // Las del contrato, o las del vocabulario de la empresa (la prioridad de un
+  // caso): una lista que decide la empresa también se elige, no se teclea.
+  const opciones = useOpciones(esquema, valor) ?? [];
 
   useEffect(() => {
     if (editando) entrada.current?.focus();
@@ -106,7 +110,7 @@ export function CeldaEditable({
         }
       },
     };
-    return esquema.opciones.length > 0 ? (
+    return opciones.length > 0 ? (
       <select
         {...comun}
         onChange={(e) => setBorrador(e.target.value)}
@@ -115,9 +119,9 @@ export function CeldaEditable({
         onInput={(e) => setBorrador((e.target as HTMLSelectElement).value)}
       >
         <option value="">—</option>
-        {esquema.opciones.map((o) => (
-          <option key={o} value={o}>
-            {humanizar(o)}
+        {opciones.map((o) => (
+          <option key={o.valor} value={o.valor}>
+            {o.etiqueta}
           </option>
         ))}
       </select>

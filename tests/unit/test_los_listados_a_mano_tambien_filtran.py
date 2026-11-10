@@ -49,6 +49,10 @@ SIN_FILTROS_COMUNES_HOY: set[str] = set()
 # Cada entrada dice por qué. Sin el motivo, la lista se convierte en el sitio
 # donde se mete lo que da guerra.
 NO_TIENEN_COLUMNAS = {
+    "services/automation/api.py::listar_plantillas": (
+        "recorre el catálogo de plantillas escrito en el código y marca cuáles "
+        "están instaladas: no es una tabla, no hay columnas por las que filtrar"
+    ),
     "services/metadata/api_entornos.py::listar_entornos": (
         "devuelve una lista CERRADA escrita en el código —las cuatro etapas por "
         "las que pasa la configuración— y no una tabla: no hay columnas por las "

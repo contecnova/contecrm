@@ -41,6 +41,7 @@ import { llamar, salvoCancelacion } from "@/lib/api";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { ActividadDelRegistro } from "@/componentes/ActividadDelRegistro";
+import { ResponderCaso } from "@/componentes/ResponderCaso";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { listar } from "@/lib/listados";
@@ -155,6 +156,8 @@ export function Caso() {
   const [borrando, setBorrando] = useState(false);
   // Derivar a otra cola o a otro nivel (CRM-04.01.01.08).
   const [derivando, setDerivando] = useState(false);
+  // Contestar al cliente por correo: sale de verdad (10-11-2026).
+  const [respondiendo, setRespondiendo] = useState(false);
   const navegar = useNavigate();
   // El mismo recurso que el listado: dos pantallas que enseñan el mismo
   // registro tienen que escribirlo por la misma ruta y el mismo contrato.
@@ -290,7 +293,11 @@ export function Caso() {
                   .map((a) => ({
                     clave: a.ruta,
                     nombre: a.nombre,
-                    alElegir: () => setAccionAbierta(a),
+                    // Responder tiene su formulario: el genérico diría «Hecho»
+                    // aunque el correo no hubiera salido.
+                    alElegir: a.ruta.endsWith("/responder")
+                      ? () => setRespondiendo(true)
+                      : () => setAccionAbierta(a),
                     destructiva: esIrreversible(a),
                   })),
               ]}
@@ -298,6 +305,15 @@ export function Caso() {
           ) : null
         }
       />
+
+      {respondiendo ? (
+        <ResponderCaso
+          casoId={id}
+          contactoId={caso.relacionado_con?.contacto_id}
+          alTerminar={() => cargar()}
+          alCancelar={() => setRespondiendo(false)}
+        />
+      ) : null}
 
       {derivando ? (
         <DerivarCaso

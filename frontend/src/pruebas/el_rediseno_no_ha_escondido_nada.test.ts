@@ -237,3 +237,20 @@ describe("la configuración sigue teniendo puerta", () => {
     expect(alcanzableConfigurando().size).toBeGreaterThan(5);
   });
 });
+
+describe("lo que una aplicación pone delante", () => {
+  // Cuentas se quedaba en «Más» de Ventas (medido el 10-11-2026 a 1440 px):
+  // la aplicación lo declara delante. Un camino mal escrito ahí no daría
+  // error —sencillamente no se movería nada—, así que se comprueba.
+  it("existe en sus pestañas y sale primero, en el orden declarado", () => {
+    const menu = menuCompleto("trabajar");
+    let mirados = 0;
+    for (const app of APLICACIONES) {
+      const delante = app.delante ?? [];
+      const pestanas = pestanasDe(app, menu).map((e) => e.a);
+      expect(pestanas.slice(0, delante.length), app.id).toEqual(delante);
+      mirados += delante.length;
+    }
+    expect(mirados).toBeGreaterThan(0);
+  });
+});

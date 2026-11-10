@@ -42,9 +42,11 @@
  *
  * **Lo que crea, lo borra.** Corre contra la pila con datos de verdad, así que
  * todo lo que da de alta lleva «UX medida» en el nombre y se borra al final,
- * haya ido bien o mal. La única excepción son las aprobaciones, que el motor
- * no deja borrar —son rastro de auditoría—: la de la T12 se crea sobre una
- * oportunidad de la propia medida, que sí se borra, y queda decidida.
+ * haya ido bien o mal. Las excepciones son rastro de auditoría que el producto
+ * no deja borrar: la aprobación de la T12, que se crea sobre una oportunidad
+ * de la propia medida, que sí se borra, y queda decidida; y el envío de la
+ * respuesta de la T09, que queda en marketing con su estado —va a una
+ * dirección de `example.com`, que no es de nadie—.
  */
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
@@ -55,6 +57,11 @@ const USUARIO = process.env.CRM_USUARIO ?? "plataforma@contecrm.dev";
 const CLAVE = process.env.CRM_CLAVE ?? "Plataforma2026.crm";
 const SOLO = new Set(process.argv.slice(2).map((s) => s.toUpperCase()));
 const MARCA = `UX medida ${Date.now().toString(36).slice(-5)}`;
+// A quién se manda la respuesta de la T09: `example.com` está reservado y no
+// es de nadie (RFC 2606), así que no le llega a ninguna persona.
+const PARA_RESPUESTA = "uxmedida@example.com";
+// Lo que una comprobación sabe de por qué no se cumplió, para decirlo.
+let motivoDeLaComprobacion = "";
 
 // KLM: operadores clásicos, en segundos.
 const KLM = { clic: 1.2, caracter: 0.28, pensar: 1.35 };
@@ -679,7 +686,15 @@ const TAREAS = [
       const cuenta = p.getByRole("combobox", { name: "Cuenta", exact: true });
       if (!((await cuenta.textContent()) ?? "").includes(MARCA))
         await h.referencia("Cuenta", MARCA, `${MARCA} Cliente`);
-      await h.escribir("Prioridad", "alta");
+      // La prioridad es una lista de la empresa (vocabulario) desde el
+      // 10-11-2026; antes era una caja de texto donde se tecleaba «alta».
+      const prioridad = p
+        .getByLabel("Prioridad", { exact: true })
+        .locator("visible=true")
+        .first();
+      if ((await prioridad.evaluate((e) => e.tagName)) === "SELECT")
+        await h.elegir("Prioridad", "Alta");
+      else await h.escribir("Prioridad", "alta");
       await h.clic("Guardar", { exacto: true });
       return {};
     },
@@ -705,6 +720,18 @@ const TAREAS = [
     },
     async hacer(h, { caso }) {
       await abrirCaso(h, caso);
+      // Responder de verdad: el correo sale por el canal de la casa (desde el
+      // 10-11-2026). Antes sólo se podía APUNTAR que se había contestado.
+      const responder = h.control(/^Responder$/, { papel: "button" });
+      if (await responder.isVisible().catch(() => false)) {
+        await h.clic(responder);
+        // El caso de la medida no tiene contacto: se escribe a quién. Una
+        // dirección de `example.com`, que no es de nadie (RFC 2606).
+        await h.escribir("Para", PARA_RESPUESTA);
+        await h.escribir("Mensaje", "Cambiamos el rodamiento el jueves.");
+        await h.clic("Enviar respuesta", { exacto: true });
+        return { caso, mandada: true };
+      }
       const boton = h.control(/^Correo$/, { papel: "button" });
       if (!(await boton.isVisible().catch(() => false))) {
         throw new Bloqueo(
@@ -717,10 +744,25 @@ const TAREAS = [
       await h.clic("Apuntar", { exacto: true });
       return { caso };
     },
-    async comprobar({ caso }) {
+    async comprobar({ caso, mandada }) {
       const a = await actividadesDe("caso", caso.id);
       a.forEach((x) => apuntar(`/api/v1/activities/${x.id}`));
-      return a.some((x) => x.tipo === "email");
+      if (!a.some((x) => x.tipo === "email")) return false;
+      if (!mandada) return true;
+      // Mandada quiere decir que SALIÓ: el envío consta y está enviado.
+      const envios =
+        (
+          await api(
+            "GET",
+            `/api/v1/envios-programados?origen=respuesta&origen_id=${caso.id}`,
+          )
+        ).d?.envios ?? [];
+      const ultimo = envios.at(-1) ?? envios[0];
+      if (ultimo?.estado !== "enviado") {
+        motivoDeLaComprobacion = `la respuesta consta y no ha salido: ${ultimo?.motivo ?? "sin envío"}`;
+        return false;
+      }
+      return true;
     },
   },
   {
@@ -940,9 +982,11 @@ for (const tarea of TAREAS) {
   try {
     salida = { ...datos, ...(await tarea.hacer(h, datos)) };
     await asentar();
+    motivoDeLaComprobacion = "";
     if (!(await tarea.comprobar(salida))) {
       estado = "NO";
-      motivo = "los clics salen pero el efecto no está";
+      motivo =
+        motivoDeLaComprobacion || "los clics salen pero el efecto no está";
       await p
         .screenshot({
           path: `${process.env.MEDIR_CAPTURAS ?? "/tmp"}/medir-${tarea.id}.png`,

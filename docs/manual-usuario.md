@@ -280,8 +280,9 @@ con Salesforce; el detalle está en el manual técnico.
   has escrito, sale el primero, por delante de las oportunidades que lo
   nombran. Los **casos** también se encuentran, por su código (CAS-2026-01510)
   o por su asunto. Lo que está en la papelera no sale.
-- **Dar de alta un lead y convertirlo.** **Crear › Lead**, rellena nombre y
-  empresa (y lo que quieras de «Más campos») y **Guardar**: se abre su ficha.
+- **Dar de alta un lead y convertirlo.** **Crear › Lead**, rellena nombre,
+  apellidos, empresa y correo —los cuatro salen de entrada; lo demás, en «Más
+  campos»— y **Guardar**: se abre su ficha.
   Pulsa **Convertir**. Te propone crear el cliente con el nombre de la empresa
   —o usar el que ya se llama así, si existe—, crear el contacto con la persona
   del lead y abrir una oportunidad con el nombre de la empresa; puedes poner
@@ -306,18 +307,46 @@ con Salesforce; el detalle está en el manual técnico.
   **Reunión**, **Nota** o **Correo**, escribe qué ha pasado y **Apuntar**. Sale
   debajo, en la lista de lo último apuntado.
 - **Abrir un caso para un cliente.** En la ficha del cliente, **Nuevo caso**:
-  el cliente ya viene puesto y delante tienes asunto y prioridad. **Guardar**
-  abre el caso.
-- **Responder un caso.** En el caso, **Relacionado › Lo que ha pasado ›
-  Correo**: apunta lo que le has contestado al cliente y **Apuntar**.
+  el cliente ya viene puesto y delante tienes asunto y prioridad. La
+  **prioridad se elige de la lista** de tu empresa (Baja, Media, Alta,
+  Crítica, o las que haya añadido). **Guardar** abre el caso.
+- **Responder un caso.** En el caso, **Responder** (arriba, junto a **Cerrar
+  el caso**). El **Para** viene con el correo del contacto del caso —si no
+  tiene, escríbelo—, el asunto es «Re: el asunto del caso [su código]» si no
+  pones otro; escribe el **Mensaje** y **Enviar respuesta**. **El correo sale
+  de verdad**, por el correo de tu empresa y con su plantilla, y queda en
+  **Relacionado › Lo que ha pasado**. Si no ha podido salir —falta el
+  remitente o el servidor de correo, o el buzón lo rechaza—, te lo dice con el
+  motivo y queda apuntado como «No ha salido: …»; la primera respuesta del SLA
+  sólo cuenta cuando sale. Para apuntar una respuesta dada por otro camino
+  (por teléfono, desde tu buzón), sigue estando **Relacionado › Lo que ha
+  pasado › Correo**.
 - **Cerrar un caso.** En el caso, **Cerrar el caso**, elige el motivo y
   confirma. Un caso cerrado se puede reabrir desde **Más**.
 - **Ver la previsión del trimestre.** **Previsiones** abre por los periodos;
   pulsa el del trimestre en curso.
+- **Buscar en una lista.** Escribe en **Buscar en esta lista**, arriba a la
+  derecha de cualquier lista: busca **en todos los registros**, no sólo en los
+  que tienes en pantalla, por los campos que los nombran (nombre, apellidos,
+  empresa, asunto, código, número, correo…), palabra por palabra y sin
+  distinguir mayúsculas. Debajo dice cuántos llevan lo que has escrito. Las
+  pocas listas que no tienen campos de nombre (las visitas, por ejemplo)
+  buscan en lo cargado y lo dicen: «3 de 50 cargados».
+- **Elegir un cliente (o cualquier registro) en un formulario.** Abre el
+  campo y escribe: igual que el buscador de la lista, busca en todos, no en los
+  primeros que salen al abrirlo.
 - **Aprobar algo pendiente.** En **Inicio**, el bloque **Te toca decidir**
   lista lo que espera tu decisión, con **Aprobar** y **Rechazar** al lado.
   Pulsar el título abre la aprobación entera; **Ver todas** lleva a la bandeja
   completa.
+
+En la aplicación de **Ventas**, **Oportunidades**, **Candidatos** y
+**Cuentas** son las tres primeras pestañas: Cuentas ya no se queda en **Más**.
+
+El estado de un presupuesto (la pastilla junto al título) sólo ofrece lo que se
+puede hacer desde ahí. **Enviado** no sale: se envía con **Enviar**, que mira
+los descuentos y lo para en aprobación si toca. Lo mismo con aceptar, la
+versión nueva o caducar, que tienen su camino.
 
 Desde el móvil es lo mismo: los botones de arriba de una ficha bajan a otra
 línea cuando no caben.
@@ -4511,9 +4540,9 @@ calcula la casa y la **Diferencia** en rojo cuando no cuadra.
 - **Si eres proveedor**, en tu portal, «Tus papeles con nosotros» dice ahora
   también para qué estás homologado y hasta cuándo.
 
-### Las listas de tu empresa: roles, relaciones, funciones y resultados de llamada (administración)
+### Las listas de tu empresa: roles, relaciones, funciones, resultados de llamada y prioridades (administración)
 
-Cinco listas que antes venían cerradas con el producto ahora las decide tu
+Seis listas que antes venían cerradas con el producto ahora las decide tu
 empresa:
 
 | Lista | Dónde se usa |
@@ -4523,6 +4552,7 @@ empresa:
 | **Relaciones entre personas** | el mapa de influencia de una cuenta (reporta a, aliado, detractor…) |
 | **Funciones de contacto de proveedor** | para qué se llama a cada contacto de un proveedor |
 | **Resultados de una llamada** | lo que eliges al colgar en el marcador |
+| **Prioridades de un caso** | la prioridad al abrir o editar un caso; es una escala: el orden de la lista es el de la urgencia, y el escalado sube un caso al siguiente |
 
 **Dónde**: **Administrar › Herramientas de plataforma › Gestor de objetos**, y
 en el desplegable de pestañas que hay junto al título, la lista que quieras.
@@ -4537,11 +4567,30 @@ algo con ellos. «Decisor» y «económico» son los que mide la cobertura de un
 compra; «escalado» es a quien se llama cuando un proveedor falla; y en las
 llamadas, «hablado» pide la nota, «pide que no le llamen» marca la ficha como
 «no contactar» (es una obligación legal), «número erróneo» marca el teléfono y
-«reprogramar» crea la siguiente llamada. Si lo intentas, te lo dice.
+«reprogramar» crea la siguiente llamada. En las prioridades, «Media» es la
+de un caso que no dice ninguna. Si lo intentas, te lo dice.
 
 **Una relación nueva que sea una opinión sobre alguien** —«hostil», por
 ejemplo— márcala con `{"opinion": true}` en su campo *extra*: así, como
 «aliado» y «detractor», exigirá el motivo al anotarla.
+
+### La plantilla y el remitente de la respuesta a un caso (administración)
+
+La respuesta a un caso sale por el **correo transaccional** de tu empresa: el
+dominio, el remitente y el servidor de lo transaccional, que se fijan en
+**Ajustes** (`dominio_transaccional`, `remitente_transaccional`,
+`correo_flujo_transaccional`). Sin remitente o sin servidor no sale, y quien
+responde lo ve con el motivo.
+
+La plantilla es la de **Marketing** con la clave del ajuste
+`respuesta_caso_plantilla` (de serie, `respuesta_caso`). En ella,
+`{{mensaje}}` es lo que escribe el agente, `{{asunto}}` el asunto, y
+`{{caso.codigo}}` y `{{caso.asunto}}` los del caso. Si tu empresa no tiene esa
+plantilla, sale la de serie —el mensaje y nada más— y quien responde lo ve.
+`respuesta_caso_espera_s` es cuánto se espera a que el correo salga (15 s).
+
+Cada respuesta deja un envío en **Marketing** con su estado (enviado o
+fallido, y por qué), la actividad en el caso y una línea en su historial.
 
 ### La hora a la que escriben las cadencias (administración)
 

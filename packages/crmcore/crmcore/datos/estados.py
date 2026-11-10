@@ -113,6 +113,39 @@ def registrar_maquina(maquina: Maquina) -> Maquina:
     return maquina
 
 
+# Los significados a los que NO se llega con el cambio de estado suelto, sino
+# con su acción: `{objeto: {significado: qué camino es}}`. Lo declara el
+# servicio dueño, que es quien sabe lo que la acción hace y el cambio suelto no
+# —enviar un presupuesto mira la matriz de descuentos; convertir un lead crea el
+# cliente—.
+#
+# Vive aquí y no sólo en el servicio para **publicarlo**: el desplegable de
+# estado de la ficha ofrecía «Enviado» y el servidor lo rechazaba con 409, así
+# que la ficha prometía lo que no se podía hacer desde ahí. Medido el
+# 10-11-2026 (tarea T05).
+CAMINOS_PROPIOS: dict[str, dict[str, str]] = {}
+
+
+def registrar_caminos(objeto: str, caminos: dict[str, str]) -> None:
+    """Declara qué significados de `objeto` tienen su propia acción."""
+    CAMINOS_PROPIOS[objeto] = dict(caminos)
+
+
+def camino_propio(objeto: str, origen: str, destino: str, db: Session | None = None) -> str:
+    """Por qué no se pasa de `origen` a `destino` con el cambio suelto, o «».
+
+    Por significado y no por nombre, con la máquina de la empresa. Entre dos
+    estados que significan lo mismo —«Enviado» y «En negociación»— no hay nada
+    que rehacer: lo que hace la acción ya se hizo al llegar.
+    """
+    maquina = maquina_efectiva(objeto, db)
+    hacia = maquina.significado(destino) if maquina else destino
+    desde = maquina.significado(origen) if maquina else origen
+    if hacia == desde:
+        return ""
+    return CAMINOS_PROPIOS.get(objeto, {}).get(hacia, "")
+
+
 _CLAVE = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 

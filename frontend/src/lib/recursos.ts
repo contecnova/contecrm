@@ -536,6 +536,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         permiso: "metadata:read",
         columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
       },
+      // La prioridad de un caso (10-11-2026): era texto libre al abrirlo. Es
+      // una escala —el orden es el de la urgencia— y «media» es fija.
+      {
+        nombre: "Prioridades de un caso",
+        listar: "/api/v1/service/vocabularios/prioridades_caso",
+        servicio: "service",
+        permiso: "metadata:read",
+        columnas: ["etiqueta", "valor", "orden", "activo", "fijo", "de_fabrica"],
+      },
       // Qué objetos admite la búsqueda de cada servicio. Sin esto, la única
       // forma de saber si algo es buscable era buscarlo y ver si salía.
       {
@@ -1338,6 +1347,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         crear: "/api/v1/leads",
         servicio: "sales",
         columnas: ["nombre", "empresa", "estado", "puntuacion"],
+        // Los apellidos y el correo se rellenan en casi todas las altas.
+        alta: ["apellidos", "email"],
         // Convertir es la acción por la que existe un lead: a la vista.
         destacadas: ["convertir"],
         permiso: "lead:read",
@@ -2223,7 +2234,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         crear: "/api/v1/casos",
         servicio: "service",
         columnas: ["codigo", "asunto", "estado", "prioridad"],
-        destacadas: ["cerrar"],
+        // Responder es lo primero que se hace con un caso; cerrar, lo último.
+        destacadas: ["responder", "cerrar"],
         permiso: "case:read",
       },
       {

@@ -51,6 +51,15 @@ class AjustesService(Settings):
     # contesta, la revisión sigue con los acuerdos guardados y lo dice.
     sla_proveedor_espera_s: float = Field(5.0, ge=0.5, le=60.0)
 
+    # ── Responder un caso por correo (10-11-2026) ─────────────────────────
+    # Con qué plantilla de correo de la empresa sale la respuesta a un caso
+    # (Marketing › Plantillas, la clave). Si la empresa no la tiene, sale con
+    # la de serie —el mensaje y nada más— y se dice.
+    respuesta_caso_plantilla: str = Field("respuesta_caso", max_length=80)
+    # Cuánto se espera a que marketing diga si salió y a que clientes apunte la
+    # actividad. Si no contestan, la respuesta se da por no enviada, y se dice.
+    respuesta_caso_espera_s: float = Field(15.0, ge=1.0, le=120.0)
+
 
 registrar_claves(
     [
@@ -92,6 +101,23 @@ registrar_claves(
             minimo=0.5,
             maximo=60.0,
             campo_settings="sla_proveedor_espera_s",
+        ),
+        ClaveAjuste(
+            clave="respuesta_caso_plantilla",
+            tipo="str",
+            descripcion=(
+                "Plantilla de correo con la que sale la respuesta a un caso (su clave). "
+                "Sin ella en la empresa, sale la de serie"
+            ),
+            campo_settings="respuesta_caso_plantilla",
+        ),
+        ClaveAjuste(
+            clave="respuesta_caso_espera_s",
+            tipo="float",
+            descripcion="Segundos que se espera a que salga la respuesta de un caso",
+            minimo=1.0,
+            maximo=120.0,
+            campo_settings="respuesta_caso_espera_s",
         ),
     ]
 )

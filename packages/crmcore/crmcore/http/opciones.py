@@ -31,7 +31,15 @@ def opciones_del_servicio() -> dict[str, list[str]]:
     salida: dict[str, set[str]] = {}
     for mapeador in Base.registry.mappers:
         for columna in mapeador.columns:
-            declaradas = (getattr(columna, "info", None) or {}).get("opciones")
+            info = getattr(columna, "info", None) or {}
+            declaradas = info.get("opciones")
+            if not declaradas and info.get("vocabulario"):
+                # Los de fábrica de un vocabulario: son códigos, no texto
+                # libre. Los que añada la empresa llegan con su rótulo.
+                from crmcore import vocabulario
+
+                definida = vocabulario.definicion(str(info["vocabulario"]))
+                declaradas = definida.defectos if definida else None
             if not declaradas:
                 declaradas = getattr(getattr(columna, "type", None), "enums", None)
             if declaradas:

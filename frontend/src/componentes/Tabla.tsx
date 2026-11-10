@@ -173,6 +173,20 @@ export interface Props {
     elegidos: ReadonlySet<string>;
     alCambiar: (elegidos: Set<string>) => void;
   };
+  /**
+   * El buscador lo lleva quien coloca la tabla, que pregunta al servidor.
+   *
+   * Sin esto la tabla busca en sus filas, que son las cargadas. Con esto, lo
+   * tecleado se le pasa a quien la coloca —que vuelve a pedir el listado con
+   * `?buscar=`— y la tabla no filtra encima: las filas ya son las que casan.
+   * `enServidor` en falso es un listado que no sabe buscar; entonces la tabla
+   * vuelve a buscar en lo cargado y lo dice, como antes.
+   */
+  busqueda?: {
+    valor: string;
+    alCambiar: (valor: string) => void;
+    enServidor: boolean;
+  };
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -324,6 +338,7 @@ export function Tabla({
   esquemaDeCampo,
   alEditarCelda,
   seleccion,
+  busqueda: deFuera,
 }: Props) {
   const { t } = useTranslation();
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
@@ -419,16 +434,20 @@ export function Tabla({
   // traído no se ha mirado. Ésa es la diferencia entre un buscador y un
   // filtro del servidor, y callarla es lo que convierte una ayuda en una
   // trampa.
-  const [busqueda, setBusqueda] = useState("");
+  const [propia, setPropia] = useState("");
+  const busqueda = deFuera ? deFuera.valor : propia;
+  const setBusqueda = deFuera ? deFuera.alCambiar : setPropia;
+  // Con el servidor buscando, las filas ya son las que casan.
+  const enServidor = Boolean(deFuera?.enServidor);
   const filasBuscadas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return filas;
+    if (!q || enServidor) return filas;
     return filas.filter((f) =>
       Object.values(f).some(
         (v) => tieneDato(v) && String(v).toLowerCase().includes(q),
       ),
     );
-  }, [filas, busqueda]);
+  }, [filas, busqueda, enServidor]);
   const filasOrdenadas = useMemo(
     () => ordenar(filasBuscadas, orden),
     [filasBuscadas, orden],
@@ -478,14 +497,19 @@ export function Tabla({
                 para enseñar un texto. */}
             {ocupaLaPantalla ? (
               <p className="text-rotulo text-ink-faint" role="status">
-                {busqueda.trim()
-                  ? t("tabla.cuantosDeCuantos", {
-                      cuantos: filasOrdenadas.length,
-                      total: filas.length,
-                    })
-                  : t("tabla.cuantosElementos", {
+                {busqueda.trim() && enServidor
+                  ? t("tabla.cuantosConEso", {
                       count: filasOrdenadas.length,
-                    })}
+                      que: busqueda.trim(),
+                    })
+                  : busqueda.trim()
+                    ? t("tabla.cuantosDeCuantos", {
+                        cuantos: filasOrdenadas.length,
+                        total: filas.length,
+                      })
+                    : t("tabla.cuantosElementos", {
+                        count: filasOrdenadas.length,
+                      })}
                 {orden ? (
                   <>
                     {" · "}
@@ -579,7 +603,12 @@ export function Tabla({
           )}
           role="status"
         >
-          {t("tabla.nadaConEso", { que: busqueda.trim(), total: filas.length })}
+          {enServidor
+            ? t("tabla.nadaConEsoEnTodos", { que: busqueda.trim() })
+            : t("tabla.nadaConEso", {
+                que: busqueda.trim(),
+                total: filas.length,
+              })}
         </p>
       ) : (
         <Rejilla

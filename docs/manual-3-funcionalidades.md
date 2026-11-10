@@ -17082,3 +17082,30 @@ técnico, 4.6.71). Antes de este bloque se terminaban 7 de 12; ahora, las 12.
   la papelera, fuera.
 - **Una confirmación, no dos.** Lo que no se deshace y lleva formulario se
   confirma al enviarlo.
+
+### Lo que quedó, arreglado (10-11-2026)
+
+Siete fricciones que la misma medida dejó apuntadas (manual técnico, 4.6.72):
+
+- **El lead, sin «Más campos».** Nombre, apellidos, empresa y correo salen de
+  entrada en el alta.
+- **La prioridad del caso es una lista de la empresa.** Se elige (Baja, Media,
+  Alta, Crítica); la empresa añade, renombra, ordena o retira las suyas en
+  Gestor de objetos › Prioridades de un caso. Es una escala: el escalado sube
+  un caso a la siguiente. Al abrir y al editar se valida contra la lista.
+- **Buscar en una lista busca en todas sus filas**, no en las que hay en
+  pantalla: lo hace el servidor, por los campos que nombran el registro y
+  palabra por palabra. Lo mismo al elegir un cliente (o cualquier registro) en
+  un formulario. Las listas sin campos de nombre buscan en lo cargado y lo
+  dicen.
+- **Responder un caso manda el correo.** **Responder** en la ficha del caso:
+  sale por el correo transaccional de la empresa, con su plantilla
+  (o la de serie, y se dice), al contacto del caso o a quien se escriba. Consta
+  salga o no —el envío con su estado, la actividad en el caso y su historial—;
+  lo que no sale se dice con su motivo, y sólo lo que sale cuenta como primera
+  respuesta del SLA.
+- **Cuentas, a la vista en Ventas**: Oportunidades, Candidatos y Cuentas son
+  las primeras pestañas de la aplicación.
+- **El estado del presupuesto no ofrece lo que no se puede hacer desde ahí**:
+  «Enviado», «Aceptado» o la versión nueva tienen su acción, y el desplegable
+  no los ofrece.

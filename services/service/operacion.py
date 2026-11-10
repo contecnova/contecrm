@@ -717,7 +717,6 @@ def coger_de_cola(uow: UnidadDeTrabajo, caso_id: UUID, usuario_id: UUID) -> Caso
 # ── Escalado (CRM-04.01.01.07) ────────────────────────────────────────────
 
 ORDEN_SEVERIDAD = {"baja": 0, "media": 1, "alta": 2, "critica": 3}
-ORDEN_PRIORIDAD = {"baja": 0, "media": 1, "alta": 2, "critica": 3}
 
 
 def _consumido_pct(caso: Caso, ahora: datetime) -> float | None:
@@ -832,9 +831,17 @@ def _aplicar_escalada(
             "nivel_escalado": int((caso.campos or {}).get("nivel_escalado", 1)) + 1,
         }
     if regla.subir_prioridad:
-        actual = ORDEN_PRIORIDAD.get(caso.prioridad, 1)
-        siguiente = min(actual + 1, 3)
-        caso.prioridad = [k for k, v in ORDEN_PRIORIDAD.items() if v == siguiente][0]
+        # La siguiente en la escala de la empresa (el vocabulario, por su
+        # orden), no en una tabla del código: con una prioridad propia
+        # —«urgente» encima de «crítica»— la tabla no la conocía y el caso se
+        # quedaba donde estaba. La última no sube más.
+        from crmcore import vocabulario
+
+        from services.service.modelos import VOCABULARIO_PRIORIDAD
+
+        escala = vocabulario.valores_en_orden(uow.db, VOCABULARIO_PRIORIDAD)
+        if caso.prioridad in escala:
+            caso.prioridad = escala[min(escala.index(caso.prioridad) + 1, len(escala) - 1)]
     if regla.asignar_a is not None:
         caso.owner_id = regla.asignar_a
     if regla.cola_destino:

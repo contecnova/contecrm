@@ -26,7 +26,12 @@
  * y hay un gate que comprueba que de toda área sale exactamente una puerta.
  */
 
-import { AREAS, type AreaPintada, type Entrada, type IdArea } from "@/lib/navegacion";
+import {
+  AREAS,
+  type AreaPintada,
+  type Entrada,
+  type IdArea,
+} from "@/lib/navegacion";
 
 export interface Aplicacion {
   id: string;
@@ -36,6 +41,17 @@ export interface Aplicacion {
   icono: string;
   /** Las áreas de `navegacion.ts` que entran en esta aplicación. */
   areas: IdArea[];
+  /**
+   * Las pestañas que van primero, por su camino y en este orden; las demás
+   * siguen en el de sus áreas.
+   *
+   * Lo que no cabe se va a «Más», y en Ventas las entradas de Clientes van
+   * detrás de las diez de Ventas: **Cuentas quedaba en «Más»** —medido el
+   * 10-11-2026 a 1440 px, la decimotercera de veinte—, siendo con lo que más
+   * se trabaja. No se mueve de área —Ventas tiene su tope de diez—: sólo cambia
+   * el orden de la barra de esta aplicación.
+   */
+  delante?: string[];
 }
 
 /**
@@ -47,10 +63,32 @@ export interface Aplicacion {
  * cambiar de sitio para mirar la cuenta de la oportunidad que tienes abierta.
  */
 export const APLICACIONES: Aplicacion[] = [
-  { id: "ventas", clave: "app.ventas", icono: "trending_up", areas: ["ventas", "clientes"] },
-  { id: "servicio", clave: "app.servicio", icono: "support_agent", areas: ["servicio"] },
-  { id: "marketing", clave: "app.marketing", icono: "campaign", areas: ["marketing"] },
-  { id: "analitica", clave: "app.analitica", icono: "insights", areas: ["analisis"] },
+  {
+    id: "ventas",
+    clave: "app.ventas",
+    icono: "trending_up",
+    areas: ["ventas", "clientes"],
+    // Como en Salesforce: oportunidades, leads y cuentas, lo primero.
+    delante: ["/m/oportunidades", "/m/leads", "/m/cuentas"],
+  },
+  {
+    id: "servicio",
+    clave: "app.servicio",
+    icono: "support_agent",
+    areas: ["servicio"],
+  },
+  {
+    id: "marketing",
+    clave: "app.marketing",
+    icono: "campaign",
+    areas: ["marketing"],
+  },
+  {
+    id: "analitica",
+    clave: "app.analitica",
+    icono: "insights",
+    areas: ["analisis"],
+  },
 ];
 
 /**
@@ -82,13 +120,20 @@ export function areasDeTrabajo(): IdArea[] {
  * Primero «Inicio», que es donde se empieza, y después las entradas de sus
  * áreas en el orden en el que ya estaban. No se reordenan por nombre: el orden
  * de `navegacion.ts` está pensado —lo más usado primero— y alfabetizarlo
- * pondría «Actividades» delante de «Oportunidades».
+ * pondría «Actividades» delante de «Oportunidades». La excepción la declara la
+ * aplicación (`delante`): lo que no puede quedar en «Más».
  */
 export function pestanasDe(app: Aplicacion, menu: AreaPintada[]): Entrada[] {
   const suyas = app.areas
     .map((id) => menu.find((a) => a.id === id))
     .filter((a): a is AreaPintada => Boolean(a));
-  return suyas.flatMap((a) => a.entradas);
+  const todas = suyas.flatMap((a) => a.entradas);
+  // Las que la aplicación pone delante, si están (y si se ven: lo que no está
+  // en el menú de esta sesión no aparece por declararlo aquí).
+  const primeras = (app.delante ?? [])
+    .map((camino) => todas.find((e) => e.a === camino))
+    .filter((e): e is Entrada => Boolean(e));
+  return [...primeras, ...todas.filter((e) => !primeras.includes(e))];
 }
 
 /**
@@ -111,7 +156,9 @@ export function pestanasDe(app: Aplicacion, menu: AreaPintada[]): Entrada[] {
  */
 export function pestanasDeTodas(menu: AreaPintada[]): Entrada[] {
   const deConfiguracion = new Set(areasDeConfiguracion());
-  return menu.filter((a) => deConfiguracion.has(a.id)).flatMap((a) => a.entradas);
+  return menu
+    .filter((a) => deConfiguracion.has(a.id))
+    .flatMap((a) => a.entradas);
 }
 
 /**
@@ -122,7 +169,10 @@ export function pestanasDeTodas(menu: AreaPintada[]): Entrada[] {
  * que el usuario tenía elegida. Una portada que cambia sola de aplicación
  * según desde dónde llegues no deja saber nunca en cuál estás.
  */
-export function aplicacionDelCamino(camino: string, menu: AreaPintada[]): Aplicacion | null {
+export function aplicacionDelCamino(
+  camino: string,
+  menu: AreaPintada[],
+): Aplicacion | null {
   for (const app of APLICACIONES) {
     const pestanas = pestanasDe(app, menu);
     // Por el prefijo más largo: `/m/casos` y `/m/casos/caso/1` son la misma

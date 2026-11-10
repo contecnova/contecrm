@@ -754,14 +754,21 @@ def historial_etapas_en_bloque(
                 }
             )
     maquina = maquina_efectiva("oportunidad", db)
+    # Por la proyección, como el listado: si el rol tiene tapado el estado o el
+    # embudo, aquí tampoco se ve (lo cazó el guardián el 10-11-2026).
+    proyecta = proyectar_para(principal, db, objeto="oportunidad", modelo=Oportunidad)
 
     def _fila(o: Any) -> dict[str, Any]:
+        visto = proyecta(o)
+        estado = visto.get("estado")
         return {
             "oportunidad_id": o.id,
-            "pipeline_id": o.pipeline_id,
-            "created_at": o.created_at,
-            "estado": o.estado,
-            "estado_significa": _del_estado(maquina, o.estado).get("estado_significa"),
+            "pipeline_id": visto.get("pipeline_id"),
+            "created_at": visto.get("created_at", o.created_at),
+            "estado": estado,
+            "estado_significa": (
+                _del_estado(maquina, estado).get("estado_significa") if estado else None
+            ),
             "cambios": cambios.get(o.id, []),
         }
 

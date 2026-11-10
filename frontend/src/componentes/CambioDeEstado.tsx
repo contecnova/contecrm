@@ -16,9 +16,22 @@ import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
 import { rotuloDeOpcion } from "@/lib/formato";
 
 interface Config {
-  estados: { clave: string; nombre: string; color: string; activo: boolean }[];
+  estados: {
+    clave: string;
+    nombre: string;
+    color: string;
+    activo: boolean;
+    significado?: string;
+  }[];
   transiciones: Record<string, string[]>;
   exigen_motivo: string[];
+  /**
+   * Los estados a los que se llega con su acción —«Enviar», «Convertir»— y no
+   * con este desplegable, con cuál es. No se ofrecen: el servidor los rechaza,
+   * y ofrecerlos era prometer lo que no se puede hacer desde aquí (medido el
+   * 10-11-2026 con «Enviado» en el presupuesto, tarea T05).
+   */
+  con_su_camino: Record<string, string>;
 }
 
 /**
@@ -90,6 +103,7 @@ export function CambioDeEstado({
                 estados: r.datos.estados,
                 transiciones: r.datos.transiciones ?? {},
                 exigen_motivo: r.datos.exigen_motivo ?? [],
+                con_su_camino: r.datos.con_su_camino ?? {},
               }
             : null,
         ),
@@ -110,8 +124,12 @@ export function CambioDeEstado({
   if (!conf) return null;
   const de = (clave: string) => conf.estados.find((e) => e.clave === clave);
   const nombre = (clave: string) => de(clave)?.nombre || rotuloDeOpcion(clave);
+  const significado = (clave: string) => de(clave)?.significado ?? clave;
   const destinos = (conf.transiciones[estado] ?? []).filter(
-    (d) => de(d)?.activo !== false,
+    (d) =>
+      de(d)?.activo !== false &&
+      // Entre dos que significan lo mismo no hay acción que rehacer.
+      (!conf.con_su_camino[d] || significado(d) === significado(estado)),
   );
   const color = de(estado)?.color;
 

@@ -70,9 +70,17 @@ def crear_router_estados(servicio: str) -> APIRouter:
     def ver(objeto: str, db: DbDep) -> Any:
         fabrica = _de_este_servicio(objeto)
         efectiva = est.maquina_efectiva(objeto, db)
+        caminos = est.CAMINOS_PROPIOS.get(objeto, {})
         return {
             **est.a_configuracion(efectiva, de_fabrica=efectiva is fabrica),
             "fabrica": est.a_configuracion(fabrica, de_fabrica=True),
+            # Los estados a los que se llega con su acción y no con el cambio
+            # suelto, con cuál es: la ficha no los ofrece en el desplegable.
+            "con_su_camino": {
+                e: caminos[efectiva.significado(e)]
+                for e in efectiva.estados
+                if efectiva.significado(e) in caminos
+            },
         }
 
     @router.put(

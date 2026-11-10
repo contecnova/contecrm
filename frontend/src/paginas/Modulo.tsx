@@ -53,7 +53,8 @@ import {
   vistasDe,
   type VistaDeLista,
 } from "@/lib/vistasDeLista";
-import { llamar } from "@/lib/api";
+import { ErrorApi, llamar } from "@/lib/api";
+import { NO_SABE_BUSCAR, PAUSA_AL_TECLEAR_MS } from "@/lib/buscar";
 import {
   escalar,
   esIdentificadorTecnico,
@@ -611,6 +612,36 @@ function RecursoVista({
   const [unaVez, setUnaVez] = useState<Record<string, string> | null>(null);
   const [parametros, setParametros] = useSearchParams();
   const [termino, setTermino] = useState("");
+  /**
+   * El buscador de la lista, en el servidor (`?buscar=`).
+   *
+   * Buscaba en lo cargado: con doscientos clientes en pantalla y mil en la
+   * base, el que se buscaba no salía y la lista decía «nada con eso». Ahora se
+   * pregunta al servidor, que busca en los campos que nombran el registro. Lo
+   * tecleado se aplica tras una pausa —no una petición por tecla— y si el
+   * listado no sabe buscar (`listado.sin_busqueda`, o una ruta que no admite el
+   * parámetro), se vuelve a buscar en lo cargado y la tabla lo dice.
+   */
+  const [buscarTecleado, setBuscarTecleado] = useState("");
+  const [buscarAplicado, setBuscarAplicado] = useState("");
+  const [buscaEnServidor, setBuscaEnServidor] = useState(true);
+  const soloCambiaLaBusqueda = useRef(false);
+  useEffect(() => {
+    const espera = window.setTimeout(() => {
+      const nuevo = buscarTecleado.trim();
+      setBuscarAplicado((previo) => {
+        if (previo !== nuevo) soloCambiaLaBusqueda.current = true;
+        return nuevo;
+      });
+    }, PAUSA_AL_TECLEAR_MS);
+    return () => window.clearTimeout(espera);
+  }, [buscarTecleado]);
+  // Otra pestaña es otra lista: ni el texto ni lo que se supo de ella valen.
+  useEffect(() => {
+    setBuscarTecleado("");
+    setBuscarAplicado("");
+    setBuscaEnServidor(true);
+  }, [recurso.listar]);
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   // Los filtros viven en la URL y no en un estado interno: es lo que hace que
@@ -1077,6 +1108,9 @@ function RecursoVista({
             `${busqueda.parametro}=${encodeURIComponent(termino.trim())}`,
           );
         if (periodo) partes.push(`desde=${desde}`, `hasta=${hasta}`);
+        const conBuscar = !busqueda && buscaEnServidor && buscarAplicado !== "";
+        if (conBuscar)
+          partes.push(`buscar=${encodeURIComponent(buscarAplicado)}`);
         // Los filtros van en la petición, no se aplican sobre lo recibido.
         // Filtrar en el navegador obliga a traerse todas las filas para
         // enseñar diez —y con paginación por cursor, además, miente: filtra
@@ -1108,7 +1142,21 @@ function RecursoVista({
       } catch (error) {
         // El fallo de una petición ya superada no se enseña: sería un error
         // sobre algo que el usuario ya no está pidiendo.
-        if (mia === peticion.current) setFallo(error);
+        if (mia !== peticion.current) return;
+        // Un listado que no sabe buscar no es un fallo: se busca en lo
+        // cargado (cambiar `buscaEnServidor` vuelve a pedir sin `buscar`).
+        if (
+          !busqueda &&
+          buscaEnServidor &&
+          buscarAplicado !== "" &&
+          error instanceof ErrorApi &&
+          NO_SABE_BUSCAR.has(error.codigo)
+        ) {
+          soloCambiaLaBusqueda.current = true;
+          setBuscaEnServidor(false);
+          return;
+        }
+        setFallo(error);
       }
     },
     [
@@ -1125,11 +1173,21 @@ function RecursoVista({
       desde,
       hasta,
       filtros,
+      buscarAplicado,
+      buscaEnServidor,
     ],
   );
   recargar.current = () => void cargar();
 
   useEffect(() => {
+    // Si sólo ha cambiado lo que se busca, la tabla se queda mientras llega
+    // la respuesta: vaciarla desmontaría el buscador en el que se escribe.
+    if (soloCambiaLaBusqueda.current) {
+      soloCambiaLaBusqueda.current = false;
+      setSiguiente(null);
+      void cargar();
+      return;
+    }
     setFilas(null);
     setSiguiente(null);
     setElegidos(new Set());
@@ -1562,7 +1620,7 @@ function RecursoVista({
         </p>
       ) : filas === null ? (
         <Cargando />
-      ) : filas.length === 0 ? (
+      ) : filas.length === 0 && !buscarAplicado ? (
         // El vacío ofrece lo único que se puede hacer aquí: dar de alta el
         // primero. Un recuadro que solo dice «no hay nada» deja a quien mira en
         // el mismo sitio en el que estaba.
@@ -1779,6 +1837,15 @@ function RecursoVista({
               }
               // El listado ES la pantalla: se recorre con la página.
               ocupaLaPantalla
+              busqueda={
+                recurso.busqueda
+                  ? undefined
+                  : {
+                      valor: buscarTecleado,
+                      alCambiar: setBuscarTecleado,
+                      enServidor: buscaEnServidor,
+                    }
+              }
               pegada
               columnasIniciales={columnasDeLaVista}
               ordenInicial={ordenDeLaVista ?? null}

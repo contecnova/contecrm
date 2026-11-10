@@ -63,6 +63,14 @@ export interface CampoEsquema {
    */
   referencia: string;
   /**
+   * De qué vocabulario de la empresa salen sus opciones (`servicio/nombre`).
+   *
+   * Una lista que decide la empresa —las prioridades de un caso— no cabe en
+   * `opciones`, que es lo que trae el contrato: serían las de fábrica para
+   * siempre. El formulario las pide al vocabulario (`useOpciones`).
+   */
+  vocabulario?: string;
+  /**
    * Este campo **es el cuerpo entero**, no una propiedad dentro de él.
    *
    * Hay operaciones cuyo cuerpo es un objeto abierto a propósito: «a qué
@@ -106,6 +114,8 @@ interface Esquema {
   default?: unknown;
   /** Un valor que el servidor devuelve UNA sola vez: el secreto de una clave. */
   "x-una-vez"?: boolean;
+  /** De qué vocabulario de la empresa sale el valor: `servicio/nombre`. */
+  "x-vocabulario"?: string;
 }
 
 export interface Documento {
@@ -414,6 +424,7 @@ export function camposDe(
       formato: p.format ?? "",
       subcampos: subcamposDe(documento, elemento),
       referencia: p.referencia ?? "",
+      ...(p["x-vocabulario"] ? { vocabulario: p["x-vocabulario"] } : {}),
       ...(p.default !== undefined ? { porDefecto: p.default } : {}),
     };
   });
@@ -482,6 +493,12 @@ function resolver(documento: Documento, esquema: Esquema): Esquema {
         ...util,
         title: actual.title ?? util.title,
         description: actual.description,
+        // Lo que el servidor pone al lado del `anyOf` es del campo, no de una
+        // de sus formas: sin esto, una prioridad opcional perdía de qué
+        // vocabulario sale y se pintaba como una caja de texto.
+        ...(actual["x-vocabulario"]
+          ? { "x-vocabulario": actual["x-vocabulario"] }
+          : {}),
       };
       continue;
     }
@@ -543,7 +560,7 @@ function tipoDe(
   elemento?: Esquema,
   nombre = "",
 ): CampoEsquema["tipo"] {
-  if (esquema.enum) return "lista";
+  if (esquema.enum || esquema["x-vocabulario"]) return "lista";
   switch (esquema.type) {
     case "integer":
     case "number":

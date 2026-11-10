@@ -11,7 +11,13 @@ from crmcore import vocabulario
 from crmcore.audit.chain import registrar, registrar_cambios
 from crmcore.authz.decision import exigir
 from crmcore.datos.estados import aplicar as aplicar_estado
-from crmcore.datos.estados import con_significado, maquina_efectiva, significa
+from crmcore.datos.estados import (
+    camino_propio,
+    con_significado,
+    maquina_efectiva,
+    registrar_caminos,
+    significa,
+)
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
@@ -356,6 +362,9 @@ _CON_SU_CAMINO = {
         "renovado": "se renueva desde la revisión de renovaciones, que crea el contrato nuevo",
     },
 }
+# Publicados con la máquina: el desplegable de la ficha no los ofrece.
+for _objeto, _caminos in _CON_SU_CAMINO.items():
+    registrar_caminos(_objeto, _caminos)
 
 
 def cambiar_estado(
@@ -367,12 +376,9 @@ def cambiar_estado(
     sin esto se podían declarar y no había forma de llegar a ellos. La máquina
     de la empresa decide si la transición vale y si pide motivo.
     """
-    maquina = maquina_efectiva(objeto, uow.db)
-    destino = maquina.significado(estado) if maquina else estado
-    origen = maquina.significado(fila.estado) if maquina else fila.estado
     # Entre dos estados que significan lo mismo —«Enviado» y «En negociación»—
     # no hay nada que rehacer: lo que hace la acción ya se hizo al llegar.
-    camino = None if destino == origen else _CON_SU_CAMINO.get(objeto, {}).get(destino)
+    camino = camino_propio(objeto, fila.estado, estado, uow.db)
     if camino:
         raise Conflicto(
             f"Pasar a «{estado}» no se hace aquí: {camino}",

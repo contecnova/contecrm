@@ -178,3 +178,51 @@ def test_orchestrator_sin_aprobadores_no_aprueba_solo(
         db.execute(select(SolicitudAprobacion).where(SolicitudAprobacion.objeto_id == pid)).first()
         is None
     )
+
+
+def test_el_desplegable_sabe_lo_que_el_servidor_rechaza(
+    uow: UnidadDeTrabajo,  # noqa: F811
+    caja: Any,  # noqa: F811
+    contexto_tenant: UUID,
+) -> None:
+    """La ficha ofrecía «Enviado» en el desplegable de estado y el servidor lo
+    rechazaba (medido el 10-11-2026, tarea T05). La configuración publica
+    ahora `con_su_camino`, y el desplegable no ofrece lo que está ahí.
+
+    Se prueba que las dos mitades dicen lo mismo, destino por destino desde
+    borrador: lo publicado es exactamente lo que `cambiar_estado` rechaza.
+    """
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from crmcore.http.deps import H_PERMISOS, H_TENANT, H_USER, firmar_cabeceras_internas
+    from starlette.testclient import TestClient
+
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    cabeceras = firmar_cabeceras_internas(
+        {H_TENANT: str(uow.tenant_id), H_USER: str(uuid4()), H_PERMISOS: "*:*"},
+        get_settings().secret_key.get_secret_value(),
+    )
+    try:
+        with TestClient(importlib.import_module("services.sales.main").app) as cli:
+            r = cli.get("/api/v1/sales/estados/presupuesto", headers=cabeceras)
+    finally:
+        os.environ.pop("OUTBOX_ENABLED", None)
+        get_settings.cache_clear()
+    assert r.status_code == 200, r.text
+    conf = r.json()
+    con_camino = set(conf["con_su_camino"])
+    assert "enviado" in con_camino
+
+    destinos = conf["transiciones"]["borrador"]
+    assert destinos, "sin destinos desde borrador no se compara nada"
+    for destino in destinos:
+        fila = pre.crear(uow, lineas=[{"producto_id": str(caja.id)}], cuenta_id=uuid4())
+        try:
+            svc.cambiar_estado(uow, "presupuesto", fila, estado=destino, motivo="prueba")
+            rechazado = False
+        except Conflicto as exc:
+            rechazado = exc.error_code == "estados.con_su_camino"
+        assert rechazado == (destino in con_camino), destino

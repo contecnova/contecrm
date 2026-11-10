@@ -52,6 +52,12 @@ import { moduloDeObjeto } from "@/lib/modulos";
 import { recursoDeReferencia } from "@/lib/referencias";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utiles";
+import {
+  NO_SABE_BUSCAR,
+  PAUSA_AL_TECLEAR_MS,
+  rutaConBusqueda,
+} from "@/lib/buscar";
+import { useOpciones } from "@/lib/vocabularios";
 
 /** Los tipos que ocupan las dos columnas de la rejilla. */
 const ANCHOS = new Set([
@@ -151,7 +157,10 @@ export function Formulario({
       ? campos.filter((c) => c.nombre !== "forzar")
       : campos;
     const exigidos = visibles.filter((c) => c.obligatorio);
-    const preferidas = new Set(recurso?.columnas ?? []);
+    const preferidas = new Set([
+      ...(recurso?.columnas ?? []),
+      ...(recurso?.alta ?? []),
+    ]);
     if (exigidos.length > 0) {
       // **Y con ellos, lo que el recurso declara importante y lo que ya viene
       // relleno.** Con sólo los obligatorios, el alta de una oportunidad era
@@ -519,20 +528,12 @@ function Campo({
           {campo.titulo}
         </label>
       ) : campo.tipo === "lista" ? (
-        <select
-          {...comun}
-          value={String(valor ?? "")}
-          onChange={(e) => alCambiar(e.target.value)}
-        >
-          <option value="">—</option>
-          {campo.opciones.map((o) => (
-            // El valor viaja tal cual; lo que se lee es el texto: «Descuento
-            // tardío», no «descuento_tardio».
-            <option key={o} value={o}>
-              {rotuloDeOpcion(o)}
-            </option>
-          ))}
-        </select>
+        <Desplegable
+          comun={comun}
+          campo={campo}
+          valor={valor}
+          alCambiar={alCambiar}
+        />
       ) : campo.tipo === "lista_multiple" ? (
         <Opciones
           campo={campo}
@@ -1127,6 +1128,41 @@ function Pares({
 }
 
 /**
+ * Una lista cerrada: la del contrato, o la del vocabulario de la empresa.
+ *
+ * El valor viaja tal cual; lo que se lee es el rótulo: «Descuento tardío», no
+ * «descuento_tardio»; y en un vocabulario, el que le haya puesto la empresa.
+ */
+function Desplegable({
+  comun,
+  campo,
+  valor,
+  alCambiar,
+}: {
+  comun: Record<string, unknown>;
+  campo: CampoEsquema;
+  valor: unknown;
+  alCambiar: (v: unknown) => void;
+}) {
+  const { t } = useTranslation();
+  const opciones = useOpciones(campo, valor);
+  return (
+    <select
+      {...comun}
+      value={String(valor ?? "")}
+      onChange={(e) => alCambiar(e.target.value)}
+    >
+      <option value="">{opciones === null ? t("app.cargando") : "—"}</option>
+      {(opciones ?? []).map((o) => (
+        <option key={o.valor} value={o.valor}>
+          {o.etiqueta}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/**
  * Elegir un registro de otro recurso: un desplegable con buscador.
  *
  * Cerrado es un campo más del formulario, con el nombre de lo elegido; abierto,
@@ -1135,12 +1171,12 @@ function Pares({
  * con la lista siempre abierta debajo, cuarenta filas ocupando el formulario
  * aunque no se fuera a tocar el campo: lo vio quien lo usa y tenía razón.
  *
- * Trae las primeras doscientas filas y filtra en el navegador. No es una
- * búsqueda en el servidor y conviene decirlo: en una tabla de cien mil clientes
- * esto encuentra solo entre los doscientos primeros. Se hace así porque los
- * listados no publican todos un parámetro de búsqueda, y un buscador que
- * funciona en casi todos los recursos es mejor que uno que solo funciona en
- * tres — pero hay que cambiarlo en cuanto los listados lo admitan.
+ * Al abrir enseña las primeras filas, para elegir sin escribir. **Lo que se
+ * escribe se busca en el servidor** (`?buscar=`): antes filtraba esas
+ * doscientas en el navegador, y con más clientes el que se buscaba no salía
+ * —medido el 10-11-2026—. Mientras llega la respuesta se filtra lo que hay,
+ * para que la lista no se quede quieta; y un listado que no sabe buscar
+ * (`NO_SABE_BUSCAR`) sigue filtrando lo cargado, como antes.
  */
 function Referencia({
   campo,
@@ -1162,6 +1198,17 @@ function Referencia({
     null,
   );
   const [busqueda, setBusqueda] = useState("");
+  // Lo que contestó el servidor a lo escrito, y si ese listado sabe buscar.
+  const [encontradas, setEncontradas] = useState<
+    Record<string, unknown>[] | null
+  >(null);
+  const [buscaEnServidor, setBuscaEnServidor] = useState(true);
+  // El elegido, guardado: puede venir de una búsqueda y no estar entre las
+  // primeras filas, y entonces el campo no sabría cómo se llama.
+  const [elegidoAhora, setElegidoAhora] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [fallo, setFallo] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [activa, setActiva] = useState(0);
@@ -1197,6 +1244,34 @@ function Referencia({
   }, [recurso.listar]);
 
   useEffect(() => {
+    const texto = busqueda.trim();
+    if (!texto || !buscaEnServidor) {
+      setEncontradas(null);
+      return;
+    }
+    const control = new AbortController();
+    const espera = window.setTimeout(() => {
+      llamar<unknown>(rutaConBusqueda(recurso.listar, texto, 50), {
+        signal: control.signal,
+      })
+        .then((r) => setEncontradas(filas<Record<string, unknown>>(r.datos)))
+        .catch(
+          salvoCancelacion((error: unknown) => {
+            // Si no sabe buscar, se filtra lo cargado; cualquier otro fallo
+            // también, pero sin dejar de intentarlo con lo siguiente.
+            if (error instanceof ErrorApi && NO_SABE_BUSCAR.has(error.codigo))
+              setBuscaEnServidor(false);
+            setEncontradas(null);
+          }),
+        );
+    }, PAUSA_AL_TECLEAR_MS);
+    return () => {
+      window.clearTimeout(espera);
+      control.abort();
+    };
+  }, [busqueda, buscaEnServidor, recurso.listar]);
+
+  useEffect(() => {
     if (!abierto) return;
     function alPulsar(e: MouseEvent) {
       if (!caja.current?.contains(e.target as Node)) setAbierto(false);
@@ -1205,14 +1280,19 @@ function Referencia({
     return () => document.removeEventListener("mousedown", alPulsar);
   }, [abierto]);
 
-  const elegido = opciones?.find((o) => String(o.id) === String(valor ?? ""));
-  const filtradas = (opciones ?? [])
-    .filter((o) =>
+  const elegido =
+    opciones?.find((o) => String(o.id) === String(valor ?? "")) ??
+    (elegidoAhora && String(elegidoAhora.id) === String(valor ?? "")
+      ? elegidoAhora
+      : undefined);
+  const filtradas = (
+    encontradas ??
+    (opciones ?? []).filter((o) =>
       nombreDelRegistro(o)
         .toLowerCase()
         .includes(busqueda.trim().toLowerCase()),
     )
-    .slice(0, 50);
+  ).slice(0, 50);
 
   function cerrar() {
     setAbierto(false);
@@ -1223,6 +1303,7 @@ function Referencia({
   }
 
   function elegir(o: Record<string, unknown>) {
+    setElegidoAhora(o);
     alCambiar(String(o.id));
     cerrar();
   }

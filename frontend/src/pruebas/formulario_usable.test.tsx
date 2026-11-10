@@ -233,4 +233,42 @@ describe("un formulario sin campos obligatorios", () => {
     ).toBe(3);
     expect(screen.getByText(/formulario\.masCampos/)).toBeInTheDocument();
   });
+
+  it("lo que el recurso pide delante en el alta va delante, aunque no sea columna", () => {
+    // Medido el 10-11-2026 (tarea T02): los apellidos y el correo de un lead
+    // iban detrás de «Más campos», y había que abrirlo en cada alta.
+    const campos = [
+      { nombre: "nombre", tipo: "string", obligatorio: false },
+      { nombre: "apellidos", tipo: "string", obligatorio: false },
+      { nombre: "email", tipo: "string", obligatorio: false },
+      { nombre: "web", tipo: "string", obligatorio: false },
+    ] as unknown as Parameters<typeof Formulario>[0]["campos"];
+
+    const { container } = render(
+      <Formulario
+        campos={campos}
+        recurso={
+          {
+            nombre: "Candidatos",
+            listar: "/x",
+            servicio: "sales",
+            columnas: ["nombre"],
+            alta: ["apellidos", "email"],
+          } as never
+        }
+        textoEnviar="Guardar"
+        alEnviar={() => undefined}
+      />,
+    );
+    const delante = container.querySelectorAll(".rejilla-formulario")[0];
+    expect(
+      [...(delante?.querySelectorAll("input") ?? [])].map((e) => e.id),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/apellidos/),
+        expect.stringMatching(/email/),
+      ]),
+    );
+    expect(delante?.querySelectorAll("input").length).toBe(3);
+  });
 });

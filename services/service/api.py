@@ -8,7 +8,7 @@ from uuid import UUID
 
 from crmcore.datos.estados import maquina_efectiva, presentar
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import aplicar_filtros_de_la_url
+from crmcore.http.listados import aplicar_filtros_de_la_url, ruta_de_vocabulario
 from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -22,7 +22,13 @@ from services.service import marcador as _marcador  # noqa: F401
 from services.service import servicio as svc
 from services.service.ajustes import ajustes
 from services.service.estados import terminales
-from services.service.modelos import Caso, CategoriaCaso, DefinicionSLA, EventoCaso
+from services.service.modelos import (
+    VOCABULARIO_PRIORIDAD,
+    Caso,
+    CategoriaCaso,
+    DefinicionSLA,
+    EventoCaso,
+)
 
 router_casos = APIRouter(prefix="/casos", tags=["casos"])
 router_taxonomia = APIRouter(prefix="/categorias-caso", tags=["casos"])
@@ -204,7 +210,13 @@ class AbrirCaso(BaseModel):
     descripcion: str | None = None
     tipo: str = Field("incidencia", max_length=40)
     categoria_id: UUID | None = None
-    prioridad: str | None = None
+    # De la lista de la empresa (vocabulario `prioridades_caso`): el formulario
+    # la ofrece como desplegable y el servicio la valida al abrir.
+    prioridad: str | None = Field(
+        None,
+        max_length=120,
+        json_schema_extra={"x-vocabulario": ruta_de_vocabulario(VOCABULARIO_PRIORIDAD)},
+    )
     severidad: str | None = None
     origen: str = Field("manual", max_length=30)
     cuenta_id: UUID | None = None
@@ -618,6 +630,44 @@ def cerrar(caso_id: UUID, datos: CerrarCaso, uow: UowDep, principal: Autenticado
         "incumplio_resolucion": caso.incumplio_resolucion,
         "validacion_cliente": caso.validacion_cliente,
     }
+
+
+class ResponderCaso(BaseModel):
+    mensaje: str = Field(min_length=1, max_length=20_000, description="Lo que se le contesta")
+    para: str = Field(
+        "",
+        max_length=320,
+        description="A quién. Vacío: el correo del contacto del caso",
+    )
+    asunto: str = Field(
+        "",
+        max_length=300,
+        description="Vacío: «Re: <asunto del caso> [<código>]»",
+    )
+
+
+@router_casos.post(
+    "/{caso_id}/responder",
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Responder al cliente por correo",
+    description=(
+        "Sale **de verdad**, por el canal de la casa: el correo transaccional, con "
+        "la plantilla de la empresa (`respuesta_caso_plantilla`) o la de serie. "
+        "Consta salga o no —el envío con su estado, la actividad en el caso y el "
+        "evento en su historial—, y si sale cuenta como primera respuesta.\n\n"
+        "`enviado: false` con su `motivo` no es un error de la petición: la "
+        "respuesta queda apuntada como no enviada, y se dice por qué."
+    ),
+)
+def responder(caso_id: UUID, datos: ResponderCaso, uow: UowDep, principal: AutenticadoDep) -> Any:
+    return svc.responder_caso(
+        uow,
+        caso_id,
+        mensaje=datos.mensaje,
+        para=datos.para,
+        asunto=datos.asunto,
+        principal_id=principal.id,
+    )
 
 
 class ReabrirCaso(BaseModel):

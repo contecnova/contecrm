@@ -197,6 +197,7 @@ const CON_TILDE: Record<string, string> = {
   conservacion: "conservación",
   comprobacion: "comprobación",
   anonimo: "anónimo",
+  mayusculas: "mayúsculas",
   inscripcion: "inscripción",
   ningun: "ningún",
   validas: "válidas",

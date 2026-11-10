@@ -14,7 +14,7 @@ from crmcore.errors import NoDisponible
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from services.marketing import audiencias_sync as aud
 from services.marketing import envios as env
@@ -135,12 +135,12 @@ def programar_campana(
 @router_envios.get(
     "",
     dependencies=[Depends(exige_permiso("campana:read"))],
-    summary="Los envíos de una campaña o de un recorrido, con su hora, su canal y por qué",
+    summary="Los envíos de una campaña, de un recorrido o las respuestas de un registro",
 )
 def envios(
     db: DbDep,
     principal: AutenticadoDep,
-    origen: str = Query(..., description="campana · recorrido"),
+    origen: str = Query(..., description="campana · recorrido · respuesta"),
     origen_id: UUID = Query(...),
     limite: int = Query(200, ge=1, le=1000),
 ) -> Any:
@@ -234,6 +234,52 @@ def vista_previa(
         idioma=idioma,
         contacto_id=contacto_id,
         principal_id=principal.id,
+    )
+
+
+class CorreoSuelto(BaseModel):
+    para: EmailStr
+    objeto: str = Field(..., min_length=1, max_length=20, examples=["caso"])
+    objeto_id: UUID
+    asunto: str = Field("", max_length=300)
+    mensaje: str = Field(..., min_length=1, max_length=20_000)
+    plantilla: str = Field(
+        "",
+        max_length=80,
+        description="Clave de la plantilla de la empresa. Sin ella, o si no existe, la de serie",
+    )
+    idioma: str = Field("es", max_length=10)
+    datos: dict[str, Any] = Field(
+        default_factory=dict, description="Lo que rellena los `{{…}}` de la plantilla"
+    )
+
+
+@router_correo_vista.post(
+    "/enviar",
+    dependencies=[Depends(exige_permiso("activity:write"))],
+    summary="Mandar ya un correo sobre un registro, por el canal de la casa",
+    description=(
+        "La respuesta a un caso: la escribe una persona y sale en el momento, "
+        "por la clase **transaccional** —su dominio, su remitente y su "
+        "servidor— y con la plantilla de la empresa que se pida (o la de serie, "
+        "y se dice). **Consta siempre**, salga o no: el envío queda con su "
+        "estado y su motivo.\n\n"
+        "Con `activity:write` y no con el permiso de campañas: contestar a un "
+        "cliente es apuntar una actividad, no lanzar una campaña."
+    ),
+)
+def enviar_correo(datos: CorreoSuelto, uow: UowDep, principal: AutenticadoDep) -> Any:
+    return env.enviar_suelto(
+        uow,
+        para=str(datos.para),
+        objeto=datos.objeto,
+        objeto_id=datos.objeto_id,
+        asunto=datos.asunto,
+        mensaje=datos.mensaje,
+        plantilla=datos.plantilla,
+        idioma=datos.idioma,
+        datos=datos.datos,
+        por=principal,
     )
 
 

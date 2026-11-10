@@ -384,6 +384,87 @@ def test_cada_clase_sale_por_su_dominio_y_el_remitente_ajeno_no_sale(
     assert fallido["clase"] == "transaccional" and "no es del dominio" in fallido["motivo"]
 
 
+def test_la_respuesta_de_un_caso_sale_por_lo_transaccional_y_consta(
+    db: Any, uow: UnidadDeTrabajo, contexto_tenant: UUID, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """El envío suelto de la respuesta a un caso (10-11-2026): sale ya, por la
+    clase transaccional y con la plantilla de la empresa si la tiene; y si no
+    puede salir, queda el envío con su motivo."""
+    from crmcore.notificaciones.smtp import TransporteSMTP
+
+    from services.marketing.correo import BloqueCorreo, PlantillaMarketing
+
+    caso = uuid4()
+    # Sin canal configurado no sale, y consta con el porqué; sin plantilla de
+    # la empresa, la de serie, y se dice.
+    r = env.enviar_suelto(
+        uow, para="c@example.com", objeto="caso", objeto_id=caso, asunto="Re: X", mensaje="Hola"
+    )
+    assert r["enviado"] is False and r["estado"] == "fallido" and r["motivo"]
+    assert r["plantilla_de_serie"] is True
+
+    _ajustes(
+        monkeypatch,
+        vis,
+        dominio_transaccional="marca.com",
+        remitente_transaccional="soporte@marca.com",
+        correo_flujo_transaccional={"host": "smtp-tx.local"},
+    )
+    mandados: list[Any] = []
+    monkeypatch.setattr(
+        TransporteSMTP, "_enviar", lambda self, correo, host, config, s: mandados.append(correo)
+    )
+    db.add(
+        BloqueCorreo(
+            tenant_id=uow.tenant_id,
+            clave="firma",
+            nombre="f",
+            tipo="texto",
+            contenido={"texto": "Equipo de soporte · {{caso.codigo}}"},
+        )
+    )
+    db.add(
+        PlantillaMarketing(
+            tenant_id=uow.tenant_id,
+            clave="respuesta_caso",
+            nombre="Respuesta",
+            asunto="Sobre su caso",
+            clase="transaccional",
+            bloques=[{"bloque": "cuerpo"}, {"bloque": "firma"}],
+        )
+    )
+    db.add(
+        BloqueCorreo(
+            tenant_id=uow.tenant_id,
+            clave="cuerpo",
+            nombre="c",
+            tipo="texto",
+            contenido={"texto": "{{mensaje}}"},
+        )
+    )
+    db.flush()
+    r = env.enviar_suelto(
+        uow,
+        para="c@example.com",
+        objeto="caso",
+        objeto_id=caso,
+        asunto="Re: Ruido [C-1]",
+        mensaje="Primera línea\nSegunda línea",
+        plantilla="respuesta_caso",
+        datos={"caso": {"codigo": "C-1"}},
+    )
+    assert r["enviado"] is True and r["plantilla"] == "respuesta_caso"
+    (correo,) = mandados
+    assert correo["To"] == "c@example.com" and "soporte@marca.com" in correo["From"]
+    # El asunto que escribe quien responde manda sobre el de la plantilla.
+    assert correo["Subject"] == "Re: Ruido [C-1]"
+    html = correo.get_body(preferencelist=("html",)).get_content()
+    assert "Primera línea<br>Segunda línea" in html and "C-1" in html
+
+    envios = env.listado(db, uow.tenant_id, origen="respuesta", origen_id=caso)["envios"]
+    assert [e["estado"] for e in envios] == ["fallido", "enviado"]
+
+
 def _correo(db: Any, quien: UUID) -> str:
     from services.marketing.modelos import PerfilMarketing
 

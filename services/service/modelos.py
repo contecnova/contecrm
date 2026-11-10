@@ -123,6 +123,12 @@ class DefinicionSLA(Base, TimestampMixin):
 
 
 PRIORIDADES = ("baja", "media", "alta", "critica")
+# La prioridad es de la empresa, no del código (10-11-2026): era texto libre en
+# el alta —se tecleaba «alta» o «Alta» o «urgente»— y una lista cerrada en la
+# edición. Ahora es el vocabulario `prioridades_caso`, editable en Gestor de
+# objetos › Vocabularios, y el formulario la ofrece como lista. Éstos son los de
+# fábrica, en su orden: es una escala, y el escalado sube al siguiente.
+VOCABULARIO_PRIORIDAD = "prioridades_caso"
 # Los estados de un caso. Hasta el 09-11-2026 no estaban escritos en ningún
 # sitio y `cambiar_estado` aceptaba cualquier texto: una errata creaba un estado
 # nuevo que ni el reloj del SLA, ni las colas, ni los informes reconocían.
@@ -156,7 +162,11 @@ class Caso(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # por el cliente» son casos reales que un solo campo no puede representar.
     severidad: Mapped[str] = mapped_column(String(20), nullable=False, default="media")
     prioridad: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="media", index=True, info={"opciones": PRIORIDADES}
+        String(120),
+        nullable=False,
+        default="media",
+        index=True,
+        info={"vocabulario": VOCABULARIO_PRIORIDAD},
     )
     origen: Mapped[str] = mapped_column(String(30), nullable=False, default="manual")
 

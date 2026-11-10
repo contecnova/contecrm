@@ -22,7 +22,7 @@
 | Criticidad | Total | Hecho |
 |---|--:|--:|
 | C — Core | 311 | 310 |
-| A — Avanzado | 431 | 429 |
+| A — Avanzado | 433 | 431 |
 | D — Diferencial | 44 | 44 |
 
 ## Por fase

@@ -6650,6 +6650,136 @@ siguiente; la cuenta sale de la oportunidad), `test_etag_de_ida_y_vuelta.py`
 `test_lo_que_preguntan_las_pantallas_de_apoyo.py` (la bandeja de la portada
 se pide y se decide por HTTP).
 
+### 4.6.72 Las fricciones que quedaron en las tareas del día (10-11-2026)
+
+Lo que la medida de 4.6.71 dejó apuntado como «queda» en `docs/PILA.md`
+(entrada 10), arreglado y vuelto a medir con el mismo guion.
+
+**1. El lead, sin «Más campos».** `Recurso.alta` (en `lib/modulos.ts`): campos
+que van delante en el formulario además de las columnas. Candidatos declara
+`alta: ["apellidos", "email"]`; `Formulario.tsx` los suma a las preferidas.
+
+**2. La prioridad del caso es un vocabulario.** `prioridades_caso`, registrado
+en `services/service/servicio.py` con los de fábrica **en su orden**
+(`vocabulario.registrar(..., en_orden=True, etiquetas={...})`: es una escala) y
+`media` fija (la de un caso que no dice ninguna). `crmcore.vocabulario` admite
+ahora `en_orden` y `etiquetas`, y `valores_en_orden(db, nombre)` da la escala
+de la empresa. La columna `casos.prioridad` declara
+`info={"vocabulario": "prioridades_caso"}` y pasa a 120 caracteres (migración
+`service/20261110_1500_la_prioridad_es_un_vocabulario`). Lo genérico, para
+cualquier columna con `info["vocabulario"]`, en `crmcore.http.listados`: el
+PATCH de la ficha la publica como texto con `x-vocabulario: servicio/nombre`
+(no como `enum`: sería la lista de fábrica para siempre) y valida al guardar
+contra lo que tenga la empresa (`vocabulario.valor_no_valido`, 422);
+`http/opciones.py` la incluye en `x-opciones` con los de fábrica. El alta
+(`AbrirCaso.prioridad`) lleva el mismo `x-vocabulario` y `abrir_caso` valida
+con `vocabulario.valores`. El escalado (`operacion._aplicar_escalada`) sube por
+la escala de la empresa y no por la tabla de orden que tenía escrita, que se quita. En el
+front, `lib/contrato.ts` lee `x-vocabulario` (también al lado de un `anyOf`) y
+lo pinta como lista; `lib/vocabularios.ts::useOpciones` pide
+`/api/v1/{servicio}/vocabularios/{nombre}` una vez por sesión, con los activos,
+en su orden y con su rótulo, y añade el valor actual si está retirado. Lo usan
+`Formulario` y `CeldaEditable`. Pestaña **Prioridades de un caso** en Gestor de
+objetos.
+
+**3 y 4. Buscar en el servidor.** `?buscar=` en
+`crmcore.http.listados.aplicar_filtros_de_la_url`, así que vale para la fábrica
+y para todos los listados escritos a mano que la llaman (si la ruta declara su
+propio `buscar` —cuentas, contactos—, manda el suyo). Busca palabra por palabra
+(Y entre palabras, O entre campos), sin mayúsculas, con `%` y `_` literales, en
+los campos que nombran el registro: `__busqueda__` del modelo o, si no,
+`CAMPOS_DE_BUSQUEDA` (nombre, apellidos, empresa, asunto, título, código,
+número, clave, etiqueta, correo, referencia…), y sólo los que quien pregunta ve
+en claro. Un modelo sin ninguno contesta `listado.sin_busqueda` (422) en vez de
+devolverlo todo. En el front, `lib/buscar.ts` (`rutaConBusqueda`, la pausa al
+teclear —200 ms, la misma que la paleta— y los códigos de «no sabe buscar»): el
+selector de referencias (`Formulario.tsx::Referencia`) busca en el servidor lo
+que se escribe —mientras llega, filtra lo cargado— y recuerda lo elegido aunque
+no esté entre las primeras filas; la lista (`Modulo.tsx`) manda `buscar=` tras
+la pausa sin vaciar la tabla (el buscador vive en ella) y `Tabla` recibe la
+búsqueda por la prop `busqueda` y no vuelve a filtrar. Con `listado.sin_busqueda`
+o `peticion.parametro_desconocido` las dos caen a filtrar lo cargado, y la tabla
+lo dice («3 de 50 cargados»); con el servidor, «N elementos con «x»».
+
+**5. Responder un caso manda el correo.** `POST /api/v1/casos/{id}/responder`
+(`case:write`; `mensaje`, `para` y `asunto` opcionales) en
+`services/service/servicio.py::responder_caso`. Sin `para`, el correo del
+contacto del caso (`GET /contacts/{id}` a clientes); sin ninguno,
+`service.respuesta_sin_destinatario`. Manda por marketing
+(`POST /api/v1/correo/enviar`, nuevo, `activity:write`:
+`services/marketing/envios.py::enviar_suelto`): la clase **transaccional**
+—su dominio, su remitente y su servidor, `vista_correo.salida`—, con la
+plantilla de la empresa del ajuste `respuesta_caso_plantilla` (de serie
+`respuesta_caso`; `{{mensaje}}`, `{{asunto}}`, `{{caso.codigo}}`,
+`{{caso.asunto}}`) o, si no la tiene, la composición de serie, y lo dice
+(`plantilla_de_serie`). Consta tres veces, salga o no: el envío
+(`EnvioProgramado`, `origen="respuesta"`, con estado y motivo; se lee en
+`GET /envios-programados?origen=respuesta&origen_id=<caso>`), la actividad de
+correo en el caso (con «No ha salido: …» delante si no salió y `detalles` con
+`enviado`, `para`, `motivo` y `envio_id`) y el evento `respuesta` del
+historial del caso. Sólo si sale cuenta como primera respuesta. Las llamadas a
+clientes y marketing van con la identidad de quien responde y sólo los permisos
+que hacen falta (`crmcore.http.interno.invocar`), con
+`respuesta_caso_espera_s` de espera. En la ficha, **Responder** es la destacada
+del caso (`destacadas: ["responder", "cerrar"]`) y abre
+`componentes/ResponderCaso.tsx`, no el formulario genérico: el genérico diría
+«Hecho» aunque el correo no hubiera salido.
+
+**6. Cuentas, a la vista en Ventas.** `Aplicacion.delante`
+(`lib/aplicaciones.ts`): las pestañas que una aplicación pone primero, por su
+camino; las demás siguen en el orden de sus áreas. Ventas declara
+`/m/oportunidades`, `/m/leads` y `/m/cuentas`. No se mueve nada de área —Ventas
+sigue en su tope de diez—. Medido a 1440 px: antes Cuentas era la decimotercera
+y caía en «Más»; ahora la tercera tras Inicio y Puesto. La prueba
+`el_rediseno_no_ha_escondido_nada` exige que lo declarado exista y salga
+primero.
+
+**7. El estado del presupuesto no ofrece lo que se rechaza.**
+`crmcore.datos.estados.CAMINOS_PROPIOS` con `registrar_caminos` y
+`camino_propio(objeto, origen, destino, db)`: los significados a los que se
+llega con su acción. Ventas registra los suyos (`_CON_SU_CAMINO`) y su
+`cambiar_estado` usa `camino_propio`; `GET /{servicio}/estados/{objeto}`
+publica `con_su_camino` (estado → por qué), y `CambioDeEstado.tsx` no ofrece
+esos destinos (salvo entre dos estados con el mismo significado). Desde
+borrador, el presupuesto no ofrece nada en el desplegable —todos sus destinos
+tienen acción— y **Enviar** está a la vista.
+
+**Medido otra vez** (`node frontend/scripts/medir-tareas.mjs`, 10-11-2026):
+
+| # | Tarea | Antes (clics · campos · pantallas · s · persona) | Después |
+|---|---|---|---|
+| T02 | Alta de un lead y convertirlo | 6 · 3 · 4 · 5,4 s · ≈29 s | 5 · 3 · 4 · 4,7 s · ≈27 s |
+| T08 | Abrir un caso con prioridad | 3 + Intro · 3 · 4 · 3,7 s · ≈31 s | 5 + Intro · 3 · 4 · 3,8 s · ≈33 s |
+| T09 | Responder un caso | 3 + Intro · 3 · 2 · 2,8 s · ≈30 s (sólo apuntaba) | sin medir: ver abajo |
+| resto | T01, T03–T07, T10–T12 | | iguales (±0,4 s de reloj) |
+
+La T08 cuesta un clic más: elegir en una lista son dos clics (abrir y elegir)
+donde antes se tecleaba «alta»; a cambio no se puede escribir una prioridad que
+no existe. La T09 del guion ahora pulsa **Responder**, escribe el destinatario
+(`uxmedida@example.com`, dominio reservado) y el mensaje, y **Enviar
+respuesta**; sólo cuenta como hecha si el envío consta **enviado**. No se ha
+corrido contra el tenant de plataforma: manda un correo de verdad, y en esta
+instalación el canal transaccional no tiene remitente ni servidor
+(`GET /api/v1/correo/salida`), así que habría quedado «No ha salido» con ese
+motivo. La respuesta enviada y la no enviada están probadas con el canal
+sustituido.
+
+Pruebas: `test_la_busqueda_de_una_lista_va_al_servidor.py` (encuentra lo que no
+está en la primera página, palabra por palabra, `%` literal, 422 sin campos de
+nombre); `test_la_prioridad_y_la_respuesta_del_caso.py` (escala de fábrica en
+orden, prioridad de la empresa al abrir y en el escalado, `x-vocabulario` en el
+contrato, el PATCH valida contra la empresa, responder manda y cuenta, lo que
+no sale consta como no salido, sin destinatario no se llama a nadie);
+`test_marketing_lo_que_sale_de_verdad.py` (la respuesta sale por lo
+transaccional con la plantilla de la empresa, y sin canal consta fallida);
+`test_estados_de_presupuesto_y_contrato.py` (lo publicado en `con_su_camino`
+es exactamente lo que el servidor rechaza, destino a destino); en el front,
+`lo_que_se_ofrece_sale_del_servidor.test.tsx` (el selector busca en el
+servidor y cae a lo cargado, la lista de vocabulario, el desplegable de estado,
+la tabla no refiltra), `formulario_usable.test.tsx` (`alta` delante) y
+`el_rediseno_no_ha_escondido_nada.test.ts` (`delante`).
+
+
 ## 5. Operación
 
 ### 5.1 Copias y restauración

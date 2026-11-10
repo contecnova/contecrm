@@ -16,7 +16,7 @@ from uuid import UUID
 from crmcore.audit import registrar
 from crmcore.datos.calendario import CalendarioLaboral, sumar_horas_laborables
 from crmcore.db.uow import UnidadDeTrabajo
-from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.errors import Conflicto, ErrorValidacion, NoDisponible, NoEncontrado
 from crmcore.fechas import hoy
 from crmcore.logging import get_logger
 from crmcore.vocabularios import SEVERIDADES as SEVERIDADES_QUE_CRUZAN
@@ -45,9 +45,28 @@ from crmcore.datos.estados import (  # noqa: E402
 )
 
 from services.service.estados import EN_PAUSA, terminales  # noqa: E402
-from services.service.modelos import PRIORIDADES  # noqa: E402
+from services.service.modelos import PRIORIDADES, VOCABULARIO_PRIORIDAD  # noqa: E402
 
 SEVERIDADES = SEVERIDADES_QUE_CRUZAN
+
+# La empresa decide sus prioridades (Gestor de objetos › Vocabularios). «media»
+# es fija: es la que toma un caso que no dice ninguna —el alta, el canal de
+# entrada—, y retirarla dejaría esos casos sin una prioridad válida.
+from crmcore import vocabulario  # noqa: E402
+
+vocabulario.registrar(
+    VOCABULARIO_PRIORIDAD,
+    PRIORIDADES,
+    etiqueta="Prioridades de un caso",
+    descripcion=(
+        "En qué orden se atiende un caso. Es una escala: el orden de la lista es "
+        "el de la urgencia, y el escalado sube un caso al siguiente. «Media» es "
+        "la de un caso que no dice ninguna y no se puede retirar."
+    ),
+    fijos=("media",),
+    en_orden=True,
+    etiquetas={"baja": "Baja", "media": "Media", "alta": "Alta", "critica": "Crítica"},
+)
 
 
 def _ahora() -> datetime:
@@ -351,11 +370,12 @@ def abrir_caso(
         datos.setdefault("linea", hoja.linea)
 
     prioridad = str(datos.pop("prioridad", "") or sugerida or "media")
-    if prioridad not in PRIORIDADES:
+    validas = vocabulario.valores(uow.db, VOCABULARIO_PRIORIDAD)
+    if prioridad not in validas:
         raise ErrorValidacion(
             f"Prioridad «{prioridad}» no válida.",
             error_code="service.prioridad_no_valida",
-            detalle={"validas": list(PRIORIDADES)},
+            detalle={"validas": sorted(validas)},
         )
     severidad = str(datos.pop("severidad", "") or "media")
     if severidad not in SEVERIDADES:
@@ -413,6 +433,162 @@ def exigir_caso(db: Session, caso_id: UUID) -> Caso:
     if caso is None or caso.deleted_at is not None:
         raise NoEncontrado("El caso no existe", error_code="service.caso_no_encontrado")
     return caso
+
+
+def responder_caso(
+    uow: UnidadDeTrabajo,
+    caso_id: UUID,
+    *,
+    mensaje: str,
+    para: str = "",
+    asunto: str = "",
+    principal_id: Any = None,
+) -> dict[str, Any]:
+    """Contesta al cliente por correo, y deja escrito que se hizo.
+
+    Hasta el 10-11-2026 «responder» en la ficha del caso era **apuntar** un
+    correo: quedaba una actividad de tipo correo y al cliente no le llegaba
+    nada. Ahora sale de verdad, por el canal de la casa —el correo
+    transaccional de marketing, con la plantilla de la empresa
+    (`respuesta_caso_plantilla`)—, y consta tres veces: el envío con su estado
+    en marketing, la actividad colgada del caso en clientes y el evento en el
+    historial del caso. Si sale, cuenta como primera respuesta para el SLA.
+
+    **Lo que no sale también consta.** Sin remitente, sin servidor o con el
+    buzón rechazándolo, se apunta igual —con «no ha salido» y el motivo— y se
+    devuelve `enviado: false`: una respuesta que se cree mandada y no lo está es
+    la peor de las tres posibilidades.
+
+    El destinatario es el que se escriba o, si no, el correo del contacto del
+    caso. Se pregunta a clientes con la identidad de quien responde y sólo con
+    lo que hace falta para leerlo.
+    """
+    from crmcore.http.interno import invocar
+    from crmcore.runtime import settings as rt
+
+    from services.service.ajustes import ajustes
+
+    caso = exigir_caso(uow.db, caso_id)
+    texto = mensaje.strip()
+    if not texto:
+        raise ErrorValidacion(
+            "Una respuesta sin texto no dice nada al cliente",
+            error_code="service.respuesta_vacia",
+        )
+    espera = float(
+        rt.efectivo("respuesta_caso_espera_s", uow.db) or ajustes().respuesta_caso_espera_s
+    )
+
+    def llamar(metodo: str, ruta: str, permisos: list[str], cuerpo: Any = None) -> dict[str, Any]:
+        return invocar(
+            metodo=metodo,
+            ruta=ruta,
+            cuerpo=cuerpo,
+            tenant_id=uow.tenant_id,
+            principal_id=principal_id,
+            permisos=permisos,
+            timeout_s=espera,
+        )
+
+    destino = para.strip()
+    if not destino and caso.contacto_id is not None:
+        contacto = llamar("GET", f"/api/v1/contacts/{caso.contacto_id}", ["contact:read"])
+        if contacto.get("ok"):
+            destino = str((contacto.get("datos") or {}).get("email") or "").strip()
+    if not destino:
+        raise ErrorValidacion(
+            "No hay a quién mandarla: el caso no tiene un contacto con correo. "
+            "Escribe la dirección en «Para».",
+            error_code="service.respuesta_sin_destinatario",
+            errores=[{"campo": "para", "motivo": "Hace falta una dirección"}],
+        )
+
+    titulo = asunto.strip() or f"Re: {caso.asunto} [{caso.codigo}]"
+    plantilla = str(
+        rt.efectivo("respuesta_caso_plantilla", uow.db) or ajustes().respuesta_caso_plantilla
+    )
+    try:
+        mandado = llamar(
+            "POST",
+            "/api/v1/correo/enviar",
+            ["activity:write"],
+            {
+                "para": destino,
+                "objeto": "caso",
+                "objeto_id": str(caso.id),
+                "asunto": titulo,
+                "mensaje": texto,
+                "plantilla": plantilla,
+                "datos": {"caso": {"codigo": caso.codigo, "asunto": caso.asunto}},
+            },
+        )
+    except NoDisponible as exc:
+        mandado = {"ok": False, "datos": {"mensaje": exc.mensaje}}
+    resultado = mandado.get("datos") if isinstance(mandado.get("datos"), dict) else {}
+    enviado = bool(mandado.get("ok") and resultado.get("enviado"))
+    motivo = (
+        ""
+        if enviado
+        else str(
+            resultado.get("motivo")
+            or resultado.get("detail")
+            or resultado.get("mensaje")
+            or "no contesta"
+        )[:500]
+    )
+
+    # La actividad, en la ficha del caso: es lo que ve quien lo abre después.
+    actividad = llamar(
+        "POST",
+        "/api/v1/activities",
+        ["activity:write"],
+        {
+            "tipo": "email",
+            # Lo que no salió se ve en la propia lista de lo apuntado, sin
+            # abrir nada: no puede leerse igual que lo que sí llegó.
+            "asunto": (titulo if enviado else f"No ha salido: {titulo}")[:300],
+            "cuerpo": texto,
+            "objeto": "caso",
+            "objeto_id": str(caso.id),
+            **({"cuenta_id": str(caso.cuenta_id)} if caso.cuenta_id else {}),
+            **({"contacto_id": str(caso.contacto_id)} if caso.contacto_id else {}),
+            "detalles": {
+                "para": destino,
+                "enviado": enviado,
+                "motivo": motivo,
+                "envio_id": resultado.get("envio_id") or "",
+            },
+        },
+    )
+    actividad_id = (
+        str((actividad.get("datos") or {}).get("id") or "") if actividad.get("ok") else ""
+    )
+
+    _anotar(
+        uow.db,
+        caso,
+        "respuesta",
+        para=destino,
+        asunto=titulo,
+        enviado=enviado,
+        motivo=motivo,
+        envio_id=resultado.get("envio_id") or "",
+        actividad_id=actividad_id,
+        por=str(principal_id) if principal_id else None,
+    )
+    if enviado:
+        registrar_primera_respuesta(uow, caso.id, por=principal_id)
+    uow.db.flush()
+    return {
+        "enviado": enviado,
+        "motivo": motivo,
+        "para": destino,
+        "asunto": titulo,
+        "envio_id": resultado.get("envio_id") or None,
+        "plantilla": resultado.get("plantilla"),
+        "plantilla_de_serie": bool(resultado.get("plantilla_de_serie")),
+        "actividad_id": actividad_id or None,
+    }
 
 
 def registrar_primera_respuesta(

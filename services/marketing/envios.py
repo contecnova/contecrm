@@ -47,7 +47,9 @@ from services.marketing import momento as mom
 
 logger = get_logger(__name__)
 
-ORIGENES = ("campana", "recorrido")
+# `respuesta`: un correo suelto sobre un registro —la respuesta de un caso—,
+# mandado en el momento por quien lo escribe (`enviar_suelto`).
+ORIGENES = ("campana", "recorrido", "respuesta")
 ESTADOS = ("programado", "enviado", "fallido", "omitido")
 SUCESOS = ("abierto", "clic", "respondido")
 
@@ -761,6 +763,120 @@ def _despachar_uno(
         transaccional=envio.clase == "transaccional",
     )
     return True
+
+
+# ── Un correo suelto, ahora (la respuesta de un caso) ─────────────────────
+
+# La composición de serie de una respuesta, para cuando la empresa no tiene la
+# plantilla que se pide: el mensaje y nada más. Como los vocabularios —valen los
+# de fábrica mientras no se toque nada—: sin esto, responder un caso exigiría
+# diseñar antes una plantilla, y una instalación nueva no contestaría a nadie.
+_RESPUESTA_DE_SERIE: dict[str, Any] = {
+    "plantilla": None,
+    "asunto": "{{asunto}}",
+    "clase": "transaccional",
+    "bloques": [{"clave": "mensaje", "tipo": "texto", "contenido": {"texto": "{{mensaje}}"}}],
+}
+
+
+def enviar_suelto(
+    uow: UnidadDeTrabajo,
+    *,
+    para: str,
+    objeto: str,
+    objeto_id: UUID,
+    asunto: str,
+    mensaje: str,
+    plantilla: str = "",
+    idioma: str = "es",
+    datos: dict[str, Any] | None = None,
+    por: Any = None,
+) -> dict[str, Any]:
+    """Manda **ya** un correo a una dirección, sobre un registro, y lo deja escrito.
+
+    Es el camino de la respuesta a un caso: lo escribe una persona y sale en el
+    momento —no se programa a «su mejor hora», que es para lo masivo—. Sale por
+    **el canal de la casa**: la clase transaccional, con su dominio, su remitente
+    y su servidor (`vista_correo.salida`), y con la plantilla de la empresa que
+    se pida, rellena con `{{mensaje}}`, `{{asunto}}` y lo que traiga `datos`. Si
+    la empresa no tiene esa plantilla, la de serie, y se dice.
+
+    **Consta siempre**, salga o no: queda un envío con su estado y su motivo
+    —«no hay remitente para lo transaccional», «550 mailbox unavailable»—, que
+    es lo que contesta «¿le llegó?» sin mirar el registro de otro servidor.
+    """
+    db = uow.db
+    tenant_id = uow.tenant_id
+    rellenos = {**(datos or {}), "mensaje": mensaje, "asunto": asunto}
+    de_serie = False
+    try:
+        composicion = componer_plantilla(db, tenant_id, plantilla, idioma=idioma)
+    except NoEncontrado:
+        composicion, de_serie = dict(_RESPUESTA_DE_SERIE), True
+    montado = montar_correo(composicion, rellenos)
+    # El asunto que escribe quien responde manda sobre el de la plantilla.
+    titulo = asunto.strip() or montado["asunto"]
+    # Un mensaje de varias líneas sigue siéndolo en el correo.
+    cuerpo_html = montado["html"].replace("\n", "<br>")
+
+    envio = EnvioProgramado(
+        tenant_id=tenant_id,
+        origen="respuesta",
+        origen_id=objeto_id,
+        objeto=objeto,
+        objeto_id=objeto_id,
+        direccion=para,
+        canal="email",
+        plantilla=plantilla if not de_serie else "",
+        idioma=idioma,
+        clase="transaccional",
+        programado_at=_ahora(),
+        eleccion={"porque": "Respuesta escrita por una persona: sale en el momento."},
+        programado_por_id=getattr(por, "id", None),
+        programado_con=foto(por) or {},
+    )
+    db.add(envio)
+    db.flush()
+    if montado["sin_dato"]:
+        envio.estado = "fallido"
+        envio.motivo = "Campos sin dato: " + ", ".join(montado["sin_dato"]) + "."
+        ok = False
+    else:
+        ok, error, sale = _mandar_correo(db, tenant_id, envio, titulo, cuerpo_html)
+        envio.dominio = sale.get("dominio")
+        envio.remitente = sale.get("remitente")
+        envio.flujo = f"{sale['flujo']['origen']}:{sale['flujo']['host'] or '-'}"
+        if ok:
+            envio.estado, envio.enviado_at, envio.motivo = "enviado", _ahora(), None
+        else:
+            envio.estado, envio.motivo = "fallido", error
+    db.flush()
+    return {
+        "envio_id": str(envio.id),
+        "enviado": ok,
+        "estado": envio.estado,
+        "motivo": envio.motivo or "",
+        "para": para,
+        "asunto": titulo,
+        "remitente": envio.remitente,
+        "plantilla": None if de_serie else plantilla,
+        "plantilla_de_serie": de_serie,
+    }
+
+
+def componer_plantilla(db: Session, tenant_id: UUID, clave: str, *, idioma: str) -> dict[str, Any]:
+    """`correo.componer`, que sin clave dice que no existe en vez de buscar «»."""
+    from services.marketing.correo import componer
+
+    if not clave:
+        raise NoEncontrado("Sin plantilla", error_code="correo.plantilla_no_encontrada")
+    return componer(db, tenant_id, clave, idioma=idioma)
+
+
+def montar_correo(composicion: dict[str, Any], datos: dict[str, Any]) -> dict[str, Any]:
+    from services.marketing.vista_correo import montar
+
+    return montar(composicion, datos)
 
 
 # ── Lo que sale solo ──────────────────────────────────────────────────────
