@@ -158,6 +158,7 @@ ALIAS_POR_SERVICIO = {
     # —el perfil, la acción, la audiencia, el envío— y el modelo, de qué es.
     ("identity", "perfil_id"): "perfilmfaproveedor",
     ("identity", "revision_id"): "revisionacceso",
+    ("analytics", "cuadro_id"): "cuadromando",
     ("intelligence", "accion_id"): "accionasistente",
     ("marketing", "audiencia_id"): "audienciapublicitaria",
     ("marketing", "envio_id"): "envioprogramado",

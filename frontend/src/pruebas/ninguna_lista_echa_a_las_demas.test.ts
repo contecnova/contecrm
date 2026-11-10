@@ -38,6 +38,9 @@ const PANTALLAS = path.join(process.cwd(), "src/paginas");
  * nada. Y con el motivo escrito, porque una excepción sin motivo se copia.
  */
 const NO_ES_UNA_LISTA: Record<string, string> = {
+  "Cuadros.tsx:canales":
+    "Son las opciones del desplegable «Por dónde» al suscribirse a un cuadro: " +
+    "van dentro del `<select>` cerrado y no ocupan sitio en la pantalla.",
   "Oportunidad.tsx:presupuestos":
     "Son las opciones de un desplegable («Qué se firma», al enviar a firma): " +
     "el navegador las pinta dentro del `<select>` cerrado y no ocupan sitio " +
