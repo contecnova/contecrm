@@ -296,6 +296,14 @@ def crear_regla(datos: CrearReglaPrecio, db: DbDep, principal: AutenticadoDep) -
             error_code="catalogo.accion_no_valida",
             detalle={"validas": list(cat.ACCIONES)},
         )
+    # La lista tiene que existir y ser de este tenant: sin esto, una lista
+    # inventada reventaba con 500 al escribir la clave ajena (lo cazó el humo
+    # de escrituras el 10-11-2026).
+    lista = db.get(cat.ListaPrecio, datos.lista_id)
+    if lista is None or lista.tenant_id != principal.tenant_id or lista.deleted_at is not None:
+        from crmcore.errors import NoEncontrado
+
+        raise NoEncontrado("Esa lista de precios no existe", error_code="catalogo.lista_no_existe")
     fila = cat.ReglaPrecio(tenant_id=principal.tenant_id, **datos.model_dump())
     db.add(fila)
     db.flush()

@@ -159,6 +159,7 @@ ALIAS_POR_SERVICIO = {
     ("identity", "perfil_id"): "perfilmfaproveedor",
     ("identity", "revision_id"): "revisionacceso",
     ("analytics", "cuadro_id"): "cuadromando",
+    ("sales", "lista_id"): "listaprecio",
     ("intelligence", "accion_id"): "accionasistente",
     ("marketing", "audiencia_id"): "audienciapublicitaria",
     ("marketing", "envio_id"): "envioprogramado",
