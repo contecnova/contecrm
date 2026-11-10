@@ -348,7 +348,7 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
         adjunto_id: UUID,
         uow: UowDep,
         principal: AutenticadoDep,
-        datos: ArchivarAdjuntoEntrada | None = Body(None),
+        datos: ArchivarAdjuntoEntrada = ArchivarAdjuntoEntrada(),
     ) -> Any:
         from crmcore.datos.adjuntos import Adjunto, leer
         from crmcore.documental import cliente, enlazar, organizacion_de
