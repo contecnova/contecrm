@@ -42,6 +42,22 @@ Qué cuenta como «de ejemplo»:
 - `SUPERADMIN_PASSWORD` con un marcador: `scripts/cuenta_de_arranque.py` no
   crea la cuenta.
 
+### Topes por IP de las puertas de entrar
+
+El gateway cuenta aparte, por IP, los intentos contra lo que se ataca probando
+(`rutas_de_api.TOPES_POR_IP`): el login (también el del navegador,
+`/sesion/entrar`), restablecer la contraseña, entrar con passkey, los enlaces
+del portal de cliente y del de partner (`ENTRAR_INTENTOS_POR_IP` por
+`ENTRAR_VENTANA_S`, 30 por cuarto de hora) y el alta autoservicio
+(`ONBOARDING_ALTAS_POR_IP_HORA` por `ONBOARDING_ALTAS_VENTANA_S`). Se cuenta en
+el gateway porque detrás de él todas las peticiones llegan con su dirección.
+
+> Hasta el 13-11-2026 (auditoría, SEC-13 y FUN-A-14) esas rutas solo tenían el
+> límite general de 1200 por minuto, y el tope del alta se contaba en `tenancy`
+> por la IP del gateway: un único contador para todo el mundo. Además el login
+> no calculaba ningún hash si el correo no existía, y el tiempo de respuesta
+> decía qué correos tienen cuenta; ahora se verifica siempre.
+
 ### Detrás de un proxy: `TRUST_PROXY_HEADERS` y `TRUSTED_PROXIES`
 
 `X-Forwarded-For` solo se cree si quien habla con el servicio es un proxy

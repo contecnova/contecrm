@@ -48,7 +48,13 @@ class ConfirmarAlta(BaseModel):
 
 
 def _ip(request: Request) -> str:
-    return getattr(request.client, "host", "") or ""
+    # La regla común (`crmcore.http.ip_cliente`): detrás del gateway el par TCP
+    # es SIEMPRE el gateway, así que contar por él hacía de este tope uno solo
+    # para todo el mundo (FUN-A-14). El tope de verdad lo pone el gateway
+    # (`TOPES_POR_IP`); éste es el suelo para quien llama sin pasar por él.
+    from crmcore.http.deps import ip_de
+
+    return ip_de(request)
 
 
 def _limitar(request: Request) -> None:

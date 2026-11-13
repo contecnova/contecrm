@@ -538,6 +538,16 @@ class _LimitsSettings(BaseSettings):
     # oficina entera detrás de una sola dirección.
     captura_publica_intentos_por_ip: int = Field(30, ge=1, le=10_000)
     captura_publica_ventana_s: int = Field(3_600, ge=60, le=86_400)
+
+    # ── Las puertas de entrar (auditoría 13-11-2026, SEC-13) ──────────────
+    # Login, restablecer, entrar con passkey y los enlaces de los portales: lo
+    # que se ataca probando contraseñas, correos o tokens. Solo tenían el límite
+    # general (1200/min por IP) y el bloqueo por cuenta (5 intentos), que deja
+    # probar una contraseña contra mil cuentas —password spraying— y bloquear a
+    # propósito las de otros. Treinta por cuarto de hora no los nota una
+    # oficina detrás de una sola dirección y sí corta a quien prueba en masa.
+    entrar_intentos_por_ip: int = Field(30, ge=1, le=10_000)
+    entrar_ventana_s: int = Field(900, ge=60, le=86_400)
     # Tamaño máximo del cuerpo, en bytes. Un formulario de contacto son unos
     # cientos de bytes; el máximo general (`MAX_BODY_MB`) está pensado para
     # importaciones y adjuntos, y dejarlo aquí es dejar que un desconocido

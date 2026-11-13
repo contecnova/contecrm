@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**361 ajustes** en total, de los cuales **133** son editables en caliente por tenant.
+**364 ajustes** en total, de los cuales **133** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -68,6 +68,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `ONBOARDING_ENABLED` | — | `False` |  | Alta autoservicio. Apagada por defecto: un despliegue empresarial da de alta a sus tenants por API o por consola, y dejar abierto el alta pública en una instalación privada es una superficie regalada. Apagada de fábrica: un despliegue empresarial da de alta a sus clientes por API o por consola,… |
 | `ONBOARDING_ENLACE_HORAS` | — | `24` | 1–168 | Cuánto vale el enlace de confirmación. Pocas horas: es una credencial en el buzón de alguien, y quien da de alta su empresa lo hace en el momento. |
 | `ONBOARDING_ALTAS_POR_IP_HORA` | — | `5` | 1–100 | Altas que admite una misma IP por hora. Muy por debajo del límite general de la API porque esto crea tenants: dejarlo en el de una lectura cualquiera permitiría llenar el sistema de empresas inventadas desde un portátil. |
+| `ONBOARDING_ALTAS_VENTANA_S` | — | `3600` | 60–86400 | La ventana de ese tope, en segundos: una hora, que es lo que dice su nombre. Existe como ajuste porque el gateway, que es quien ve la IP de verdad, cuenta los topes por IP con un límite y una ventana declarados (`rutas_de_api.TOPES_POR_IP`, FUN-A-14). |
 | `ONBOARDING_RETENCION_DIAS` | — | `30` | 1–365 | Días antes de olvidar una solicitud, usada o no. Son correos de gente que nunca llegó a ser cliente: dato personal que no hay motivo para guardar. |
 | `FACTURACION_EXPORTAR_PERIODICAMENTE` | 🔥 `facturacion_exportar_periodicamente` | `False` |  | Si el corte de consumo de cada tenant se toma y se manda solo. Apagado de fábrica: mandar números a un sistema de cobro sin que nadie lo haya pedido es la forma más rápida de facturar algo que no estaba acordado. |
 | `FACTURACION_DESTINO_URL` | 🔥 `facturacion_destino_url` | *(vacío)* |  | A dónde se manda el corte: el sistema de facturación del cliente, como un webhook de la casa (firmado con HMAC y por el guard de SSRF). Vacío, no se manda y el corte se queda «sin destino», que se ve en la pantalla. |
@@ -312,6 +313,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `APROBACION_ENLACE_VENTANA_S` | — | `3600` | 60–86400 |  |
 | `CAPTURA_PUBLICA_INTENTOS_POR_IP` | — | `30` | 1–10000 | El formulario público de captura (`POST /captura/{tenant}/{clave}`) y los componentes embebidos los llama el navegador de un desconocido desde una web que no es nuestra. El gateway los deja pasar con estos topes, que son de la puerta: detrás de él todas las peticiones llegan con SU dirección, y… |
 | `CAPTURA_PUBLICA_VENTANA_S` | — | `3600` | 60–86400 |  |
+| `ENTRAR_INTENTOS_POR_IP` | — | `30` | 1–10000 | Login, restablecer, entrar con passkey y los enlaces de los portales: lo que se ataca probando contraseñas, correos o tokens. Solo tenían el límite general (1200/min por IP) y el bloqueo por cuenta (5 intentos), que deja probar una contraseña contra mil cuentas —password spraying— y bloquear a… |
+| `ENTRAR_VENTANA_S` | — | `900` | 60–86400 |  |
 | `CAPTURA_PUBLICA_MAX_BYTES` | — | `16384` | 1024–1048576 | Tamaño máximo del cuerpo, en bytes. Un formulario de contacto son unos cientos de bytes; el máximo general (`MAX_BODY_MB`) está pensado para importaciones y adjuntos, y dejarlo aquí es dejar que un desconocido mande megas a una ruta que escribe en la base. |
 | `INCRUSTABLE_ORIGENES` | — | `*` |  | Desde qué webs se admiten, separadas por comas (`https://www.cliente.com,https://tienda.cliente.com`). `*` = desde cualquiera, que es el valor de serie: lo que autoriza es la clave del canal o el token del componente, no el origen, y un formulario puede vivir en cualquier web del cliente.… |
 | `AUTOMATIZACION_MAX_VUELTAS` | — | `200` | 1–10000 | Vueltas máximas de un `para_cada`. Una automatización que recorre una colección no puede colgar la petición que la disparó: guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y el usuario vería un formulario congelado sin saber por qué. Cuando se corta se DICE en la… |

@@ -137,7 +137,13 @@ def autenticar(
             error_code="auth.cuenta_bloqueada",
         )
 
-    if not usuario or not verificar_contrasena(usuario.hash_contrasena, contrasena):
+    # Se verifica SIEMPRE, exista o no el usuario. Con `not usuario or ...` el
+    # correo desconocido salía sin calcular ningún hash y la respuesta llegaba
+    # antes: el tiempo decía qué correos tienen cuenta (auditoría 13-11-2026,
+    # SEC-13). `verificar_contrasena` ya igualaba el tiempo sin hash; solo hacía
+    # falta llamarla.
+    valida = verificar_contrasena(usuario.hash_contrasena if usuario else None, contrasena)
+    if not usuario or not valida:
         if usuario:
             _anotar_fallo(db, usuario, s.login_max_intentos, s.login_bloqueo_minutos)
         # El mismo mensaje tanto si el correo no existe como si la contraseña es

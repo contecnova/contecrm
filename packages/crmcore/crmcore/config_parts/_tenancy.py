@@ -88,6 +88,11 @@ class _TenancySettings(BaseSettings):
     # de la API porque esto crea tenants: dejarlo en el de una lectura cualquiera
     # permitiría llenar el sistema de empresas inventadas desde un portátil.
     onboarding_altas_por_ip_hora: int = Field(5, ge=1, le=100)
+    # La ventana de ese tope, en segundos: una hora, que es lo que dice su
+    # nombre. Existe como ajuste porque el gateway, que es quien ve la IP de
+    # verdad, cuenta los topes por IP con un límite y una ventana declarados
+    # (`rutas_de_api.TOPES_POR_IP`, FUN-A-14).
+    onboarding_altas_ventana_s: int = Field(3_600, ge=60, le=86_400)
     # Días antes de olvidar una solicitud, usada o no. Son correos de gente que
     # nunca llegó a ser cliente: dato personal que no hay motivo para guardar.
     onboarding_retencion_dias: int = Field(30, ge=1, le=365)

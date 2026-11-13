@@ -464,6 +464,19 @@ TOPES_POR_IP: dict[str, tuple[str, str]] = {
         "captura_publica_intentos_por_ip",
         "captura_publica_ventana_s",
     ),
+    # Las puertas de entrar (SEC-13): contraseñas, correos y tokens que se
+    # adivinan probando. Cada prefijo cuenta aparte.
+    "/api/v1/auth/login": ("entrar_intentos_por_ip", "entrar_ventana_s"),
+    "/api/v1/sesion/entrar": ("entrar_intentos_por_ip", "entrar_ventana_s"),
+    "/api/v1/auth/restablecer": ("entrar_intentos_por_ip", "entrar_ventana_s"),
+    "/api/v1/auth/passkeys/entrar": ("entrar_intentos_por_ip", "entrar_ventana_s"),
+    "/api/v1/portal/enlace": ("entrar_intentos_por_ip", "entrar_ventana_s"),
+    "/api/v1/portal/sesion": ("entrar_intentos_por_ip", "entrar_ventana_s"),
+    "/api/v1/portal-partner/": ("entrar_intentos_por_ip", "entrar_ventana_s"),
+    # El alta crea empresas: su tope es el suyo, y se cuenta aquí porque en
+    # `tenancy` todas las peticiones llegan con la dirección del gateway
+    # (FUN-A-14).
+    "/api/v1/alta": ("onboarding_altas_por_ip_hora", "onboarding_altas_ventana_s"),
 }
 
 # El portal es **un solo espacio de direcciones** y lo sirven varios servicios.

@@ -527,6 +527,7 @@ def test_el_contador_por_ip_olvida_la_hora_anterior() -> None:
 
     class _Req:
         client = type("c", (), {"host": "1.2.3.4"})()
+        headers: dict[str, str] = {}
 
     from services.tenancy.api_alta import _limitar
 

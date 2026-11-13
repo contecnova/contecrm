@@ -1615,7 +1615,7 @@ stateDiagram-v2
 | `PATCH /api/v1/portal/accesos/{acceso_portal_id}` | Editar accesos al portal | acceso_portal_id*, contacto_id, cuenta_id, email, nivel, secciones, activo, desactivado_por | 200, 422 | — |
 | `DELETE /api/v1/portal/accesos/{acceso_portal_id}` | Borrar accesos al portal | acceso_portal_id* | 204, 422 | — |
 | `POST /api/v1/portal/accesos/{acceso_portal_id}/archivar` | Archivar accesos al portal | acceso_portal_id* | 200, 422 | — |
-| `POST /api/v1/portal/enlace` | Pedir un enlace de acceso | email* | 200, 422 | — |
+| `POST /api/v1/portal/enlace` | Pedir un enlace de acceso | tenant*, email* | 200, 422 | `portal.link_requested` |
 | `POST /api/v1/portal/entrar` | Canjear el enlace y entrar | token* | 200, 422 | — |
 | `POST /api/v1/portal/mi/casos` | Abrir una petición | asunto*, descripcion | 201, 422 | `case.created` |
 | `POST /api/v1/portal/mi/casos/{caso_id}/validar-cierre` | Dar por bueno, o no, el cierre de mi caso | caso_id*, conforme*, comentario | 200, 422 | — |
@@ -1911,6 +1911,7 @@ llamada de nadie.
 | `partner.deal.expired` | sales | registro_id, partner_id | `POST /api/v1/registros-oportunidad/caducar` | — |
 | `partner.deal.registered` | sales | registro_id, partner_id, importe, hay_conflicto | `POST /api/v1/registros-oportunidad` | — |
 | `partner.portal.link_requested` | sales | acceso_id, email, nombre, titulo, cuerpo | `POST /api/v1/portal-partner/entrar` | — |
+| `portal.link_requested` | service | acceso_id, email, titulo, cuerpo | `POST /api/v1/portal/enlace` | — |
 | `preferences.changed` | marketing | email, guardadas, origen | `PUT /api/v1/preferencias` | — |
 | `problem.communicated` | service | problema_id, tipo, casos_alcanzados | `POST /api/v1/problemas/{problema_id}/comunicaciones` | — |
 | `problem.opened` | service | problema_id, severidad | `POST /api/v1/problemas` | — |

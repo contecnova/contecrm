@@ -197,7 +197,13 @@ def crear_router_sesion(obtener: Callable[[], tuple[Any, dict[str, Any], float]]
             "sus tokens como siempre."
         ),
     )
-    async def entrar(datos: dict[str, Any], respuesta: Response) -> Any:
+    async def entrar(datos: dict[str, Any], respuesta: Response, request: Request) -> Any:
+        # El tope por IP de las puertas de entrar (SEC-13). Esta ruta es del
+        # propio gateway y no pasa por el proxy, que es donde se aplica a las
+        # demás; sin esto el login del navegador quedaba fuera.
+        from services.gateway.api import _tope_por_ip
+
+        await _tope_por_ip("/api/v1/sesion/entrar", request)
         s = get_settings()
         cliente, destinos, timeout_s = obtener()
         # Con passkey se entra por otra puerta, y la cookie la pone la misma:
