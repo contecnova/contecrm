@@ -83,6 +83,8 @@ explícitamente y no inferirse.
 
 from __future__ import annotations
 
+import math
+import operator
 import re
 import time
 from datetime import datetime, timedelta, timezone
@@ -127,10 +129,10 @@ TIPOS_PASO = frozenset(
 OPERADORES: dict[str, Callable[[Any, Any], bool]] = {
     "=": lambda a, b: a == b,
     "!=": lambda a, b: a != b,
-    ">": lambda a, b: _num(a) > _num(b),
-    ">=": lambda a, b: _num(a) >= _num(b),
-    "<": lambda a, b: _num(a) < _num(b),
-    "<=": lambda a, b: _num(a) <= _num(b),
+    ">": lambda a, b: _comparar(a, b, operator.gt),
+    ">=": lambda a, b: _comparar(a, b, operator.ge),
+    "<": lambda a, b: _comparar(a, b, operator.lt),
+    "<=": lambda a, b: _comparar(a, b, operator.le),
     "en": lambda a, b: a in (b or []),
     "contiene": lambda a, b: b in (a or []),
     "vacio": lambda a, _b: a in (None, "", [], {}),
@@ -138,8 +140,8 @@ OPERADORES: dict[str, Callable[[Any, Any], bool]] = {
     # Antigüedad de una fecha, en horas: «lead sin atender hace más de 48 h».
     # Sin esto una regla programada no podía decir «desde cuándo», y la que se
     # llamaba «Lead sin atender en 48 horas» avisaba de cualquier lead nuevo.
-    "hace_mas_de_horas": lambda a, b: _horas_desde(a) is not None and _horas_desde(a) > _num(b),  # type: ignore[operator]
-    "hace_menos_de_horas": lambda a, b: _horas_desde(a) is not None and _horas_desde(a) < _num(b),  # type: ignore[operator]
+    "hace_mas_de_horas": lambda a, b: _comparar(_horas_desde(a), b, operator.gt),
+    "hace_menos_de_horas": lambda a, b: _comparar(_horas_desde(a), b, operator.lt),
 }
 
 
@@ -156,17 +158,35 @@ def _horas_desde(valor: Any) -> float | None:
     return (datetime.now(timezone.utc) - momento).total_seconds() / 3600
 
 
-def _num(valor: Any) -> float:
-    """Convierte a número para comparar. Lo no convertible vale 0.
+def _num(valor: Any) -> float | None:
+    """Convierte a número para comparar. Lo ausente o no convertible es `None`.
 
-    Devolver 0 en vez de lanzar es lo correcto aquí: una comparación numérica
-    contra un campo que llegó vacío debe dar falso, no detener un proceso que
-    lleva tres días en marcha.
+    Antes valía 0, y eso convertía «no lo sé» en un dato: `importe < 1000` con
+    el importe vacío daba CIERTO, y una condición de webhook o de decisión se
+    cumplía justo cuando faltaba el campo que la sostenía (auditoría, FUN-A-7).
+    `None` deja la decisión a `_comparar`, que la da por no cumplida.
     """
     try:
-        return float(valor)
+        numero = float(valor)
     except (TypeError, ValueError):
-        return 0.0
+        return None
+    # `nan` e `inf` se convierten sin error, pero no son una cantidad que se
+    # pueda poner frente a un umbral.
+    return numero if math.isfinite(numero) else None
+
+
+def _comparar(a: Any, b: Any, comparacion: Callable[[float, float], bool]) -> bool:
+    """Compara dos valores como números. **Si falta uno, no se cumple.**
+
+    Falso y no error: una comparación contra un campo que llegó vacío no debe
+    detener un proceso que lleva tres días en marcha, pero tampoco puede darse
+    por cumplida. Es la misma regla para los cuatro operadores y para la
+    antigüedad en horas, por eso vive en un solo sitio.
+    """
+    izquierda, derecha = _num(a), _num(b)
+    if izquierda is None or derecha is None:
+        return False
+    return comparacion(izquierda, derecha)
 
 
 # ── Resolución de referencias ─────────────────────────────────────────────

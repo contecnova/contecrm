@@ -55,6 +55,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from services.sales import catalogo as cat
@@ -75,6 +76,11 @@ ESTADOS_PRESUPUESTO = (
 )
 ESTADOS_CONTRATO = ("borrador", "vigente", "suspendido", "terminado", "renovado")
 ESTADOS_PEDIDO = ("pendiente", "enviado_erp", "confirmado", "rechazado_erp", "conciliado")
+# Los estados en los que el ERP ya dijo que sí. Una respuesta posterior no los
+# mueve: un rechazo tardío —de un intento anterior, o un reintento del bus—
+# convertía un pedido confirmado en rechazado (auditoría, FUN-B-5).
+ESTADOS_PEDIDO_CERRADOS = ("confirmado", "conciliado")
+UQ_PEDIDO_PRESUPUESTO = "uq_pedido_presupuesto"
 ESTADOS_SUSCRIPCION = ("activa", "pausada", "cancelada")
 TIPOS_CAMBIO_SUSCRIPCION = (
     "alta",
@@ -330,6 +336,15 @@ class Pedido(EntidadBase, SoftDeleteMixin):
     confirmado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     conciliado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_erp: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Cuántas veces ha salido hacia el ERP. Numera cada intento para que la
+    # clave de deduplicación del envío sea distinta en cada uno: con una fija
+    # (`erp:{id}`) el buzón del consumidor descartaba el reenvío tras un
+    # rechazo como si fuera el mismo hecho, y el pedido se quedaba en
+    # «enviado_erp» para siempre (auditoría, FUN-B-4). Y es lo que deja
+    # reconocer una respuesta que llega tarde de un intento anterior.
+    envios_erp: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     # Lo que el ERP devolvió, tal cual. Es lo que se cita al reclamarle.
     respuesta_erp: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
@@ -337,6 +352,11 @@ class Pedido(EntidadBase, SoftDeleteMixin):
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "numero", name="uq_pedido_numero"),
+        # Un presupuesto, un pedido. Es el suelo de `aceptar`: el bloqueo de
+        # fila ordena dos aceptaciones simultáneas, y esto impide el segundo
+        # pedido —y su segundo envío al ERP— aunque algún camino futuro se
+        # salte el bloqueo (auditoría, FUN-B-3).
+        UniqueConstraint("tenant_id", "presupuesto_id", name=UQ_PEDIDO_PRESUPUESTO),
         Index("ix_pedidos_traspaso", "tenant_id", "estado", "enviado_at"),
     )
 
@@ -953,9 +973,24 @@ def aceptar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> Pedido:
     factura.
     """
     tenant_id = uow.tenant_id
-    presupuesto = uow.db.get(Presupuesto, presupuesto_id)
+    # **Con la fila bloqueada** (`SELECT … FOR UPDATE`). Sin bloqueo, dos
+    # aceptaciones simultáneas —el doble clic, o el cliente y el comercial a la
+    # vez— leían las dos «enviado» y nacían dos pedidos con dos envíos al ERP
+    # (auditoría, FUN-B-3). Con él la segunda espera a que la primera termine y
+    # lee ya «aceptado». `populate_existing` porque un objeto que la sesión ya
+    # tuviera cargado se devolvería tal cual, con el estado de antes de esperar.
+    presupuesto = uow.db.get(
+        Presupuesto, presupuesto_id, with_for_update=True, populate_existing=True
+    )
     if presupuesto is None or presupuesto.tenant_id != tenant_id:
         raise NoEncontrado("El presupuesto no existe", error_code="presupuesto.no_encontrado")
+    if significa("presupuesto", presupuesto.estado, "aceptado", uow.db):
+        # Se dice con su nombre: quien llega segundo tiene que saber que el
+        # pedido ya existe, no que el presupuesto «no está enviado».
+        raise Conflicto(
+            "Ese presupuesto ya está aceptado y su pedido ya existe.",
+            error_code="presupuesto.ya_aceptado",
+        )
     if not significa("presupuesto", presupuesto.estado, "enviado", uow.db):
         raise Conflicto(
             f"Solo se acepta un presupuesto enviado; este está «{presupuesto.estado}».",
@@ -989,8 +1024,23 @@ def aceptar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> Pedido:
         total=presupuesto.total,
         moneda=presupuesto.moneda,
     )
-    uow.db.add(pedido)
-    uow.db.flush()
+    # En un savepoint para poder traducir el choque con la restricción única:
+    # es el mismo caso que el de arriba —el pedido ya existe— y tiene que salir
+    # como ese 409 claro, no como un 500 ni como el «duplicado» genérico.
+    punto = uow.db.begin_nested()
+    try:
+        uow.db.add(pedido)
+        uow.db.flush()
+    except IntegrityError as exc:
+        punto.rollback()
+        restriccion = getattr(getattr(exc.orig, "diag", None), "constraint_name", "") or ""
+        if restriccion != UQ_PEDIDO_PRESUPUESTO:
+            raise
+        raise Conflicto(
+            "Ese presupuesto ya está aceptado y su pedido ya existe.",
+            error_code="presupuesto.ya_aceptado",
+        ) from exc
+    punto.commit()
 
     uow.emitir(
         "quote.accepted",
@@ -1629,7 +1679,9 @@ def enviar_a_erp(uow: UnidadDeTrabajo, pedido_id: UUID) -> dict[str, Any]:
     presupuesto a que el ERP del cliente esté en pie.
     """
     tenant_id = uow.tenant_id
-    pedido = uow.db.get(Pedido, pedido_id)
+    # Bloqueada, por lo mismo que al aceptar: dos reenvíos simultáneos leerían
+    # el mismo contador y saldrían con la misma clave, y el segundo se perdería.
+    pedido = uow.db.get(Pedido, pedido_id, with_for_update=True, populate_existing=True)
     if pedido is None or pedido.tenant_id != tenant_id:
         raise NoEncontrado("El pedido no existe", error_code="pedido.no_encontrado")
     if pedido.estado not in ("pendiente", "rechazado_erp"):
@@ -1640,6 +1692,7 @@ def enviar_a_erp(uow: UnidadDeTrabajo, pedido_id: UUID) -> dict[str, Any]:
     pedido.estado = "enviado_erp"
     pedido.enviado_at = _ahora()
     pedido.error_erp = None
+    pedido.envios_erp = (pedido.envios_erp or 0) + 1
     uow.db.flush()
 
     lineas: list[dict[str, Any]] = []
@@ -1669,12 +1722,18 @@ def enviar_a_erp(uow: UnidadDeTrabajo, pedido_id: UUID) -> dict[str, Any]:
             "total": str(pedido.total),
             "moneda": pedido.moneda,
             "lineas": lineas,
+            # Viaja de ida y vuelta: `integration` lo devuelve en su respuesta
+            # y así se sabe a qué intento contesta el ERP.
+            "intento": pedido.envios_erp,
         },
-        # Idempotente por pedido: un reintento del relevo no puede crear dos
-        # pedidos en el ERP del cliente.
-        dedup_key=f"erp:{pedido.id}",
+        # Idempotente por INTENTO, no por pedido. Un reintento del relevo del
+        # mismo envío sigue sin poder crear dos pedidos en el ERP del cliente
+        # —lleva la misma clave—, pero un reenvío deliberado tras un rechazo es
+        # un hecho nuevo y tiene que llegar. Con `erp:{id}` fijo el buzón de
+        # `integration` lo descartaba como repetido (auditoría, FUN-B-4).
+        dedup_key=f"erp:{pedido.id}:{pedido.envios_erp}",
     )
-    return {"pedido_id": str(pedido.id), "estado": pedido.estado}
+    return {"pedido_id": str(pedido.id), "estado": pedido.estado, "intento": pedido.envios_erp}
 
 
 def confirmar_desde_erp(
@@ -1686,11 +1745,54 @@ def confirmar_desde_erp(
     error: str = "",
     respuesta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Anota lo que el ERP respondió."""
+    """Anota lo que el ERP respondió, **si todavía le toca decidir**.
+
+    Hasta el 13-11-2026 no miraba el estado: un rechazo que llegaba tarde
+    —de un intento anterior, o repetido por el bus— pisaba un pedido ya
+    confirmado y lo devolvía a «rechazado_erp», con su referencia del ERP
+    dentro (auditoría, FUN-B-5). Ahora se ignoran, y queda escrito:
+
+      * cualquier respuesta sobre un pedido confirmado o conciliado —el ERP ya
+        dijo que sí y esa es la que vale—;
+      * un rechazo de un intento anterior al último enviado, cuando la
+        respuesta dice a qué intento contesta (`intento`, que `integration`
+        devuelve tal cual). Una confirmación tardía SÍ vale: si el ERP dice que
+        tiene el pedido, lo tiene, sea del envío que sea.
+
+    Se ignora y no se lanza error: la respuesta llega casi siempre por el bus,
+    y un error haría que el consumidor la reintentara sin fin por algo que no
+    tiene arreglo. Quien la anota a mano ve en la salida que no se aplicó.
+    """
     tenant_id = uow.tenant_id
-    pedido = uow.db.get(Pedido, pedido_id)
+    # Bloqueada: la respuesta y un reenvío pueden cruzarse, y decidir sobre un
+    # estado leído antes de que el otro escribiera es justo el fallo de arriba.
+    pedido = uow.db.get(Pedido, pedido_id, with_for_update=True, populate_existing=True)
     if pedido is None or pedido.tenant_id != tenant_id:
         raise NoEncontrado("El pedido no existe", error_code="pedido.no_encontrado")
+
+    motivo = _respuesta_erp_fuera_de_turno(pedido, respuesta or {}, aceptado=aceptado)
+    if motivo:
+        registrar(
+            uow.db,
+            accion="pedido.respuesta_erp_ignorada",
+            objeto="pedido",
+            objeto_id=pedido.id,
+            datos={
+                "aceptado": aceptado,
+                "referencia": referencia_erp,
+                "error": error,
+                "motivo": motivo,
+            },
+            tenant_id=tenant_id,
+        )
+        logger.warning("pedido.respuesta_erp_ignorada", pedido=str(pedido.id), motivo=motivo)
+        return {
+            "pedido_id": str(pedido.id),
+            "estado": pedido.estado,
+            "referencia_erp": pedido.referencia_erp or "",
+            "ignorada": True,
+            "motivo": motivo,
+        }
 
     pedido.respuesta_erp = respuesta or {}
     if aceptado:
@@ -1712,6 +1814,32 @@ def confirmar_desde_erp(
         tenant_id=tenant_id,
     )
     return {"pedido_id": str(pedido.id), "estado": pedido.estado, "referencia_erp": referencia_erp}
+
+
+def _respuesta_erp_fuera_de_turno(
+    pedido: Pedido, respuesta: dict[str, Any], *, aceptado: bool
+) -> str:
+    """Por qué una respuesta del ERP ya no puede cambiar el pedido; vacío si puede.
+
+    Aparte y sin base de datos porque es la decisión entera de FUN-B-5, y así
+    se prueba sola.
+    """
+    if pedido.estado in ESTADOS_PEDIDO_CERRADOS:
+        return f"el pedido ya está «{pedido.estado}»"
+    if aceptado:
+        return ""
+    crudo = respuesta.get("intento")
+    # Sin intento (una respuesta anotada a mano, o de antes de que viajara) no
+    # se puede saber a qué envío contesta, y no se inventa: se aplica como hasta
+    # ahora. `bool` fuera: `True` pasaría por un 1.
+    intento: int | None = None
+    if isinstance(crudo, int) and not isinstance(crudo, bool):
+        intento = crudo
+    elif isinstance(crudo, str) and crudo.strip().isdigit():
+        intento = int(crudo.strip())
+    if intento is not None and intento < (pedido.envios_erp or 0):
+        return f"rechaza el intento {intento} y el último enviado es el {pedido.envios_erp}"
+    return ""
 
 
 def conciliar_erp(

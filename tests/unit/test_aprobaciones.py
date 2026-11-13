@@ -501,6 +501,21 @@ def test_por_encima_del_umbral_sigue_haciendo_falta_una_persona(
     assert solicitud.automatica is False
 
 
+def test_sin_el_dato_del_umbral_hace_falta_una_persona(
+    uow: UnidadDeTrabajo, plantilla: Any
+) -> None:
+    """Auditoría FUN-A-7 (13-11-2026): el dato ausente valía 0 y `0 < 5` aprobaba
+    sola la solicitud a la que le faltaba justo lo que la justificaba."""
+    solicitud = _crear(
+        uow,
+        plantilla,
+        contexto={"descuento_pct": ""},
+        umbral_automatico={"campo": "descuento_pct", "menor_que": 5},
+    )
+    assert solicitud.estado == "pendiente"
+    assert solicitud.automatica is False
+
+
 # ── Decidir desde el correo (CRM-00.03.05.12) ─────────────────────────────
 
 

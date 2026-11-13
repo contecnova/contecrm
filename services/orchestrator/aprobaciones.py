@@ -297,11 +297,40 @@ def _canonico(valor: Any) -> Any:
     return valor
 
 
-def _num(valor: Any) -> Decimal:
+def _num(valor: Any) -> Decimal | None:
+    """El valor como cantidad, o `None` si no lo es.
+
+    Antes devolvía 0 ante cualquier fallo, y con una regla automática
+    `importe menor_que 1000` un importe ausente o vacío valía 0 < 1000: la
+    solicitud se aprobaba sola justo cuando faltaba el dato que la justificaba
+    (auditoría, FUN-A-7). Lo que no es un número no se compara.
+    """
     try:
-        return Decimal(str(valor))
-    except Exception:
-        return Decimal(0)
+        # `str()` delante: `Decimal(0.1)` arrastraría el error binario del
+        # float, y `None` o `True` dan «None»/«True», que no se convierten.
+        numero = Decimal(str(valor).strip())
+    except (ArithmeticError, ValueError):
+        return None
+    return numero if numero.is_finite() else None
+
+
+def bajo_umbral_automatico(
+    umbral: dict[str, Any] | None, contexto: dict[str, Any]
+) -> tuple[str, Decimal, Decimal] | None:
+    """`(campo, valor, tope)` si la solicitud cae bajo el umbral automático.
+
+    `None` en cuanto falta algo —el campo, el tope o un valor numérico en el
+    contexto—: la aprobación automática es la excepción y tiene que estar
+    demostrada; ante la duda la solicitud sigue su cadena normal de etapas.
+    """
+    if not umbral:
+        return None
+    campo = str(umbral.get("campo") or "").strip()
+    tope = _num(umbral.get("menor_que"))
+    valor = _num(contexto.get(campo)) if campo else None
+    if tope is None or valor is None or not valor < tope:
+        return None
+    return campo, valor, tope
 
 
 # ── Resolver el aprobador (CRM-00.03.05.07) ───────────────────────────────
@@ -587,44 +616,42 @@ def crear(
     # de resolver los aprobadores, a propósito: así queda escrito a quién le
     # habría tocado. Sin ese nombre, «aprobación automática» es una decisión sin
     # responsable.
-    if umbral_automatico:
-        campo = str(umbral_automatico.get("campo") or "")
-        tope = _num(umbral_automatico.get("menor_que"))
-        valor = _num(contexto.get(campo))
-        if campo and valor < tope:
-            solicitud.automatica = True
-            solicitud.estado = "aprobada"
-            solicitud.resuelta_at = _ahora()
-            solicitud.habria_aprobado = [str(a) for a in filas[0].aprobadores]
-            solicitud.motivo_automatica = f"{campo} = {valor} está por debajo del umbral de {tope}"
-            for fila in filas:
-                fila.estado = "saltada"
-                fila.cerrada_at = _ahora()
-            uow.db.flush()
-            registrar(
-                uow.db,
-                accion="aprobacion.automatica",
-                objeto="solicitud_aprobacion",
-                objeto_id=solicitud.id,
-                datos={
-                    "politica": politica,
-                    "motivo": solicitud.motivo_automatica,
-                    "habria_aprobado": solicitud.habria_aprobado,
-                },
-                tenant_id=tenant_id,
-            )
-            uow.emitir(
-                "approval.decided",
-                subject=("aprobacion", solicitud.id),
-                data={
-                    "solicitud_id": str(solicitud.id),
-                    "objeto": objeto,
-                    "objeto_id": str(objeto_id),
-                    "estado": "aprobada",
-                    "automatica": True,
-                },
-            )
-            return solicitud
+    bajo_umbral = bajo_umbral_automatico(umbral_automatico, contexto)
+    if bajo_umbral:
+        campo, valor, tope = bajo_umbral
+        solicitud.automatica = True
+        solicitud.estado = "aprobada"
+        solicitud.resuelta_at = _ahora()
+        solicitud.habria_aprobado = [str(a) for a in filas[0].aprobadores]
+        solicitud.motivo_automatica = f"{campo} = {valor} está por debajo del umbral de {tope}"
+        for fila in filas:
+            fila.estado = "saltada"
+            fila.cerrada_at = _ahora()
+        uow.db.flush()
+        registrar(
+            uow.db,
+            accion="aprobacion.automatica",
+            objeto="solicitud_aprobacion",
+            objeto_id=solicitud.id,
+            datos={
+                "politica": politica,
+                "motivo": solicitud.motivo_automatica,
+                "habria_aprobado": solicitud.habria_aprobado,
+            },
+            tenant_id=tenant_id,
+        )
+        uow.emitir(
+            "approval.decided",
+            subject=("aprobacion", solicitud.id),
+            data={
+                "solicitud_id": str(solicitud.id),
+                "objeto": objeto,
+                "objeto_id": str(objeto_id),
+                "estado": "aprobada",
+                "automatica": True,
+            },
+        )
+        return solicitud
 
     uow.emitir(
         "approval.requested",

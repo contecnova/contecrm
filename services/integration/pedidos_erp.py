@@ -57,6 +57,15 @@ async def consumir_pedido(mensaje: Any) -> None:
     pedido_id = str(datos.get("pedido_id") or "")
     if not tenant or not pedido_id:
         return
+    # El intento que ventas numeró al enviar. Va en la clave de la respuesta por
+    # lo mismo que en la del envío: con `erp-rechazo:{pedido}` fijo, el rechazo
+    # del reenvío se descartaba en ventas como repetido del primero y el pedido
+    # se quedaba «enviado_erp» para siempre (auditoría, FUN-B-4). Y vuelve en
+    # el dato para que ventas ignore la respuesta de un intento ya superado.
+    # Vacío si el envío es de antes de que existiera: entonces la clave es la de
+    # siempre, que para un único intento es correcta.
+    intento = str(datos.get("intento") or "")
+    sufijo = f":{intento}" if intento else ""
 
     clave = str(get_settings().integracion_operacion_pedidos)
     with unidad_de_trabajo(UUID(tenant), sistema=True) as uow:
@@ -101,8 +110,12 @@ async def consumir_pedido(mensaje: Any) -> None:
             uow.emitir(
                 "order.erp.rejected",
                 subject=("pedido", UUID(pedido_id)),
-                data={"pedido_id": pedido_id, "error": traza.error},
-                dedup_key=f"erp-rechazo:{pedido_id}",
+                data={
+                    "pedido_id": pedido_id,
+                    "error": traza.error,
+                    "intento": datos.get("intento"),
+                },
+                dedup_key=f"erp-rechazo:{pedido_id}{sufijo}",
             )
             return
 
@@ -119,6 +132,7 @@ async def consumir_pedido(mensaje: Any) -> None:
                 # el ERP no la devuelve se dice vacía y no se inventa: una
                 # referencia inventada es peor que ninguna.
                 "referencia_erp": str(primera.get("referencia") or primera.get("id") or ""),
+                "intento": datos.get("intento"),
             },
-            dedup_key=f"erp-confirmacion:{pedido_id}",
+            dedup_key=f"erp-confirmacion:{pedido_id}{sufijo}",
         )
