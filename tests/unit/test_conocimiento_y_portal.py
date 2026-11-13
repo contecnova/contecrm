@@ -660,3 +660,44 @@ def test_crm_04_03_02_04_el_cliente_abre_un_hilo_desde_el_portal(
     acceso.secciones = ["casos", "comunidad"]
     salida = abrir_hilo_portal(HiloPortal(titulo="¿Cada cuánto se calibra?"), uow, _Sesion())
     assert salida["estado"] == "moderacion"
+
+
+# ── El enlace del portal va solo al buzón del cliente (SEC-7, 13-11-2026) ──
+#
+# `/portal/enlace` exigía sesión de empleado y devolvía el token: el cliente,
+# que es quien la llama desde la pantalla del portal, recibía un 401; y
+# cualquier empleado, sin permiso alguno, se llevaba la llave del portal de
+# cualquier cliente.
+
+
+@pytest.mark.db
+def test_el_enlace_sale_en_un_evento_interno_y_no_en_la_respuesta(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, acceso: Any, uow: Any
+) -> None:
+    from crmcore.events.catalogo import obtener
+
+    _, token = prt.emitir_enlace(uow, email="cliente@empresa.com")
+    eventos = [e for e in uow._pendientes if e["tipo"] == "portal.link_requested"]
+    assert len(eventos) == 1
+    assert prt.url_del_enlace(tenant_id, token) in eventos[0]["data"]["cuerpo"]
+    declarado = obtener("portal.link_requested")
+    assert declarado is not None and declarado.publico is False
+
+
+def test_la_ruta_es_publica_y_no_devuelve_el_token() -> None:
+    import inspect
+
+    from services.service import api_conocimiento as api
+
+    firma = inspect.signature(api.pedir_enlace)
+    assert list(firma.parameters) == ["datos"], "no puede exigir sesión de empleado"
+    fuente = inspect.getsource(api.pedir_enlace)
+    assert '"token"' not in fuente[fuente.rindex("return") :]
+
+
+def test_la_validez_sale_del_ajuste_y_no_de_un_numero() -> None:
+    import inspect
+
+    fuente = inspect.getsource(prt.emitir_enlace)
+    assert "portal_enlace_validez_minutos" in fuente
+    assert "validez_minutos: int = 30" not in fuente

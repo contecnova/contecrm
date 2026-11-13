@@ -312,16 +312,40 @@ def revocar_acceso(
     return fila
 
 
+def url_del_enlace(tenant_id: UUID, token: str) -> str:
+    """El enlace que abre el cliente desde el correo: la pantalla del portal.
+
+    Lleva el tenant para que el portal sepa a qué empresa pedir otro enlace si
+    éste ya no vale; el canje (`/portal/sesion`) no lo necesita, lo acota el
+    propio token.
+    """
+    from urllib.parse import urlencode
+
+    from crmcore.config import get_settings
+
+    base = str(get_settings().front_base_url or "").rstrip("/")
+    return f"{base}/portal?{urlencode({'tenant': str(tenant_id), 't': token})}"
+
+
 def emitir_enlace(
-    uow: UnidadDeTrabajo, *, email: str, validez_minutos: int = 30
+    uow: UnidadDeTrabajo, *, email: str, validez_minutos: int | None = None
 ) -> tuple[EnlaceAcceso | None, str]:
-    """Genera un enlace de un solo uso para entrar.
+    """Genera un enlace de un solo uso para entrar, y encola su correo.
 
     **Devuelve enlace nulo sin decirlo** cuando el correo no tiene acceso: la
     respuesta de la API es la misma exista o no. Distinguirlas convertiría el
     portal en un comprobador de qué correos son clientes nuestros, que es
     exactamente la lista que quiere un competidor.
+
+    El token se devuelve solo a quien llama dentro del servicio (las pruebas):
+    la ruta no lo reenvía nunca y el enlace viaja SOLO por correo, por el evento
+    interno `portal.link_requested` (auditoría 13-11-2026, SEC-7).
     """
+    from crmcore.events.dominio import PORTAL_CLIENTE_ENLACE
+
+    from services.service.ajustes import ajustes
+
+    minutos = int(validez_minutos or ajustes().portal_enlace_validez_minutos)
     fila = uow.db.execute(
         select(AccesoPortal).where(
             AccesoPortal.tenant_id == uow.tenant_id,
@@ -338,10 +362,30 @@ def emitir_enlace(
         tenant_id=fila.tenant_id,
         acceso_id=fila.id,
         hash_token=_hash(token),
-        caduca_at=_ahora() + timedelta(minutes=validez_minutos),
+        caduca_at=_ahora() + timedelta(minutes=minutos),
     )
     uow.db.add(enlace)
     uow.db.flush()
+    uow.emitir(
+        PORTAL_CLIENTE_ENLACE,
+        subject=("acceso_portal", fila.id),
+        data={
+            "acceso_id": str(fila.id),
+            "email": fila.email,
+            "titulo": "Tu enlace para entrar en tu área de cliente",
+            "cuerpo": "\n".join(
+                [
+                    f"Has pedido entrar en tu área de cliente como {fila.email}.",
+                    "",
+                    "Entra desde este enlace:",
+                    url_del_enlace(fila.tenant_id, token),
+                    "",
+                    f"Sirve una sola vez y caduca en {minutos} minutos.",
+                    "Si no lo has pedido tú, no hagas nada: sin el enlace no se entra.",
+                ]
+            ),
+        },
+    )
     return enlace, token
 
 

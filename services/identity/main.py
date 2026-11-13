@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from crmcore.events.dominio import ALTA_CONFIRMADA, ALTA_SOLICITADA, PARTNER_PORTAL_ENLACE
+from crmcore.events.dominio import (
+    ALTA_CONFIRMADA,
+    ALTA_SOLICITADA,
+    PARTNER_PORTAL_ENLACE,
+    PORTAL_CLIENTE_ENLACE,
+)
 from crmcore.service import crear_servicio
 
 from services.identity.alta_consumidor import consumir_alta_confirmada
@@ -134,5 +139,7 @@ app = crear_servicio(
         # transportes (auditoría del 13-11-2026, SEC-5 y SEC-6).
         (ALTA_SOLICITADA, consumir_correo_externo, "identity-correo-alta"),
         (PARTNER_PORTAL_ENLACE, consumir_correo_externo, "identity-correo-partner"),
+        # Y el del portal de cliente (SEC-7), por lo mismo.
+        (PORTAL_CLIENTE_ENLACE, consumir_correo_externo, "identity-correo-portal"),
     ],
 )

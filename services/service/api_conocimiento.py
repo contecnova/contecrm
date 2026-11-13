@@ -410,6 +410,10 @@ def revocar(acceso_id: UUID, datos: Revocar, uow: UowDep, principal: Autenticado
 
 
 class PedirEnlace(BaseModel):
+    # El tenant, como en el portal de partner: a esta ruta se llega sin haber
+    # entrado, así que es una pista sin firmar. Lo que concede acceso es tener
+    # un acceso activo con ese correo, y el enlace va solo a ese buzón.
+    tenant: str = Field(min_length=1, max_length=200)
     email: str = Field(max_length=320)
 
 
@@ -421,17 +425,33 @@ class PedirEnlace(BaseModel):
         "convertiría el portal en un comprobador de qué correos son clientes "
         "nuestros, que es exactamente la lista que quiere un competidor.\n\n"
         "El token se guarda hasheado y caduca pronto: un enlace de acceso viaja "
-        "por correo, y el correo se reenvía."
+        "por correo, y el correo se reenvía.\n\n"
+        "El enlace sale **solo por correo** a la dirección del acceso. La "
+        'respuesta es siempre `{"enviado": true}` y nunca lo lleva.'
     ),
 )
-def pedir_enlace(datos: PedirEnlace, uow: UowDep, principal: AutenticadoDep) -> Any:
-    enlace, token = prt.emitir_enlace(uow, email=datos.email)
-    return {
-        "enviado": True,
-        # El token va en la respuesta solo para que lo mande quien integre el
-        # correo; nunca se enseña al que lo pide.
-        "token": token if enlace else "",
-    }
+def pedir_enlace(datos: PedirEnlace) -> Any:
+    # Hasta el 13-11-2026 (auditoría, SEC-7) esta ruta exigía sesión de
+    # EMPLEADO y devolvía el token: el cliente, que es quien la llama desde la
+    # pantalla del portal, recibía un 401 y no podía entrar nunca; y cualquier
+    # empleado, sin ningún permiso, se llevaba la llave del portal de cualquier
+    # cliente. Ahora es pública, como `/portal/sesion`, y el enlace solo viaja
+    # en el correo que encola `emitir_enlace`.
+    from crmcore.bus.outbox import despertar_relevo
+    from crmcore.db.session import sesion
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.http.interno import resolver_tenant
+    from crmcore.tenancy.context import con_contexto
+
+    tenant_id = resolver_tenant(datos.tenant)
+    with con_contexto(tenant_id=tenant_id, origen="api"), sesion(tenant_id) as db:
+        uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+        prt.emitir_enlace(uow, email=datos.email)
+        # Montada a mano, la unidad de trabajo no vuelca sola sus eventos: sin
+        # esto el correo no saldría nunca (el mismo fallo que tenía SEC-1).
+        uow._volcar_eventos()
+    despertar_relevo()
+    return {"enviado": True}
 
 
 class Canjear(BaseModel):

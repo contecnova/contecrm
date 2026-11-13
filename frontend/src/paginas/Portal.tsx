@@ -89,20 +89,28 @@ export function Portal() {
   // El enlace llega por correo con el token en la dirección. Se canjea solo: un
   // portal que además pide pulsar «entrar» añade un paso a quien ya ha hecho el
   // esfuerzo de abrir el correo.
-  const token = new URLSearchParams(window.location.search).get("t") ?? "";
+  const parametros = new URLSearchParams(window.location.search);
+  const token = parametros.get("t") ?? "";
+  // La empresa: la trae el enlace del correo y la dirección del portal que cada
+  // empresa da a sus clientes. Sin ella, la ruta que manda el enlace no sabe de
+  // qué empresa es el correo (SEC-7).
+  const tenant = parametros.get("tenant") ?? "";
 
-  if (!sesion) return <Entrada token={token} alEntrar={setSesion} />;
+  if (!sesion) return <Entrada token={token} tenant={tenant} alEntrar={setSesion} />;
   return <Dentro sesion={sesion} alSalir={() => setSesion(null)} />;
 }
 
 function Entrada({
   token,
+  tenant: tenantDeLaDireccion,
   alEntrar,
 }: {
   token: string;
+  tenant: string;
   alEntrar: (s: Sesion) => void;
 }) {
   const [email, setEmail] = useState("");
+  const [tenant, setTenant] = useState(tenantDeLaDireccion);
   const [estado, setEstado] = useState<"" | "enviando" | "enviado">("");
   const [fallo, setFallo] = useState("");
 
@@ -148,7 +156,7 @@ function Entrada({
           "Content-Type": "application/json",
           "Idempotency-Key": crypto.randomUUID(),
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ tenant, email }),
       });
     } finally {
       // Se dice lo mismo salga como salga: distinguirlo convertiría esto en un
@@ -174,6 +182,21 @@ function Entrada({
           </p>
         ) : (
           <form onSubmit={pedirEnlace}>
+            {tenantDeLaDireccion ? null : (
+              <>
+                <label htmlFor="portal-organizacion" className="label-base">
+                  Organización
+                </label>
+                <input
+                  id="portal-organizacion"
+                  required
+                  value={tenant}
+                  onChange={(e) => setTenant(e.target.value)}
+                  className="input-base mb-3"
+                  autoComplete="organization"
+                />
+              </>
+            )}
             <label htmlFor="portal-email" className="label-base">
               Tu correo electrónico
             </label>

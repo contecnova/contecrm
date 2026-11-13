@@ -403,7 +403,10 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "conceder": "lo concede el dueño del buzón y solo él; un permiso no lo sustituye",
         "revocar": "uno revoca el acceso a sus propios recursos",
         "valorar": "uno vota un artículo como uno mismo",
-        "pedir_enlace": "la pide quien atiende, y lo que da es un enlace, no acceso",
+        "pedir_enlace": (
+            "la pide el cliente sin haber entrado; responde siempre lo mismo y el "
+            "enlace solo va por correo al buzón del acceso (SEC-7)"
+        ),
         # No escriben, aunque el método sea POST.
         "previsualizar": "no escribe: pinta una plantilla con los datos que trae quien pregunta",
         "resolver_perfil": "no escribe: resuelve un perfil declarado con los ajustes del cuerpo",

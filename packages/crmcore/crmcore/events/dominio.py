@@ -1094,6 +1094,21 @@ PARTNER_PORTAL_ENLACE = registrar(
         publico=False,
     )
 )
+PORTAL_CLIENTE_ENLACE = registrar(
+    TipoEvento(
+        tipo="portal.link_requested",
+        version=1,
+        productor="service",
+        descripcion=(
+            "Un cliente con acceso al portal ha pedido su enlace de entrada. Lo "
+            "recoge `identity` y lo manda SOLO por correo a la dirección del acceso"
+        ),
+        campos=("acceso_id", "email", "titulo", "cuerpo"),
+        # Interno: el cuerpo lleva el enlace de un solo uso, que ES la entrada
+        # al portal del cliente (auditoría del 13-11-2026, SEC-7).
+        publico=False,
+    )
+)
 PARTNER_DEAL_EXPIRED = registrar(
     TipoEvento(
         tipo="partner.deal.expired",

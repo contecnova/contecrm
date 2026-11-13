@@ -40,6 +40,12 @@ class AjustesService(Settings):
     # de la ruta, que la pantalla nunca cambia.
     sla_riesgo_umbral_pct: int = Field(80, ge=1, le=100)
 
+    # ── Portal de cliente (CRM-04.03.02.01) ───────────────────────────────
+    # Validez del enlace de entrada que llega por correo. Era un `30` escrito
+    # en `portal.emitir_enlace`. Corto: el correo se reenvía, y quien lo pide
+    # está delante de la pantalla esperándolo.
+    portal_enlace_validez_minutos: int = Field(30, ge=5, le=1440)
+
     # ── SLA del proveedor frente al prometido (CRM-09.01.01.08) ───────────
     # Lo que tardamos NOSOTROS entre que el cliente avisa y el proveedor se
     # entera: recibir, diagnosticar, abrirle el parte. Se suma a los tiempos
@@ -118,6 +124,15 @@ registrar_claves(
             minimo=1.0,
             maximo=120.0,
             campo_settings="respuesta_caso_espera_s",
+        ),
+        ClaveAjuste(
+            clave="portal_enlace_validez_minutos",
+            tipo="int",
+            descripcion="Minutos que vale el enlace de entrada al portal de cliente",
+            minimo=5,
+            maximo=1440,
+            campo_settings="portal_enlace_validez_minutos",
+            sensible=True,
         ),
     ]
 )

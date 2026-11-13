@@ -33,7 +33,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from crmcore.events.dominio import ALTA_SOLICITADA, PARTNER_PORTAL_ENLACE
+from crmcore.events.dominio import ALTA_SOLICITADA, PARTNER_PORTAL_ENLACE, PORTAL_CLIENTE_ENLACE
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -47,6 +47,8 @@ logger = get_logger(__name__)
 CORREOS_EXTERNOS: dict[str, dict[str, Any]] = {
     ALTA_SOLICITADA.tipo: {"del_tenant": False, "objeto_tipo": "alta"},
     PARTNER_PORTAL_ENLACE.tipo: {"del_tenant": True, "objeto_tipo": "acceso_partner"},
+    # El cliente del portal tampoco es usuario: su acceso vive en `service`.
+    PORTAL_CLIENTE_ENLACE.tipo: {"del_tenant": True, "objeto_tipo": "acceso_portal"},
 }
 
 

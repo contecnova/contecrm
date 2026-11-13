@@ -300,17 +300,25 @@ def test_si_no_sale_se_dice_y_no_revienta_el_consumidor(monkeypatch: Any) -> Non
     assert correo_externo.entregar(ALTA_SOLICITADA.tipo, None, datos, uuid4()) is False
 
 
-def test_identity_esta_suscrito_a_los_dos_enlaces() -> None:
+def test_identity_esta_suscrito_a_todos_los_enlaces() -> None:
     """Sin la suscripción, el evento se vuelca y no lo recoge nadie: el mismo
     callejón que dejaba sin correo el enlace de restablecer la contraseña."""
     import ast
     from pathlib import Path
 
-    from crmcore.events.dominio import ALTA_SOLICITADA, PARTNER_PORTAL_ENLACE
+    from crmcore.events.dominio import (
+        ALTA_SOLICITADA,
+        PARTNER_PORTAL_ENLACE,
+        PORTAL_CLIENTE_ENLACE,
+    )
 
     from services.identity.correo_externo import CORREOS_EXTERNOS
 
-    assert set(CORREOS_EXTERNOS) == {ALTA_SOLICITADA.tipo, PARTNER_PORTAL_ENLACE.tipo}
+    assert set(CORREOS_EXTERNOS) == {
+        ALTA_SOLICITADA.tipo,
+        PARTNER_PORTAL_ENLACE.tipo,
+        PORTAL_CLIENTE_ENLACE.tipo,
+    }
     fuente = (Path(__file__).resolve().parents[2] / "services/identity/main.py").read_text(
         encoding="utf-8"
     )
@@ -323,4 +331,4 @@ def test_identity_esta_suscrito_a_los_dos_enlaces() -> None:
         and isinstance(n.elts[1], ast.Name)
         and n.elts[1].id == "consumir_correo_externo"
     }
-    assert suscritos == {"ALTA_SOLICITADA", "PARTNER_PORTAL_ENLACE"}
+    assert suscritos == {"ALTA_SOLICITADA", "PARTNER_PORTAL_ENLACE", "PORTAL_CLIENTE_ENLACE"}
