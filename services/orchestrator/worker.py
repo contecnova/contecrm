@@ -197,13 +197,17 @@ def _vencer_tareas(db: Any) -> int:
         .scalars()
         .all()
     )
+    motor = Motor(db)
     for tarea in vencidas:
-        tarea.estado = "escalada" if tarea.asignada_rol else "caducada"
+        # Escalar de verdad, seguir por `si_vence` o fallar diciendo por qué:
+        # lo decide el motor con la definición (FUN-A-6). Antes aquí solo se
+        # cambiaba el estado y la instancia se quedaba parada para siempre.
+        hecho = motor.vencer_tarea(tarea)
         logger.warning(
             "tarea.vencida",
             tarea=str(tarea.id),
             paso=tarea.paso,
-            estado=tarea.estado,
+            resultado=hecho,
         )
     if vencidas:
         db.commit()

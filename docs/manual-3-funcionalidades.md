@@ -336,7 +336,17 @@ una norma escrita en un documento: es una imposibilidad a nivel de permisos.
 - **Subprocesos** reutilizables (CRM-00.03.02.08).
 - **Tareas humanas** con bandeja, asignación por persona o por rol, delegación y
   plazo (CRM-00.03.02.09). Una espera de días por una aprobación es un estado
-  normal del proceso, no un error de tiempo agotado.
+  normal del proceso, no un error de tiempo agotado. Al vencer el plazo, en este
+  orden: con `al_vencer: "escalar"` la tarea se **reasigna** a `escalar_a` o
+  `escalar_a_rol` y vuelve a correr su plazo (una vez); con `si_vence` caduca y
+  el proceso sigue por ese paso, con `<paso>_respuesta = "vencida"`; sin
+  ninguna de las dos, la instancia **falla** diciendo por qué. Publicar una
+  definición que escala sin decir a quién se rechaza.
+
+  > **Corregido el 13-11-2026 (auditoría, FUN-A-6).** Al vencer, el worker solo
+  > cambiaba el estado de la tarea: salía de la bandeja, nadie podía responderla
+  > y la instancia se quedaba esperando para siempre. «Escalar», que el propio
+  > motor documentaba, no reasignaba a nadie.
 - **Instancias consultables** con su historial paso a paso, incluidas la entrada
   y la salida de cada uno (CRM-00.03.02.11): sin los valores, reproducir un
   fallo obliga a adivinar con qué datos ocurrió.

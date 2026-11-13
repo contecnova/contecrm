@@ -29,6 +29,8 @@
           "opciones": ["aprobar", "rechazar"],
           "vence_en_horas": 48,
           "al_vencer": "escalar",
+          "escalar_a_rol": "direccion_comercial",
+          "si_vence": "fin_rechazado",
           "rutas": {"aprobar": "enviar_al_erp", "rechazar": "fin_rechazado"}
         },
         "enviar_al_erp": {"tipo": "servicio",
@@ -324,10 +326,21 @@ def validar_definicion(
             problemas.append(f"«{nombre}»: tipo desconocido «{tipo}»")
             continue
 
-        for clave in ("siguiente", "si_no", "al_fallar"):
+        for clave in ("siguiente", "si_no", "al_fallar", "si_vence"):
             destino = paso.get(clave)
             if destino and destino not in destinos_validos:
                 problemas.append(f"«{nombre}».{clave} apunta a «{destino}», que no existe")
+
+        al_vencer = paso.get("al_vencer")
+        if al_vencer is not None and al_vencer != "escalar":
+            problemas.append(f"«{nombre}».al_vencer solo admite «escalar», no «{al_vencer}»")
+        if al_vencer == "escalar" and not (paso.get("escalar_a") or paso.get("escalar_a_rol")):
+            problemas.append(
+                f"«{nombre}» dice escalar al vencer y no dice a quién "
+                "(`escalar_a` o `escalar_a_rol`)"
+            )
+        if al_vencer == "escalar" and not paso.get("vence_en_horas"):
+            problemas.append(f"«{nombre}» dice escalar al vencer y no tiene `vence_en_horas`")
 
         for ruta in (paso.get("rutas") or {}).values():
             if ruta not in destinos_validos:
@@ -456,7 +469,7 @@ def destinos_de(paso: dict[str, Any]) -> list[str]:
     detectarse— justo cuando más falta hace.
     """
     destinos: list[str] = []
-    for clave in ("siguiente", "si_no", "al_fallar"):
+    for clave in ("siguiente", "si_no", "al_fallar", "si_vence"):
         if paso.get(clave):
             destinos.append(str(paso[clave]))
     destinos.extend(str(r) for r in (paso.get("rutas") or {}).values())
@@ -1213,6 +1226,63 @@ class Motor:
         )
 
     # ── Respuesta a una tarea humana ─────────────────────────────────────
+
+    def vencer_tarea(self, tarea: TareaHumana) -> str:
+        """Lo que pasa cuando una tarea humana llega a su plazo. Devuelve qué se hizo.
+
+        Hasta el 13-11-2026 (auditoría, FUN-A-6) el worker solo cambiaba el
+        estado de la tarea a «escalada» o «caducada»: salía de la bandeja, nadie
+        la podía responder y la instancia se quedaba en «esperando_humano» para
+        siempre, porque nadie la despertaba. «Escalar» tampoco reasignaba nada.
+
+        Ahora, en este orden:
+
+          1. `al_vencer: "escalar"` y aún no escalada → se **reasigna** a
+             `escalar_a` / `escalar_a_rol`, sigue pendiente y vuelve a correr
+             su plazo. Se escala una vez.
+          2. `si_vence` → la tarea caduca y el proceso sigue por ese paso, con
+             `<paso>_respuesta = "vencida"` para que se pueda decidir después.
+          3. Ninguna de las dos → la tarea caduca y la instancia **falla**
+             diciendo por qué. Fallar se ve y se puede rescatar; quedarse
+             esperando no se ve nunca.
+        """
+        ahora = datetime.now(timezone.utc)
+        instancia = self.db.get(InstanciaProceso, tarea.instancia_id)
+        definicion = self.db.get(DefinicionProceso, instancia.definicion_id) if instancia else None
+        pasos = (definicion.definicion.get("pasos") or {}) if definicion else {}
+        paso = pasos.get(tarea.paso) or {}
+        variables = instancia.variables if instancia else {}
+
+        ya_escalada = bool((tarea.datos or {}).get("_escalada_at"))
+        if paso.get("al_vencer") == "escalar" and not ya_escalada and paso.get("vence_en_horas"):
+            usuario = resolver(paso.get("escalar_a"), variables)
+            rol = paso.get("escalar_a_rol")
+            if usuario or rol:
+                tarea.escalada_a = UUID(str(usuario)) if usuario else None
+                tarea.asignada_a = tarea.escalada_a
+                tarea.asignada_rol = str(rol) if rol else None
+                tarea.vence_at = ahora + timedelta(hours=int(paso["vence_en_horas"]))
+                tarea.datos = {**(tarea.datos or {}), "_escalada_at": ahora.isoformat()}
+                if instancia is not None:
+                    instancia.despertar_at = tarea.vence_at
+                return "escalada"
+
+        tarea.estado = "caducada"
+        if instancia is None:
+            return "caducada"
+        if paso.get("si_vence"):
+            instancia.variables = {**variables, f"{tarea.paso}_respuesta": "vencida"}
+            instancia.paso_actual = str(paso["si_vence"])
+            instancia.estado = "ejecutando"
+            instancia.despertar_at = ahora
+            return "seguir"
+        instancia.estado = "fallida"
+        instancia.error = (
+            f"La tarea «{tarea.paso}» venció sin respuesta y el proceso no dice qué "
+            "hacer entonces (`si_vence` o `al_vencer: escalar`)."
+        )
+        instancia.despertar_at = None
+        return "fallida"
 
     def responder_tarea(
         self,
