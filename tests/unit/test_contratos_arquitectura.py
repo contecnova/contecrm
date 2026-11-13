@@ -281,6 +281,11 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
             "el gateway reenvía el token de portal; el acceso y la sección los "
             "comprueba `PortalDep` en el servicio destino"
         ),
+        "proxy_cuadro_embebido_datos": (
+            "el gateway reenvía el ticket del cuadro incrustado; lo valida `leer_ticket` "
+            "en analytics y la puerta `admite_cuadro_embebido` no lo deja entrar en "
+            "ninguna otra ruta (SEC-2)"
+        ),
         "captura_publica": "el gateway reenvía «recibir_lead»; lo autoriza la clave del canal",
         # Por lo mismo: una petición compuesta despacha cada operación contra la
         # propia aplicación, y cada una comprueba el suyo. Exigir uno aquí
