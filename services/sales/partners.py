@@ -44,6 +44,7 @@ from crmcore.audit import registrar
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado
+from crmcore.events.dominio import PARTNER_PORTAL_ENLACE
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from crmcore.runtime import settings as rt
@@ -830,19 +831,46 @@ def revocar_acceso(uow: UnidadDeTrabajo, acceso_id: UUID, *, motivo: str = "") -
     return fila
 
 
+def url_del_enlace(tenant_id: UUID, token: str) -> str:
+    """El enlace que abre la persona del partner desde el correo.
+
+    Va a la interfaz (`FRONT_BASE_URL`) y no a la API, como el de restablecer la
+    contraseña. Lleva el tenant porque `/portal-partner/canjear` lo necesita para
+    abrir la sesión: quien entra no ha entrado todavía y no hay otro sitio de
+    donde sacarlo.
+    """
+    from urllib.parse import urlencode
+
+    from crmcore.config import get_settings
+
+    base = str(get_settings().front_base_url or "").rstrip("/")
+    return f"{base}/portal-partner?{urlencode({'tenant': str(tenant_id), 't': token})}"
+
+
 def emitir_enlace(
     uow: UnidadDeTrabajo, *, email: str, validez_minutos: int | None = None
 ) -> tuple[EnlaceAccesoPartner | None, str]:
-    """Enlace de un solo uso para entrar.
+    """Enlace de un solo uso para entrar, y su correo encolado.
 
     **Devuelve enlace nulo sin decirlo** cuando el correo no vale: la respuesta es
     la misma exista o no. Distinguirlas convertiría el portal en un comprobador de
     qué empresas son partners nuestros, que es media lista de la competencia.
+
+    El token se devuelve **solo a quien llama dentro del servicio** (las pruebas).
+    La ruta no lo reenvía nunca: quien pide el enlace no tiene por qué ser la
+    persona del partner, y con el token en la respuesta entraba en su portal
+    sabiendo su correo (auditoría del 13-11-2026, SEC-5). El enlace llega solo al
+    buzón del acceso: evento interno → `identity`, que tiene los transportes.
     """
+    from services.sales.ajustes import ajustes
+
     minutos = int(
         validez_minutos
         if validez_minutos is not None
-        else (rt.efectivo("partner_enlace_validez_minutos", uow.db) or 30)
+        else (
+            rt.efectivo("partner_enlace_validez_minutos", uow.db)
+            or ajustes().partner_enlace_validez_minutos
+        )
     )
     acceso = uow.db.execute(
         select(AccesoPartner).where(
@@ -869,6 +897,27 @@ def emitir_enlace(
     )
     uow.db.add(enlace)
     uow.db.flush()
+    uow.emitir(
+        PARTNER_PORTAL_ENLACE,
+        subject=("acceso_partner", acceso.id),
+        data={
+            "acceso_id": str(acceso.id),
+            "email": acceso.email,
+            "nombre": acceso.nombre or "",
+            "titulo": "Tu enlace para entrar en el portal de partner",
+            "cuerpo": "\n".join(
+                [
+                    f"Has pedido entrar en el portal de partner como {acceso.email}.",
+                    "",
+                    "Entra desde este enlace:",
+                    url_del_enlace(uow.tenant_id, token),
+                    "",
+                    f"Sirve una sola vez y caduca en {minutos} minutos.",
+                    "Si no lo has pedido tú, no hagas nada: sin el enlace no se entra.",
+                ]
+            ),
+        },
+    )
     return enlace, token
 
 

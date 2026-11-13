@@ -45,7 +45,7 @@ from crmcore.errors import ErrorValidacion, NoEncontrado, Prohibido
 
 # El hecho que recoge `identity`, declarado en el catálogo común: los dos
 # servicios tienen que llamarlo igual, y una cadena escrita dos veces diverge.
-from crmcore.events.dominio import ALTA_CONFIRMADA
+from crmcore.events.dominio import ALTA_CONFIRMADA, ALTA_SOLICITADA
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import Boolean, DateTime, Index, String, select
@@ -124,6 +124,20 @@ def _exigir_activo() -> None:
     )
 
 
+def url_del_enlace(token: str) -> str:
+    """El enlace de confirmación que abre quien pide el alta desde el correo.
+
+    Va a la interfaz (`FRONT_BASE_URL`) y no a la API, como el de restablecer la
+    contraseña: quien lo abre es una persona, no un cliente HTTP.
+    """
+    from urllib.parse import quote
+
+    from crmcore.config import get_settings
+
+    base = str(get_settings().front_base_url or "").rstrip("/")
+    return f"{base}/?alta={quote(token, safe='')}"
+
+
 def solicitar(
     uow: UnidadDeTrabajo,
     *,
@@ -133,15 +147,19 @@ def solicitar(
     nombre_persona: str,
     ip: str = "",
 ) -> str:
-    """Apunta la solicitud y devuelve el token del enlace de confirmación.
+    """Apunta la solicitud, encola el correo del enlace y devuelve el token.
 
     **La respuesta de la ruta es la misma exista o no el slug**, y por eso esta
     función no lanza cuando está cogido: anota el choque y devuelve un token que
     al confirmarse dirá que no se pudo. Lanzar aquí convertiría la pantalla de
     alta en un comprobador de qué empresas son clientes.
 
-    El token se **devuelve** para que lo mande quien integre el correo; nunca se
-    le enseña a quien lo pide. Mismo trato que los enlaces de restablecer.
+    El token se devuelve **solo a quien llama dentro del servicio** (las
+    pruebas). La ruta no lo reenvía nunca: con el token en la respuesta, quien
+    pedía el alta la confirmaba él mismo y se creaba una empresa a nombre de un
+    correo ajeno, que es justo lo que el enlace existe para impedir (auditoría
+    del 13-11-2026, SEC-6). El enlace llega solo al buzón indicado: evento
+    interno `tenant.alta_solicitada` → `identity`, que tiene los transportes.
     """
     from crmcore.config import get_settings
 
@@ -168,19 +186,45 @@ def solicitar(
 
     token = secrets.token_urlsafe(32)
     horas = int(get_settings().onboarding_enlace_horas)
-    uow.db.add(
-        AltaPendiente(
-            slug=slug,
-            nombre_empresa=nombre_empresa.strip(),
-            email=email.strip().lower(),
-            nombre_persona=nombre_persona.strip(),
-            hash_token=_hash(token),
-            caduca_at=_ahora() + timedelta(hours=horas),
-            ip_solicitud=ip or None,
-            slug_libre=libre,
-        )
+    fila = AltaPendiente(
+        slug=slug,
+        nombre_empresa=nombre_empresa.strip(),
+        email=email.strip().lower(),
+        nombre_persona=nombre_persona.strip(),
+        hash_token=_hash(token),
+        caduca_at=_ahora() + timedelta(hours=horas),
+        ip_solicitud=ip or None,
+        slug_libre=libre,
     )
+    uow.db.add(fila)
     uow.db.flush()
+    # El correo sale esté el slug libre o no: si no saliera, la ausencia del
+    # correo diría lo que la respuesta calla. Si estaba cogido, se dice al
+    # confirmar, a quien ya ha demostrado que el buzón es suyo.
+    uow.emitir(
+        ALTA_SOLICITADA,
+        subject=("alta", fila.id),
+        data={
+            "email": fila.email,
+            "nombre": fila.nombre_persona,
+            "titulo": "Confirma el alta de tu empresa",
+            "cuerpo": "\n".join(
+                [
+                    f"Alguien ha pedido dar de alta la empresa «{fila.nombre_empresa}» "
+                    f"(identificador «{fila.slug}») con este correo como primer "
+                    "administrador.",
+                    "",
+                    "Si has sido tú, confírmalo desde este enlace:",
+                    url_del_enlace(token),
+                    "",
+                    f"Sirve una sola vez y caduca en {horas} horas. Hasta que no lo "
+                    "abras no se crea nada.",
+                    "Si no lo has pedido tú, no hagas nada: sin el enlace no se da "
+                    "de alta ninguna empresa.",
+                ]
+            ),
+        },
+    )
     # Se anota el choque para quien vigila, no para quien pide: alguien probando
     # nombres de empresa uno detrás de otro se ve aquí y no en la respuesta.
     logger.info("alta.solicitada", slug=slug, slug_libre=libre, ip=ip or None)

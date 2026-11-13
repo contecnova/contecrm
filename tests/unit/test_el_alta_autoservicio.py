@@ -7,7 +7,7 @@ prometía la otra mitad y no la leía nadie.
 Lo que un alta pública tiene que resolver, y lo que se comprueba aquí:
 
   · **Nada existe hasta que alguien demuestra que el correo es suyo.** Pedirlo
-    no crea el tenant: guarda la solicitud y devuelve el token del enlace. Crear
+    no crea el tenant: guarda la solicitud y manda el enlace por correo. Crear
     primero dejaría el sistema lleno de empresas a medias con los slugs buenos
     cogidos, y un slug es permanente.
   · **La respuesta no dice si el identificador estaba libre.** Si lo dijera,
@@ -469,9 +469,9 @@ def test_la_ruta_no_pide_autenticacion(tenancy_arrancado: Any, autoservicio: Any
         },
     )
     assert salida.status_code == 200, salida.text[:400]
-    cuerpo = salida.json()
-    assert cuerpo["enviado"] is True
-    assert cuerpo["token"]
+    # Y sin el token (auditoría del 13-11-2026, SEC-6): el enlace va solo al
+    # buzón indicado. Con él en la respuesta, quien pedía confirmaba él mismo.
+    assert salida.json() == {"enviado": True}
 
 
 @pytest.mark.parametrize("autoservicio", [False], indirect=True)

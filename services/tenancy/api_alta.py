@@ -10,9 +10,11 @@ una ruta interna no necesita, y están cuidadas en `services.tenancy.alta`:
   · hay límite por IP, y mucho más estrecho que el general de la API, porque
     esto crea tenants.
 
-El token se **devuelve en la respuesta**, igual que en el restablecimiento de
-contraseña y por lo mismo: lo manda quien integre el correo. Nunca se le enseña
-a quien lo pide.
+El token **no se devuelve nunca**: el enlace sale solo por correo al buzón
+indicado (evento interno `tenant.alta_solicitada` → `identity`, que tiene los
+transportes). Hasta el 13-11-2026 venía en la respuesta «para que lo mandara
+quien integrase el correo», y quien llama es quien pide el alta: la confirmaba él
+mismo y daba de alta una empresa a nombre de un correo ajeno (auditoría, SEC-6).
 """
 
 from __future__ import annotations
@@ -88,10 +90,11 @@ _POR_IP: dict[str, list[float]] = {}
     "",
     summary="Pedir el alta de una empresa",
     description=(
-        "**No crea nada todavía.** Guarda la solicitud y devuelve el token del "
-        "enlace de confirmación, que es lo que hay que mandarle por correo a "
-        "quien lo pide: hasta que no demuestre que ese buzón es suyo, no se da "
-        "de alta ninguna empresa.\n\n"
+        "**No crea nada todavía.** Guarda la solicitud y manda el enlace de "
+        "confirmación **solo por correo** al buzón indicado: hasta que no "
+        "demuestre que ese buzón es suyo, no se da de alta ninguna empresa. La "
+        'respuesta es siempre `{"enviado": true}` y nunca lleva el enlace: '
+        "quien la recibe es quien pide, no el dueño del buzón.\n\n"
         "La respuesta es **la misma esté el identificador libre o cogido**. "
         "Distinguirlas convertiría esta pantalla en un comprobador de qué "
         "empresas son clientes: se prueba un nombre, se mira la respuesta, y ya "
@@ -103,7 +106,10 @@ def pedir_alta(datos: PedirAlta, request: Request) -> Any:
 
     _limitar(request)
     with unidad_de_trabajo(sistema=True) as uow:
-        token = alta.solicitar(
+        # El token se queda aquí dentro: viaja solo en el correo que encola
+        # `solicitar`, y `unidad_de_trabajo` es lo que vuelca ese evento a la
+        # tabla de salida al cerrar.
+        alta.solicitar(
             uow,
             slug=datos.slug,
             nombre_empresa=datos.nombre_empresa,
@@ -111,15 +117,7 @@ def pedir_alta(datos: PedirAlta, request: Request) -> Any:
             nombre_persona=datos.nombre,
             ip=_ip(request),
         )
-    return {
-        "enviado": True,
-        "token": token,
-        "como_sigue": (
-            "Manda este token en el enlace de confirmación al correo indicado. "
-            "No se lo enseñes a quien pidió el alta: el enlace es la prueba de "
-            "que el buzón es suyo."
-        ),
-    }
+    return {"enviado": True}
 
 
 @router_alta.post(

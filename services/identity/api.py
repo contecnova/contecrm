@@ -366,7 +366,12 @@ class NombrePasskey(BaseModel):
         "Se le pasan al navegador las llaves que ya tiene esta cuenta para que "
         "**no registre dos veces el mismo dispositivo**: quien pulsa el botón "
         "dos veces acabaría con dos llaves idénticas y una lista que no dice "
-        "nada."
+        "nada.\n\n"
+        "Si la cuenta ya tiene un factor fuerte —la app de autenticación o "
+        "otra passkey— exige haberse verificado hace poco (`cambio_mfa`, "
+        "`stepup.requerido` si no): con una sesión robada se colgaba una llave "
+        "propia en la cuenta de otro, y esa llave sobrevive a que cambie la "
+        "contraseña."
     ),
 )
 def empezar_registro_passkey(db: DbDep, principal: AutenticadoDep) -> Any:
@@ -376,6 +381,9 @@ def empezar_registro_passkey(db: DbDep, principal: AutenticadoDep) -> Any:
     usuario = db.get(Usuario, principal.id)
     if usuario is None:
         raise NoEncontrado("Ese usuario no existe", error_code="identity.usuario_no_encontrado")
+    # Aquí y no solo al confirmar: quien no se ha verificado se entera antes de
+    # sacar la llave del bolsillo, no después de tocarla.
+    svc.exigir_reverificacion_si_tiene_factor(db, principal, usuario)
     return pk.opciones_registro(db, tenant_id=principal.tenant_id, usuario=usuario)
 
 
@@ -388,12 +396,24 @@ class RegistroPasskey(BaseModel):
     "/passkeys/confirmar",
     status_code=status.HTTP_201_CREATED,
     summary="Guardar la passkey recién creada",
+    description=(
+        "Con la misma condición que al empezar: si la cuenta ya tiene un factor "
+        "fuerte, exige haberse verificado hace poco (`cambio_mfa`)."
+    ),
 )
 def confirmar_registro_passkey(
     datos: RegistroPasskey, uow: UowDep, principal: AutenticadoDep
 ) -> Any:
     from services.identity import passkeys as pk
+    from services.identity.modelos import Usuario
 
+    usuario = uow.db.get(Usuario, principal.id)
+    if usuario is None:
+        raise NoEncontrado("Ese usuario no existe", error_code="identity.usuario_no_encontrado")
+    # Se vuelve a comprobar al guardar, que es lo que escribe: la comprobación
+    # de `/passkeys` solo protege a quien pasa por ella, y esta ruta se puede
+    # llamar sin haberla llamado.
+    svc.exigir_reverificacion_si_tiene_factor(uow.db, principal, usuario)
     fila = pk.guardar_registro(
         uow, usuario_id=principal.id, respuesta=datos.respuesta, nombre=datos.nombre
     )
@@ -512,13 +532,22 @@ def yo(db: DbDep, principal: AutenticadoDep) -> Any:
     description=(
         "Devuelve el secreto y los códigos de recuperación **una sola vez**. "
         "No queda activa hasta confirmar con un código válido: si se activara "
-        "aquí, un error al escanear dejaría al usuario fuera de su cuenta."
+        "aquí, un error al escanear dejaría al usuario fuera de su cuenta.\n\n"
+        "Con el MFA **ya activo** (cambiar de autenticador) o con alguna "
+        "passkey, exige haberse verificado hace poco (`cambio_mfa`, el mismo "
+        "guardia que al quitarlo): reescribir el secreto de un MFA activo con "
+        "una sesión robada era quedarse con el segundo factor de otro."
     ),
 )
 def iniciar_mfa(db: DbDep, principal: AutenticadoDep) -> Any:
     usuario = db.get(Usuario, principal.id)
     if usuario is None:
         raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
+    # Antes de tocar nada: el secreto y los códigos se reescriben en esta misma
+    # llamada, y con el MFA activo eso CAMBIA el autenticador de la cuenta en el
+    # acto —`mfa_activo` sigue a cierto, ya con el secreto nuevo—. La primera
+    # configuración no lo exige: sin factor no hay con qué verificarse.
+    svc.exigir_reverificacion_si_tiene_factor(db, principal, usuario)
     secreto = svc.generar_secreto_totp()
     codigos, hashes = svc.generar_codigos_recuperacion()
     usuario.mfa_secreto = secreto

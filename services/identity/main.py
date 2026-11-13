@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from crmcore.events.dominio import ALTA_CONFIRMADA
+from crmcore.events.dominio import ALTA_CONFIRMADA, ALTA_SOLICITADA, PARTNER_PORTAL_ENLACE
 from crmcore.service import crear_servicio
 
 from services.identity.alta_consumidor import consumir_alta_confirmada
 from services.identity.api import ROUTERS
+from services.identity.correo_externo import consumir_correo_externo
 from services.identity.notificaciones import consumir_evento
 
 _relevo: Any = None
@@ -127,5 +128,11 @@ app = crear_servicio(
         # que este servicio esté en pie en ese segundo sería el peor momento
         # para que falle — la persona está mirando la pantalla.
         (ALTA_CONFIRMADA, consumir_alta_confirmada, "identity-alta-autoservicio"),
+        # Los enlaces que van a quien todavía no es usuario: confirmar un alta
+        # y entrar al portal de partner. Aquí y no en la bandeja de avisos, que
+        # es por usuario; y aquí porque este servicio es el que tiene los
+        # transportes (auditoría del 13-11-2026, SEC-5 y SEC-6).
+        (ALTA_SOLICITADA, consumir_correo_externo, "identity-correo-alta"),
+        (PARTNER_PORTAL_ENLACE, consumir_correo_externo, "identity-correo-partner"),
     ],
 )

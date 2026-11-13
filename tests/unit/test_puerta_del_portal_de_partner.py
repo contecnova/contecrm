@@ -124,6 +124,40 @@ def _partner_con_acceso(tenant_id: UUID, email: str) -> None:
         )
 
 
+def _correos_encolados(tenant_id: UUID) -> list[dict[str, Any]]:
+    """Los correos de enlace que la ruta ha dejado en la tabla de salida.
+
+    Se leen de AHÍ y no de la respuesta, que ya no lleva el token (auditoría del
+    13-11-2026, SEC-5): así se prueba además que el evento se vuelca de verdad
+    —el de restablecer la contraseña no se volcaba y no salía ningún correo—.
+    """
+    from crmcore.bus.modelos import EventoSaliente
+    from crmcore.db.session import sesion
+    from crmcore.events.dominio import PARTNER_PORTAL_ENLACE
+    from sqlalchemy import select
+
+    with sesion(None, sistema=True) as db:
+        filas = db.execute(
+            select(EventoSaliente.sobre).where(
+                EventoSaliente.tenant_id == tenant_id,
+                EventoSaliente.tipo == PARTNER_PORTAL_ENLACE.tipo,
+            )
+        ).scalars()
+        return [dict(f.get("data") or {}) for f in filas]
+
+
+def _token_del_correo(tenant_id: UUID) -> str:
+    """El token del último enlace, sacado del enlace del cuerpo del correo."""
+    from urllib.parse import parse_qs, urlparse
+
+    correos = _correos_encolados(tenant_id)
+    assert correos, "no se ha encolado ningún correo con el enlace"
+    enlace = next(
+        linea for linea in correos[-1]["cuerpo"].splitlines() if "/portal-partner?" in linea
+    )
+    return parse_qs(urlparse(enlace).query)["t"][0]
+
+
 def test_pedir_el_enlace_no_exige_haber_entrado(api_sales: Any, tenant_confirmado: UUID) -> None:
     """La avería: la puerta contestaba «tienes que haber entrado».
 
@@ -139,18 +173,23 @@ def test_pedir_el_enlace_no_exige_haber_entrado(api_sales: Any, tenant_confirmad
     )
 
     assert salida.status_code == 200, salida.text[:300]
-    assert salida.json()["token"], "no ha emitido enlace para un acceso que existe"
+    # El enlace no va en la respuesta: va al buzón del acceso, y solo a él.
+    assert salida.json() == {"enviado": True}
+    correos = _correos_encolados(tenant_confirmado)
+    assert [c["email"] for c in correos] == [
+        "ana@acme.com"
+    ], "no se ha encolado el correo con el enlace para un acceso que existe"
 
 
 def test_canjear_el_enlace_deja_entrar(api_sales: Any, tenant_confirmado: UUID) -> None:
     """El camino entero, que es lo que ninguna prueba recorría."""
     _partner_con_acceso(tenant_confirmado, "ana@acme.com")
 
-    pedido = api_sales.post(
+    api_sales.post(
         "/api/v1/portal-partner/entrar",
         json={"tenant": str(tenant_confirmado), "email": "ana@acme.com"},
     )
-    token = pedido.json()["token"]
+    token = _token_del_correo(tenant_confirmado)
 
     entrada = api_sales.post(
         "/api/v1/portal-partner/canjear",
@@ -165,10 +204,11 @@ def test_el_enlace_es_de_un_solo_uso(api_sales: Any, tenant_confirmado: UUID) ->
     """Quien lo capture —en un correo reenviado, en un registro— no entra
     detrás del que ya entró."""
     _partner_con_acceso(tenant_confirmado, "ana@acme.com")
-    token = api_sales.post(
+    api_sales.post(
         "/api/v1/portal-partner/entrar",
         json={"tenant": str(tenant_confirmado), "email": "ana@acme.com"},
-    ).json()["token"]
+    )
+    token = _token_del_correo(tenant_confirmado)
 
     cuerpo = {"tenant": str(tenant_confirmado), "token": token}
     assert api_sales.post("/api/v1/portal-partner/canjear", json=cuerpo).status_code == 200
@@ -194,11 +234,15 @@ def test_un_correo_desconocido_recibe_la_misma_respuesta(
     )
 
     assert conocido.status_code == desconocido.status_code == 200
-    assert set(conocido.json()) == set(desconocido.json()), (
-        "las dos respuestas no tienen la misma forma: la diferencia dice si ese "
-        "correo es partner nuestro"
+    # IGUALES, no «con la misma forma»: hasta el 13-11-2026 tenían las mismas
+    # claves y distinto contenido —`token` y `caduca_at` solo venían rellenos
+    # para un partner—, y la prueba de la forma lo daba por bueno.
+    assert conocido.json() == desconocido.json() == {"enviado": True}, (
+        "las dos respuestas no son idénticas: la diferencia dice si ese correo "
+        "es partner nuestro"
     )
-    assert desconocido.json()["token"] is None
+    # Y al desconocido no se le manda nada.
+    assert [c["email"] for c in _correos_encolados(tenant_confirmado)] == ["ana@acme.com"]
 
 
 def test_el_tenant_del_cuerpo_no_da_acceso_por_si_solo(
@@ -211,15 +255,18 @@ def test_el_tenant_del_cuerpo_no_da_acceso_por_si_solo(
     """
     _partner_con_acceso(tenant_confirmado, "ana@acme.com")
 
+    otro = uuid4()
     salida = api_sales.post(
         "/api/v1/portal-partner/entrar",
-        json={"tenant": str(uuid4()), "email": "ana@acme.com"},
+        json={"tenant": str(otro), "email": "ana@acme.com"},
     )
 
     assert salida.status_code == 200
-    assert salida.json()["token"] is None, (
-        "ha emitido un enlace nombrando el tenant de otro: el acceso de ana no " "es de ese tenant"
-    )
+    assert salida.json() == {"enviado": True}
+    assert (
+        _correos_encolados(otro) == []
+    ), "ha emitido un enlace nombrando el tenant de otro: el acceso de ana no es de ese tenant"
+    assert _correos_encolados(tenant_confirmado) == []
 
 
 def test_el_enlace_de_un_tenant_no_se_canjea_en_otro(
@@ -228,10 +275,11 @@ def test_el_enlace_de_un_tenant_no_se_canjea_en_otro(
     """Un enlace válido no puede valer en otra organización: sería entrar en el
     portal de otro cliente con un correo propio."""
     _partner_con_acceso(tenant_confirmado, "ana@acme.com")
-    token = api_sales.post(
+    api_sales.post(
         "/api/v1/portal-partner/entrar",
         json={"tenant": str(tenant_confirmado), "email": "ana@acme.com"},
-    ).json()["token"]
+    )
+    token = _token_del_correo(tenant_confirmado)
 
     salida = api_sales.post(
         "/api/v1/portal-partner/canjear",

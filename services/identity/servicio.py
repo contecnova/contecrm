@@ -255,6 +255,54 @@ def mfa_exigida(db: Session, roles: list[str], tenant_id: UUID | None = None) ->
     return bool(exigidos) and bool(set(exigidos) & set(roles or []))
 
 
+def tiene_factor_fuerte(db: Session, usuario: Usuario) -> bool:
+    """¿Tiene esta cuenta un factor fuerte con el que pueda volver a verificarse?
+
+    La app de autenticación activada o alguna passkey registrada: son los dos
+    factores de la cuenta que dejan la marca de factor fuerte en la sesión
+    —`/mfa/reverificar` con el código, o entrar otra vez con la passkey—.
+    """
+    if usuario.mfa_activo:
+        return True
+    from services.identity.passkeys import Passkey
+
+    return (
+        db.execute(select(Passkey.id).where(Passkey.usuario_id == usuario.id).limit(1)).first()
+        is not None
+    )
+
+
+def exigir_reverificacion_si_tiene_factor(db: Session, principal: Any, usuario: Usuario) -> None:
+    """Cambiar los factores fuertes de una cuenta que ya tiene uno exige
+    haberse verificado hace poco (`cambio_mfa`, CRM-00.05.01.18).
+
+    Auditoría del 13-11-2026, SEC-4: `/mfa/iniciar` reescribía el secreto de un
+    MFA **ya activo** y el alta de passkeys solo pedía la sesión. Con una sesión
+    robada se cambiaba el autenticador de la víctima —el MFA seguía «activo»,
+    pero con el secreto del atacante— o se le colgaba una passkey propia, que
+    sobrevive a que la víctima cambie la contraseña. Quitar el factor ya exigía
+    reverificación; ponerlo o cambiarlo, que da lo mismo o más, no.
+
+    Se usa la misma operación que al quitarlo, `cambio_mfa` («Desactivar o
+    reconfigurar el segundo factor»), y no una nueva: una passkey **es** un
+    factor fuerte de la cuenta (`webauthn`, el más fuerte de `FUERZA`), así que
+    darla de alta es reconfigurar el segundo factor, y dos claves para lo mismo
+    acabarían con ventanas de validez distintas para un mismo riesgo.
+
+    **Solo cuando la cuenta ya tiene un factor fuerte**, y es deliberado: a
+    quien no tiene ninguno no hay con qué pedirle que se verifique —los códigos
+    por correo o SMS no cuentan como fuertes—, y exigírselo dejaría imposible
+    configurar el primero, que es justo lo que se quiere que haga. Esa primera
+    alta queda como estaba: con la sesión, y con el evento
+    `user.passkey.registered` para quien vigila las cuentas.
+    """
+    if not tiene_factor_fuerte(db, usuario):
+        return
+    from crmcore.http.reverificacion import comprobar
+
+    comprobar(principal, "cambio_mfa", db=db)
+
+
 def _verificar_segundo_factor(
     db: Session, usuario: Usuario, codigo: str, tenant_id: UUID | None = None
 ) -> bool:

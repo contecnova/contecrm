@@ -44,6 +44,27 @@ ALTA_CONFIRMADA = registrar(
         campos=("tenant_id", "slug", "email", "nombre"),
     )
 )
+# Y el correo con el enlace de confirmación, a quien PIDE el alta. Lo entrega
+# `identity`, que es quien tiene enchufados los transportes de la instalación:
+# quien pide todavía no es usuario de nada, así que no puede ir por la bandeja
+# de avisos —que es por usuario—, sino directo a la dirección que escribió.
+ALTA_SOLICITADA = registrar(
+    TipoEvento(
+        tipo="tenant.alta_solicitada",
+        version=1,
+        productor="tenancy",
+        descripcion=(
+            "Alguien ha pedido dar de alta su empresa por autoservicio. Lo "
+            "recoge `identity` y manda el enlace de confirmación SOLO al correo "
+            "indicado: es la prueba de que ese buzón es de quien lo pide"
+        ),
+        campos=("email", "nombre", "titulo", "cuerpo"),
+        # Interno: el cuerpo lleva el enlace, que es la credencial que demuestra
+        # el buzón. En un webhook, cualquiera daría de alta empresas a nombre
+        # de un correo ajeno (auditoría del 13-11-2026, SEC-6).
+        publico=False,
+    )
+)
 
 
 # ─────────────────────────────── analytics ────────────────────────────────
@@ -1052,6 +1073,25 @@ PARTNER_DEAL_DECIDED = registrar(
             "campo que a veces no significa nada"
         ),
         campos=("registro_id", "partner_id", "estado"),
+    )
+)
+# El enlace de entrada al portal, a la persona del partner. No es usuario del
+# CRM —su acceso vive en `sales`—, así que no puede ir por la bandeja de avisos:
+# `identity`, que tiene los transportes, lo manda directo a esa dirección.
+PARTNER_PORTAL_ENLACE = registrar(
+    TipoEvento(
+        tipo="partner.portal.link_requested",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Una persona con acceso al portal de partner ha pedido su enlace de "
+            "entrada. Lo recoge `identity` y lo manda SOLO por correo a la "
+            "dirección del acceso"
+        ),
+        campos=("acceso_id", "email", "nombre", "titulo", "cuerpo"),
+        # Interno: el cuerpo lleva el enlace de un solo uso, que ES la entrada
+        # al portal (auditoría del 13-11-2026, SEC-5).
+        publico=False,
     )
 )
 PARTNER_DEAL_EXPIRED = registrar(

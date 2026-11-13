@@ -606,8 +606,12 @@ class Canjear(BaseModel):
     "/entrar",
     summary="Pedir un enlace de entrada al portal",
     description=(
-        "Responde **igual exista o no** el correo: distinguirlos convertiría el "
-        "portal en un comprobador de qué empresas son partners nuestros.\n\n"
+        'Responde **igual exista o no** el correo —siempre `{"enviado": true}`, '
+        "nada más—: distinguirlos convertiría el portal en un comprobador de "
+        "qué empresas son partners nuestros.\n\n"
+        "El enlace sale **solo por correo** a la dirección del acceso, con el "
+        "transporte de correo de la instalación. La respuesta nunca lo lleva: "
+        "quien lo pide no tiene por qué ser la persona del partner.\n\n"
         "El tenant va en el cuerpo porque a esta ruta se llega sin haber "
         "entrado: es una pista sin firmar, y lo que concede acceso es tener un "
         "acceso activo con ese correo."
@@ -615,14 +619,13 @@ class Canjear(BaseModel):
 )
 def entrar(datos: Entrar) -> Any:
     with _trabajo_sin_credencial(datos.tenant) as uow:
-        enlace, token = prt.emitir_enlace(uow, email=datos.email)
-        return {
-            "enviado": True,
-            # El token solo sale en la respuesta cuando no hay canal de correo
-            # configurado; en producción va por correo y aquí no se devuelve.
-            "token": token or None,
-            "caduca_at": enlace.caduca_at.isoformat() if enlace is not None else None,
-        }
+        # El token se queda aquí dentro: viaja solo en el correo que encola
+        # `emitir_enlace`. Hasta el 13-11-2026 salía en la respuesta («solo sin
+        # canal de correo», que no se comprobaba en ninguna parte) junto con
+        # `caduca_at`, que además solo venía relleno si el correo era de un
+        # partner: dos formas de contestar «sí, es partner» a cualquiera.
+        prt.emitir_enlace(uow, email=datos.email)
+    return {"enviado": True}
 
 
 @router_portal.post(
