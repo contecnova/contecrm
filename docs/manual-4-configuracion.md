@@ -29,6 +29,24 @@ servicio si encuentra un secreto de ejemplo. Lista los problemas todos juntos, n
 de uno en uno: a quien despliega le sirve mucho más ver los cuatro que le faltan
 que descubrirlos arranque tras arranque.
 
+Qué cuenta como «de ejemplo»:
+
+- **Cualquier ajuste que valga `CAMBIAME`**, el marcador que `.env.example`
+  pone a cada secreto. No hay una lista de campos que mantener: se recorren
+  todos los ajustes, también los propios de cada servicio (por ejemplo
+  `IA_CREDENCIALES` en intelligence).
+- Los secretos (`SecretStr`) con cualquiera de los valores de
+  `PLACEHOLDERS_INSEGUROS` (`changeme`, `contecrm_dev_only`…).
+- `SECRET_KEY` o `ENCRYPTION_KEY` de **menos de 32 caracteres**. Es un suelo
+  fijo, no un ajuste: un ajuste que deje bajarlo acaba bajado.
+- `SUPERADMIN_PASSWORD` con un marcador: `scripts/cuenta_de_arranque.py` no
+  crea la cuenta.
+
+> Hasta el 13-11-2026 (auditoría, SEC-3) `CAMBIAME` no estaba en la lista y la
+> comparación era exacta, así que copiar la plantilla a mano —que trae
+> `ENV=prod`— arrancaba en producción con la clave que firma todos los tokens a
+> la vista de cualquiera.
+
 ```bash
 ENV=prod
 

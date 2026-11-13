@@ -236,7 +236,11 @@ def main() -> int:
     except Exception as error:  # noqa: BLE001 - el motivo se enseña tal cual
         print(f"SUPERADMIN_EMAIL «{email}» no es una dirección con la que se pueda entrar: {error}")
         return 1
-    if contrasena in INSEGURAS:
+    # Más los marcadores del núcleo: `.env.example` trae
+    # `SUPERADMIN_PASSWORD=CAMBIAME`, y esta lista no lo tenía (SEC-3).
+    from crmcore.config import PLACEHOLDERS_INSEGUROS
+
+    if contrasena in INSEGURAS or contrasena in PLACEHOLDERS_INSEGUROS:
         print(
             "SUPERADMIN_PASSWORD está vacía o es una de ejemplo. Es la cuenta "
             "con más poder del sistema: ponle una de verdad en el .env."

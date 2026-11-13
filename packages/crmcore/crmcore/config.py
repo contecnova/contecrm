@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
-from pydantic import computed_field
+from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from crmcore.config_parts import (
@@ -42,12 +42,24 @@ from crmcore.config_parts import (
     _TenancySettings,
 )
 
+# El marcador que `scripts/gen_env_example.py` pone en `.env.example` a todo
+# ajuste secreto. Quien copia la plantilla a mano y se deja uno arranca con un
+# secreto que está publicado en el repositorio.
+MARCADOR_PLANTILLA = "CAMBIAME"
+
 # Valores que se distribuyen en el código como marcadores "válidos para
 # desarrollo". Si alguno sobrevive a un despliegue de producción, la instalación
 # está comprometida de forma trivial, así que el arranque los rechaza.
+#
+# `CAMBIAME` no estaba (auditoría 13-11-2026, SEC-3): `.env.example` trae
+# `ENV=prod` y `SECRET_KEY=CAMBIAME`, y la comparación es exacta, así que una
+# copia a mano de la plantilla arrancaba en producción con la clave que firma
+# todos los tokens a la vista de cualquiera.
 PLACEHOLDERS_INSEGUROS: frozenset[str] = frozenset(
     {
         "",
+        MARCADOR_PLANTILLA,
+        "CHANGE_ME",
         "CHANGE_ME_SECRET_KEY",
         "change-me",
         "changeme",
@@ -55,6 +67,11 @@ PLACEHOLDERS_INSEGUROS: frozenset[str] = frozenset(
         "desarrollo-local",
     }
 )
+
+# Longitud mínima en producción de las dos claves maestras. Es un suelo de
+# seguridad y no un ajuste: un ajuste que deje bajarlo es la forma de que acabe
+# bajado. 32 caracteres es lo que genera `setup.sh` (`token_urlsafe(32)` da 43).
+LONGITUD_MINIMA_SECRETO = 32
 
 
 class Settings(
@@ -213,6 +230,33 @@ class Settings(
                 "SECRET_KEY sigue con el valor de ejemplo: firma todos los tokens, "
                 "así que cualquiera podría emitirse uno de administrador"
             )
+        elif len(self.secret_key.get_secret_value()) < LONGITUD_MINIMA_SECRETO:
+            problemas.append(
+                f"SECRET_KEY tiene menos de {LONGITUD_MINIMA_SECRETO} caracteres: firma "
+                "todos los tokens, y una clave corta se puede sacar por fuerza bruta"
+            )
+        cifrado = self.encryption_key.get_secret_value()
+        if cifrado and len(cifrado) < LONGITUD_MINIMA_SECRETO:
+            problemas.append(
+                f"ENCRYPTION_KEY tiene menos de {LONGITUD_MINIMA_SECRETO} caracteres: "
+                "es la clave maestra de los campos cifrados"
+            )
+        # Cualquier ajuste con un marcador de plantilla, no solo los que alguien
+        # se acordó de listar. Los `SecretStr` con cualquiera de los marcadores;
+        # los demás, con el de la plantilla —el generador lo pone también a
+        # alguno que no es `SecretStr`, como `STORAGE_S3_ACCESS_KEY`—.
+        for nombre in sorted(type(self).model_fields):
+            if nombre == "secret_key":
+                continue  # ya dicho arriba, con su motivo
+            valor = getattr(self, nombre, None)
+            secreto = isinstance(valor, SecretStr)
+            crudo = valor.get_secret_value() if secreto else valor
+            if isinstance(crudo, str) and crudo:
+                if crudo == MARCADOR_PLANTILLA or (secreto and crudo in PLACEHOLDERS_INSEGUROS):
+                    problemas.append(
+                        f"{nombre.upper()} sigue con el marcador de la plantilla "
+                        f"(«{crudo}»): ese valor está publicado en el repositorio"
+                    )
         for marcador in PLACEHOLDERS_INSEGUROS:
             if marcador and marcador in self.database_url:
                 problemas.append(f"DATABASE_URL contiene la credencial de desarrollo «{marcador}»")

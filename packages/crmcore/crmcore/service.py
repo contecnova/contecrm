@@ -343,6 +343,17 @@ def crear_servicio(
     setup_logging()
 
     problemas = s.verificar_para_produccion()
+    # Y los ajustes propios del servicio. Cada uno declara los suyos heredando de
+    # `Settings` (p. ej. `IA_CREDENCIALES` en intelligence), y la comprobación de
+    # arriba sólo ve los comunes: un secreto propio con el marcador de la
+    # plantilla arrancaba igual (auditoría 13-11-2026, SEC-3).
+    if s.es_produccion:
+        from crmcore.config import Settings
+
+        for propia in Settings.__subclasses__():
+            for problema in propia().verificar_para_produccion():
+                if problema not in problemas:
+                    problemas.append(problema)
     if problemas:
         # Se listan todos y se corta. Arrancar en producción con la clave de
         # firma de ejemplo es peor que no arrancar: parece que funciona.

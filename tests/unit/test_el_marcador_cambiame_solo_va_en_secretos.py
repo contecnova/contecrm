@@ -114,3 +114,75 @@ def test_un_entero_con_token_en_el_nombre_sigue_sin_marcarse() -> None:
     for clave, valor in pares.items():
         if valor == "CAMBIAME":
             assert not clave.endswith(("_S", "_MS", "_DIAS", "_PCT")), f"{clave} es un número"
+
+
+# ── Y si se queda en el `.env`, producción no arranca (SEC-3, 13-11-2026) ──
+#
+# `.env.example` trae `ENV=prod` y diez secretos con `CAMBIAME`, y el arranque
+# no conocía ese marcador: una copia a mano de la plantilla arrancaba en
+# producción con `SECRET_KEY` publicada en el repositorio.
+
+
+def _produccion_sana() -> dict[str, Any]:
+    return dict(
+        env="prod",
+        secret_key="k" * 48,
+        database_url="postgresql+psycopg://u:p@db:5432/crm",
+        db_sslmode="verify-full",
+        encryption_key="e" * 48,
+        cache_backend="redis",
+        cache_url="redis://r:6379/0",
+        storage_backend="s3",
+        storage_s3_bucket="b",
+        ci_enabled=False,
+    )
+
+
+def test_cada_secreto_con_el_marcador_de_la_plantilla_impide_arrancar() -> None:
+    """Todos los de `.env.example`, también los propios de un servicio."""
+    import importlib
+
+    from crmcore.config import MARCADOR_PLANTILLA, Settings
+
+    for modulo in (
+        "analytics",
+        "integration",
+        "intelligence",
+        "marketing",
+        "party",
+        "sales",
+        "service",
+    ):
+        importlib.import_module(f"services.{modulo}.ajustes")
+    clases = [Settings, *Settings.__subclasses__()]
+
+    con_marcador = {k.lower(): v for k, v in _env().items() if v == MARCADOR_PLANTILLA}
+    assert "secret_key" in con_marcador and "encryption_key" in con_marcador, con_marcador
+
+    for clave in con_marcador:
+        duena = next((c for c in clases if clave in c.model_fields), None)
+        assert duena is not None, f"{clave} está en la plantilla y no lo declara nadie"
+        propios = {k: v for k, v in con_marcador.items() if k in duena.model_fields}
+        problemas = duena(**{**_produccion_sana(), **propios}).verificar_para_produccion()
+        assert any(clave.upper() in p for p in problemas), (clave, duena.__name__, problemas)
+
+
+def test_el_generador_y_el_arranque_usan_el_mismo_marcador() -> None:
+    from crmcore.config import MARCADOR_PLANTILLA
+
+    fuente = (RAIZ / "scripts" / "gen_env_example.py").read_text(encoding="utf-8")
+    assert f'return "{MARCADOR_PLANTILLA}"' in fuente
+
+
+def test_una_clave_maestra_corta_impide_arrancar() -> None:
+    from crmcore.config import LONGITUD_MINIMA_SECRETO, Settings
+
+    corta = "x" * (LONGITUD_MINIMA_SECRETO - 1)
+    for campo in ("secret_key", "encryption_key"):
+        problemas = Settings(**{**_produccion_sana(), campo: corta}).verificar_para_produccion()
+        assert any(campo.upper() in p for p in problemas), (campo, problemas)
+    assert not [
+        p
+        for p in Settings(**_produccion_sana()).verificar_para_produccion()
+        if "SECRET_KEY" in p or "ENCRYPTION_KEY" in p
+    ]
