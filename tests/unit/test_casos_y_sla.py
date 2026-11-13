@@ -621,3 +621,78 @@ def test_crm_04_01_01_05_un_caso_repartido_se_puede_borrar(
     caso = svc.abrir_caso(uow, asunto="Para borrar")
     db.flush()
     assert quien_depende(db, caso) == []
+
+
+# ── Lo pendiente fuera de plazo también incumple (auditoría FUN-B-2) ──────
+
+
+def _periodo_de_hoy() -> dict[str, Any]:
+    return {"desde": HOY - timedelta(days=1), "hasta": HOY + timedelta(days=1)}
+
+
+@pytest.mark.db
+def test_un_caso_sin_responder_y_fuera_de_plazo_ya_incumple(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, calendario: Any, uow: Any
+) -> None:
+    """La bandera solo se pone al responder o resolver: sin mirar el reloj, el
+    informe daba un 100 % con clientes esperando fuera de plazo."""
+    _sla(db, tenant_id)
+    caso = svc.abrir_caso(uow, asunto="Nadie contesta")
+    caso.vence_primera_respuesta_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    caso.vence_resolucion_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    a_tiempo = svc.abrir_caso(uow, asunto="Va bien")
+    db.flush()
+    assert a_tiempo.vence_resolucion_at > datetime.now(timezone.utc)
+
+    salida = svc.cumplimiento(db, tenant_id, **_periodo_de_hoy())
+    for reloj in ("primera_respuesta", "resolucion"):
+        assert salida[reloj]["con_compromiso"] == 2
+        assert salida[reloj]["incumplidos"] == 1
+        assert salida[reloj]["incumplidos_pendientes"] == 1
+        assert salida[reloj]["cumplimiento_pct"] == 50.0
+
+
+@pytest.mark.db
+def test_la_pausa_no_carga_al_equipo_la_espera_del_cliente(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, calendario: Any, uow: Any
+) -> None:
+    """Con el reloj parado el vencimiento se desplazará al reanudar: un caso en
+    pausa solo está incumplido si el plazo ya había pasado al pararlo."""
+    _sla(db, tenant_id)
+    ahora = datetime.now(timezone.utc)
+    parado_a_tiempo = svc.abrir_caso(uow, asunto="Esperando al cliente")
+    parado_tarde = svc.abrir_caso(uow, asunto="Se paró ya tarde")
+    for caso in (parado_a_tiempo, parado_tarde):
+        svc.registrar_primera_respuesta(uow, caso.id)
+        svc.cambiar_estado(uow, caso.id, estado="esperando_cliente")
+        caso.vence_resolucion_at = ahora - timedelta(hours=1)
+    parado_a_tiempo.pausado_desde = ahora - timedelta(hours=2)
+    parado_tarde.pausado_desde = ahora - timedelta(minutes=30)
+    db.flush()
+
+    salida = svc.cumplimiento(db, tenant_id, **_periodo_de_hoy())
+    assert salida["resolucion"]["incumplidos"] == 1
+    assert salida["resolucion"]["cumplimiento_pct"] == 50.0
+
+
+@pytest.mark.db
+def test_resolver_antes_del_plazo_de_respuesta_no_incumple_la_respuesta(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, calendario: Any, uow: Any
+) -> None:
+    """El cliente tuvo su respuesta al resolverse, aunque nadie marcara la
+    «primera»; lo que se juzga es si la espera pasó del plazo."""
+    _sla(db, tenant_id)
+    ahora = datetime.now(timezone.utc)
+    a_tiempo = svc.abrir_caso(uow, asunto="Resuelto deprisa")
+    tarde = svc.abrir_caso(uow, asunto="Resuelto tarde y sin respuesta")
+    for caso in (a_tiempo, tarde):
+        svc.cerrar_caso(uow, caso.id, motivo="resuelto")
+        caso.vence_primera_respuesta_at = ahora - timedelta(hours=1)
+    a_tiempo.resuelto_at = ahora - timedelta(hours=2)
+    a_tiempo.cerrado_at = ahora - timedelta(hours=2)
+    db.flush()
+
+    salida = svc.cumplimiento(db, tenant_id, **_periodo_de_hoy())
+    assert salida["primera_respuesta"]["incumplidos"] == 1
+    # Cerrados: ya no se pueden atender, no son «pendientes».
+    assert salida["primera_respuesta"]["incumplidos_pendientes"] == 0

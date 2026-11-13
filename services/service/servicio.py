@@ -1120,13 +1120,63 @@ def en_riesgo(db: Session, tenant_id: UUID, *, umbral_pct: int = 80) -> list[dic
     return salida
 
 
+def _incumplio_primera_respuesta(caso: Caso, ahora: datetime) -> bool:
+    """Si el compromiso de primera respuesta está incumplido **a fecha de hoy**.
+
+    La bandera solo se pone al responder; hasta entonces, un caso al que nadie
+    ha contestado y cuyo plazo ya pasó no tenía forma de contar como
+    incumplido, y el informe daba un 100 % con clientes esperando (auditoría
+    FUN-B-2, 13-11-2026). Así que, sin respuesta, se mira el reloj.
+
+    El instante que cierra la espera es la resolución o el cierre si los hubo
+    —el cliente ya tiene su respuesta, aunque nadie marcara la «primera»— y si
+    no, ahora. La pausa **no** cuenta aquí: el modelo solo desplaza el
+    vencimiento de la resolución (`cambiar_estado`), y responder tarde se
+    juzga contra el vencimiento tal cual (`registrar_primera_respuesta`); el
+    informe no puede medir con otra vara que la del propio caso.
+    """
+    if caso.incumplio_primera_respuesta:
+        return True
+    vence = _con_tz(caso.vence_primera_respuesta_at)
+    if vence is None or caso.primera_respuesta_at is not None:
+        return False
+    hasta = _con_tz(caso.resuelto_at) or _con_tz(caso.cerrado_at) or ahora
+    return hasta > vence
+
+
+def _incumplio_resolucion(caso: Caso, ahora: datetime) -> bool:
+    """Si el compromiso de resolución está incumplido **a fecha de hoy**.
+
+    Resuelto, manda la bandera, que se fijó al resolver. Sin resolver, se mira
+    el reloj, y aquí sí con la pausa: mientras el caso espera al cliente el
+    reloj está parado y el vencimiento se desplazará al reanudar por lo que
+    dure la espera. Por eso un caso en pausa solo está incumplido si el plazo
+    ya había pasado **cuando se paró**; contarlo por la fecha de hoy le
+    cargaría al equipo una espera que es del cliente.
+    """
+    if caso.incumplio_resolucion:
+        return True
+    vence = _con_tz(caso.vence_resolucion_at)
+    if vence is None or caso.resuelto_at is not None:
+        return False
+    hasta = _con_tz(caso.pausado_desde) or ahora
+    return hasta > vence
+
+
 def cumplimiento(db: Session, tenant_id: UUID, *, desde: date, hasta: date) -> dict[str, Any]:
     """Cumplimiento de SLA del periodo.
 
     Se cuentan aparte la primera respuesta y la resolución porque son dos
     compromisos distintos, y un porcentaje único esconde que se contesta rápido y
     se resuelve tarde — que es el patrón más común y el que más queja genera.
+
+    Lo pendiente con el plazo ya pasado cuenta como incumplido (ver
+    `_incumplio_primera_respuesta` y `_incumplio_resolucion`), y se dice
+    cuántos de los incumplidos siguen abiertos: es la parte que todavía se
+    puede atender, y sin separarla el número no dice si el problema es de ayer
+    o de ahora.
     """
+    ahora = _ahora()
     casos = (
         db.execute(
             select(Caso).where(
@@ -1143,6 +1193,8 @@ def cumplimiento(db: Session, tenant_id: UUID, *, desde: date, hasta: date) -> d
     )
     con_pr = [c for c in casos if c.vence_primera_respuesta_at is not None]
     con_res = [c for c in casos if c.vence_resolucion_at is not None]
+    inc_pr = [c for c in con_pr if _incumplio_primera_respuesta(c, ahora)]
+    inc_res = [c for c in con_res if _incumplio_resolucion(c, ahora)]
 
     def _pct(total: list[Caso], incumplidos: int) -> float | None:
         # Sin casos no se dice 100 %: sería un verde que nadie se ha ganado.
@@ -1155,15 +1207,23 @@ def cumplimiento(db: Session, tenant_id: UUID, *, desde: date, hasta: date) -> d
         "sin_sla": len([c for c in casos if c.sla_clave is None]),
         "primera_respuesta": {
             "con_compromiso": len(con_pr),
-            "incumplidos": len([c for c in con_pr if c.incumplio_primera_respuesta]),
-            "cumplimiento_pct": _pct(
-                con_pr, len([c for c in con_pr if c.incumplio_primera_respuesta])
+            "incumplidos": len(inc_pr),
+            "incumplidos_pendientes": len(
+                [
+                    c
+                    for c in inc_pr
+                    if c.primera_respuesta_at is None
+                    and c.resuelto_at is None
+                    and c.cerrado_at is None
+                ]
             ),
+            "cumplimiento_pct": _pct(con_pr, len(inc_pr)),
         },
         "resolucion": {
             "con_compromiso": len(con_res),
-            "incumplidos": len([c for c in con_res if c.incumplio_resolucion]),
-            "cumplimiento_pct": _pct(con_res, len([c for c in con_res if c.incumplio_resolucion])),
+            "incumplidos": len(inc_res),
+            "incumplidos_pendientes": len([c for c in inc_res if c.resuelto_at is None]),
+            "cumplimiento_pct": _pct(con_res, len(inc_res)),
         },
         "medible": bool(con_pr or con_res),
     }
