@@ -10019,8 +10019,20 @@ desarrollador se llevaría una credencial de larga vida a ese cuadro.
 2. La **página incrustada** lleva ese ticket en `Authorization: Bearer` y pide
    lo que pinta a `GET /api/v1/cuadros-mando/embebido` y los datos de cada
    componente a `POST /api/v1/cuadros-mando/embebido/datos`. El ticket dura
-   minutos, sirve solo para ese cuadro y **no lleva permisos**, así que no vale
-   para ninguna otra ruta del CRM.
+   minutos y sirve solo para ese cuadro. Esas dos rutas son las **únicas** que
+   lo admiten, en el gateway y en `analytics`: cualquier otra lo rechaza con
+   `cuadro.ruta_no_admite_ticket`, igual que hacen los tokens de componente y
+   de portal.
+
+> **Corregido el 13-11-2026 (auditoría, SEC-2).** «No lleva permisos» no
+> bastaba. El ticket lleva la identidad (`sub`) de quien creó el enlace o de
+> quien mira, y no estaba en la tabla de puertas, así que pasaba cualquier ruta
+> que solo pidiera estar autenticado. Con el ticket sacado del navegador se
+> podía registrar una passkey en la cuenta del creador y entrar como él. Ahora
+> tiene su puerta (`admite_cuadro_embebido`), y además el núcleo solo acepta
+> JWT de tipos conocidos (`TIPOS_DE_TOKEN`): un tipo nuevo que nadie declare no
+> vale en ninguna parte. Lo defienden las pruebas de
+> `tests/unit/test_lo_que_se_incrusta_entra_por_su_puerta.py`.
 
 Los datos van **componente a componente** y no de golpe: un cuadro de ocho
 servido entero tardaría lo que el más lento, y lo que se vería mientras tanto es

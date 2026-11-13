@@ -1481,6 +1481,50 @@ async def proxy_embebido(
     return await _proxiar(f"{get_settings().api_prefix}/embebido/{componente}", request, principal)
 
 
+def _cuadro_en_la_puerta(principal: PrincipalDep) -> Any:
+    """La puerta del cuadro incrustado en el gateway: lleva `admite_cuadro_embebido`.
+
+    Sin ella `contexto_autenticado` rechaza el ticket del cuadro en todo el
+    gateway, que es lo que se busca: hasta el 13-11-2026 entraba por el proxy
+    general a cualquier ruta como si fuera la sesión del creador del enlace
+    (SEC-2). Que el ticket sea bueno y de qué cuadro es lo vuelve a comprobar
+    `analytics` con `leer_ticket`.
+    """
+    return principal
+
+
+_cuadro_en_la_puerta.admite_cuadro_embebido = True  # type: ignore[attr-defined]
+
+
+@router.get(
+    "/cuadros-mando/embebido",
+    summary="Qué pinta un cuadro de mando incrustado (CRM-05.01.02.06)",
+    description=(
+        "Una de las dos únicas rutas del gateway que aceptan el **ticket de un "
+        "cuadro incrustado**; el resto lo rechaza. Se reenvía a `analytics`."
+    ),
+    include_in_schema=False,
+)
+async def proxy_cuadro_embebido(
+    request: Request, principal: Annotated[Any, Depends(_cuadro_en_la_puerta)]
+) -> Response:
+    return await _proxiar(f"{get_settings().api_prefix}/cuadros-mando/embebido", request, principal)
+
+
+@router.post(
+    "/cuadros-mando/embebido/datos",
+    summary="Los datos de un componente del cuadro incrustado (CRM-05.01.02.06)",
+    description="La otra ruta que acepta el ticket del cuadro. Se reenvía a `analytics`.",
+    include_in_schema=False,
+)
+async def proxy_cuadro_embebido_datos(
+    request: Request, principal: Annotated[Any, Depends(_cuadro_en_la_puerta)]
+) -> Response:
+    return await _proxiar(
+        f"{get_settings().api_prefix}/cuadros-mando/embebido/datos", request, principal
+    )
+
+
 def _portal_en_la_puerta(principal: PrincipalDep) -> Any:
     """La puerta del portal en el gateway: lleva la marca `admite_portal`.
 

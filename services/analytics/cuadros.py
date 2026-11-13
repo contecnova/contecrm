@@ -37,6 +37,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
+from crmcore.embebido import TIPO_CUADRO
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -734,7 +735,9 @@ def revocar_embebido(uow: UnidadDeTrabajo, enlace_id: UUID) -> dict[str, Any]:
 
 MODOS_ALCANCE = ("enlace", "quien_mira")
 
-TIPO_TICKET = "embebido"
+# El nombre vive en el núcleo: la puerta que impide que este ticket valga como
+# sesión en el resto del CRM (`crmcore.http.deps._PUERTA_DE_TIPO`) lo necesita.
+TIPO_TICKET = TIPO_CUADRO
 
 
 def _alcance(

@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from crmcore.authz.principal import ANONIMO, Principal
 from crmcore.db.al_margen import al_margen
 from crmcore.embebido import TIPO as TIPO_COMPONENTE
+from crmcore.embebido import TIPO_CUADRO
 from crmcore.errors import NoAutenticado, Prohibido
 from crmcore.http.portal_deps import TIPO as TIPO_PORTAL
 from crmcore.logging import get_logger
@@ -359,11 +360,23 @@ def _principal_de_token(token: str, secreto: str) -> Principal:
     except jwt.InvalidTokenError:
         raise NoAutenticado("El token no es válido", error_code="auth.token_invalido")
 
+    # **Lista blanca de tipos**, no lista negra. Todos los tokens del producto
+    # se firman con la misma clave, así que lo único que separa una sesión de
+    # empleado de un ticket que vive en una página pública es este campo. Con
+    # lista negra, un tipo nuevo que nadie añadiera a `_PUERTA_DE_TIPO` valía
+    # como sesión completa en todo el CRM: es lo que pasó con el ticket del
+    # cuadro incrustado (auditoría 13-11-2026, SEC-2).
+    tipo = str(datos.get("tipo") or "usuario")
+    if tipo not in TIPOS_DE_TOKEN:
+        raise NoAutenticado(
+            "Este tipo de token no vale aquí", error_code="auth.token_tipo_no_admitido"
+        )
+
     try:
         return Principal(
             id=UUID(datos["sub"]) if datos.get("sub") else None,
             tenant_id=UUID(datos["tenant"]) if datos.get("tenant") else None,
-            tipo=datos.get("tipo", "usuario"),
+            tipo=tipo,
             permisos=frozenset(datos.get("permisos", [])),
             roles=frozenset(datos.get("roles", [])),
             scopes=frozenset(datos.get("scopes", [])),
@@ -479,7 +492,21 @@ _PUERTA_DE_TIPO: dict[str, tuple[str, str, str]] = {
         "portal.ruta_no_admite_portal",
         "Un token de portal sólo vale en las rutas del portal",
     ),
+    # Lleva `sub` —quien creó el enlace, o quien mira— y tenant. Sin esta fila
+    # pasaba `AutenticadoDep` en todo el CRM con la identidad del creador del
+    # cuadro: bastaba abrir la intranet que lo incrusta para registrar una
+    # passkey en su cuenta y entrar como él.
+    TIPO_CUADRO: (
+        "admite_cuadro_embebido",
+        "cuadro.ruta_no_admite_ticket",
+        "Un ticket de cuadro incrustado sólo vale en las rutas de ese cuadro",
+    ),
 }
+
+# Los tipos de JWT que existen. Uno que no esté aquí no entra por ninguna
+# puerta, aunque la firma sea buena. `usuario` es la sesión del CRM (la emite
+# `identity`); los demás viven fuera y sólo valen donde su ruta los declara.
+TIPOS_DE_TOKEN: frozenset[str] = frozenset({"usuario", *_PUERTA_DE_TIPO})
 
 
 def ruta_admite_componente(request: Request | None) -> bool:

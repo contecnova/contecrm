@@ -34,6 +34,13 @@ from crmcore.errors import NoAutenticado, Prohibido
 # entonces esta comprobación dejaría de significar lo que dice.
 TIPO = "componente"
 
+# El ticket de un cuadro de mando incrustado (CRM-05.01.02.06). Lo emite
+# `analytics` a cambio del secreto del enlace y vive en el navegador de quien mira
+# la intranet del cliente, así que, como el de componente, sólo vale en las rutas
+# que lo declaran (`admite_cuadro_embebido`). Está aquí, en el núcleo, porque la
+# puerta que lo frena (`crmcore.http.deps`) no puede importar de un servicio.
+TIPO_CUADRO = "embebido"
+
 # Qué tipo de registro enseña cada componente y qué alcance lleva su token. Una
 # sola tabla para quien emite el token (el gateway) y quien lo atiende (cada
 # servicio, con `crmcore.http.deps.exige_componente`): con dos, el día que no

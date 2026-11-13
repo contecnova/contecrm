@@ -36,6 +36,10 @@ from crmcore.http.problems import manejar_error_dominio
 from fastapi import Depends, FastAPI
 from starlette.testclient import TestClient
 
+# A nivel de módulo y no dentro de la prueba: con `from __future__ import
+# annotations` FastAPI resuelve la anotación por nombre en los globales.
+from services.analytics.api_cuadros import TicketDep
+
 
 def _token(componente: str, objeto_id: UUID, tenant: UUID) -> str:
     return str(
@@ -344,3 +348,93 @@ def test_el_token_sólo_se_emite_para_un_registro_que_quien_lo_pide_ve(
     assert r.status_code == 403, r.text
     assert r.json()["error_code"] == "embebido.registro_no_visible"
     assert "token" not in r.json()
+
+
+# ── El ticket del cuadro incrustado: su propia puerta (SEC-2, 13-11-2026) ──
+#
+# Lleva `sub` —quien creó el enlace, o quien mira— y `tenant`, y no estaba en
+# `_PUERTA_DE_TIPO`: pasaba `AutenticadoDep` en todo el CRM con la identidad del
+# creador. Bastaba abrir la intranet que lo incrusta, sacar el ticket del
+# navegador y registrar una passkey propia en su cuenta (`/auth/passkeys` sólo
+# pedía estar autenticado). Estas pruebas fallaban antes del arreglo.
+
+
+def _ticket_cuadro(tenant: UUID, sub: UUID) -> str:
+    import jwt
+
+    s = get_settings()
+    return jwt.encode(
+        {
+            "sub": str(sub),
+            "tenant": str(tenant),
+            "tipo": embebido.TIPO_CUADRO,
+            "enlace": str(uuid4()),
+            "cuadro": str(uuid4()),
+            "alcance_roles": ["director"],
+        },
+        s.secret_key.get_secret_value(),
+        algorithm=s.jwt_algorithm,
+    )
+
+
+def test_el_ticket_del_cuadro_entra_en_su_ruta_y_en_ninguna_otra() -> None:
+    cliente = _servicio()
+
+    @cliente.app.get("/api/v1/cuadros-mando/embebido")  # type: ignore[attr-defined]
+    def cuadro(ticket: TicketDep) -> Any:
+        return {"cuadro": ticket["cuadro"]}
+
+    con_ticket = {"Authorization": f"Bearer {_ticket_cuadro(uuid4(), uuid4())}"}
+
+    r = cliente.get("/api/v1/cuadros-mando/embebido", headers=con_ticket)
+    assert r.status_code == 200, r.text
+
+    for ruta in ("/api/v1/autenticado", "/api/v1/solo-principal"):
+        r = cliente.get(ruta, headers=con_ticket)
+        assert r.status_code == 401, (ruta, r.text)
+        assert r.json()["error_code"] == "cuadro.ruta_no_admite_ticket", ruta
+
+
+def test_el_gateway_deja_el_ticket_del_cuadro_solo_en_sus_dos_rutas(gateway: Any) -> None:
+    from services.gateway import api as gw
+
+    cliente, recibidas = gateway
+    gw._destinos["analytics"] = type("D", (), {"url_base": "http://analytics"})()
+    con_ticket = {"Authorization": f"Bearer {_ticket_cuadro(uuid4(), uuid4())}"}
+
+    r = cliente.get("/api/v1/cuadros-mando/embebido", headers=con_ticket)
+    assert r.status_code == 200, r.text
+    r = cliente.post("/api/v1/cuadros-mando/embebido/datos", json={"indice": 0}, headers=con_ticket)
+    assert r.status_code == 200, r.text
+    assert [(p.url.host, p.url.path) for p in recibidas] == [
+        ("analytics", "/api/v1/cuadros-mando/embebido"),
+        ("analytics", "/api/v1/cuadros-mando/embebido/datos"),
+    ]
+
+    # Ni el proxy general (la passkey del ataque), ni una ruta propia del gateway.
+    for metodo, ruta in (
+        ("POST", "/api/v1/auth/passkeys"),
+        ("GET", "/api/v1/accounts"),
+        ("GET", "/api/v1/sdk/componentes"),
+    ):
+        r = cliente.request(metodo, ruta, headers=con_ticket)
+        assert r.status_code == 401, (ruta, r.text)
+        assert r.json()["error_code"] == "cuadro.ruta_no_admite_ticket", ruta
+    assert len(recibidas) == 2, [str(p.url) for p in recibidas]
+
+
+def test_un_jwt_de_tipo_desconocido_no_entra_en_ninguna_parte() -> None:
+    """Lista blanca: un tipo nuevo que nadie dé de alta no vale como sesión."""
+    import jwt
+
+    s = get_settings()
+    raro = jwt.encode(
+        {"sub": str(uuid4()), "tenant": str(uuid4()), "tipo": "inventado", "permisos": ["*:*"]},
+        s.secret_key.get_secret_value(),
+        algorithm=s.jwt_algorithm,
+    )
+    cliente = _servicio()
+    for ruta in ("/api/v1/autenticado", "/api/v1/solo-principal"):
+        r = cliente.get(ruta, headers={"Authorization": f"Bearer {raro}"})
+        assert r.status_code == 401, (ruta, r.text)
+        assert r.json()["error_code"] == "auth.token_tipo_no_admitido", ruta

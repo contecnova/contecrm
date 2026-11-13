@@ -363,6 +363,11 @@ def _ticket(authorization: str = Header("", alias="Authorization")) -> dict[str,
     return cua.leer_ticket(authorization[7:])
 
 
+# La marca que deja entrar al ticket del cuadro en ESTAS rutas y en ninguna más:
+# `contexto_autenticado` lo rechaza en cualquier ruta cuya dependencia no la
+# lleve. La declaración es la propia dependencia, no una lista aparte.
+_ticket.admite_cuadro_embebido = True  # type: ignore[attr-defined]
+
 TicketDep = Annotated[dict, Depends(_ticket)]
 
 
