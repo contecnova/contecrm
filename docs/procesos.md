@@ -159,7 +159,7 @@ stateDiagram-v2
 | `POST /api/v1/aislamiento/{tenant_id}/comprobar` | Comprobar que el tenant está donde se declaró (CRM-00.01.01.02, .03) | tenant_id* | 200, 422 | — |
 | `POST /api/v1/ajustes/versiones/{version_id}/volver` | Volver al valor de antes de un cambio | version_id* | 200, 422 | — |
 | `PUT /api/v1/ajustes/{clave}` | Fijar un ajuste | clave*, valor*, ambito, ambito_id | 200, 422 | — |
-| `POST /api/v1/alta` | Pedir el alta de una empresa | slug*, nombre_empresa*, email*, nombre* | 200, 422 | — |
+| `POST /api/v1/alta` | Pedir el alta de una empresa | slug*, nombre_empresa*, email*, nombre* | 200, 422 | `tenant.alta_solicitada` |
 | `POST /api/v1/alta/confirmar` | Confirmar el alta con el token del correo | token* | 200, 422 | `tenant.alta_confirmada` |
 | `POST /api/v1/calendarios` | Crear un calendario laboral | clave*, nombre*, zona_horaria, pais, horario, por_defecto | 201, 422 | — |
 | `POST /api/v1/calendarios/{calendario_id}/festivos` | Añadir un festivo | calendario_id*, fecha*, nombre*, anual | 201, 422 | — |
@@ -1154,7 +1154,7 @@ stateDiagram-v2
 | `POST /api/v1/partners/{partner_id}/estado` | Suspender, reactivar o dar de baja | partner_id*, estado*, motivo | 200, 422 | — |
 | `POST /api/v1/partners/{partner_id}/pasos/{paso}` | Marcar hecho un paso del alta | partner_id*, paso* | 200, 422 | — |
 | `POST /api/v1/partners/{partner_id}/planes` | Plan de negocio conjunto | partner_id*, nombre*, desde*, hasta*, objetivos, acciones | 201, 422 | — |
-| `PATCH /api/v1/pedidos/{pedido_id}` | Editar pedidos | pedido_id*, numero, presupuesto_id, cuenta_id, estado, total, moneda, referencia_erp, enviado_at, confirmado_at, conciliado_at, error_erp, respuesta_erp | 200, 422 | — |
+| `PATCH /api/v1/pedidos/{pedido_id}` | Editar pedidos | pedido_id*, numero, presupuesto_id, cuenta_id, estado, total, moneda, referencia_erp, enviado_at, confirmado_at, conciliado_at, error_erp, envios_erp, respuesta_erp | 200, 422 | — |
 | `DELETE /api/v1/pedidos/{pedido_id}` | Borrar pedidos | pedido_id* | 204, 422 | — |
 | `POST /api/v1/pedidos/{pedido_id}/archivar` | Archivar pedidos | pedido_id* | 200, 422 | — |
 | `POST /api/v1/pedidos/{pedido_id}/enviar-erp` | Mandar el pedido al ERP | pedido_id* | 200, 422 | `order.submitted` |
@@ -1188,7 +1188,7 @@ stateDiagram-v2
 | `PATCH /api/v1/playbooks/{playbook_id}` | Editar playbooks de venta | playbook_id*, clave, titulo, etapa, segmento, condiciones, pasos, activo | 200, 422 | — |
 | `POST /api/v1/playbooks/{playbook_id}/archivar` | Archivar playbooks de venta | playbook_id* | 200, 422 | — |
 | `POST /api/v1/portal-partner/canjear` | Canjear el enlace y abrir sesión de partner | tenant*, token* | 200, 422 | — |
-| `POST /api/v1/portal-partner/entrar` | Pedir un enlace de entrada al portal | tenant*, email* | 200, 422 | — |
+| `POST /api/v1/portal-partner/entrar` | Pedir un enlace de entrada al portal | tenant*, email* | 200, 422 | `partner.portal.link_requested` |
 | `POST /api/v1/presupuestos` | Crear un presupuesto | lineas, cuenta_id, oportunidad_id, contacto_id, titulo, moneda, canal, idioma, marca, dias_validez, notas, condiciones | 201, 422 | `quote.created` |
 | `POST /api/v1/presupuestos/caducar-vencidos` | Marcar caducados los que pasaron su vigencia | — | 200, 422 | — |
 | `PATCH /api/v1/presupuestos/{presupuesto_id}` | Editar presupuestos | presupuesto_id*, numero, anterior_id, oportunidad_id, cuenta_id, contacto_id, titulo, moneda, canal, idioma, marca, valido_hasta, enviado_at, aceptado_at, subtotal, descuento_total, total, coste_total, margen_pct, motivo_aprobacion, notas, condiciones | 200, 422 | — |
@@ -1910,6 +1910,7 @@ llamada de nadie.
 | `partner.deal.decided` | sales | registro_id, partner_id, estado | `POST /api/v1/registros-oportunidad/{registro_id}/decidir` | — |
 | `partner.deal.expired` | sales | registro_id, partner_id | `POST /api/v1/registros-oportunidad/caducar` | — |
 | `partner.deal.registered` | sales | registro_id, partner_id, importe, hay_conflicto | `POST /api/v1/registros-oportunidad` | — |
+| `partner.portal.link_requested` | sales | acceso_id, email, nombre, titulo, cuerpo | `POST /api/v1/portal-partner/entrar` | — |
 | `preferences.changed` | marketing | email, guardadas, origen | `PUT /api/v1/preferencias` | — |
 | `problem.communicated` | service | problema_id, tipo, casos_alcanzados | `POST /api/v1/problemas/{problema_id}/comunicaciones` | — |
 | `problem.opened` | service | problema_id, severidad | `POST /api/v1/problemas` | — |
@@ -1936,6 +1937,7 @@ llamada de nadie.
 | `signature.reminder.sent` | integration | sobre_id, referencia, destinatarios | `POST /api/v1/firma/sobres/{sobre_id}/recordar` | — |
 | `subscription.changed` | sales | suscripcion_id, cuenta_id, tipo, plan, importe | `POST /api/v1/suscripciones`, `POST /api/v1/suscripciones/{suscripcion_id}/cambios` | — |
 | `tenant.alta_confirmada` | tenancy | tenant_id, slug, email, nombre | `POST /api/v1/alta/confirmar` | — |
+| `tenant.alta_solicitada` | tenancy | email, nombre, titulo, cuerpo | `POST /api/v1/alta` | — |
 | `tenant.provisioned` | tenancy | tenant_id, slug, plan, region | `POST /api/v1/sandboxes`, `POST /api/v1/tenants` | — |
 | `tenant.reactivated` | tenancy | tenant_id | `POST /api/v1/sandboxes/{sandbox_id}/apagar`, `POST /api/v1/tenants/{tenant_id}/estado` | — |
 | `tenant.suspended` | tenancy | tenant_id, motivo | `POST /api/v1/sandboxes/{sandbox_id}/apagar`, `POST /api/v1/tenants/{tenant_id}/estado` | — |
