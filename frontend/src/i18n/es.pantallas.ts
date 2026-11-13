@@ -3369,6 +3369,41 @@ const pantallas = {
       inscribir_respaldo: "Inscribe un método de respaldo",
       inscribir_fuerte: "Inscribe un factor fuerte (passkey o aplicación)",
     },
+    // Dar de alta y quitar las passkeys propias (CRM-00.05.01.23).
+    passkeys: {
+      titulo: "Tus passkeys",
+      ayuda:
+        "Una passkey es una llave que vive en este dispositivo o en tu gestor de contraseñas: sirve para entrar, y una web falsa no puede usarla. Si tu cuenta ya tiene un factor fuerte, añadir otra te pedirá verificarte antes.",
+      ninguna: "Todavía no tienes ninguna passkey.",
+      sinNombre: "Sin nombre",
+      creada: "Añadida el {{fecha}}",
+      ultimoUso: "último uso el {{fecha}}",
+      sinUsar: "sin usar todavía",
+      nombre: "Nombre de la nueva passkey (opcional)",
+      nombreAyuda:
+        "Para reconocerla luego en esta lista, por ejemplo «Portátil del trabajo».",
+      anadir: "Añadir una passkey",
+      creando: "Esperando a la llave…",
+      anadida: "Passkey «{{nombre}}» añadida.",
+      cancelada:
+        "No se ha creado ninguna passkey: se canceló o se acabó el tiempo. Puedes volver a intentarlo.",
+      yaEnEsteDispositivo:
+        "Este dispositivo ya tiene una passkey de tu cuenta. Para añadir otra, hazlo desde otro dispositivo o gestor.",
+      faltaVerificarte:
+        "No se ha añadido: tu cuenta ya tiene un factor fuerte y, para añadir otro, tienes que verificarte otra vez con el código de tu aplicación.",
+      faltaVerificarteSinApp:
+        "No se ha añadido: tu cuenta ya tiene una passkey y, para añadir otra, tienes que verificarte otra vez. Sin aplicación de códigos, la forma es salir y volver a entrar con tu passkey, y añadirla justo después.",
+      navegadorNoSabe:
+        "Este navegador no admite passkeys: para añadir una, usa otro navegador o dispositivo.",
+      quitar: "Quitar",
+      quitarLa: "Quitar la passkey «{{nombre}}»",
+      avisoQuitar:
+        "Se borra de verdad y no se puede deshacer: esa llave dejará de servir para entrar.",
+      avisoUltima:
+        "Es tu único factor fuerte: sin ella, las operaciones que piden verificarte otra vez no podrás hacerlas hasta que añadas otro.",
+      quitada: "Passkey «{{nombre}}» quitada.",
+      yaNoEstaba: "Esa passkey ya no estaba: se ha actualizado la lista.",
+    },
     titulo: "Identidad y seguridad",
     entradilla:
       "Las preguntas que no son una tabla: quién no tiene segundo factor, qué " +
@@ -3725,6 +3760,31 @@ const pantallas = {
       rechazada: "rechazada",
       cambios_pedidos: "con cambios pedidos",
     },
+  },
+  // El enlace del correo del portal de partner (CRM-03.04.01.02).
+  portalPartner: {
+    titulo: "Portal de partner",
+    entradilla:
+      "Has abierto el enlace de acceso al portal de partner que te llegó por correo.",
+    antesDeEntrar:
+      "Pulsa para comprobar tu acceso. Abrir esta página no gasta el enlace; pulsar, sí.",
+    entrar: "Comprobar mi acceso",
+    unSoloUso:
+      "El enlace sirve una sola vez y caduca a los pocos minutos. No lo reenvíes: da acceso a tu nombre.",
+    confirmado: "Tu acceso al portal de partner está activo.",
+    nivel: "Nivel de acceso: {{nivel}}",
+    sinPantallas:
+      "Esta instalación todavía no tiene las pantallas del portal de partner, así que desde aquí no hay nada más que abrir. Si necesitas registrar una oportunidad, habla con tu contacto del programa de canal.",
+    invalido: "Este enlace ya no sirve",
+    invalidoDetalle:
+      "Puede que ya se haya usado, que haya caducado o que tu acceso ya no esté activo. Si sigues teniendo acceso, pide otro enlace.",
+    incompleto:
+      "Al enlace le falta una parte. Ábrelo otra vez desde el correo, entero; si el problema sigue, pide uno nuevo a tu contacto del programa de canal.",
+    pedirOtro: "Pedir otro enlace",
+    email: "Tu correo",
+    mandar: "Mandarme un enlace nuevo",
+    pedido:
+      "Si ese correo tiene acceso al portal, le hemos mandado un enlace nuevo.",
   },
   // El editor de tablas de decisión (CRM-00.03.02.10).
   tablasDecision: {

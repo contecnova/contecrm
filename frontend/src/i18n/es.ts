@@ -398,6 +398,42 @@ export default {
     enviar: "Entrar",
     sso: "Entrar con el proveedor de mi organización",
     error: "No se ha podido iniciar sesión",
+    // El enlace del alta autoservicio (CRM-00.01.03.01): `/?alta=<token>`.
+    alta: {
+      titulo: "Confirmar el alta de tu empresa",
+      ayuda:
+        "Pulsa para crear tu empresa. Abrir esta página no la crea; pulsar, sí. El enlace sirve una sola vez.",
+      confirmar: "Confirmar el alta",
+      hecha: "Listo: «{{nombre}}» ya está dada de alta.",
+      tuOrganizacion:
+        "Tu organización es «{{slug}}»: es lo que escribirás en «Organización» al entrar.",
+      contrasena:
+        "Te llegará un correo para poner tu contraseña. Ábrelo y elígela antes de entrar.",
+      irAEntrar: "Ir a entrar",
+      noSePudo: "No se ha podido confirmar el alta.",
+      errores: {
+        alta: {
+          enlace_desconocido:
+            "Este enlace no vale. Tendrás que pedir el alta otra vez.",
+          enlace_usado:
+            "Este enlace ya se usó. Si fuiste tú, tu empresa ya está dada de alta y puedes entrar; si no, pide el alta otra vez.",
+          enlace_caducado:
+            "Este enlace ha caducado. Tendrás que pedir el alta otra vez.",
+          autoservicio_desactivado:
+            "Esta instalación no admite altas por autoservicio. Habla con quien la administra.",
+        },
+        tenant: {
+          slug_duplicado:
+            "El identificador que elegiste para tu empresa lo ha cogido otra mientras tanto. Tendrás que pedir el alta otra vez con otro.",
+          slug_reservado:
+            "El identificador que elegiste para tu empresa está reservado. Tendrás que pedir el alta otra vez con otro.",
+          slug_invalido:
+            "El identificador que elegiste para tu empresa no es válido. Tendrás que pedir el alta otra vez con otro.",
+        },
+        sin_red:
+          "No se ha podido contactar con el servidor. Comprueba la conexión y vuelve a intentarlo.",
+      },
+    },
   },
   procesos: {
     titulo: "Editor de procesos",

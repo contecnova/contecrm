@@ -87,6 +87,12 @@ const DecidirPorEnlace = pantalla(
   () => import("@/paginas/DecidirPorEnlace"),
   (m) => m.DecidirPorEnlace,
 );
+// El enlace del correo del portal de partner (CRM-03.04.01.02): también fuera
+// del marco y sin sesión.
+const PortalPartner = pantalla(
+  () => import("@/paginas/PortalPartner"),
+  (m) => m.PortalPartner,
+);
 const Cobertura = pantalla(
   () => import("@/paginas/Cobertura"),
   (m) => m.Cobertura,
@@ -497,6 +503,18 @@ export function App() {
   // Mientras no se sabe si hay sesión no se pinta ninguna de las dos cosas: ni
   // la pantalla de entrada —que haría parpadear un formulario a quien ya estaba
   // dentro— ni la aplicación, que pediría datos sin credencial.
+  //
+  // El de partner, ANTES que el de clientes: su dirección también empieza por
+  // `/portal`, y con el orden al revés el partner que abre su correo caía en
+  // el portal de clientes, que le pedía un enlace que no es el suyo.
+  if (window.location.pathname === "/portal-partner") {
+    return (
+      <Suspense fallback={<Cargando />}>
+        <PortalPartner />
+      </Suspense>
+    );
+  }
+
   // El portal va **antes** de todo, incluida la comprobación de sesión: quien
   // entra ahí es un cliente, no un empleado sin sesión, y mandarle a la
   // pantalla de entrada del CRM sería pedirle una credencial que no tiene ni

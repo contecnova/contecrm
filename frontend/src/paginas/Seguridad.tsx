@@ -108,6 +108,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import { MisPasskeys, type Passkey } from "@/componentes/MisPasskeys";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { SegundoFactorPorProveedor } from "@/componentes/SegundoFactorPorProveedor";
 import {
@@ -198,6 +199,8 @@ interface Nivel {
   nivel: number;
   factores: { factor: string; at: string }[];
   factor_fuerte_at: string | null;
+  /** Si la cuenta tiene la app de códigos activada. */
+  tiene_app?: boolean;
 }
 
 /** `GET /factores/plan-de-inscripcion`: qué falta para tenerlo en condiciones. */
@@ -219,11 +222,6 @@ interface Cambio {
   camino: string;
   aprobadores_necesarios: number;
   porque: string;
-}
-
-interface Passkey {
-  id: string;
-  nombre?: string;
 }
 
 export function Seguridad({ sesion }: { sesion: Sesion | null }) {
@@ -678,6 +676,11 @@ function MiSegundoFactor() {
   const [sinContrasena, setSinContrasena] = useState<
     { factor: string; puede: boolean; porque: string }[]
   >([]);
+  // Cada alta o baja de una passkey vuelve a leerlo TODO, no solo la lista:
+  // cambia el plan de inscripción, qué vale para entrar sin contraseña y lo
+  // que falta para cumplir. Solo la lista dejaría el resto diciendo lo de antes.
+  const [vuelta, setVuelta] = useState(0);
+  const recargar = useCallback(() => setVuelta((v) => v + 1), []);
 
   useEffect(() => {
     const control = new AbortController();
@@ -687,6 +690,14 @@ function MiSegundoFactor() {
     void llamar<Nivel>("/api/v1/factores/nivel", opciones)
       .then((r) => {
         setNivel(r.datos);
+        // Al volver a leer, fuera lo de un factor que ya no está: si no, la
+        // lista seguiría hablando de él.
+        const actuales = new Set(
+          (r.datos.factores ?? []).map((f) => f.factor),
+        );
+        setSinContrasena((previo) =>
+          previo.filter((x) => actuales.has(x.factor)),
+        );
         // **Y si alguno de ellos valdría para entrar sin contraseña.** La
         // cuenta la hace el servidor, que es quien sabe qué factor está atado
         // al dominio; aquí sólo se le dicen los factores que esta persona
@@ -725,9 +736,9 @@ function MiSegundoFactor() {
       .then((r) => setPasskeys(Array.isArray(r.datos) ? r.datos : []))
       .catch(() => undefined);
     return () => control.abort();
-  }, []);
+  }, [vuelta]);
 
-  if (!nivel && !plan && !cambio) return null;
+  if (!nivel && !plan && !cambio && !passkeys) return null;
 
   return (
     <section className="flex flex-col gap-2">
@@ -806,6 +817,16 @@ function MiSegundoFactor() {
 
       {cambio ? (
         <p className="text-rotulo text-ink-faint">{cambio.porque}</p>
+      ) : null}
+
+      {/* Dar de alta y quitar las propias (CRM-00.05.01.23), junto al
+          recuento: es donde se mira cuántas hay. */}
+      {passkeys ? (
+        <MisPasskeys
+          passkeys={passkeys}
+          tieneApp={nivel?.tiene_app}
+          alCambiar={recargar}
+        />
       ) : null}
     </section>
   );

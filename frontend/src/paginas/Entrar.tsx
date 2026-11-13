@@ -27,7 +27,7 @@
  * conteste. Adivinar aquí si un correo existe sería filtrar quién tiene cuenta.
  */
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorApi, llamar } from "@/lib/api";
@@ -188,7 +188,29 @@ function IconoMarca() {
   );
 }
 
-type Vista = "entrar" | "olvidada";
+type Vista = "entrar" | "olvidada" | "alta";
+
+/** `POST /alta/confirmar`: la empresa que ha quedado creada. */
+interface AltaConfirmada {
+  tenant_id: string;
+  slug: string;
+  nombre: string;
+}
+
+/**
+ * Los fallos del alta que dicen que **ese enlace ya no sirve**: reintentar con
+ * él no arregla nada, así que el botón de confirmar desaparece. El resto —sin
+ * red, el servidor caído— sí se arregla reintentando.
+ */
+const ALTA_SIN_REMEDIO = new Set([
+  "alta.enlace_desconocido",
+  "alta.enlace_usado",
+  "alta.enlace_caducado",
+  "alta.autoservicio_desactivado",
+  "tenant.slug_duplicado",
+  "tenant.slug_reservado",
+  "tenant.slug_invalido",
+]);
 
 export function Entrar({ alEntrar }: { alEntrar: () => void }) {
   const { t } = useTranslation();
@@ -231,6 +253,23 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
   useEffect(() => {
     if (tokenDeReset) setVista("olvidada");
   }, [tokenDeReset]);
+
+  // El enlace del alta autoservicio (CRM-00.01.03.01) llega igual, en la
+  // dirección: `/?alta=<token>`. Hasta el 13-11-2026 el correo lo mandaba y
+  // ninguna pantalla lo leía, así que quien pedía el alta no podía terminarla.
+  const tokenDeAlta =
+    new URLSearchParams(window.location.search).get("alta") ?? "";
+  const [altaHecha, setAltaHecha] = useState<AltaConfirmada | null>(null);
+  const [altaSinRemedio, setAltaSinRemedio] = useState(false);
+  const resultadoDelAlta = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (tokenDeAlta) setVista("alta");
+  }, [tokenDeAlta]);
+  // El resultado recibe el foco: el botón que se pulsó desaparece y quien
+  // usa teclado o lector se quedaría sin saber qué ha pasado.
+  useEffect(() => {
+    if (altaHecha || altaSinRemedio) resultadoDelAlta.current?.focus();
+  }, [altaHecha, altaSinRemedio]);
 
   function comoTexto(fallo: unknown, porDefecto: string): string {
     const detalle = (fallo as { detalle?: string; message?: string })?.detalle;
@@ -314,6 +353,49 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
     }
   }
 
+  // Se confirma pulsando y no al abrir la página: el enlace es de un solo uso
+  // y los escáneres de correo abren los enlaces para revisarlos. Confirmar al
+  // cargar gastaría el enlace por ellos, y quien lo pidió llegaría a «ese
+  // enlace ya se usó».
+  async function confirmarAlta() {
+    setError("");
+    setEnviando(true);
+    try {
+      const r = await llamar<AltaConfirmada>("/api/v1/alta/confirmar", {
+        metodo: "POST",
+        cuerpo: { token: tokenDeAlta },
+        // Sin cookie: quien confirma todavía no tiene cuenta, y con la de una
+        // sesión caducada el gateway le contestaría que ha caducado.
+        sinCookie: true,
+        encolable: false,
+      });
+      setAltaHecha(r.datos);
+      window.history.replaceState({}, "", window.location.pathname);
+    } catch (fallo) {
+      const cod = fallo instanceof ErrorApi ? fallo.codigo : "";
+      // Con las palabras de esta pantalla cuando se conoce el caso; si no, la
+      // frase del servidor, que está escrita para leerse.
+      const delServidor = comoTextoDeApi(fallo, t("entrar.alta.noSePudo"));
+      setError(
+        cod
+          ? t(`entrar.alta.errores.${cod}`, { defaultValue: delServidor })
+          : delServidor,
+      );
+      if (ALTA_SIN_REMEDIO.has(cod)) {
+        setAltaSinRemedio(true);
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  function irAEntrar() {
+    if (altaHecha) setTenant(altaHecha.slug);
+    setVista("entrar");
+    setError("");
+  }
+
   async function pedirEnlace(evento: FormEvent) {
     evento.preventDefault();
     setError("");
@@ -370,7 +452,67 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
             <h1 className={cl.logoTexto}>{config().nombre}</h1>
           </div>
 
-          {vista === "olvidada" ? (
+          {vista === "alta" ? (
+            /* ── Confirmar el alta de la empresa ─────────────────────── */
+            <div className={cl.formulario}>
+              <h2 className="m-0 text-titulo font-semibold text-ink">
+                {t("entrar.alta.titulo")}
+              </h2>
+              <div
+                ref={resultadoDelAlta}
+                tabIndex={-1}
+                className="flex flex-col gap-3 outline-none"
+              >
+                {altaHecha ? (
+                  <>
+                    <div className={cl.avisoBien} role="status">
+                      <span>✓</span>
+                      <span>
+                        {t("entrar.alta.hecha", { nombre: altaHecha.nombre })}
+                      </span>
+                    </div>
+                    <p className={cl.ayuda}>
+                      {t("entrar.alta.tuOrganizacion", {
+                        slug: altaHecha.slug,
+                      })}
+                    </p>
+                    <p className={cl.ayuda}>{t("entrar.alta.contrasena")}</p>
+                  </>
+                ) : (
+                  <>
+                    {altaSinRemedio ? null : (
+                      <p className={cl.ayuda}>{t("entrar.alta.ayuda")}</p>
+                    )}
+                    {error ? (
+                      <div className={cl.avisoError} role="alert">
+                        <span>⚠</span>
+                        <span>{error}</span>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
+              {altaHecha || altaSinRemedio ? (
+                <button
+                  type="button"
+                  onClick={irAEntrar}
+                  className={cl.botonPrimario}
+                >
+                  {t("entrar.alta.irAEntrar")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void confirmarAlta()}
+                  disabled={enviando}
+                  aria-busy={enviando}
+                  className={cn(cl.botonPrimario, enviando && "opacity-60")}
+                >
+                  {enviando ? t("app.cargando") : t("entrar.alta.confirmar")}
+                </button>
+              )}
+            </div>
+          ) : vista === "olvidada" ? (
             tokenDeReset ? (
               /* ── Poner una contraseña nueva ───────────────────────── */
               <form onSubmit={ponerNueva} className={cl.formulario} noValidate>
@@ -643,6 +785,13 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
       </div>
     </div>
   );
+}
+
+/** La frase del servidor de un `ErrorApi`, o la de por defecto. */
+function comoTextoDeApi(fallo: unknown, porDefecto: string): string {
+  if (fallo instanceof ErrorApi)
+    return fallo.explicacion || fallo.titulo || porDefecto;
+  return porDefecto;
 }
 
 /**

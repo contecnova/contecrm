@@ -115,8 +115,24 @@ que una avalancha de uno no bloquea la entrega de los demás.
   > enlace existe para impedir. Y no había ningún camino por el que ese correo
   > pudiera salir. Lo defienden
   > `tests/unit/test_los_enlaces_a_quien_no_es_usuario_van_por_correo.py` y
-  > `tests/unit/test_el_alta_autoservicio.py`. La interfaz todavía no tiene la
-  > pantalla que abre `?alta=…` y llama a `POST /alta/confirmar`.
+  > `tests/unit/test_el_alta_autoservicio.py`.
+
+  **En pantalla** (desde el 13-11-2026): la entrada del CRM reconoce `?alta=…`,
+  igual que reconoce `?restablecer=…`, y enseña «Confirmar el alta de tu
+  empresa». **Abrir el enlace no confirma nada**: se confirma pulsando, porque el
+  enlace es de un solo uso y los escáneres de correo abren los enlaces para
+  revisarlos — confirmar al cargar lo gastaría por ellos. La llamada a
+  `POST /alta/confirmar` sale sin cookie (con la de una sesión caducada el
+  gateway contestaría «tu sesión ha caducado»). Al terminar dice el nombre de
+  la empresa, el identificador que se escribe en «Organización» y que llegará
+  un correo para poner la contraseña; «Ir a entrar» deja la organización ya
+  escrita. Enlace desconocido, usado o caducado, alta desactivada o
+  identificador cogido mientras tanto se dicen cada uno con su frase y sin
+  botón de reintentar, porque reintentar con ese enlace no arregla nada; sin
+  red sí se puede reintentar. Lo prueba
+  `frontend/src/pruebas/alta_desde_el_correo.test.tsx`. **Falta** la pantalla
+  para pedir el alta (`POST /alta`): los mensajes dicen «pide el alta otra
+  vez», y hoy eso solo se puede hacer por API.
 - **Suspensión, reactivación y congelación en solo lectura**
   (CRM-00.01.03.04). El estado `solo_lectura` es el más útil de los tres: un
   impago o una migración no deberían cortar el acceso a los datos del cliente,
@@ -464,7 +480,17 @@ se rellena y las listas salen incompletas sin que falle nada.
   (CRM-00.05.01.07). El secreto se enseña **una vez**.
 - **Sesiones revocables** con rotación del token de refresco
   (CRM-00.05.01.08). Presentar un refresco ya rotado revoca **todas** las
-  sesiones del usuario: significa que hay una copia en circulación.
+  sesiones del usuario: significa que hay una copia en circulación. Dentro de
+  `REFRESCO_GRACIA_S` (10 s) tras la rotación se rechaza sin revocar
+  (`auth.refresco_ya_rotado`): son dos pestañas renovando a la vez con la misma
+  cookie.
+
+  > **Corregido el 13-11-2026 (auditoría, FUN-A-3).** La promesa no se cumplía:
+  > un refresco rotado no encontraba fila y salía «no válido» sin revocar nada,
+  > y donde sí se revocaba, el error deshacía la transacción y la revocación con
+  > ella. Ahora se guarda el refresco anterior, la revocación se confirma antes
+  > de responder y la fila se lee con `FOR UPDATE` para que dos renovaciones no
+  > se pisen. Lo defiende `tests/unit/test_un_refresco_robado_se_detecta.py`.
 
 ### Permisos
 
@@ -10965,8 +10991,26 @@ enlace caduca en minutos y quien lo pidió lo vuelve a pedir.
 > que ese correo pudiera salir. Ahora la respuesta es siempre
 > `{"enviado": true}`, idéntica exista o no el acceso, y lo defienden
 > `tests/unit/test_los_enlaces_a_quien_no_es_usuario_van_por_correo.py` y
-> `tests/unit/test_puerta_del_portal_de_partner.py`. La interfaz todavía no
-> tiene la pantalla `/portal-partner` que abre ese enlace.
+> `tests/unit/test_puerta_del_portal_de_partner.py`.
+
+**La pantalla `/portal-partner`** (desde el 13-11-2026) abre ese enlace, fuera
+del marco y sin cookie, como decidir una aprobación desde el correo. Antes esa
+dirección caía en el portal de clientes, porque empieza por `/portal`. Abrirla
+no canjea —el enlace es de un solo uso y los escáneres de correo lo abren—: se
+canjea pulsando «Comprobar mi acceso» (`POST /portal-partner/canjear` con
+`{tenant, token}` del enlace). Un enlace usado, caducado o desconocido se dice
+como «ya no sirve», sin distinguir cuál —el servidor da el mismo error a
+propósito— y deja pedir otro allí mismo (`POST /portal-partner/entrar`, con la
+misma respuesta exista o no el acceso). Lo prueba
+`frontend/src/pruebas/portal_partner_desde_el_correo.test.tsx`.
+
+**Lo que no hay todavía, y la pantalla lo dice:** el canje comprueba el enlace
+y devuelve el acceso, pero **no abre sesión** —ni token en la respuesta ni
+cookie del gateway—, y el front no tiene pantallas de partner. Así que tras
+canjear se confirma el acceso y se explica que desde ahí no hay nada más que
+abrir. Para que el portal sirva hace falta que el canje emita la sesión del
+partner y las pantallas de `GET /portal-partner/mis-registros` y
+`/registros/{id}`.
 
 ### Aislamiento entre partners (`CRM-03.04.01.03`)
 
@@ -13416,6 +13460,21 @@ fuerte, después de haberse verificado hace poco (`cambio_mfa`; ver la nota del
 cajón»—, porque sin nombre revocar una de tres es elegir a ciegas. Y al revocarla
 se borra: una credencial revocada que sigue guardada invita a restaurarla, y
 restaurar una credencial es lo que no puede pasar.
+
+**En pantalla** (desde el 13-11-2026), en *Identidad y seguridad › Tu segundo
+factor › Tus passkeys*: la lista con el nombre, cuándo se añadió y cuándo se usó
+por última vez; un campo opcional para el nombre y «Añadir una passkey», que
+hace `POST /auth/passkeys`, la llave del navegador y `POST
+/auth/passkeys/confirmar` con `{respuesta, nombre}`; y «Quitar» en cada una, que
+pregunta antes —con el foco en «Cancelar» y avisando si es el único factor
+fuerte de la cuenta— y hace `DELETE /auth/passkeys/{id}`. Hasta entonces la
+pantalla solo contaba cuántas había. La reverificación no es de esta pantalla:
+el servidor contesta `stepup.requerido`, el diálogo del marco pide el código de
+la app y la llamada se repite. Si se cancela, o la cuenta no tiene app —ese
+diálogo solo sabe pedir el código—, se dice por qué no se ha añadido y cuál es
+el camino: salir y volver a entrar con la passkey, y añadirla justo después.
+Cancelar el diálogo del sistema no se pinta como fallo. Lo prueba
+`frontend/src/pruebas/mis_passkeys.test.tsx`.
 
 El dominio y los orígenes válidos **no se escriben en el código**: salen de
 `public_base_url` y de `cors_origins`, que ya dicen dónde vive esto. Solo hay que

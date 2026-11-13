@@ -96,6 +96,13 @@ export interface Opciones {
   encolable?: boolean;
   /** Interno: ya se pidió volver a verificarse para esta llamada. */
   sinReverificar?: boolean;
+  /**
+   * `true` para lo que se abre desde un enlace de correo sin haber entrado
+   * —confirmar un alta, canjear el enlace del portal de partner—: la llamada
+   * sale **sin cookie**. Con la de una sesión caducada en el navegador, el
+   * gateway contestaría «tu sesión ha caducado» a quien no necesita ninguna.
+   */
+  sinCookie?: boolean;
 }
 
 /**
@@ -257,7 +264,7 @@ export async function llamar<T = unknown>(
       // La sesión va en cookie, nunca en un almacén que pueda leer un script
       // (CRM-07.04.02.03): un XSS con el token en `localStorage` es una sesión
       // robada; con cookie `HttpOnly`, no.
-      credentials: "include",
+      credentials: opciones.sinCookie ? "omit" : "include",
       signal: opciones.signal,
     }),
   ).catch(async (error: unknown) => {
