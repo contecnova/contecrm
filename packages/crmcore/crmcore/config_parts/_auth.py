@@ -41,6 +41,14 @@ class _AuthSettings(BaseSettings):
     access_token_minutos: int = Field(15, ge=1, le=1440)
     # El refresco sí es revocable (está en base de datos), por eso puede durar.
     refresh_token_dias: int = Field(14, ge=1, le=365)
+    # Margen en el que presentar el refresco que se acaba de rotar NO se trata
+    # como robo. Cada pestaña del navegador renueva por su cuenta y comparten la
+    # cookie, así que dos renovaciones casi simultáneas llegan con el mismo
+    # token: la segunda se rechaza sin revocar nada (la primera ya dejó el
+    # nuevo en la cookie). Pasado el margen, quien presenta un refresco rotado
+    # tiene una copia que no debería y se revocan todas las sesiones. Diez
+    # segundos cubren de sobra la latencia de dos peticiones a la vez.
+    refresco_gracia_s: int = Field(10, ge=0, le=120)
 
     # ── Sesiones (CRM-00.05.01.08) ────────────────────────────────────────
     # Sesiones simultáneas por usuario. 0 = sin límite. Ponerlo a 1 es lo que

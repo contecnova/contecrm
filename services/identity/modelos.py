@@ -174,6 +174,17 @@ class Sesion(Base):
     hash_refresco: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, info={"secreto": True}
     )
+    # El refresco ANTERIOR, ya rotado, y cuándo se rotó. Sin esto la detección
+    # de robo que promete la rotación no ocurría nunca: un token rotado no
+    # encontraba fila y salía «no válido» sin revocar nada (auditoría
+    # 13-11-2026, FUN-A-3). Una generación basta: un token más viejo ya no abre
+    # nada, y el que tiene la copia robada la usa antes de que se pierda.
+    hash_refresco_anterior: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True, info={"secreto": True}
+    )
+    refresco_rotado_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     ip: Mapped[str | None] = mapped_column(
         String(64), nullable=True, info={"sensibilidad": "personal"}

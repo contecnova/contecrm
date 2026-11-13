@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**360 ajustes** en total, de los cuales **133** son editables en caliente por tenant.
+**361 ajustes** en total, de los cuales **133** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -118,6 +118,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `JWT_ALGORITHM` | — | `HS256` |  |  |
 | `ACCESS_TOKEN_MINUTOS` | — | `15` | 1–1440 | Duración del token de acceso. Corta a propósito: la revocación de una sesión no puede invalidar un JWT ya emitido, así que el tiempo de vida ES la ventana de exposición. 15 minutos es el equilibrio habitual entre eso y no renovar constantemente. |
 | `REFRESH_TOKEN_DIAS` | — | `14` | 1–365 | El refresco sí es revocable (está en base de datos), por eso puede durar. |
+| `REFRESCO_GRACIA_S` | — | `10` | 0–120 | Margen en el que presentar el refresco que se acaba de rotar NO se trata como robo. Cada pestaña del navegador renueva por su cuenta y comparten la cookie, así que dos renovaciones casi simultáneas llegan con el mismo token: la segunda se rechaza sin revocar nada (la primera ya dejó el nuevo en… |
 | `SESIONES_MAX_POR_USUARIO` | 🔥 `sesiones_max_por_usuario` | `0` | 0–1000 | Sesiones simultáneas por usuario. 0 = sin límite. Ponerlo a 1 es lo que exigen algunos clientes regulados. |
 | `SESION_INACTIVIDAD_MINUTOS` | 🔥 `sesion_inactividad_minutos` | `480` | 5–10080 | Caducidad por inactividad, además de la absoluta del refresco. |
 | `LOGIN_MAX_INTENTOS` | 🔥 `login_max_intentos` | `5` | 1–100 |  |

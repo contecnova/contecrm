@@ -638,18 +638,52 @@ def renovar(db: Session, refresco: str) -> tuple[str, str]:
     que hay dos copias, y entonces se revoca la sesión entera. Sin rotación, un
     refresco robado vale hasta que caduca y nadie se entera nunca.
     """
+    from crmcore.config import get_settings
+
+    huella = _hash(refresco)
+    ahora = datetime.now(timezone.utc)
+    # `FOR UPDATE`: dos renovaciones a la vez con el mismo token se ponen en
+    # fila. Sin el bloqueo ganaba la última escritura y la otra se quedaba con
+    # un refresco que ya no existía.
     sesion = db.execute(
-        select(Sesion).where(Sesion.hash_refresco == _hash(refresco))
+        select(Sesion).where(Sesion.hash_refresco == huella).with_for_update()
     ).scalar_one_or_none()
     if sesion is None:
+        rotada = db.execute(
+            select(Sesion).where(Sesion.hash_refresco_anterior == huella).with_for_update()
+        ).scalar_one_or_none()
+        if rotada is None:
+            raise NoAutenticado(
+                "El token de refresco no es válido", error_code="auth.refresco_invalido"
+            )
+        rotado_at = rotada.refresco_rotado_at
+        if rotado_at is not None and rotado_at.tzinfo is None:
+            rotado_at = rotado_at.replace(tzinfo=timezone.utc)
+        gracia = timedelta(seconds=int(get_settings().refresco_gracia_s))
+        if rotado_at is not None and ahora - rotado_at <= gracia:
+            # Dos pestañas renovando a la vez: la otra ya tiene el nuevo en la
+            # cookie compartida. Se rechaza ésta y no se revoca nada.
+            raise NoAutenticado(
+                "Este token de refresco se acaba de renovar en otra petición.",
+                error_code="auth.refresco_ya_rotado",
+            )
+        # Un refresco rotado presentado fuera del margen: alguien tiene una
+        # copia que no debería. Se revoca TODO y se confirma AQUÍ, antes de
+        # lanzar: el error deshace la transacción de la petición, y con ella se
+        # iba la revocación (FUN-A-3).
+        _revocar_todas(db, rotada.usuario_id, motivo="reutilizacion_refresco")
+        db.commit()
+        logger.warning("auth.refresco_reutilizado", usuario_id=str(rotada.usuario_id))
         raise NoAutenticado(
-            "El token de refresco no es válido", error_code="auth.refresco_invalido"
+            "La sesión ha caducado. Vuelve a iniciar sesión.",
+            error_code="auth.sesion_caducada",
         )
     if not sesion.esta_viva:
-        # Reutilización de un refresco ya rotado o de una sesión revocada: se
-        # revocan TODAS las sesiones del usuario. Es agresivo a propósito —
-        # significa que alguien tiene una copia que no debería.
+        # El refresco vigente de una sesión revocada o caducada. Se revocan
+        # todas, como siempre se quiso: se confirma antes de lanzar por lo mismo
+        # que arriba.
         _revocar_todas(db, sesion.usuario_id, motivo="reutilizacion_refresco")
+        db.commit()
         logger.warning("auth.refresco_reutilizado", usuario_id=str(sesion.usuario_id))
         raise NoAutenticado(
             "La sesión ha caducado. Vuelve a iniciar sesión.",
@@ -661,8 +695,10 @@ def renovar(db: Session, refresco: str) -> tuple[str, str]:
         raise Prohibido("La cuenta está desactivada", error_code="auth.cuenta_inactiva")
 
     nuevo_refresco = secrets.token_urlsafe(48)
+    sesion.hash_refresco_anterior = sesion.hash_refresco
+    sesion.refresco_rotado_at = ahora
     sesion.hash_refresco = _hash(nuevo_refresco)
-    sesion.ultima_actividad_at = datetime.now(timezone.utc)
+    sesion.ultima_actividad_at = ahora
     acceso = emitir_token_acceso(
         db,
         usuario=usuario,
