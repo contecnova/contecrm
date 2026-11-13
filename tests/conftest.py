@@ -206,6 +206,24 @@ def postgres_uri() -> Iterator[str]:
     """
     import pgserver
 
+    # MODO PERSISTENTE (opcional): `CONTECRM_PRUEBAS_PG=<carpeta>` reutiliza un
+    # Postgres de pruebas entre tandas en vez de crear uno nuevo cada vez.
+    #
+    # Medido el 13-11-2026 en Windows: arrancar un `pgserver` NUEVO (initdb
+    # incluido) costaba 141 s, `create_all` de las 424 tablas 93 s y pararlo
+    # 37 s: cuatro minutos y medio fijos para verificar UNA prueba. Con la
+    # carpeta persistente el servidor se reutiliza vivo y el esquema solo se
+    # rehace si cambian los modelos (ver `_esquema`). Sin la variable, todo
+    # sigue como antes: servidor nuevo por tanda y borrado al acabar.
+    persistente = os.environ.get("CONTECRM_PRUEBAS_PG", "").strip()
+    if persistente:
+        carpeta = Path(persistente)
+        carpeta.mkdir(parents=True, exist_ok=True)
+        servidor = pgserver.get_server(carpeta / "pgdata", cleanup_mode=None)
+        os.environ["CONTECRM_PRUEBAS_PG_REUTILIZA"] = "1"
+        yield servidor.get_uri().replace("postgresql://", "postgresql+psycopg://", 1)
+        return
+
     _recoger_servidores_abandonados()
     directorio = Path(tempfile.mkdtemp(prefix="contecrm-test-"))
     servidor = pgserver.get_server(directorio / "pgdata")
@@ -256,6 +274,29 @@ def _esquema(postgres_uri: str) -> Iterator[str]:
     _importar_todos_los_modelos()
 
     engine = get_engine()
+
+    # Con el Postgres persistente, el esquema se reutiliza si los modelos son
+    # los mismos que lo crearon: la huella es el DDL de todas las tablas. Si
+    # cambia una columna, se tira y se rehace; si no, se ahorra `create_all`.
+    huella = ""
+    if os.environ.get("CONTECRM_PRUEBAS_PG_REUTILIZA"):
+        import hashlib
+
+        from sqlalchemy.schema import CreateTable
+
+        ddl = "\n".join(str(CreateTable(t).compile(engine)) for t in Base.metadata.sorted_tables)
+        huella = hashlib.sha256(ddl.encode("utf-8")).hexdigest()
+        with engine.connect() as conn:
+            conn.execute(sa.text("CREATE TABLE IF NOT EXISTS public._huella_pruebas (h text)"))
+            guardada = conn.execute(sa.text("SELECT h FROM public._huella_pruebas")).scalar()
+            if guardada == huella:
+                conn.commit()
+                yield esquema
+                reset_engine()
+                return
+            conn.execute(sa.text(f'DROP SCHEMA IF EXISTS "{esquema}" CASCADE'))
+            conn.commit()
+
     with engine.connect() as conn:
         conn.execute(sa.text(f'CREATE SCHEMA IF NOT EXISTS "{esquema}"'))
         # `vector` SÍ: el índice de conocimiento de intelligence guarda sus
@@ -270,6 +311,11 @@ def _esquema(postgres_uri: str) -> Iterator[str]:
     # falta es en el despliegue real, y ahí lo crea `deploy/crear-bases.sh`.
     # Que la suite no dependa de él es lo que permite correrla sin Docker.
     Base.metadata.create_all(engine)
+    if huella:
+        with engine.connect() as conn:
+            conn.execute(sa.text("DELETE FROM public._huella_pruebas"))
+            conn.execute(sa.text("INSERT INTO public._huella_pruebas VALUES (:h)"), {"h": huella})
+            conn.commit()
 
     yield esquema
 

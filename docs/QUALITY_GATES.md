@@ -335,6 +335,35 @@ corriendo solo construye y pasa sus 40 pruebas en 11,9 s. El plazo está en
 420 s, que no esconde un cuelgue de verdad: lo retrasa hasta después de haber
 descartado la prisa.
 
+### Verificar un arreglo sin pagar el arranque de Postgres cada vez
+
+**Medido el 13-11-2026 en Windows.** Una sola prueba con base de datos tardaba
+10-11 minutos, y casi nada era la prueba:
+
+| Fase | Tiempo |
+|---|---|
+| Importar `conftest` y todos los modelos | 57 s |
+| Arrancar un `pgserver` nuevo (initdb incluido) | 141 s |
+| `create_all` de las 424 tablas | 93 s |
+| Parar el servidor | 37 s |
+
+Para el ciclo de arreglar y verificar está el modo persistente:
+
+```bash
+CONTECRM_PRUEBAS_PG=/una/carpeta/fuera/del/repo  pytest tests/unit/x.py::test_y
+```
+
+El servidor se queda vivo entre tandas y el esquema solo se rehace si cambia el
+DDL de algún modelo (lo decide una huella guardada en `public._huella_pruebas`).
+Medido: la misma prueba pasó de **277 s en frío a 109 s**, y dos pruebas en
+caliente tardan **77 s en total**. Sin la variable no cambia nada: servidor
+nuevo por tanda y borrado al acabar, que es lo que debe hacer el gate.
+
+**Una sola tanda con base de datos a la vez.** Varios `pgserver` arrancando a la
+vez en la misma máquina agotan el plazo de 10 s de `pg_ctl start` y las pruebas
+salen con ERROR, no con FAILED (medido el mismo día con cuatro tandas en
+paralelo): no dicen nada del código.
+
 ---
 
 ## Por qué no hay CI
