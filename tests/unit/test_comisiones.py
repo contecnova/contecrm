@@ -513,3 +513,80 @@ def test_la_liquidacion_de_un_partner_usa_el_mismo_motor(uow: UnidadDeTrabajo) -
     )
     assert Decimal(fila.total) == Decimal(1000)
     assert fila.usuario_id is None
+
+
+# ── Sin liquidaciones duplicadas ni solapadas (FUN-B-6, auditoría 13-11-2026) ──
+#
+# La comprobación comparaba `usuario_id == None`, que en SQL es `= NULL` y nunca
+# es cierto, y siempre falta usuario o partner: no encontraba nada. La
+# restricción única tampoco, porque dos NULL no chocan. Y solo miraba el mismo
+# `desde`: del 1 al 31 y del 2 al 31 pagaban dos veces lo del 2 al 31.
+
+
+def test_un_periodo_que_se_solapa_no_se_liquida(uow: UnidadDeTrabajo) -> None:
+    usuario = uuid4()
+    fila = _liquidacion(uow, usuario)
+    with pytest.raises(Conflicto) as fallo:
+        com.liquidar(
+            uow,
+            plan_id=fila.plan_id,
+            desde=date(2026, 1, 2),
+            hasta=date(2026, 1, 31),
+            operaciones=[],
+            usuario_id=usuario,
+        )
+    assert fallo.value.error_code == "comisiones.periodo_liquidado"
+
+
+def test_un_partner_no_se_liquida_dos_veces(uow: UnidadDeTrabajo) -> None:
+    plan = _plan_activo(uow)
+    partner = uuid4()
+    datos = dict(
+        plan_id=plan.id,
+        desde=date(2026, 1, 1),
+        hasta=date(2026, 1, 31),
+        operaciones=[_op("A", Decimal(10000))],
+        partner_id=partner,
+    )
+    com.liquidar(uow, **datos)
+    with pytest.raises(Conflicto):
+        com.liquidar(uow, **datos)
+
+
+def test_un_periodo_anulado_se_puede_volver_a_liquidar(uow: UnidadDeTrabajo) -> None:
+    usuario = uuid4()
+    fila = _liquidacion(uow, usuario)
+    fila.estado = "anulada"
+    uow.db.flush()
+    otra = com.liquidar(
+        uow,
+        plan_id=fila.plan_id,
+        desde=fila.desde,
+        hasta=fila.hasta,
+        operaciones=[_op("A", Decimal(10000))],
+        usuario_id=usuario,
+    )
+    assert otra.id != fila.id
+
+
+def test_la_base_tampoco_deja_dos_vigentes_con_el_usuario_nulo(uow: UnidadDeTrabajo) -> None:
+    """Aunque alguien se saltara la comprobación del código."""
+    from sqlalchemy.exc import IntegrityError
+
+    plan = _plan_activo(uow)
+    partner = uuid4()
+    for _ in range(2):
+        uow.db.add(
+            com.Liquidacion(
+                tenant_id=uow.tenant_id,
+                plan_id=plan.id,
+                partner_id=partner,
+                desde=date(2026, 2, 1),
+                hasta=date(2026, 2, 28),
+                total=Decimal(0),
+                moneda="EUR",
+            )
+        )
+    with pytest.raises(IntegrityError):
+        uow.db.flush()
+    uow.db.rollback()

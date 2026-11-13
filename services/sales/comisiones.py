@@ -218,8 +218,21 @@ class Liquidacion(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "tenant_id", "plan_id", "usuario_id", "partner_id", "desde", name="uq_liquidacion"
+        # Una vigente por plan, beneficiario y periodo. `NULLS NOT DISTINCT`
+        # porque siempre hay un NULL —usuario o partner—, y con la regla por
+        # defecto de Postgres dos NULL no chocan: la restricción anterior no
+        # impedía nada (auditoría 13-11-2026, FUN-B-6). Parcial: una anulada no
+        # cuenta, para poder volver a liquidar ese periodo.
+        Index(
+            "uq_liquidacion_vigente",
+            "tenant_id",
+            "plan_id",
+            "usuario_id",
+            "partner_id",
+            "desde",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+            postgresql_where=text("estado <> 'anulada'"),
         ),
         Index("ix_liquidaciones_estado", "tenant_id", "estado", "desde"),
     )
@@ -899,7 +912,9 @@ def liquidar(
     un informe: el informe se recalcula, la liquidación no. Quien cobró en marzo
     tiene derecho a que marzo siga diciendo lo mismo en junio.
     """
-    plan = uow.db.get(PlanComision, plan_id)
+    # `FOR UPDATE` sobre el plan: dos liquidaciones del mismo plan a la vez se
+    # ponen en fila, y la comprobación de abajo no se puede saltar por carrera.
+    plan = uow.db.get(PlanComision, plan_id, with_for_update=True)
     if plan is None or plan.tenant_id != uow.tenant_id:
         raise NoEncontrado("El plan no existe", error_code="comisiones.plan_no_encontrado")
     if plan.estado != "activo":
@@ -908,20 +923,42 @@ def liquidar(
             error_code="comisiones.plan_no_activo",
             detalle={"estado": plan.estado},
         )
-    existente = uow.db.execute(
-        select(Liquidacion).where(
-            Liquidacion.tenant_id == uow.tenant_id,
-            Liquidacion.plan_id == plan_id,
-            Liquidacion.usuario_id == usuario_id,
-            Liquidacion.partner_id == partner_id,
-            Liquidacion.desde == desde,
+    if hasta < desde:
+        raise ErrorValidacion("El periodo está al revés", error_code="comisiones.periodo_invalido")
+
+    def _mismo(columna: Any, valor: UUID | None) -> Any:
+        # `columna == None` en SQL es `= NULL`, que nunca es cierto: así la
+        # comprobación de duplicados no encontraba nada, porque siempre falta
+        # usuario o partner (FUN-B-6).
+        return columna.is_(None) if valor is None else columna == valor
+
+    # Solapamiento, no solo el mismo `desde`: liquidar del 1 al 31 y luego del 2
+    # al 31 pagaba dos veces las operaciones del 2 al 31.
+    solapada = (
+        uow.db.execute(
+            select(Liquidacion).where(
+                Liquidacion.tenant_id == uow.tenant_id,
+                Liquidacion.plan_id == plan_id,
+                _mismo(Liquidacion.usuario_id, usuario_id),
+                _mismo(Liquidacion.partner_id, partner_id),
+                Liquidacion.estado != "anulada",
+                Liquidacion.desde <= hasta,
+                Liquidacion.hasta >= desde,
+            )
         )
-    ).scalar_one_or_none()
-    if existente is not None:
+        .scalars()
+        .first()
+    )
+    if solapada is not None:
         raise Conflicto(
-            "Ese periodo ya está liquidado",
+            "Ese periodo ya está liquidado, entero o en parte",
             error_code="comisiones.periodo_liquidado",
-            detalle={"liquidacion_id": str(existente.id), "estado": existente.estado},
+            detalle={
+                "liquidacion_id": str(solapada.id),
+                "estado": solapada.estado,
+                "desde": solapada.desde.isoformat(),
+                "hasta": solapada.hasta.isoformat(),
+            },
         )
 
     calculo = calcular(uow.db, uow.tenant_id, plan_id=plan_id, operaciones=operaciones, cuota=cuota)

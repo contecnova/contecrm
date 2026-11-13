@@ -11144,6 +11144,17 @@ que parece ganada y no lo está, y esa cifra se acaba gastando.
 
 ### Aprobación, disputa y trazabilidad del pago (`CRM-03.02.03.03`)
 
+**Un periodo se liquida una vez por plan y beneficiario**, y tampoco en parte: un
+periodo que se solape con otra liquidación vigente da `comisiones.periodo_liquidado`.
+Una liquidación anulada no cuenta, así que ese periodo se puede volver a liquidar.
+Lo garantiza también la base de datos (`uq_liquidacion_vigente`).
+
+> **Corregido el 13-11-2026 (auditoría, FUN-B-6).** La comprobación comparaba
+> `usuario_id = NULL`, que nunca es cierto, y siempre falta el usuario o el
+> partner: no encontraba ninguna liquidación previa. La restricción única tampoco
+> paraba nada (dos NULL no chocan en Postgres) y solo miraba el mismo día de
+> inicio. Se podía pagar dos veces el mismo periodo.
+
 La aprobación la resuelve **el motor del orquestador**, el mismo que aprueba todo lo
 demás: montar una segunda cadena aquí daría dos sitios donde mirar quién aprobó qué.
 
