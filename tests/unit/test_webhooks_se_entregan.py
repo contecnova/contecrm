@@ -233,29 +233,19 @@ async def test_lo_que_falla_queda_pendiente_y_el_relevo_lo_recoge(
     """
     from datetime import datetime, timezone
 
-    from crmcore.bus.modelos import EventoSaliente
-
     from services.eventing import entrega as mod
     from services.eventing.consumidores import RelevoDeReintentos, consumir_evento
     from services.eventing.entrega import pendientes_de_reintento
 
     _suscribir(db, tenant_id, eventos=["account.created"])
     evento = _evento(tenant_id)
-
-    # El sobre se conserva: es lo que permite reconstruir lo que se mandó.
-    db.add(
-        EventoSaliente(
-            tenant_id=tenant_id,
-            tipo=evento.type,
-            version=evento.version,
-            subject_tipo=evento.subject.tipo,
-            subject_id=evento.subject.id,
-            dedup_key=evento.dedup_key,
-            sobre=evento.a_dict(),
-            publicado_at=datetime.now(timezone.utc),
-        )
-    )
     db.commit()
+
+    # Antes esta prueba metía el sobre a mano en `EventoSaliente` del mismo
+    # esquema, y por eso pasaba: en la pila real ese evento está en la tabla de
+    # salida de `party`, que eventing no ve, y el reintento no salía nunca
+    # (FUN-A-4). Ahora el sobre lo archiva el propio consumo, que es lo que hay
+    # que probar.
 
     # Primera vuelta: el endpoint contesta 500.
     fallidas: list[dict[str, Any]] = []
@@ -398,3 +388,42 @@ async def test_un_evento_demasiado_grande_no_se_manda_ni_se_reintenta(
     )
     assert llamadas, "no ha llamado al endpoint"
     get_settings.cache_clear()
+
+
+# ── Lo interno no sale (SEC-19, auditoría 13-11-2026) ─────────────────────
+#
+# El bus llega a eventing con el patrón `*` y nadie miraba si un evento era
+# público: una suscripción a `*` o a `user.*` recibía el enlace para cambiar la
+# contraseña de cualquier usuario (`user.password.reset_requested`) y el de
+# decidir una aprobación en nombre de otro (`approval.link.issued`).
+
+
+def test_un_evento_interno_no_encaja_con_ninguna_suscripcion() -> None:
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from services.eventing.entrega import coincide, es_publico
+
+    assert not es_publico("user.password.reset_requested")
+    assert not es_publico("approval.link.issued")
+    assert not es_publico("tipo.que.no.existe")
+    assert es_publico("account.created")
+
+    a_todo = SimpleNamespace(eventos=["*"], condiciones=[])
+    interno = _evento(uuid4(), tipo="user.password.reset_requested")
+    assert not coincide(a_todo, interno)  # type: ignore[arg-type]
+    assert coincide(a_todo, _evento(uuid4()))  # type: ignore[arg-type]
+
+
+async def test_un_evento_interno_no_se_empuja_ni_se_archiva(monkeypatch: Any) -> None:
+    """Corta antes del empuje al gateway y antes de abrir la base."""
+    from uuid import uuid4
+
+    from crmcore.http import interno
+
+    from services.eventing.consumidores import consumir_evento
+
+    avisos: list[Any] = []
+    monkeypatch.setattr(interno, "avisar", lambda *a, **k: avisos.append(a))
+    await consumir_evento(_evento(uuid4(), tipo="user.password.reset_requested"))
+    assert avisos == []

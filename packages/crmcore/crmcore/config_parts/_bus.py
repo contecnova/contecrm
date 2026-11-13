@@ -78,6 +78,12 @@ class _BusSettings(BaseSettings):
     # necesita poder cambiar.
     outbox_retencion_dias: int = Field(7, ge=1, le=365)
 
+    # Cuánto se guarda la copia de cada evento público que hace posible el
+    # replay y el reintento de un webhook (CRM-00.02.02.09). Treinta días es la
+    # retención del bus: más allá ya no habría con qué contrastar un «mándame
+    # otra vez lo del martes», y sin purga la tabla crece con cada evento.
+    eventos_archivo_retencion_dias: int = Field(30, ge=1, le=3650)
+
     # ── Webhooks salientes (CRM-00.02.02.01..03) ──────────────────────────
     webhooks_enabled: bool = True
     webhook_timeout_s: float = Field(10.0, ge=0.5, le=120.0)

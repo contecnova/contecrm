@@ -67,7 +67,7 @@ async def consumir_evento(mensaje: Any) -> None:
     from crmcore.db.uow import unidad_de_trabajo
     from crmcore.tenancy.context import con_contexto
 
-    from services.eventing.entrega import entregar, suscripciones_interesadas
+    from services.eventing.entrega import entregar, es_publico, suscripciones_interesadas
 
     evento = _evento_de(mensaje)
     if evento is None:
@@ -76,6 +76,11 @@ async def consumir_evento(mensaje: Any) -> None:
         # Un evento de plataforma no es de nadie, y las suscripciones son de un
         # tenant. Entregarlo a todos sería mandarle a un cliente lo que pasa en
         # la casa de otro.
+        return
+    if not es_publico(evento.type):
+        # Lo interno no sale: ni por webhook ni por el empuje al navegador. El
+        # patrón del bus es `*`, así que aquí llega TODO, también el evento que
+        # lleva el enlace para cambiar una contraseña (SEC-19).
         return
 
     tenant_id = UUID(str(evento.tenant_id))
@@ -107,6 +112,24 @@ async def consumir_evento(mensaje: Any) -> None:
         con_contexto(tenant_id=tenant_id, origen="webhooks"),
         unidad_de_trabajo(tenant_id) as uow,
     ):
+        # La copia que hace posibles el reintento y el replay. **No la escribía
+        # nadie** (FUN-A-5): el replay devolvía siempre cero, y el reintento
+        # buscaba el sobre en la tabla de salida del esquema de eventing, donde
+        # no están los eventos que emiten los demás servicios (FUN-A-4), así que
+        # ninguna entrega fallida se reintentaba de verdad. Se archiva aunque hoy
+        # no haya suscripciones: el replay sirve justo para la que se crea o se
+        # arregla después.
+        from services.eventing.modelos import EventoArchivado
+
+        uow.db.add(
+            EventoArchivado(
+                tenant_id=tenant_id,
+                tipo=evento.type,
+                dedup_key=evento.dedup_key,
+                sobre=evento.a_dict(),
+                occurred_at=evento.occurred_at,
+            )
+        )
         interesadas = suscripciones_interesadas(uow.db, evento)
         if not interesadas:
             return
@@ -161,6 +184,7 @@ class RelevoDeReintentos:
 
         from services.eventing.entrega import pendientes_de_reintento
 
+        self._purgar_archivo()
         with sesion(sistema=True) as db:
             pendientes = pendientes_de_reintento(db)
             if not pendientes:
@@ -183,6 +207,37 @@ class RelevoDeReintentos:
             logger.info("webhook.reintentos", cuantos=hechos)
         return hechos
 
+    def _purgar_archivo(self) -> int:
+        """Borra del archivo lo que ya pasó de `EVENTOS_ARCHIVO_RETENCION_DIAS`.
+
+        Sin purga, archivar cada evento público haría crecer la tabla para
+        siempre. Va en la vuelta del relevo, que ya corre sola en el servicio.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        from crmcore.config import get_settings
+        from crmcore.db.session import sesion
+        from sqlalchemy import delete
+
+        from services.eventing.modelos import EventoArchivado
+
+        # Una vez al día basta: la retención se mide en días, y borrar en cada
+        # vuelta del relevo (cada pocos segundos) recorrería la tabla sin motivo.
+        hoy = datetime.now(timezone.utc).date()
+        if getattr(self, "_purgado_el", None) == hoy:
+            return 0
+        self._purgado_el = hoy
+
+        dias = int(get_settings().eventos_archivo_retencion_dias)
+        limite = datetime.now(timezone.utc) - timedelta(days=dias)
+        with sesion(sistema=True) as db:
+            borrados = db.execute(
+                delete(EventoArchivado).where(EventoArchivado.created_at < limite)
+            ).rowcount
+        if borrados:
+            logger.info("webhook.archivo_purgado", borrados=borrados, dias=dias)
+        return int(borrados or 0)
+
     async def _reintentar_una(
         self,
         tenant_id: UUID,
@@ -191,13 +246,12 @@ class RelevoDeReintentos:
         intento: int,
         entrega_id: UUID,
     ) -> bool:
-        from crmcore.bus.modelos import EventoSaliente
         from crmcore.db.uow import unidad_de_trabajo
         from crmcore.tenancy.context import con_contexto
         from sqlalchemy import select
 
         from services.eventing.entrega import entregar
-        from services.eventing.modelos import Entrega, Suscripcion
+        from services.eventing.modelos import Entrega, EventoArchivado, Suscripcion
 
         with (
             con_contexto(tenant_id=tenant_id, origen="webhooks"),
@@ -213,17 +267,22 @@ class RelevoDeReintentos:
                     fila.proximo_intento_at = None
                 return False
 
-            # El identificador del evento vive DENTRO del sobre: la fila de
-            # salida tiene el suyo propio, que es otro. Buscarlo por una columna
-            # `evento_id` que no existe era un error mío que sólo apareció al
-            # ejercitar el reintento de verdad — la prueba de la función habría
-            # pasado igual.
-            sobre = uow.db.execute(
-                select(EventoSaliente).where(
-                    EventoSaliente.tenant_id == tenant_id,
-                    EventoSaliente.sobre["id"].astext == str(evento_id),
+            # El sobre se lee del ARCHIVO de este servicio. Antes se buscaba en
+            # `EventoSaliente`, que es la tabla de salida del esquema de
+            # eventing: los eventos de `party`, `sales`… están en la de su
+            # servicio, así que nunca aparecían y el reintento se cerraba con
+            # «no se conserva el sobre» (FUN-A-4). El identificador del evento
+            # vive dentro del sobre.
+            sobre = (
+                uow.db.execute(
+                    select(EventoArchivado).where(
+                        EventoArchivado.tenant_id == tenant_id,
+                        EventoArchivado.sobre["id"].astext == str(evento_id),
+                    )
                 )
-            ).scalar_one_or_none()
+                .scalars()
+                .first()
+            )
             if sobre is None:
                 # Sin el sobre no se puede reconstruir lo que se mandó, y mandar
                 # otra cosa sería peor que no mandar nada.

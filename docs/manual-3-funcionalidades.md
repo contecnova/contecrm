@@ -98,6 +98,25 @@ que una avalancha de uno no bloquea la entrega de los demás.
 ### Ciclo de vida del tenant
 
 - **Alta por API** con su configuración inicial (CRM-00.01.03.01).
+- **Alta autoservicio** (CRM-00.01.03.01), apagada de fábrica
+  (`ONBOARDING_ENABLED`). `POST /alta` no crea nada: guarda la solicitud y manda
+  el enlace de confirmación **solo por correo** al buzón indicado, que es la
+  prueba de que ese buzón es de quien pide. `tenancy` lo emite en el evento
+  interno `tenant.alta_solicitada` (no público) y lo entrega `identity`, que
+  tiene los transportes, con la configuración de correo de la instalación —la
+  empresa todavía no existe—. Apunta a `FRONT_BASE_URL/?alta=…` y caduca en
+  `ONBOARDING_ENLACE_HORAS`. La respuesta es siempre `{"enviado": true}`, esté
+  el identificador libre o cogido, y el correo sale en los dos casos.
+
+  > **Corregido el 13-11-2026 (auditoría, SEC-6).** Hasta esa fecha la
+  > respuesta llevaba el token «para que lo mandara quien integrase el correo».
+  > Pero quien recibe la respuesta es quien pide el alta: confirmaba él mismo y
+  > daba de alta una empresa a nombre de un correo ajeno, que es justo lo que el
+  > enlace existe para impedir. Y no había ningún camino por el que ese correo
+  > pudiera salir. Lo defienden
+  > `tests/unit/test_los_enlaces_a_quien_no_es_usuario_van_por_correo.py` y
+  > `tests/unit/test_el_alta_autoservicio.py`. La interfaz todavía no tiene la
+  > pantalla que abre `?alta=…` y llama a `POST /alta/confirmar`.
 - **Suspensión, reactivación y congelación en solo lectura**
   (CRM-00.01.03.04). El estado `solo_lectura` es el más útil de los tres: un
   impago o una migración no deberían cortar el acceso a los datos del cliente,
@@ -220,7 +239,21 @@ enciende, una tarea toma el corte de cada periodo y lo manda al cerrarlo.
   aplicaría el cambio dos veces.
 - **Streaming sobre NATS JetStream** con *subject* por tenant
   (CRM-00.02.02.05), y **replay desde un punto en el tiempo**
-  (CRM-00.02.02.09) para cuando el sistema del integrador estuvo caído.
+  (CRM-00.02.02.09) para cuando el sistema del integrador estuvo caído. Cada
+  evento público se **archiva** al consumirlo (`eventos_archivados`, purgado a
+  los `EVENTOS_ARCHIVO_RETENCION_DIAS`), y de ese archivo salen el replay y los
+  reintentos.
+- **Solo salen los eventos públicos del catálogo.** Ni por webhook ni por el
+  empuje al navegador sale un evento interno, aunque la suscripción sea a `*`; y
+  no se admite suscribirse a uno por su nombre.
+
+> **Corregido el 13-11-2026 (auditoría, SEC-19, FUN-A-4, FUN-A-5).** Nadie
+> comprobaba si un evento era público: una suscripción a `*` recibía el enlace
+> para cambiar la contraseña de cualquier usuario y los enlaces de aprobación.
+> Además nadie escribía el archivo, así que el replay devolvía siempre cero, y
+> el reintento buscaba el sobre en la tabla de salida del propio eventing, donde
+> no están los eventos de los demás servicios: ninguna entrega fallida se
+> reintentaba de verdad.
 - **Catálogo AsyncAPI** generado del registro de eventos del código
   (CRM-00.02.02.07). Una especificación mantenida a mano describe lo que alguien
   creía que el sistema publicaba el día que la escribió.
@@ -5499,6 +5532,17 @@ Tres decisiones del editor:
 > decide igual que el motor es peor que no tener simulador. Ahora hay una sola
 > implementación y el gate lo vigila.
 
+> **Corregido el 13-11-2026 (auditoría, FUN-A-7).** Los operadores numéricos
+> (`<`, `<=`, `>`, `>=` y la antigüedad `hace_mas_de_horas` /
+> `hace_menos_de_horas`) convertían a 0 lo que no era un número. Con eso
+> `importe < 1000` y el importe ausente o vacío era `0 < 1000`: **cierto**, contra
+> lo que prometía el propio motor. Ahora un valor ausente, vacío o no numérico
+> —o `nan`/`inf`— hace que la comparación **no se cumpla**, en los dos lados. Como
+> la tabla de operadores es una sola, vale a la vez para procesos, decisiones,
+> automatizaciones y condiciones de webhooks (`eventing.entrega.coincide`). El 0
+> de verdad y el texto numérico de un formulario («999.5») se siguen comparando
+> como números.
+
 Las salidas de un paso se leen con la **misma lista de enlaces** que usa el
 validador del servidor. Si aquí faltara una, el diagrama enseñaría un proceso con
 menos caminos de los que tiene — y el que falta sería justo el que nadie revisa.
@@ -6974,6 +7018,26 @@ y la respuesta distingue «no tienes factor» de «vuelve a verificarte», porqu
 para quien está delante son dos cosas muy distintas. El front puede consultar el
 nivel de la sesión **antes** de que el usuario rellene un formulario entero.
 
+**Poner o cambiar un factor fuerte también es «cambio de MFA».** Si la cuenta ya
+tiene uno —la app de autenticación activada o alguna passkey—, empezar a
+configurar la app (`POST /auth/mfa/iniciar`) y registrar una passkey
+(`POST /auth/passkeys` y `/passkeys/confirmar`) exigen la misma reverificación
+que quitarlo (`cambio_mfa`). Sin ninguno, la primera alta sigue entrando con la
+sesión: no hay con qué pedirle a esa persona que se verifique, y exigirlo haría
+imposible configurar el primero.
+
+> **Corregido el 13-11-2026 (auditoría, SEC-4).** Quitar el segundo factor ya
+> exigía reverificación, pero ponerlo o cambiarlo no. `/mfa/iniciar` reescribía
+> el secreto de un MFA **activo** —que seguía activo, ya con el secreto nuevo—,
+> así que con una sesión robada se cambiaba el autenticador de otro en una
+> llamada; y el alta de passkeys solo pedía la sesión, así que se le colgaba
+> una llave propia que sobrevive a que cambie la contraseña. Se usa la misma
+> operación `cambio_mfa` y no una nueva porque una passkey **es** un factor
+> fuerte de la cuenta: darla de alta es reconfigurar el segundo factor, y dos
+> claves para lo mismo acabarían con ventanas de validez distintas para un
+> mismo riesgo. Lo defienden las pruebas de
+> `tests/unit/test_cambiar_el_factor_exige_reverificacion.py`.
+
 ### Equipos de confianza (`CRM-00.05.01.20`)
 
 Recordar un equipo es la razón número uno por la que la gente pide que le quiten
@@ -7128,6 +7192,25 @@ Y **salir de la foto no es lo mismo que perderse**: puede haberse ido a otro
 trimestre. Mezclarlo inflaría la tasa de pérdida y llevaría a revisar un problema
 que no existe. Dos fotos en monedas distintas no se comparan: restar euros de
 dólares daría un *waterfall* precioso y falso.
+
+> **Corregido el 13-11-2026 (auditoría, FUN-B-1).** La previsión elegía las
+> oportunidades solo por fecha de cierre, sin mirar el estado, así que **una
+> perdida o cancelada seguía sumando** al total y, si su categoría era de
+> compromiso, al compromiso: cerrar como perdida baja la probabilidad a cero
+> pero no toca la categoría, que es la opinión del comercial y se conserva por
+> si se reabre. Ahora no suma lo que **significa** «perdido» o «cancelado» en la
+> máquina de estados de la empresa —se llame como se llame—, y lo **ganado sí**,
+> porque es lo que el periodo ha ingresado. El mismo filtro vale para la
+> jerarquía (quien solo tiene perdidas ya no sale «fuera del organigrama» con
+> un cero), el desglose por líneas y los totales de la foto. La foto **sigue
+> guardando la línea** de la perdida, con su estado: sin ella el *waterfall* la
+> contaría como «salida» y no como «perdida». En el *waterfall*, lo que aparece
+> ya perdido no es una entrada, lo que se reabre sí, lo que ya estaba perdido
+> no es una salida aunque deje la foto, y a lo que se pierde no se
+> le cuenta además el cambio de importe, de modo que entradas menos pérdidas
+> explican la variación. Las fotos tomadas antes de esa fecha conservan sus
+> totales de entonces, con lo perdido dentro: compararlas con una posterior
+> enseña una bajada que es el arreglo y no una pérdida.
 
 ### Cierre de periodo (`CRM-03.02.01.09`)
 
@@ -7770,6 +7853,21 @@ El informe de cumplimiento cuenta **la primera respuesta y la resolución por
 separado**: un porcentaje único esconde que se contesta rápido y se resuelve
 tarde, que es el patrón más común y el que más queja genera. Sin casos con
 compromiso no dice 100 %, dice que no es medible.
+
+> **Corregido el 13-11-2026 (auditoría, FUN-B-2).** El informe solo contaba
+> como incumplido lo que tenía la marca, y la marca se pone al responder o al
+> resolver: un caso que nadie había contestado y cuyo plazo ya había pasado
+> **no contaba**, y el informe podía dar un 100 % con clientes esperando fuera
+> de plazo. Ahora lo pendiente se juzga por el reloj. **Primera respuesta**: sin
+> responder, está incumplida si el plazo pasó antes de que se resolviera o
+> cerrara el caso (el cliente tuvo su respuesta al resolverse, aunque nadie
+> marcara la «primera») o, si sigue abierto, antes de ahora; la pausa no
+> cuenta aquí, porque el modelo solo la descuenta de la resolución y así se
+> juzga también al responder. **Resolución**: sin resolver, está incumplida si
+> el plazo pasó; si el caso está en pausa, solo si ya había pasado **cuando se
+> paró**, porque el vencimiento se desplazará al reanudar y la espera es del
+> cliente. Cada reloj dice además cuántos de sus incumplidos siguen pendientes
+> (`incumplidos_pendientes`): es la parte que todavía se puede atender.
 
 ## Colas, escalado, derechos y satisfacción (`CRM-04.01.01.05` a `.12`, `CRM-04.01.02.01`, `.06`, `.07`, `.08`, `CRM-04.02.02.03`)
 
@@ -9069,6 +9167,12 @@ escrito a quién le habría tocado firmar y por qué no hizo falta. Sin ese nomb
 «aprobación automática» es una decisión sin responsable, y la primera pregunta de
 cualquier auditoría es de quién era la firma.
 
+> **Corregido el 13-11-2026 (auditoría, FUN-A-7).** El dato del umbral ausente o
+> vacío valía 0, así que una regla `importe menor_que 1000` **aprobaba sola** la
+> solicitud a la que le faltaba justo el importe. Ahora la aprobación automática
+> tiene que estar demostrada: si falta el campo, el tope, o el valor no es un
+> número, la regla no aplica y la solicitud sigue su cadena normal de etapas.
+
 ### Decidir desde el correo o el móvil (`CRM-00.03.05.12`)
 
 Enlace firmado, de un solo uso y con caducidad. En la base queda **el hash y no el
@@ -9287,6 +9391,17 @@ presupuesto se puede preparar para un posible cliente que todavía no es cuenta;
 pedido no: sin cuenta no hay a quién facturar, y dejarlo pasar convierte el
 problema en un rechazo del ERP dos días después, con el pedido ya prometido.
 
+> **Corregido el 13-11-2026 (auditoría, FUN-B-3).** Aceptar leía el presupuesto
+> sin bloquearlo y nada impedía dos pedidos del mismo presupuesto: dos
+> aceptaciones simultáneas —un doble clic, o el cliente y el comercial a la vez—
+> daban **dos pedidos y dos envíos al ERP**. Ahora la fila del presupuesto se lee
+> con `SELECT … FOR UPDATE`, así que la segunda espera y lee ya «aceptado», y
+> `pedidos` tiene una restricción única `(tenant_id, presupuesto_id)`
+> (`uq_pedido_presupuesto`, migración `7616ef51ee32`) como suelo. Las dos vías
+> acaban en el mismo **409 `presupuesto.ya_aceptado`**, no en un 500. La
+> migración se para —sin borrar nada— si ya hay presupuestos con más de un
+> pedido: cuál es el bueno lo decide una persona.
+
 ### Contratos y renovaciones (`CRM-03.03.02.08`, `CRM-03.03.02.10`)
 
 **El preaviso es la fecha que importa**, no el vencimiento: el día que vence ya es
@@ -9361,6 +9476,25 @@ seguimiento externo, y se resuelve igual: **el silencio no es una confirmación*
 Un pedido enviado del que nadie contesta parece en curso, y detrás casi siempre
 hay un mensaje perdido. Los rechazados salen también: un pedido rechazado por el
 ERP que nadie mira es una venta cerrada que no se sirve.
+
+> **Corregido el 13-11-2026 (auditoría, FUN-B-4 y FUN-B-5).** Tras un rechazo se
+> permite reenviar, pero la clave de deduplicación era `erp:{pedido}` fija y el
+> buzón de `integration` **descartaba el reenvío** como repetido: el pedido se
+> quedaba «enviado_erp» para siempre. Ahora cada envío se numera
+> (`pedidos.envios_erp`) y la clave es `erp:{pedido}:{intento}`: un reintento del
+> relevo del mismo envío se sigue descartando, el reenvío llega. El intento viaja
+> en `order.submitted` y vuelve en `order.erp.confirmed` / `order.erp.rejected`,
+> cuyas claves también lo llevan (con la fija, el segundo rechazo se perdía en
+> ventas por lo mismo).
+>
+> Y la respuesta del ERP **mira el estado antes de escribir**: un pedido
+> confirmado o conciliado ya no lo mueve ninguna respuesta —antes un rechazo
+> tardío lo devolvía a «rechazado_erp» con la referencia del ERP dentro—, y un
+> rechazo de un intento anterior al último enviado tampoco. Una confirmación
+> tardía sí vale: si el ERP dice que tiene el pedido, lo tiene. Lo ignorado no es
+> un error —llega por el bus y se reintentaría sin fin—: sale con
+> `"ignorada": true` y su motivo, y queda en auditoría
+> (`pedido.respuesta_erp_ignorada`).
 
 ### Lo que todavía no está
 
@@ -10811,6 +10945,28 @@ empleado, no cuenta para licencias y su ciclo de vida lo manda el acuerdo de can
 El enlace es de un solo uso, y a un correo que no tiene acceso se le responde
 **igual que a uno que sí**: distinguirlos convertiría el portal en un comprobador
 de qué empresas son partners nuestros.
+
+El enlace llega **solo por correo** a la dirección del acceso. `sales` lo emite en
+el evento interno `partner.portal.link_requested` (no público: ningún webhook lo
+recibe) y lo entrega `identity`, que es quien tiene los transportes de la
+instalación, con el remitente del tenant (`canal_correo`). No va por la bandeja
+de avisos porque la persona del partner no es usuario del CRM. Apunta a
+`FRONT_BASE_URL/portal-partner?tenant=…&t=…` y caduca en
+`partner_enlace_validez_minutos`. Si el correo no sale, queda en el registro de
+`identity` con su motivo (`correo_externo.no_entregado`) y no se reintenta: el
+enlace caduca en minutos y quien lo pidió lo vuelve a pedir.
+
+> **Corregido el 13-11-2026 (auditoría, SEC-5).** Hasta esa fecha
+> `POST /portal-partner/entrar`, que no exige haber entrado, devolvía el token
+> «solo cuando no hay correo configurado» —no se comprobaba en ninguna parte—:
+> sabiendo el correo de una persona de un partner se entraba en su portal. Y
+> `caduca_at` solo venía relleno si el correo era de un partner, así que la
+> respuesta seguía diciendo quién lo era. Además no existía ningún camino por el
+> que ese correo pudiera salir. Ahora la respuesta es siempre
+> `{"enviado": true}`, idéntica exista o no el acceso, y lo defienden
+> `tests/unit/test_los_enlaces_a_quien_no_es_usuario_van_por_correo.py` y
+> `tests/unit/test_puerta_del_portal_de_partner.py`. La interfaz todavía no
+> tiene la pantalla `/portal-partner` que abre ese enlace.
 
 ### Aislamiento entre partners (`CRM-03.04.01.03`)
 
@@ -13254,7 +13410,9 @@ Tres reglas sostienen eso, y las tres están probadas:
   retrocede.
 - **El reto de registrar no sirve para entrar**, y al revés.
 
-La llave se registra desde la propia cuenta, con un nombre —«el iPhone», «la del
+La llave se registra desde la propia cuenta y, si la cuenta ya tiene un factor
+fuerte, después de haberse verificado hace poco (`cambio_mfa`; ver la nota del
+13-11-2026, SEC-4, en «Reautenticación reforzada»), con un nombre —«el iPhone», «la del
 cajón»—, porque sin nombre revocar una de tres es elegir a ciegas. Y al revocarla
 se borra: una credencial revocada que sigue guardada invita a restaurarla, y
 restaurar una credencial es lo que no puede pasar.

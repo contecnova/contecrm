@@ -43,9 +43,27 @@ H_DEDUP = "X-Contecrm-Dedup"
 H_INTENTO = "X-Contecrm-Intento"
 
 
+def es_publico(tipo: str) -> bool:
+    """Si este tipo de evento puede salir del sistema.
+
+    Lo decide el catálogo (`publico`), y un tipo que no está declarado tampoco
+    sale. Hasta el 13-11-2026 (auditoría, SEC-19) no se miraba en ningún sitio:
+    una suscripción a `*` o a `user.*` recibía los eventos internos, y entre
+    ellos van el enlace para cambiar la contraseña de cualquier usuario y el de
+    decidir una aprobación en nombre de otro.
+    """
+    from crmcore.events.catalogo import obtener
+
+    declarado = obtener(tipo)
+    return declarado is not None and declarado.publico
+
+
 def coincide(suscripcion: Suscripcion, evento: Evento) -> bool:
     """Si la suscripción quiere este evento: por tipo y por condiciones."""
     from services.orchestrator.motor import OPERADORES, resolver
+
+    if not es_publico(evento.type):
+        return False
 
     patrones = suscripcion.eventos or []
     encaja = any(

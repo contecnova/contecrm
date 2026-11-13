@@ -124,9 +124,12 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
     summary="Suscribir un endpoint a eventos",
 )
 def crear(datos: CrearSuscripcion, db: DbDep, principal: AutenticadoDep) -> Any:
-    from crmcore.events.catalogo import todos
+    from crmcore.events.catalogo import publicos
 
-    conocidos = {t.tipo for t in todos()}
+    # Solo los públicos: los internos no salen del sistema (SEC-19). Antes se
+    # admitía cualquiera del catálogo, y un tipo interno es tan «desconocido»
+    # para un integrador como uno mal escrito.
+    conocidos = {t.tipo for t in publicos()}
     desconocidos = [e for e in datos.eventos if not e.endswith("*") and e not in conocidos]
     if desconocidos:
         # Se rechaza en vez de aceptar en silencio: una suscripción a un evento

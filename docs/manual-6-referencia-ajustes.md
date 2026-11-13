@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**358 ajustes** en total, de los cuales **133** son editables en caliente por tenant.
+**360 ajustes** en total, de los cuales **133** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -95,6 +95,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `INBOX_ENABLED` | — | `True` |  | Registro de `dedup_key` ya procesadas. Es lo que convierte la entrega at-least-once en efecto exactly-once desde fuera. |
 | `INBOX_RETENCION_DIAS` | — | `7` | 1–365 | Cuánto se recuerda una clave. Debe cubrir de sobra la ventana de reintentos del productor; una semana la cubre con holgura. |
 | `OUTBOX_RETENCION_DIAS` | — | `7` | 1–365 | Cuánto se guarda un evento ya publicado en la tabla de salida. La tabla es un buzón, no un histórico —el histórico de qué pasó está en la auditoría— y sin purga crece para siempre. Se añade al enganchar la purga: `purgar_publicados` exigía un plazo y no había ajuste para dárselo, así que el… |
+| `EVENTOS_ARCHIVO_RETENCION_DIAS` | — | `30` | 1–3650 | Cuánto se guarda la copia de cada evento público que hace posible el replay y el reintento de un webhook (CRM-00.02.02.09). Treinta días es la retención del bus: más allá ya no habría con qué contrastar un «mándame otra vez lo del martes», y sin purga la tabla crece con cada evento. |
 | `WEBHOOKS_ENABLED` | 🔥 `webhooks_enabled` | `True` |  |  |
 | `WEBHOOK_TIMEOUT_S` | 🔥 `webhook_timeout_s` | `10.0` | 0.5–120.0 |  |
 | `WEBHOOK_MAX_INTENTOS` | 🔥 `webhook_max_intentos` | `6` | 1–50 |  |
@@ -223,6 +224,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `REBOTES_BLANDOS_PARA_SUPRIMIR` | — | `5` | 1–1000 | Rebotes blandos seguidos tras los que se suprime una dirección. Un rebote blando es temporal —buzón lleno—; cinco seguidos ya no lo son. |
 | `MOMENTO_MINIMO_INTERACCIONES` | — | `8` | 1–10000 | Interacciones mínimas para decir a qué hora conviene escribir a alguien. Con menos, lo que sale es la hora a la que se mandó el último correo. |
 | `SEGMENTO_PROFUNDIDAD_MAXIMA` | — | `7` | 1–50 | Profundidad máxima de un segmento anidado. |
+| `MARKETING_RESINCRONIZAR_PAGINA` | — | `200` | 1–500 | Filas por página al resincronizar el perfil de marketing con su origen. |
 | `DISENADOR_AVISO_CAMPOS` | — | `15` | 1–200 | A partir de cuántos campos por sección el diseñador avisa de que la pantalla va a ser ilegible. |
 | `SEMANTICA_MINIMO_DESCRIPCION` | — | `25` | 1–10000 | Caracteres mínimos de una descripción semántica para que sirva de algo. |
 | `WORKER_BLOQUEO_MIN` | — | `5` | 1–1440 | Minutos que un worker bloquea un trabajo, y cuántos coge de una vez. |
