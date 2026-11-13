@@ -15,7 +15,7 @@
  * prometer una edición que acaba en 422.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useInRouterContext, useLocation, useNavigate } from "react-router-dom";
 
@@ -215,16 +215,36 @@ function useDuplicar(): OpcionDeMenu[] {
 export function ConfirmarBorrado({
   enviando,
   borrado = "",
+  aviso = "",
   alBorrar,
   alCancelar,
 }: {
   enviando: boolean;
   /** Lo que hace el DELETE de este registro, de `useEdicion`. */
   borrado?: string;
+  /**
+   * Qué pasa al confirmar, cuando lo que se borra no es un registro: una fila
+   * de configuración no tiene «adjuntos, comentarios, documentos» que perder,
+   * y decírselo sería describir otra operación.
+   */
+  aviso?: string;
   alBorrar: () => void;
   alCancelar: () => void;
 }) {
   const { t } = useTranslation();
+  const cancelar = useRef<HTMLButtonElement>(null);
+  // El foco entra en la pregunta, en «Cancelar», y al cerrarla vuelve a donde
+  // estaba. Un `alertdialog` que no recibe el foco no lo anuncia nadie: quien
+  // usa teclado o lector pulsaba «Quitar» y no se enteraba de que se le estaba
+  // preguntando algo. Se elige «Cancelar» y no el botón de borrar para que un
+  // Intro de más no borre.
+  useEffect(() => {
+    const previo = document.activeElement;
+    cancelar.current?.focus();
+    return () => {
+      if (previo instanceof HTMLElement && previo.isConnected) previo.focus();
+    };
+  }, []);
   return (
     // Se pregunta antes de borrar, y se dice qué se borra. Un borrado sin
     // confirmación es un borrado que alguien hará sin querer.
@@ -234,9 +254,10 @@ export function ConfirmarBorrado({
       aria-label={borrado || t("ficha.eliminar")}
     >
       <p className="text-titulin text-ink">
-        {borrado
-          ? t("ficha.confirmarOperacion", { accion: borrado })
-          : t("ficha.confirmarBorrado")}
+        {aviso ||
+          (borrado
+            ? t("ficha.confirmarOperacion", { accion: borrado })
+            : t("ficha.confirmarBorrado"))}
       </p>
       <div className="mt-3 flex gap-2">
         <button
@@ -247,7 +268,12 @@ export function ConfirmarBorrado({
         >
           {borrado || t("ficha.eliminarDeVerdad")}
         </button>
-        <button type="button" onClick={alCancelar} className="btn-secondary">
+        <button
+          ref={cancelar}
+          type="button"
+          onClick={alCancelar}
+          className="btn-secondary"
+        >
           {t("modulo.cancelar")}
         </button>
       </div>

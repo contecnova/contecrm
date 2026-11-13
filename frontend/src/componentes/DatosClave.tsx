@@ -124,7 +124,7 @@ function Ruta({
           // queda en gris. Tres tonos y no dos: sin el del medio no se
           // distingue dónde estás de lo que ya has pasado.
           aqui
-            ? "bg-accent-soft font-semibold text-white"
+            ? "bg-accent-soft font-semibold text-on-accent"
             : hecha
               ? "bg-accent/15 text-accent"
               : "bg-paper-light text-ink-muted",

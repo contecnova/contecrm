@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmarBorrado } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Opciones } from "@/componentes/Formulario";
 import { Icono } from "@/componentes/Icono";
@@ -188,6 +189,11 @@ function EditorDeEmbudo({
     cuantas: number;
   } | null>(null);
   const [destino, setDestino] = useState("");
+  // La etapa que se va a quitar, mientras se pregunta. Va antes que
+  // `quitando`, que es la segunda pregunta —a dónde pasan sus oportunidades—
+  // y sólo sale si el servidor dice que tiene.
+  const [confirmando, setConfirmando] = useState<Etapa | null>(null);
+  const [borrando, setBorrando] = useState(false);
   const [nueva, setNueva] = useState("");
   const base = `/api/v1/pipelines/${embudo.id}/etapas`;
 
@@ -417,7 +423,7 @@ function EditorDeEmbudo({
                 <button
                   type="button"
                   className="btn-link text-danger"
-                  onClick={() => void quitar(e)}
+                  onClick={() => setConfirmando(e)}
                   aria-label={t("embudos.quitar", { etapa: e.nombre })}
                 >
                   <Icono nombre="delete" tamano="sm" />
@@ -445,6 +451,24 @@ function EditorDeEmbudo({
           </button>
         </div>
       </section>
+
+      {confirmando ? (
+        <ConfirmarBorrado
+          borrado={t("embudos.quitar", { etapa: confirmando.nombre })}
+          aviso={t("embudos.quitarAviso", { etapa: confirmando.nombre })}
+          enviando={borrando}
+          alBorrar={() => {
+            setBorrando(true);
+            // `quitar` recoge sus errores: con oportunidades dentro abre la
+            // segunda pregunta, y esta se cierra en los dos casos.
+            void quitar(confirmando).finally(() => {
+              setBorrando(false);
+              setConfirmando(null);
+            });
+          }}
+          alCancelar={() => setConfirmando(null)}
+        />
+      ) : null}
 
       {quitando ? (
         <section className="card border-warning/50 p-4">

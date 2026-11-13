@@ -210,6 +210,15 @@ export default {
           lime: "rgb(var(--chart-lime-text) / <alpha-value>)",
           pink: "rgb(var(--chart-pink-text) / <alpha-value>)",
         },
+        // La tinta que va ENCIMA del relleno de acento, no contra una
+        // superficie: blanca en claro y oscura en oscuro, porque el blanco
+        // sobre el azul de oscuro no llega a 4,5:1. Medido en `contraste.mjs`.
+        "on-accent": "rgb(var(--on-accent) / <alpha-value>)",
+      },
+      // El anillo de foco tiene su token: `ring-accent/40` daba menos de 2:1
+      // contra las superficies y un indicador de foco necesita 3:1 (1.4.11).
+      ringColor: {
+        focus: "rgb(var(--focus-ring) / <alpha-value>)",
       },
       fontFamily: {
         // La de contecmind, y en su mismo orden (29-09-2026).

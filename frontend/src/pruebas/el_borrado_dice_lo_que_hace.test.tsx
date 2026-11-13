@@ -84,6 +84,29 @@ describe("el borrado dice lo que hace", () => {
     expect(screen.queryByText("ficha.eliminarDeVerdad")).toBeNull();
   });
 
+  it("lo que no es un registro dice lo suyo, y el foco entra en «Cancelar» y vuelve", () => {
+    // Una regla o un vínculo no tienen «adjuntos, comentarios, documentos»: el
+    // aviso propio manda. Y un `alertdialog` sin foco no lo anuncia nadie.
+    const origen = document.createElement("button");
+    document.body.appendChild(origen);
+    origen.focus();
+    const { unmount } = render(
+      <ConfirmarBorrado
+        enviando={false}
+        borrado="Quitar el vínculo"
+        aviso="Lo vinculado sigue en su origen."
+        alBorrar={() => {}}
+        alCancelar={() => {}}
+      />,
+    );
+    expect(screen.getByText("Lo vinculado sigue en su origen.")).toBeTruthy();
+    expect(screen.queryByText(/ficha.confirmarOperacion/)).toBeNull();
+    expect(document.activeElement?.textContent).toBe("modulo.cancelar");
+    unmount();
+    expect(document.activeElement).toBe(origen);
+    origen.remove();
+  });
+
   it("un recurso que calla su DELETE no lo ofrece, y tiene que decir por qué", () => {
     const usuarios = {
       nombre: "Usuarios",

@@ -42,8 +42,8 @@ gestión:
 | 1.1.1 Contenido no textual | Cumple | Toda imagen lleva `alt`; los iconos decorativos van con `aria-hidden` |
 | 1.3.1 Información y relaciones | Cumple | Tablas con `scope`, formularios con `label`, encabezados jerárquicos |
 | 1.4.1 Uso del color | Cumple | Comprobado: ningún estado se distingue solo por color |
-| 1.4.3 Contraste mínimo | Cumple | La paleta se define en tokens con contraste ≥ 4,5:1 sobre el fondo, en los dos temas |
-| 1.4.11 Contraste de elementos no textuales | Cumple | Bordes e indicadores de foco a ≥ 3:1 |
+| 1.4.3 Contraste mínimo | Cumple | La paleta se define en tokens con contraste ≥ 4,5:1 sobre el fondo, en los dos temas. Hasta el 13-11-2026 **no se cumplía** sobre el relleno de acento en oscuro: el blanco del botón primario (`.btn-primary`, y a mano en el chat, la entrada, la barra lateral y la ruta de etapas) daba 3,56:1 sobre `#4285f4` y 2,68:1 sobre su hover `#699ef6`. Ahora la tinta es el token `--on-accent`: blanco en claro (4,63:1 sobre `#0176d3`, 9,67:1 sobre `#014486`) y `#13141a` en oscuro (5,16:1 y 6,85:1). `frontend/scripts/contraste.mjs` mide esos pares y falla si encuentra `text-white`/`text-paper` sobre `bg-accent` |
+| 1.4.11 Contraste de elementos no textuales | Cumple | Bordes e indicadores de foco a ≥ 3:1. Hasta el 13-11-2026 **el anillo de foco no se cumplía**: `ring-accent/40` daba 1,69–1,77:1 en claro y 1,64–1,82:1 en oscuro según la superficie. Ahora es opaco y con su token `--focus-ring` (el azul de texto): mínimo 5,63:1 en claro y 4,63:1 en oscuro, ambos contra `paper-lighter`, la peor de las cinco. `contraste.mjs` lo mide contra las cinco superficies de cada tema y exige que `*:focus-visible` use `ring-focus` sin transparencia |
 | 2.1.1 Teclado | Cumple | No hay interacción exclusiva de ratón; lo comprueba el linter |
 | 2.4.1 Evitar bloques | Cumple | Enlace «saltar al contenido» como primer elemento enfocable |
 | 2.4.3 Orden del foco | Cumple | El orden del DOM es el orden visual; no se usan `tabindex` positivos |

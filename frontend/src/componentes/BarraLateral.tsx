@@ -276,7 +276,7 @@ export function BarraLateral({
           {plegado ? (
             <span
               aria-hidden
-              className="hidden h-7 w-7 items-center justify-center rounded-md bg-accent text-rotulo font-bold text-white md:flex"
+              className="hidden h-7 w-7 items-center justify-center rounded-md bg-accent text-rotulo font-bold text-on-accent md:flex"
             >
               {config().nombre.slice(0, 1).toUpperCase()}
             </span>

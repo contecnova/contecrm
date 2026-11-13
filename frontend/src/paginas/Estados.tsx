@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmarBorrado } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
@@ -133,6 +134,9 @@ function Editor({ objeto }: { objeto: Objeto }) {
   const [fallo, setFallo] = useState<unknown>(null);
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState("");
+  // Volver a fábrica tira la configuración entera de la empresa para este
+  // objeto, y no hay papelera de la que sacarla: se pregunta antes.
+  const [restaurando, setRestaurando] = useState(false);
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -237,6 +241,7 @@ function Editor({ objeto }: { objeto: Objeto }) {
     setGuardando(true);
     try {
       await llamar(ruta, { metodo: "DELETE" });
+      setRestaurando(false);
       setFallo(null);
       setAviso(t("estadosConf.restaurado"));
       cargar();
@@ -499,6 +504,17 @@ function Editor({ objeto }: { objeto: Objeto }) {
         {fallo ? <Fallo error={fallo} /> : null}
         {aviso ? <p className="text-dato text-success">{aviso}</p> : null}
       </div>
+      {restaurando ? (
+        <ConfirmarBorrado
+          borrado={t("estadosConf.volverAFabrica")}
+          aviso={t("estadosConf.volverAFabricaAviso", {
+            objeto: humanizar(objeto.objeto),
+          })}
+          enviando={guardando}
+          alBorrar={() => void aFabrica()}
+          alCancelar={() => setRestaurando(false)}
+        />
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -513,7 +529,7 @@ function Editor({ objeto }: { objeto: Objeto }) {
             type="button"
             className="btn-secondary"
             disabled={guardando}
-            onClick={() => void aFabrica()}
+            onClick={() => setRestaurando(true)}
           >
             {t("estadosConf.volverAFabrica")}
           </button>

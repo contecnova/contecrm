@@ -575,7 +575,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                   >
                     <span className="truncate">{titulo(c)}</span>
                     {c.sin_leer > 0 ? (
-                      <span className="ml-2 rounded-full bg-accent px-1.5 text-rotulo text-white">
+                      <span className="ml-2 rounded-full bg-accent px-1.5 text-rotulo text-on-accent">
                         {c.sin_leer}
                       </span>
                     ) : null}
@@ -809,7 +809,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                   <button
                     type="submit"
                     disabled={enviando || !texto.trim()}
-                    className="rounded-xl bg-accent px-3 py-1.5 text-titulin text-white disabled:opacity-50"
+                    className="rounded-xl bg-accent px-3 py-1.5 text-titulin text-on-accent disabled:opacity-50"
                   >
                     {t("chat.enviar")}
                   </button>

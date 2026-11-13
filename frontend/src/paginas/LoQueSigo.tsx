@@ -17,9 +17,18 @@
  * en silencio deja una lista más corta que el contador sin que nadie sepa por
  * qué. Sale con su aviso y con el botón de dejar de seguirlo, que es lo único
  * que se puede hacer con él.
+ *
+ * **Dejar de seguir no se pregunta: se deshace.** Es lo contrario de un
+ * borrado: no se pierde nada que no se recupere con un clic —volver a seguir
+ * restaura el motivo que tenía y, al responsable, le quita el silencio; está
+ * en `crmcore/datos/seguimiento.py`—, y es una lista que se poda de varias en
+ * varias. Preguntar cada vez enseña a contestar «sí» sin leer, que es lo que
+ * deja sin defensa a las preguntas que sí importan. Lo que sí hacía falta es
+ * poder volver: la fila desaparece al dejarla, y sin ella el único camino era
+ * buscar el registro y abrir su ficha.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -63,6 +72,9 @@ export function LoQueSigo() {
   // Lo que se canta al dejar de seguir. Sin esto, quien no ve la pantalla
   // pulsa el botón y la fila desaparece sin que nada se lo diga.
   const [dicho, setDicho] = useState("");
+  // El último que se ha dejado de seguir, para poder volver a seguirlo.
+  const [dejada, setDejada] = useState<Fila | null>(null);
+  const deshacer = useRef<HTMLButtonElement>(null);
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -110,7 +122,10 @@ export function LoQueSigo() {
         )}`,
         { metodo: "DELETE" },
       );
-      setDicho(t("seguir.dejado"));
+      setDicho(
+        fila.nombre ? t("seguir.dejadoDe", { nombre: fila.nombre }) : t("seguir.dejado"),
+      );
+      setDejada(fila);
       cargar();
     } catch (error) {
       setFallo(error);
@@ -118,6 +133,32 @@ export function LoQueSigo() {
       setQuitando("");
     }
   }
+
+  async function volver(fila: Fila) {
+    try {
+      // Con su motivo de antes: si era responsable, el servidor le quita el
+      // silencio; si lo seguía a mano, vuelve a seguirlo a mano.
+      await llamar("/api/v1/seguimientos", {
+        metodo: "POST",
+        cuerpo: {
+          objeto_tipo: fila.objeto_tipo,
+          objeto_id: fila.objeto_id,
+          motivo: fila.motivo,
+        },
+      });
+      setDejada(null);
+      setDicho(t("seguir.vuelto"));
+      cargar();
+    } catch (error) {
+      setFallo(error);
+    }
+  }
+
+  // El foco va a «Volver a seguirlo» en cuanto aparece: la fila que tenía el
+  // foco ya no está, y sin esto quien usa teclado empieza desde arriba.
+  useEffect(() => {
+    if (dejada && filas) deshacer.current?.focus();
+  }, [dejada, filas]);
 
   if (fallo && !filas) return <Fallo error={fallo} reintentar={cargar} />;
   if (!filas) return <Cargando />;
@@ -130,9 +171,22 @@ export function LoQueSigo() {
         entradilla={t("seguir.entradilla")}
       />
 
-      <p className="sr-only" role="status">
-        {dicho}
-      </p>
+      <div className={dejada ? "mb-3 flex flex-wrap items-center gap-3" : undefined}>
+        <p className={dejada ? "text-dato text-ink" : "sr-only"} role="status">
+          {dicho}
+        </p>
+        {dejada ? (
+          <button
+            ref={deshacer}
+            type="button"
+            className="btn-secondary"
+            onClick={() => void volver(dejada)}
+          >
+            <Icono nombre="notifications_active" tamano="sm" />
+            {t("seguir.deshacer")}
+          </button>
+        ) : null}
+      </div>
 
       {filas.length === 0 ? (
         <Vacio

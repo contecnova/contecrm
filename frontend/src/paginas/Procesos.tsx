@@ -825,7 +825,7 @@ function Boton({
       onClick={onClick}
       className={`rounded-lg px-3 py-1.5 text-dato ${
         destacado
-          ? "bg-accent text-paper hover:bg-accent-soft"
+          ? "bg-accent text-on-accent hover:bg-accent-soft"
           : "border border-ink-dim/60 text-ink-muted hover:bg-paper-light"
       }`}
     >

@@ -520,6 +520,19 @@ export function moduloDeObjeto(objeto: string): string {
 }
 
 /**
+ * La dirección de la ficha de un registro, sabiendo solo su tipo e id.
+ *
+ * Se compone aquí y no en cada pantalla porque a mano se rompió: Calidad del
+ * dato enlazaba a `/contactos/{id}` y `/cuentas/{id}`, que no son rutas, y el
+ * usuario caía en «no existe». Sin módulo conocido se va a `/abrir/…`, que dice
+ * que ese tipo no tiene pantalla en vez de dejar una página en blanco.
+ */
+export function fichaDeObjeto(objeto: string, id: string): string {
+  const modulo = moduloDeObjeto(objeto);
+  return modulo ? `/m/${modulo}/${objeto}/${id}` : `/abrir/${objeto}/${id}`;
+}
+
+/**
  * Con qué nombre viaja un recurso en la dirección de su ficha.
  *
  * El `objeto` declarado manda cuando lo hay, porque además de identificar la

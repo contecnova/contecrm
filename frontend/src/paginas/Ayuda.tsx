@@ -104,7 +104,7 @@ export function Ayuda() {
 
       {capitulo ? (
         <a
-          className="mt-4 inline-block rounded-lg bg-accent px-3 py-1.5 text-dato text-paper"
+          className="mt-4 inline-block rounded-lg bg-accent px-3 py-1.5 text-dato text-on-accent"
           href={`${BASE}/#${capitulo.ancla}`}
         >
           {t("ayuda.abrirCapitulo", { capitulo: capitulo.titulo })}

@@ -28,6 +28,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { ConfirmarBorrado } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -35,6 +36,7 @@ import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
 import { fechaHora } from "@/lib/formato";
 import { listar } from "@/lib/listados";
+import { fichaDeObjeto } from "@/lib/modulos";
 import { cn } from "@/lib/utiles";
 
 const BASE = "/api/v1/calidad-dato";
@@ -48,12 +50,6 @@ type ObjetoGolden = (typeof OBJETOS_GOLDEN)[number];
 
 function baseDe(objeto: ObjetoGolden): string {
   return objeto === "lead" ? BASE_LEADS : BASE;
-}
-
-function enlaceDe(objeto: ObjetoGolden, id: string): string {
-  if (objeto === "cuenta") return `/cuentas/${id}`;
-  if (objeto === "contacto") return `/contactos/${id}`;
-  return `/abrir/lead/${id}`;
 }
 
 interface Candidata {
@@ -224,7 +220,7 @@ function GoldenRecord() {
               <Casilla>
                 <Link
                   className="text-ink hover:text-accent hover:underline"
-                  to={enlaceDe(c.objeto, c.objeto_id)}
+                  to={fichaDeObjeto(c.objeto, c.objeto_id)}
                 >
                   {c.nombre || c.objeto_id.slice(0, 8)}
                 </Link>
@@ -357,6 +353,9 @@ function ReglasSupervivencia() {
   const [estrategia, setEstrategia] = useState("mayor_confianza");
   const [confianzas, setConfianzas] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
+  // La regla que se va a quitar, mientras se pregunta.
+  const [quitando, setQuitando] = useState<Regla | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(() => {
     llamar<{ reglas: Regla[]; campos: string[]; estrategias: string[] }>(
@@ -393,16 +392,24 @@ function ReglasSupervivencia() {
   }
 
   async function quitar(r: Regla) {
+    setBorrando(true);
     try {
       await llamar(
         `${baseDe(objeto)}/golden/reglas/${objeto}/${encodeURIComponent(r.campo)}`,
         { metodo: "DELETE" },
       );
+      setQuitando(null);
       cargar();
     } catch (e) {
       setFallo(e);
+    } finally {
+      setBorrando(false);
     }
   }
+
+  // `*` es la regla por defecto: en la pregunta se nombra como en el selector.
+  const nombreDeCampo = (c: string) =>
+    c === "*" ? t("calidadDelDato.porDefecto") : c;
 
   return (
     <section className="card mb-4 p-4">
@@ -417,6 +424,9 @@ function ReglasSupervivencia() {
           value={objeto}
           onChange={(e) => {
             setDatos(null);
+            // Una pregunta abierta sobre otro objeto borraría la regla
+            // equivocada: la ruta del DELETE sale del objeto elegido.
+            setQuitando(null);
             setObjeto(e.target.value as ObjetoGolden);
           }}
         >
@@ -458,7 +468,7 @@ function ReglasSupervivencia() {
                     <button
                       type="button"
                       className="btn-link shrink-0"
-                      onClick={() => void quitar(r)}
+                      onClick={() => setQuitando(r)}
                     >
                       {t("calidadDelDato.quitar")}
                     </button>
@@ -466,6 +476,21 @@ function ReglasSupervivencia() {
                 ))}
               </ul>
             )}
+            {quitando ? (
+              <div className="mt-3">
+                <ConfirmarBorrado
+                  borrado={t("calidadDelDato.quitarRegla", {
+                    campo: nombreDeCampo(quitando.campo),
+                  })}
+                  aviso={t("calidadDelDato.quitarReglaAviso", {
+                    campo: nombreDeCampo(quitando.campo),
+                  })}
+                  enviando={borrando}
+                  alBorrar={() => void quitar(quitando)}
+                  alCancelar={() => setQuitando(null)}
+                />
+              </div>
+            ) : null}
           </div>
           <div className="grid gap-2">
             <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
@@ -633,14 +658,14 @@ function Identidad() {
               <Casilla>
                 <Link
                   className="hover:text-accent hover:underline"
-                  to={`/contactos/${p.a}`}
+                  to={fichaDeObjeto("contacto", p.a)}
                 >
                   {p.a_nombre || p.a.slice(0, 8)}
                 </Link>
                 {" · "}
                 <Link
                   className="hover:text-accent hover:underline"
-                  to={`/contactos/${p.b}`}
+                  to={fichaDeObjeto("contacto", p.b)}
                 >
                   {p.b_nombre || p.b.slice(0, 8)}
                 </Link>

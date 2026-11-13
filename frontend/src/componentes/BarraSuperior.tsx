@@ -517,7 +517,7 @@ export function BarraSuperior({
             ref={avatarRef}
             type="button"
             onClick={() => setMenuAbierto((v) => !v)}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-titulo font-bold text-paper shadow-elevation-1 transition-shadow hover:shadow-elevation-2"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-titulo font-bold text-on-accent shadow-elevation-1 transition-shadow hover:shadow-elevation-2"
             aria-haspopup="menu"
             aria-expanded={menuAbierto}
             aria-label={t("nav.menuUsuario")}

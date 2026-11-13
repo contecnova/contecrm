@@ -163,6 +163,18 @@
   --accent-text: 11 92 171; /* #0b5cab — el azul oscuro de Lightning. 5,63:1 */
   --accent-soft-text: 1 68 134; /* #014486 */
   --accent-glow-text: 11 92 171; /* #0b5cab */
+
+  /* La tinta que va ENCIMA del relleno de acento —el botón primario, las
+     pastillas azules— y el anillo de foco. Son tokens y no `text-white` ni
+     `ring-accent/40` porque los dos estaban por debajo del mínimo y nadie lo
+     medía: el blanco sobre el acento oscuro daba 3,56:1 (2,68:1 en su hover),
+     y el anillo al 40 % daba 1,77:1. En claro el blanco llega: 4,63:1 sobre
+     `accent` y 9,67:1 sobre `accent-soft`. El anillo es el azul de texto,
+     opaco: 5,63:1 contra la peor superficie (`paper-lighter`), y WCAG pide 3.
+     `scripts/contraste.mjs` mide los dos pares y busca `text-white` sobre
+     `bg-accent` en el código. */
+  --on-accent: 255 255 255; /* #ffffff */
+  --focus-ring: 11 92 171; /* #0b5cab — el mismo valor que `accent-text` */
   --success-text: 37 108 58; /* #256c3a — 5,37:1 */
   --success-soft-text: 25 79 43; /* #194f2b */
   --warning-text: 139 95 0; /* #8b5f00
@@ -370,6 +382,17 @@
   --accent-text: 106 159 246; /* #6a9ff6 */
   --accent-soft-text: 101 161 240; /* #65a1f0 */
   --accent-glow-text: 138 180 248; /* #8ab4f8 — 6.62:1 */
+
+  /* Sobre el acento de oscuro la tinta es OSCURA: el blanco daba 3,56:1 en el
+     botón y 2,68:1 en su hover, que aclara. Oscurecer el acento hasta que el
+     blanco llegara obligaría a que el hover oscureciera también, y sobre el
+     lienzo oscuro eso apaga el botón al pasar por encima. Con el lienzo
+     (`paper-dark`) como tinta: 5,16:1 sobre `accent` y 6,85:1 sobre
+     `accent-soft`. Es lo mismo que ya hacía a mano el contador del chat
+     (`text-white dark:text-paper-sunk`).
+     El anillo, el azul de texto: 4,63:1 contra `paper-lighter`, la peor. */
+  --on-accent: 19 20 26; /* #13141a — el de `paper-dark` */
+  --focus-ring: 106 159 246; /* #6a9ff6 — el mismo valor que `accent-text` */
   --success-text: 56 181 90; /* #38b55a */
   --success-soft-text: 56 181 89; /* #38b559 */
   --warning-text: 251 188 4; /* #fbbc04 */
@@ -488,9 +511,12 @@
     background: rgb(var(--ink-faint) / 0.9);
     background-clip: padding-box;
   }
-  /* Keyboard focus rings — Material focus indicator */
+  /* El anillo de foco, OPACO. Era `ring-accent/40`, que sobre las superficies
+     se queda en 1,64–1,82:1 y WCAG (1.4.11) pide 3:1 a un indicador: quien
+     navega con teclado no veía dónde estaba. Con `--focus-ring` no baja de
+     4,63:1 en ninguna de las cinco superficies de ninguno de los dos temas. */
   *:focus-visible {
-    @apply outline-none ring-2 ring-accent/40 ring-offset-2;
+    @apply outline-none ring-2 ring-focus ring-offset-2;
     --tw-ring-offset-color: rgb(var(--paper));
   }
 }
@@ -571,7 +597,7 @@
      pesan más que la tabla que hay debajo. */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-1.5
-      bg-accent text-white rounded font-medium text-titulo
+      bg-accent text-on-accent rounded font-medium text-titulo
       hover:bg-accent-soft
       active:bg-accent-soft
       transition-colors
@@ -884,7 +910,7 @@
   .logo-tile {
     @apply inline-flex items-center justify-center
       w-9 h-9 rounded-xl
-      bg-accent text-white font-bold text-titulo
+      bg-accent text-on-accent font-bold text-titulo
       shadow-elevation-1;
   }
   .logo-tile-lg {

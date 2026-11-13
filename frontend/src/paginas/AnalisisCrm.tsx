@@ -25,6 +25,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmarBorrado } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -531,6 +532,9 @@ function SeccionInstantaneas() {
   const [zona, setZona] = useState("");
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
+  // La programación que se va a quitar, mientras se pregunta.
+  const [quitando, setQuitando] = useState<Programacion | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   useEffect(() => {
     llamar<Informe[]>("/api/v1/informes")
@@ -593,16 +597,32 @@ function SeccionInstantaneas() {
   }
 
   async function quitar(id: string) {
+    setBorrando(true);
     try {
       await llamar(`/api/v1/informes/programaciones/${id}`, {
         metodo: "DELETE",
       });
+      setQuitando(null);
       setAviso(t("analisisCrm.quitada"));
       cargar();
     } catch (e) {
       setAviso("");
       setFallo(e);
+    } finally {
+      setBorrando(false);
     }
+  }
+
+  // Cuándo se toma, con las mismas palabras en la fila y en la pregunta de
+  // quitarla: si no coinciden, no se sabe cuál se está quitando.
+  function cuandoDe(p: Programacion): string {
+    const periodo = t(`analisisCrm.periodicidades.${p.periodicidad}`, {
+      defaultValue: p.periodicidad,
+    });
+    const hora = zona
+      ? t("analisisCrm.aLasEnZona", { h: p.hora, zona })
+      : t("analisisCrm.aLas", { h: p.hora });
+    return `${periodo} · ${hora}`;
   }
 
   return (
@@ -681,6 +701,17 @@ function SeccionInstantaneas() {
               {aviso ? <p className="text-dato text-success">{aviso}</p> : null}
             </div>
             {fallo ? <Fallo error={fallo} /> : null}
+            {quitando ? (
+              <ConfirmarBorrado
+                borrado={t("analisisCrm.quitarProgramacion")}
+                aviso={t("analisisCrm.quitarProgramacionAviso", {
+                  cuando: cuandoDe(quitando),
+                })}
+                enviando={borrando}
+                alBorrar={() => void quitar(quitando.id)}
+                alCancelar={() => setQuitando(null)}
+              />
+            ) : null}
             {programaciones.length ? (
               <ul className="divide-y divide-ink-dim/30">
                 {programaciones.map((p) => (
@@ -690,13 +721,7 @@ function SeccionInstantaneas() {
                   >
                     <div>
                       <span className="font-medium text-ink">
-                        {t(`analisisCrm.periodicidades.${p.periodicidad}`, {
-                          defaultValue: p.periodicidad,
-                        })}
-                        {" · "}
-                        {zona
-                          ? t("analisisCrm.aLasEnZona", { h: p.hora, zona })
-                          : t("analisisCrm.aLas", { h: p.hora })}
+                        {cuandoDe(p)}
                       </span>
                       <p className="text-rotulo text-ink-faint">
                         {t("analisisCrm.proxima", {
@@ -712,7 +737,7 @@ function SeccionInstantaneas() {
                     <button
                       type="button"
                       className="btn-link shrink-0"
-                      onClick={() => void quitar(p.id)}
+                      onClick={() => setQuitando(p)}
                     >
                       {t("analisisCrm.quitar")}
                     </button>

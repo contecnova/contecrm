@@ -330,7 +330,7 @@ export function Calendario() {
                           "text-rotulo",
                           deOtroMes ? "text-ink-faint" : "text-ink-muted",
                           esHoy &&
-                            "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 font-bold text-paper",
+                            "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 font-bold text-on-accent",
                         )}
                       >
                         {d.getDate()}

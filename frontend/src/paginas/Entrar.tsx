@@ -60,7 +60,7 @@ const cl = {
   tarjeta: "card w-full max-w-[400px] px-8 py-9",
   logo: "mb-8 flex items-center justify-center gap-2.5",
   logoIcono:
-    "grid h-10 w-10 shrink-0 place-items-center rounded bg-accent text-white",
+    "grid h-10 w-10 shrink-0 place-items-center rounded bg-accent text-on-accent",
   // Es un `h1` y no un `span` como en contecflow: quien navega con lector de
   // pantalla necesita que la página tenga un encabezado. Hay un gate que lo
   // comprueba y tenía razón al saltar.

@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmarBorrado } from "@/componentes/Edicion";
 import { Error as Fallo } from "@/componentes/Estados";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
@@ -55,6 +56,9 @@ export function ReferenciasDeSuite({
   const [exportable, setExportable] = useState(false);
   const [aperturas, setAperturas] = useState<Record<string, Apertura>>({});
   const [fallo, setFallo] = useState<unknown>(null);
+  // El vínculo que se va a quitar, mientras se pregunta.
+  const [quitando, setQuitando] = useState<Referencia | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(() => {
     llamar<{ referencias: Referencia[] }>(
@@ -115,11 +119,15 @@ export function ReferenciasDeSuite({
 
   async function quitar(id: string) {
     setFallo(null);
+    setBorrando(true);
     try {
       await llamar(`/api/v1/referencias-suite/${id}`, { metodo: "DELETE" });
+      setQuitando(null);
       cargar();
     } catch (err) {
       setFallo(err);
+    } finally {
+      setBorrando(false);
     }
   }
 
@@ -299,7 +307,7 @@ export function ReferenciasDeSuite({
                     <button
                       type="button"
                       className="btn-secondary"
-                      onClick={() => void quitar(f.id)}
+                      onClick={() => setQuitando(f)}
                     >
                       {t("referenciasSuite.quitar")}
                     </button>
@@ -308,6 +316,19 @@ export function ReferenciasDeSuite({
               );
             })}
           </Rejilla>
+        </div>
+      ) : null}
+      {quitando ? (
+        <div className="mt-3">
+          <ConfirmarBorrado
+            borrado={t("referenciasSuite.quitar")}
+            aviso={t("referenciasSuite.quitarAviso", {
+              nombre: quitando.nombre || quitando.referencia,
+            })}
+            enviando={borrando}
+            alBorrar={() => void quitar(quitando.id)}
+            alCancelar={() => setQuitando(null)}
+          />
         </div>
       ) : null}
     </section>

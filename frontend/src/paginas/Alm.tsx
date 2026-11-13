@@ -188,7 +188,7 @@ export function Alm() {
         <button
           type="button"
           onClick={mirar}
-          className="rounded-lg bg-accent px-3 py-1.5 text-dato text-paper"
+          className="rounded-lg bg-accent px-3 py-1.5 text-dato text-on-accent"
         >
           {t("alm.verDesvio")}
         </button>

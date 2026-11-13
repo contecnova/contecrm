@@ -262,6 +262,9 @@ const pantallas = {
     porDefecto: "* (por defecto del objeto)",
     guardarRegla: "Guardar la regla",
     quitar: "Quitar",
+    quitarRegla: "Quitar la regla de «{{campo}}»",
+    quitarReglaAviso:
+      "Se borra la regla de «{{campo}}» con su confianza por fuente. Para recuperarla habría que volver a escribirla.",
     sinReglas:
       "Sin reglas: gana la fuente de mayor confianza, y todas valen 50.",
     estrategias: {
@@ -868,6 +871,11 @@ const pantallas = {
     // que se ha podido mirar. De lo que no, se dice que no se sabe.
     noSeHaPodidoMirar: "No se ha podido mirar este registro",
     dejado: "Has dejado de seguirlo",
+    dejadoDe: "Has dejado de seguir «{{nombre}}».",
+    // Dejar de seguir no se pregunta: se puede deshacer. Volver a seguir
+    // recupera el motivo que tenía y le quita el silencio al responsable.
+    deshacer: "Volver a seguirlo",
+    vuelto: "Lo vuelves a seguir.",
     entradilla:
       "Lo que te avisa cuando cambia. Se sigue desde la ficha, con el botón " +
       "«Seguir»; de lo que eres responsable te llega aunque no lo sigas a mano.",
@@ -1793,6 +1801,9 @@ const pantallas = {
     tomada: "Instantánea tomada.",
     quitada: "Programación quitada. Las instantáneas ya tomadas se quedan.",
     quitar: "Quitar",
+    quitarProgramacion: "Quitar la programación",
+    quitarProgramacionAviso:
+      "Deja de tomarse la instantánea «{{cuando}}». Las ya tomadas se quedan.",
     proxima: "Próxima: {{cuando}}",
     sinProgramar: "Este informe no tiene ninguna instantánea programada.",
     tendencia: "Tendencia",
@@ -1932,6 +1943,8 @@ const pantallas = {
     finalDe: "{{etapa}} es final",
     ganadaDe: "{{etapa}} es ganada",
     quitar: "Quitar {{etapa}}",
+    quitarAviso:
+      "«{{etapa}}» sale del embudo. Si tiene oportunidades, antes se te pregunta a qué etapa pasan.",
     nuevaEtapa: "Nombre de la etapa nueva",
     anadir: "Añadir etapa",
     anadida: "Etapa añadida.",
@@ -1986,6 +1999,8 @@ const pantallas = {
     deA: "De {{desde}} a {{hasta}}",
     guardar: "Guardar",
     volverAFabrica: "Volver a los de fábrica",
+    volverAFabricaAviso:
+      "Se borra la configuración de tu empresa para {{objeto}} —nombres, orden, colores, estados propios y transiciones— y vuelven los de fábrica. Para recuperarla habría que rehacerla a mano.",
     guardado: "Guardado. Se aplica ya a todo lo que se mueva de estado.",
     restaurado: "Vuelven a ser los de fábrica.",
   },
@@ -2586,6 +2601,9 @@ const pantallas = {
     cambiar: "Cambiar",
     anadir: "Añadir acuerdo",
     quitar: "Quitar",
+    quitarAcuerdo: "Quitar el acuerdo con {{proveedor}}",
+    quitarAcuerdoAviso:
+      "Se borra lo firmado con {{proveedor}}: respuesta, resolución, disponibilidad y cobertura. Para recuperarlo habría que volver a escribirlo.",
     editar: "Acuerdo de {{proveedor}}",
     resolucionVacia:
       "Si dejas la resolución vacía, vale el plazo que consta del proveedor en integración.",
@@ -4515,6 +4533,10 @@ const pantallas = {
     exportable: "El canal deja exportar el hilo",
     abrir: "Abrir",
     quitar: "Quitar el vínculo",
+    // Se dice que lo de fuera no se toca: aquí sólo vive el enlace, y quien
+    // ve «Quitar» junto a una nota puede creer que la borra en el origen.
+    quitarAviso:
+      "Se quita el vínculo con «{{nombre}}». Lo vinculado sigue en su origen: aquí sólo se guardaba el enlace.",
     vacio: "Nada vinculado todavía.",
     estados: {
       disponible: "Disponible: puedes verlo en el origen.",

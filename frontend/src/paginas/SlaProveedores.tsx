@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmarBorrado } from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
@@ -92,6 +93,9 @@ export function SlaProveedores() {
   const [derechos, setDerechos] = useState<Derecho[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState<Acuerdo | null>(null);
+  // El proveedor cuyo acuerdo se va a quitar, mientras se pregunta.
+  const [quitando, setQuitando] = useState("");
+  const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(() => {
     setFallo(null);
@@ -123,6 +127,7 @@ export function SlaProveedores() {
   }
 
   async function quitar(clave: string) {
+    setBorrando(true);
     try {
       await llamar(
         `/api/v1/sla-proveedores/acuerdos/${encodeURIComponent(clave)}`,
@@ -130,9 +135,12 @@ export function SlaProveedores() {
           metodo: "DELETE",
         },
       );
+      setQuitando("");
       cargar();
     } catch (e) {
       setFallo(e);
+    } finally {
+      setBorrando(false);
     }
   }
 
@@ -339,7 +347,7 @@ export function SlaProveedores() {
                       <button
                         type="button"
                         className="btn-link ml-3"
-                        onClick={() => void quitar(c)}
+                        onClick={() => setQuitando(c)}
                       >
                         {t("slaProveedores.quitar")}
                       </button>
@@ -350,6 +358,21 @@ export function SlaProveedores() {
             })}
           </Rejilla>
         )}
+        {quitando ? (
+          <div className="mt-3">
+            <ConfirmarBorrado
+              borrado={t("slaProveedores.quitarAcuerdo", {
+                proveedor: nombre(quitando),
+              })}
+              aviso={t("slaProveedores.quitarAcuerdoAviso", {
+                proveedor: nombre(quitando),
+              })}
+              enviando={borrando}
+              alBorrar={() => void quitar(quitando)}
+              alCancelar={() => setQuitando("")}
+            />
+          </div>
+        ) : null}
         {editando ? (
           <EditarAcuerdo
             acuerdo={editando}

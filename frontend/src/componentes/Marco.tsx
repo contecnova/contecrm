@@ -224,7 +224,7 @@ function Armazon({
           teclado: sin él, cada página empieza por recorrer el menú entero. */}
       <a
         href="#contenido"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-focus-ring focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-titulo focus:font-medium focus:text-paper focus:shadow-elevation-3"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-focus-ring focus:rounded-lg focus:bg-accent focus:px-3 focus:py-2 focus:text-titulo focus:font-medium focus:text-on-accent focus:shadow-elevation-3"
       >
         {t("app.saltarAlContenido")}
       </a>
