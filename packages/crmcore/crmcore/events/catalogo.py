@@ -261,13 +261,14 @@ USER_PASSWORD_RESET_REQUESTED = registrar(
         version=1,
         productor="identity",
         descripcion=(
-            "Alguien ha pedido restablecer su contraseña. Lo consume quien manda "
-            "el correo: el enlace se emite aquí y se entrega fuera, porque el "
-            "canal de correo lo pone cada instalación"
+            "Alguien ha pedido restablecer su contraseña. Lo consume el aviso de "
+            "identidad, que lo manda SOLO por correo al buzón de la cuenta con "
+            "el transporte de la instalación"
         ),
-        campos=("usuario_id", "email"),
-        # Interno: lleva el correo de una persona y el aviso de que su cuenta
-        # está en juego. Eso no sale del sistema por el bus público.
+        campos=("usuario_id", "email", "titulo", "cuerpo", "canales"),
+        # Interno, y más que nunca: el cuerpo lleva el enlace, que es una
+        # credencial de un solo uso. Entregarlo a un webhook del tenant le daría
+        # la cuenta a cualquier integración suscrita.
         publico=False,
     )
 )

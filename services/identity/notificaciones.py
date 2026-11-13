@@ -196,6 +196,22 @@ AVISOS: dict[str, dict[str, Any]] = {
         # enlace desde la ficha es un caso normal.
         "solo_destinatarios": True,
     },
+    # El enlace para cambiar la contraseña (CRM-00.05.01.26): a la cuenta y SÓLO
+    # a ella, SÓLO por correo —es la prueba de que quien lo pide es el dueño del
+    # buzón— y `urgente`, que atraviesa la franja de silencio y la agrupación:
+    # quien lo pide está delante de la pantalla esperándolo.
+    "user.password.reset_requested": {
+        "objeto_tipo": "usuario",
+        "campo_id": "usuario_id",
+        "titulo": "",
+        "titulo_campo": "titulo",
+        "cuerpo_campo": "cuerpo",
+        "prioridad": "urgente",
+        "destinatario_campo": "usuario_id",
+        "canales_campo": "canales",
+        "solo_canales_del_evento": True,
+        "solo_destinatarios": True,
+    },
     # La suscripción a un cuadro de mando (CRM-05.01.02.05): a quien se
     # suscribió y SÓLO a él, por el canal que declara la suscripción. Sin
     # preferencia propia para este tipo sale sólo por ese canal; con ella, por

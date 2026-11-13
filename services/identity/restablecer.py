@@ -111,30 +111,62 @@ def _hash(valor: str) -> str:
     return hashlib.sha256(valor.encode("utf-8")).hexdigest()
 
 
-def solicitar(uow: UnidadDeTrabajo, *, email: str, ip: str = "") -> str:
-    """Emite un enlace de recuperación. Devuelve el token, o cadena vacía.
+def url_del_enlace(token: str) -> str:
+    """El enlace que abre la persona desde el correo.
 
-    Cadena vacía cuando ese correo no tiene cuenta. **Quien llama tiene que
-    contestar lo mismo en los dos casos**: la diferencia es la que convierte
+    Va a la interfaz (`FRONT_BASE_URL`) y no a la API: la pantalla de entrar lee
+    `?restablecer=` y enseña directamente el paso de la contraseña nueva.
+    """
+    from urllib.parse import quote
+
+    from crmcore.config import get_settings
+
+    base = str(get_settings().front_base_url or "").rstrip("/")
+    return f"{base}/?restablecer={quote(token, safe='')}"
+
+
+def solicitar(uow: UnidadDeTrabajo, *, email: str, ip: str = "") -> str:
+    """Emite un enlace de recuperación y encola su correo. Devuelve el token, o "".
+
+    El token se devuelve **solo a quien llama dentro del servicio** (las pruebas,
+    y nada más). La API no lo reenvía nunca: devolverlo en la respuesta HTTP
+    dejaba tomar cualquier cuenta sabiendo su correo, porque quien pide el enlace
+    no tiene por qué ser su dueño. El enlace llega solo al buzón del usuario, por
+    el mismo camino que el enlace de una aprobación: evento interno → aviso de
+    identidad → repartidor por correo.
+
+    Cadena vacía cuando ese correo no tiene cuenta **en este tenant**. Quien
+    llama contesta lo mismo en los dos casos: la diferencia es la que convierte
     esto en un comprobador de correos.
     """
-    from services.identity.modelos import Usuario
+    from services.identity.modelos import Membresia, Usuario
 
     limpio = (email or "").strip().lower()
     usuario = uow.db.execute(
-        select(Usuario).where(Usuario.email == limpio, Usuario.activo.is_(True))
+        select(Usuario)
+        .join(Membresia, Membresia.usuario_id == Usuario.id)
+        .where(
+            Usuario.email == limpio,
+            Usuario.activo.is_(True),
+            Membresia.tenant_id == uow.tenant_id,
+            Membresia.activa.is_(True),
+        )
     ).scalar_one_or_none()
     if usuario is None:
+        # Sin cuenta en ESTE tenant tampoco se emite: el usuario es global y la
+        # contraseña también, así que un enlace pedido por la puerta de otra
+        # empresa cambiaría la contraseña con la que entra en la suya.
         logger.info("restablecer.correo_desconocido", ip=ip)
         return ""
 
     token = secrets.token_urlsafe(32)
+    minutos = _restablecer_validez_min()
     uow.db.add(
         EnlaceRestablecer(
             tenant_id=uow.tenant_id,
             usuario_id=usuario.id,
             hash_token=_hash(token),
-            caduca_at=_ahora() + timedelta(minutes=_restablecer_validez_min()),
+            caduca_at=_ahora() + timedelta(minutes=minutos),
             ip_solicitud=ip or None,
         )
     )
@@ -142,7 +174,27 @@ def solicitar(uow: UnidadDeTrabajo, *, email: str, ip: str = "") -> str:
     uow.emitir(
         "user.password.reset_requested",
         subject=("usuario", usuario.id),
-        data={"usuario_id": str(usuario.id), "email": usuario.email},
+        data={
+            "usuario_id": str(usuario.id),
+            "email": usuario.email,
+            "titulo": "Cambiar tu contraseña",
+            "cuerpo": "\n".join(
+                [
+                    "Alguien ha pedido cambiar la contraseña de tu cuenta.",
+                    "",
+                    "Si has sido tú, ponla nueva desde este enlace:",
+                    url_del_enlace(token),
+                    "",
+                    f"Sirve una sola vez y caduca en {minutos} minutos. Al usarlo se "
+                    "cierran todas tus sesiones abiertas.",
+                    "Si no lo has pedido tú, no hagas nada: tu contraseña sigue igual.",
+                ]
+            ),
+            # Solo por correo: es la prueba de que quien pide es el dueño del
+            # buzón. Por la bandeja no tendría sentido —quien lo pide no puede
+            # entrar a leerla—.
+            "canales": ["correo"],
+        },
     )
     return token
 

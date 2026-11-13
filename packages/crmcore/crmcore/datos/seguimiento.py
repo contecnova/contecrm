@@ -378,7 +378,9 @@ def notificar(
         if _en_silencio(pref, ahora) and prioridad != "urgente":
             entregar_at = _fin_del_silencio(pref, ahora)
 
-        ventana = pref.agrupar_minutos if pref else 0
+        # Lo urgente tampoco espera a la ventana de agrupación: un enlace para
+        # cambiar la contraseña retenido diez minutos es un enlace que no llegó.
+        ventana = pref.agrupar_minutos if pref and prioridad != "urgente" else 0
         if ventana > 0:
             abierta = db.execute(
                 select(Notificacion)

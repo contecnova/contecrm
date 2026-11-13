@@ -48,6 +48,10 @@ def usuario(uow: Any, tenant_id: UUID) -> Any:
     )
     uow.db.add(fila)
     uow.db.flush()
+    from services.identity.modelos import Membresia
+
+    uow.db.add(Membresia(tenant_id=tenant_id, usuario_id=fila.id, activa=True))
+    uow.db.flush()
     return fila
 
 
@@ -173,6 +177,131 @@ def test_los_enlaces_pendientes_se_pueden_mirar(uow: Any, usuario: Any) -> None:
     assert pendientes[0]["ip_solicitud"] == "10.0.0.9"
     assert pendientes[0]["caducado"] is False
     assert uuid4() is not None
+
+
+# ── El enlace va al buzón, nunca a quien lo pide (SEC-1, auditoría 13-11-2026) ──
+#
+# La respuesta de `POST /auth/restablecer` llevaba el token. Quien supiera el
+# correo de alguien y el slug de su empresa se quedaba con su cuenta en dos
+# llamadas. Estas pruebas fijan las tres piezas del arreglo.
+
+
+def test_la_respuesta_http_no_lleva_el_token() -> None:
+    """La ruta no devuelve nada que abra la cuenta: ni el token ni el enlace."""
+    import inspect
+
+    from services.identity import api
+
+    fuente = inspect.getsource(api.pedir_restablecer)
+    retorno = fuente[fuente.rindex("return") :]
+    assert "token" not in retorno, retorno
+    assert "enlace" not in retorno, retorno
+
+
+def test_el_evento_lleva_el_enlace_y_no_sale_a_los_webhooks(uow: Any, usuario: Any) -> None:
+    """El enlace viaja en el evento interno hacia el aviso por correo, y el
+    catálogo lo marca como no público: un webhook del tenant no lo recibe."""
+    from crmcore.events.catalogo import obtener
+
+    from services.identity import restablecer as rst
+
+    token = rst.solicitar(uow, email=usuario.email)
+
+    eventos = [e for e in uow._pendientes if e["tipo"] == "user.password.reset_requested"]
+    assert len(eventos) == 1
+    datos = eventos[0]["data"]
+    assert datos["canales"] == ["correo"]
+    assert rst.url_del_enlace(token) in datos["cuerpo"]
+    declarado = obtener("user.password.reset_requested")
+    assert declarado is not None and declarado.publico is False
+
+
+def test_el_enlace_apunta_a_la_interfaz_configurada(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sale de `FRONT_BASE_URL`, no de una dirección escrita en el código."""
+    from crmcore.config import get_settings
+
+    from services.identity import restablecer as rst
+
+    monkeypatch.setattr(get_settings(), "front_base_url", "https://crm.empresa.example/")
+    assert rst.url_del_enlace("a+b/c") == "https://crm.empresa.example/?restablecer=a%2Bb%2Fc"
+
+
+def test_el_aviso_sale_solo_por_correo_y_sin_esperar(
+    uow: Any, usuario: Any, tenant_id: UUID
+) -> None:
+    """La regla de avisos lo manda al titular y a nadie más, sólo por correo y
+    con prioridad que atraviesa silencio y agrupación."""
+    import asyncio
+
+    import sqlalchemy as sa
+    from crmcore.datos.seguimiento import Notificacion, PreferenciaNotificacion
+    from crmcore.db import uow as modulo_uow
+
+    from services.identity import restablecer as rst
+    from services.identity.notificaciones import consumir_evento
+
+    # Alguien que agrupa sus avisos y tiene la noche entera en silencio: aun así
+    # el enlace tiene que salir ya.
+    uow.db.add(
+        PreferenciaNotificacion(
+            tenant_id=tenant_id,
+            usuario_id=usuario.id,
+            tipo="*",
+            canales=["app"],
+            agrupar_minutos=30,
+            silencio_desde=0,
+            silencio_hasta=23,
+        )
+    )
+    uow.db.flush()
+
+    rst.solicitar(uow, email=usuario.email)
+    evento = next(e for e in uow._pendientes if e["tipo"] == "user.password.reset_requested")
+
+    testigo = modulo_uow.compartir(uow)
+    try:
+        asyncio.run(
+            consumir_evento(
+                {"tipo": evento["tipo"], "tenant_id": str(tenant_id), "data": evento["data"]}
+            )
+        )
+    finally:
+        modulo_uow.soltar(testigo)
+
+    avisos = (
+        uow.db.execute(
+            sa.select(Notificacion).where(Notificacion.tipo == "user.password.reset_requested")
+        )
+        .scalars()
+        .all()
+    )
+    assert len(avisos) == 1
+    aviso = avisos[0]
+    assert aviso.usuario_id == usuario.id
+    assert "correo" in aviso.canales
+    assert aviso.prioridad == "urgente"
+    assert aviso.entregar_at <= datetime.now(timezone.utc)
+
+
+def test_sin_cuenta_en_este_tenant_no_hay_enlace(uow: Any, tenant_id: UUID) -> None:
+    """El usuario es global: un enlace pedido por la puerta de otra empresa
+    cambiaría la contraseña con la que entra en la suya."""
+    from services.identity import restablecer as rst
+    from services.identity import servicio as svc
+    from services.identity.modelos import Usuario
+
+    uow.db.add(
+        Usuario(
+            email="de-otra@empresa.example",
+            nombre="De Otra",
+            hash_contrasena=svc.hashear_contrasena("LaDeSiempre.2026"),
+            activo=True,
+        )
+    )
+    uow.db.flush()
+
+    assert rst.solicitar(uow, email="de-otra@empresa.example") == ""
+    assert not [e for e in uow._pendientes if e["tipo"] == "user.password.reset_requested"]
 
 
 def test_el_alta_y_el_cambio_exigen_el_minimo_del_ajuste(monkeypatch: pytest.MonkeyPatch) -> None:

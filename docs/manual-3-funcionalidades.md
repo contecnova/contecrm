@@ -13257,7 +13257,9 @@ declararlos cuando el front y la API están en dominios distintos.
 > autenticación: credenciales de máquina, sesiones, segundo factor y
 > federación— recorriendo el código que decide, y **sin hallazgos**. Las cinco
 > reglas de abajo están comprobadas una a una, y la del uso único validada
-> plantando el caso malo: quitando el consumo del enlace, cae la prueba.
+> plantando el caso malo: quitando el consumo del enlace, cae la prueba. Aquella
+> auditoría **no vio** que la respuesta devolvía el token: ver la nota del
+> 13-11-2026 al final de esta sección.
 
 Olvidar la contraseña era un billete de ida: la única salida era que alguien de
 dentro la cambiara a mano, y eso produce contraseñas dictadas por teléfono y
@@ -13279,9 +13281,30 @@ Ahora se pide un enlace desde la propia pantalla de entrada. Las reglas:
 - Y la longitud mínima **se comprueba en el servidor**, no solo en el
   formulario: una comprobación que solo vive en el navegador no comprueba nada.
 
-El enlace se **emite** aquí y se **entrega** fuera: el correo lo manda cada
-instalación con su propio canal, y por eso el token sale en la respuesta de la
-API para quien la integre, nunca para quien lo pide.
+- **El enlace llega solo al buzón de la cuenta.** Se emite en `identity`, viaja
+  en el evento interno `user.password.reset_requested` (no público: ningún
+  webhook lo recibe) y lo convierte en correo el aviso de identidad, con
+  prioridad `urgente` para que no lo retengan ni la franja de silencio ni la
+  agrupación. Sale por el transporte de correo de la instalación (`SMTP_*`) y
+  apunta a `FRONT_BASE_URL/?restablecer=…`, que abre directamente el paso de la
+  contraseña nueva.
+- **Solo para quien es miembro activo de esa empresa.** El usuario y su
+  contraseña son globales: un enlace pedido por la puerta de otro tenant
+  cambiaría la contraseña con la que entra en el suyo.
+
+> **Corregido el 13-11-2026 (auditoría, SEC-1).** Hasta esa fecha la respuesta de
+> `POST /auth/restablecer` llevaba el token «para quien integre el correo». Pero
+> quien llama a esa ruta es quien pide el enlace, que no tiene por qué ser el
+> dueño de la cuenta: sabiendo un correo y el slug de la empresa se cambiaba la
+> contraseña de otro en dos llamadas. Además el evento no llegaba a la tabla de
+> salida (la ruta montaba la unidad de trabajo a mano y nunca la volcaba), así
+> que ningún correo podía salir. Ahora la respuesta es siempre `{"enviado": true}`
+> y las pruebas de `tests/unit/test_restablecer_contrasena.py` lo defienden.
+>
+> Sin `SMTP_HOST` configurado el aviso se queda en la cola de entregas con su
+> motivo y se reintenta en cuanto haya servidor; en desarrollo basta con un
+> servidor de correo local (p. ej. Mailpit en el puerto 1025, el que ya espera
+> `docker-compose.yml`).
 
 ### Conectores de SSO y de MFA sin un módulo por casa (`CRM-00.05.01.16`, `CRM-00.05.01.22`)
 

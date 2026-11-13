@@ -163,6 +163,7 @@ stateDiagram-v2
 | `POST /api/v1/alta/confirmar` | Confirmar el alta con el token del correo | token* | 200, 422 | `tenant.alta_confirmada` |
 | `POST /api/v1/calendarios` | Crear un calendario laboral | clave*, nombre*, zona_horaria, pais, horario, por_defecto | 201, 422 | — |
 | `POST /api/v1/calendarios/{calendario_id}/festivos` | Añadir un festivo | calendario_id*, fecha*, nombre*, anual | 201, 422 | — |
+| `POST /api/v1/calendarios/{calendario_id}/propagar` | Volver a enviarlo a todos los servicios | calendario_id* | 200, 422 | — |
 | `POST /api/v1/ciclo-vida/clonado/ejecutar` | Ejecutar el clonado que se simuló | operacion_id*, destino_id*, copiado | 201, 422 | — |
 | `POST /api/v1/ciclo-vida/clonado/simular` | Qué se copiaría y qué no, antes de copiar nada | origen_id*, uso*, bloques, recuentos, anonimizar, motivo_sin_anonimizar, porcentaje | 200, 422 | — |
 | `POST /api/v1/ciclo-vida/escision/simular` | Qué pasa si esta empresa se parte en dos | origen_id*, reparto, inventario | 200, 422 | — |
@@ -958,6 +959,9 @@ stateDiagram-v2
 | `POST /api/v1/party/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/party/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/party/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
+| `POST /api/v1/party/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
+| `PATCH /api/v1/party/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
+| `DELETE /api/v1/party/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/party/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/party/volumen/archivo/archivar` | Archivar lo que el criterio dice que ya es histórico | clase*, simular | 200, 422 | — |
 | `PUT /api/v1/party/volumen/archivo/clases/{clase}` | Fijar a partir de cuántos días se archiva una clase | clase*, dias | 200, 422 | — |
@@ -1063,7 +1067,7 @@ stateDiagram-v2
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `PUT /api/v1/forecast/oportunidades/{oportunidad_id}/categoria` | Poner una oportunidad en una categoría de previsión | oportunidad_id*, categoria* | 200, 422 | — |
 | `POST /api/v1/forecast/periodos` | Abrir un periodo de previsión | clave*, desde*, hasta*, nombre | 201, 422 | — |
-| `POST /api/v1/forecast/periodos/{clave}/ajustes` | Ajustar el número calculado | clave*, categoria, importe_ajustado*, importe_bruto*, motivo*, ambito, ambito_id, moneda | 200, 422 | — |
+| `POST /api/v1/forecast/periodos/{clave}/ajustes` | Ajustar el número calculado | clave*, categoria, importe_ajustado*, importe_bruto, motivo*, ambito, ambito_id, moneda | 200, 422 | — |
 | `POST /api/v1/forecast/periodos/{clave}/cerrar` | Cerrar el periodo y dejar su foto final | clave* | 200, 422 | — |
 | `POST /api/v1/forecast/periodos/{clave}/instantaneas` | Congelar la previsión de hoy | clave*, etiqueta, moneda | 201, 422 | — |
 | `POST /api/v1/forecast/periodos/{clave}/jerarquia` | Previsión por comercial, equipo, región y compañía | clave*, nodos*, moneda | 200, 422 | — |
@@ -1105,6 +1109,7 @@ stateDiagram-v2
 | `POST /api/v1/liquidaciones/{liquidacion_id}/revertir` | Revertir una comisión devengada | liquidacion_id*, linea_id*, motivo* | 200, 422 | — |
 | `POST /api/v1/listas-precio` | Crear una lista de precios | clave*, nombre*, moneda, cuenta_id, canal, desde, hasta, prioridad, sentido, proveedor_id | 201, 422 | — |
 | `POST /api/v1/listas-precio/reglas` | Añadir una regla de precio | lista_id*, nombre, prioridad, producto_id, familia, desde_cantidad, condiciones, accion*, valor, exclusiva | 201, 422 | — |
+| `DELETE /api/v1/listas-precio/{lista_id}/reglas/{regla_id}` | Quitar una regla de la lista | lista_id*, regla_id* | 204, 422 | — |
 | `PATCH /api/v1/listas-precio/{lista_precio_id}` | Editar listas de precios | lista_precio_id*, clave, nombre, moneda, cuenta_id, canal, sentido, proveedor_id, desde, hasta, prioridad, activa | 200, 422 | — |
 | `DELETE /api/v1/listas-precio/{lista_precio_id}` | Borrar listas de precios | lista_precio_id* | 204, 422 | — |
 | `POST /api/v1/listas-precio/{lista_precio_id}/archivar` | Archivar listas de precios | lista_precio_id* | 200, 422 | — |
@@ -1118,7 +1123,7 @@ stateDiagram-v2
 | `POST /api/v1/oportunidades/masivo` | Operación masiva sobre oportunidades | modo, operacion*, elementos, callback_url | 207, 422 | — |
 | `POST /api/v1/opportunities` | Crear una oportunidad | nombre*, descripcion, cuenta_id, contacto_id, pipeline_id, etapa_id, importe, moneda, fecha_cierre, owner_id, campos | 201, 422 | `opportunity.created`, `opportunity.lesson.advice` |
 | `POST /api/v1/opportunities/masivo` | Operación masiva sobre oportunidades | modo, operacion*, elementos, callback_url | 207, 422 | — |
-| `PATCH /api/v1/opportunities/{oportunidad_id}` | Actualizar una oportunidad | oportunidad_id*, nombre, descripcion, importe, probabilidad, fecha_cierre, contacto_id, owner_id, motivo_perdida, competidor_ganador, campos | 200, 422 | — |
+| `PATCH /api/v1/opportunities/{oportunidad_id}` | Actualizar una oportunidad | oportunidad_id*, nombre, descripcion, importe, probabilidad, fecha_cierre, contacto_id, owner_id, motivo_perdida, competidor_ganador, campos, motivo_cambio | 200, 422 | — |
 | `DELETE /api/v1/opportunities/{oportunidad_id}` | Borrar oportunidades | oportunidad_id* | 204, 422 | — |
 | `POST /api/v1/opportunities/{oportunidad_id}/archivar` | Archivar oportunidades | oportunidad_id* | 200, 422 | — |
 | `POST /api/v1/opportunities/{oportunidad_id}/competidores` | Registrar un competidor en la operación | oportunidad_id*, nombre*, cuenta_id, fortalezas, debilidades, ganador | 201, 422 | — |
@@ -1172,7 +1177,7 @@ stateDiagram-v2
 | `POST /api/v1/planes-comision/{plan_comision_id}/reglas` | Añadir una regla al plan | plan_comision_id*, tipo*, nombre, orden, desde_valor, hasta_valor, porcentaje, importe_fijo, multiplicador, modo_tramo, condiciones, vigente_desde, vigente_hasta | 201, 422 | — |
 | `POST /api/v1/planes-comision/{plan_comision_id}/simular` | Simular una liquidación | plan_comision_id*, operaciones*, cuota | 200, 422 | — |
 | `POST /api/v1/planes-conjuntos` | Guardar el plan conjunto con el cliente | oportunidad_id*, pasos, fecha_objetivo | 201, 422 | — |
-| `POST /api/v1/planes-conjuntos/revision` | Registrar una revisión estructurada de la oportunidad | oportunidad_id*, respuestas, probabilidad_declarada, fecha_declarada, acuerdos | 201, 422 | — |
+| `POST /api/v1/planes-conjuntos/revision` | Registrar una revisión estructurada de la oportunidad | oportunidad_id*, que_puede_salir_mal*, que_falta_por_saber*, por_que_compra, por_que_ahora, por_que_nosotros, quien_decide, probabilidad_declarada, fecha_declarada, acuerdos | 201, 422 | — |
 | `PATCH /api/v1/planes-conjuntos/{plan_conjunto_id}` | Editar planes conjuntos | plan_conjunto_id*, oportunidad_id, fecha_objetivo, pasos, compartido_con_el_cliente, visto_por_el_cliente_at | 200, 422 | — |
 | `DELETE /api/v1/planes-conjuntos/{plan_conjunto_id}` | Borrar planes conjuntos | plan_conjunto_id* | 204, 422 | — |
 | `POST /api/v1/plantillas-correo` | Crear una plantilla de correo | clave*, nombre*, asunto*, cuerpo | 201, 422 | — |
@@ -1184,7 +1189,7 @@ stateDiagram-v2
 | `POST /api/v1/playbooks/{playbook_id}/archivar` | Archivar playbooks de venta | playbook_id* | 200, 422 | — |
 | `POST /api/v1/portal-partner/canjear` | Canjear el enlace y abrir sesión de partner | tenant*, token* | 200, 422 | — |
 | `POST /api/v1/portal-partner/entrar` | Pedir un enlace de entrada al portal | tenant*, email* | 200, 422 | — |
-| `POST /api/v1/presupuestos` | Crear un presupuesto | lineas*, cuenta_id, oportunidad_id, contacto_id, titulo, moneda, canal, idioma, marca, dias_validez, notas, condiciones | 201, 422 | `quote.created` |
+| `POST /api/v1/presupuestos` | Crear un presupuesto | lineas, cuenta_id, oportunidad_id, contacto_id, titulo, moneda, canal, idioma, marca, dias_validez, notas, condiciones | 201, 422 | `quote.created` |
 | `POST /api/v1/presupuestos/caducar-vencidos` | Marcar caducados los que pasaron su vigencia | — | 200, 422 | — |
 | `PATCH /api/v1/presupuestos/{presupuesto_id}` | Editar presupuestos | presupuesto_id*, numero, anterior_id, oportunidad_id, cuenta_id, contacto_id, titulo, moneda, canal, idioma, marca, valido_hasta, enviado_at, aceptado_at, subtotal, descuento_total, total, coste_total, margen_pct, motivo_aprobacion, notas, condiciones | 200, 422 | — |
 | `DELETE /api/v1/presupuestos/{presupuesto_id}` | Borrar presupuestos | presupuesto_id* | 204, 422 | — |
@@ -1241,10 +1246,10 @@ stateDiagram-v2
 | `POST /api/v1/sales/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
 | `POST /api/v1/sales/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/suscripciones` | Alta de suscripción | cuenta_id*, plan*, importe_periodo*, inicio*, periodicidad, contrato_id, producto_id, cantidad, moneda | 201, 422 | `subscription.changed` |
-| `POST /api/v1/suscripciones/{suscripcion_cliente_id}/cambios` | Cambiar una suscripción, con su prorrateo | suscripcion_id*, tipo*, efectivo_el, plan, cantidad, importe_periodo, motivo | 200, 422 | `subscription.changed` |
 | `PATCH /api/v1/suscripciones/{suscripcion_id}` | Editar suscripciones | suscripcion_id*, contrato_id, cuenta_id, producto_id, plan, cantidad, importe_periodo, moneda, periodicidad, inicio, fin, estado, proxima_factura | 200, 422 | — |
 | `DELETE /api/v1/suscripciones/{suscripcion_id}` | Borrar suscripciones | suscripcion_id* | 204, 422 | — |
 | `POST /api/v1/suscripciones/{suscripcion_id}/archivar` | Archivar suscripciones | suscripcion_id* | 200, 422 | — |
+| `POST /api/v1/suscripciones/{suscripcion_id}/cambios` | Cambiar una suscripción, con su prorrateo | suscripcion_id*, tipo*, efectivo_el, plan, cantidad, importe_periodo, motivo | 200, 422 | `subscription.changed` |
 | `POST /api/v1/territorios` | Crear un territorio | clave*, nombre*, descripcion, criterios, padre_id, prioridad, responsable_id | 201, 422 | — |
 | `POST /api/v1/territorios/aplicar` | Escribir las asignaciones calculadas | cuentas* | 200, 422 | — |
 | `POST /api/v1/territorios/excepciones` | Sacar una cuenta de su territorio por decisión | cuenta_id*, territorio_id*, motivo*, hasta | 201, 422 | — |
@@ -1455,7 +1460,7 @@ stateDiagram-v2
 | `DELETE /api/v1/activos/{activo_id}` | Borrar activos instalados | activo_id* | 204, 422 | — |
 | `POST /api/v1/activos/{activo_id}/archivar` | Archivar activos instalados | activo_id* | 200, 422 | — |
 | `POST /api/v1/activos/{activo_id}/contador` | Anotar una lectura del contador de uso | activo_id*, valor*, unidad | 200, 422 | — |
-| `POST /api/v1/activos/{activo_id}/garantias` | Registrar una garantía | activo_id*, desde*, hasta*, tipo, cobertura, referencia, proveedor, limite_contador, exclusiones | 201, 422 | — |
+| `POST /api/v1/activos/{activo_id}/garantias` | Registrar una garantía | activo_id*, desde*, hasta*, tipo, cobertura*, referencia, proveedor, limite_contador, exclusiones | 201, 422 | — |
 | `POST /api/v1/activos/{activo_id}/padre` | Mover un componente de equipo | activo_id*, nuevo_padre_id, motivo | 200, 422 | — |
 | `POST /api/v1/activos/{activo_id}/sustituir` | Sustituir el equipo, dejando los dos enlazados | activo_id*, nuevo_nombre*, numero_serie, motivo*, modelo, heredar_garantias | 200, 422 | `asset.installed` |
 | `POST /api/v1/adjuntos/carpetas/{objeto_tipo}` | Crear una carpeta en el expediente | objeto_tipo*, objeto_id*, nombre*, padre_id | 201, 422 | — |
@@ -1466,7 +1471,9 @@ stateDiagram-v2
 | `PATCH /api/v1/adjuntos/{objeto_tipo}/{adjunto_id}/carpeta` | Archivar un adjunto en una carpeta | objeto_tipo*, adjunto_id*, carpeta_id | 200, 422 | — |
 | `POST /api/v1/adjuntos/{objeto_tipo}/{adjunto_id}/enlace` | Generar un enlace firmado | objeto_tipo*, adjunto_id* | 200, 422 | — |
 | `PUT /api/v1/agentes` | Capacidad y competencias de un agente | usuario_id*, capacidad, competencias, nivel, activo | 200, 422 | — |
+| `POST /api/v1/agentes` | Configurar un agente | usuario_id*, capacidad_caso, capacidad_chat, capacidad_telefono, capacidad_correo, competencias, nivel, activo | 201, 422 | — |
 | `PUT /api/v1/agentes/presencia` | Cambiar mi presencia | presencia*, motivo | 200, 422 | — |
+| `DELETE /api/v1/agentes/{usuario_id}` | Dejar de tratarlo como agente | usuario_id* | 200, 422 | — |
 | `POST /api/v1/canales-servicio` | Declarar un canal de entrada | clave*, nombre*, tipo, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia | 201, 422 | — |
 | `PATCH /api/v1/canales-servicio/{canal_servicio_id}` | Editar canales de servicio | canal_servicio_id*, clave, nombre, tipo, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia, activo, descartados_por | 200, 422 | — |
 | `DELETE /api/v1/canales-servicio/{canal_servicio_id}` | Borrar canales de servicio | canal_servicio_id* | 204, 422 | — |
@@ -1484,6 +1491,7 @@ stateDiagram-v2
 | `POST /api/v1/casos/{caso_id}/parecidos` | Casos resueltos y artículos parecidos a este, por significado | caso_id* | 200, 422 | — |
 | `POST /api/v1/casos/{caso_id}/primera-respuesta` | Marcar la primera respuesta | caso_id* | 200, 422 | `case.first_response` |
 | `POST /api/v1/casos/{caso_id}/reabrir` | Reabrir un caso cerrado | caso_id*, motivo* | 200, 422 | — |
+| `POST /api/v1/casos/{caso_id}/responder` | Responder al cliente por correo | caso_id*, mensaje*, para, asunto | 200, 422 | `case.first_response` |
 | `POST /api/v1/casos/{caso_id}/respuesta-sugerida` | Sugerir una respuesta para este caso, con los artículos en que se apoya | caso_id* | 200, 422 | — |
 | `POST /api/v1/casos/{caso_id}/resumen-ia` | Resumir este caso con IA: qué pide, qué se ha hecho y qué queda | caso_id* | 200, 422 | — |
 | `POST /api/v1/categorias-caso` | Añadir un nodo al árbol | clave*, nombre*, padre_id, linea, orden, seleccionable, prioridad_sugerida | 201, 422 | — |
@@ -1492,6 +1500,7 @@ stateDiagram-v2
 | `POST /api/v1/colas` | Crear una cola de trabajo | clave*, nombre*, descripcion, miembros, canales, competencias, nivel | 201, 422 | — |
 | `POST /api/v1/colas/asignar/{caso_id}` | Asignar un caso por reglas | caso_id*, canal | 200, 422 | `case.assigned` |
 | `POST /api/v1/colas/reglas` | Regla de reparto de casos | nombre*, descripcion, prioridad, condiciones, combinacion, estrategia, cola, candidatos, competencias, canal | 201, 422 | — |
+| `DELETE /api/v1/colas/reglas/{regla_id}` | Quitar una regla de reparto | regla_id* | 200, 422 | — |
 | `PATCH /api/v1/colas/{clave}` | Cambiar una cola de trabajo | clave*, nombre, descripcion, miembros, canales, competencias, nivel | 200, 422 | — |
 | `POST /api/v1/colas/{clave}/coger/{caso_id}` | Adjudicarse un caso de la cola | clave*, caso_id* | 200, 422 | — |
 | `POST /api/v1/comentarios/{objeto_tipo}/hilos/{hilo_id}/resolver` | Dar un hilo por resuelto | objeto_tipo*, hilo_id*, resuelto | 200, 422 | — |
@@ -1609,6 +1618,7 @@ stateDiagram-v2
 | `POST /api/v1/portal/enlace` | Pedir un enlace de acceso | email* | 200, 422 | — |
 | `POST /api/v1/portal/entrar` | Canjear el enlace y entrar | token* | 200, 422 | — |
 | `POST /api/v1/portal/mi/casos` | Abrir una petición | asunto*, descripcion | 201, 422 | `case.created` |
+| `POST /api/v1/portal/mi/casos/{caso_id}/validar-cierre` | Dar por bueno, o no, el cierre de mi caso | caso_id*, conforme*, comentario | 200, 422 | — |
 | `POST /api/v1/portal/mi/comunidad` | Abrir un hilo en la comunidad | titulo*, cuerpo, categoria | 201, 422 | — |
 | `POST /api/v1/portal/mi/conversacion` | Escribir a quien me atiende | texto*, asunto | 201, 422 | `case.created`, `case.message.received` |
 | `POST /api/v1/portal/sesion` | Entrar en el portal con el enlace recibido | token* | 200, 422 | — |
@@ -1616,8 +1626,9 @@ stateDiagram-v2
 | `PATCH /api/v1/problemas/{problema_id}` | Editar problemas | problema_id*, codigo, titulo, descripcion, estado, severidad, categoria_id, producto_id, responsable_id, caso_maestro_id, causa_raiz, solucion_temporal, solucion_definitiva, error_conocido, articulo_id, detectado_at, resuelto_at, cerrado_at, motivo_cierre | 200, 422 | — |
 | `DELETE /api/v1/problemas/{problema_id}` | Borrar problemas | problema_id* | 204, 422 | — |
 | `POST /api/v1/problemas/{problema_id}/archivar` | Archivar problemas | problema_id* | 200, 422 | — |
+| `POST /api/v1/problemas/{problema_id}/casos` | Atribuir un caso | problema_id*, caso_id* | 201, 422 | — |
 | `POST /api/v1/problemas/{problema_id}/casos/{caso_id}` | Atribuir un caso al problema | problema_id*, caso_id* | 200, 422 | — |
-| `DELETE /api/v1/problemas/{problema_id}/casos/{caso_id}` | Quitar un caso del problema, con motivo | problema_id*, caso_id*, motivo* | 200, 422 | — |
+| `DELETE /api/v1/problemas/{problema_id}/casos/{caso_id}` | Quitar un caso del problema, con motivo | problema_id*, caso_id*, motivo | 200, 422 | — |
 | `POST /api/v1/problemas/{problema_id}/causa` | Anotar causa, apaño y solución | problema_id*, causa_raiz, solucion_temporal, solucion_definitiva, error_conocido, articulo_id | 200, 422 | — |
 | `POST /api/v1/problemas/{problema_id}/comunicaciones` | Registrar lo comunicado a los afectados | problema_id*, mensaje*, tipo | 201, 422 | `problem.communicated` |
 | `POST /api/v1/problemas/{problema_id}/resolver` | Dar el problema por resuelto | problema_id*, solucion_definitiva*, cerrar_casos, motivo_cierre | 200, 422 | `case.closed`, `problem.resolved` |
@@ -1642,6 +1653,9 @@ stateDiagram-v2
 | `POST /api/v1/service/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/service/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/service/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
+| `POST /api/v1/service/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
+| `PATCH /api/v1/service/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
+| `DELETE /api/v1/service/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/service/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/service/volumen/archivo/archivar` | Archivar lo que el criterio dice que ya es histórico | clase*, simular | 200, 422 | — |
 | `PUT /api/v1/service/volumen/archivo/clases/{clase}` | Fijar a partir de cuántos días se archiva una clase | clase*, dias | 200, 422 | — |
@@ -1706,6 +1720,7 @@ stateDiagram-v2
 | `PATCH /api/v1/correo/bloques/{bloque_correo_id}` | Editar bloques de correo | bloque_correo_id*, clave, nombre, tipo, contenido, obligatorio_en_promocional, activo | 200, 422 | — |
 | `DELETE /api/v1/correo/bloques/{bloque_correo_id}` | Borrar bloques de correo | bloque_correo_id* | 204, 422 | — |
 | `POST /api/v1/correo/bloques/{bloque_correo_id}/archivar` | Archivar bloques de correo | bloque_correo_id* | 200, 422 | — |
+| `POST /api/v1/correo/enviar` | Mandar ya un correo sobre un registro, por el canal de la casa | para*, objeto*, objeto_id*, asunto, mensaje*, plantilla, idioma, datos | 200, 422 | — |
 | `POST /api/v1/correo/plantillas` | Crear una plantilla | clave*, nombre*, asunto*, preencabezado, clase, bloques, categoria, idioma | 201, 422 | — |
 | `PATCH /api/v1/correo/plantillas/{plantilla_correo_marketing_id}` | Editar plantillas de correo | plantilla_correo_marketing_id*, clave, nombre, asunto, preencabezado, clase, bloques, categoria, idioma, activa | 200, 422 | — |
 | `DELETE /api/v1/correo/plantillas/{plantilla_correo_marketing_id}` | Borrar plantillas de correo | plantilla_correo_marketing_id* | 204, 422 | — |
@@ -1772,7 +1787,7 @@ stateDiagram-v2
 | `PATCH /api/v1/recorridos/{recorrido_id}` | Editar recorridos | recorrido_id*, clave, nombre, descripcion, nodos, inicio, entrada, evento_entrada, segmento_id, salidas, excluye_si_en, dias_maximos, reentrada, por_cuenta, estado | 200, 422 | — |
 | `DELETE /api/v1/recorridos/{recorrido_id}` | Borrar recorridos | recorrido_id* | 204, 422 | — |
 | `POST /api/v1/recorridos/{recorrido_id}/archivar` | Archivar recorridos | recorrido_id* | 200, 422 | — |
-| `POST /api/v1/recorridos/{recorrido_id}/entrar` | Meter a alguien en el recorrido | recorrido_id*, objeto_id*, objeto, cuenta_id | 200, 422 | `journey.entered` |
+| `POST /api/v1/recorridos/{recorrido_id}/entrar` | Meter a alguien en el recorrido | recorrido_id*, objeto_id*, objeto, cuenta_id | 200, 422 | `journey.entered`, `journey.exited` |
 | `PUT /api/v1/recorridos/{recorrido_id}/lienzo` | Guardar lo dibujado en el lienzo | recorrido_id*, nodos*, inicio*, salidas, por_cuenta, nombre | 200, 422 | — |
 | `POST /api/v1/recorridos/{recorrido_id}/publicar` | Publicar el recorrido | recorrido_id* | 200, 422 | — |
 | `POST /api/v1/reglas-contenido` | Declarar qué se puede mandar por marca, país e idioma | marca, pais, idioma, plantillas_bloqueadas, exige_textos, prohibe_textos, notas | 201, 422 | — |
@@ -1781,6 +1796,8 @@ stateDiagram-v2
 | `DELETE /api/v1/reglas-contenido/{regla_contenido_id}` | Borrar reglas de contenido | regla_contenido_id* | 204, 422 | — |
 | `POST /api/v1/reglas-contenido/{regla_contenido_id}/archivar` | Archivar reglas de contenido | regla_contenido_id* | 200, 422 | — |
 | `POST /api/v1/segmentos` | Crear un segmento | clave*, nombre*, objeto, definicion*, dinamico, excluye, descripcion | 201, 422 | — |
+| `POST /api/v1/segmentos/estimar` | Cuánta gente tendría un segmento, antes de guardarlo | objeto*, definicion*, excluye | 200, 422 | — |
+| `POST /api/v1/segmentos/perfiles/sincronizar` | Poner al día los perfiles con cuentas, contactos y leads | — | 200, 422 | — |
 | `PATCH /api/v1/segmentos/{segmento_id}` | Editar segmentos | segmento_id*, clave, nombre, descripcion, objeto, definicion, dinamico, excluye, tamano, tamano_at, activo | 200, 422 | — |
 | `DELETE /api/v1/segmentos/{segmento_id}` | Borrar segmentos | segmento_id* | 204, 422 | — |
 | `POST /api/v1/segmentos/{segmento_id}/archivar` | Archivar segmentos | segmento_id* | 200, 422 | — |
@@ -1839,7 +1856,7 @@ llamada de nadie.
 | `case.created` | service | caso_id, codigo, prioridad, cuenta_id, campos | `POST /api/v1/casos`, `POST /api/v1/portal/accesos/{acceso_id}/casos`, `POST /api/v1/portal/mi/casos` (+1) | — |
 | `case.escalated` | service | caso_id, regla, motivo, avisar_a | `POST /api/v1/escalado/evaluar` | — |
 | `case.escalated.human` | service | conversacion_id, caso_id, motivo, mensajes | `POST /api/v1/conversaciones/{conversacion_id}/escalar-a-humano` | — |
-| `case.first_response` | service | caso_id, a_tiempo | `POST /api/v1/casos/{caso_id}/primera-respuesta`, `POST /api/v1/conversaciones/{conversacion_id}/responder` | — |
+| `case.first_response` | service | caso_id, a_tiempo | `POST /api/v1/casos/{caso_id}/primera-respuesta`, `POST /api/v1/casos/{caso_id}/responder`, `POST /api/v1/conversaciones/{conversacion_id}/responder` | — |
 | `case.message.received` | service | conversacion_id, caso_id, canal, nueva | `POST /api/v1/portal/mi/conversacion` | — |
 | `case.survey.answered` | service | caso_id, tipo, puntuacion, detractor | `POST /api/v1/encuestas/{encuesta_id}/responder` | — |
 | `case.survey.sent` | service | caso_id, tipo, encuesta_id | `POST /api/v1/encuestas` | — |
@@ -1864,12 +1881,12 @@ llamada de nadie.
 | `interaction.recorded` | integration | interaccion_id, canal, atribuida | `POST /api/v1/canales-entrada/interacciones` | — |
 | `journey.action.due` | marketing | en_recorrido_id, recorrido, nodo, objeto_id | `POST /api/v1/recorridos/avanzar` | — |
 | `journey.entered` | marketing | recorrido, en_recorrido_id, objeto_id | `POST /api/v1/recorridos/{recorrido_id}/entrar` | — |
-| `journey.exited` | marketing | en_recorrido_id, recorrido_id, objeto_id, motivo | `POST /api/v1/recorridos/avanzar`, `POST /api/v1/recorridos/inscritos/{en_recorrido_id}/salir` | — |
+| `journey.exited` | marketing | en_recorrido_id, recorrido_id, objeto_id, motivo | `POST /api/v1/recorridos/avanzar`, `POST /api/v1/recorridos/inscritos/{en_recorrido_id}/salir`, `POST /api/v1/recorridos/{recorrido_id}/entrar` | — |
 | `knowledge.published` | service | articulo_id, clave, idioma, version, audiencia | `POST /api/v1/conocimiento/{articulo_id}/publicar` | — |
 | `lead.assigned` | sales | lead_id, asignado_a, regla | `POST /api/v1/embebido/formulario-alta`, `POST /api/v1/leads` | — |
 | `lead.converted` | sales | lead_id, cuenta_id, contacto_id, oportunidad_id | `POST /api/v1/leads/{lead_id}/convertir` | — |
 | `lead.created` | sales | lead_id, origen | `POST /api/v1/embebido/formulario-alta`, `POST /api/v1/leads` | — |
-| `lead.qualified` | sales | lead_id | `POST /api/v1/puntuacion/leads/{lead_id}` | — |
+| `lead.qualified` | marketing | lead_id, calificacion, anterior, interes, encaje, grado, motivos | `POST /api/v1/puntuacion/leads/{lead_id}` | — |
 | `metadata.schema.changed` | metadata | objeto, cambio, campos, version | un proceso de fondo | — |
 | `module.installed` | metadata | modulo, version, elementos, conectores | `POST /api/v1/metadata/modulos/instalar` | — |
 | `module.uninstalled` | metadata | modulo, datos_borrados, objetos | `POST /api/v1/metadata/modulos/{clave}/desinstalar` | — |
@@ -1917,7 +1934,7 @@ llamada de nadie.
 | `signature.envelope.rejected` | integration | sobre_id, referencia, objeto_origen, motivo | `POST /api/v1/firma/eventos` | — |
 | `signature.envelope.sent` | integration | sobre_id, referencia, proveedor, nivel | `POST /api/v1/firma/sobres/{sobre_id}/enviar` | — |
 | `signature.reminder.sent` | integration | sobre_id, referencia, destinatarios | `POST /api/v1/firma/sobres/{sobre_id}/recordar` | — |
-| `subscription.changed` | sales | suscripcion_id, cuenta_id, tipo, plan, importe | `POST /api/v1/suscripciones`, `POST /api/v1/suscripciones/{suscripcion_cliente_id}/cambios` | — |
+| `subscription.changed` | sales | suscripcion_id, cuenta_id, tipo, plan, importe | `POST /api/v1/suscripciones`, `POST /api/v1/suscripciones/{suscripcion_id}/cambios` | — |
 | `tenant.alta_confirmada` | tenancy | tenant_id, slug, email, nombre | `POST /api/v1/alta/confirmar` | — |
 | `tenant.provisioned` | tenancy | tenant_id, slug, plan, region | `POST /api/v1/sandboxes`, `POST /api/v1/tenants` | — |
 | `tenant.reactivated` | tenancy | tenant_id | `POST /api/v1/sandboxes/{sandbox_id}/apagar`, `POST /api/v1/tenants/{tenant_id}/estado` | — |
@@ -1927,7 +1944,7 @@ llamada de nadie.
 | `user.org.changed` | identity | user_id, roles, superior_id, unidad_id, activa | `DELETE /api/v1/usuarios/{usuario_id}`, `PATCH /api/v1/scim/v2/Users/{usuario_id}`, `POST /api/v1/sso/oidc/callback` (+4) | — |
 | `user.passkey.registered` | identity | usuario_id, passkey_id, nombre | `POST /api/v1/auth/passkeys/confirmar` | — |
 | `user.passkey.revoked` | identity | usuario_id, passkey_id | `DELETE /api/v1/auth/passkeys/{passkey_id}` | — |
-| `user.password.reset_requested` | identity | usuario_id, email | `POST /api/v1/auth/restablecer` | — |
+| `user.password.reset_requested` | identity | usuario_id, email, titulo, cuerpo, canales | `POST /api/v1/auth/restablecer` | — |
 | `user.provisioned` | identity | user_id, email, via | `POST /api/v1/scim/v2/Users`, `POST /api/v1/usuarios` | — |
 | `workorder.assigned` | service | orden_id, tecnico_id | `POST /api/v1/ordenes-trabajo/{orden_id}/asignar` | — |
 | `workorder.completed` | service | orden_id, tipo | `POST /api/v1/ordenes-trabajo/{orden_id}/completar`, `POST /api/v1/sincronizacion-campo` | — |

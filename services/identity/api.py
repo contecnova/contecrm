@@ -194,23 +194,25 @@ class PedirRestablecer(BaseModel):
         "convertiría esta pantalla en un comprobador de qué correos tienen "
         "cuenta aquí, que es exactamente la lista que quiere quien va a "
         "intentar entrar.\n\n"
-        "El token se devuelve para que lo mande quien integre el correo; nunca "
-        "se le enseña a quien lo pide."
+        "El enlace sale **solo por correo** al buzón de la cuenta, con el "
+        "transporte de correo de la instalación (`SMTP_*`). La respuesta nunca "
+        "lo lleva: quien lo pide no tiene por qué ser el dueño de la cuenta."
     ),
 )
 def pedir_restablecer(datos: PedirRestablecer, request: Request) -> Any:
-    from crmcore.db.session import sesion
-    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.db.uow import unidad_de_trabajo
 
     from services.identity import restablecer as rst
 
     tenant_id = _resolver_tenant(datos.tenant)
-    with sesion(tenant_id) as db:
-        uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
-        token = rst.solicitar(
-            uow, email=datos.email, ip=request.client.host if request.client else ""
-        )
-    return {"enviado": True, "token": token}
+    # `unidad_de_trabajo` y no una sesión con la unidad montada a mano: la de a
+    # mano nunca volcaba sus eventos, así que `user.password.reset_requested`
+    # no llegaba a la tabla de salida y nadie podía mandar el correo.
+    with unidad_de_trabajo(tenant_id) as uow:
+        # El token se queda aquí dentro: viaja solo por el correo que encola
+        # `solicitar`. Devolverlo era entregar la cuenta a quien supiera el email.
+        rst.solicitar(uow, email=datos.email, ip=request.client.host if request.client else "")
+    return {"enviado": True}
 
 
 class ConfirmarRestablecer(BaseModel):
