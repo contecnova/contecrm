@@ -670,3 +670,183 @@ def test_la_inversa_se_calcula_sola(db: Any, tenant_id: UUID, contexto_tenant: U
     assert convertir(
         db, tenant_id=tenant_id, importe=Decimal("100"), desde="USD", hasta="EUR", en_fecha=HOY
     ) == Decimal("50.00")
+
+
+# ── Lo perdido no suma (auditoría FUN-B-1, 13-11-2026) ────────────────────
+
+
+@pytest.mark.db
+def test_lo_perdido_y_lo_cancelado_no_suman_ni_al_compromiso(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any
+) -> None:
+    """Cerrar como perdida baja la probabilidad a cero pero deja la categoría
+    del comercial: un «commit» perdido seguía sumando al total y al compromiso.
+    Lo ganado sí sigue: es lo que el periodo ha ingresado."""
+    forecast.sembrar_categorias(db, tenant_id)
+    _oportunidad(db, tenant_id, pipeline, importe="1000", categoria="commit")
+    _oportunidad(
+        db,
+        tenant_id,
+        pipeline,
+        importe="2000",
+        categoria="commit",
+        estado="perdida",
+        probabilidad=0,
+    )
+    _oportunidad(db, tenant_id, pipeline, importe="400", categoria="commit", estado="cancelada")
+    _oportunidad(
+        db,
+        tenant_id,
+        pipeline,
+        importe="700",
+        categoria="cerrado",
+        estado="ganada",
+        probabilidad=100,
+    )
+
+    salida = forecast.calcular(db, tenant_id, periodo_clave="2026-Q1")
+    assert salida.total == Decimal("1700")
+    assert salida.compromiso == Decimal("1700")
+    assert salida.oportunidades == 2
+    assert salida.por_categoria["commit"].importe == Decimal("1000")
+
+
+@pytest.mark.db
+def test_un_estado_propio_que_significa_perdido_tampoco_suma(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any
+) -> None:
+    """Se pregunta por el significado, no por el nombre: una empresa que llama
+    «Desierta» a otra forma de perder tiene que ver lo mismo."""
+    from crmcore.datos import estados as est
+    from crmcore.runtime.settings import fijar, invalidar
+
+    conf = est.a_configuracion(est.MAQUINAS["oportunidad"], de_fabrica=True)
+    conf["estados"].append(
+        {"clave": "desierta", "nombre": "Desierta", "significado": "perdido", "orden": 9}
+    )
+    conf["transiciones"]["abierta"] = [*conf["transiciones"]["abierta"], "desierta"]
+    conf["transiciones"]["desierta"] = ["abierta"]
+    fijar(db, "maquinas_de_estado", {"oportunidad": conf}, ambito_id=str(tenant_id))
+    invalidar()
+    try:
+        forecast.sembrar_categorias(db, tenant_id)
+        _oportunidad(db, tenant_id, pipeline, importe="1000", categoria="commit")
+        _oportunidad(db, tenant_id, pipeline, importe="5000", categoria="commit", estado="desierta")
+
+        salida = forecast.calcular(db, tenant_id, periodo_clave="2026-Q1")
+        assert salida.total == Decimal("1000")
+        assert salida.compromiso == Decimal("1000")
+    finally:
+        invalidar()
+
+
+@pytest.mark.db
+def test_la_jerarquia_y_el_organigrama_no_cuentan_lo_perdido(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any
+) -> None:
+    """Los nodos salen de `calcular`, pero «fuera del organigrama» tenía su
+    propia consulta: quien solo tiene perdidas salía ahí como un agujero."""
+    forecast.sembrar_categorias(db, tenant_id)
+    ana, solo_perdidas = uuid4(), uuid4()
+    _oportunidad(db, tenant_id, pipeline, importe="1000", owner=ana)
+    _oportunidad(db, tenant_id, pipeline, importe="3000", owner=ana, estado="perdida")
+    _oportunidad(db, tenant_id, pipeline, importe="800", owner=solo_perdidas, estado="perdida")
+
+    jerarquia = forecast.previsión_por_jerarquía(
+        db, tenant_id, periodo_clave="2026-Q1", jerarquía={"Equipo Norte": [ana]}
+    )
+    assert jerarquia["nodos"]["Equipo Norte"]["total"] == "1000.00"
+    assert jerarquia["compañía"]["total"] == "1000.00"
+    assert jerarquia["cuadra"] is True
+
+    # Sin territorios, todo dueño con algo en la previsión sale «fuera».
+    organigrama = forecast.previsión_por_organigrama(db, tenant_id, periodo_clave="2026-Q1")
+    fuera = {f["usuario_id"] for f in organigrama["fuera_del_organigrama"]}
+    assert fuera == {str(ana)}
+    assert organigrama["compania"]["total"] == "1000.00"
+
+
+@pytest.mark.db
+def test_el_desglose_no_cuenta_las_lineas_de_lo_perdido(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any
+) -> None:
+    """El desglose de una previsión tiene que cuadrar con ella."""
+    from services.sales.modelos import LineaOportunidad
+
+    forecast.sembrar_categorias(db, tenant_id)
+    viva = _oportunidad(db, tenant_id, pipeline, importe="700")
+    perdida = _oportunidad(db, tenant_id, pipeline, importe="900", estado="perdida")
+    for op, total in ((viva, "700"), (perdida, "900")):
+        db.add(
+            LineaOportunidad(
+                tenant_id=tenant_id,
+                oportunidad_id=op.id,
+                descripcion="Licencias",
+                familia="Software",
+                total=Decimal(total),
+            )
+        )
+    db.flush()
+
+    salida = forecast.desglose(db, tenant_id, periodo_clave="2026-Q1", por="familia")
+    assert salida["grupos"]["Software"]["importe"] == "700.00"
+    assert salida["grupos"]["Software"]["lineas"] == 1
+
+
+@pytest.mark.db
+def test_la_foto_guarda_lo_perdido_pero_no_lo_suma(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any
+) -> None:
+    """La línea hace falta para que el *waterfall* la cuente como perdida y no
+    como salida; el total de la foto tiene que ser el de `calcular`."""
+    from sqlalchemy import select
+
+    from services.sales.modelos import LineaInstantanea
+
+    forecast.sembrar_categorias(db, tenant_id)
+    _oportunidad(db, tenant_id, pipeline, importe="1000", categoria="commit")
+    _oportunidad(db, tenant_id, pipeline, importe="2000", categoria="commit", estado="perdida")
+
+    foto = forecast.tomar_instantanea(db, tenant_id, "2026-Q1")
+    assert foto.totales == {"commit": "1000.00"}
+    assert foto.oportunidades == 1
+    lineas = db.execute(
+        select(LineaInstantanea).where(LineaInstantanea.instantanea_id == foto.id)
+    ).scalars()
+    assert len(list(lineas)) == 2
+
+
+@pytest.mark.db
+def test_el_waterfall_cuadra_con_lo_perdido_y_lo_reabierto(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline, periodo: Any
+) -> None:
+    """Lo que aparece ya perdido no ha entrado en ningún total, y lo que se
+    reabre vuelve a sumar: las causas tienen que explicar la variación."""
+    forecast.sembrar_categorias(db, tenant_id)
+    a_perder = _oportunidad(db, tenant_id, pipeline, importe="500", categoria="commit")
+    a_reabrir = _oportunidad(
+        db, tenant_id, pipeline, importe="300", categoria="commit", estado="perdida"
+    )
+    perdida_que_se_va = _oportunidad(
+        db, tenant_id, pipeline, importe="250", categoria="commit", estado="perdida"
+    )
+    foto_a = forecast.tomar_instantanea(db, tenant_id, "2026-Q1")
+
+    perdida_que_se_va.fecha_cierre = HASTA + timedelta(days=90)
+    a_perder.estado = "perdida"
+    a_perder.importe = Decimal("100")  # no debe restarse además de la pérdida
+    a_reabrir.estado = "abierta"
+    _oportunidad(db, tenant_id, pipeline, importe="900", categoria="commit", estado="perdida")
+    db.flush()
+    foto_b = forecast.tomar_instantanea(db, tenant_id, "2026-Q1")
+
+    salida = forecast.waterfall(db, tenant_id, foto_a.id, foto_b.id)
+    assert Decimal(salida["desde"]["total"]) == Decimal("500")
+    assert Decimal(salida["hasta"]["total"]) == Decimal("300")
+    assert Decimal(salida["perdidas"]["importe"]) == Decimal("500")
+    assert salida["entradas"]["cuantas"] == 1
+    assert Decimal(salida["entradas"]["importe"]) == Decimal("300")
+    assert salida["variacion_de_importe"]["cuantas"] == 0
+    assert salida["salidas"]["cuantas"] == 0
+    # Entradas menos pérdidas explican la variación entera.
+    assert Decimal(salida["variacion_total"]) == Decimal("300") - Decimal("500")

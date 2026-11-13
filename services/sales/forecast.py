@@ -293,6 +293,28 @@ class Previsión:
     sin_tipo_de_cambio: list[str] = field(default_factory=list)
 
 
+def _cerradas_sin_ganar(db: Session) -> frozenset[str]:
+    """Los estados de las oportunidades que ya no suman a la previsión.
+
+    Una oportunidad perdida o cancelada no es ingreso del periodo, por mucho que
+    su fecha de cierre caiga dentro y su categoría siga diciendo «commit»:
+    `_cerrar` baja la probabilidad a cero, pero no toca la categoría —que es la
+    opinión del comercial y se conserva tal cual por si se reabre—, así que el
+    total y el compromiso la seguían sumando (auditoría FUN-B-1, 13-11-2026).
+
+    Las **ganadas sí siguen**: son justo lo que el periodo ha ingresado, y
+    quitarlas haría que la previsión bajara cada vez que se gana algo.
+
+    Por significado y no por nombre, con la máquina de la empresa: una que llame
+    «Desierta» a su cancelada, o que añada otro estado que signifique «perdido»,
+    sale igual. Es la misma frontera que usa el *waterfall* para separar lo
+    perdido del resto.
+    """
+    return con_significado("oportunidad", "perdido", db) | con_significado(
+        "oportunidad", "cancelado", db
+    )
+
+
 def _moneda_funcional(db: Session) -> str:
     from crmcore.runtime import settings as rt
 
@@ -337,6 +359,9 @@ def calcular(
     `owners` acota a un comercial o a los de un equipo. La jerarquía se resuelve
     **fuera** (ver `previsión_por_jerarquía`): `sales` no conoce el organigrama
     —vive en `identity`— y montarlo aquí sería leer el esquema de otro servicio.
+
+    Suma lo abierto y lo ganado; lo perdido y lo cancelado no (ver
+    `_cerradas_sin_ganar`).
     """
     per = periodo(db, tenant_id, periodo_clave)
     moneda = (moneda or _moneda_funcional(db)).upper()
@@ -346,6 +371,7 @@ def calcular(
         Oportunidad.fecha_cierre >= per.desde,
         Oportunidad.fecha_cierre <= per.hasta,
         Oportunidad.deleted_at.is_(None),
+        Oportunidad.estado.not_in(_cerradas_sin_ganar(db)),
     )
     if owners:
         consulta = consulta.where(Oportunidad.owner_id.in_(owners))
@@ -552,7 +578,9 @@ def previsión_por_organigrama(
         return todos
 
     # Los dueños con oportunidades en el periodo, para la rama «por comercial» y
-    # para saber quién queda fuera.
+    # para saber quién queda fuera. Con el mismo filtro que `calcular`: quien
+    # solo tiene perdidas no tiene nada en la previsión, y sacarlo «fuera del
+    # organigrama» con un cero sería un agujero que no existe.
     per = periodo(db, tenant_id, periodo_clave)
     con_ventas = {
         o
@@ -563,6 +591,7 @@ def previsión_por_organigrama(
                 Oportunidad.fecha_cierre >= per.desde,
                 Oportunidad.fecha_cierre <= per.hasta,
                 Oportunidad.deleted_at.is_(None),
+                Oportunidad.estado.not_in(_cerradas_sin_ganar(db)),
                 Oportunidad.owner_id.is_not(None),
             )
             .distinct()
@@ -690,6 +719,9 @@ def desglose(
             Oportunidad.fecha_cierre >= per.desde,
             Oportunidad.fecha_cierre <= per.hasta,
             Oportunidad.deleted_at.is_(None),
+            # Lo mismo que suma `calcular`: si no, el desglose de una previsión
+            # no cuadra con ella.
+            Oportunidad.estado.not_in(_cerradas_sin_ganar(db)),
         )
         .group_by(columna, Oportunidad.moneda, Oportunidad.fecha_cierre, Oportunidad.probabilidad)
     ).all()
@@ -914,6 +946,7 @@ def tomar_instantanea(
     totales: dict[str, str] = {}
     cuantas = 0
     fallidas: list[str] = []
+    fuera = _cerradas_sin_ganar(db)
 
     for oportunidad in db.execute(
         select(Oportunidad).where(
@@ -924,7 +957,10 @@ def tomar_instantanea(
         )
     ).scalars():
         clave = oportunidad.categoria_forecast or (defecto.clave if defecto else "pipeline")
-        funcional = _importe_funcional(db, oportunidad, moneda, fallidas)
+        no_suma = oportunidad.estado in fuera
+        # La que no suma tampoco avisa de que le falta el cambio: el aviso es de
+        # importes que faltan en el total, y esta no iba a estar.
+        funcional = _importe_funcional(db, oportunidad, moneda, [] if no_suma else fallidas)
         db.add(
             LineaInstantanea(
                 tenant_id=tenant_id,
@@ -942,6 +978,11 @@ def tomar_instantanea(
                 estado=oportunidad.estado,
             )
         )
+        # La línea de una perdida se guarda —el *waterfall* la necesita para
+        # contarla como «perdida» y no como «salida»—, pero no suma: los
+        # totales de la foto tienen que ser los de `calcular` en ese momento.
+        if no_suma:
+            continue
         totales[clave] = str(Decimal(totales.get(clave, "0")) + funcional)
         cuantas += 1
 
@@ -1010,8 +1051,21 @@ def waterfall(db: Session, tenant_id: UUID, desde_id: UUID, hasta_id: UUID) -> d
     deslizadas: list[dict[str, Any]] = []
     variacion: list[dict[str, Any]] = []
 
+    ganado = con_significado("oportunidad", "ganado", db)
+    cerrado_sin_ganar = _cerradas_sin_ganar(db)
+
     for op_id, fila in despues.items():
-        if op_id not in antes:
+        previa = antes.get(op_id)
+        # Entra lo que pasa a sumar: lo nuevo en la foto y lo que se reabre. Lo
+        # que aparece ya perdido no ha entrado en ningún total, y contarlo como
+        # entrada inflaría el pipeline nuevo con dinero que no está.
+        nueva_que_suma = previa is None and fila.estado not in cerrado_sin_ganar
+        reabierta = (
+            previa is not None
+            and previa.estado in cerrado_sin_ganar
+            and fila.estado not in cerrado_sin_ganar
+        )
+        if nueva_que_suma or reabierta:
             entradas.append(
                 {
                     "oportunidad_id": str(op_id),
@@ -1019,12 +1073,12 @@ def waterfall(db: Session, tenant_id: UUID, desde_id: UUID, hasta_id: UUID) -> d
                     "importe": str(fila.importe_funcional),
                 }
             )
+        if previa is None or reabierta:
             continue
-        previa = antes[op_id]
-        ganado = con_significado("oportunidad", "ganado", db)
-        cerrado_sin_ganar = con_significado("oportunidad", "perdido", db) | con_significado(
-            "oportunidad", "cancelado", db
-        )
+        if previa.estado in cerrado_sin_ganar and fila.estado in cerrado_sin_ganar:
+            # Perdida en las dos fotos: no estaba en ningún total, así que lo que
+            # le pase a su importe o a su fecha no explica ninguna variación.
+            continue
         if fila.estado in ganado and previa.estado not in ganado:
             ganadas.append(
                 {
@@ -1041,6 +1095,9 @@ def waterfall(db: Session, tenant_id: UUID, desde_id: UUID, hasta_id: UUID) -> d
                     "importe": str(previa.importe_funcional),
                 }
             )
+            # Sale entera por «perdidas», con lo que valía en la foto anterior;
+            # contarle además el cambio de importe restaría dos veces.
+            continue
         if fila.fecha_cierre != previa.fecha_cierre and fila.fecha_cierre and previa.fecha_cierre:
             deslizadas.append(
                 {
@@ -1060,7 +1117,9 @@ def waterfall(db: Session, tenant_id: UUID, desde_id: UUID, hasta_id: UUID) -> d
             )
 
     for op_id, previa in antes.items():
-        if op_id not in despues:
+        # La que ya estaba perdida no estaba en el total: que deje la foto no
+        # resta nada.
+        if op_id not in despues and previa.estado not in cerrado_sin_ganar:
             # Salir de la foto no es lo mismo que perderse: puede haberse ido a
             # otro trimestre o haberla borrado alguien. Mezclarlo con «perdida»
             # inflaría la tasa de pérdida y llevaría a revisar un problema que no
