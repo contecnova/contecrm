@@ -5,7 +5,6 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from crmcore.config import get_settings
 from crmcore.errors import CuotaAgotada, NoAutenticado, Prohibido
 from crmcore.http.problems import manejar_error_dominio
 from crmcore.service import crear_servicio
@@ -138,9 +137,9 @@ def ip_de(request: Any) -> str:
     se pondría la dirección que le conviniera y la lista de redes de una clave
     dejaría de significar nada.
     """
-    s = get_settings()
-    if s.trust_proxy_headers:
-        reenviada = request.headers.get("x-forwarded-for", "")
-        if reenviada:
-            return reenviada.split(",")[0].strip()
-    return request.client.host if request.client else ""
+    # La misma regla que el resto del producto (`crmcore.http.ip_cliente`):
+    # aquí había una tercera copia que cogía el primer valor de la cabecera.
+    from crmcore.http.ip_cliente import ip_del_cliente
+
+    par = request.client.host if request.client else ""
+    return ip_del_cliente(par, request.headers.get("x-forwarded-for", ""))

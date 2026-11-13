@@ -298,13 +298,11 @@ def ip_de(request: Request) -> str:
 
 
 def _ip(request: Request) -> str:
-    from crmcore.config import get_settings
+    # Una sola regla para todo el producto: ver `crmcore.http.ip_cliente`.
+    from crmcore.http.ip_cliente import ip_del_cliente
 
-    if get_settings().trust_proxy_headers:
-        reenviada = request.headers.get("x-forwarded-for", "")
-        if reenviada:
-            return reenviada.split(",")[0].strip()
-    return request.client.host if request.client else ""
+    par = request.client.host if request.client else ""
+    return ip_del_cliente(par, request.headers.get("x-forwarded-for", ""))
 
 
 def _principal_de_cabeceras(request: Request) -> Principal:

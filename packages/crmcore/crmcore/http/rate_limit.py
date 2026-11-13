@@ -98,15 +98,15 @@ def _ip_cliente(scope: Scope) -> str:
     límite por IP cambiando el valor en cada petición. Con proxy declarado, la
     cabecera es fiable porque la reescribe el proxy.
     """
-    from crmcore.config import get_settings
+    from crmcore.http.ip_cliente import ip_del_cliente
 
-    s = get_settings()
-    if s.trust_proxy_headers:
-        for clave, valor in scope.get("headers", []):
-            if clave == b"x-forwarded-for":
-                return valor.decode("latin-1").split(",")[0].strip()
+    reenviada = ""
+    for clave, valor in scope.get("headers", []):
+        if clave == b"x-forwarded-for":
+            reenviada = valor.decode("latin-1")
+            break
     cliente = scope.get("client")
-    return cliente[0] if cliente else "desconocido"
+    return ip_del_cliente(cliente[0] if cliente else "desconocido", reenviada)
 
 
 async def comprobar_limites(scope: Scope) -> None:

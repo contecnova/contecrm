@@ -42,6 +42,21 @@ Qué cuenta como «de ejemplo»:
 - `SUPERADMIN_PASSWORD` con un marcador: `scripts/cuenta_de_arranque.py` no
   crea la cuenta.
 
+### Detrás de un proxy: `TRUST_PROXY_HEADERS` y `TRUSTED_PROXIES`
+
+`X-Forwarded-For` solo se cree si quien habla con el servicio es un proxy
+declarado en `TRUSTED_PROXIES` (IPs o redes, `10.0.0.0/8,172.18.0.2`). Entonces
+la cabecera se lee **de derecha a izquierda** y la IP del cliente es la primera
+que no es de un proxy propio; lo que haya a su izquierda lo escribió el cliente
+y no cuenta. Sin redes declaradas no se confía en nadie. Una sola función
+(`crmcore.http.ip_cliente.ip_del_cliente`) decide para el límite por IP, las
+redes de las claves de API, el acceso contextual y la auditoría.
+
+> Hasta el 13-11-2026 (auditoría, SEC-8) había tres copias de esto que cogían el
+> **primer** valor de la cabecera —el que pone el cliente— y `TRUSTED_PROXIES`
+> no lo leía nadie: mandar `X-Forwarded-For: <IP permitida>` bastaba para
+> saltarse los límites y las listas de redes.
+
 > Hasta el 13-11-2026 (auditoría, SEC-3) `CAMBIAME` no estaba en la lista y la
 > comparación era exacta, así que copiar la plantilla a mano —que trae
 > `ENV=prod`— arrancaba en producción con la clave que firma todos los tokens a
