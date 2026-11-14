@@ -207,9 +207,18 @@ def test_el_front_no_guarda_datos_de_negocio_en_el_navegador() -> None:
         # contraseña; sola no da acceso a nada.
         "paginas/Entrar.tsx",
     }
+    # Una exención que ya no apunta a nada es una puerta abierta: el fichero
+    # se renombra, la línea se queda y nadie lo nota.
+    faltan = sorted(p for p in permitidos if not (FRONT / p).is_file())
+    assert not faltan, f"Usos permitidos que ya no existen: {faltan}"
+
     usos: list[str] = []
     for fichero in _fuentes():
-        relativo = str(fichero.relative_to(FRONT))
+        # `as_posix()`, no `str()` (auditoría 13-11-2026, GATE-2). Con `str()`
+        # en Windows salía `lib\\tema.ts`, no coincidía con ninguna entrada de
+        # `permitidos` y el gate fallaba con los nueve usos declarados, todos
+        # legítimos: no había dato de negocio nuevo, había una barra al revés.
+        relativo = fichero.relative_to(FRONT).as_posix()
         if relativo in permitidos:
             continue
         texto = _sin_comentarios(fichero.read_text(encoding="utf-8"))
@@ -218,10 +227,10 @@ def test_el_front_no_guarda_datos_de_negocio_en_el_navegador() -> None:
                 usos.append(f"{relativo}: {almacen}")
 
     assert not usos, (
-        "El front guarda cosas en el navegador fuera de `lib/tema.ts`:\n  "
+        "El front guarda cosas en el navegador fuera de los usos permitidos:\n  "
         + "\n  ".join(sorted(usos))
         + "\n\nAhí solo van preferencias de quien mira, nunca dato de negocio ni "
-        "la sesión."
+        "la sesión. Si es una preferencia, se añade a `permitidos` con su motivo."
     )
 
 

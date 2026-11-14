@@ -24,7 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Error as Fallo } from "@/componentes/Estados";
+import { Cargando, Error as Fallo, FalloCompacto } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
@@ -132,7 +132,15 @@ interface EstadoIndice {
  */
 function LoQueSabe() {
   const { t } = useTranslation();
-  const [estado, setEstado] = useState<EstadoIndice | null>(null);
+  // `undefined` mientras se pregunta; `null` si llegó a medias. Antes las dos
+  // cosas —y el fallo— eran `null` y la línea no salía: no se distinguía
+  // «todavía no lo sé» de «no lo he podido mirar» (auditoría 13-11-2026,
+  // UX-11).
+  const [estado, setEstado] = useState<EstadoIndice | null | undefined>(
+    undefined,
+  );
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [intento, setIntento] = useState(0);
   useEffect(() => {
     const control = new AbortController();
     llamar<EstadoIndice>("/api/v1/ia/indice", { signal: control.signal })
@@ -140,9 +148,34 @@ function LoQueSabe() {
       .then((r) =>
         setEstado(Array.isArray(r.datos?.por_fuente) ? r.datos : null),
       )
-      .catch(() => setEstado(null));
+      .catch(
+        salvoCancelacion((e) => {
+          setFallo(e);
+          setEstado(null);
+        }),
+      );
     return () => control.abort();
-  }, []);
+  }, [intento]);
+  if (fallo)
+    return (
+      <div className="mb-3">
+        <FalloCompacto
+          error={fallo}
+          que={t("asistente.indice")}
+          reintentar={() => {
+            setFallo(null);
+            setEstado(undefined);
+            setIntento((n) => n + 1);
+          }}
+        />
+      </div>
+    );
+  if (estado === undefined)
+    return (
+      <p className="mb-3 text-rotulo text-ink-faint" role="status">
+        {t("asistente.mirandoIndice")}
+      </p>
+    );
   if (!estado) return null;
   if (estado.total === 0)
     return (
@@ -480,6 +513,10 @@ function MisAcciones({ vuelta }: { vuelta: number }) {
   } | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [trabajando, setTrabajando] = useState("");
+  // Si el servidor ha contestado ya alguna vez. Sin esto, mientras llegaba la
+  // lista la sección no existía y la pantalla parecía no tener propuestas
+  // (auditoría 13-11-2026, UX-11).
+  const [contestada, setContestada] = useState(false);
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -498,7 +535,10 @@ function MisAcciones({ vuelta }: { vuelta: number }) {
             : null,
         ),
       )
-      .catch(salvoCancelacion(setFallo));
+      .catch(salvoCancelacion(setFallo))
+      .finally(() => {
+        if (!control.signal.aborted) setContestada(true);
+      });
     return () => control.abort();
   }, []);
   useEffect(cargar, [cargar, vuelta]);
@@ -519,6 +559,13 @@ function MisAcciones({ vuelta }: { vuelta: number }) {
     }
   }
 
+  if (!contestada)
+    return (
+      <section className="card mt-4 p-4">
+        <h2 className="section-label mb-1">{t("asistente.misAcciones")}</h2>
+        <Cargando />
+      </section>
+    );
   if (!datos && !fallo) return null;
   const ahora = Date.now();
   return (

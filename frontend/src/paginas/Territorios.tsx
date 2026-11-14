@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import {
   AvisoDeRecorte,
+  Cargando,
   Error as Fallo,
   FalloCompacto,
   Vacio,
@@ -86,7 +87,9 @@ interface Excepciones {
 
 export function Territorios() {
   const { t } = useTranslation();
-  const [territorios, setTerritorios] = useState<Territorio[]>([]);
+  // `null` hasta que llega: es «cargando», no «no hay territorios»
+  // (auditoría 13-11-2026, UX-10).
+  const [territorios, setTerritorios] = useState<Territorio[] | null>(null);
   const [excepciones, setExcepciones] = useState<Excepciones | null>(null);
   const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
   const [consecucion, setConsecucion] = useState<Consecucion | null>(null);
@@ -156,7 +159,7 @@ export function Territorios() {
     }
   }
 
-  if (fallo && territorios.length === 0) {
+  if (fallo && !territorios?.length) {
     return <Fallo error={fallo} reintentar={cargar} />;
   }
 
@@ -245,7 +248,14 @@ export function Territorios() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ElMapa territorios={territorios} />
+        {territorios === null ? (
+          <section className="card p-4">
+            <h2 className="section-label mb-1">{t("territorios.mapa")}</h2>
+            <Cargando />
+          </section>
+        ) : (
+          <ElMapa territorios={territorios} />
+        )}
         {/* En su casilla, el panel o lo que ha impedido leerlo. */}
         {estado("excepciones").error ? (
           <section className="card p-4">
@@ -253,6 +263,15 @@ export function Territorios() {
               {...estado("excepciones")}
               que={t("territorios.excepciones")}
             />
+          </section>
+        ) : excepciones === null && estado("excepciones").cargando ? (
+          // Mientras llega, se dice: la casilla vacía se leía como «este
+          // panel no existe» (auditoría 13-11-2026, UX-11).
+          <section className="card p-4">
+            <h2 className="section-label mb-1">
+              {t("territorios.excepciones")}
+            </h2>
+            <Cargando />
           </section>
         ) : (
           <LasExcepciones excepciones={excepciones} />
@@ -263,6 +282,11 @@ export function Territorios() {
               {...estado("cuotas")}
               que={t("territorios.cuotas")}
             />
+          </section>
+        ) : consecucion === null && estado("cuotas").cargando ? (
+          <section className="card p-4">
+            <h2 className="section-label mb-1">{t("territorios.cuotas")}</h2>
+            <Cargando />
           </section>
         ) : (
           <LasCuotas consecucion={consecucion} />

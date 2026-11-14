@@ -14,7 +14,7 @@
  * fecha entrenados y NO publicados por no llegar al mínimo, y leads y
  * siguiente oferta sin datos bastantes, dicho así en cada tarjeta.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -23,7 +23,9 @@ import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
+import { useFocoDeConfirmacion } from "@/lib/foco";
 import { cifra, fechaHora } from "@/lib/formato";
+import { usePuedeOperar } from "@/lib/permisos";
 import { cn } from "@/lib/utiles";
 
 interface Version {
@@ -63,6 +65,24 @@ interface Resultado {
   leidos?: Record<string, number | boolean>;
 }
 
+/** Lo que contesta `POST /ia/modelos/{tipo}/versiones/{version}/activar`. */
+interface Activacion {
+  tipo: string;
+  version: number;
+  comparacion: {
+    habia_anterior: boolean;
+    metrica?: string;
+    anterior?: number;
+    nueva?: number;
+    mejora?: boolean;
+    /** Vacío si mejora; si no, la frase del servidor que lo dice. */
+    aviso?: string;
+  };
+}
+
+const rutaDeActivar = (tipo: string, version: number) =>
+  `/api/v1/ia/modelos/${encodeURIComponent(tipo)}/versiones/${version}/activar`;
+
 interface SegmentoCreado {
   creado: boolean;
   segmento_id?: string;
@@ -100,6 +120,19 @@ export function ModelosPredictivos() {
   const [resultados, setResultados] = useState<Record<string, Resultado>>({});
   const [entrenando, setEntrenando] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
+  // Activar una versión, o volver a una anterior (auditoría 13-11-2026,
+  // COB-3). El servidor lo hacía —exige métricas y contesta con la
+  // comparación— y ninguna pantalla llegaba: una versión nueva que puntuaba
+  // peor sólo se podía retirar llamando a la API a mano.
+  const puedeOperar = usePuedeOperar();
+  const [aActivar, setAActivar] = useState<Version | null>(null);
+  const [activada, setActivada] = useState<Activacion | null>(null);
+  const avisoDeActivada = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // La fila desde la que se pidió puede haberse ido —ya no se ofrece
+    // activar la que puntúa—, así que el foco va a lo que ha pasado.
+    if (activada) avisoDeActivada.current?.focus();
+  }, [activada]);
 
   const cargar = useCallback(() => {
     llamar<{
@@ -150,6 +183,19 @@ export function ModelosPredictivos() {
 
   if (fallo && !versiones) return <Fallo error={fallo} reintentar={cargar} />;
   if (!versiones) return <Cargando />;
+
+  const nombreDe = (tipo: string) =>
+    t(`prediccion.tipos.${tipo}`, { defaultValue: tipo });
+  const activaDe = (tipo: string) =>
+    versiones.find((v) => v.tipo === tipo && v.estado === "activa");
+  // Lo que se ofrece: cualquier versión que no sea la que puntúa y que ya
+  // tenga métricas. Una «entrenando» no tiene con qué compararse y el
+  // servidor la rechazaría.
+  const activable = (v: Version) =>
+    v.estado !== "activa" &&
+    v.estado !== "entrenando" &&
+    puedeOperar("POST", rutaDeActivar(v.tipo, v.version));
+  const algunaActivable = versiones.some(activable);
 
   return (
     <>
@@ -268,6 +314,40 @@ export function ModelosPredictivos() {
         <p className="mb-2 text-rotulo text-ink-faint">
           {t("modelosPredictivos.versionesAyuda")}
         </p>
+        {activada ? (
+          <div
+            ref={avisoDeActivada}
+            tabIndex={-1}
+            role="status"
+            className="mb-3 rounded-lg border border-success/40 bg-success/5 p-3 text-dato"
+          >
+            <p className="text-success">
+              {t("modelosPredictivos.activada", {
+                modelo: nombreDe(activada.tipo),
+                version: activada.version,
+              })}
+            </p>
+            {/* Activar algo peor es legítimo —a veces se prefiere un modelo
+                más simple—, pero tiene que verse: el servidor lo dice y aquí
+                se enseña tal cual. */}
+            {activada.comparacion.aviso ? (
+              <p className="mt-1 text-warning">{activada.comparacion.aviso}</p>
+            ) : null}
+          </div>
+        ) : null}
+        {aActivar ? (
+          <ConfirmarActivacion
+            version={aActivar}
+            actual={activaDe(aActivar.tipo)}
+            nombre={nombreDe(aActivar.tipo)}
+            alCancelar={() => setAActivar(null)}
+            alActivar={(r) => {
+              setAActivar(null);
+              setActivada(r);
+              cargar();
+            }}
+          />
+        ) : null}
         {versiones.length === 0 ? (
           <Vacio titulo={t("modelosPredictivos.sinVersiones")} compacto />
         ) : (
@@ -282,6 +362,9 @@ export function ModelosPredictivos() {
               t("modelosPredictivos.col.ejemplos"),
               t("modelosPredictivos.col.ventana"),
               t("modelosPredictivos.col.entrenado"),
+              // La columna sólo si hay algo que hacer en ella: sin permiso,
+              // una casilla vacía en cada fila no dice nada.
+              ...(algunaActivable ? [t("modelosPredictivos.col.accion")] : []),
             ]}
           >
             {versiones.map((v) => (
@@ -310,12 +393,165 @@ export function ModelosPredictivos() {
                 <Casilla className="text-right">{cifra(v.ejemplos)}</Casilla>
                 <Casilla>{v.ventana}</Casilla>
                 <Casilla>{fechaHora(v.entrenado_at)}</Casilla>
+                {algunaActivable ? (
+                  <Casilla>
+                    {activable(v) ? (
+                      <BotonDeActivar
+                        version={v}
+                        actual={activaDe(v.tipo)}
+                        nombre={nombreDe(v.tipo)}
+                        alPulsar={() => {
+                          setActivada(null);
+                          setAActivar(v);
+                        }}
+                      />
+                    ) : null}
+                  </Casilla>
+                ) : null}
               </tr>
             ))}
           </Rejilla>
         )}
       </section>
     </>
+  );
+}
+
+/**
+ * «Activar» o «Volver a esta»: lo segundo cuando la versión es anterior a la
+ * que puntúa, porque eso es lo que se está haciendo —deshacer un cambio— y
+ * quien lo busca lo busca con esas palabras.
+ */
+function BotonDeActivar({
+  version,
+  actual,
+  nombre,
+  alPulsar,
+}: {
+  version: Version;
+  actual: Version | undefined;
+  nombre: string;
+  alPulsar: () => void;
+}) {
+  const { t } = useTranslation();
+  const atras = actual !== undefined && version.version < actual.version;
+  return (
+    <button
+      type="button"
+      className="btn-ghost"
+      aria-label={t(
+        atras
+          ? "modelosPredictivos.volverAVersion"
+          : "modelosPredictivos.activarVersion",
+        { modelo: nombre, version: version.version },
+      )}
+      onClick={alPulsar}
+    >
+      <Icono nombre={atras ? "undo" : "play_arrow"} tamano="sm" />
+      {t(atras ? "modelosPredictivos.volverAEsta" : "modelosPredictivos.activar")}
+    </button>
+  );
+}
+
+/**
+ * La pregunta antes de cambiar el modelo que puntúa para todo el mundo, con
+ * lo que se gana o se pierde a la vista: la medida de la que puntúa ahora al
+ * lado de la de ésta. Y lo que la hace sospechosa —no superó el mínimo, o es
+ * de pesos tecleados—, dicho antes y no después.
+ */
+function ConfirmarActivacion({
+  version,
+  actual,
+  nombre,
+  alCancelar,
+  alActivar,
+}: {
+  version: Version;
+  actual: Version | undefined;
+  nombre: string;
+  alCancelar: () => void;
+  alActivar: (r: Activacion) => void;
+}) {
+  const { t } = useTranslation();
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const cancelar = useRef<HTMLButtonElement>(null);
+  // El foco entra en «Cancelar» y vuelve al botón de la fila al cerrar
+  // (auditoría 13-11-2026, UX-7).
+  useFocoDeConfirmacion(cancelar);
+  const titulo = t("modelosPredictivos.confirmarTitulo", {
+    modelo: nombre,
+    version: version.version,
+  });
+
+  async function activar() {
+    setEnviando(true);
+    setFallo(null);
+    try {
+      const r = await llamar<Activacion>(
+        rutaDeActivar(version.tipo, version.version),
+        { metodo: "POST" },
+      );
+      alActivar(r.datos);
+    } catch (e) {
+      // Aquí y no arriba: el motivo —«no se activa un modelo sin sus
+      // métricas»— tiene que salir junto a la pregunta que lo provocó.
+      setFallo(e);
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div
+      role="alertdialog"
+      aria-label={titulo}
+      className="mb-3 flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/5 p-3 text-dato"
+    >
+      <p className="font-medium text-ink">{titulo}</p>
+      <p className="text-ink-muted">
+        {actual
+          ? t("modelosPredictivos.confirmarConActual", {
+              actual: actual.version,
+            })
+          : t("modelosPredictivos.confirmarSinActual")}
+      </p>
+      {actual ? (
+        <p className="font-mono text-rotulo text-ink">
+          {t("modelosPredictivos.comparacion", {
+            actual: actual.version,
+            medidaActual: medida(actual.metricas) || "—",
+            medida: medida(version.metricas) || "—",
+          })}
+        </p>
+      ) : null}
+      {version.estado === "descartada" ? (
+        <p className="text-warning">{t("modelosPredictivos.noSuperoMinimo")}</p>
+      ) : null}
+      {version.origen !== "historico" ? (
+        <p className="text-warning">{t("modelosPredictivos.esDeclarada")}</p>
+      ) : null}
+      {fallo ? <Fallo error={fallo} /> : null}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={enviando}
+          onClick={() => void activar()}
+        >
+          {enviando
+            ? t("modelosPredictivos.activando")
+            : t("modelosPredictivos.siActivar", { version: version.version })}
+        </button>
+        <button
+          ref={cancelar}
+          type="button"
+          className="btn-secondary"
+          onClick={alCancelar}
+        >
+          {t("modulo.cancelar")}
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -86,13 +86,27 @@ describe("las fechas y los importes los pone el tenant", () => {
     }
   });
 
-  it("el idioma del documento sigue a la localización del tenant", () => {
+  // Esta prueba fijaba lo contrario —«el idioma del documento sigue a la
+  // localización del tenant»— y estaba mal (auditoría 13-11-2026, UX-15): los
+  // textos sólo existen en castellano (`IDIOMAS` en `i18n/index.ts`), así que
+  // un tenant en `pt-PT` acababa con un documento escrito en castellano y
+  // marcado como portugués, y el lector de pantalla lo leía con la fonética
+  // equivocada. `lang` dice en qué idioma están los textos; la localización
+  // sólo cambia cómo se escriben fechas e importes.
+  it("el idioma del documento es el de los textos, no el de la localización", async () => {
+    const { default: i18next, iniciarI18n, IDIOMAS } = await import("@/i18n");
+    await iniciarI18n("es");
+    expect(IDIOMAS).toContain(document.documentElement.lang);
+    expect(document.documentElement.lang).toBe(i18next.language);
+
     const antes = localizacion();
     try {
       fijarLocalizacion("pt-PT");
-      expect(document.documentElement.lang).toBe("pt-PT");
-      fijarLocalizacion("es-ES");
-      expect(document.documentElement.lang).toBe("es-ES");
+      // Los números sí cambian…
+      expect(fecha("2026-11-26")).toBe("26/11/2026");
+      expect(localizacion()).toBe("pt-PT");
+      // …y el documento sigue diciendo en qué está escrito.
+      expect(document.documentElement.lang).toBe("es");
     } finally {
       fijarLocalizacion(antes);
     }

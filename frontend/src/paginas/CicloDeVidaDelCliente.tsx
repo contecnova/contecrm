@@ -28,7 +28,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { AvisoDeRecorte, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { salvoCancelacion } from "@/lib/api";
 import { listar, listarPagina } from "@/lib/listados";
@@ -118,6 +123,25 @@ export function CicloDeVidaDelCliente() {
 
   if (fallo) return <Fallo error={fallo} reintentar={cargar} />;
 
+  const cabecera = (
+    <CabeceraPagina
+      titulo={t("ciclovida.titulo")}
+      icono="swap_horiz"
+      entradilla={t("ciclovida.entradilla")}
+    />
+  );
+  // Las tres listas llegan juntas y empiezan vacías: sin esto, mientras
+  // cargaban se leía «no hay operaciones», «no hay migraciones»… que es
+  // justo lo que esta pantalla no puede decir sin haberlo mirado
+  // (auditoría 13-11-2026, UX-10).
+  if (!cargado)
+    return (
+      <>
+        {cabecera}
+        <Cargando />
+      </>
+    );
+
   const hechas = operaciones.filter((o) => o.estado !== "simulada");
   const simuladas = operaciones.filter((o) => o.estado === "simulada");
   // Una ventana de solo lectura abierta es lo único de esta pantalla que pasa
@@ -126,11 +150,7 @@ export function CicloDeVidaDelCliente() {
 
   return (
     <>
-      <CabeceraPagina
-        titulo={t("ciclovida.titulo")}
-        icono="swap_horiz"
-        entradilla={t("ciclovida.entradilla")}
-      />
+      {cabecera}
 
       {abiertas.length > 0 ? (
         <p
@@ -304,7 +324,7 @@ export function CicloDeVidaDelCliente() {
           <p className="mt-1 text-rotulo text-ink-faint">
             {t("ciclovida.porquePerfiles")}
           </p>
-          {!cargado || perfiles.length === 0 ? (
+          {perfiles.length === 0 ? (
             <Vacio compacto titulo={t("ciclovida.sinPerfiles")} detalle="" />
           ) : (
             <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">

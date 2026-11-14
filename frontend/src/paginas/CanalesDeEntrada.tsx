@@ -30,6 +30,7 @@ import { useTranslation } from "react-i18next";
 
 import {
   AvisoDeRecorte,
+  Cargando,
   Error as Fallo,
   FalloCompacto,
   Vacio,
@@ -81,7 +82,11 @@ export function CanalesDeEntrada() {
         entradilla={t("canales.entradilla")}
       />
 
-      {!canales || canales.length === 0 ? (
+      {/* `filas` es `null` hasta que llega la primera página: eso es «cargando»,
+          no «no hay canales» (auditoría 13-11-2026, UX-10). */}
+      {canales === null ? (
+        <Cargando />
+      ) : canales.length === 0 ? (
         <Vacio
           titulo={t("canales.sinCanales")}
           detalle={t("canales.sinCanalesDetalle")}

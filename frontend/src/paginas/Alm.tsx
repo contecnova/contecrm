@@ -125,6 +125,10 @@ export function Alm() {
   const [datos, setDatos] = useState<Drift | null>(null);
   const [puesto, setPuesto] = useState<Desplegado | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  // Pedir el desvío tarda lo que tarde comparar el entorno entero con su
+  // paquete. Sin decirlo, el botón no hacía nada visible y se volvía a pulsar
+  // (auditoría 13-11-2026, UX-11).
+  const [mirando, setMirando] = useState(false);
 
   useEffect(() => {
     const control = new AbortController();
@@ -138,6 +142,7 @@ export function Alm() {
 
   const mirar = async () => {
     setFallo(null);
+    setMirando(true);
     try {
       // Las dos preguntas se hacen a la vez porque se piensan a la vez: «qué
       // hay puesto aquí» y «qué se ha tocado por encima». Enseñar el desvío sin
@@ -150,6 +155,8 @@ export function Alm() {
       setPuesto(hay.datos);
     } catch (e) {
       setFallo(e);
+    } finally {
+      setMirando(false);
     }
   };
 
@@ -188,9 +195,11 @@ export function Alm() {
         <button
           type="button"
           onClick={mirar}
+          disabled={mirando}
+          aria-busy={mirando}
           className="rounded-lg bg-accent px-3 py-1.5 text-dato text-on-accent"
         >
-          {t("alm.verDesvio")}
+          {mirando ? t("alm.mirandoDesvio") : t("alm.verDesvio")}
         </button>
       </div>
 

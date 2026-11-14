@@ -480,6 +480,7 @@ export default {
       "Procesos de ejemplo por sector. Copiar crea un BORRADOR tuyo con clave nueva y lo abre aquí: lo ajustas y lo publicas. Mejorar la plantilla no cambia tus copias.",
     plantillasVacia: "La biblioteca está vacía en esta instalación.",
     cargarDeSerie: "Cargar las de serie",
+    versionesGuardadas: "Las versiones guardadas",
     claveDeLaCopia: "Clave de la copia de «{{plantilla}}»",
     copiarComoBorrador: "Copiar como borrador",
     copiada:

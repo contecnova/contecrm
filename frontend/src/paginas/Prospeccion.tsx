@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
 
@@ -248,7 +248,12 @@ export function Prospeccion() {
         <p className="mt-1 text-rotulo text-ink-faint">
           {t("prospeccion.porqueConcluyente")}
         </p>
-        {!rendimiento?.medible ? (
+        {/* Mientras llega el rendimiento se dice que llega: antes se leía
+            «todavía no se puede medir», que es una conclusión y no una espera
+            (auditoría 13-11-2026, UX-11). */}
+        {rendimiento === null ? (
+          <Cargando />
+        ) : !rendimiento.medible ? (
           <Vacio
             compacto
             titulo={t("prospeccion.sinMedir")}

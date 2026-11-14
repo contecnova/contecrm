@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo } from "@/componentes/Estados";
+import { Cargando, Error as Fallo, FalloCompacto } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
 import { rotuloDeOpcion } from "@/lib/formato";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -128,7 +128,11 @@ export function Procesos() {
   const [fallo, setFallo] = useState<unknown>(null);
   // Las versiones guardadas, para abrir una y publicarla o archivarla
   // (CRM-00.03.05.05): la API lo hacía y ninguna pantalla llegaba.
-  const [guardadas, setGuardadas] = useState<Guardada[]>([]);
+  // `null` mientras llegan. Antes un fallo al pedirlas dejaba el desplegable
+  // con sólo «nueva», igual que si no hubiera ninguna guardada
+  // (auditoría 13-11-2026, UX-11).
+  const [guardadas, setGuardadas] = useState<Guardada[] | null>(null);
+  const [falloGuardadas, setFalloGuardadas] = useState<unknown>(null);
   const [abierta, setAbierta] = useState<Guardada | null>(null);
   const [aviso, setAviso] = useState("");
   // Migrar lo que está en vuelo a la versión abierta: primero se simula y se
@@ -136,13 +140,17 @@ export function Procesos() {
   const [plan, setPlan] = useState<PlanDeMigracion | null>(null);
 
   const cargarGuardadas = useCallback(() => {
+    setFalloGuardadas(null);
     llamar<Guardada[]>("/api/v1/procesos/definiciones")
       .then((r) => setGuardadas(Array.isArray(r.datos) ? r.datos : []))
-      .catch(() => setGuardadas([]));
+      .catch((e: unknown) => {
+        setFalloGuardadas(e);
+        setGuardadas((antes) => antes ?? []);
+      });
   }, []);
   useEffect(cargarGuardadas, [cargarGuardadas]);
 
-  function abrir(id: string, lista: Guardada[] = guardadas) {
+  function abrir(id: string, lista: Guardada[] = guardadas ?? []) {
     const d = lista.find((g) => g.id === id);
     if (!d) return;
     setPlan(null);
@@ -304,13 +312,23 @@ export function Procesos() {
             onChange={(e) => abrir(e.target.value)}
           >
             <option value="">{t("procesos.nueva")}</option>
-            {guardadas.map((g) => (
+            {guardadas === null ? (
+              <option value="" disabled>
+                {t("app.cargando")}
+              </option>
+            ) : null}
+            {(guardadas ?? []).map((g) => (
               <option key={g.id} value={g.id}>
                 {g.nombre} · v{g.version} · {rotuloDeOpcion(g.estado)}
               </option>
             ))}
           </select>
         </label>
+        <FalloCompacto
+          error={falloGuardadas}
+          que={t("procesos.versionesGuardadas")}
+          reintentar={cargarGuardadas}
+        />
         <Campo
           etiqueta={t("procesos.clave")}
           valor={clave}
@@ -632,11 +650,15 @@ function Plantillas({
   const { t } = useTranslation();
   const [plantillas, setPlantillas] = useState<Plantilla[] | null>(null);
   const [claves, setClaves] = useState<Record<string, string>>({});
+  // Un fallo al pedirlas se decía «la biblioteca está vacía» y ofrecía cargar
+  // las de serie encima de las que ya hubiera (auditoría 13-11-2026, UX-11).
+  const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
+    setFallo(null);
     llamar<Plantilla[]>("/api/v1/procesos/plantillas")
       .then((r) => setPlantillas(Array.isArray(r.datos) ? r.datos : []))
-      .catch(() => setPlantillas([]));
+      .catch(setFallo);
   }, []);
   useEffect(cargar, [cargar]);
 
@@ -668,7 +690,16 @@ function Plantillas({
       <p className="mb-2 text-rotulo text-ink-faint">
         {t("procesos.plantillasAyuda")}
       </p>
-      {plantillas !== null && plantillas.length === 0 ? (
+      {fallo ? (
+        <FalloCompacto
+          error={fallo}
+          que={t("procesos.plantillasTitulo")}
+          reintentar={cargar}
+        />
+      ) : plantillas === null ? (
+        <Cargando />
+      ) : null}
+      {!fallo && plantillas !== null && plantillas.length === 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-dato text-ink-muted">
             {t("procesos.plantillasVacia")}

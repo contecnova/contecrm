@@ -49,10 +49,11 @@ gestión:
 | 2.4.3 Orden del foco | Cumple | El orden del DOM es el orden visual; no se usan `tabindex` positivos |
 | 2.4.7 Foco visible | Cumple | Anillo de foco propio, no el del navegador suprimido |
 | 2.5.8 Tamaño del objetivo (2.2) | Cumple | Los objetivos interactivos tienen 24 px de lado como mínimo |
-| 3.1.1 Idioma de la página | Cumple | `lang` declarado y cambiado con el idioma del usuario |
+| 3.1.1 Idioma de la página | Cumple | `lang` es el idioma en que están escritos los textos, el que resuelve i18n (`i18n/index.ts`), y se vuelve a fijar si cambia. Hasta el 13-11-2026 **lo ponía la localización del tenant**: un tenant en `pt-PT` dejaba marcado como portugués un documento escrito en castellano y el lector de pantalla lo leía con la fonética equivocada. La localización sólo decide cómo se escriben fechas e importes (`lib/formato.ts`). Lo comprueba `las_fechas_las_pone_el_tenant.test.ts` |
 | 3.3.1 Identificación de errores | Cumple | El error dice qué campo y por qué, con texto además del color |
 | 3.3.2 Etiquetas o instrucciones | Cumple | Comprobado en el preflight |
 | 4.1.2 Nombre, función, valor | Cumple | Componentes nativos; los roles se comprueban con el linter |
+| 4.1.2 / 2.4.3 Preguntas en línea (`role="alertdialog"`) | Cumple | Al abrirse, el foco entra en el botón seguro (cancelar, «mejor no») para que un Intro de más no ejecute lo que no se deshace; al cerrarse vuelve al botón que la abrió (`useFocoDeConfirmacion` en `lib/foco.ts`). Hasta el 13-11-2026 la fusión de duplicados y la confirmación de acciones irreversibles se abrían sin mover el foco, y con teclado o lector no se sabía que se estaba preguntando algo |
 | 4.1.3 Mensajes de estado | Cumple | `role="status"` en lo que cambia sin recargar |
 
 ## Qué NO cumple todavía

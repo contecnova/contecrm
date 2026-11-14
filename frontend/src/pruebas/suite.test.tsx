@@ -154,7 +154,17 @@ describe("la consola de gobierno de la suite", () => {
       "/api/v1/suite/cuarentena/s-1/reintentar": { id: "s-1", estado: "pendiente" },
     };
     render(<SuiteGobierno />);
-    const boton = await screen.findByRole("button", { name: "suite.reintentar" });
+    // Se espera a que llegue la fila con una consulta por TEXTO y el botón se
+    // busca por su papel UNA vez, ya pintado (auditoría 13-11-2026, TEST-1).
+    // `findByRole` repite la consulta en cada cambio del DOM mientras la
+    // pantalla se monta, y cada vuelta calcula el árbol de accesibilidad
+    // entero: medido el 14-11-2026, 107 ms por consulta frente a 10 ms por
+    // texto, con 481 ms hasta pintar la fila. Bajo carga eso se comía el
+    // segundo de `findBy*` y la prueba fallaba sin que nada estuviera roto.
+    // El papel y el nombre se siguen comprobando: si el botón deja de ser un
+    // botón o cambia de nombre, `getByRole` falla igual que antes.
+    await screen.findByText("suite.reintentar");
+    const boton = screen.getByRole("button", { name: "suite.reintentar" });
     await userEvent.click(boton);
 
     await waitFor(() => {

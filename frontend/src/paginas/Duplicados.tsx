@@ -34,7 +34,7 @@
  * está comparando, y entonces la cola cuesta más que el problema.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -48,6 +48,7 @@ import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
+import { useFocoDeConfirmacion } from "@/lib/foco";
 import { humanizar } from "@/lib/formato";
 
 interface Pareja {
@@ -311,6 +312,9 @@ function ParejaDeFichas({
   const { t } = useTranslation();
   const decidida = pareja.decision !== "";
   const absorbida = elegida === pareja.a_id ? pareja.b_nombre : pareja.a_nombre;
+  // «Fusionar» se vuelve a pintar al cancelar la pregunta —es otro nodo—, así
+  // que el foco se devuelve a él por referencia y no a «donde estaba».
+  const fusionar = useRef<HTMLButtonElement>(null);
 
   return (
     <section className="card flex flex-col gap-3 p-4">
@@ -356,37 +360,20 @@ function ParejaDeFichas({
       </div>
 
       {decidida ? null : confirmando ? (
-        /* Lo que va a pasar, con los nombres puestos, antes de hacerlo.
-           Mezclar el histórico de dos clientes es difícil de deshacer. */
-        <div
-          role="alertdialog"
-          aria-label={t("duplicados.confirmarTitulo")}
-          className="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/5 p-3"
-        >
-          <p className="text-dato text-ink">
-            {t("duplicados.queVaAPasar", {
-              absorbida,
-              superviviente:
-                elegida === pareja.a_id ? pareja.a_nombre : pareja.b_nombre,
-            })}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-danger"
-              disabled={ocupada}
-              onClick={() => alDecidir("fusionar")}
-            >
-              {t("duplicados.siFusiona")}
-            </button>
-            <button type="button" className="btn-ghost" onClick={alCancelar}>
-              {t("duplicados.mejorNo")}
-            </button>
-          </div>
-        </div>
+        <PreguntaDeFusion
+          absorbida={absorbida}
+          superviviente={
+            elegida === pareja.a_id ? pareja.a_nombre : pareja.b_nombre
+          }
+          ocupada={ocupada}
+          alFusionar={() => alDecidir("fusionar")}
+          alCancelar={alCancelar}
+          devolverA={fusionar}
+        />
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <button
+            ref={fusionar}
             type="button"
             className="btn-primary"
             disabled={ocupada || elegida === ""}
@@ -419,6 +406,61 @@ function ParejaDeFichas({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Lo que va a pasar, con los nombres puestos, antes de hacerlo. Mezclar el
+ * histórico de dos clientes es difícil de deshacer.
+ */
+function PreguntaDeFusion({
+  absorbida,
+  superviviente,
+  ocupada,
+  alFusionar,
+  alCancelar,
+  devolverA,
+}: {
+  absorbida: string;
+  superviviente: string;
+  ocupada: boolean;
+  alFusionar: () => void;
+  alCancelar: () => void;
+  devolverA: RefObject<HTMLButtonElement | null>;
+}) {
+  const { t } = useTranslation();
+  const mejorNo = useRef<HTMLButtonElement>(null);
+  // El foco entra en «Mejor no» y vuelve a «Fusionar» al cancelar
+  // (auditoría 13-11-2026, UX-7).
+  useFocoDeConfirmacion(mejorNo, devolverA);
+  return (
+    <div
+      role="alertdialog"
+      aria-label={t("duplicados.confirmarTitulo")}
+      className="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/5 p-3"
+    >
+      <p className="text-dato text-ink">
+        {t("duplicados.queVaAPasar", { absorbida, superviviente })}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-danger"
+          disabled={ocupada}
+          onClick={alFusionar}
+        >
+          {t("duplicados.siFusiona")}
+        </button>
+        <button
+          ref={mejorNo}
+          type="button"
+          className="btn-ghost"
+          onClick={alCancelar}
+        >
+          {t("duplicados.mejorNo")}
+        </button>
+      </div>
+    </div>
   );
 }
 

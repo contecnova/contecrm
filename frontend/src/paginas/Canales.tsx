@@ -38,7 +38,7 @@ import { cn } from "@/lib/utiles";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { listar } from "@/lib/listados";
@@ -258,7 +258,12 @@ export function Canales() {
         <h2 className="text-titulo font-medium text-ink">
           {t("canalesmk.declarados")}
         </h2>
-        {!canales || canales.length === 0 ? (
+        {/* `null` es «todavía no ha llegado» y `[]` es «no hay ninguno»: antes
+            los dos pintaban el vacío, y mientras cargaba se leía «no hay
+            canales declarados» (auditoría 13-11-2026, UX-10). */}
+        {canales === null ? (
+          <Cargando />
+        ) : canales.length === 0 ? (
           <Vacio
             titulo={t("canalesmk.sinCanales")}
             detalle={t("canalesmk.sinCanalesDetalle")}

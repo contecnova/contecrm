@@ -86,17 +86,14 @@ export function fijarLocalizacion(locale: string): void {
     DINERO = dinero;
     FECHA = fecha;
     FECHA_HORA = fechaHora;
-    // El `lang` del documento viaja con ella. `index.html` lo trae fijo en
-    // «es» y un tenant en Portugal o en México se quedaba con esa marca aunque
-    // sus números y sus fechas ya salieran bien.
-    //
-    // Lo que arregla y lo que no: con esto Firefox pinta el `<input
-    // type="date">` en el formato del tenant, y los lectores de pantalla leen
-    // el idioma correcto. **Chrome no**: para ese control usa la localización
-    // del propio navegador y no mira `lang`, así que quien lo tenga en inglés
-    // verá ahí `mm/dd/yyyy` por mucho que la pantalla esté en castellano. Eso
-    // no se puede arreglar desde aquí.
-    if (typeof document !== "undefined") document.documentElement.lang = limpio;
+    // El `lang` del documento **no** viaja con ella (auditoría 13-11-2026,
+    // UX-15). Lo hacía, y un tenant en Portugal acababa con `lang="pt-PT"`
+    // sobre textos que sólo existen en castellano: el lector de pantalla leía
+    // «Guardar» con fonética portuguesa y el corrector del navegador marcaba
+    // en rojo cada palabra. `lang` dice en qué idioma ESTÁ ESCRITO lo que se
+    // ve, y eso lo decide i18n (`i18n/index.ts`); la localización del tenant
+    // sólo decide cómo se escriben números, fechas e importes, que van por
+    // `Intl` con ella dentro.
     // Las monedas ya construidas llevaban la localización vieja dentro.
     MONEDAS.clear();
   } catch {

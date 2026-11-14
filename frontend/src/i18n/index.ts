@@ -33,13 +33,30 @@ export function cargarTextosDePantallas(): Promise<void> {
   return textosDePantallas;
 }
 
+/**
+ * El `lang` del documento es el de los TEXTOS, no el de la localización del
+ * tenant (auditoría 13-11-2026, UX-15).
+ *
+ * Lo ponía `fijarLocalizacion`, y un tenant en `pt-PT` dejaba marcado como
+ * portugués un documento escrito en castellano: el lector de pantalla lo leía
+ * con la fonética equivocada. Aquí se fija con el idioma que i18n ha
+ * resuelto de verdad —uno de `IDIOMAS`—, y se vuelve a fijar si cambia.
+ */
+function marcarIdiomaDelDocumento(idioma: string): void {
+  if (typeof document !== "undefined" && idioma)
+    document.documentElement.lang = idioma;
+}
+
 export async function iniciarI18n(idioma: string): Promise<void> {
+  i18next.off("languageChanged", marcarIdiomaDelDocumento);
+  i18next.on("languageChanged", marcarIdiomaDelDocumento);
   await i18next.use(initReactI18next).init({
     lng: (IDIOMAS as readonly string[]).includes(idioma) ? idioma : "es",
     fallbackLng: "es",
     resources: { es: { translation: es } },
     interpolation: { escapeValue: false },
   });
+  marcarIdiomaDelDocumento(i18next.resolvedLanguage ?? i18next.language);
 }
 
 export default i18next;

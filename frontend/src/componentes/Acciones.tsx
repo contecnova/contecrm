@@ -16,7 +16,7 @@
  * respuesta a la basura.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
@@ -38,6 +38,7 @@ import {
 } from "@/lib/contrato";
 import { type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
+import { useFocoDeConfirmacion } from "@/lib/foco";
 import { operacionDe } from "@/lib/superficie";
 
 /**
@@ -154,6 +155,43 @@ export function casillasDelRegistro(
  * Cuáles de estas acciones no se deshacen. Lo usa quien pinta la barra para
  * mandarlas al fondo del menú, separadas.
  */
+/**
+ * «Esto no se deshace», antes de ejecutar de un clic lo que no tiene vuelta.
+ * El foco entra en «Cancelar» y, si se cancela, vuelve al botón de la acción
+ * (auditoría 13-11-2026, UX-7).
+ */
+function PreguntaIrreversible({
+  nombre,
+  alEntender,
+  alCancelar,
+}: {
+  nombre: string;
+  alEntender: () => void;
+  alCancelar: () => void;
+}) {
+  const { t } = useTranslation();
+  const cancelar = useRef<HTMLButtonElement>(null);
+  useFocoDeConfirmacion(cancelar);
+  return (
+    <div className="mt-3" role="alertdialog" aria-label={nombre}>
+      <p className="text-dato text-ink-muted">{t("acciones.noSeDeshace")}</p>
+      <div className="mt-3 flex gap-2">
+        <button type="button" onClick={alEntender} className="btn-danger">
+          {t("acciones.entendido")}
+        </button>
+        <button
+          ref={cancelar}
+          type="button"
+          onClick={alCancelar}
+          className="btn-secondary"
+        >
+          {t("modulo.cancelar")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function esIrreversible(accion: Accion): boolean {
   return IRREVERSIBLES.test(accion.clave);
 }
@@ -211,6 +249,13 @@ export function Acciones({
   const [fallo, setFallo] = useState<unknown>(null);
   const [resultado, setResultado] = useState<unknown>(null);
   const [confirmada, setConfirmada] = useState(false);
+  // Tras «Lo entiendo», el foco pasa al botón que ejecuta: quien acaba de
+  // decir que sí sigue con Intro, sin volver a buscarlo con el tabulador
+  // (auditoría 13-11-2026, UX-7).
+  const ejecutarSinCampos = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirmada) ejecutarSinCampos.current?.focus();
+  }, [confirmada]);
 
   useEffect(() => {
     if (!abierta) return;
@@ -381,31 +426,11 @@ export function Acciones({
           {campos === null ? (
             <Cargando />
           ) : irreversible && !confirmada && campos.length === 0 ? (
-            <div
-              className="mt-3"
-              role="alertdialog"
-              aria-label={abierta.nombre}
-            >
-              <p className="text-dato text-ink-muted">
-                {t("acciones.noSeDeshace")}
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmada(true)}
-                  className="btn-danger"
-                >
-                  {t("acciones.entendido")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAbierta(null)}
-                  className="btn-secondary"
-                >
-                  {t("modulo.cancelar")}
-                </button>
-              </div>
-            </div>
+            <PreguntaIrreversible
+              nombre={abierta.nombre}
+              alEntender={() => setConfirmada(true)}
+              alCancelar={() => setAbierta(null)}
+            />
           ) : (
             <div className="mt-3">
               {irreversible && campos.length > 0 ? (
@@ -416,6 +441,7 @@ export function Acciones({
               {campos.length === 0 ? (
                 // Sin campos no se enseña un formulario vacío: se ejecuta y ya.
                 <button
+                  ref={ejecutarSinCampos}
                   type="button"
                   disabled={enviando}
                   onClick={() => void ejecutar({})}

@@ -26,14 +26,15 @@
  * (1 cuenta en Clientes, 1 lead en Ventas) y confirmar con motivo.
  */
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { AvisoDelDirectorio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { ErrorApi, llamar } from "@/lib/api";
 import { humanizar } from "@/lib/formato";
-import { usePersonas } from "@/lib/personas";
+import { useDirectorio } from "@/lib/personas";
 
 /** Dónde se traspasa, servicio a servicio. Cada uno mueve lo suyo. */
 export const RUTAS_DE_TRASPASO = [
@@ -50,7 +51,10 @@ interface Resultado {
 
 export function TransferirPropiedad() {
   const { t } = useTranslation();
-  const personas = usePersonas();
+  // El directorio y no `usePersonas`: éste no dice ni que está cargando ni
+  // que ha fallado, y los dos desplegables salían con sólo «Elige» —igual
+  // que si no hubiera nadie a quien traspasar— (auditoría 13-11-2026, UX-11).
+  const directorio = useDirectorio();
   const [de, setDe] = useState("");
   const [a, setA] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -62,13 +66,8 @@ export function TransferirPropiedad() {
   const [hecho, setHecho] = useState<Resultado[] | null>(null);
   const [enviando, setEnviando] = useState(false);
 
-  const ordenadas = useMemo(
-    () =>
-      Object.values(personas).sort((x, y) =>
-        (x.nombre || x.email).localeCompare(y.nombre || y.email, "es"),
-      ),
-    [personas],
-  );
+  const ordenadas = directorio.personas ?? [];
+  const cargandoPersonas = directorio.personas === null && !directorio.fallo;
 
   async function lanzar(simular: boolean): Promise<Resultado[]> {
     return Promise.all(
@@ -144,6 +143,7 @@ export function TransferirPropiedad() {
             valor={de}
             alCambiar={setDe}
             personas={ordenadas}
+            cargando={cargandoPersonas}
           />
           <Elegir
             id="propiedad-a"
@@ -151,6 +151,7 @@ export function TransferirPropiedad() {
             valor={a}
             alCambiar={setA}
             personas={ordenadas.filter((p) => p.id !== de)}
+            cargando={cargandoPersonas}
           />
           <button
             type="button"
@@ -161,6 +162,7 @@ export function TransferirPropiedad() {
             {t("propiedad.simular")}
           </button>
         </div>
+        <AvisoDelDirectorio directorio={directorio} />
         {de && a && de === a ? (
           <p className="mt-2 text-dato text-warning" role="status">
             {t("propiedad.mismaPersona")}
@@ -221,12 +223,14 @@ function Elegir({
   valor,
   alCambiar,
   personas,
+  cargando,
 }: {
   id: string;
   rotulo: string;
   valor: string;
   alCambiar: (v: string) => void;
   personas: { id: string; nombre: string; email: string }[];
+  cargando: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -238,9 +242,13 @@ function Elegir({
         id={id}
         value={valor}
         onChange={(e) => alCambiar(e.target.value)}
+        disabled={cargando}
+        aria-busy={cargando}
         className="input-base"
       >
-        <option value="">{t("propiedad.elige")}</option>
+        <option value="">
+          {cargando ? t("app.cargando") : t("propiedad.elige")}
+        </option>
         {personas.map((p) => (
           <option key={p.id} value={p.id}>
             {p.nombre ? `${p.nombre} · ${p.email}` : p.email}

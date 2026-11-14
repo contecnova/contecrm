@@ -173,6 +173,7 @@ const pantallas = {
     intro: "Qué hay desplegado y qué tocó alguien a mano.",
     entorno: "Entorno",
     verDesvio: "Ver desvío",
+    mirandoDesvio: "Mirando el desvío…",
     sinPaquete: "No hay ningún paquete desplegado",
     noComparado:
       "Sin comparar: {{tipos}}. De eso no se dice nada, no se ha mirado.",
@@ -501,7 +502,27 @@ const pantallas = {
       ejemplos: "Casos",
       ventana: "Datos",
       entrenado: "Entrenado",
+      accion: "Acción",
     },
+    // Activar una versión o volver a una anterior (auditoría 13-11-2026,
+    // COB-3): la API lo hacía y ninguna pantalla llegaba.
+    activar: "Activar",
+    volverAEsta: "Volver a esta",
+    activarVersion: "Activar {{modelo}} v{{version}}",
+    volverAVersion: "Volver a {{modelo}} v{{version}}",
+    confirmarTitulo: "¿Poner a puntuar {{modelo}} v{{version}}?",
+    confirmarConActual:
+      "Puntúa desde ya, y la v{{actual}}, que es la que puntúa ahora, queda retirada. Se puede volver a ella desde esta misma lista.",
+    confirmarSinActual:
+      "Puntúa desde ya. Ahora no hay ninguna versión publicada de este modelo.",
+    comparacion: "Ahora, v{{actual}}: {{medidaActual}}. Esta: {{medida}}.",
+    noSuperoMinimo:
+      "Esta versión no superó el mínimo al entrenarse: activarla es decidir a mano que se usa igualmente.",
+    esDeclarada:
+      "Es de pesos declarados a mano, no entrenada con el histórico: no puntuará registros reales.",
+    siActivar: "Sí, activar v{{version}}",
+    activando: "Activando…",
+    activada: "{{modelo}} v{{version}} puntúa desde ahora.",
     estados: {
       activa: "Publicada",
       descartada: "No publicada",
@@ -617,6 +638,8 @@ const pantallas = {
       "Lo que tiene indexado, en fragmentos: {{fuentes}} (modelo {{modelos}}).",
     indiceVacio:
       "El índice de conocimiento está vacío: hasta que se indexen artículos, casos resueltos o lecciones, no tendrá con qué contestar.",
+    mirandoIndice: "Mirando qué tiene indexado…",
+    indice: "Lo que tiene indexado",
     misAcciones: "Lo que te ha propuesto hacer",
     puedesPedir: "Con tu rol puedes pedirle: {{acciones}}.",
     nadaQuePedir:
