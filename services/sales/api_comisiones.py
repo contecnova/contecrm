@@ -10,7 +10,7 @@ from uuid import UUID
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha  # noqa: E402
 from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from services.sales import comisiones as com
@@ -66,8 +66,35 @@ class Asignar(BaseModel):
     cuota: Decimal | None = None
 
 
+class Operacion(BaseModel):
+    """Una operación que comisiona, con sus tipos comprobados en la puerta.
+
+    Antes era `dict[str, Any]` y los tipos se descubrían al calcular:
+    `"importe": "abc"` o una fecha con hora daban 500, y un `id` que no era UUID
+    simulaba bien y reventaba al liquidar (auditoría 13-11-2026, FUN-B-7). Se
+    admiten otros campos porque las condiciones de las reglas pueden leerlos.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: UUID | None = None
+    tipo: str = Field("", max_length=80)
+    concepto: str = Field("", max_length=300)
+    importe: Decimal | None = None
+    margen: Decimal | None = None
+    unidades: Decimal | None = None
+    fecha: date | None = None
+    # Solo en el pipeline de la previsión: entra ponderado.
+    probabilidad: Decimal | None = Field(None, ge=0, le=100)
+
+
+def _como_dicts(operaciones: list[Operacion]) -> list[dict[str, Any]]:
+    """Lo que espera el cálculo: diccionarios, sin los campos que no vinieron."""
+    return [o.model_dump(mode="json", exclude_none=True) for o in operaciones]
+
+
 class Simular(BaseModel):
-    operaciones: list[dict[str, Any]] = Field(
+    operaciones: list[Operacion] = Field(
         ...,
         description="Las trae quien llama: {id, tipo, concepto, importe, margen, unidades, fecha}",
     )
@@ -75,8 +102,8 @@ class Simular(BaseModel):
 
 
 class Previsionar(BaseModel):
-    cerradas: list[dict[str, Any]] = Field(default_factory=list)
-    pipeline: list[dict[str, Any]] = Field(
+    cerradas: list[Operacion] = Field(default_factory=list)
+    pipeline: list[Operacion] = Field(
         default_factory=list, description="Con `probabilidad` en cada una: entra ponderado"
     )
     cuota: Decimal | None = None
@@ -86,7 +113,7 @@ class Liquidar(BaseModel):
     plan_id: UUID
     desde: date
     hasta: date
-    operaciones: list[dict[str, Any]] = Field(default_factory=list)
+    operaciones: list[Operacion] = Field(default_factory=list)
     usuario_id: UUID | None = None
     partner_id: UUID | None = None
     cuota: Decimal | None = None
@@ -219,7 +246,7 @@ def simular(plan_comision_id: UUID, datos: Simular, db: DbDep, principal: Autent
         db,
         principal.tenant_id,
         plan_id=plan_comision_id,
-        operaciones=datos.operaciones,
+        operaciones=_como_dicts(datos.operaciones),
         cuota=datos.cuota,
     )
 
@@ -241,8 +268,8 @@ def prevision(
         db,
         principal.tenant_id,
         plan_id=plan_comision_id,
-        cerradas=datos.cerradas,
-        pipeline=datos.pipeline,
+        cerradas=_como_dicts(datos.cerradas),
+        pipeline=_como_dicts(datos.pipeline),
         cuota=datos.cuota,
     )
 
@@ -258,7 +285,13 @@ def prevision(
     ),
 )
 def liquidar(datos: Liquidar, uow: UowDep) -> Any:
-    fila = com.liquidar(uow, **datos.model_dump())
+    fila = com.liquidar(
+        uow,
+        **{
+            **datos.model_dump(exclude={"operaciones"}),
+            "operaciones": _como_dicts(datos.operaciones),
+        },
+    )
     return {"id": str(fila.id), "total": str(fila.total), "estado": fila.estado}
 
 

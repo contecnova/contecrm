@@ -799,9 +799,13 @@ def calcular(
     acelerador_aplicado: dict[str, Any] | None = None
     consecucion_pct: float | None = None
     if aceleradores and cuota and Decimal(cuota) > 0:
-        consecucion_pct = float(round(total_base / Decimal(cuota) * 100, 1))
+        # Se compara con la consecución SIN redondear; el redondeo es solo para
+        # enseñarla. Con 99,96 % redondeado a 100,0 saltaba el acelerador del
+        # 100 % sin haberse alcanzado (auditoría 13-11-2026, FUN-B-8).
+        consecucion = total_base / Decimal(cuota) * 100
+        consecucion_pct = float(round(consecucion, 1))
         for regla in sorted(aceleradores, key=lambda r: -Decimal(r.desde_valor)):
-            if Decimal(str(consecucion_pct)) >= Decimal(regla.desde_valor):
+            if consecucion >= Decimal(regla.desde_valor):
                 extra = _redondear(subtotal * (Decimal(regla.multiplicador) - 1))
                 if extra:
                     lineas.append(

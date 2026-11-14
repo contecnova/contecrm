@@ -590,3 +590,34 @@ def test_la_base_tampoco_deja_dos_vigentes_con_el_usuario_nulo(uow: UnidadDeTrab
     with pytest.raises(IntegrityError):
         uow.db.flush()
     uow.db.rollback()
+
+
+def test_el_acelerador_no_salta_con_la_consecucion_redondeada(uow: UnidadDeTrabajo) -> None:
+    """FUN-B-8: 99,96 % se enseña como 100,0 pero no ha llegado al 100 %."""
+    plan = _plan(uow)
+    com.anadir_regla(uow, plan.id, tipo="porcentaje", porcentaje=Decimal(10))
+    com.anadir_regla(
+        uow, plan.id, tipo="acelerador", desde_valor=Decimal(100), multiplicador=Decimal("1.5")
+    )
+    salida = com.calcular(
+        uow.db,
+        uow.tenant_id,
+        plan_id=plan.id,
+        operaciones=[_op("A", Decimal(99960))],
+        cuota=Decimal(100000),
+    )
+    assert salida["consecucion_pct"] == 100.0
+    assert Decimal(salida["total"]) == Decimal(9996), "el acelerador no debía aplicarse"
+
+
+def test_una_operacion_mal_formada_se_rechaza_en_la_puerta() -> None:
+    """FUN-B-7: antes daba 500 al calcular o al liquidar."""
+    from pydantic import ValidationError
+
+    from services.sales.api_comisiones import Operacion
+
+    for mala in ({"importe": "abc"}, {"id": "OP-1"}, {"fecha": "2026-03-01T10:00:00"}):
+        with pytest.raises(ValidationError):
+            Operacion(**mala)
+    buena = Operacion(id=uuid4(), importe=Decimal("100.5"), cliente="x")
+    assert buena.model_dump(mode="json", exclude_none=True)["cliente"] == "x"
