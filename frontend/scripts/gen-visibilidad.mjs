@@ -79,7 +79,12 @@ function visibilidadDe(fuente) {
   return salida;
 }
 
-const datos = visibilidadDe(readFileSync(ORIGEN, "utf8"));
+// Saltos de línea normalizados al leer. Con `core.autocrlf=true` los ficheros
+// llegan con CRLF en Windows, las expresiones de abajo buscan saltos LF y se
+// leían 0 pestañas: `npm run verificar` se rompía en su primer paso
+// (auditoría 13-11-2026, UX-25).
+const leer = (ruta) => readFileSync(ruta, "utf8").replace(/\r\n/g, "\n");
+const datos = visibilidadDe(leer(ORIGEN));
 const total = Object.values(datos).reduce((n, v) => n + v.length, 0);
 if (total < 100) {
   console.error(
@@ -126,7 +131,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = ${JSON.stringify(da
 `;
 
 if (process.argv.includes("--comprobar")) {
-  const actual = readFileSync(DESTINO, "utf8");
+  const actual = leer(DESTINO);
   if (actual !== contenido) {
     console.error(
       "«src/lib/visibilidad.ts» está desfasado respecto de «recursos.ts».\n" +
