@@ -30,6 +30,9 @@ vi.mock("@/lib/api", () => ({
     datos: ruta.endsWith("/desplegado") ? puesto : respuesta,
   })),
   ErrorApi: class extends Error {},
+  // La pantalla dice ya el fallo de pedir los entornos (auditoría 13-11-2026,
+  // UX-30) y para eso separa la cancelación: el doble tiene que traerla.
+  salvoCancelacion: (f: (e: unknown) => void) => f,
 }));
 
 vi.mock("react-i18next", () => ({

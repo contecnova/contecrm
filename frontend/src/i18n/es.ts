@@ -399,6 +399,26 @@ export default {
     sso: "Entrar con el proveedor de mi organización",
     error: "No se ha podido iniciar sesión",
     // El enlace del alta autoservicio (CRM-00.01.03.01): `/?alta=<token>`.
+    // Pedir el alta de una empresa (auditoría 13-11-2026, COB-15).
+    pedirAlta: {
+      pregunta: "¿Tu empresa aún no tiene cuenta?",
+      abrir: "Darla de alta",
+      titulo: "Dar de alta tu empresa",
+      ayuda:
+        "Te mandaremos un enlace al correo que pongas. Hasta que lo abras y confirmes, no se crea nada.",
+      empresa: "Nombre de la empresa",
+      slug: "Identificador",
+      slugAyuda:
+        "Es lo que escribirás en «Organización» al entrar. En minúsculas, con letras, números o guiones, y no se puede cambiar después.",
+      nombre: "Tu nombre",
+      email: "Tu correo, el del primer administrador",
+      enviar: "Pedir el alta",
+      enviado:
+        "Si todo está en orden, llegará a {{email}} un enlace para confirmar el alta.",
+      siNoLlega:
+        "Si no llega en unos minutos, mira en la carpeta de correo no deseado. Si el identificador ya estaba cogido, te lo diremos al confirmar.",
+      noSePudo: "No se ha podido pedir el alta.",
+    },
     alta: {
       titulo: "Confirmar el alta de tu empresa",
       ayuda:
@@ -812,8 +832,16 @@ export default {
     codigo: "Código de 6 cifras de tu app de autenticación",
     confirmar: "Confirmar y seguir",
     cancelar: "Cancelar",
-    sinApp:
-      "No tienes activada la app de autenticación, así que no hay con qué verificarte sin volver a entrar. Actívala en tu puesto y vuelve a intentarlo.",
-    irAlPuesto: "Activarla en mi puesto",
+    // Con la passkey también (auditoría 13-11-2026, UX-28).
+    pideLlave:
+      "Confírmalo con tu passkey: la huella, el PIN o la llave física, como al entrar.",
+    conLlave: "Usar mi passkey",
+    firmando: "Esperando a la llave…",
+    oCodigo: "O escribe el código de tu app de autenticación.",
+    sinFactor:
+      "No tienes la app de autenticación ni ninguna passkey, así que no hay con qué verificarte sin volver a entrar. Añade una en tu puesto y vuelve a intentarlo.",
+    sinNavegador:
+      "Tu verificación es con passkey y este navegador no sabe usarlas. Ábrelo en uno que sí, o añade la app de autenticación en tu puesto.",
+    irAlPuesto: "Ir a mi puesto",
   },
 };

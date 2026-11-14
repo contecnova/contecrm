@@ -188,7 +188,7 @@ function IconoMarca() {
   );
 }
 
-type Vista = "entrar" | "olvidada" | "alta";
+type Vista = "entrar" | "olvidada" | "alta" | "pedirAlta";
 
 /** `POST /alta/confirmar`: la empresa que ha quedado creada. */
 interface AltaConfirmada {
@@ -390,6 +390,52 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
     }
   }
 
+  // Pedir el alta de una empresa (auditoría 13-11-2026, COB-15). La ruta
+  // existía —`POST /alta`— y el enlace que manda se confirmaba aquí, pero no
+  // había pantalla para PEDIRLO: el alta autoservicio sólo se podía empezar
+  // llamando a la API a mano.
+  const [empresa, setEmpresa] = useState({
+    slug: "",
+    nombre_empresa: "",
+    email: "",
+    nombre: "",
+  });
+  const [altaPedida, setAltaPedida] = useState(false);
+  const resultadoDePedir = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (altaPedida) resultadoDePedir.current?.focus();
+  }, [altaPedida]);
+
+  async function pedirAlta(evento: FormEvent) {
+    evento.preventDefault();
+    setError("");
+    setEnviando(true);
+    try {
+      // La respuesta es SIEMPRE la misma, esté el identificador libre o no:
+      // el servidor no lo dice para no ser un comprobador de qué empresas son
+      // clientes, y esta pantalla tampoco lo insinúa.
+      await llamar("/api/v1/alta", {
+        metodo: "POST",
+        cuerpo: { ...empresa, slug: empresa.slug.trim() },
+        sinCookie: true,
+        encolable: false,
+      });
+      setAltaPedida(true);
+    } catch (fallo) {
+      const cod = fallo instanceof ErrorApi ? fallo.codigo : "";
+      // Lo que sí se dice: la forma del identificador, el tope por conexión o
+      // que esta instalación no admite altas. Con la frase del servidor, que
+      // es la que explica qué cambiar.
+      setError(
+        cod === "alta.autoservicio_desactivado"
+          ? t("entrar.alta.errores.alta.autoservicio_desactivado")
+          : comoTextoDeApi(fallo, t("entrar.pedirAlta.noSePudo")),
+      );
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   function irAEntrar() {
     if (altaHecha) setTenant(altaHecha.slug);
     setVista("entrar");
@@ -452,7 +498,143 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
             <h1 className={cl.logoTexto}>{config().nombre}</h1>
           </div>
 
-          {vista === "alta" ? (
+          {vista === "pedirAlta" ? (
+            /* ── Pedir el alta de una empresa ────────────────────────── */
+            altaPedida ? (
+              <div className={cl.formulario}>
+                <h2 className="m-0 text-titulo font-semibold text-ink">
+                  {t("entrar.pedirAlta.titulo")}
+                </h2>
+                <div
+                  ref={resultadoDePedir}
+                  tabIndex={-1}
+                  className={cn(cl.avisoBien, "outline-none")}
+                  role="status"
+                >
+                  <span>✓</span>
+                  <span>
+                    {t("entrar.pedirAlta.enviado", { email: empresa.email })}
+                  </span>
+                </div>
+                <p className={cl.ayuda}>{t("entrar.pedirAlta.siNoLlega")}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVista("entrar");
+                    setAltaPedida(false);
+                  }}
+                  className={cl.botonPrimario}
+                >
+                  {t("entrar.volver")}
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={pedirAlta} className={cl.formulario} noValidate>
+                <h2 className="m-0 text-titulo font-semibold text-ink">
+                  {t("entrar.pedirAlta.titulo")}
+                </h2>
+                <p className={cl.ayuda}>{t("entrar.pedirAlta.ayuda")}</p>
+                <div>
+                  <label className={cl.etiqueta} htmlFor="alta-empresa">
+                    {t("entrar.pedirAlta.empresa")}
+                  </label>
+                  <input
+                    id="alta-empresa"
+                    type="text"
+                    required
+                    autoComplete="organization"
+                    value={empresa.nombre_empresa}
+                    onChange={(e) =>
+                      setEmpresa((x) => ({ ...x, nombre_empresa: e.target.value }))
+                    }
+                    className={cl.campo}
+                  />
+                </div>
+                <div>
+                  <label className={cl.etiqueta} htmlFor="alta-slug">
+                    {t("entrar.pedirAlta.slug")}
+                  </label>
+                  <input
+                    id="alta-slug"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-describedby="alta-slug-ayuda"
+                    value={empresa.slug}
+                    onChange={(e) =>
+                      setEmpresa((x) => ({ ...x, slug: e.target.value }))
+                    }
+                    className={cl.campo}
+                  />
+                  {/* Para qué sirve y que no se cambia: es lo que se escribirá
+                      en «Organización» cada vez que se entre. */}
+                  <p
+                    id="alta-slug-ayuda"
+                    className="m-0 mt-1.5 text-rotulo text-ink-faint"
+                  >
+                    {t("entrar.pedirAlta.slugAyuda")}
+                  </p>
+                </div>
+                <div>
+                  <label className={cl.etiqueta} htmlFor="alta-nombre">
+                    {t("entrar.pedirAlta.nombre")}
+                  </label>
+                  <input
+                    id="alta-nombre"
+                    type="text"
+                    required
+                    autoComplete="name"
+                    value={empresa.nombre}
+                    onChange={(e) =>
+                      setEmpresa((x) => ({ ...x, nombre: e.target.value }))
+                    }
+                    className={cl.campo}
+                  />
+                </div>
+                <div>
+                  <label className={cl.etiqueta} htmlFor="alta-email">
+                    {t("entrar.pedirAlta.email")}
+                  </label>
+                  <input
+                    id="alta-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={empresa.email}
+                    onChange={(e) =>
+                      setEmpresa((x) => ({ ...x, email: e.target.value }))
+                    }
+                    className={cl.campo}
+                  />
+                </div>
+                {error ? (
+                  <div className={cl.avisoError} role="alert">
+                    <span>⚠</span>
+                    <span>{error}</span>
+                  </div>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={enviando}
+                  aria-busy={enviando}
+                  className={cn(cl.botonPrimario, enviando && "opacity-60")}
+                >
+                  {enviando ? t("app.cargando") : t("entrar.pedirAlta.enviar")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVista("entrar");
+                    setError("");
+                  }}
+                  className="w-full text-center text-rotulo font-medium text-accent hover:underline"
+                >
+                  {t("entrar.volver")}
+                </button>
+              </form>
+            )
+          ) : vista === "alta" ? (
             /* ── Confirmar el alta de la empresa ─────────────────────── */
             <div className={cl.formulario}>
               <h2 className="m-0 text-titulo font-semibold text-ink">
@@ -777,6 +959,23 @@ export function Entrar({ alEntrar }: { alEntrar: () => void }) {
                   </button>
                 ) : null}
               </form>
+
+              {/* Quien todavía no tiene cuenta lo busca aquí, debajo de
+                  «Entrar»: es la única pantalla que ve. */}
+              <p className="m-0 mt-4 text-center text-rotulo text-ink-muted">
+                {t("entrar.pedirAlta.pregunta")}{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVista("pedirAlta");
+                    setError("");
+                    setAviso("");
+                  }}
+                  className={cl.enlace}
+                >
+                  {t("entrar.pedirAlta.abrir")}
+                </button>
+              </p>
             </>
           )}
 

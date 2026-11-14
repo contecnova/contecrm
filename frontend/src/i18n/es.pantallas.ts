@@ -174,6 +174,7 @@ const pantallas = {
     entorno: "Entorno",
     verDesvio: "Ver desvío",
     mirandoDesvio: "Mirando el desvío…",
+    entornos: "Los entornos declarados",
     sinPaquete: "No hay ningún paquete desplegado",
     noComparado:
       "Sin comparar: {{tipos}}. De eso no se dice nada, no se ha mirado.",

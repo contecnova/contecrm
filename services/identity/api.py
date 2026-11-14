@@ -355,6 +355,12 @@ def entrar_con_passkey(datos: FirmaPasskey, request: Request) -> Any:
     )
 
 
+class FirmaReverificar(BaseModel):
+    """La firma para volver a verificarse: el tenant y quién es salen del token."""
+
+    respuesta: dict[str, Any]
+
+
 class NombrePasskey(BaseModel):
     nombre: str = Field("", max_length=120)
 
@@ -666,6 +672,108 @@ def reverificar_mfa(datos: ActivarMfa, db: DbDep, principal: AutenticadoDep) -> 
     from services.identity import factores as _factores
 
     _factores.anotar_factor(db, sesion, "totp")
+    db.flush()
+    token = svc.emitir_token_acceso(
+        db,
+        usuario=usuario,
+        tenant_id=principal.tenant_id,
+        sesion_id=sesion.id,
+        actor_real_id=principal.actor_real_id,
+    )
+    return {
+        "factor_fuerte_at": sesion.factor_fuerte_at.isoformat()
+        if sesion.factor_fuerte_at
+        else None,
+        "access_token": token,
+        "usar_este_token": True,
+    }
+
+
+# ── Volver a verificarse con una passkey (auditoría 13-11-2026, UX-28) ────
+#
+# Sólo existía con la app de autenticación: quien tenía únicamente passkeys
+# —que es el factor MÁS fuerte de los que hay, `webauthn` vale 3— no tenía
+# forma de verificarse con la sesión abierta, y cada operación sensible le
+# obligaba a salir y entrar otra vez con la llave.
+
+
+def _sesion_elevable(db: Any, principal: Any) -> Sesion:
+    from crmcore.errors import Conflicto
+
+    sesion = db.get(Sesion, principal.sesion_id) if principal.sesion_id else None
+    if sesion is None or principal.tenant_id is None:
+        raise Conflicto(
+            "Esta llamada no viene de una sesión que se pueda elevar.",
+            error_code="auth.sin_sesion",
+        )
+    return sesion
+
+
+@router_auth.post(
+    "/passkeys/reverificar",
+    summary="Empezar a volver a verificarse con una passkey, sin salir",
+    description=(
+        "Devuelve el reto que firma el dispositivo, **sólo con las llaves de "
+        "quien está dentro** y con la verificación del usuario exigida (huella o "
+        "PIN): lo que se demuestra es que sigue siendo él. El reto es de un uso y "
+        "no vale para entrar, igual que el de entrar no vale para esto."
+    ),
+)
+def empezar_reverificar_passkey(db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import Conflicto
+
+    from services.identity import passkeys as pk
+
+    usuario = db.get(Usuario, principal.id)
+    if usuario is None:
+        raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
+    _sesion_elevable(db, principal)
+    if not pk.listar(db, principal.id):
+        raise Conflicto(
+            "No tienes ninguna passkey. Añade una en Puesto › Seguridad y vuelve "
+            "a intentarlo.",
+            error_code="auth.sin_passkey",
+        )
+    return pk.opciones_entrada(
+        db, tenant_id=principal.tenant_id, usuario=usuario, proposito=pk.REVERIFICAR
+    )
+
+
+@router_auth.post(
+    "/passkeys/reverificar/confirmar",
+    response_model=dict,
+    summary="Volver a verificarse con la firma de la passkey",
+    description=(
+        "Comprueba la firma —de una llave de quien está dentro, con el reto de "
+        "reverificar—, anota el factor fuerte en la sesión y devuelve un token "
+        "nuevo (`usar_este_token`), igual que `/mfa/reverificar` con el código: "
+        "es lo que abre la ventana de las operaciones sensibles "
+        "(CRM-00.05.01.18)."
+    ),
+)
+def confirmar_reverificar_passkey(
+    datos: FirmaReverificar, request: Request, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.identity import factores as _factores
+    from services.identity import passkeys as pk
+
+    usuario = db.get(Usuario, principal.id)
+    if usuario is None:
+        raise NoEncontrado("El usuario no existe", error_code="usuario.no_encontrado")
+    if usuario.bloqueado_hasta and usuario.bloqueado_hasta > datetime.now(timezone.utc):
+        raise NoAutenticado(
+            "La cuenta está bloqueada temporalmente por intentos fallidos",
+            error_code="auth.cuenta_bloqueada",
+        )
+    sesion = _sesion_elevable(db, principal)
+    pk.verificar_entrada(
+        db,
+        respuesta=datos.respuesta,
+        ip=request.client.host if request.client else "",
+        proposito=pk.REVERIFICAR,
+        usuario_id=principal.id,
+    )
+    _factores.anotar_factor(db, sesion, "webauthn")
     db.flush()
     token = svc.emitir_token_acceso(
         db,

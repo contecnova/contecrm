@@ -97,6 +97,11 @@ export function Territorios() {
   // Si la simulación se hizo con una sola página de cuentas habiendo más.
   const [simulacionRecortada, setSimulacionRecortada] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
+  // El fallo de SIMULAR, aparte del de cargar el mapa (auditoría 13-11-2026,
+  // UX-29). Iban al mismo sitio, y ese sitio sólo se pintaba con el mapa
+  // vacío: con territorios cargados, una simulación fallida no decía nada y
+  // el botón volvía a «Simular» como si no se hubiera pulsado.
+  const [falloSimulacion, setFalloSimulacion] = useState<unknown>(null);
   const [aviso, setAviso] = useState("");
   const { seguir, estado } = useCargasSecundarias();
 
@@ -138,6 +143,7 @@ export function Territorios() {
   async function simular() {
     setSimulando(true);
     setAviso("");
+    setFalloSimulacion(null);
     try {
       // Una página del tamaño máximo. Si el servidor dice que hay más, se
       // avisa junto al resultado: antes el recuento de «cambian» se leía como
@@ -153,13 +159,13 @@ export function Territorios() {
       setSimulacion(r.datos);
       setAviso(t("territorios.simulado", { cuantas: cuentas.length }));
     } catch (error) {
-      setFallo(error);
+      setFalloSimulacion(error);
     } finally {
       setSimulando(false);
     }
   }
 
-  if (fallo && !territorios?.length) {
+  if (fallo && territorios === null) {
     return <Fallo error={fallo} reintentar={cargar} />;
   }
 
@@ -191,6 +197,12 @@ export function Territorios() {
         >
           {aviso}
         </p>
+        {falloSimulacion ? (
+          <Fallo
+            error={falloSimulacion}
+            reintentar={simulando ? undefined : () => void simular()}
+          />
+        ) : null}
         {simulacion && simulacionRecortada ? (
           <AvisoDeRecorte cuantas={simulacion.cuentas} />
         ) : null}

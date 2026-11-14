@@ -266,7 +266,8 @@ def tiene_factor_fuerte(db: Session, usuario: Usuario) -> bool:
 
     La app de autenticación activada o alguna passkey registrada: son los dos
     factores de la cuenta que dejan la marca de factor fuerte en la sesión
-    —`/mfa/reverificar` con el código, o entrar otra vez con la passkey—.
+    —`/mfa/reverificar` con el código, o `/passkeys/reverificar` con la llave,
+    sin salir—.
     """
     if usuario.mfa_activo:
         return True

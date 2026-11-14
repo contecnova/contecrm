@@ -34,6 +34,7 @@ import {
   esIdentificadorTecnico,
   fechaHora,
   humanizar,
+  idiomaDeVoz,
   localizacion,
 } from "@/lib/formato";
 
@@ -869,6 +870,7 @@ function reconocedorDelNavegador(): Reconocedor | null {
 
 type ViaDeVoz = "navegador" | "grabacion" | "ninguna";
 
+
 /**
  * Dictar y leer en voz alta.
  *
@@ -878,6 +880,11 @@ type ViaDeVoz = "navegador" | "grabacion" | "ninguna";
  * que no guarda la voz). Lectura: `speechSynthesis`, del propio navegador.
  */
 function useVoz() {
+  const { i18n } = useTranslation();
+  const voz = idiomaDeVoz(
+    i18n.resolvedLanguage ?? i18n.language ?? "es",
+    localizacion(),
+  );
   const [activo, setActivo] = useState(false);
   const [escuchando, setEscuchando] = useState(false);
   const [leyendo, setLeyendo] = useState(false);
@@ -896,7 +903,7 @@ function useVoz() {
     if (rec) {
       return new Promise((resolver, rechazar) => {
         let dicho = "";
-        rec.lang = localizacion();
+        rec.lang = voz;
         rec.interimResults = false;
         rec.continuous = false;
         rec.onresult = (e) => {
@@ -931,7 +938,7 @@ function useVoz() {
             const tipo = g.mimeType || "audio/webm";
             const fichero = new File(trozos, "dictado.webm", { type: tipo });
             subir<{ texto: string }>("/api/v1/voz/dictado", fichero, {
-              idioma: localizacion().split("-")[0] ?? "es",
+              idioma: voz.split("-")[0] ?? "es",
             })
               .then((r) => resolver(r.texto))
               .catch(rechazar);
@@ -950,7 +957,7 @@ function useVoz() {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const frase = new SpeechSynthesisUtterance(texto);
-    frase.lang = localizacion();
+    frase.lang = voz;
     frase.onend = () => setLeyendo(false);
     setLeyendo(true);
     window.speechSynthesis.speak(frase);

@@ -28,6 +28,7 @@ import {
   type CampoEsquema,
 } from "@/lib/contrato";
 import { llamar } from "@/lib/api";
+import { useFocoDeConfirmacion } from "@/lib/foco";
 import type { Recurso } from "@/lib/modulos";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -237,14 +238,10 @@ export function ConfirmarBorrado({
   // estaba. Un `alertdialog` que no recibe el foco no lo anuncia nadie: quien
   // usa teclado o lector pulsaba «Quitar» y no se enteraba de que se le estaba
   // preguntando algo. Se elige «Cancelar» y no el botón de borrar para que un
-  // Intro de más no borre.
-  useEffect(() => {
-    const previo = document.activeElement;
-    cancelar.current?.focus();
-    return () => {
-      if (previo instanceof HTMLElement && previo.isConnected) previo.focus();
-    };
-  }, []);
+  // Intro de más no borre. Con el mismo hook que las demás preguntas en línea
+  // (auditoría 13-11-2026, UX-32): antes lo hacía a mano y devolvía el foco
+  // aunque lo que saliera después ya lo hubiera cogido.
+  useFocoDeConfirmacion(cancelar);
   return (
     // Se pregunta antes de borrar, y se dice qué se borra. Un borrado sin
     // confirmación es un borrado que alguien hará sin querer.

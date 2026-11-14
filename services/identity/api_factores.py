@@ -204,8 +204,20 @@ def nivel_de_sesion(db: DbDep, principal: AutenticadoDep) -> Any:
     # abrirse para no pedir un código a quien no tiene con qué generarlo.
     usuario = db.get(Usuario, principal.id)
     tiene_app = bool(usuario and usuario.mfa_activo and usuario.mfa_secreto)
+    # Y si tiene alguna passkey, que es la otra forma de hacerlo
+    # (`/auth/passkeys/reverificar`, auditoría 13-11-2026, UX-28): sin esto el
+    # diálogo mandaba a activar la app a quien ya tenía un factor más fuerte.
+    from services.identity import passkeys as pk
+
+    tiene_passkey = bool(pk.listar(db, principal.id))
     if sesion is None:
-        return {"nivel": 0, "factores": [], "factor_fuerte_at": None, "tiene_app": tiene_app}
+        return {
+            "nivel": 0,
+            "factores": [],
+            "factor_fuerte_at": None,
+            "tiene_app": tiene_app,
+            "tiene_passkey": tiene_passkey,
+        }
     return {
         "nivel": factores.nivel_de(sesion),
         "factores": list(sesion.factores or []),
@@ -213,6 +225,7 @@ def nivel_de_sesion(db: DbDep, principal: AutenticadoDep) -> Any:
             sesion.factor_fuerte_at.isoformat() if sesion.factor_fuerte_at else None
         ),
         "tiene_app": tiene_app,
+        "tiene_passkey": tiene_passkey,
     }
 
 

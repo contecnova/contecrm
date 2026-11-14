@@ -63,6 +63,24 @@ export function localizacion(): string {
 }
 
 /**
+ * El idioma de la voz: el de los TEXTOS, no el de la localización del tenant
+ * (auditoría 13-11-2026, UX-31; la misma decisión que el `lang` del documento
+ * en UX-15).
+ *
+ * Usaba `localizacion()`, y en un tenant `pt-PT` el navegador leía en voz alta
+ * con fonética portuguesa respuestas escritas en castellano —los textos sólo
+ * existen en los idiomas de `IDIOMAS`, hoy `es`— y esperaba oír portugués de
+ * quien pregunta a una interfaz en castellano. La localización sí aporta algo
+ * cuando es del MISMO idioma: la variante (`es-MX` frente a `es-ES`) afina el
+ * reconocimiento; si es de otro, no dice nada de cómo habla quien está
+ * delante y se descarta.
+ */
+export function idiomaDeVoz(idioma: string, locale: string): string {
+  const base = idioma.split("-")[0] || "es";
+  return locale.split("-")[0] === base ? locale : base;
+}
+
+/**
  * Fija la localización del tenant. La llama el arranque con lo que responde
  * `GET /api/v1/localizacion`.
  *

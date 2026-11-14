@@ -275,12 +275,30 @@ def guardar_registro(
 # ── Entrar con una llave ──────────────────────────────────────────────────
 
 
-def opciones_entrada(db: Session, *, tenant_id: UUID, usuario: Any | None) -> dict[str, Any]:
+# Para qué se pide la firma. Un reto de entrar no vale para reverificarse ni al
+# revés: cada uno se gasta en la puerta para la que se emitió.
+ENTRADA = "entrada"
+REVERIFICAR = "reverificar"
+
+
+def opciones_entrada(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    usuario: Any | None,
+    proposito: str = ENTRADA,
+) -> dict[str, Any]:
     """El reto para entrar. Sin usuario, vale cualquier llave del dispositivo.
 
     Sin usuario a propósito: con llaves residentes no hace falta escribir el
     correo, y **no decir si ese correo existe** es lo que impide que esta
     pantalla sirva para averiguar quién tiene cuenta aquí.
+
+    Con `proposito=REVERIFICAR` es el reto para volver a verificarse con la
+    sesión abierta (auditoría 13-11-2026, UX-28): sólo las llaves de quien
+    está dentro, y con la verificación del usuario **exigida** —huella o PIN—,
+    porque lo que se demuestra es que sigue siendo él, no que tiene el
+    dispositivo encima.
     """
     import json
 
@@ -303,20 +321,35 @@ def opciones_entrada(db: Session, *, tenant_id: UUID, usuario: Any | None) -> di
     opciones = generate_authentication_options(
         rp_id=dominio,
         allow_credentials=permitidas,
-        user_verification=UserVerificationRequirement.PREFERRED,
+        user_verification=(
+            UserVerificationRequirement.REQUIRED
+            if proposito == REVERIFICAR
+            else UserVerificationRequirement.PREFERRED
+        ),
     )
     _guardar_reto(
         db,
         tenant_id=tenant_id,
         usuario_id=usuario.id if usuario is not None else None,
         reto=opciones.challenge,
-        proposito="entrada",
+        proposito=proposito,
     )
     return dict(json.loads(options_to_json(opciones)))
 
 
-def verificar_entrada(db: Session, *, respuesta: dict[str, Any], ip: str = "") -> Passkey:
-    """Comprueba la firma y devuelve la llave. Quien llama emite los tokens."""
+def verificar_entrada(
+    db: Session,
+    *,
+    respuesta: dict[str, Any],
+    ip: str = "",
+    proposito: str = ENTRADA,
+    usuario_id: UUID | None = None,
+) -> Passkey:
+    """Comprueba la firma y devuelve la llave. Quien llama emite los tokens.
+
+    Con `usuario_id`, la llave tiene que ser SUYA: al reverificarse, una llave
+    válida de otra cuenta del mismo tenant no eleva esta sesión.
+    """
     import json
 
     from webauthn import verify_authentication_response
@@ -335,12 +368,16 @@ def verificar_entrada(db: Session, *, respuesta: dict[str, Any], ip: str = "") -
             error_code="passkey.respuesta_invalida",
         ) from exc
 
-    _consumir_reto(db, reto_b64=reto_b64, proposito="entrada")
+    fila_reto = _consumir_reto(db, reto_b64=reto_b64, proposito=proposito)
     llave = db.execute(
         select(Passkey).where(Passkey.credencial_id == credencial)
     ).scalar_one_or_none()
     if llave is None:
         raise NoAutenticado("Esa llave no vale aquí", error_code="passkey.desconocida")
+    if usuario_id is not None and (
+        llave.usuario_id != usuario_id or fila_reto.usuario_id != usuario_id
+    ):
+        raise NoAutenticado("Esa llave no es tuya", error_code="passkey.de_otra_cuenta")
 
     ultimo: Exception | None = None
     for origen in origenes:
@@ -352,6 +389,7 @@ def verificar_entrada(db: Session, *, respuesta: dict[str, Any], ip: str = "") -
                 expected_origin=origen,
                 credential_public_key=llave.clave_publica,
                 credential_current_sign_count=llave.contador,
+                require_user_verification=proposito == REVERIFICAR,
             )
             break
         except InvalidAuthenticationResponse as exc:
@@ -376,7 +414,11 @@ def verificar_entrada(db: Session, *, respuesta: dict[str, Any], ip: str = "") -
     llave.contador = verificado.new_sign_count or llave.contador
     llave.ultimo_uso_at = _ahora()
     db.flush()
-    logger.info("passkey.entrada", usuario_id=str(llave.usuario_id), ip=ip)
+    logger.info(
+        "passkey.reverificar" if proposito == REVERIFICAR else "passkey.entrada",
+        usuario_id=str(llave.usuario_id),
+        ip=ip,
+    )
     return llave
 
 

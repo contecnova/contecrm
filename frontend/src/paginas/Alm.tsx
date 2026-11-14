@@ -31,8 +31,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
-import { llamar } from "@/lib/api";
+import { Error as Fallo, FalloCompacto, Vacio } from "@/componentes/Estados";
+import { llamar, salvoCancelacion } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
@@ -130,15 +130,22 @@ export function Alm() {
   // (auditoría 13-11-2026, UX-11).
   const [mirando, setMirando] = useState(false);
 
+  // El fallo al pedir los entornos, DICHO (auditoría 13-11-2026, UX-30). Se
+  // tragaba: el desplegable se quedaba con el entorno elegido y nada más, y
+  // eso se leía como «sólo hay uno».
+  const [falloEntornos, setFalloEntornos] = useState<unknown>(null);
+  const [vueltaEntornos, setVueltaEntornos] = useState(0);
+
   useEffect(() => {
     const control = new AbortController();
     llamar<{ items: Entorno[] }>("/api/v1/entornos", { signal: control.signal })
       .then((r) => setEntornos(r.datos.items ?? []))
-      // Si no se pueden pedir, se queda el que hay seleccionado: mejor un
-      // desplegable con una opción que una pantalla que no deja mirar nada.
-      .catch(() => setEntornos([]));
+      // Si no se pueden pedir, se queda el que hay seleccionado —mejor un
+      // desplegable con una opción que una pantalla que no deja mirar nada—,
+      // pero se dice por qué sólo hay ése.
+      .catch(salvoCancelacion(setFalloEntornos));
     return () => control.abort();
-  }, []);
+  }, [vueltaEntornos]);
 
   const mirar = async () => {
     setFallo(null);
@@ -203,6 +210,14 @@ export function Alm() {
         </button>
       </div>
 
+      <FalloCompacto
+        error={falloEntornos}
+        que={t("alm.entornos")}
+        reintentar={() => {
+          setFalloEntornos(null);
+          setVueltaEntornos((n) => n + 1);
+        }}
+      />
       {fallo ? <Fallo error={fallo} /> : null}
 
       {puesto ? (
