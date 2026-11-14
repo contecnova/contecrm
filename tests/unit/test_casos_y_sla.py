@@ -339,21 +339,31 @@ def test_se_avisa_antes_de_incumplir(
 
 @pytest.mark.db
 def test_el_riesgo_se_ordena_por_lo_que_queda_no_por_prioridad(
-    db: Any, tenant_id: UUID, contexto_tenant: UUID, calendario: Any, uow: Any
+    db: Any,
+    tenant_id: UUID,
+    contexto_tenant: UUID,
+    calendario: Any,
+    uow: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Un caso crítico con seis horas por delante puede esperar a uno medio que
     vence en diez minutos."""
     _sla(db, tenant_id, horas_resolucion=8)
     critico = svc.abrir_caso(uow, asunto="Crítico", prioridad="critica")
     medio = svc.abrir_caso(uow, asunto="Medio", prioridad="media")
-    ahora = datetime.now(timezone.utc)
+    # Un lunes a mediodía, fijo: el riesgo se cuenta en horas laborables
+    # (FUN-B-13), y con la hora real la prueba dependía del día en que corría
+    # —un sábado, nada tiene plazo laborable y la lista sale vacía—.
+    ahora = datetime(2026, 11, 16, 12, tzinfo=timezone.utc)
+    monkeypatch.setattr(svc, "_ahora", lambda: ahora)
     for caso, minutos in ((critico, 300), (medio, 10)):
         caso.created_at = ahora - timedelta(hours=8)
         caso.vence_resolucion_at = ahora + timedelta(minutes=minutos)
+        caso.vence_primera_respuesta_at = None
     db.flush()
 
-    riesgo = svc.en_riesgo(db, tenant_id)
-    assert riesgo[0]["caso_id"] == str(medio.id)
+    riesgo = svc.en_riesgo(db, tenant_id, umbral_pct=1)
+    assert [r["caso_id"] for r in riesgo] == [str(medio.id), str(critico.id)]
 
 
 @pytest.mark.db
@@ -696,3 +706,93 @@ def test_resolver_antes_del_plazo_de_respuesta_no_incumple_la_respuesta(
     assert salida["primera_respuesta"]["incumplidos"] == 1
     # Cerrados: ya no se pueden atender, no son «pendientes».
     assert salida["primera_respuesta"]["incumplidos_pendientes"] == 0
+
+
+# ── El reloj del SLA en horas laborables (FUN-B-12, FUN-B-13) ─────────────
+
+# Viernes 13-11-2026 y lunes 16-11-2026, con el calendario de la oficina
+# (lunes a viernes, 9-14 y 15-18).
+VIERNES = datetime(2026, 11, 13, tzinfo=timezone.utc)
+LUNES = datetime(2026, 11, 16, tzinfo=timezone.utc)
+
+
+@pytest.mark.db
+def test_las_horas_laborables_entre_dos_instantes_saltan_el_fin_de_semana(
+    db: Any, calendario: Any
+) -> None:
+    from crmcore.datos.calendario import horas_laborables_entre
+
+    desde = VIERNES + timedelta(hours=17)
+    hasta = LUNES + timedelta(hours=10)
+    assert horas_laborables_entre(db, calendario, desde, hasta) == 2.0
+    # Y la comida no cuenta: de 0 a 16 son 9-14 y 15-16.
+    assert horas_laborables_entre(db, calendario, LUNES, LUNES + timedelta(hours=16)) == 6.0
+
+
+@pytest.mark.db
+def test_reanudar_devuelve_el_plazo_que_quedaba_en_horas_laborables(
+    db: Any,
+    tenant_id: UUID,
+    contexto_tenant: UUID,
+    calendario: Any,
+    uow: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FUN-B-12: el plazo se desplazaba por el tiempo parado en horas de reloj,
+    así que una pausa de viernes a lunes regalaba dos días laborables."""
+    _sla(db, tenant_id, horas_resolucion=8)
+    caso = svc.abrir_caso(uow, asunto="X")
+    svc.cambiar_estado(uow, caso.id, estado="esperando_cliente")
+    # Se paró el viernes a las 17:00 con el plazo el lunes a las 12:00: le
+    # quedaban 4 horas laborables (1 el viernes, 3 el lunes).
+    caso.pausado_desde = VIERNES + timedelta(hours=17)
+    caso.vence_resolucion_at = LUNES + timedelta(hours=12)
+    db.flush()
+
+    monkeypatch.setattr(svc, "_ahora", lambda: LUNES + timedelta(hours=9))
+    svc.cambiar_estado(uow, caso.id, estado="en_curso")
+
+    # Esas 4 horas, desde el lunes a las 9: el lunes a las 13:00. Con horas de
+    # reloj habría sido el miércoles de madrugada.
+    assert caso.vence_resolucion_at == LUNES + timedelta(hours=13)
+
+
+@pytest.mark.db
+def test_en_riesgo_cuenta_horas_laborables_y_no_el_fin_de_semana(
+    db: Any,
+    tenant_id: UUID,
+    contexto_tenant: UUID,
+    calendario: Any,
+    uow: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FUN-B-13: abierto el viernes a las 10 con 8 horas laborables, el sábado
+    le queda UNA hora laborable. En horas de reloj parecía ir por el 36 %."""
+    _sla(db, tenant_id, horas_resolucion=8)
+    caso = svc.abrir_caso(uow, asunto="X")
+    caso.created_at = VIERNES + timedelta(hours=10)
+    caso.vence_resolucion_at = LUNES + timedelta(hours=10)
+    caso.vence_primera_respuesta_at = None
+    db.flush()
+
+    monkeypatch.setattr(svc, "_ahora", lambda: VIERNES + timedelta(days=1, hours=12))
+    [fila] = svc.en_riesgo(db, tenant_id)
+    assert fila["reloj"] == "resolucion"
+    assert fila["consumido_pct"] == 87.5
+
+
+@pytest.mark.db
+def test_un_caso_parado_esperando_al_cliente_no_esta_en_riesgo(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, calendario: Any, uow: Any
+) -> None:
+    """FUN-B-13: con el reloj parado el plazo se moverá lo que dure la espera."""
+    _sla(db, tenant_id, horas_resolucion=8)
+    caso = svc.abrir_caso(uow, asunto="X")
+    ahora = datetime.now(timezone.utc)
+    caso.created_at = ahora - timedelta(days=3)
+    caso.vence_resolucion_at = ahora + timedelta(minutes=10)
+    caso.vence_primera_respuesta_at = None
+    svc.cambiar_estado(uow, caso.id, estado="esperando_cliente")
+    db.flush()
+
+    assert svc.en_riesgo(db, tenant_id, umbral_pct=1) == []

@@ -14,7 +14,12 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.datos.calendario import CalendarioLaboral, sumar_horas_laborables
+from crmcore.datos.calendario import (
+    CalendarioLaboral,
+    festivos_de,
+    horas_laborables_entre,
+    sumar_horas_laborables,
+)
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoDisponible, NoEncontrado
 from crmcore.fechas import hoy
@@ -339,6 +344,42 @@ def _vencimiento(
         )
         return desde + timedelta(hours=horas_f)
     return sumar_horas_laborables(db, calendario, desde, horas_f)
+
+
+def _calendario_del_caso(db: Session, caso: Caso) -> str:
+    """La clave del calendario del SLA con el que se calcularon sus plazos."""
+    if not caso.sla_clave:
+        return ""
+    definicion = db.execute(
+        select(DefinicionSLA).where(
+            DefinicionSLA.tenant_id == caso.tenant_id,
+            DefinicionSLA.clave == caso.sla_clave,
+            DefinicionSLA.version == caso.sla_version,
+        )
+    ).scalar_one_or_none()
+    return definicion.calendario if definicion is not None else ""
+
+
+class _Laborables:
+    """Horas laborables entre dos instantes, con el calendario y sus festivos
+    leídos una vez por clave. Sin calendario, horas de reloj, como `_vencimiento`."""
+
+    def __init__(self, db: Session, tenant_id: UUID) -> None:
+        self._db = db
+        self._tenant_id = tenant_id
+        self._cache: dict[str, Any] = {}
+
+    def __call__(self, clave: str, desde: datetime, hasta: datetime) -> float:
+        if clave not in self._cache:
+            calendario = _calendario(self._db, self._tenant_id, clave)
+            self._cache[clave] = (
+                (calendario, festivos_de(self._db, calendario)) if calendario else None
+            )
+        cache = self._cache[clave]
+        if cache is None:
+            return max(0.0, (hasta - desde).total_seconds() / 3600)
+        calendario, festivos = cache
+        return horas_laborables_entre(self._db, calendario, desde, hasta, festivos=festivos)
 
 
 def aplicar_sla(db: Session, caso: Caso, *, tier_cliente: str = "") -> DefinicionSLA | None:
@@ -765,14 +806,25 @@ def cambiar_estado(uow: UnidadDeTrabajo, caso_id: UUID, *, estado: str, motivo: 
     entra_en_pausa = estado in pausa
 
     if estaba_en_pausa and not entra_en_pausa and caso.pausado_desde is not None:
-        parado = int((ahora - _con_tz(caso.pausado_desde)).total_seconds())
+        desde_pausa = _con_tz(caso.pausado_desde)
+        parado = int((ahora - desde_pausa).total_seconds())
         caso.pausa_acumulada_s += max(0, parado)
         caso.pausado_desde = None
         # El vencimiento se **desplaza** por el tiempo parado. Si no, parar el
         # reloj sería decorativo: el caso se marcaría incumplido por una espera
         # que era del cliente.
-        if caso.vence_resolucion_at is not None:
-            caso.vence_resolucion_at = _con_tz(caso.vence_resolucion_at) + timedelta(seconds=parado)
+        #
+        # En horas LABORABLES: se guarda lo que le quedaba al plazo cuando se
+        # paró y se vuelve a contar desde ahora con el calendario del SLA. Antes
+        # se sumaba el tiempo parado en horas de reloj, así que una pausa de
+        # viernes a lunes regalaba dos días laborables de más, y una de una hora
+        # que caía de noche movía el plazo una hora laborable entera (auditoría
+        # 13-11-2026, FUN-B-12). Si ya estaba vencido al parar, no se mueve.
+        vence = _con_tz(caso.vence_resolucion_at)
+        if vence is not None and vence > desde_pausa:
+            clave = _calendario_del_caso(uow.db, caso)
+            restante = _Laborables(uow.db, caso.tenant_id)(clave, desde_pausa, vence)
+            caso.vence_resolucion_at = _vencimiento(uow.db, caso.tenant_id, ahora, restante, clave)
     elif entra_en_pausa and not estaba_en_pausa:
         caso.pausado_desde = ahora
 
@@ -1073,6 +1125,12 @@ def en_riesgo(db: Session, tenant_id: UUID, *, umbral_pct: int = 80) -> list[dic
         .all()
     )
 
+    # En horas LABORABLES y con la pausa. Antes se medía en horas de reloj, así
+    # que un SLA de 8 horas laborables abierto el viernes por la tarde salía
+    # «en riesgo» el sábado; y un caso parado esperando al cliente seguía
+    # consumiendo su plazo (auditoría 13-11-2026, FUN-B-13).
+    laborables = _Laborables(db, tenant_id)
+    calendarios: dict[tuple[Any, Any], str] = {}
     salida: list[dict[str, Any]] = []
     for caso in abiertos:
         for reloj, vence_at, cumplido in (
@@ -1082,11 +1140,22 @@ def en_riesgo(db: Session, tenant_id: UUID, *, umbral_pct: int = 80) -> list[dic
             vence = _con_tz(vence_at)
             if vence is None or cumplido is not None:
                 continue
+            # Sólo el plazo de resolución se para con la pausa (es el que
+            # `cambiar_estado` desplaza al reanudar). Parado, no está en riesgo:
+            # se moverá lo que dure la espera. Salvo que ya hubiera vencido al
+            # parar: eso es un incumplimiento, y se dice.
+            pausado = _con_tz(caso.pausado_desde) if reloj == "resolucion" else None
+            if pausado is not None and pausado <= vence:
+                continue
             inicio = _con_tz(caso.created_at) or ahora
-            total = (vence - inicio).total_seconds()
+            sla = (caso.sla_clave, caso.sla_version)
+            if sla not in calendarios:
+                calendarios[sla] = _calendario_del_caso(db, caso)
+            clave = calendarios[sla]
+            total = laborables(clave, inicio, vence)
             if total <= 0:
                 continue
-            consumido = (ahora - inicio).total_seconds()
+            consumido = laborables(clave, inicio, min(ahora, pausado or ahora))
             pct = round(100 * consumido / total, 1)
             if pct < umbral_pct:
                 continue

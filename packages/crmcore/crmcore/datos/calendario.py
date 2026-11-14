@@ -180,6 +180,56 @@ def sumar_horas_laborables(
 # ── Réplica a todos los servicios ─────────────────────────────────────────
 
 
+def festivos_de(
+    db: Session, calendario: CalendarioLaboral
+) -> tuple[set[date], set[tuple[int, int]]]:
+    """Los festivos del calendario, leídos UNA vez: fechas exactas y anuales (mes, día)."""
+    filas = (
+        db.execute(select(Festivo).where(Festivo.calendario_id == calendario.id)).scalars().all()
+    )
+    exactos = {f.fecha for f in filas}
+    anuales = {(f.fecha.month, f.fecha.day) for f in filas if f.anual}
+    return exactos, anuales
+
+
+def horas_laborables_entre(
+    db: Session,
+    calendario: CalendarioLaboral,
+    desde: datetime,
+    hasta: datetime,
+    *,
+    festivos: tuple[set[date], set[tuple[int, int]]] | None = None,
+) -> float:
+    """Cuántas horas **laborables** hay entre dos instantes.
+
+    Lo inverso de `sumar_horas_laborables`, y por días en vez de a pasos: suma,
+    para cada día laborable y no festivo, lo que cada tramo del horario se
+    solapa con el intervalo. Los festivos se leen una vez (o llegan ya leídos en
+    `festivos`), porque esto se llama por cada caso abierto al calcular qué
+    está en riesgo, y `es_laborable` hace dos consultas por cada cuarto de hora.
+
+    Mismo criterio de hora que `es_laborable`: la del instante tal cual.
+    """
+    if hasta <= desde:
+        return 0.0
+    exactos, anuales = festivos if festivos is not None else festivos_de(db, calendario)
+    horario = calendario.horario or {}
+    segundos = 0.0
+    dia = desde.date()
+    ultimo = hasta.date()
+    while dia <= ultimo:
+        tramos = horario.get(str(dia.weekday())) or []
+        if tramos and dia not in exactos and (dia.month, dia.day) not in anuales:
+            for tramo in tramos:
+                inicio = datetime.combine(dia, _hora(tramo.get("desde", "00:00")), desde.tzinfo)
+                fin = datetime.combine(dia, _hora(tramo.get("hasta", "23:59")), desde.tzinfo)
+                solape = (min(fin, hasta) - max(inicio, desde)).total_seconds()
+                if solape > 0:
+                    segundos += solape
+        dia += timedelta(days=1)
+    return segundos / 3600
+
+
 def declarar_evento() -> None:
     """Declara el evento de cambio de calendario, una sola vez."""
     from crmcore.events.catalogo import TipoEvento, obtener, registrar
