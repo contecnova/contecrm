@@ -398,6 +398,13 @@ def test_de_punta_a_punta_por_http(
         json={"resultado_comercial": "hablado", "nota": "Se le reenvía la factura"},
     )
     assert nota.status_code == 200, nota.text
+
+    # COB-16: el listado dice cuántas hay aunque sirva menos. Aquí hay la
+    # saliente y la entrante.
+    lista = cliente.get("/api/v1/telefonia/llamadas?limite=1", headers=cabeceras).json()
+    assert len(lista["llamadas"]) == 1
+    assert lista["total"] >= 2
+    assert lista["hay_mas"] is True
     assert any(
         p["metodo"] == "PATCH" and p["cuerpo"] == {"cuerpo": "Se le reenvía la factura"}
         for p in party.pedido

@@ -16,7 +16,7 @@ from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from services.integration import telefonia as tel
 
@@ -212,7 +212,14 @@ def listar_llamadas(
         .scalars()
         .all()
     )
-    return {"llamadas": [tel.a_dict(x) for x in filas]}
+    # El total del filtro, para que la pantalla pueda decir que hay más en vez
+    # de enseñar las primeras como si fueran todas (auditoría 13-11-2026, COB-16).
+    total = int(db.execute(select(func.count()).select_from(consulta.subquery())).scalar_one())
+    return {
+        "llamadas": [tel.a_dict(x) for x in filas],
+        "total": total,
+        "hay_mas": total > len(filas),
+    }
 
 
 @router.get(

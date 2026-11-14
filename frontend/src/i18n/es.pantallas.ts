@@ -284,6 +284,8 @@ const pantallas = {
     barrido: "{{senales}} señales anotadas de {{contactos}} contactos.",
     sinPropuestas:
       "Ninguna pareja de contactos comparte señales por encima del umbral.",
+    propuestasPorPuntuacion:
+      "Van primero las de más puntuación: cuando resuelvas estas, saldrán las siguientes.",
     pareja: "Pareja",
     senales: "Señales que coinciden",
     puntuacion: "Puntuación",
@@ -2323,6 +2325,8 @@ const pantallas = {
       soloFallidas: "Sólo las que fallaron",
       resumen: "{{cuantas}} llamadas, {{gasto}} en total.",
       deEllasFallidas: "De ellas {{fallidas}} fallaron, y cuestan {{gasto}}.",
+      lasSumasSonDeTodas:
+        "El gasto y las fallidas de arriba son de todas las llamadas, no solo de las que se ven.",
       sinCoste: "sin coste anotado",
     },
     titulo: "Pendiente de firma",
@@ -2333,6 +2337,7 @@ const pantallas = {
     nadaEsperandoDetalle:
       "Ningún sobre abierto. No es «todo firmado»: es que no hay nada en curso.",
     cuantos: "{{cuantos}} sobres esperando",
+    masAntiguosPrimero: "Van primero los que más tiempo llevan esperando.",
     diasParado: "{{dias}} d",
     firmados: "{{firmados}} de {{total}} firmado",
     nadieLoHaAbierto: "Nadie lo ha abierto",

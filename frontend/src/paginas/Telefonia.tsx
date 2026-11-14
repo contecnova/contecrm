@@ -13,7 +13,13 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
@@ -73,6 +79,10 @@ export function Telefonia() {
   const { t } = useTranslation();
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [llamadas, setLlamadas] = useState<Llamada[] | null>(null);
+  // Cuántas hay en total, y si el listado no se pudo traer. Antes un fallo
+  // dejaba la lista vacía, que se leía como «no hay llamadas» (COB-16).
+  const [total, setTotal] = useState(0);
+  const [falloLlamadas, setFalloLlamadas] = useState<unknown>(null);
   const [conexiones, setConexiones] = useState<
     { id: string; nombre: string }[]
   >([]);
@@ -90,9 +100,15 @@ export function Telefonia() {
           setWebhook(JSON.stringify(r.datos.webhook, null, 2));
       })
       .catch((e) => setFallo(e));
-    llamar<{ llamadas: Llamada[] }>("/api/v1/telefonia/llamadas?limite=50")
-      .then((r) => setLlamadas(r.datos.llamadas ?? []))
-      .catch(() => setLlamadas([]));
+    setFalloLlamadas(null);
+    llamar<{ llamadas: Llamada[]; total: number }>(
+      "/api/v1/telefonia/llamadas?limite=50",
+    )
+      .then((r) => {
+        setLlamadas(r.datos.llamadas ?? []);
+        setTotal(r.datos.total ?? 0);
+      })
+      .catch((e: unknown) => setFalloLlamadas(e));
   }, []);
   useEffect(cargar, [cargar]);
   useEffect(() => {
@@ -206,7 +222,15 @@ export function Telefonia() {
 
       <section className="card mb-4 p-4">
         <h2 className="section-label">{t("telefonia.llamadas")}</h2>
-        {!llamadas ? <Cargando /> : null}
+        {falloLlamadas ? (
+          <FalloCompacto
+            error={falloLlamadas}
+            que={t("telefonia.llamadas")}
+            reintentar={cargar}
+          />
+        ) : !llamadas ? (
+          <Cargando />
+        ) : null}
         {llamadas && llamadas.length === 0 ? (
           <Vacio titulo={t("telefonia.sinLlamadas")} compacto />
         ) : null}
@@ -295,6 +319,9 @@ export function Telefonia() {
               </tr>
             ))}
           </Rejilla>
+        ) : null}
+        {llamadas && total > llamadas.length ? (
+          <AvisoDeRecorte cuantas={llamadas.length} />
         ) : null}
       </section>
     </div>

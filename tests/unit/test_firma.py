@@ -914,3 +914,47 @@ def test_un_envio_fallido_deja_su_rastro_fuera_de_la_transaccion(
         fir.enviar(uow, sobre.id)
     assert len(sesiones) == 1
     assert sesiones[0] is not uow.db, "se escribió en la transacción que el error deshace"
+
+
+def test_el_gasto_y_el_total_son_de_todo_el_filtro_no_de_la_pagina(
+    cliente_integracion: Any, cabeceras_integracion: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """COB-16: el gasto se sumaba sobre las filas servidas, así que con más de
+    `limite` llamadas salía por debajo del real y nada lo decía."""
+    from decimal import Decimal
+
+    from services.integration.firma import LlamadaProveedorFirma
+
+    db.add_all(
+        [
+            LlamadaProveedorFirma(
+                tenant_id=tenant_id,
+                proveedor="unafirma",
+                operacion="crear_sobre",
+                codigo=200 if ok else 500,
+                ok=ok,
+                duracion_ms=100,
+                coste=Decimal("0.5000"),
+            )
+            for ok in (True, False, True)
+        ]
+    )
+    db.flush()
+
+    datos = cliente_integracion.get(f"{LLAMADAS}?limite=1", headers=cabeceras_integracion).json()
+    assert datos["cuantas"] == 1
+    assert datos["total"] == 3
+    assert datos["hay_mas"] is True
+    assert Decimal(datos["gasto"]) == Decimal("1.5000")
+    assert datos["fallidas"] == 1
+    assert Decimal(datos["gasto_de_las_fallidas"]) == Decimal("0.5000")
+
+
+def test_el_panel_dice_cuantos_hay_aunque_sirva_menos(uow: UnidadDeTrabajo, proveedor: Any) -> None:
+    """COB-16: con más sobres abiertos que el límite, el panel enseñaba los
+    primeros como si fueran todos."""
+    for asunto in ("uno", "dos"):
+        fir.enviar(uow, _sobre(uow, asunto=asunto).id)
+    uow.db.flush()
+    datos = fir.panel(uow.db, uow.tenant_id, limite=1)
+    assert (datos["cuantos"], datos["total"], datos["hay_mas"]) == (1, 2, True)

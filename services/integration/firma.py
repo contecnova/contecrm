@@ -1316,15 +1316,19 @@ def panel(db: Session, tenant_id: UUID, *, limite: int = 100) -> dict[str, Any]:
     firmar, el panel dice que algo está parado y no qué hacer al respecto.
     """
     ahora = _ahora()
+    filtro = (Sobre.tenant_id == tenant_id, Sobre.estado.not_in(TERMINALES))
     abiertos = (
         db.execute(
-            select(Sobre)
-            .where(Sobre.tenant_id == tenant_id, Sobre.estado.not_in(TERMINALES))
-            .order_by(Sobre.enviado_at.nulls_last())
-            .limit(limite)
+            select(Sobre).where(*filtro).order_by(Sobre.enviado_at.nulls_last()).limit(limite)
         )
         .scalars()
         .all()
+    )
+    # Cuántos hay EN TOTAL, no cuántos se sirven: con más de `limite` abiertos
+    # el panel enseñaba los primeros y nada decía que hubiera más (auditoría
+    # 13-11-2026, COB-16).
+    abiertos_total = int(
+        db.execute(select(func.count()).select_from(Sobre).where(*filtro)).scalar_one()
     )
     filas = []
     for sobre in abiertos:
@@ -1359,6 +1363,8 @@ def panel(db: Session, tenant_id: UUID, *, limite: int = 100) -> dict[str, Any]:
     return {
         "sobres": filas,
         "cuantos": len(filas),
+        "total": abiertos_total,
+        "hay_mas": abiertos_total > len(filas),
         # Sin sobres abiertos no se dice «todo firmado»: es que no hay nada
         # esperando, y un verde vacío se lee igual que uno ganado.
         "medible": bool(filas),
@@ -1652,8 +1658,16 @@ def llamadas_al_proveedor(
         .scalars()
         .all()
     )
-    gasto = sum((f.coste or Decimal(0) for f in filas), Decimal(0))
-    fallidas = [f for f in filas if not f.ok]
+    # Las sumas, sobre TODO el filtro y no sobre la página. Antes se sumaban las
+    # filas servidas: con más de `limite` llamadas el gasto salía por debajo del
+    # real y nada lo decía, justo en la cifra que existe para conciliar una
+    # factura (auditoría 13-11-2026, COB-16).
+    filtradas = consulta.subquery()
+    coste = func.coalesce(func.sum(filtradas.c.coste), 0)
+    total, gasto = db.execute(select(func.count(), coste).select_from(filtradas)).one()
+    fallidas, gasto_fallidas = db.execute(
+        select(func.count(), coste).select_from(filtradas).where(filtradas.c.ok.is_(False))
+    ).one()
     return {
         "llamadas": [
             {
@@ -1674,13 +1688,15 @@ def llamadas_al_proveedor(
             for f in filas
         ],
         "cuantas": len(filas),
+        "total": int(total),
+        "hay_mas": int(total) > len(filas),
         # El gasto sumado, para no volver a sumar doscientos importes a mano.
-        "gasto": str(gasto),
+        "gasto": str(Decimal(gasto)),
         # Y lo que falló, aparte: con un proveedor que cobra por intento, el
         # gasto y el número de sobres no cuadran, y esa diferencia es lo
         # primero que se busca en una factura que no sale.
-        "fallidas": len(fallidas),
-        "gasto_de_las_fallidas": str(sum((f.coste or Decimal(0) for f in fallidas), Decimal(0))),
+        "fallidas": int(fallidas),
+        "gasto_de_las_fallidas": str(Decimal(gasto_fallidas)),
         # Sin filas no se dice «cero gasto»: se dice que no hay registro. Un
         # cero ahí se leería como «el proveedor no ha cobrado nada».
         "aviso": (

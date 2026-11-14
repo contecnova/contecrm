@@ -38,6 +38,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import {
+  AvisoDeRecorte,
   Cargando,
   Error as Fallo,
   FalloCompacto,
@@ -76,7 +77,11 @@ interface Llamadas {
     error: string | null;
     cuando: string;
   }[];
+  /** Las servidas. */
   cuantas: number;
+  /** Las de todo el filtro: el gasto y las fallidas son de todas ellas. */
+  total: number;
+  hay_mas: boolean;
   gasto: string;
   fallidas: number;
   gasto_de_las_fallidas: string;
@@ -86,7 +91,11 @@ interface Llamadas {
 
 interface Panel {
   sobres: Sobre[];
+  /** Los servidos. */
   cuantos: number;
+  /** Los abiertos que hay en total (COB-16). */
+  total: number;
+  hay_mas: boolean;
   medible: boolean;
 }
 
@@ -128,7 +137,7 @@ export function PendienteDeFirma() {
       ) : (
         <>
           <p className="mb-3 text-dato text-ink-muted" role="status">
-            {t("firma.cuantos", { cuantos: panel.cuantos })}
+            {t("firma.cuantos", { cuantos: panel.total })}
           </p>
           <ul className="space-y-2">
             {panel.sobres.map((sobre) => (
@@ -203,6 +212,12 @@ export function PendienteDeFirma() {
               </li>
             ))}
           </ul>
+          {panel.hay_mas ? (
+            <AvisoDeRecorte
+              cuantas={panel.sobres.length}
+              detalle={t("firma.masAntiguosPrimero")}
+            />
+          ) : null}
         </>
       )}
 
@@ -458,7 +473,7 @@ function LoQueCobraElProveedor() {
           ) : (
             <p className="text-dato text-ink">
               {t("firma.llamadas.resumen", {
-                cuantas: datos.cuantas,
+                cuantas: datos.total,
                 gasto: datos.gasto,
               })}
               {datos.fallidas > 0 ? (
@@ -501,6 +516,12 @@ function LoQueCobraElProveedor() {
             </li>
           ))}
         </ul>
+      ) : null}
+      {datos?.hay_mas ? (
+        <AvisoDeRecorte
+          cuantas={datos.llamadas.length}
+          detalle={t("firma.llamadas.lasSumasSonDeTodas")}
+        />
       ) : null}
     </section>
   );

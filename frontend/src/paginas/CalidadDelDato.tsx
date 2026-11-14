@@ -594,12 +594,14 @@ function Identidad() {
   const [datos, setDatos] = useState<{
     propuestas: Propuesta[];
     umbral: number;
+    /** Todas las que pasan el umbral, no solo las servidas (COB-16). */
+    cuantas: number;
   } | null>(null);
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
-    llamar<{ propuestas: Propuesta[]; umbral: number }>(
+    llamar<{ propuestas: Propuesta[]; umbral: number; cuantas: number }>(
       `${BASE}/identidades/propuestas?limite=50`,
     )
       .then((r) => setDatos(r.datos))
@@ -717,6 +719,12 @@ function Identidad() {
           ))}
         </Rejilla>
       )}
+      {datos && datos.cuantas > datos.propuestas.length ? (
+        <AvisoDeRecorte
+          cuantas={datos.propuestas.length}
+          detalle={t("calidadDelDato.propuestasPorPuntuacion")}
+        />
+      ) : null}
       {fallo ? <Fallo error={fallo} /> : null}
     </section>
   );
