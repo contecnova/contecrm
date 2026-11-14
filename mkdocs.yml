@@ -38,6 +38,7 @@ nav:
       - Qué se reutiliza de la casa: REUTILIZACION.md
       - Accesibilidad (WCAG 2.2 AA): ACCESIBILIDAD.md
       - Reversibilidad y plan de salida: SALIDA.md
+      - Auditoría del 13-11-2026: AUDITORIA-2026-11.md
   # Este repositorio renuncia a CI y lo sustituye por gates locales. Un sistema
   # que sustituye a la CI y no está documentado depende de que alguien se
   # acuerde, así que tiene su propia página en el menú.

@@ -19,6 +19,9 @@ desde la primera línea.
   máquinas de estado y el mapa de eventos. **Generado del código.**
 - **Contribuir** → *[Gates locales](QUALITY_GATES.md)*. **Empieza por ahí**: este
   proyecto no tiene CI por decisión, y los gates solo protegen si los instalas.
+- **Qué se encontró y arregló en la auditoría del 13-11-2026** →
+  *[Registro de la auditoría](AUDITORIA-2026-11.md)*, con el commit y la
+  verificación de cada arreglo.
 
 ## Las tres restricciones que ordenan todo
 
