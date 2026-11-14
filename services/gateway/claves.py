@@ -52,7 +52,11 @@ def _claves_ttl_cache_s() -> float:
     return get_settings().claves_ttl_cache_s
 
 
-_cache: dict[str, tuple[float, Principal]] = {}
+# Por (secreto, IP) y no solo por secreto: la validación de identity mira la
+# lista de redes de la clave, y una entrada válida para una IP permitida dejaba
+# entrar a la misma clave desde CUALQUIER IP durante el TTL sin preguntar
+# (auditoría 13-11-2026, FUN-A-13).
+_cache: dict[tuple[str, str], tuple[float, Principal]] = {}
 
 
 def limpiar_cache() -> None:
@@ -69,7 +73,7 @@ async def principal_de_clave(
 ) -> Principal:
     """La identidad que representa esa clave, preguntando a `identity`."""
     ahora = time.monotonic()
-    guardado = _cache.get(secreto)
+    guardado = _cache.get((secreto, ip))
     if guardado and guardado[0] > ahora:
         return guardado[1]
 
@@ -124,5 +128,5 @@ async def principal_de_clave(
         # una clave de solo lectura no escribe aunque su rol pudiera.
         scopes=frozenset(datos.get("scopes") or []),
     )
-    _cache[secreto] = (ahora + _claves_ttl_cache_s(), principal)
+    _cache[(secreto, ip)] = (ahora + _claves_ttl_cache_s(), principal)
     return principal

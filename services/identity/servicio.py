@@ -363,23 +363,36 @@ def _verificar_segundo_factor(
 
 
 def _anotar_fallo(db: Session, usuario: Usuario, maximo: int, minutos: int) -> None:
-    usuario.intentos_fallidos += 1
-    if usuario.intentos_fallidos >= maximo:
-        usuario.bloqueado_hasta = datetime.now(timezone.utc) + timedelta(minutes=minutos)
-        logger.warning("auth.cuenta_bloqueada", usuario_id=str(usuario.id))
-    # Aparte y confirmado ya: el login contesta con error y ese error deshace su
-    # transacción. Sin esto el contador no llegaba nunca a la base y el bloqueo
-    # por fuerza bruta no actuaba (medido el 10-11-2026).
-    from crmcore.db.session import guardar_aunque_falle
+    """Suma un fallo y bloquea al llegar al máximo, en una sola sentencia.
 
-    guardar_aunque_falle(
-        Usuario,
-        usuario.id,
-        {
-            "intentos_fallidos": usuario.intentos_fallidos,
-            "bloqueado_hasta": usuario.bloqueado_hasta,
-        },
-    )
+    **El incremento lo hace la base**, no Python: con leer, sumar y escribir el
+    valor absoluto, veinte intentos en paralelo leían el mismo N y escribían
+    N+1, y el bloqueo llegaba mucho más tarde de lo configurado (auditoría
+    13-11-2026, FUN-A-15).
+
+    Aparte y confirmado ya: el login contesta con error y ese error deshace su
+    transacción. Sin esto el contador no llegaba nunca a la base y el bloqueo
+    por fuerza bruta no actuaba (medido el 10-11-2026).
+    """
+    from crmcore.db.session import sesion
+    from sqlalchemy import case, update
+
+    hasta = datetime.now(timezone.utc) + timedelta(minutes=minutos)
+    nuevo = Usuario.intentos_fallidos + 1
+    with sesion(sistema=True) as aparte:
+        intentos = aparte.execute(
+            update(Usuario)
+            .where(Usuario.id == usuario.id)
+            .values(
+                intentos_fallidos=nuevo,
+                bloqueado_hasta=case((nuevo >= maximo, hasta), else_=Usuario.bloqueado_hasta),
+            )
+            .returning(Usuario.intentos_fallidos)
+        ).scalar_one()
+    usuario.intentos_fallidos = int(intentos)
+    if intentos >= maximo:
+        usuario.bloqueado_hasta = hasta
+        logger.warning("auth.cuenta_bloqueada", usuario_id=str(usuario.id))
 
 
 def _membresia(db: Session, usuario_id: UUID, tenant_id: UUID) -> Membresia | None:
