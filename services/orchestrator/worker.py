@@ -136,11 +136,27 @@ def _avanzar_una(
 
 
 def _avanzar_en(db: Any, instancia_id: Any, tomada_por: str, invocadores: dict[str, Any]) -> None:
-    instancia = db.get(InstanciaProceso, instancia_id)
+    # FOR UPDATE durante todo el avance, y comprobando que sigue siendo nuestra.
+    # La toma es un alquiler de `WORKER_BLOQUEO_MIN`: si un paso tardaba más,
+    # otro worker la volvía a tomar y las dos réplicas ejecutaban los mismos
+    # pasos —un correo enviado dos veces, una llamada externa repetida—
+    # (auditoría 13-11-2026, FUN-A-18). Con la fila bloqueada, la toma del otro
+    # (`skip_locked`) la salta; y si al llegar aquí ya la tiene otro, no se toca.
+    # El motor no confirma a mitad de avance, así que el bloqueo dura lo que dura
+    # el avance entero.
+    instancia = db.get(InstanciaProceso, instancia_id, with_for_update=True)
     if instancia is None:
         # La instancia se ha ido entre la toma y ahora (una baja de tenant, una
         # purga). No es un error del worker.
         logger.info("worker.instancia_ausente", instancia=str(instancia_id))
+        return
+    if instancia.tomada_por != tomada_por:
+        db.rollback()
+        logger.info(
+            "worker.instancia_ya_no_es_mia",
+            instancia=str(instancia_id),
+            ahora_es_de=str(instancia.tomada_por or ""),
+        )
         return
 
     from crmcore.tenancy.context import con_contexto

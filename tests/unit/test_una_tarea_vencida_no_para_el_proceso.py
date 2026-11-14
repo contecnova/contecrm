@@ -143,3 +143,36 @@ def test_un_fallo_transitorio_de_la_base_no_falla_el_proceso() -> None:
     assert _es_transitorio(DBAPIError("SELECT 1", {}, _Origen("40001")))
     assert not _es_transitorio(DBAPIError("SELECT 1", {}, _Origen("23505")))
     assert not _es_transitorio(ValueError("un paso mal escrito"))
+
+
+def test_una_instancia_que_ya_tiene_otro_worker_no_se_avanza(monkeypatch: Any) -> None:
+    """FUN-A-18: si un avance tardaba más que el alquiler de la toma, otro worker
+    la volvía a tomar y las dos réplicas ejecutaban los mismos pasos. Ahora se
+    relee con FOR UPDATE y, si ya no es nuestra, no se toca."""
+    from types import SimpleNamespace
+
+    from crmcore.ids import nuevo_id
+
+    from services.orchestrator import worker
+
+    pedidas: list[dict[str, Any]] = []
+
+    class _Sesion:
+        deshecha = False
+
+        def get(self, _modelo: Any, _id: Any, **opciones: Any) -> Any:
+            pedidas.append(opciones)
+            return SimpleNamespace(tomada_por="worker-b", tenant_id=nuevo_id())
+
+        def rollback(self) -> None:
+            self.deshecha = True
+
+    def _no_debe_avanzar(*_a: Any, **_k: Any) -> Any:
+        raise AssertionError("ha avanzado una instancia que ya era de otro worker")
+
+    monkeypatch.setattr(worker, "Motor", _no_debe_avanzar)
+    sesion = _Sesion()
+    worker._avanzar_en(sesion, nuevo_id(), "worker-a", {})
+
+    assert pedidas == [{"with_for_update": True}]
+    assert sesion.deshecha
