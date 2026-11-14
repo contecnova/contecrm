@@ -13,11 +13,13 @@
 -- que muera con ella y no pueda filtrarse a la siguiente petición que reutilice
 -- la conexión.
 --
--- El GUC vacío significa **contexto de sistema** (migraciones, mantenimiento,
--- consola de plataforma) y la política es permisiva ahí. Eso es a propósito:
--- las migraciones tienen que poder tocar todas las filas. Lo que impide que ese
--- camino se use por descuido es que abrir una sesión sin tenant exige escribir
--- `sistema=True` en el código (ver `crmcore.db.session.nueva_sesion`).
+-- El GUC `*` significa **contexto de sistema** (migraciones, mantenimiento,
+-- consola de plataforma) y la política es permisiva ahí: las migraciones tienen
+-- que poder tocar todas las filas. Se DECLARA: lo pone una sesión abierta con
+-- `sistema=True` (ver `crmcore.db.session.nueva_sesion`) y `alembic/env.py`.
+-- Un GUC vacío o sin fijar no ve NADA. Antes el vacío valía como sistema, y la
+-- RLS fallaba abierta justo cuando el tenant no había llegado (SEC-10).
+-- Una base ya desplegada necesita volver a pasar `scripts/aplicar_rls.py`.
 --
 -- ── Limitación, dicha claramente ──────────────────────────────────────────
 -- Un rol SUPERUSER o con BYPASSRLS **ignora** estas políticas aunque estén en
@@ -61,15 +63,18 @@ BEGIN
     EXECUTE format($pol$
       CREATE POLICY aislamiento_tenant ON %I.%I
         USING (
+          -- `*` es el contexto de sistema DECLARADO (sesión con sistema=True).
+          -- Vacío o sin fijar no ve nada: antes lo veía todo (SEC-10). Debe
+          -- decir lo mismo que `crmcore.db.rls.CONDICION`.
           tenant_id::text = current_setting('app.current_tenant', true)
-          OR coalesce(current_setting('app.current_tenant', true), '') = ''
+          OR current_setting('app.current_tenant', true) = '*'
         )
         WITH CHECK (
           -- WITH CHECK aparte de USING, y esto importa: sin él se pueden LEER
           -- solo las filas propias pero INSERTAR filas con el tenant_id de otro.
           -- Una fuga de escritura es peor que una de lectura.
           tenant_id::text = current_setting('app.current_tenant', true)
-          OR coalesce(current_setting('app.current_tenant', true), '') = ''
+          OR current_setting('app.current_tenant', true) = '*'
         )
     $pol$, esq, t);
     RAISE NOTICE 'RLS activada en %.%', esq, t;

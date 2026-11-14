@@ -48,7 +48,7 @@ def _procesar(trabajo_id: Any, tenant_id: Any, tanda_max: int) -> None:
     El lote se toma con una sesión de sistema —hay que mirar los trabajos de
     todos los tenants para saber cuál toca—, pero **ejecutar** el trabajo en esa
     misma sesión deja al ejecutor sin ninguna red: el guard del ORM se aparta
-    ante una sesión de sistema, y RLS con `app.current_tenant` vacío también.
+    ante una sesión de sistema, y RLS con el contexto de sistema (`*`) también.
     Un trabajo de operación masiva del tenant B con el identificador de una
     cuenta del tenant A la habría actualizado.
 

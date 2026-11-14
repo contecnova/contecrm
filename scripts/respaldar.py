@@ -215,6 +215,9 @@ def verificar(carpeta: Path) -> int:
 
         motor = sa.create_engine(uri.replace("postgresql://", "postgresql+psycopg://", 1))
         with motor.connect() as conexion:
+            # Contexto de sistema DECLARADO: con un rol sujeto a la RLS, un GUC
+            # vacío ya no ve ninguna fila (SEC-10) y la copia parecería vacía.
+            conexion.execute(sa.text("SELECT set_config('app.current_tenant', '*', false)"))
             # `pg_tables` y no `pg_stat_user_tables`: las estadísticas están
             # vacías hasta que pasa el recolector, así que una base recién
             # restaurada parece no tener nada. Se descubrió aquí, y es

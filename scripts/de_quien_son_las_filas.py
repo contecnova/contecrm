@@ -58,6 +58,9 @@ def main() -> int:
         return 1
 
     with conexion, conexion.cursor() as cur:
+        # Contexto de sistema DECLARADO: con un rol sujeto a la RLS, un GUC vacío
+        # ya no ve ninguna fila (SEC-10) y el informe saldría en blanco.
+        cur.execute("SELECT set_config('app.current_tenant', '*', false)")
         cur.execute(
             """
             SELECT c.table_schema, c.table_name
@@ -152,6 +155,9 @@ def _la_red_de_la_base(uri: str) -> None:
     """
     print("\n── La red de la base (RLS) ─────────────────────────────────")
     with psycopg.connect(uri, connect_timeout=5) as conexion, conexion.cursor() as cur:
+        # Contexto de sistema DECLARADO: con un rol sujeto a la RLS, un GUC vacío
+        # ya no ve ninguna fila (SEC-10) y el informe saldría en blanco.
+        cur.execute("SELECT set_config('app.current_tenant', '*', false)")
         cur.execute(
             "SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
         )
@@ -232,7 +238,7 @@ def _la_prueba_de_verdad(cur: psycopg.Cursor) -> None:
             (tenants[1],),
         )
         ajenas = cur.fetchone()[0]
-        cur.execute("SELECT set_config('app.current_tenant', '', false)")
+        cur.execute("SELECT set_config('app.current_tenant', '*', false)")
         if ajenas:
             print(
                 f"  ✗ Puesto en el sitio de {tenants[0]}, se ven {ajenas} filas de "

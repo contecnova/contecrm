@@ -189,6 +189,12 @@ def run_migrations_online() -> None:
         if not existe:
             conexion.execute(text(f'CREATE SCHEMA "{ESQUEMA}"'))
         conexion.execute(text(f'SET search_path TO "{ESQUEMA}", public'))
+        # Una migración es contexto de sistema: sus UPDATE de datos recorren
+        # todos los tenants. Se declara, porque la RLS ya no trata un GUC vacío
+        # como «todo» (SEC-10): sin esto, con FORCE, una migración de datos
+        # tocaría cero filas sin avisar. A nivel de sesión (`false`), para que
+        # sobreviva al commit de abajo y dure toda la migración.
+        conexion.execute(text("SELECT set_config('app.current_tenant', '*', false)"))
         conexion.commit()
 
         context.configure(

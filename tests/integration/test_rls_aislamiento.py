@@ -77,7 +77,7 @@ def _como_app(db: Any, tenant_id: UUID | None) -> None:
 
 def _como_sistema(db: Any) -> None:
     db.execute(sa.text("RESET ROLE"))
-    db.execute(sa.text("SELECT set_config('app.current_tenant', '', false)"))
+    db.execute(sa.text("SELECT set_config('app.current_tenant', '*', false)"))
 
 
 def test_un_tenant_no_ve_los_datos_de_otro(
@@ -144,14 +144,13 @@ def test_no_se_puede_escribir_con_el_tenant_de_otro(
     _como_sistema(db)
 
 
-def test_el_contexto_de_sistema_ve_todo(
+def test_sin_tenant_no_se_ve_nada_y_el_sistema_se_declara(
     db_con_rls: Any, tenant_id: UUID, otro_tenant_id: UUID
 ) -> None:
-    """Sin GUC fijado, la política es permisiva: es el camino de migraciones.
-
-    Está pensado así a propósito, y lo que impide usarlo por descuido no es la
-    política sino el código: abrir una sesión sin tenant exige escribir
-    `sistema=True` (ver `crmcore.db.session.nueva_sesion`).
+    """Auditoría 13-11-2026, SEC-10: un GUC vacío valía como «sistema» y lo
+    veía todo, así que la RLS fallaba abierta justo cuando el tenant no había
+    llegado. Ahora vacío no ve nada y el sistema se declara con `*`, que es lo
+    que pone una sesión abierta con `sistema=True` y lo que pone una migración.
     """
     db = db_con_rls
     _como_sistema(db)
@@ -166,6 +165,9 @@ def test_el_contexto_de_sistema_ve_todo(
     db.commit()
 
     _como_app(db, None)  # rol sin privilegios, pero sin tenant fijado
+    assert db.execute(sa.select(UnidadNegocio.nombre)).scalars().all() == []
+
+    db.execute(sa.text("SELECT set_config('app.current_tenant', '*', false)"))
     visibles = db.execute(sa.select(UnidadNegocio.nombre)).scalars().all()
     assert sorted(visibles) == ["De Dos", "De Uno"]
     _como_sistema(db)

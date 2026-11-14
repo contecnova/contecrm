@@ -2982,7 +2982,7 @@ tenants, con `select`, con `get`, con `update` y cruzando modelos distintos.
 El worker de trabajos toma el lote con una sesión de sistema, que es correcto:
 hay que mirar los trabajos de todos los tenants para saber cuál toca. Pero
 **ejecutaba el trabajo en esa misma sesión**, y una sesión de sistema aparta al
-guard a propósito; RLS con `app.current_tenant` vacío tampoco filtra. La red era
+guard a propósito; RLS en contexto de sistema tampoco filtra. La red era
 exactamente ninguna.
 
 Un trabajo de operación masiva del tenant B con el identificador de una cuenta

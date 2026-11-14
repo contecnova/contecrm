@@ -35,10 +35,29 @@ NOMBRE_POLITICA = "aislamiento_tenant"
 # lo que se lee y `WITH CHECK` lo que se escribe. Con solo `USING`, un tenant no
 # puede LEER lo ajeno pero sí puede INSERTAR filas con el `tenant_id` de otro, y
 # esas filas aparecerían en el CRM del otro cliente como suyas.
+#
+# El contexto de sistema se DECLARA con `GUC_SISTEMA`; un GUC vacío o sin fijar
+# no ve ni escribe nada. Antes la cadena vacía valía como «sistema», así que
+# cualquier conexión que llegara sin fijar el tenant —un script, una conexión
+# cruda, un camino que se saltara `nueva_sesion`— veía todos los tenants: la
+# RLS fallaba abierta justo cuando algo había ido mal (auditoría 13-11-2026,
+# SEC-10). `*` no puede ser un `tenant_id`, que es un UUID.
+GUC_SISTEMA = "*"
 CONDICION = (
     "tenant_id::text = current_setting('app.current_tenant', true) "
-    "OR coalesce(current_setting('app.current_tenant', true), '') = ''"
+    f"OR current_setting('app.current_tenant', true) = '{GUC_SISTEMA}'"
 )
+
+
+def valor_del_guc(tenant_id: Any, *, sistema: bool) -> str:
+    """Lo que se escribe en `app.current_tenant` para una sesión.
+
+    El tenant si lo hay; `GUC_SISTEMA` solo si la sesión se abrió declarando
+    `sistema=True`; si no, cadena vacía, que la política trata como «nada».
+    """
+    if tenant_id:
+        return str(tenant_id)
+    return GUC_SISTEMA if sistema else ""
 
 
 def tablas_con_tenant(conexion: Any, esquema: str) -> list[str]:

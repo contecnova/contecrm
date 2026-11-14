@@ -128,11 +128,15 @@ def _instalar_hooks_rls(engine: Engine) -> None:
         """
         if not get_settings().rls_enabled:
             return
-        tenant = session.info.get("tenant_id")
-        # Sin tenant se fija cadena vacía, no se omite el SET: omitirlo dejaría
-        # el valor que hubiera puesto la transacción anterior. La política trata
-        # la cadena vacía como «contexto de sistema».
-        valor = str(tenant) if tenant else ""
+        from crmcore.db.rls import valor_del_guc
+
+        # Sin tenant se fija igualmente, no se omite el SET: omitirlo dejaría
+        # el valor que hubiera puesto la transacción anterior. Solo una sesión
+        # abierta con `sistema=True` lo ve todo; sin tenant ni sistema, la
+        # política no devuelve nada (SEC-10).
+        valor = valor_del_guc(
+            session.info.get("tenant_id"), sistema=bool(session.info.get("sistema"))
+        )
         connection.execute(
             text("SELECT set_config(:clave, :valor, true)"),
             {"clave": GUC_TENANT, "valor": valor},
@@ -342,10 +346,15 @@ def escribir_como(db: Session, tenant_id: UUID) -> Iterator[None]:
     conexion = db.connection()
 
     def _fijar(valor: Any) -> None:
+        from crmcore.db.rls import valor_del_guc
+
         if s.rls_enabled:
             conexion.execute(
                 text("SELECT set_config(:clave, :valor, true)"),
-                {"clave": GUC_TENANT, "valor": str(valor) if valor else ""},
+                {
+                    "clave": GUC_TENANT,
+                    "valor": valor_del_guc(valor, sistema=bool(db.info.get("sistema"))),
+                },
             )
 
     db.info["tenant_id"] = tenant_id
