@@ -850,3 +850,35 @@ def test_el_waterfall_cuadra_con_lo_perdido_y_lo_reabierto(
     assert salida["salidas"]["cuantas"] == 0
     # Entradas menos pérdidas explican la variación entera.
     assert Decimal(salida["variacion_total"]) == Decimal("300") - Decimal("500")
+
+
+@pytest.mark.db
+def test_el_embudo_por_etapa_no_suma_monedas_distintas(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, pipeline: Pipeline
+) -> None:
+    """FUN-B-9: el embudo hacía un SUM de `importe` a secas, mezclando monedas.
+    Ahora cada oportunidad va en la moneda funcional con el cambio de su cierre,
+    y la que no tiene cambio se cuenta pero no se suma."""
+    from crmcore.datos.cambio import TipoCambio
+
+    from services.sales import servicio as svc
+
+    db.add(
+        TipoCambio(
+            tenant_id=tenant_id,
+            desde_moneda="USD",
+            hasta_moneda="EUR",
+            fecha=HOY - timedelta(days=30),
+            tasa=Decimal("0.5"),
+        )
+    )
+    _oportunidad(db, tenant_id, pipeline, importe="1000", moneda="EUR")
+    _oportunidad(db, tenant_id, pipeline, importe="1000", moneda="USD")
+    _oportunidad(db, tenant_id, pipeline, importe="1000", moneda="GBP")
+    db.flush()
+
+    salida = svc.resumen_pipeline(db, tenant_id, pipeline_id=pipeline.id)
+    contacto = next(e for e in salida["etapas"] if e["etapa"] == "Contacto")
+    assert contacto["oportunidades"] == 3
+    assert Decimal(contacto["importe"]) == Decimal("1500")
+    assert salida["sin_tipo_de_cambio"] == 1 and salida["moneda"] == "EUR"

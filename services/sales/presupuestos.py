@@ -1663,13 +1663,27 @@ def ingreso_recurrente(
         "trimestral": Decimal(1) / Decimal(3),
         "anual": Decimal(1) / Decimal(12),
     }
+    # En la moneda funcional, con el cambio del día del cálculo. Antes se
+    # sumaba `importe_periodo` a secas: una suscripción en dólares y otra en
+    # euros daban un MRR como si un dólar fuera un euro (FUN-B-9).
+    from services.sales.moneda import Conversor
+
+    convertir = Conversor(db, tenant_id)
     mrr = Decimal(0)
     pausado = Decimal(0)
     for fila in filas:
-        mensual = Decimal(fila.importe_periodo) * factor.get(fila.periodicidad, Decimal(1))
-        if fila.estado == "activa" and fila.inicio <= dia and (fila.fin is None or fila.fin >= dia):
+        activa = (
+            fila.estado == "activa" and fila.inicio <= dia and (fila.fin is None or fila.fin >= dia)
+        )
+        if not activa and fila.estado != "pausada":
+            continue
+        importe = convertir(fila.importe_periodo, fila.moneda, dia, ref=fila.id)
+        if importe is None:
+            continue
+        mensual = importe * factor.get(fila.periodicidad, Decimal(1))
+        if activa:
             mrr += mensual
-        elif fila.estado == "pausada":
+        else:
             pausado += mensual
     return {
         "mrr": str(_redondear(mrr)),
@@ -1678,6 +1692,7 @@ def ingreso_recurrente(
         "activas": len([f for f in filas if f.estado == "activa"]),
         "pausadas": len([f for f in filas if f.estado == "pausada"]),
         "medible": bool(filas),
+        **convertir.resumen(),
     }
 
 

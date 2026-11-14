@@ -454,6 +454,12 @@ def actividad_crm(
         fecha = _a_fecha(a.get("inicio_at") or a.get("completada_at") or a.get("created_at"))
         if uid and fecha and corte <= fecha <= ahora:
             sujeto(uid)["actividades"] += 1
+    # El importe en la moneda funcional. `importe_funcional` si viene; si no,
+    # el importe sólo cuando ya está en esa moneda. Antes se caía al importe a
+    # secas, y como `sales` no rellena `importe_funcional`, se sumaban dólares
+    # con euros (FUN-B-9). Lo que no se puede convertir no se suma: se cuenta.
+    funcional = str(rt.efectivo("moneda_funcional", db) or "EUR").upper()
+    sin_convertir = 0
     for o in lec.leer("oportunidad"):
         uid = str(o.get("owner_id") or "")
         if not uid:
@@ -462,8 +468,14 @@ def actividad_crm(
         fecha = _a_fecha(o.get("fecha_cierre_real") or o.get("fecha_cierre"))
         if _significa(o) in GANADO and fecha and corte <= fecha <= ahora:
             s["ganadas"] += 1
+            importe = o.get("importe_funcional")
+            if importe is None and str(o.get("moneda") or funcional).upper() == funcional:
+                importe = o.get("importe")
+            if importe is None:
+                sin_convertir += 1
+                continue
             try:
-                s["importe"] += float(o.get("importe_funcional") or o.get("importe") or 0)
+                s["importe"] += float(importe or 0)
             except (TypeError, ValueError):
                 pass
     sujetos = sorted(por.values(), key=lambda s: (-s["actividades"], s["id"]))
@@ -478,4 +490,6 @@ def actividad_crm(
         "desde": str(corte),
         "hasta": str(ahora),
         "procedencia": lec.procedencia,
+        "moneda": funcional,
+        "ganadas_sin_convertir": sin_convertir,
     }

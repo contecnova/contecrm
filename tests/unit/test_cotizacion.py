@@ -712,6 +712,39 @@ def test_el_arr_anual_se_normaliza_a_mensual(uow: UnidadDeTrabajo) -> None:
     assert salida["arr"] == "1200.00"
 
 
+def test_el_mrr_convierte_cada_moneda_y_dice_lo_que_no_puede(uow: UnidadDeTrabajo) -> None:
+    """FUN-B-9: se sumaba `importe_periodo` a secas, como si un dólar fuera un
+    euro. Ahora se convierte a la moneda funcional con el cambio del día, y lo
+    que no tiene cambio no se suma: se cuenta."""
+    from crmcore.datos.cambio import TipoCambio
+
+    ayer = hoy(uow.db) - timedelta(days=1)
+    uow.db.add(
+        TipoCambio(
+            tenant_id=uow.tenant_id,
+            desde_moneda="USD",
+            hasta_moneda="EUR",
+            fecha=ayer,
+            tasa=Decimal("0.5"),
+        )
+    )
+    for moneda, importe in (("EUR", 100), ("USD", 100), ("GBP", 100)):
+        pre.alta_suscripcion(
+            uow,
+            cuenta_id=uuid4(),
+            plan=moneda,
+            importe_periodo=Decimal(importe),
+            inicio=ayer,
+            moneda=moneda,
+        )
+
+    salida = pre.ingreso_recurrente(uow.db, uow.tenant_id)
+    assert salida["moneda"] == "EUR"
+    assert salida["mrr"] == "150.00"  # 100 € + 100 $ a 0,5; las libras, fuera
+    assert salida["sin_tipo_de_cambio"] == 1
+    assert salida["aviso_moneda"]
+
+
 # ── Traspaso al ERP (CRM-03.03.02.11) ─────────────────────────────────────
 
 

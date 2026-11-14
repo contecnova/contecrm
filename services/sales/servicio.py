@@ -1089,28 +1089,40 @@ def resumen_pipeline(
     hay sobre la mesa y el ponderado cuánto se espera cerrar, y confundirlos es
     el origen de la mitad de las discusiones sobre una previsión.
     """
-    consulta = (
-        select(
-            Etapa.id,
-            Etapa.nombre,
-            Etapa.orden,
-            Etapa.probabilidad,
-            func.count(Oportunidad.id),
-            func.coalesce(func.sum(Oportunidad.importe), 0),
-        )
-        .join(Oportunidad, Oportunidad.etapa_id == Etapa.id, isouter=True)
-        .where(Etapa.tenant_id == tenant_id)
-        .group_by(Etapa.id, Etapa.nombre, Etapa.orden, Etapa.probabilidad)
-        .order_by(Etapa.orden)
+    # Por oportunidad y no con un SUM en SQL: cada una se convierte a la moneda
+    # funcional con el cambio de su fecha de cierre, como en la previsión. El
+    # SUM sumaba `importe` a secas, mezclando monedas (FUN-B-9).
+    from services.sales.moneda import Conversor
+
+    convertir = Conversor(db, tenant_id)
+    consulta_etapas = select(Etapa.id, Etapa.nombre, Etapa.orden, Etapa.probabilidad).where(
+        Etapa.tenant_id == tenant_id
     )
     if pipeline_id:
-        consulta = consulta.where(Etapa.pipeline_id == pipeline_id)
+        consulta_etapas = consulta_etapas.where(Etapa.pipeline_id == pipeline_id)
+    filas_etapas = db.execute(consulta_etapas.order_by(Etapa.orden)).all()
+    por_etapa: dict[Any, list[Decimal]] = {e[0]: [Decimal(0), Decimal(0)] for e in filas_etapas}
+    if por_etapa:
+        for op in db.execute(
+            select(
+                Oportunidad.id,
+                Oportunidad.etapa_id,
+                Oportunidad.importe,
+                Oportunidad.moneda,
+                Oportunidad.fecha_cierre,
+            ).where(Oportunidad.tenant_id == tenant_id, Oportunidad.etapa_id.in_(list(por_etapa)))
+        ).all():
+            acumulado = por_etapa[op.etapa_id]
+            acumulado[1] += 1
+            importe = convertir(op.importe, op.moneda, op.fecha_cierre, ref=op.id)
+            if importe is not None:
+                acumulado[0] += importe
 
     etapas: list[dict[str, Any]] = []
     total_bruto = Decimal(0)
     total_ponderado = Decimal(0)
-    for _eid, nombre, orden, prob, cuantas, importe in db.execute(consulta).all():
-        importe = Decimal(importe or 0)
+    for _eid, nombre, orden, prob in filas_etapas:
+        importe, cuantas = por_etapa[_eid]
         ponderado = (importe * Decimal(prob) / Decimal(100)).quantize(Decimal("0.01"))
         total_bruto += importe
         total_ponderado += ponderado
@@ -1128,6 +1140,7 @@ def resumen_pipeline(
         "etapas": etapas,
         "total": str(total_bruto),
         "total_ponderado": str(total_ponderado),
+        **convertir.resumen(),
     }
 
 

@@ -887,18 +887,22 @@ def acierto_de_los_ajustes(db: Session, tenant_id: UUID, periodo_clave: str) -> 
     perfecto.
     """
     per = periodo(db, tenant_id, periodo_clave)
-    real = Decimal(
-        db.execute(
-            select(func.coalesce(func.sum(Oportunidad.importe), 0)).where(
-                Oportunidad.tenant_id == tenant_id,
-                # Lo GANADO, se llame como se llame en esta empresa.
-                Oportunidad.estado.in_(con_significado("oportunidad", "ganado", db)),
-                Oportunidad.fecha_cierre >= per.desde,
-                Oportunidad.fecha_cierre <= per.hasta,
-            )
-        ).scalar_one()
-        or 0
-    )
+    # Lo real en la MISMA moneda y con el mismo cambio que la previsión con la
+    # que se compara (`_importe_funcional`, cambio del día de cierre). Antes se
+    # sumaba `importe` a secas: con oportunidades en dos monedas, el «acierto»
+    # comparaba una cifra convertida con una mezclada (FUN-B-9).
+    moneda = _moneda_funcional(db).upper()
+    sin_cambio: list[str] = []
+    ganadas = db.execute(
+        select(Oportunidad).where(
+            Oportunidad.tenant_id == tenant_id,
+            # Lo GANADO, se llame como se llame en esta empresa.
+            Oportunidad.estado.in_(con_significado("oportunidad", "ganado", db)),
+            Oportunidad.fecha_cierre >= per.desde,
+            Oportunidad.fecha_cierre <= per.hasta,
+        )
+    ).scalars()
+    real = sum((_importe_funcional(db, o, moneda, sin_cambio) for o in ganadas), Decimal(0))
     filas = ajustes_de(db, tenant_id, periodo_clave)
     if not filas or real == 0:
         return {"medible": False, "motivo": "no hay ajustes o no hay nada cerrado todavía"}
@@ -913,6 +917,8 @@ def acierto_de_los_ajustes(db: Session, tenant_id: UUID, periodo_clave: str) -> 
         "error_sin_ajuste": str(abs(bruto - real)),
         "error_con_ajuste": str(abs(ajustado - real)),
         "el_ajuste_acerto": abs(ajustado - real) < abs(bruto - real),
+        "moneda": moneda,
+        "sin_tipo_de_cambio": len(sin_cambio),
     }
 
 

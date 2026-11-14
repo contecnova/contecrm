@@ -401,10 +401,19 @@ def previsto_por_periodo(
         .scalars()
         .all()
     )
+    # En la moneda funcional, con el cambio vigente en cada mes (el más
+    # reciente que no sea posterior). Antes se sumaba el importe a secas,
+    # mezclando monedas (FUN-B-9).
+    from services.sales.moneda import Conversor
+
+    convertir = Conversor(db, tenant_id)
     por_periodo: dict[str, Decimal] = {}
     for fila in filas:
+        importe = convertir(fila.importe, fila.moneda, fila.periodo, ref=fila.id)
+        if importe is None:
+            continue
         clave = fila.periodo.isoformat()
-        por_periodo[clave] = por_periodo.get(clave, Decimal(0)) + Decimal(fila.importe)
+        por_periodo[clave] = por_periodo.get(clave, Decimal(0)) + importe
 
     return {
         "periodos": {k: str(v) for k, v in sorted(por_periodo.items())},
@@ -414,6 +423,7 @@ def previsto_por_periodo(
         "meses": [{"periodo": k, "importe": str(v)} for k, v in sorted(por_periodo.items())],
         "total": str(sum(por_periodo.values(), Decimal(0))),
         "medible": bool(filas),
+        **convertir.resumen(),
         "que_es": (
             "Cuándo entra el dinero, que no es lo mismo que cuándo se firma. "
             "Confundirlos hace que un trimestre «excelente» no se note en caja hasta el "
