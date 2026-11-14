@@ -44,7 +44,7 @@ from uuid import UUID
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
-from crmcore.fechas import hoy
+from crmcore.fechas import hoy, zona_del_tenant
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -1017,6 +1017,11 @@ def huecos(
     ocupado = list(ocupado or [])
     minimo = _ahora() + timedelta(hours=fila.antelacion_horas)
     salida: list[dict[str, Any]] = []
+    # Los tramos («09:00-14:00») son hora LOCAL de la empresa. Se construían en
+    # UTC: en Madrid se proponían huecos de 10:00 a 15:00, y de 11:00 a 16:00 en
+    # verano (auditoría 13-11-2026, FUN-B-19). Se devuelven en UTC, como el resto
+    # de la API; quien los pinta los pasa a la hora de quien mira.
+    zona = zona_del_tenant(db)
 
     for d in range(dias):
         dia = inicio + timedelta(days=d)
@@ -1024,8 +1029,8 @@ def huecos(
         for tramo in tramos:
             desde_h = time.fromisoformat(str(tramo[0]))
             hasta_h = time.fromisoformat(str(tramo[1]))
-            actual = datetime.combine(dia, desde_h, tzinfo=timezone.utc)
-            fin = datetime.combine(dia, hasta_h, tzinfo=timezone.utc)
+            actual = datetime.combine(dia, desde_h, tzinfo=zona).astimezone(timezone.utc)
+            fin = datetime.combine(dia, hasta_h, tzinfo=zona).astimezone(timezone.utc)
             while actual + timedelta(minutes=fila.duracion_min) <= fin:
                 termina = actual + timedelta(minutes=fila.duracion_min)
                 # La antelación mínima: proponer un hueco dentro de diez minutos

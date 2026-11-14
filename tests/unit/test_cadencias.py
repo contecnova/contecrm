@@ -594,3 +594,21 @@ def test_sin_playbook_que_encaje_no_se_inventa_uno(uow: UnidadDeTrabajo, db: Any
 def test_una_metodologia_que_no_existe_da_404(uow: UnidadDeTrabajo) -> None:
     with pytest.raises(NoEncontrado):
         cad.evaluar(uow.db, uow.tenant_id, uuid4(), uuid4())
+
+
+def test_los_tramos_son_hora_local_de_la_empresa(
+    uow: UnidadDeTrabajo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FUN-B-19: el tramo de 9 a 13 en Madrid empieza a las 9 de Madrid, no a las
+    9 UTC (que son las 10 o las 11 en Madrid)."""
+    from zoneinfo import ZoneInfo
+
+    yo = uuid4()
+    _agenda(uow, yo)
+    madrid = ZoneInfo("Europe/Madrid")
+    monkeypatch.setattr(cad, "zona_del_tenant", lambda db=None: madrid)
+    lunes = _proximo_lunes()
+    salida = cad.huecos(uow.db, uow.tenant_id, yo, desde=lunes, dias=1)
+    primero = datetime.fromisoformat(salida[0]["desde"]).astimezone(madrid)
+    assert (primero.hour, primero.minute) == (9, 0)
+    assert len(salida) == 8
