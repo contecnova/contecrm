@@ -547,7 +547,20 @@ class IdempotenciaMiddleware:
                 estado["cuerpo"] += mensaje.get("body", b"")
             await send(mensaje)
 
-        await self.app(scope, receive, _capturar)
+        try:
+            await self.app(scope, receive, _capturar)
+        except BaseException:
+            # Cancelada (el tiempo máximo de la petición la corta desde fuera) o
+            # con una excepción que nadie tradujo: la reserva se LIBERA como un
+            # fallo. Antes solo se guardaba si `self.app` volvía, así que la clave
+            # se quedaba «en curso» las 24 h de retención y todos los reintentos
+            # con ella recibían 409 (auditoría 13-11-2026, FUN-A-8). `BaseException`
+            # y no `Exception`: la cancelación es `CancelledError`.
+            reserva = (scope.get("state") or {}).get("idempotencia")
+            if reserva:
+                fallo = {"status": max(int(estado["status"] or 0), 500), "cuerpo": b""}
+                await _guardar_respuesta(reserva["clave"], reserva["tenant_id"], fallo)
+            raise
 
         # La dependencia deja aquí la clave que reservó. Si no hay nada, esta
         # petición no era idempotente y no hay nada que guardar.
