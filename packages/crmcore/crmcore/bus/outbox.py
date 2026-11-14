@@ -138,6 +138,7 @@ class Relevo:
                 .where(
                     EventoSaliente.publicado_at.is_(None),
                     EventoSaliente.proximo_intento_at <= ahora,
+                    *self._solo_la_cabeza(s),
                 )
                 .order_by(EventoSaliente.created_at)
                 .limit(s.outbox_lote)
@@ -157,6 +158,46 @@ class Relevo:
         finally:
             db.close()
         return publicados
+
+    @staticmethod
+    def _solo_la_cabeza(s: Any) -> list[Any]:
+        """Sólo el evento más antiguo pendiente de cada registro es elegible.
+
+        `_en_orden` (uno por agregado y vuelta) no bastaba, y se midió por dos
+        caminos (auditoría 13-11-2026, FUN-A-9):
+
+          * **Reintento.** Si el primer evento de una cuenta falla, su
+            `proximo_intento_at` queda en el futuro y sale de la consulta: en la
+            vuelta siguiente el segundo SÍ entra, y se publica antes que él.
+          * **Varias réplicas.** Si el lote de una réplica se corta justo tras
+            el primero, la otra lo salta (`SKIP LOCKED`) y se lleva el segundo,
+            y los dos salen a la vez.
+
+        Con esto, mientras quede uno anterior sin publicar —esperando su
+        reintento o cogido por otra réplica— los de detrás del mismo registro
+        no son elegibles. Al apartarse a fallidos se marca publicado y la cola
+        sigue. Se apaga con lo mismo que `_en_orden`.
+        """
+        if not getattr(s, "outbox_orden_por_agregado", True):
+            return []
+        from sqlalchemy import and_, exists, or_
+        from sqlalchemy.orm import aliased
+
+        anterior = aliased(EventoSaliente)
+        return [
+            ~exists().where(
+                anterior.publicado_at.is_(None),
+                anterior.subject_tipo == EventoSaliente.subject_tipo,
+                anterior.subject_id == EventoSaliente.subject_id,
+                or_(
+                    anterior.created_at < EventoSaliente.created_at,
+                    and_(
+                        anterior.created_at == EventoSaliente.created_at,
+                        anterior.id < EventoSaliente.id,
+                    ),
+                ),
+            )
+        ]
 
     def _en_orden(self, filas: list[EventoSaliente], s: Any) -> list[EventoSaliente]:
         """Un solo evento por agregado en cada vuelta (CRM-00.02.02.08).
