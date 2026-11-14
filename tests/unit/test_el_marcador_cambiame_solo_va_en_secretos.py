@@ -186,3 +186,19 @@ def test_una_clave_maestra_corta_impide_arrancar() -> None:
         for p in Settings(**_produccion_sana()).verificar_para_produccion()
         if "SECRET_KEY" in p or "ENCRYPTION_KEY" in p
     ]
+
+
+def test_los_valores_por_defecto_del_compose_no_arrancan_en_produccion() -> None:
+    """SEC-12: el compose fijaba ENV=dev y su SECRET_KEY no se reconocía."""
+    import re
+
+    from crmcore.config import Settings
+
+    compose = (RAIZ / "docker-compose.yml").read_text(encoding="utf-8")
+    assert re.search(r"^\s+ENV: \$\{ENV:-dev\}", compose, re.M), "ENV no puede ir fijo"
+    defecto = re.search(r"SECRET_KEY: \$\{SECRET_KEY:-([^}]+)\}", compose)
+    assert defecto, "no se encuentra el SECRET_KEY por defecto del compose"
+    problemas = Settings(
+        **{**_produccion_sana(), "secret_key": defecto.group(1)}
+    ).verificar_para_produccion()
+    assert any("SECRET_KEY" in p for p in problemas), problemas

@@ -65,6 +65,8 @@ PLACEHOLDERS_INSEGUROS: frozenset[str] = frozenset(
         "changeme",
         "contecrm_dev_only",
         "desarrollo-local",
+        # El `SECRET_KEY` por defecto de `docker-compose.yml` (SEC-12).
+        "desarrollo-local-no-usar-en-produccion",
     }
 )
 

@@ -48,7 +48,11 @@ x-servicio: &servicio
     - path: .env
       required: false
   environment: &entorno
-    ENV: dev
+    # `dev` por defecto, pero no fijo: fijado, un despliegue que usara este
+    # compose no pasaba nunca la comprobación de producción y arrancaba con los
+    # valores de aquí abajo. Con `ENV=prod` en el entorno se niega a arrancar
+    # con ellos, que es lo que tiene que pasar (auditoría 13-11-2026, SEC-12).
+    ENV: ${ENV:-dev}
     LOG_LEVEL: ${LOG_LEVEL:-INFO}
     # Lo que decide este compose —qué base, qué bus, qué hosts— gana sobre el
     # `.env` del repositorio a propósito: si no, un `.env` con `localhost`
