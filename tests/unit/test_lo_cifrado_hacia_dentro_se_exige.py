@@ -154,8 +154,15 @@ def test_tambien_al_leer(backend: Any) -> None:
 
 
 @pytest.mark.parametrize("backend", ["db"], indirect=True)
-def test_el_almacen_que_existe_funciona(backend: Any) -> None:
+def test_el_almacen_que_existe_funciona(backend: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from crmcore.config import limpiar_cache_settings
     from crmcore.security.cifrado import cifrar_dict, descifrar_dict
+
+    # Su propia clave maestra: dependía de que el entorno de quien la corriera
+    # tuviera ENCRYPTION_KEY, y sin ella fallaba con «no hay clave de cifrado»
+    # sin decir nada del almacén (auditoría 13-11-2026, GATE-3).
+    monkeypatch.setenv("ENCRYPTION_KEY", "maestra-de-pruebas-suficientemente-larga-de-verdad")
+    limpiar_cache_settings()
 
     cifrado = cifrar_dict({"client_secret": "secreto"})
     assert cifrado["client_secret"] != "secreto"

@@ -83,6 +83,7 @@ para que nadie lo dé por probado.
 |---|---|---|---|---|
 | DOC-1 | README con cifras de otra época | 14 servicios, 788 / 785 / 3 | `2b0271e` | Medido en `setup.sh` y `estado.md` |
 | AN-21 | Una prueba con BD tardaba 10-11 min | Modo persistente `CONTECRM_PRUEBAS_PG` | `1486e86` | 277 s en frío → 109 s; 2 pruebas en 77 s |
+| GATE-3 | La prueba del almacén de secretos fallaba sin `ENCRYPTION_KEY` en el entorno | La prueba fija su propia clave | pendiente | El nodo pasa, 1/1 |
 | — | `docs/procesos.md` estaba desfasado del código | Regenerado | `17a2dad` | `gen_procesos.py` |
 
 ## Lo que la auditoría no llegó a cubrir
