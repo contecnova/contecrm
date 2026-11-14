@@ -159,9 +159,23 @@ def _avanzar_en(db: Any, instancia_id: Any, tomada_por: str, invocadores: dict[s
         db.commit()
     except Exception as exc:  # noqa: BLE001 — una instancia rota no tumba el worker
         db.rollback()
+        if _es_transitorio(exc):
+            # Un corte de conexión, un deadlock o un fallo de serialización no
+            # dicen nada del proceso del cliente: marcarlo «fallida» lo paraba
+            # para siempre (auditoría 13-11-2026, FUN-A-17). No se toca la base
+            # —puede estar caída—: el bloqueo de toma (`WORKER_BLOQUEO_MIN`)
+            # caduca solo y otra vuelta la vuelve a coger.
+            logger.warning(
+                "worker.instancia_reintentable",
+                instancia=str(instancia_id),
+                error=str(exc)[:300],
+            )
+            return
         logger.error(
             "worker.instancia_fallida",
-            instancia=str(instancia.id),
+            # El id que ya se tiene, no `instancia.id`: con la base caída, leer
+            # el atributo tras el rollback relanzaba y el lote se quedaba a medias.
+            instancia=str(instancia_id),
             error=str(exc)[:300],
         )
         # Se libera el bloqueo igualmente: si no, la instancia queda retenida
@@ -174,6 +188,24 @@ def _avanzar_en(db: Any, instancia_id: Any, tomada_por: str, invocadores: dict[s
             db.commit()
         except Exception:  # noqa: BLE001 — la base no responde; lo hará otro worker
             db.rollback()
+
+
+# SQLSTATE de los fallos que se arreglan reintentando: serialización y deadlock.
+_SQLSTATE_TRANSITORIOS = frozenset({"40001", "40P01"})
+
+
+def _es_transitorio(exc: BaseException) -> bool:
+    """Si el fallo es de la base y no del proceso: se reintenta, no se falla."""
+    from sqlalchemy.exc import DBAPIError, DisconnectionError, OperationalError
+
+    if isinstance(exc, (OperationalError, DisconnectionError)):
+        return True
+    if isinstance(exc, DBAPIError):
+        if exc.connection_invalidated:
+            return True
+        estado = getattr(getattr(exc, "orig", None), "sqlstate", "") or ""
+        return estado in _SQLSTATE_TRANSITORIOS
+    return False
 
 
 def _vencer_tareas(db: Any) -> int:

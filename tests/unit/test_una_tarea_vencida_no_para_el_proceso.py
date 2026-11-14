@@ -125,3 +125,21 @@ def test_responder_relee_la_tarea_bloqueada(db: Any, tenant_id: UUID) -> None:
     with pytest.raises(Conflicto) as fallo:
         motor.responder_tarea(tarea, respuesta="aprobar", usuario_id=nuevo_id())
     assert fallo.value.error_code == "tarea.ya_resuelta"
+
+
+def test_un_fallo_transitorio_de_la_base_no_falla_el_proceso() -> None:
+    """FUN-A-17: un corte de conexión o un deadlock marcaban la instancia
+    «fallida» para siempre. Se distinguen de un fallo del proceso."""
+    from sqlalchemy.exc import DBAPIError, OperationalError
+
+    from services.orchestrator.worker import _es_transitorio
+
+    class _Origen(Exception):
+        def __init__(self, sqlstate: str) -> None:
+            self.sqlstate = sqlstate
+
+    assert _es_transitorio(OperationalError("SELECT 1", {}, Exception("se cayó")))
+    assert _es_transitorio(DBAPIError("SELECT 1", {}, _Origen("40P01")))
+    assert _es_transitorio(DBAPIError("SELECT 1", {}, _Origen("40001")))
+    assert not _es_transitorio(DBAPIError("SELECT 1", {}, _Origen("23505")))
+    assert not _es_transitorio(ValueError("un paso mal escrito"))
