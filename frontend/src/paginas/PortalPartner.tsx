@@ -15,25 +15,52 @@
  * cargarse lo gastaría por ellos, y el partner llegaría a «este enlace ya no
  * sirve». Se canjea pulsando.
  *
- * **Lo que no hay todavía**, y se dice en pantalla en vez de esconderlo:
- * `POST /portal-partner/canjear` comprueba el enlace y devuelve el acceso, pero
- * no abre ninguna sesión —ni token en la respuesta ni cookie del gateway—, y
- * el front no tiene pantallas de partner. Así que esto confirma el acceso y
- * explica que no hay nada más que abrir; no lleva a ningún sitio que no exista.
+ * Canjear devuelve la **sesión del portal de partner** (desde el 14-11-2026,
+ * COB-14; antes no abría ninguna y esta pantalla solo podía decir «no hay nada
+ * más que abrir»). La sesión vive **solo en memoria**, como la del portal de
+ * cliente: se entra desde un enlace, a ratos y a veces desde un ordenador
+ * compartido. Recargar pide otro enlace.
+ *
+ * Con ella el partner ve sus registros de oportunidad y registra uno nuevo. Qué
+ * partner es lo dice la sesión, no la pantalla: el servidor ignora cualquier
+ * `partner_id` que se le mande.
  */
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { ErrorApi, llamar } from "@/lib/api";
 import { config } from "@/lib/config";
+import { fecha } from "@/lib/formato";
 
-/** `POST /portal-partner/canjear`. */
+/** `POST /portal-partner/canjear`: la sesión y de quién es. */
 interface Acceso {
+  token: string;
+  caduca_en_s: number;
   acceso_id: string;
   partner_id: string;
   nivel: string;
+}
+
+/** `GET /portal-partner/mis-registros`. */
+interface Registro {
+  id: string;
+  cliente: string;
+  estado: string;
+  protegido_hasta: string | null;
+  motivo: string | null;
 }
 
 /** Un enlace que no vale se dice como tal: el servidor da **el mismo error**
@@ -140,8 +167,8 @@ export function PortalPartner() {
                   {t("portalPartner.nivel", { nivel: acceso.nivel })}
                 </p>
               ) : null}
-              <p className="mt-3 text-dato text-ink">
-                {t("portalPartner.sinPantallas")}
+              <p className="mt-1 text-rotulo text-ink-faint">
+                {t("portalPartner.sesionEnMemoria")}
               </p>
             </section>
           ) : invalido ? (
@@ -232,7 +259,213 @@ export function PortalPartner() {
             )}
           </section>
         ) : null}
+
+        {acceso ? <EspacioDelPartner sesion={acceso.token} /> : null}
       </div>
     </main>
+  );
+}
+
+/** Lo que el partner hace con su sesión: ver sus registros y registrar uno. */
+function EspacioDelPartner({ sesion }: { sesion: string }) {
+  const { t } = useTranslation();
+  const [registros, setRegistros] = useState<Registro[] | null>(null);
+  const [falloLista, setFalloLista] = useState<unknown>(null);
+  const [vuelta, setVuelta] = useState(0);
+
+  const cargar = useCallback(
+    (signal: AbortSignal) => {
+      setFalloLista(null);
+      llamar<{ registros: Registro[] }>(
+        "/api/v1/portal-partner/mis-registros",
+        { sesionExterna: sesion, signal },
+      )
+        .then((r) => setRegistros(r.datos.registros))
+        .catch((error: unknown) => {
+          if (!signal.aborted) setFalloLista(error);
+        });
+    },
+    [sesion],
+  );
+
+  useEffect(() => {
+    const control = new AbortController();
+    cargar(control.signal);
+    return () => control.abort();
+  }, [cargar, vuelta]);
+
+  return (
+    <>
+      <section className="card mt-4 p-4" aria-labelledby="partner-registros">
+        <h2 id="partner-registros" className="section-label mb-2">
+          {t("portalPartner.misRegistros")}
+        </h2>
+        {falloLista ? (
+          <FalloCompacto
+            error={falloLista}
+            que={t("portalPartner.misRegistros")}
+            reintentar={() => setVuelta((v) => v + 1)}
+          />
+        ) : registros === null ? (
+          <Cargando />
+        ) : registros.length === 0 ? (
+          <Vacio compacto titulo={t("portalPartner.sinRegistros")} />
+        ) : (
+          <ul className="divide-y divide-line">
+            {registros.map((r) => (
+              <li key={r.id} className="py-2">
+                <p className="font-medium text-ink">{r.cliente}</p>
+                <p className="text-dato text-ink-muted">
+                  {t(`portalPartner.estados.${r.estado}`, {
+                    defaultValue: r.estado,
+                  })}
+                  {r.protegido_hasta
+                    ? ` · ${t("portalPartner.protegidoHasta", {
+                        fecha: fecha(r.protegido_hasta),
+                      })}`
+                    : ""}
+                </p>
+                {r.motivo ? (
+                  <p className="text-rotulo text-ink-faint">{r.motivo}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <NuevoRegistro
+        sesion={sesion}
+        alRegistrar={() => setVuelta((v) => v + 1)}
+      />
+    </>
+  );
+}
+
+function NuevoRegistro({
+  sesion,
+  alRegistrar,
+}: {
+  sesion: string;
+  alRegistrar: () => void;
+}) {
+  const { t } = useTranslation();
+  const [cliente, setCliente] = useState("");
+  const [nif, setNif] = useState("");
+  const [dominio, setDominio] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [hecho, setHecho] = useState<string | null>(null);
+  // El servidor exige NIF o dominio (el nombre no identifica a nadie). Se dice
+  // junto a los campos, no solo deshabilitando el botón.
+  const faltaIdentificador = !nif.trim() && !dominio.trim();
+
+  async function enviar(evento: FormEvent) {
+    evento.preventDefault();
+    setFallo(null);
+    setHecho(null);
+    setEnviando(true);
+    try {
+      const r = await llamar<{ estado: string; hay_conflicto: boolean }>(
+        "/api/v1/portal-partner/registros",
+        {
+          metodo: "POST",
+          sesionExterna: sesion,
+          cuerpo: {
+            cliente_nombre: cliente.trim(),
+            nif: nif.trim() || null,
+            dominio: dominio.trim() || null,
+            descripcion: descripcion.trim(),
+          },
+        },
+      );
+      setHecho(
+        r.datos.hay_conflicto
+          ? t("portalPartner.registradoConConflicto")
+          : t("portalPartner.registrado"),
+      );
+      setCliente("");
+      setNif("");
+      setDominio("");
+      setDescripcion("");
+      alRegistrar();
+    } catch (error) {
+      setFallo(error);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section className="card mt-4 p-4" aria-labelledby="partner-nuevo">
+      <h2 id="partner-nuevo" className="section-label mb-2">
+        {t("portalPartner.registrar")}
+      </h2>
+      <form onSubmit={(e) => void enviar(e)} className="flex flex-col gap-2">
+        <label htmlFor="partner-cliente" className="text-rotulo text-ink-muted">
+          {t("portalPartner.cliente")}
+        </label>
+        <input
+          id="partner-cliente"
+          className="input-base"
+          required
+          maxLength={200}
+          value={cliente}
+          onChange={(e) => setCliente(e.target.value)}
+        />
+        <label htmlFor="partner-nif" className="text-rotulo text-ink-muted">
+          {t("portalPartner.nif")}
+        </label>
+        <input
+          id="partner-nif"
+          className="input-base"
+          value={nif}
+          onChange={(e) => setNif(e.target.value)}
+          aria-describedby="partner-identificador"
+        />
+        <label htmlFor="partner-dominio" className="text-rotulo text-ink-muted">
+          {t("portalPartner.dominio")}
+        </label>
+        <input
+          id="partner-dominio"
+          className="input-base"
+          value={dominio}
+          onChange={(e) => setDominio(e.target.value)}
+          aria-describedby="partner-identificador"
+        />
+        <p id="partner-identificador" className="text-rotulo text-ink-faint">
+          {t("portalPartner.identificador")}
+        </p>
+        <label
+          htmlFor="partner-descripcion"
+          className="text-rotulo text-ink-muted"
+        >
+          {t("portalPartner.descripcion")}
+        </label>
+        <textarea
+          id="partner-descripcion"
+          className="input-base"
+          rows={3}
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+        />
+        <div>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={enviando || !cliente.trim() || faltaIdentificador}
+            aria-busy={enviando}
+          >
+            {enviando ? t("app.cargando") : t("portalPartner.enviarRegistro")}
+          </button>
+        </div>
+        {hecho ? (
+          <p className="text-dato text-ink" role="status">
+            {hecho}
+          </p>
+        ) : null}
+        {fallo ? <Fallo error={fallo} /> : null}
+      </form>
+    </section>
   );
 }

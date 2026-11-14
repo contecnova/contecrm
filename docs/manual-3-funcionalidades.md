@@ -11014,13 +11014,31 @@ propósito— y deja pedir otro allí mismo (`POST /portal-partner/entrar`, con 
 misma respuesta exista o no el acceso). Lo prueba
 `frontend/src/pruebas/portal_partner_desde_el_correo.test.tsx`.
 
-**Lo que no hay todavía, y la pantalla lo dice:** el canje comprueba el enlace
-y devuelve el acceso, pero **no abre sesión** —ni token en la respuesta ni
-cookie del gateway—, y el front no tiene pantallas de partner. Así que tras
-canjear se confirma el acceso y se explica que desde ahí no hay nada más que
-abrir. Para que el portal sirva hace falta que el canje emita la sesión del
-partner y las pantallas de `GET /portal-partner/mis-registros` y
-`/registros/{id}`.
+**La sesión del partner** (desde el 14-11-2026, auditoría COB-14). Hasta
+entonces el canje comprobaba el enlace y no abría ninguna sesión, y las rutas
+del partner pedían una sesión del CRM con `partner:read`, que un partner no
+tiene: el portal no lo podía usar nadie de fuera. Ahora:
+
+- `POST /portal-partner/canjear` devuelve `{token, caduca_en_s, acceso_id,
+  partner_id, nivel}`. El token es de tipo `partner`
+  (`crmcore.http.partner_deps`): sin permisos del CRM, con el partner firmado
+  dentro, y sólo entra en las rutas que dependen de `PartnerDep` (marca
+  `admite_partner`). En el gateway la única ruta que lo acepta es
+  `/portal-partner/**`. Dura lo mismo que la del portal de cliente.
+- `GET /portal-partner/mis-registros`, `GET /portal-partner/registros/{id}` y
+  `POST /portal-partner/registros` (nuevo) acotan por el partner **de la
+  sesión**; un `partner_id` en el cuerpo se ignora. El registro de otro partner
+  es 404.
+- La pantalla guarda la sesión **sólo en memoria** y, tras canjear, enseña los
+  registros del partner y un formulario para registrar uno, que exige NIF o
+  dominio y lo dice junto a los campos.
+- El módulo Canal del CRM ya no enseña «Portal del partner»: llamaba a
+  `mis-registros` con la sesión del empleado. Lo del empleado está en
+  «Registros de oportunidad».
+
+Lo prueban `tests/unit/test_puerta_del_portal_de_partner.py` (camino entero y
+sesión de empleado rechazada) y
+`frontend/src/pruebas/portal_partner_desde_el_correo.test.tsx`.
 
 ### Aislamiento entre partners (`CRM-03.04.01.03`)
 

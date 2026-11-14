@@ -3830,8 +3830,29 @@ const pantallas = {
       "El enlace sirve una sola vez y caduca a los pocos minutos. No lo reenvíes: da acceso a tu nombre.",
     confirmado: "Tu acceso al portal de partner está activo.",
     nivel: "Nivel de acceso: {{nivel}}",
-    sinPantallas:
-      "Esta instalación todavía no tiene las pantallas del portal de partner, así que desde aquí no hay nada más que abrir. Si necesitas registrar una oportunidad, habla con tu contacto del programa de canal.",
+    sesionEnMemoria:
+      "La sesión dura mientras tengas esta pestaña abierta. Si la recargas o la cierras, pide otro enlace.",
+    misRegistros: "Mis registros de oportunidad",
+    sinRegistros: "Todavía no has registrado ninguna oportunidad.",
+    protegidoHasta: "protegido hasta el {{fecha}}",
+    estados: {
+      pendiente: "Pendiente de revisar",
+      aprobado: "Aprobado",
+      rechazado: "Rechazado",
+      caducado: "Caducado",
+      convertido: "Convertido en oportunidad",
+    },
+    registrar: "Registrar una oportunidad",
+    cliente: "Cliente",
+    nif: "NIF del cliente",
+    dominio: "Dominio web del cliente",
+    identificador:
+      "Hace falta el NIF o el dominio: el nombre solo no identifica al cliente, y sin uno de los dos el registro no te protege.",
+    descripcion: "Qué estáis trabajando (opcional)",
+    enviarRegistro: "Registrar",
+    registrado: "Registrado. Queda pendiente de revisar.",
+    registradoConConflicto:
+      "Registrado, pero ese cliente ya tiene otro registro vivo. Lo revisará el programa de canal.",
     invalido: "Este enlace ya no sirve",
     invalidoDetalle:
       "Puede que ya se haya usado, que haya caducado o que tu acceso ya no esté activo. Si sigues teniendo acceso, pide otro enlace.",

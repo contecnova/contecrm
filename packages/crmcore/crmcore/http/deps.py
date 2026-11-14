@@ -35,6 +35,7 @@ from crmcore.db.al_margen import al_margen
 from crmcore.embebido import TIPO as TIPO_COMPONENTE
 from crmcore.embebido import TIPO_CUADRO
 from crmcore.errors import NoAutenticado, Prohibido
+from crmcore.http.partner_deps import TIPO as TIPO_PARTNER
 from crmcore.http.portal_deps import TIPO as TIPO_PORTAL
 from crmcore.logging import get_logger
 
@@ -488,6 +489,13 @@ _PUERTA_DE_TIPO: dict[str, tuple[str, str, str]] = {
         "admite_portal",
         "portal.ruta_no_admite_portal",
         "Un token de portal sólo vale en las rutas del portal",
+    ),
+    # El partner que entra con su enlace (COB-14): sólo en las rutas que
+    # dependen de `contexto_partner`.
+    TIPO_PARTNER: (
+        "admite_partner",
+        "partner.ruta_no_admite_partner",
+        "Un token de partner sólo vale en las rutas del portal de partner",
     ),
     # Lleva `sub` —quien creó el enlace, o quien mira— y tenant. Sin esta fila
     # pasaba `AutenticadoDep` en todo el CRM con la identidad del creador del

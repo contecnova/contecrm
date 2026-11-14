@@ -19,9 +19,10 @@ from typing import Any
 from uuid import UUID
 
 from crmcore import fechas
-from crmcore.authz.estanco import aplicar_estanco, exigir_propio
+from crmcore.authz.estanco import aplicar_estanco
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha
+from crmcore.http.partner_deps import PartnerDep, emitir_token_partner
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -631,6 +632,11 @@ def entrar(datos: Entrar) -> Any:
 @router_portal.post(
     "/canjear",
     summary="Canjear el enlace y abrir sesión de partner",
+    description=(
+        "Devuelve la **sesión del portal de partner**: un token sin permisos del "
+        "CRM, con el partner firmado dentro, que sólo entra en las rutas de "
+        "`/portal-partner`. Dura poco y se renueva pidiendo otro enlace."
+    ),
 )
 def canjear(datos: Canjear, request: Request) -> Any:
     with _trabajo_sin_credencial(datos.tenant) as uow:
@@ -639,34 +645,43 @@ def canjear(datos: Canjear, request: Request) -> Any:
 
 def _canjear(datos: Canjear, uow: Any, request: Request) -> Any:
     acceso = prt.canjear_enlace(uow, datos.token, ip=request.client.host if request.client else "")
+    # Hasta el 14-11-2026 esto devolvía el acceso y NINGUNA sesión: el partner
+    # comprobaba su enlace y se quedaba sin poder hacer nada (COB-14).
+    token, dura_s = emitir_token_partner(
+        acceso_id=acceso.id,
+        tenant_id=acceso.tenant_id,
+        partner_id=acceso.partner_id,
+        nivel=acceso.nivel,
+    )
     return {
+        "token": token,
+        "caduca_en_s": dura_s,
         "acceso_id": str(acceso.id),
         "partner_id": str(acceso.partner_id),
         "nivel": acceso.nivel,
-        "atributos_principal": prt.atributos_principal(acceso),
     }
 
 
 @router_portal.get(
     "/mis-registros",
-    dependencies=[Depends(exige_permiso("partner:read"))],
     summary="Los registros del partner que pregunta",
     description=(
-        "Acotado por el **compartimento del token**. Si saliera de un parámetro, "
-        "entrar en la cartera del partner de al lado sería cambiar un número."
+        "Con la **sesión del portal de partner**, y acotado por el partner que "
+        "va firmado en ella. Si saliera de un parámetro, entrar en la cartera "
+        "del partner de al lado sería cambiar un número."
     ),
 )
-def mis_registros(db: DbDep, principal: AutenticadoDep) -> Any:
-    consulta = aplicar_estanco(
-        select(prt.RegistroOportunidad).where(
-            prt.RegistroOportunidad.tenant_id == principal.tenant_id
-        ),
-        prt.RegistroOportunidad.partner_id,
-        principal=principal,
-        tipo="partner",
-    )
+def mis_registros(db: DbDep, sesion: PartnerDep) -> Any:
     filas = (
-        db.execute(consulta.order_by(prt.RegistroOportunidad.created_at.desc()).limit(100))
+        db.execute(
+            select(prt.RegistroOportunidad)
+            .where(
+                prt.RegistroOportunidad.tenant_id == sesion.tenant_id,
+                prt.RegistroOportunidad.partner_id == sesion.partner_id,
+            )
+            .order_by(prt.RegistroOportunidad.created_at.desc())
+            .limit(100)
+        )
         .scalars()
         .all()
     )
@@ -684,22 +699,38 @@ def mis_registros(db: DbDep, principal: AutenticadoDep) -> Any:
     }
 
 
+@router_portal.post(
+    "/registros",
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar una oportunidad desde el portal de partner",
+    description=(
+        "El partner sale **de la sesión**, nunca del cuerpo: `partner_id`, si "
+        "viene, se ignora. Mismas reglas que el registro del fabricante: exige "
+        "NIF, dominio o cuenta, y un conflicto se guarda marcado **sin decir de "
+        "quién es el otro**."
+    ),
+)
+def registrar_desde_el_portal(datos: Registrar, uow: UowDep, sesion: PartnerDep) -> Any:
+    cuerpo = datos.model_dump()
+    cuerpo.pop("partner_id")
+    fila, aviso = prt.registrar_oportunidad(uow, partner_id=sesion.partner_id, **cuerpo)
+    return {"id": str(fila.id), "estado": fila.estado, **aviso}
+
+
 @router_portal.get(
     "/registros/{registro_id}",
-    dependencies=[Depends(exige_permiso("partner:read"))],
     summary="Un registro del partner",
     description=(
         "Un registro de otro partner devuelve **404, no 403**: entre competidores "
         "que comparten fabricante, la existencia ya es la información."
     ),
 )
-def un_registro(registro_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+def un_registro(registro_id: UUID, db: DbDep, sesion: PartnerDep) -> Any:
     from crmcore.errors import NoEncontrado
 
     fila = db.get(prt.RegistroOportunidad, registro_id)
-    if fila is None or fila.tenant_id != principal.tenant_id:
+    if fila is None or fila.tenant_id != sesion.tenant_id or fila.partner_id != sesion.partner_id:
         raise NoEncontrado("No encontrado", error_code="partners.registro_no_encontrado")
-    exigir_propio(fila, atributo="partner_id", principal=principal, tipo="partner")
     return {
         "id": str(fila.id),
         "cliente": fila.cliente_nombre,

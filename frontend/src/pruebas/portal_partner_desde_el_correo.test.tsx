@@ -4,8 +4,9 @@
  * Lo que no se puede romper: que abrir la página NO canjee —el enlace es de un
  * solo uso y los escáneres de correo lo abren—, que el canje vaya sin cookie y
  * con el tenant y el token del enlace, que un enlace usado o caducado se diga
- * como tal y deje pedir otro, y que el éxito no prometa una pantalla que no
- * existe.
+ * como tal y deje pedir otro, y que con la sesión que devuelve el canje el
+ * partner vea sus registros y registre uno, con la sesión en la cabecera y sin
+ * cookie (COB-14).
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -54,11 +55,16 @@ describe("portal de partner desde el correo", () => {
       "/api/v1/portal-partner/canjear": {
         status: 200,
         cuerpo: {
+          token: "sesion-del-partner",
+          caduca_en_s: 3600,
           acceso_id: "a",
           partner_id: "p",
           nivel: "comercial",
-          atributos_principal: {},
         },
+      },
+      "/api/v1/portal-partner/mis-registros": {
+        status: 200,
+        cuerpo: { registros: [] },
       },
     });
     render(<PortalPartner />);
@@ -74,11 +80,19 @@ describe("portal de partner desde el correo", () => {
     expect(
       await screen.findByText("portalPartner.confirmado"),
     ).toBeInTheDocument();
-    // Dice que no hay pantallas detrás, en vez de mandar a una que no existe.
-    expect(screen.getByText("portalPartner.sinPantallas")).toBeInTheDocument();
+    // Con la sesión se piden sus registros: en la cabecera y sin cookie.
+    expect(
+      await screen.findByText("portalPartner.sinRegistros"),
+    ).toBeInTheDocument();
     expect(peticiones.map((p) => p.url)).toEqual([
       "/api/v1/portal-partner/canjear",
+      "/api/v1/portal-partner/mis-registros",
     ]);
+    const lista = peticiones[1]!.init;
+    expect(lista.credentials).toBe("omit");
+    expect((lista.headers as Record<string, string>).Authorization).toBe(
+      "Bearer sesion-del-partner",
+    );
     expect(peticiones[0]!.init.method).toBe("POST");
     expect(peticiones[0]!.init.credentials).toBe("omit");
     expect(JSON.parse(String(peticiones[0]!.init.body))).toEqual({
@@ -92,6 +106,59 @@ describe("portal de partner desde el correo", () => {
       expect(document.activeElement).toHaveTextContent(
         "portalPartner.confirmado",
       ),
+    );
+  });
+
+  it("registrar una oportunidad exige NIF o dominio y recarga la lista", async () => {
+    responder({
+      "/api/v1/portal-partner/canjear": {
+        status: 200,
+        cuerpo: { token: "s", caduca_en_s: 3600, acceso_id: "a", partner_id: "p", nivel: "" },
+      },
+      "/api/v1/portal-partner/mis-registros": {
+        status: 200,
+        cuerpo: { registros: [] },
+      },
+      "/api/v1/portal-partner/registros": {
+        status: 201,
+        cuerpo: { id: "r1", estado: "pendiente", hay_conflicto: false },
+      },
+    });
+    const usuario = userEvent.setup();
+    render(<PortalPartner />);
+    await usuario.click(
+      screen.getByRole("button", { name: /portalPartner\.entrar/ }),
+    );
+    await screen.findByText("portalPartner.sinRegistros");
+
+    await usuario.type(screen.getByLabelText("portalPartner.cliente"), "Cliente Uno");
+    const registrar = screen.getByRole("button", {
+      name: "portalPartner.enviarRegistro",
+    });
+    // Sin NIF ni dominio no se envía, y el motivo está escrito junto a los campos.
+    expect(registrar).toBeDisabled();
+    expect(screen.getByText("portalPartner.identificador")).toBeInTheDocument();
+
+    await usuario.type(screen.getByLabelText("portalPartner.nif"), "B12345678");
+    await usuario.click(registrar);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "portalPartner.registrado",
+    );
+    const alta = peticiones.find((p) =>
+      p.url.endsWith("/api/v1/portal-partner/registros"),
+    )!;
+    expect(alta.init.method).toBe("POST");
+    expect(JSON.parse(String(alta.init.body))).toMatchObject({
+      cliente_nombre: "Cliente Uno",
+      nif: "B12345678",
+      dominio: null,
+    });
+    // Y la lista se vuelve a pedir.
+    await waitFor(() =>
+      expect(
+        peticiones.filter((p) => p.url.endsWith("/mis-registros")),
+      ).toHaveLength(2),
     );
   });
 

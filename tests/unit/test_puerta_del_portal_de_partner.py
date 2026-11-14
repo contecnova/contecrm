@@ -445,3 +445,60 @@ def test_el_cruce_con_lo_servido_se_aplica_de_verdad(monkeypatch) -> None:
         "el nivel más alto no ve ninguna sección: o se ha vaciado "
         "SECCIONES_SERVIDAS o el cruce está tirando de más"
     )
+
+
+def test_el_partner_entra_registra_y_ve_lo_suyo(api_sales: Any, tenant_confirmado: UUID) -> None:
+    """COB-14: `canjear` no abría sesión y las rutas del partner pedían una
+    sesión del CRM, así que ningún partner podía usarlas. Ahora el camino
+    entero: entrar, canjear, registrar una oportunidad y verla."""
+    _partner_con_acceso(tenant_confirmado, "ana@acme.com")
+    api_sales.post(
+        "/api/v1/portal-partner/entrar",
+        json={"tenant": str(tenant_confirmado), "email": "ana@acme.com"},
+    )
+    entrada = api_sales.post(
+        "/api/v1/portal-partner/canjear",
+        json={"tenant": str(tenant_confirmado), "token": _token_del_correo(tenant_confirmado)},
+    )
+    assert entrada.status_code == 200, entrada.text[:300]
+    sesion = {"Authorization": f"Bearer {entrada.json()['token']}"}
+
+    alta = api_sales.post(
+        "/api/v1/portal-partner/registros",
+        # `partner_id` en el cuerpo se ignora: el partner sale de la sesión.
+        json={"cliente_nombre": "Cliente Uno", "nif": "B12345678", "partner_id": str(uuid4())},
+        headers=sesion,
+    )
+    assert alta.status_code == 201, alta.text[:300]
+
+    mios = api_sales.get("/api/v1/portal-partner/mis-registros", headers=sesion)
+    assert mios.status_code == 200, mios.text[:300]
+    assert [r["cliente"] for r in mios.json()["registros"]] == ["Cliente Uno"]
+    uno = api_sales.get(f"/api/v1/portal-partner/registros/{alta.json()['id']}", headers=sesion)
+    assert uno.status_code == 200, uno.text[:300]
+
+    # Y no sirve para nada del CRM: ni siquiera para listar los partners.
+    fuera = api_sales.get("/api/v1/partners", headers=sesion)
+    assert fuera.status_code == 401, fuera.text[:300]
+    assert fuera.json()["error_code"] == "partner.ruta_no_admite_partner"
+
+
+def test_una_sesion_de_empleado_no_entra_en_el_portal_de_partner(api_sales: Any) -> None:
+    import time
+
+    from crmcore import tokens
+
+    empleado = tokens.emitir(
+        {
+            "sub": str(uuid4()),
+            "tenant": str(uuid4()),
+            "tipo": "usuario",
+            "permisos": ["partner:read"],
+            "exp": int(time.time()) + 300,
+        }
+    )
+    r = api_sales.get(
+        "/api/v1/portal-partner/mis-registros", headers={"Authorization": f"Bearer {empleado}"}
+    )
+    assert r.status_code == 401, r.text[:300]
+    assert r.json()["error_code"] == "partner.sesion_no_es_de_partner"

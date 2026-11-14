@@ -104,6 +104,13 @@ export interface Opciones {
    * gateway contestaría «tu sesión ha caducado» a quien no necesita ninguna.
    */
   sinCookie?: boolean;
+  /**
+   * La sesión de un portal externo —el de partner—, que vive **sólo en
+   * memoria** de su pantalla. Va como `Authorization` y la llamada sale sin
+   * cookie, sin «cliente mirado», sin cola sin conexión y sin reverificación:
+   * nada de eso es de quien entra desde fuera.
+   */
+  sesionExterna?: string;
 }
 
 /**
@@ -244,8 +251,10 @@ export async function llamar<T = unknown>(
   // El cliente que se está mirando, si hay uno elegido. Va en TODAS las
   // llamadas: con ella sólo en algunas, media pantalla hablaría de un cliente
   // y la otra media del propio, que es peor que no poder mirar.
-  const mirado = tenantMirado();
+  const externa = opciones.sesionExterna;
+  const mirado = externa ? "" : tenantMirado();
   if (mirado) cabeceras["X-CRM-Tenant-Mirado"] = mirado;
+  if (externa) cabeceras.Authorization = `Bearer ${externa}`;
 
   if (opciones.cuerpo !== undefined)
     cabeceras["Content-Type"] = "application/json";
@@ -265,7 +274,7 @@ export async function llamar<T = unknown>(
       // La sesión va en cookie, nunca en un almacén que pueda leer un script
       // (CRM-07.04.02.03): un XSS con el token en `localStorage` es una sesión
       // robada; con cookie `HttpOnly`, no.
-      credentials: opciones.sinCookie ? "omit" : "include",
+      credentials: opciones.sinCookie || externa ? "omit" : "include",
       signal: opciones.signal,
     }),
   ).catch(async (error: unknown) => {
@@ -276,7 +285,8 @@ export async function llamar<T = unknown>(
       error instanceof ErrorApi &&
       error.codigo === "sin_red" &&
       ESCRITURAS.has(metodo) &&
-      opciones.encolable !== false
+      opciones.encolable !== false &&
+      !externa
     ) {
       const { encolar } = await import("@/lib/sinConexion");
       const encolada = await encolar({
@@ -314,6 +324,7 @@ export async function llamar<T = unknown>(
       error.codigo === "stepup.requerido" &&
       reverificar &&
       !opciones.sinReverificar &&
+      !externa &&
       (await reverificar())
     ) {
       // La misma operación, con la misma clave de idempotencia: si la primera

@@ -1560,6 +1560,38 @@ async def proxy_portal(
     return await _proxiar(f"{get_settings().api_prefix}/portal/mi/{resto}", request, principal)
 
 
+def _partner_en_la_puerta(principal: PrincipalDep) -> Any:
+    """La puerta del portal de partner: lleva la marca `admite_partner`.
+
+    Como la del portal de cliente: sólo deja pasar el token de partner hasta
+    `/portal-partner/**`, y es `sales` quien comprueba con `PartnerDep` de qué
+    partner es (COB-14). Sin credencial también se pasa: `entrar` y `canjear`
+    son justamente donde se consigue, y llevan su tope por IP.
+    """
+    return principal
+
+
+_partner_en_la_puerta.admite_partner = True  # type: ignore[attr-defined]
+
+
+@router.api_route(
+    "/portal-partner/{resto:path}",
+    methods=["GET", "POST"],
+    summary="Lo que pide el partner desde su portal (CRM-03.04.01.03)",
+    description=(
+        "La única ruta del gateway que acepta un **token de partner**. Se "
+        "reenvía a `sales`, que acota cada respuesta por el partner del token."
+    ),
+    include_in_schema=False,
+)
+async def proxy_portal_partner(
+    resto: str,
+    request: Request,
+    principal: Annotated[Any, Depends(_partner_en_la_puerta)],
+) -> Response:
+    return await _proxiar(f"{get_settings().api_prefix}/portal-partner/{resto}", request, principal)
+
+
 # Se reenvía POR SU NOMBRE y no abriendo un prefijo: el gateway sólo reenviaba
 # `/api/*` y la captura —sin prefijo de versión, ver `services/sales/api.py`—
 # contestaba 404 desde fuera (medido el 10-11-2026).

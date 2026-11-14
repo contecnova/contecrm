@@ -1577,12 +1577,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
     },
   ],
   "canal": [
-    {
-      nombre: "Portal del partner",
-      listar: "/api/v1/portal-partner/mis-registros",
-      servicio: "sales",
-      permiso: "partner:read",
-    },
+    // Aquí estaba «Portal del partner» listando `/portal-partner/mis-registros`
+    // con la sesión del empleado. Esa ruta es del PARTNER y desde COB-14 sólo
+    // acepta su sesión: lo que el empleado ve de los registros está en
+    // «Registros de oportunidad», más abajo.
     {
       nombre: "Partners",
       principal: true,

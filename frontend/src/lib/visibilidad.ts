@@ -780,11 +780,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
   ],
   "canal": [
     {
-      "r": "/api/v1/portal-partner/mis-registros",
-      "p": "partner:read",
-      "s": "sales"
-    },
-    {
       "r": "/api/v1/partners",
       "p": "partner:read",
       "o": "partner",
