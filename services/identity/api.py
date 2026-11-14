@@ -550,8 +550,10 @@ def iniciar_mfa(db: DbDep, principal: AutenticadoDep) -> Any:
     svc.exigir_reverificacion_si_tiene_factor(db, principal, usuario)
     secreto = svc.generar_secreto_totp()
     codigos, hashes = svc.generar_codigos_recuperacion()
-    usuario.mfa_secreto = secreto
-    usuario.mfa_recuperacion = hashes
+    # Pendientes hasta que `/mfa/activar` los confirme con un código: el
+    # secreto y los códigos de recuperación activos no se tocan aún (SEC-20).
+    usuario.mfa_secreto_pendiente = secreto
+    usuario.mfa_recuperacion_pendiente = hashes
     emisor = get_settings().app_name
     return MfaIniciada(
         secreto=secreto,
@@ -563,12 +565,25 @@ def iniciar_mfa(db: DbDep, principal: AutenticadoDep) -> Any:
 @router_auth.post("/mfa/activar", response_model=dict, summary="Confirmar y activar el MFA")
 def activar_mfa(datos: ActivarMfa, db: DbDep, principal: AutenticadoDep) -> Any:
     usuario = db.get(Usuario, principal.id)
-    if usuario is None or not usuario.mfa_secreto:
+    # Lo que se confirma es lo PENDIENTE. Si no hay pendiente pero sí un secreto
+    # sin activar, es una configuración empezada antes de existir el pendiente
+    # (SEC-20) y se confirma ésa.
+    por_confirmar = (
+        usuario.mfa_secreto_pendiente or (usuario.mfa_secreto if not usuario.mfa_activo else None)
+        if usuario is not None
+        else None
+    )
+    if usuario is None or not por_confirmar:
         raise NoEncontrado(
             "No hay una configuración de MFA iniciada", error_code="auth.mfa_no_iniciada"
         )
-    if not svc.verificar_totp(usuario.mfa_secreto, datos.codigo):
+    if not svc.verificar_totp(por_confirmar, datos.codigo):
         raise NoAutenticado("El código no es válido", error_code="auth.mfa_invalida")
+    if usuario.mfa_secreto_pendiente:
+        usuario.mfa_secreto = usuario.mfa_secreto_pendiente
+        usuario.mfa_recuperacion = list(usuario.mfa_recuperacion_pendiente or [])
+        usuario.mfa_secreto_pendiente = None
+        usuario.mfa_recuperacion_pendiente = []
     usuario.mfa_activo = True
 
     # ACTIVARLO **ES** DEMOSTRARLO, y la sesión tiene que enterarse.
@@ -706,6 +721,8 @@ def desactivar_mfa(db: DbDep, principal: AutenticadoDep) -> Any:
         )
     usuario.mfa_activo = False
     usuario.mfa_secreto = None
+    usuario.mfa_secreto_pendiente = None
+    usuario.mfa_recuperacion_pendiente = []
     # Lista vacía y no `None`: la columna no admite nulos —lleva su
     # `server_default` a `'[]'`— y ponerle `None` revienta al volcar.
     usuario.mfa_recuperacion = []

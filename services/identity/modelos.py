@@ -72,6 +72,17 @@ class Usuario(Base, TimestampMixin):
     mfa_recuperacion: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    # Lo que se está configurando y aún no se ha confirmado con un código. Se
+    # guardaba directamente en `mfa_secreto`/`mfa_recuperacion`: cambiar de
+    # autenticador y escanear mal dejaba la cuenta con un secreto sin confirmar
+    # y los códigos de recuperación viejos ya borrados (auditoría 13-11-2026,
+    # SEC-20). Solo pasa a ser el de verdad al activar.
+    mfa_secreto_pendiente: Mapped[str | None] = mapped_column(
+        Text, nullable=True, info={"secreto": True}
+    )
+    mfa_recuperacion_pendiente: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
 
     # ── Bloqueo por intentos ──────────────────────────────────────────────
     intentos_fallidos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
