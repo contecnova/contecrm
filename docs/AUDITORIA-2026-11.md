@@ -30,7 +30,7 @@ para que nadie lo dé por probado.
 | FUN-A-3 | La rotación del refresco no detectaba la reutilización y la revocación se deshacía | Refresco anterior guardado, margen de gracia para pestañas, revocación confirmada, `FOR UPDATE` | `6d10816` | 4 pruebas |
 | FUN-A-13 | La caché de claves de API ignoraba la IP | Caché por (secreto, IP) | `9ef0fe7` | Prueba con transporte simulado |
 | FUN-A-15 | El contador de intentos de login se pisaba en paralelo | `UPDATE … + 1 RETURNING` en una sentencia | `9ef0fe7` | Prueba con objeto desfasado |
-| SEC-20 | `/mfa/iniciar` sobrescribía el secreto y los códigos de recuperación activos antes de confirmar el nuevo | Secreto y códigos pendientes; solo se promueven al activar con un código válido | pendiente | 1 prueba (un código malo no deja a nadie fuera) |
+| SEC-20 | `/mfa/iniciar` sobrescribía el secreto y los códigos de recuperación activos antes de confirmar el nuevo | Secreto y códigos pendientes; solo se promueven al activar con un código válido | `ca653d8` | 1 prueba (un código malo no deja a nadie fuera) |
 | DEP-1 | 33 CVE en 5 paquetes Python y 3 en el extra de trazas | Versiones corregidas; `pyopenssl` fijada | `3414e6e` | `pip-audit`: 0 vulnerabilidades |
 
 ## Funcionalidad
