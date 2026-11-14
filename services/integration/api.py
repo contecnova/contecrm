@@ -374,24 +374,32 @@ def ver_credencial(
     ),
 )
 async def probar(conexion_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    conexion = _conexion(db, principal.tenant_id, conexion_id)
-    operacion = db.execute(
-        select(Operacion)
-        .where(Operacion.conexion_id == conexion.id, Operacion.activa.is_(True))
-        .order_by(Operacion.created_at)
-        .limit(1)
-    ).scalar_one_or_none()
-    if operacion is None:
-        raise NoEncontrado(
-            "La conexión no tiene ninguna operación declarada con la que probar",
-            error_code="integracion.sin_operaciones",
-        )
+    import asyncio
+
+    def _preparar() -> tuple[Any, Any, dict[str, Any]]:
+        conexion = _conexion(db, principal.tenant_id, conexion_id)
+        operacion = db.execute(
+            select(Operacion)
+            .where(Operacion.conexion_id == conexion.id, Operacion.activa.is_(True))
+            .order_by(Operacion.created_at)
+            .limit(1)
+        ).scalar_one_or_none()
+        if operacion is None:
+            raise NoEncontrado(
+                "La conexión no tiene ninguna operación declarada con la que probar",
+                error_code="integracion.sin_operaciones",
+            )
+        return conexion, operacion, _secretos(db, conexion.id)
+
+    # Las lecturas y el descifrado de secretos son síncronos: en un hilo, para
+    # no bloquear el bucle de una ruta `async` (FUN-B-20).
+    conexion, operacion, secretos = await asyncio.to_thread(_preparar)
     try:
         resultado = await conector.ejecutar(
             conexion.config,
             operacion.definicion,
             {},
-            secretos=_secretos(db, conexion.id),
+            secretos=secretos,
             tenant_id=str(principal.tenant_id),
         )
         conexion.prueba_ok = True
@@ -437,14 +445,21 @@ def crear_operacion(
 async def invocar(
     conexion_id: UUID, clave: str, datos: Invocar, db: DbDep, principal: AutenticadoDep
 ) -> Any:
-    conexion = _conexion(db, principal.tenant_id, conexion_id)
-    operacion = db.execute(
-        select(Operacion).where(Operacion.conexion_id == conexion.id, Operacion.clave == clave)
-    ).scalar_one_or_none()
-    if operacion is None:
-        raise NoEncontrado(
-            "La operación no existe", error_code="integracion.operacion_no_encontrada"
-        )
+    import asyncio
+
+    def _preparar() -> tuple[Any, Any, dict[str, Any]]:
+        conexion = _conexion(db, principal.tenant_id, conexion_id)
+        operacion = db.execute(
+            select(Operacion).where(Operacion.conexion_id == conexion.id, Operacion.clave == clave)
+        ).scalar_one_or_none()
+        if operacion is None:
+            raise NoEncontrado(
+                "La operación no existe", error_code="integracion.operacion_no_encontrada"
+            )
+        return conexion, operacion, _secretos(db, conexion.id)
+
+    # Lecturas y secretos síncronos, en un hilo (FUN-B-20).
+    conexion, operacion, secretos = await asyncio.to_thread(_preparar)
 
     inicio = time.perf_counter()
     traza = Ejecucion(
@@ -459,7 +474,7 @@ async def invocar(
             conexion.config,
             operacion.definicion,
             datos.parametros,
-            secretos=_secretos(db, conexion.id),
+            secretos=secretos,
             tenant_id=str(principal.tenant_id),
         )
         traza.registros = len(resultado["registros"])

@@ -242,33 +242,42 @@ def declarar_canal_chat(cuerpo: DeclararCanalChat, uow: UowDep) -> Any:
 )
 async def orden_chat(clave: str, cuerpo: OrdenChat, request: Request, uow: UowDep) -> Any:
     crudo = await request.body()
-    # Las cabeceras que ESTE canal declaró, no unas fijas: cada plataforma las
-    # llama de una forma, y fijarlas aquí ataría el producto a una.
-    canal = colab.canal_por_clave(uow.db, uow.tenant_id, clave)
-    firma = request.headers.get(canal.cabecera_firma or "x-signature", "")
-    momento = request.headers.get(canal.cabecera_momento, "") if canal.cabecera_momento else ""
-    salida = colab.atender(
-        uow,
-        clave=clave,
-        cuerpo=crudo,
-        firma=firma,
-        momento=momento,
-        orden=cuerpo.orden,
-        objeto=cuerpo.objeto,
-        objeto_id=cuerpo.objeto_id,
-        texto=cuerpo.texto,
-        usuario_externo=cuerpo.usuario_externo,
-    )
-    if cuerpo.orden == "consultar" and salida.get("hecho"):
-        # Firma comprobada y orden admitida: ahora se contesta con el dato, con
-        # los permisos de la persona que pregunta y no con los del canal.
-        return colab.contestar_consulta(
-            uow.tenant_id,
+
+    def _atender() -> Any:
+        # Las cabeceras que ESTE canal declaró, no unas fijas: cada plataforma
+        # las llama de una forma, y fijarlas aquí ataría el producto a una.
+        canal = colab.canal_por_clave(uow.db, uow.tenant_id, clave)
+        firma = request.headers.get(canal.cabecera_firma or "x-signature", "")
+        momento = request.headers.get(canal.cabecera_momento, "") if canal.cabecera_momento else ""
+        salida = colab.atender(
+            uow,
+            clave=clave,
+            cuerpo=crudo,
+            firma=firma,
+            momento=momento,
+            orden=cuerpo.orden,
             objeto=cuerpo.objeto,
             objeto_id=cuerpo.objeto_id,
+            texto=cuerpo.texto,
             usuario_externo=cuerpo.usuario_externo,
         )
-    return salida
+        if cuerpo.orden == "consultar" and salida.get("hecho"):
+            # Firma comprobada y orden admitida: ahora se contesta con el dato,
+            # con los permisos de la persona que pregunta y no con los del canal.
+            return colab.contestar_consulta(
+                uow.tenant_id,
+                objeto=cuerpo.objeto,
+                objeto_id=cuerpo.objeto_id,
+                usuario_externo=cuerpo.usuario_externo,
+            )
+        return salida
+
+    # En un hilo: base de datos y llamadas a otros servicios síncronas dentro de
+    # una ruta `async` bloqueaban el bucle del servicio entero mientras duraban
+    # (auditoría 13-11-2026, FUN-B-20). `to_thread` copia el contexto.
+    import asyncio
+
+    return await asyncio.to_thread(_atender)
 
 
 @router_chat.post(

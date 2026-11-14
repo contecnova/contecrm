@@ -637,3 +637,64 @@ def test_declarar_una_operacion_por_la_api_no_revienta(
         f"/api/v1/integraciones/conexiones/{conexion.id}/credenciales", headers=cabeceras
     ).json()
     assert datos["se_puede_probar"] is True
+
+
+# ── FUN-B-20: rutas async que no bloquean el bucle (auditoría 13-11-2026) ──
+#
+# `probar` e `invocar` esperan al conector (async) pero hacían sus lecturas y el
+# descifrado de secretos síncronos en el propio bucle. Ahora van en un hilo; lo
+# que hay que comprobar es que la ruta sigue haciendo su trabajo entero.
+
+
+def _con_operacion(uow: Any) -> Any:
+    from services.integration.modelos import Operacion
+
+    conexion = _conexion(uow, nombre="erp", config={"base_url": "https://erp.example"})
+    uow.db.add(
+        Operacion(
+            tenant_id=uow.tenant_id,
+            conexion_id=conexion.id,
+            clave="leer",
+            nombre="Leer",
+            definicion={"metodo": "GET", "ruta": "/cosas"},
+        )
+    )
+    uow.db.flush()
+    return conexion
+
+
+def test_probar_e_invocar_responden_por_su_ruta(
+    cliente: Any, cabeceras: dict[str, str], uow: Any, monkeypatch: Any
+) -> None:
+    from services.integration import conector
+
+    async def _ejecutar(*_: Any, **__: Any) -> dict[str, Any]:
+        return {
+            "registros": [{"a": 1}, {"a": 2}],
+            "paginas": 1,
+            "crudos": [{"a": 1}, {"a": 2}],
+            "rechazados": [],
+            "cuantos_rechazados": 0,
+        }
+
+    monkeypatch.setattr(conector, "ejecutar", _ejecutar)
+    conexion = _con_operacion(uow)
+
+    r = cliente.post(f"/api/v1/integraciones/conexiones/{conexion.id}/probar", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    r = cliente.post(
+        f"/api/v1/integraciones/conexiones/{conexion.id}/operaciones/leer/invocar",
+        json={"parametros": {}},
+        headers=cabeceras,
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_las_rutas_async_llevan_lo_sincrono_a_un_hilo() -> None:
+    import inspect
+
+    from services.integration import api, api_buzon
+    from services.sales import api as api_ventas
+
+    for funcion in (api.probar, api.invocar, api_buzon.orden_chat, api_ventas.recibir_lead):
+        assert "asyncio.to_thread(" in inspect.getsource(funcion), funcion.__name__

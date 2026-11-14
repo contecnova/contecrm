@@ -1860,14 +1860,23 @@ async def recibir_lead(
     # invitación a insistir.
     entrada = await cuerpo_json(peticion)
 
-    with con_contexto(tenant_id=tenant_id, origen="api"), unidad_de_trabajo(tenant_id) as uow:
-        captura.recibir(
-            uow,
-            tenant_id=tenant_id,
-            clave=clave,
-            secreto=x_captura_secreto,
-            entrada=entrada,
-        )
+    def _guardar() -> None:
+        with con_contexto(tenant_id=tenant_id, origen="api"), unidad_de_trabajo(tenant_id) as uow:
+            captura.recibir(
+                uow,
+                tenant_id=tenant_id,
+                clave=clave,
+                secreto=x_captura_secreto,
+                entrada=entrada,
+            )
+
+    # En un hilo: la transacción es síncrona y esta ruta es pública y `async`.
+    # Hecha aquí dentro bloqueaba el bucle del servicio mientras duraba, y una
+    # ráfaga de formularios congelaba todas las demás peticiones (auditoría
+    # 13-11-2026, FUN-B-20). `to_thread` copia el contexto de la petición.
+    import asyncio
+
+    await asyncio.to_thread(_guardar)
     # Lo mismo SIEMPRE, como el formulario incrustado. Devolvía el `lead_id`,
     # que es nulo al descartar: la «misma forma» le decía igualmente a un robot
     # si su envío había entrado o había caído en la trampa. Y no se devuelve el
