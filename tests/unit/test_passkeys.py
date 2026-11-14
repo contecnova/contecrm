@@ -69,6 +69,26 @@ def test_un_reto_solo_vale_una_vez(uow: Any, usuario: Any, tenant_id: UUID) -> N
     assert fallo.value.error_code == "passkey.reto_no_valido"
 
 
+def test_un_reto_gastado_sigue_gastado_aunque_la_peticion_falle(
+    uow: Any, usuario: Any, tenant_id: UUID
+) -> None:
+    """SEC-21: se gastaba en la transacción de la petición, así que si algo
+    fallaba después —la firma, la llave, la ruta de entrada— el rollback lo
+    devolvía a la vida y la misma respuesta firmada volvía a valer."""
+    from services.identity import passkeys as pk
+
+    opciones = pk.opciones_entrada(uow.db, tenant_id=tenant_id, usuario=usuario)
+    reto = opciones["challenge"]
+    uow.db.commit()  # el reto ya existía antes de la petición que lo gasta
+
+    pk._consumir_reto(uow.db, reto_b64=reto, proposito="entrada")
+    uow.db.rollback()  # la petición falla después de gastarlo
+
+    with pytest.raises(NoAutenticado) as fallo:
+        pk._consumir_reto(uow.db, reto_b64=reto, proposito="entrada")
+    assert fallo.value.error_code == "passkey.reto_no_valido"
+
+
 def test_un_reto_caducado_no_vale(uow: Any, usuario: Any, tenant_id: UUID) -> None:
     import sqlalchemy as sa
 

@@ -132,19 +132,44 @@ def _guardar_reto(
 
 
 def _consumir_reto(db: Session, *, reto_b64: str, proposito: str) -> RetoPasskey:
-    """Gasta el reto. De un solo uso, y por eso no se puede reproducir una firma."""
-    fila = db.execute(
-        select(RetoPasskey).where(RetoPasskey.reto == reto_b64, RetoPasskey.proposito == proposito)
-    ).scalar_one_or_none()
-    if fila is None or fila.usado_at is not None:
+    """Gasta el reto. De un solo uso, y por eso no se puede reproducir una firma.
+
+    **En su propia transacción, confirmada en el acto, y con un UPDATE
+    condicionado** (auditoría 13-11-2026, SEC-21). Antes se marcaba `usado_at`
+    en la transacción de la petición con un simple flush, y eso dejaba dos
+    huecos:
+
+      * Si después fallaba algo —la llave, la firma, la cuenta, o la ruta de
+        entrada tras verificar—, el rollback deshacía la marca (y el contador
+        de la llave): la misma respuesta firmada volvía a valer mientras el reto
+        no caducara.
+      * Sin bloqueo, dos peticiones a la vez con la misma respuesta leían las
+        dos `usado_at` vacío y entraban las dos.
+
+    Con `UPDATE … WHERE usado_at IS NULL AND caduca_at >= ahora RETURNING`,
+    sólo una petición puede gastarlo, y queda gastado pase lo que pase después.
+    """
+    from crmcore.db.session import sesion
+    from sqlalchemy import update
+
+    ahora = _ahora()
+    with sesion(sistema=True) as aparte:
+        gastado = aparte.execute(
+            update(RetoPasskey)
+            .where(
+                RetoPasskey.reto == reto_b64,
+                RetoPasskey.proposito == proposito,
+                RetoPasskey.usado_at.is_(None),
+                RetoPasskey.caduca_at >= ahora,
+            )
+            .values(usado_at=ahora)
+            .returning(RetoPasskey.id)
+        ).scalar_one_or_none()
+    if gastado is None:
         raise NoAutenticado("Ese intento ya no vale", error_code="passkey.reto_no_valido")
-    caduca = (
-        fila.caduca_at if fila.caduca_at.tzinfo else fila.caduca_at.replace(tzinfo=timezone.utc)
-    )
-    if caduca < _ahora():
+    fila = db.get(RetoPasskey, gastado, populate_existing=True)
+    if fila is None:  # pragma: no cover — se acaba de confirmar en otra sesión
         raise NoAutenticado("Ese intento ya no vale", error_code="passkey.reto_no_valido")
-    fila.usado_at = _ahora()
-    db.flush()
     return fila
 
 
