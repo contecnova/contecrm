@@ -241,3 +241,23 @@ def test_devuelve_los_campos_que_la_pantalla_necesita(
         "incumplio_resolucion",
     ):
         assert campo in caso, f"falta «{campo}»: {sorted(caso)}"
+
+
+def test_un_caso_en_pausa_no_carga_al_equipo_la_espera_del_cliente(
+    cliente: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """FUN-B-27: con el reloj parado, un caso pausado antes de vencer no está
+    incumplido ni en riesgo; pausado DESPUÉS de vencer, sí está incumplido."""
+    ahora = datetime.now(timezone.utc)
+    a_tiempo = _caso(db, tenant_id, "pausado_a_tiempo", horas=-3)
+    a_tiempo.pausado_desde = ahora - timedelta(hours=10)
+    tarde = _caso(db, tenant_id, "pausado_tarde", horas=-3)
+    tarde.pausado_desde = ahora - timedelta(hours=1)
+    cerca = _caso(db, tenant_id, "pausado_cerca", horas=2)
+    cerca.pausado_desde = ahora - timedelta(hours=1)
+    db.flush()
+
+    m = _montones(cliente.get("/api/v1/casos/bandeja", headers=cabeceras))
+    assert "pausado_tarde" in m["incumplidos"]
+    assert {"pausado_a_tiempo", "pausado_cerca"} <= m["resto"]
+    assert not ({"pausado_a_tiempo", "pausado_cerca"} & (m["incumplidos"] | m["en_riesgo"]))

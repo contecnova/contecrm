@@ -13,7 +13,7 @@ from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, p
 from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, not_, or_, select
 
 # Se importa al arrancar, y no sólo al llamar: declara el vocabulario
 # `resultados_llamada`, y un vocabulario que no se ha registrado al montar la app
@@ -374,37 +374,38 @@ def bandeja(
         Caso.estado.not_in(terminales(db)),
     )
 
-    montones = {
-        # Lo que YA incumplió. Incluye lo marcado por el motor de SLA aunque su
-        # fecha se haya movido después: el incumplimiento ya ocurrió.
-        "incumplidos": base.where(
-            or_(
-                Caso.incumplio_resolucion.is_(True),
-                and_(
-                    Caso.vence_resolucion_at.is_not(None),
-                    Caso.vence_resolucion_at < ahora,
-                ),
-            )
-        ),
-        # Lo que va a incumplir si nadie lo toca. Es el único montón que se
-        # puede salvar, y por eso va separado del anterior: son dos trabajos
-        # distintos —uno se atiende, el otro se explica—.
-        "en_riesgo": base.where(
-            Caso.incumplio_resolucion.is_(False),
+    # Lo que YA incumplió. Incluye lo marcado por el motor de SLA aunque su
+    # fecha se haya movido después: el incumplimiento ya ocurrió. Con la PAUSA
+    # como en el informe (`servicio._incumplio_resolucion`): mientras el caso
+    # espera al cliente el reloj está parado, y solo cuenta si el plazo ya había
+    # pasado cuando se paró. Antes se miraba la fecha de hoy y la bandeja cargaba
+    # al equipo la espera del cliente (auditoría 13-11-2026, FUN-B-27).
+    incumplido = or_(
+        Caso.incumplio_resolucion.is_(True),
+        and_(
             Caso.vence_resolucion_at.is_not(None),
-            Caso.vence_resolucion_at >= ahora,
-            Caso.vence_resolucion_at < corte,
+            func.coalesce(Caso.pausado_desde, ahora) > Caso.vence_resolucion_at,
         ),
+    )
+    # Lo que va a incumplir si nadie lo toca. Es el único montón que se puede
+    # salvar, y por eso va separado del anterior: son dos trabajos distintos
+    # —uno se atiende, el otro se explica—. Un caso en pausa no corre riesgo:
+    # su reloj está parado.
+    en_riesgo = and_(
+        Caso.incumplio_resolucion.is_(False),
+        Caso.pausado_desde.is_(None),
+        Caso.vence_resolucion_at.is_not(None),
+        Caso.vence_resolucion_at >= ahora,
+        Caso.vence_resolucion_at < corte,
+    )
+    montones = {
+        "incumplidos": base.where(incumplido),
+        "en_riesgo": base.where(en_riesgo),
         # Lo demás, incluido lo que no tiene SLA. «Sin plazo» no es «urgente»
         # ni «tranquilo»: es un caso que nadie ha clasificado, y esconderlo lo
-        # deja sin atender para siempre.
-        "resto": base.where(
-            Caso.incumplio_resolucion.is_(False),
-            or_(
-                Caso.vence_resolucion_at.is_(None),
-                Caso.vence_resolucion_at >= corte,
-            ),
-        ),
+        # deja sin atender para siempre. Se define como «ni lo uno ni lo otro»
+        # para que ningún caso se quede fuera ni salga en dos montones.
+        "resto": base.where(not_(incumplido), not_(en_riesgo)),
     }
 
     def _fila(c: Caso) -> dict[str, Any]:
