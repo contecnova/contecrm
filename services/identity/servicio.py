@@ -12,9 +12,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
+from crmcore import tokens
 from crmcore.audit.chain import registrar
 from crmcore.authz.rbac import ROLES_BASE, Rol, resolver_permisos
 from crmcore.config import get_settings
@@ -646,7 +646,7 @@ def emitir_token_acceso(
         carga["bu"] = str(membresia.business_unit_id)
     if actor_real_id:
         carga["actor_real"] = str(actor_real_id)
-    return jwt.encode(carga, s.secret_key.get_secret_value(), algorithm=s.jwt_algorithm)
+    return tokens.emitir(carga)
 
 
 def renovar(db: Session, refresco: str) -> tuple[str, str]:

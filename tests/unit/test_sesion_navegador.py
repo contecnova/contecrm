@@ -19,8 +19,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid4
 
-import jwt
 import pytest
+from crmcore import tokens
 from crmcore.config import get_settings
 from crmcore.http.deps import AutenticadoDep
 
@@ -29,16 +29,14 @@ def _token(tenant_id: UUID, usuario_id: UUID) -> str:
     """Un token de acceso como el que emite identidad."""
     from datetime import datetime, timedelta, timezone
 
-    s = get_settings()
-    return jwt.encode(
+    return tokens.emitir(
         {
             "sub": str(usuario_id),
+            "tipo": "usuario",
             "tenant_id": str(tenant_id),
             "permisos": ["tenant:read"],
             "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
-        },
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+        }
     )
 
 
@@ -145,15 +143,13 @@ def _caducado(tenant_id: UUID, usuario_id: UUID) -> str:
     """Un token como el de arriba, pero que expiró hace un minuto."""
     from datetime import datetime, timedelta, timezone
 
-    s = get_settings()
-    return jwt.encode(
+    return tokens.emitir(
         {
             "sub": str(usuario_id),
+            "tipo": "usuario",
             "tenant_id": str(tenant_id),
             "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
-        },
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+        }
     )
 
 

@@ -344,11 +344,20 @@ def _embebido_de_cabecera(valor: str) -> dict[str, object]:
 def _principal_de_token(token: str, secreto: str) -> Principal:
     import jwt
 
-    from crmcore.config import get_settings
+    from crmcore import tokens
 
+    # **Lista blanca de tipos**, no lista negra. Lo que separa una sesión de
+    # empleado de un ticket que vive en una página pública es el tipo; con lista
+    # negra, un tipo nuevo que nadie añadiera a `_PUERTA_DE_TIPO` valía como
+    # sesión completa en todo el CRM: es lo que pasó con el ticket del cuadro
+    # incrustado (auditoría 13-11-2026, SEC-2). Y desde SEC-11 cada tipo se
+    # firma con su propia clave derivada y lleva `iss`/`aud`, así que la lista
+    # ya no es la única barrera: ver `crmcore.tokens`.
     try:
-        datos: dict[str, Any] = jwt.decode(
-            token, secreto, algorithms=[get_settings().jwt_algorithm]
+        datos: dict[str, Any] = tokens.verificar(token, tipos=TIPOS_DE_TOKEN, secreto=secreto)
+    except tokens.TipoNoAdmitido:
+        raise NoAutenticado(
+            "Este tipo de token no vale aquí", error_code="auth.token_tipo_no_admitido"
         )
     except jwt.ExpiredSignatureError:
         # Código propio y distinto del genérico: un cliente que sabe que el
@@ -358,17 +367,7 @@ def _principal_de_token(token: str, secreto: str) -> Principal:
     except jwt.InvalidTokenError:
         raise NoAutenticado("El token no es válido", error_code="auth.token_invalido")
 
-    # **Lista blanca de tipos**, no lista negra. Todos los tokens del producto
-    # se firman con la misma clave, así que lo único que separa una sesión de
-    # empleado de un ticket que vive en una página pública es este campo. Con
-    # lista negra, un tipo nuevo que nadie añadiera a `_PUERTA_DE_TIPO` valía
-    # como sesión completa en todo el CRM: es lo que pasó con el ticket del
-    # cuadro incrustado (auditoría 13-11-2026, SEC-2).
-    tipo = str(datos.get("tipo") or "usuario")
-    if tipo not in TIPOS_DE_TOKEN:
-        raise NoAutenticado(
-            "Este tipo de token no vale aquí", error_code="auth.token_tipo_no_admitido"
-        )
+    tipo = str(datos["tipo"])
 
     try:
         return Principal(

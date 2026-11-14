@@ -835,10 +835,8 @@ def _emitir_ticket(fila: EnlaceEmbebido, alcance: dict[str, Any]) -> tuple[str, 
     Sin `permisos`, a propósito, como el del portal: un token sin permisos no
     pasa ninguna ruta del CRM.
     """
-    import jwt
-    from crmcore.config import get_settings
+    from crmcore import tokens
 
-    s = get_settings()
     ahora = _ahora()
     segundos = max(1, int(fila.minutos_validez)) * 60
     carga = {
@@ -852,7 +850,7 @@ def _emitir_ticket(fila: EnlaceEmbebido, alcance: dict[str, Any]) -> tuple[str, 
         "iat": int(ahora.timestamp()),
         "exp": int((ahora + timedelta(seconds=segundos)).timestamp()),
     }
-    return jwt.encode(carga, s.secret_key.get_secret_value(), algorithm=s.jwt_algorithm), segundos
+    return tokens.emitir(carga), segundos
 
 
 def leer_ticket(ticket: str) -> dict[str, Any]:
@@ -862,13 +860,10 @@ def leer_ticket(ticket: str) -> dict[str, Any]:
     sigue, y quien recibe «no vale» cree que el enlace está roto.
     """
     import jwt
-    from crmcore.config import get_settings
+    from crmcore import tokens
 
-    s = get_settings()
     try:
-        datos = dict(
-            jwt.decode(ticket, s.secret_key.get_secret_value(), algorithms=[s.jwt_algorithm])
-        )
+        datos = tokens.verificar(ticket, tipos={TIPO_TICKET})
     except jwt.ExpiredSignatureError:
         raise NoAutenticado(
             "La vista del cuadro ha caducado. Vuelve a cargarla.",

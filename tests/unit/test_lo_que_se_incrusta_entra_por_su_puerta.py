@@ -17,12 +17,13 @@ from __future__ import annotations
 
 import importlib
 import json
+import time
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from crmcore import embebido
+from crmcore import embebido, tokens
 from crmcore.config import get_settings
 from crmcore.errors import CrmError
 from crmcore.http.deps import (
@@ -106,18 +107,20 @@ def test_el_token_de_componente_entra_en_su_ruta_y_en_ninguna_otra() -> None:
 
 def test_la_ruta_del_componente_no_atiende_otra_cosa() -> None:
     """Ni el token de OTRO componente ni una sesión del CRM."""
-    import jwt
 
     cliente = _servicio()
     de_otro = _token("lista-casos", uuid4(), uuid4())
     r = cliente.get("/api/v1/embebido/ficha-cuenta", headers={"Authorization": f"Bearer {de_otro}"})
     assert r.status_code == 403, r.text
 
-    s = get_settings()
-    sesion = jwt.encode(
-        {"sub": str(uuid4()), "tenant": str(uuid4()), "permisos": ["*:*"]},
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+    sesion = tokens.emitir(
+        {
+            "sub": str(uuid4()),
+            "tenant": str(uuid4()),
+            "tipo": "usuario",
+            "permisos": ["*:*"],
+            "exp": int(time.time()) + 300,
+        }
     )
     r = cliente.get("/api/v1/embebido/ficha-cuenta", headers={"Authorization": f"Bearer {sesion}"})
     assert r.status_code == 401, r.text
@@ -300,7 +303,6 @@ def test_el_token_sólo_se_emite_para_un_registro_que_quien_lo_pide_ve(
     gateway: Any, monkeypatch: Any
 ) -> None:
     """Antes bastaba con el permiso: se emitía para cualquier cuenta del tenant."""
-    import jwt
 
     from services.gateway import api as gw
 
@@ -318,16 +320,15 @@ def test_el_token_sólo_se_emite_para_un_registro_que_quien_lo_pide_ve(
 
     monkeypatch.setattr(gw, "_cliente", httpx.AsyncClient(transport=httpx.MockTransport(responder)))
 
-    s = get_settings()
     usuario = uuid4()
-    sesion = jwt.encode(
+    sesion = tokens.emitir(
         {
             "sub": str(usuario),
             "tenant": str(uuid4()),
+            "tipo": "usuario",
             "permisos": ["integracion:write", "party:read"],
-        },
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+            "exp": int(time.time()) + 300,
+        }
     )
     cabeceras = {"Authorization": f"Bearer {sesion}"}
 
@@ -360,10 +361,7 @@ def test_el_token_sólo_se_emite_para_un_registro_que_quien_lo_pide_ve(
 
 
 def _ticket_cuadro(tenant: UUID, sub: UUID) -> str:
-    import jwt
-
-    s = get_settings()
-    return jwt.encode(
+    return tokens.emitir(
         {
             "sub": str(sub),
             "tenant": str(tenant),
@@ -371,9 +369,8 @@ def _ticket_cuadro(tenant: UUID, sub: UUID) -> str:
             "enlace": str(uuid4()),
             "cuadro": str(uuid4()),
             "alcance_roles": ["director"],
-        },
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+            "exp": int(time.time()) + 300,
+        }
     )
 
 
@@ -425,13 +422,9 @@ def test_el_gateway_deja_el_ticket_del_cuadro_solo_en_sus_dos_rutas(gateway: Any
 
 def test_un_jwt_de_tipo_desconocido_no_entra_en_ninguna_parte() -> None:
     """Lista blanca: un tipo nuevo que nadie dé de alta no vale como sesión."""
-    import jwt
 
-    s = get_settings()
-    raro = jwt.encode(
-        {"sub": str(uuid4()), "tenant": str(uuid4()), "tipo": "inventado", "permisos": ["*:*"]},
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+    raro = tokens.emitir(
+        {"sub": str(uuid4()), "tenant": str(uuid4()), "tipo": "inventado", "permisos": ["*:*"]}
     )
     cliente = _servicio()
     for ruta in ("/api/v1/autenticado", "/api/v1/solo-principal"):

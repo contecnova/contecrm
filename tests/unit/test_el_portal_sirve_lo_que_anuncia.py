@@ -159,8 +159,6 @@ def test_el_token_del_portal_lleva_las_secciones() -> None:
     """El portal lo sirven varios servicios y ninguno puede leer la tabla de
     accesos, que es de `service`. Sin esto, la comprobación de sección sólo se
     hacía en el dueño del acceso y en los demás no se hacía."""
-    import jwt
-    from crmcore.config import get_settings
     from crmcore.http.portal_deps import emitir_token_portal
 
     token, _ = emitir_token_portal(
@@ -170,8 +168,9 @@ def test_el_token_del_portal_lleva_las_secciones() -> None:
         cuenta_id=uuid4(),
         secciones=["casos", "pedidos"],
     )
-    s = get_settings()
-    carga = jwt.decode(token, s.secret_key.get_secret_value(), algorithms=[s.jwt_algorithm])
+    from crmcore import tokens
+
+    carga = tokens.verificar(token, tipos={"portal"})
     assert carga["secciones"] == ["casos", "pedidos"]
     assert "permisos" not in carga, "un token de portal con permisos sirve para el CRM entero"
 

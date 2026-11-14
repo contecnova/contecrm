@@ -28,9 +28,10 @@ class _AuthSettings(BaseSettings):
     invitado_max_dias: int = Field(90, ge=1, le=3650)
 
     # ── Firma de tokens ───────────────────────────────────────────────────
-    # Firma TODOS los tokens de acceso y refresco. Si en producción sigue
-    # valiendo el placeholder, cualquiera puede emitirse un token de
-    # administrador: el arranque lo comprueba y se niega a levantar.
+    # De ella se derivan las claves que firman TODOS los tokens (una por tipo:
+    # sesión, componente, portal, ticket de cuadro; ver `crmcore.tokens`). Si en
+    # producción sigue valiendo el placeholder, cualquiera puede emitirse un token
+    # de administrador: el arranque lo comprueba y se niega a levantar.
     secret_key: SecretStr = SecretStr("CHANGE_ME_SECRET_KEY")
     jwt_algorithm: str = "HS256"
 

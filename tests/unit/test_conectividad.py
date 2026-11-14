@@ -934,9 +934,7 @@ def test_el_identificador_va_dentro_del_token_crm_00_02_03_05() -> None:
     """
     from uuid import uuid4
 
-    import jwt
     from crmcore import embebido
-    from crmcore.config import get_settings
 
     cuenta, tenant = uuid4(), uuid4()
     salida = embebido.emitir(
@@ -947,11 +945,9 @@ def test_el_identificador_va_dentro_del_token_crm_00_02_03_05() -> None:
         permisos=["party:read"],
         minutos=60,
     )
-    carga = jwt.decode(
-        salida["token"],
-        get_settings().secret_key.get_secret_value(),
-        algorithms=[get_settings().jwt_algorithm],
-    )
+    from crmcore import tokens
+
+    carga = tokens.verificar(salida["token"], tipos={"componente"})
     assert carga["objeto_id"] == str(cuenta)
     assert carga["tipo"] == "componente"
     # Lo mínimo para pintar eso y nada más: no hereda los de quien lo pide. Si

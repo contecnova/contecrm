@@ -115,7 +115,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `PASSKEY_RETO_MIN` | — | *(secreto)* | 1–60 | Cuánto vale el reto de una passkey. Muy corto: es lo que impide reutilizar un reto capturado. |
 | `SCIM_MAXIMO_POR_PAGINA` | — | `200` | 1–10000 | Tope de resultados por página en SCIM. Lo fija el proveedor de identidad al sincronizar, y sin techo una sincronización completa se trae el directorio entero de una vez. |
 | `INVITADO_MAX_DIAS` | — | `90` | 1–3650 | Cuánto puede durar un usuario invitado antes de caducar. |
-| `SECRET_KEY` | — | *(secreto)* |  | Firma TODOS los tokens de acceso y refresco. Si en producción sigue valiendo el placeholder, cualquiera puede emitirse un token de administrador: el arranque lo comprueba y se niega a levantar. |
+| `SECRET_KEY` | — | *(secreto)* |  | De ella se derivan las claves que firman TODOS los tokens (una por tipo: sesión, componente, portal, ticket de cuadro; ver `crmcore.tokens`). Si en producción sigue valiendo el placeholder, cualquiera puede emitirse un token de administrador: el arranque lo comprueba y se niega a levantar. |
 | `JWT_ALGORITHM` | — | `HS256` |  |  |
 | `ACCESS_TOKEN_MINUTOS` | — | `15` | 1–1440 | Duración del token de acceso. Corta a propósito: la revocación de una sesión no puede invalidar un JWT ya emitido, así que el tiempo de vida ES la ventana de exposición. 15 minutos es el equilibrio habitual entre eso y no renovar constantemente. |
 | `REFRESH_TOKEN_DIAS` | — | `14` | 1–365 | El refresco sí es revocable (está en base de datos), por eso puede durar. |

@@ -25,6 +25,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore import tokens
 from crmcore.errors import NoAutenticado
 from crmcore.http.portal_deps import contexto_portal, emitir_token_portal
 
@@ -50,12 +51,8 @@ def test_la_sesion_del_portal_dice_quien_es(tenant_id: UUID) -> None:
 
 def test_el_token_del_portal_no_lleva_permisos(tenant_id: UUID) -> None:
     """Es lo que impide que sirva para el CRM: todas sus rutas exigen uno."""
-    import jwt
-    from crmcore.config import get_settings
-
     token, _ = emitir_token_portal(acceso_id=uuid4(), tenant_id=tenant_id, nivel="admin")
-    s = get_settings()
-    carga = jwt.decode(token, s.secret_key.get_secret_value(), algorithms=[s.jwt_algorithm])
+    carga = tokens.verificar(token, tipos={"portal"})
 
     assert "permisos" not in carga
     assert "roles" not in carga
@@ -66,19 +63,14 @@ def test_un_token_de_empleado_no_vale_como_sesion_de_portal(tenant_id: UUID) -> 
     """Tiene más permisos, no menos, y por eso parece inofensivo. No lo es:
     saltaría el filtro por nivel de acceso, que es lo único que decide qué ve
     cada contacto."""
-    import jwt
-    from crmcore.config import get_settings
 
-    s = get_settings()
-    de_empleado = jwt.encode(
+    de_empleado = tokens.emitir(
         {
             "sub": str(uuid4()),
             "tenant": str(tenant_id),
             "tipo": "usuario",
             "permisos": ["case:read"],
-        },
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+        }
     )
 
     with pytest.raises(NoAutenticado) as fallo:
@@ -99,19 +91,13 @@ def test_una_sesion_caducada_manda_a_pedir_otro_enlace(tenant_id: UUID) -> None:
     vez de enseñar «no autenticado», que no dice qué hacer."""
     import time
 
-    import jwt
-    from crmcore.config import get_settings
-
-    s = get_settings()
-    caducado = jwt.encode(
+    caducado = tokens.emitir(
         {
             "sub": str(uuid4()),
             "tenant": str(tenant_id),
             "tipo": "portal",
             "exp": int(time.time()) - 60,
-        },
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+        }
     )
 
     with pytest.raises(NoAutenticado) as fallo:

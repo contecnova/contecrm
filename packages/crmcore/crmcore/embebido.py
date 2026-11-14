@@ -116,12 +116,9 @@ def emitir(
     para pintar eso y nada más. No hereda los de quien lo pide — si los
     heredara, el token de un escaparate llevaría dentro los de un administrador.
     """
-    import jwt
-
-    from crmcore.config import get_settings
+    from crmcore import tokens
 
     validar(componente, objeto)
-    s = get_settings()
     ahora = datetime.now(timezone.utc)
     caduca = ahora + timedelta(minutes=max(1, minutos))
     carga = {
@@ -137,7 +134,7 @@ def emitir(
         "exp": int(caduca.timestamp()),
     }
     return {
-        "token": jwt.encode(carga, s.secret_key.get_secret_value(), algorithm=s.jwt_algorithm),
+        "token": tokens.emitir(carga),
         "caduca_at": caduca.isoformat(),
         "componente": componente,
         "objeto": objeto,

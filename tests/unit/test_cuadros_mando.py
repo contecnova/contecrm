@@ -17,6 +17,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore import tokens
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado
 
@@ -533,14 +534,9 @@ def test_un_token_de_empleado_no_vale_como_ticket(uow: UnidadDeTrabajo) -> None:
     Que es exactamente el agujero que esto cierra, así que el `tipo` del token
     no es una formalidad.
     """
-    import jwt
-    from crmcore.config import get_settings
 
-    s = get_settings()
-    ajeno = jwt.encode(
-        {"sub": str(uuid4()), "tenant": str(uow.tenant_id), "tipo": "usuario", "roles": ["admin"]},
-        s.secret_key.get_secret_value(),
-        algorithm=s.jwt_algorithm,
+    ajeno = tokens.emitir(
+        {"sub": str(uuid4()), "tenant": str(uow.tenant_id), "tipo": "usuario", "roles": ["admin"]}
     )
     with pytest.raises(NoAutenticado) as fallo:
         cua.leer_ticket(ajeno)

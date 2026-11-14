@@ -57,11 +57,8 @@ def emitir_token_portal(
     secciones: list[str] | None = None,
 ) -> tuple[str, int]:
     """El token con el que el cliente llama al portal. Devuelve también cuánto dura."""
-    import jwt
+    from crmcore import tokens
 
-    from crmcore.config import get_settings
-
-    s = get_settings()
     ahora = datetime.now(timezone.utc)
     carga = {
         "sub": str(acceso_id),
@@ -87,19 +84,21 @@ def emitir_token_portal(
         "iat": int(ahora.timestamp()),
         "exp": int((ahora + timedelta(minutes=MINUTOS)).timestamp()),
     }
-    token = jwt.encode(carga, s.secret_key.get_secret_value(), algorithm=s.jwt_algorithm)
+    token = tokens.emitir(carga)
     return token, MINUTOS * 60
 
 
 def _carga(token: str) -> dict[str, Any]:
     import jwt
 
-    from crmcore.config import get_settings
+    from crmcore import tokens
 
-    s = get_settings()
     try:
-        return dict(
-            jwt.decode(token, s.secret_key.get_secret_value(), algorithms=[s.jwt_algorithm])
+        return tokens.verificar(token, tipos={TIPO})
+    except tokens.TipoNoAdmitido:
+        # Un token de empleado no vale aquí: ver `contexto_portal`.
+        raise NoAutenticado(
+            "Esta sesión no es del portal", error_code="portal.sesion_no_es_de_portal"
         )
     except jwt.ExpiredSignatureError:
         raise NoAutenticado(
