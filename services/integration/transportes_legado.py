@@ -396,6 +396,18 @@ def _conectar(config: dict[str, Any]) -> Any:
     if not host:
         raise ErrorValidacion("Falta el host SFTP.", error_code="transportes.sftp_sin_host")
     huella = str(config.get("huella_host") or "")
+    from crmcore.config import get_settings
+
+    if not huella and config.get("aceptar_host_desconocido") and get_settings().es_produccion:
+        # El interruptor es para entornos de prueba y así se documenta, pero
+        # nada impedía dejarlo puesto en producción: ahí se aceptaría cualquier
+        # clave de servidor, que es exactamente el ataque de quien se pone en
+        # medio (auditoría 13-11-2026, HARD-1).
+        raise ErrorValidacion(
+            "En producción el SFTP exige la huella del host: "
+            "`aceptar_host_desconocido` solo vale fuera de producción.",
+            error_code="transportes.sftp_sin_huella_en_produccion",
+        )
     if not huella and not config.get("aceptar_host_desconocido"):
         raise ErrorValidacion(
             "Falta la huella del host SFTP. Sin comprobarla, cualquiera que se "

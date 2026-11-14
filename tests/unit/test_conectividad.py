@@ -145,6 +145,18 @@ def test_sftp_sin_huella_del_host_se_rechaza() -> None:
     assert "huella" in str(error.value).lower()
 
 
+def test_en_produccion_no_se_acepta_un_host_desconocido(monkeypatch: pytest.MonkeyPatch) -> None:
+    """HARD-1 (auditoría 13-11-2026): el interruptor de pruebas no vale en producción."""
+    from crmcore.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "env", "prod")
+    with pytest.raises(ErrorValidacion) as error:
+        tr.listar_sftp(
+            {"host": "sftp.proveedor.com", "usuario": "x", "aceptar_host_desconocido": True}
+        )
+    assert error.value.error_code == "transportes.sftp_sin_huella_en_produccion"
+
+
 # ── Catálogo de conectores (CRM-00.03.04.01, .10, CRM-07.02.01.09) ────────
 
 
