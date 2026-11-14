@@ -297,6 +297,23 @@ def test_no_se_puede_fusionar_dos_veces(db: Any, tenant_id: UUID) -> None:
     assert exc.value.error_code == "party.ya_fusionada"
 
 
+def test_no_se_fusiona_en_una_cuenta_ya_absorbida(db: Any, tenant_id: UUID) -> None:
+    """FUN-B-15: A en B, y luego C en A, dejaba lo de C colgando de una cuenta
+    inactiva. Se rechaza y se dice cuál es la buena."""
+    from crmcore.errors import Conflicto
+
+    a = _cuenta(db, tenant_id, "Dos SL")
+    b = _cuenta(db, tenant_id, "Dos S.L.")
+    c = _cuenta(db, tenant_id, "Dos, Sociedad Limitada")
+    duplicados.fusionar_cuentas(db, superviviente_id=b.id, absorbida_id=a.id, motivo="x")
+    db.flush()
+
+    with pytest.raises(Conflicto) as exc:
+        duplicados.fusionar_cuentas(db, superviviente_id=a.id, absorbida_id=c.id, motivo="y")
+    assert exc.value.error_code == "party.superviviente_fusionada"
+    assert exc.value.detalle["fusionada_en"] == str(b.id)
+
+
 def test_deshacer_una_fusion_restaura_los_campos(db: Any, tenant_id: UUID) -> None:
     a = _cuenta(db, tenant_id, "Uno SL", email="uno@acme.es")
     b = _cuenta(db, tenant_id, "Uno S.L.", email="dos@acme.es", telefono="+34600000000")

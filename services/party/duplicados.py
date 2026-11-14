@@ -432,6 +432,15 @@ def fusionar_cuentas(
             error_code="party.ya_fusionada",
             detalle={"fusionada_en": str(absorbida.fusionada_en_id)},
         )
+    if superviviente.fusionada_en_id is not None:
+        # La que debe quedar ya está absorbida e inactiva: lo de la absorbida
+        # acabaría colgando de una cuenta que nadie ve. Se dice cuál es la buena
+        # para que se fusione en ella (auditoría 13-11-2026, FUN-B-15).
+        raise Conflicto(
+            "La cuenta que debe quedar ya se fusionó en otra: fusiona en esa",
+            error_code="party.superviviente_fusionada",
+            detalle={"fusionada_en": str(superviviente.fusionada_en_id)},
+        )
 
     estado_previo = absorbida.a_dict(json_seguro=True)
     supervivencia: dict[str, Any] = {}
@@ -532,6 +541,13 @@ def fusionar_contactos(
         )
     if absorbido.fusionado_en_id is not None:
         raise Conflicto("Ese contacto ya se fusionó", error_code="party.ya_fusionada")
+    if superviviente.fusionado_en_id is not None:
+        # Lo mismo que con las cuentas (FUN-B-15).
+        raise Conflicto(
+            "El contacto que debe quedar ya se fusionó en otro: fusiona en ese",
+            error_code="party.superviviente_fusionada",
+            detalle={"fusionado_en": str(superviviente.fusionado_en_id)},
+        )
 
     estado_previo = absorbido.a_dict(json_seguro=True)
     supervivencia: dict[str, Any] = {}
