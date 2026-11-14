@@ -44,6 +44,7 @@ para que nadie lo dé por probado.
 | FUN-A-10 | Dos réplicas reintentaban la misma entrega | Reserva por plazo en la misma transacción del bloqueo | `aa7443d` | 2 pruebas |
 | FUN-A-14 | El tope del alta contaba la IP del gateway | Tope en el gateway; tenancy usa la IP común | `5ba49b2` | Pruebas de SEC-13 |
 | FUN-A-16 | Dos aprobadores a la vez se pisaban | `responder_tarea` relee con `FOR UPDATE` | `1985e70` | 3 pruebas |
+| FUN-A-11 | Consulta y commit del relevo del outbox, aviso de empuje y guardado de idempotencia síncronos dentro de código async | `asyncio.to_thread` para lo bloqueante; publicar sigue siendo async | pendiente | Prueba nueva del relevo contra BD (no había ninguna) + idempotencia y eventing, 6/6 |
 | FUN-A-17 | Un fallo transitorio de BD dejaba la instancia «fallida» | Se distingue y se reintenta | `c632dd2` | 1 prueba |
 | FUN-B-1 | La previsión sumaba lo perdido y lo cancelado | Excluido en cálculo, organigrama, desglose, foto y waterfall | `42e1ac4` | 6 pruebas con BD |
 | FUN-B-2 | El SLA no contaba los vencidos abiertos | Cuenta lo vencido; respeta la pausa | `17348a1` | 3 pruebas con BD |

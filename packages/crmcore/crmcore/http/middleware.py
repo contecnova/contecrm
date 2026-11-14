@@ -575,7 +575,18 @@ async def _guardar_respuesta(clave: str, tenant_id: UUID, estado: dict[str, Any]
     Una operación fallida **libera** la clave: si se guardara el error, el
     cliente que reintenta tras arreglar su problema recibiría para siempre el
     fallo de la primera vez.
+
+    En un hilo: es una transacción síncrona dentro de un middleware ASGI, y
+    hecha en el bucle frenaba todas las peticiones del servicio mientras la base
+    contestaba (auditoría 13-11-2026, FUN-A-11).
     """
+    import asyncio
+
+    await asyncio.to_thread(_guardar_respuesta_ya, clave, tenant_id, estado)
+
+
+def _guardar_respuesta_ya(clave: str, tenant_id: UUID, estado: dict[str, Any]) -> None:
+    """El trabajo síncrono de `_guardar_respuesta`."""
     import json
 
     from crmcore.db.session import nueva_sesion

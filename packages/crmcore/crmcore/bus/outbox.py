@@ -129,28 +129,28 @@ class Relevo:
         publicados = 0
         try:
             ahora = datetime.now(timezone.utc)
-            filas = (
-                db.execute(
-                    select(EventoSaliente)
-                    .where(
-                        EventoSaliente.publicado_at.is_(None),
-                        EventoSaliente.proximo_intento_at <= ahora,
-                    )
-                    .order_by(EventoSaliente.created_at)
-                    .limit(s.outbox_lote)
-                    # Cada réplica se lleva filas distintas en vez de esperar a
-                    # que la otra suelte: sin SKIP LOCKED, N réplicas dan el
-                    # rendimiento de una.
-                    .with_for_update(skip_locked=True)
+            # La consulta y el commit son síncronos y van en un hilo: dentro del
+            # bucle congelaban el servicio entero mientras la base contestaba
+            # (auditoría 13-11-2026, FUN-A-11). La sesión pasa de un hilo a otro
+            # pero nunca se usa en dos a la vez. Publicar sigue siendo async.
+            consulta = (
+                select(EventoSaliente)
+                .where(
+                    EventoSaliente.publicado_at.is_(None),
+                    EventoSaliente.proximo_intento_at <= ahora,
                 )
-                .scalars()
-                .all()
+                .order_by(EventoSaliente.created_at)
+                .limit(s.outbox_lote)
+                # Cada réplica se lleva filas distintas en vez de esperar a que
+                # la otra suelte: sin SKIP LOCKED, N réplicas dan el
+                # rendimiento de una.
+                .with_for_update(skip_locked=True)
             )
-
+            filas = await asyncio.to_thread(lambda: db.execute(consulta).scalars().all())
             for fila in self._en_orden(filas, s):
                 if await self._publicar_una(db, fila, s):
                     publicados += 1
-            db.commit()
+            await asyncio.to_thread(db.commit)
         except Exception:
             db.rollback()
             raise

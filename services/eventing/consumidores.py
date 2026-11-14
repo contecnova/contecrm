@@ -97,7 +97,11 @@ async def consumir_evento(mensaje: Any) -> None:
     # puede pasar es que se caiga la entrega que sí importa.
     from crmcore.http.interno import avisar
 
-    avisar(
+    # En un hilo: `avisar` es un POST síncrono con hasta 3 s de espera, y aquí
+    # dentro del consumidor async congelaba el bucle del servicio en cada evento
+    # si el gateway iba lento (auditoría 13-11-2026, FUN-A-11).
+    await asyncio.to_thread(
+        avisar,
         "gateway",
         "/api/v1/interno/empuje",
         {
