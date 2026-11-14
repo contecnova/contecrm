@@ -5,7 +5,7 @@ CRM empresarial **headless**, con **orquestación de servicios** y
 
 ```bash
 ./setup.sh instalar     # una vez
-./setup.sh arrancar     # ocho servicios en pie en segundos
+./setup.sh arrancar     # los catorce servicios en pie en segundos
 ./setup.sh demo         # un tenant de demostración
 ```
 
@@ -24,14 +24,14 @@ comprobadas por pruebas en lugar de declaradas:
 | **Orquestación** | Los procesos de negocio son composiciones explícitas y observables, no lógica enterrada en controladores o *triggers* | `tests/unit/test_contratos_arquitectura.py` |
 | **Multi-tenant** | Cada capacidad es *tenant-aware* por defecto: datos, configuración, metadatos, cuotas, claves y observabilidad | `tests/integration/test_rls_aislamiento.py` |
 
-El alcance vive en un [catálogo funcional](docs/catalogo/catalogo.yaml) de **631
+El alcance vive en un [catálogo funcional](docs/catalogo/catalogo.yaml) de **788
 capacidades** con identificador estable. Del catálogo salen el manual, la matriz
 de trazabilidad y un gate que **impide declarar hecho lo que no lo está**: una
 capacidad solo pasa a «hecho» si se cita por su ID en el código y está explicada
 en un manual escrito a mano.
 
-**Estado hoy**: 86 capacidades hechas, 15 en curso, 426 pendientes — la fase 0
-(la plataforma) es la que está en marcha. El detalle, en
+**Estado hoy**: 785 capacidades hechas y 3 en curso (13-11-2026). El detalle,
+siempre al día porque se genera del catálogo, en
 [el estado del catálogo](docs/catalogo/estado.md), y lo que está a medias se
 dice con nombre y apellidos al final del
 [Manual III](docs/manual-3-funcionalidades.md).
@@ -44,8 +44,10 @@ dice con nombre y apellidos al final del
               └──────┬───────┘
      ┌──────────┬────┴─────┬──────────┬──────────┐
      ▼          ▼          ▼          ▼          ▼
-  tenancy   identity   metadata  orchestrator  automation  integration  eventing
-                              party      sales
+  plataforma:  tenancy · identity · metadata · eventing
+  procesos:    orchestrator · automation · integration
+  negocio:     party · sales · service · marketing
+  datos e IA:  analytics · intelligence
      └──────────┴──────────┴──────────┴──────────┘
                            │
                  Postgres (un esquema y un rol por servicio)
