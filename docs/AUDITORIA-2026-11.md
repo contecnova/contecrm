@@ -86,7 +86,7 @@ para que nadie lo dé por probado.
 | AN-21 | Una prueba con BD tardaba 10-11 min | Modo persistente `CONTECRM_PRUEBAS_PG` | `1486e86` | 277 s en frío → 109 s; 2 pruebas en 77 s |
 | GATE-3 | La prueba del almacén de secretos fallaba sin `ENCRYPTION_KEY` en el entorno | La prueba fija su propia clave | `865ae0b` | El nodo pasa, 1/1 |
 | — | `docs/procesos.md` estaba desfasado del código | Regenerado | `17a2dad` | `gen_procesos.py` |
-| SEC-9 | El guard de SSRF admitía los hosts de los servicios internos (`RUTAS_SERVICIOS`, CI, DMS) para CUALQUIER URL, también las de webhooks y conectores que escribe un tenant; y no bloqueaba 100.64.0.0/10 (CGNAT, metadatos de Alibaba Cloud) | Los hosts internos solo se admiten con `cliente_seguro(internos=True)`, que llevan únicamente las 13 llamadas a servicios de la casa (analytics→CI, documental→DMS, clave de lectura→identity, salud→CRM); se bloquea toda IP no global | pendiente | `test_los_servicios_de_la_casa_solo_para_quien_los_pide` + `test_las_ip_internas_se_bloquean[100.100.100.200]` + 4 nodos del guard, pasan |
+| SEC-9 | El guard de SSRF admitía los hosts de los servicios internos (`RUTAS_SERVICIOS`, CI, DMS) para CUALQUIER URL, también las de webhooks y conectores que escribe un tenant; y no bloqueaba 100.64.0.0/10 (CGNAT, metadatos de Alibaba Cloud) | Los hosts internos solo se admiten con `cliente_seguro(internos=True)`, que llevan únicamente las 13 llamadas a servicios de la casa (analytics→CI, documental→DMS, clave de lectura→identity, salud→CRM); se bloquea toda IP no global | `024a198` | `test_los_servicios_de_la_casa_solo_para_quien_los_pide` + `test_las_ip_internas_se_bloquean[100.100.100.200]` + 4 nodos del guard, pasan |
 
 ## Lo que la auditoría no llegó a cubrir
 
