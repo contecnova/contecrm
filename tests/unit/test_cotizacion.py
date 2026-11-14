@@ -860,3 +860,56 @@ def test_las_reglas_de_una_lista_se_ven_en_orden_y_se_quitan(
 
     api.quitar_regla(lista.id, general.id, db, quien)
     assert [r["id"] for r in api.reglas_de_la_lista(lista.id, db, quien)] == [str(volumen.id)]
+
+
+# ── Auditoría 13-11-2026: FUN-B-10, FUN-B-11 y FUN-B-14 ────────────────────
+
+
+def test_cambiar_la_cantidad_recalcula_el_importe(uow: UnidadDeTrabajo) -> None:
+    """FUN-B-10: el importe es el total; sin recalcularlo, 1→5 licencias no
+    cambiaba ni el importe ni el prorrateo."""
+    fila = pre.alta_suscripcion(
+        uow,
+        cuenta_id=uuid4(),
+        plan="basico",
+        importe_periodo=Decimal(100),
+        inicio=hoy(uow.db),
+        cantidad=Decimal(2),
+    )
+    salida = pre.cambiar_suscripcion(uow, fila.id, tipo="cambio_cantidad", cantidad=Decimal(5))
+    assert Decimal(fila.importe_periodo) == Decimal(250)
+    assert Decimal(salida["prorrateo"]) > 0
+
+
+def test_repetir_el_calendario_de_ingresos_no_lo_duplica(uow: UnidadDeTrabajo) -> None:
+    """FUN-B-11: la segunda llamada sumaba otro calendario encima."""
+    from sqlalchemy import func, select
+
+    from services.sales import ingresos as ing
+
+    oportunidad = uuid4()
+    for _ in range(2):
+        ing.planificar_ingresos(
+            uow,
+            oportunidad_id=oportunidad,
+            importe_total=Decimal(1200),
+            desde=date(2027, 1, 1),
+            meses=12,
+        )
+    total = uow.db.execute(
+        select(func.sum(ing.LineaIngreso.importe)).where(
+            ing.LineaIngreso.oportunidad_id == oportunidad
+        )
+    ).scalar()
+    assert Decimal(total) == Decimal(1200)
+
+
+def test_una_linea_de_presupuesto_fuera_de_rango_se_rechaza() -> None:
+    """FUN-B-14: descuento del 150 % daba total negativo; 1000 % daba 500."""
+    from pydantic import ValidationError
+
+    from services.sales.api_cotizacion import LineaEntrada
+
+    for mala in ({"descuento_pct": 150}, {"cantidad": 0}, {"precio_unitario": -1}):
+        with pytest.raises(ValidationError):
+            LineaEntrada(**mala)

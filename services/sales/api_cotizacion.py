@@ -421,12 +421,15 @@ def calcular(
 class LineaEntrada(BaseModel):
     producto_id: UUID | None = None
     descripcion: str = ""
-    cantidad: Decimal = Decimal(1)
-    descuento_pct: Decimal = Decimal(0)
+    # Con límites, como `CrearLinea` (esquemas.py). Sin ellos un descuento del
+    # 150 % daba un total negativo y uno de 1000 % desbordaba la columna
+    # Numeric(5,2) y contestaba 500 (auditoría 13-11-2026, FUN-B-14).
+    cantidad: Decimal = Field(Decimal(1), gt=0)
+    descuento_pct: Decimal = Field(Decimal(0), ge=0, le=100)
     precio_unitario: Decimal | None = Field(
-        None, description="Solo para líneas libres, sin producto de catálogo"
+        None, ge=0, description="Solo para líneas libres, sin producto de catálogo"
     )
-    coste_unitario: Decimal | None = None
+    coste_unitario: Decimal | None = Field(None, ge=0)
 
 
 class CrearPresupuesto(BaseModel):
@@ -777,12 +780,12 @@ def revisar_renovaciones(
 class AltaSuscripcion(BaseModel):
     cuenta_id: UUID
     plan: str = Field(..., min_length=1, max_length=120)
-    importe_periodo: Decimal
+    importe_periodo: Decimal = Field(..., ge=0)
     inicio: date
     periodicidad: Literal["mensual", "trimestral", "anual"] = "mensual"
     contrato_id: UUID | None = None
     producto_id: UUID | None = None
-    cantidad: Decimal = Decimal(1)
+    cantidad: Decimal = Field(Decimal(1), gt=0)
     moneda: str = "EUR"
 
 
@@ -807,8 +810,8 @@ class CambioSuscripcionEntrada(BaseModel):
     )
     efectivo_el: date | None = None
     plan: str | None = None
-    cantidad: Decimal | None = None
-    importe_periodo: Decimal | None = None
+    cantidad: Decimal | None = Field(None, gt=0)
+    importe_periodo: Decimal | None = Field(None, ge=0)
     motivo: str = ""
 
 

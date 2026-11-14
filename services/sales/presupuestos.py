@@ -1565,7 +1565,24 @@ def cambiar_suscripcion(
 
     if tipo == "cambio_plan" and plan:
         fila.plan = plan
-    if tipo == "cambio_cantidad" and cantidad is not None:
+    if tipo == "cambio_cantidad":
+        if cantidad is None:
+            raise ErrorValidacion(
+                "Un cambio de cantidad necesita la cantidad nueva",
+                error_code="suscripcion.falta_cantidad",
+            )
+        antes_cantidad = Decimal(fila.cantidad or 0)
+        if importe_periodo is None:
+            # `importe_periodo` es el TOTAL de la suscripción, no un precio por
+            # unidad. Cambiar la cantidad sin recalcularlo dejaba el importe, el
+            # MRR y el prorrateo como estaban (auditoría 13-11-2026, FUN-B-10).
+            if antes_cantidad <= 0:
+                raise ErrorValidacion(
+                    "La suscripción no tiene cantidad de la que sacar el precio por "
+                    "unidad: indica el importe del periodo nuevo.",
+                    error_code="suscripcion.falta_importe",
+                )
+            importe_periodo = _redondear(antes_importe / antes_cantidad * Decimal(cantidad))
         fila.cantidad = cantidad
     if importe_periodo is not None:
         fila.importe_periodo = importe_periodo

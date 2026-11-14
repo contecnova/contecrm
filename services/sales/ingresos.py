@@ -333,6 +333,18 @@ def planificar_ingresos(
             f"Tipo de ingreso «{tipo}» desconocido", error_code="ingresos.tipo_invalido"
         )
 
+    # REEMPLAZA el calendario anterior de esa oportunidad y ese tipo. Sin esto,
+    # repetir la llamada sumaba un segundo calendario y el ingreso previsto salía
+    # al doble (auditoría 13-11-2026, FUN-B-11); el mismo fallo ya se había
+    # corregido en `repartir_credito`. Por tipo: lo recurrente y lo puntual de una
+    # misma oportunidad conviven.
+    uow.db.execute(
+        delete(LineaIngreso).where(
+            LineaIngreso.tenant_id == uow.tenant_id,
+            LineaIngreso.oportunidad_id == oportunidad_id,
+            LineaIngreso.tipo == tipo,
+        )
+    )
     total = Decimal(str(importe_total))
     por_periodo = (total / meses).quantize(Decimal("0.01"))
     lineas: list[LineaIngreso] = []
