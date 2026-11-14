@@ -59,6 +59,7 @@ para que nadie lo dé por probado.
 | FUN-B-19 | Los huecos de agenda se construían en UTC | Zona del tenant, salida en UTC | `f997584` | 4 pruebas |
 | FUN-B-20 | Rutas `async` bloqueaban el bucle con trabajo síncrono | `asyncio.to_thread` | `4f71dfe` | `probar` e `invocar` por su ruta real; `recibir_lead` y `orden_chat` solo lectura |
 | FUN-B-27 | La bandeja de casos no respetaba la pausa | Misma regla que el informe | `50b88c1` | 10 pruebas |
+| FUN-B-22 | La llamada fallida al proveedor de firma y su evidencia se perdían con el rollback | Se escriben en su propia transacción, confirmada antes de relanzar | pendiente | Prueba: se escriben en una sesión distinta de la de la petición (el arnés comparte transacción y no permite reproducir el rollback real) |
 
 ## Pantallas, usabilidad y diseño
 

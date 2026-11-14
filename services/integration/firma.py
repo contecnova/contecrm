@@ -743,17 +743,24 @@ def enviar(uow: UnidadDeTrabajo, sobre_id: UUID) -> dict[str, Any]:
             },
         )
     except Exception as exc:
-        anotar_llamada(
-            uow.db,
-            tenant_id=tenant_id,
-            proveedor=sobre.proveedor,
-            operacion="crear_sobre",
-            ok=False,
-            duracion_ms=int((_ahora() - inicio).total_seconds() * 1000),
-            error=str(exc)[:400],
-            sobre_id=sobre.id,
-        )
-        _anotar(uow.db, sobre, "envio_fallido", descripcion=str(exc)[:400])
+        # En su PROPIA transacción, confirmada ya: el `raise` de abajo deshace la
+        # de la petición, y con ella se iban la llamada y la evidencia del fallo,
+        # justo lo que la tabla existe para conciliar y depurar (auditoría
+        # 13-11-2026, FUN-B-22). El sobre ya existía antes de enviarlo.
+        from crmcore.db.session import sesion
+
+        with sesion(tenant_id) as aparte:
+            anotar_llamada(
+                aparte,
+                tenant_id=tenant_id,
+                proveedor=sobre.proveedor,
+                operacion="crear_sobre",
+                ok=False,
+                duracion_ms=int((_ahora() - inicio).total_seconds() * 1000),
+                error=str(exc)[:400],
+                sobre_id=sobre.id,
+            )
+            _anotar(aparte, sobre, "envio_fallido", descripcion=str(exc)[:400])
         raise
 
     anotar_llamada(

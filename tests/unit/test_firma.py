@@ -889,3 +889,28 @@ def test_se_pueden_pedir_solo_las_que_fallaron(
     r = cliente_integracion.get(f"{LLAMADAS}?solo_fallidas=true", headers=cabeceras_integracion)
     assert r.status_code == 200, r.text[:300]
     assert [fila["operacion"] for fila in r.json()["llamadas"]] == ["mal"]
+
+
+def test_un_envio_fallido_deja_su_rastro_fuera_de_la_transaccion(
+    uow: UnidadDeTrabajo, proveedor: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FUN-B-22: la llamada fallida y su evidencia se escribían en la sesión de la
+    petición, que el error deshace. Tienen que ir en otra, confirmada ya."""
+    sobre = _sobre(uow)
+    sesiones: list[Any] = []
+
+    def _falla(*_: Any, **__: Any) -> Any:
+        raise RuntimeError("el proveedor devolvió un 502")
+
+    original = fir.anotar_llamada
+
+    def _espia(db: Any, **kw: Any) -> Any:
+        sesiones.append(db)
+        return original(db, **kw)
+
+    monkeypatch.setattr(fir, "_puerto_llamada", _falla)
+    monkeypatch.setattr(fir, "anotar_llamada", _espia)
+    with pytest.raises(RuntimeError):
+        fir.enviar(uow, sobre.id)
+    assert len(sesiones) == 1
+    assert sesiones[0] is not uow.db, "se escribió en la transacción que el error deshace"
