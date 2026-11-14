@@ -427,3 +427,40 @@ async def test_un_evento_interno_no_se_empuja_ni_se_archiva(monkeypatch: Any) ->
     monkeypatch.setattr(interno, "avisar", lambda *a, **k: avisos.append(a))
     await consumir_evento(_evento(uuid4(), tipo="user.password.reset_requested"))
     assert avisos == []
+
+
+async def test_una_entrega_que_se_reintenta_no_la_coge_otra_replica(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: Any
+) -> None:
+    """FUN-A-10: el bloqueo se soltaba al confirmar la lectura, antes de
+    reintentar, y otra réplica podía mandar la misma entrega otra vez."""
+    from datetime import datetime, timezone
+
+    from services.eventing import consumidores
+    from services.eventing.entrega import pendientes_de_reintento
+    from services.eventing.modelos import Entrega
+
+    suscripcion = _suscribir(db, tenant_id, eventos=["account.created"])
+    db.add(
+        Entrega(
+            tenant_id=tenant_id,
+            suscripcion_id=suscripcion.id,
+            evento_id=uuid4(),
+            tipo="account.created",
+            dedup_key="d-1",
+            resultado="fallido",
+            proximo_intento_at=datetime.now(timezone.utc),
+        )
+    )
+    db.commit()
+
+    cogidas: list[Any] = []
+
+    async def _sin_red(self: Any, *args: Any) -> bool:
+        # Mientras «esta réplica» reintenta, otra mira la cola.
+        cogidas.append(len(pendientes_de_reintento(db)))
+        return True
+
+    monkeypatch.setattr(consumidores.RelevoDeReintentos, "_reintentar_una", _sin_red)
+    await consumidores.RelevoDeReintentos()._una_vuelta()
+    assert cogidas == [0], "otra réplica habría cogido la entrega que ya se está reintentando"

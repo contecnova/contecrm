@@ -196,6 +196,25 @@ class RelevoDeReintentos:
                 (e.tenant_id, e.suscripcion_id, e.evento_id, e.intento + 1, e.id)
                 for e in pendientes
             ]
+            # Se RESERVAN en esta misma transacción, antes de soltar el bloqueo.
+            # El `FOR UPDATE SKIP LOCKED` solo duraba hasta el commit de esta
+            # sesión: otra réplica podía coger la misma entrega mientras ésta la
+            # reintentaba, y el endpoint la recibía dos veces (auditoría
+            # 13-11-2026, FUN-A-10). Se empuja su próximo intento un plazo que
+            # cubre el reintento: las demás la saltan, y si este proceso se cae
+            # a mitad vuelve a aparecer al vencer, en vez de perderse.
+            from datetime import datetime, timedelta, timezone
+
+            from crmcore.config import get_settings
+
+            # Dos veces lo que puede tardar el endpoint, más una vuelta del relevo.
+            s = get_settings()
+            reserva = timedelta(
+                seconds=2 * float(s.webhook_timeout_s) + float(s.webhook_reintento_intervalo_s)
+            )
+            hasta = datetime.now(timezone.utc) + reserva
+            for e in pendientes:
+                e.proximo_intento_at = hasta
 
         hechos = 0
         for tenant_id, suscripcion_id, evento_id, intento, entrega_id in trabajo:
