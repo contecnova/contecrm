@@ -1293,6 +1293,12 @@ class Motor:
         comentario: str = "",
     ) -> InstanciaProceso:
         """Registra la respuesta y reanuda el proceso por la ruta que toque."""
+        # Se relee BLOQUEADA antes de mirar el estado. Sin esto, dos aprobadores
+        # que respondían a la vez veían los dos «pendiente», se pisaban la
+        # respuesta y el paso siguiente, y la auditoría guardaba dos decisiones
+        # (auditoría 13-11-2026, FUN-A-16). El segundo espera al primero y luego
+        # ve «completada».
+        self.db.refresh(tarea, with_for_update=True)
         if tarea.estado != "pendiente":
             from crmcore.errors import Conflicto
 

@@ -108,3 +108,20 @@ def test_el_validador_exige_a_quien_escalar_y_que_si_vence_exista() -> None:
         )
         == []
     )
+
+
+def test_responder_relee_la_tarea_bloqueada(db: Any, tenant_id: UUID) -> None:
+    """FUN-A-16: dos respuestas a la vez se pisaban. Se lee con FOR UPDATE, y la
+    segunda ve lo que dejó la primera aunque su objeto en memoria esté viejo."""
+    import pytest
+    from crmcore.errors import Conflicto
+    from crmcore.ids import nuevo_id
+
+    instancia, tarea, motor = _arrancar(db, tenant_id, _definicion())
+    db.execute(
+        TareaHumana.__table__.update().where(TareaHumana.id == tarea.id).values(estado="completada")
+    )
+    tarea.estado = "pendiente"  # lo que cree quien llega segundo
+    with pytest.raises(Conflicto) as fallo:
+        motor.responder_tarea(tarea, respuesta="aprobar", usuario_id=nuevo_id())
+    assert fallo.value.error_code == "tarea.ya_resuelta"
