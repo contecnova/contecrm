@@ -4063,6 +4063,7 @@ const pantallas = {
       },
       estados: {
         programado: "Programado",
+        enviando: "Saliendo, sin confirmar",
         enviado: "Enviado",
         fallido: "Fallido",
         omitido: "Omitido",

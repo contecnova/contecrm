@@ -50,7 +50,12 @@ logger = get_logger(__name__)
 # `respuesta`: un correo suelto sobre un registro —la respuesta de un caso—,
 # mandado en el momento por quien lo escribe (`enviar_suelto`).
 ORIGENES = ("campana", "recorrido", "respuesta")
-ESTADOS = ("programado", "enviado", "fallido", "omitido")
+# `enviando`: reclamado para salir, en una transacción ya confirmada, y sin
+# resultado guardado todavía. Si se queda así es que el proceso cayó entre el
+# envío y la anotación: NO se vuelve a coger solo —podría haber salido ya— y se
+# ve en la lista para que alguien decida (FUN-B-18).
+ENVIANDO = "enviando"
+ESTADOS = ("programado", ENVIANDO, "enviado", "fallido", "omitido")
 SUCESOS = ("abierto", "clic", "respondido")
 
 
@@ -598,10 +603,17 @@ def despachar(
     quien lo programó, con sus permisos de entonces y no con más. El que no la
     tiene no sale: se queda programado con el motivo dicho (`SIN_IDENTIDAD`).
 
-    Las filas se cogen con `FOR UPDATE SKIP LOCKED`: dos procesos despachando a
-    la vez se reparten la cola en vez de mandar dos veces lo mismo. Y lo que
-    reviente con un envío se queda en ese envío —fallido, con su motivo—: no
-    deshace los que ya salieron, que volverían a salir en la vuelta siguiente.
+    Las filas se **reclaman** antes de mandar nada: con `FOR UPDATE SKIP LOCKED`
+    y pasándolas a `enviando` en una transacción propia, confirmada en el acto.
+    Antes se cogían en la transacción de la petición y el SMTP salía dentro de
+    ella: si esa transacción no llegaba a confirmarse —un fallo al final, una
+    caída—, los correos ya habían salido y seguían «programados», así que la
+    vuelta siguiente los mandaba otra vez (auditoría 13-11-2026, FUN-B-18). Ahora
+    un envío reclamado no vuelve a cogerse solo: sale como mucho una vez, y si se
+    queda en `enviando` se ve.
+
+    Lo que reviente con un envío se queda en ese envío —fallido, con su
+    motivo—: no deshace los que ya salieron.
     """
     db = uow.db
     tenant_id = uow.tenant_id
@@ -634,14 +646,19 @@ def despachar(
         )
         filtros.append(EnvioProgramado.programado_por_id.isnot(None))
 
-    pendientes = list(
-        db.execute(
-            select(EnvioProgramado)
-            .where(*filtros)
-            .order_by(EnvioProgramado.programado_at)
-            .limit(limite)
-            .with_for_update(skip_locked=True)
-        ).scalars()
+    reclamados = _reclamar(tenant_id, filtros, limite=limite)
+    pendientes = (
+        list(
+            db.execute(
+                select(EnvioProgramado)
+                .where(EnvioProgramado.id.in_(reclamados))
+                .order_by(EnvioProgramado.programado_at)
+                .with_for_update(skip_locked=True)
+                .execution_options(populate_existing=True)
+            ).scalars()
+        )
+        if reclamados
+        else []
     )
 
     recomendaciones: dict[Any, dict[str, Any]] = {}
@@ -674,6 +691,34 @@ def despachar(
         "fallidos": fallidos,
         "sin_identidad": sin_identidad,
     }
+
+
+def _reclamar(tenant_id: UUID, filtros: list[Any], *, limite: int) -> list[UUID]:
+    """Pasa a `enviando` lo que toca y lo confirma YA, antes de mandar nada.
+
+    En su propia sesión: si la transacción de quien despacha no llega a
+    confirmarse, lo reclamado sigue reclamado y no se vuelve a mandar.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(tenant_id) as aparte:
+        ids = list(
+            aparte.execute(
+                select(EnvioProgramado.id)
+                .where(*filtros)
+                .order_by(EnvioProgramado.programado_at)
+                .limit(limite)
+                .with_for_update(skip_locked=True)
+            ).scalars()
+        )
+        if ids:
+            aparte.execute(
+                update(EnvioProgramado)
+                .where(EnvioProgramado.id.in_(ids))
+                .values(estado=ENVIANDO)
+                .execution_options(synchronize_session=False)
+            )
+    return ids
 
 
 def _despachar_uno(

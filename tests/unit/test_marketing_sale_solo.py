@@ -165,6 +165,26 @@ def test_no_sale_dos_veces_y_coge_las_filas_sin_esperar_a_las_de_otro(
     assert sentencias and all("FOR UPDATE SKIP LOCKED" in s for s in sentencias)
 
 
+def test_si_la_peticion_no_se_confirma_lo_mandado_no_sale_otra_vez(
+    db: Any, uow: UnidadDeTrabajo, contexto_tenant: UUID, mandados: list[str]
+) -> None:
+    """FUN-B-18: el SMTP salía dentro de la transacción de la petición. Si esa
+    transacción no llegaba a confirmarse, el correo ya había salido y el envío
+    seguía «programado»: la vuelta siguiente lo mandaba otra vez."""
+    quien = _quien()
+    campana = _programar(uow, por=quien)
+    db.commit()  # lo programado ya existía antes de despachar
+
+    assert env.despachar(uow, principal_id=quien.id)["enviados"] == 1
+    db.rollback()  # la petición falla después de mandar
+
+    assert env.despachar(uow, principal_id=quien.id)["revisados"] == 0
+    assert len(mandados) == 1
+    # Queda a la vista como «saliendo, sin confirmar», no como programado.
+    [envio] = _envios(db, campana)
+    assert envio.estado == env.ENVIANDO
+
+
 def test_sin_identidad_no_sale_y_dice_por_que(
     db: Any, uow: UnidadDeTrabajo, contexto_tenant: UUID, mandados: list[str]
 ) -> None:
