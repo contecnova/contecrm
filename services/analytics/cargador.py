@@ -93,7 +93,7 @@ def cargar_tabla(
 
     recogidas: list[dict[str, Any]] = []
     cursor = ""
-    with cliente_seguro(timeout=60.0) as cli:
+    with cliente_seguro(internos=True, timeout=60.0) as cli:
         for _ in range(_carga_vueltas_maximas()):
             sep = "&" if "?" in camino else "?"
             url = f"{raiz}{camino}{sep}limite={_carga_filas_por_vuelta()}" + (

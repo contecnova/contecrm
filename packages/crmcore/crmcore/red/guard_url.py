@@ -6,6 +6,7 @@ import concurrent.futures
 import ipaddress
 import socket
 from dataclasses import dataclass, field
+from typing import Any
 from urllib.parse import ParseResult, urlparse
 
 import httpx
@@ -33,8 +34,12 @@ def _ip_bloqueada(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     Azure, y el objetivo número uno de cualquier SSRF—, multicast, reservados
     y la dirección sin especificar.
     """
+    # `not is_global` además: cubre lo que las otras no, como 100.64.0.0/10
+    # (CGNAT, donde está 100.100.100.200, el punto de metadatos de Alibaba
+    # Cloud) y los rangos de documentación (auditoría 13-11-2026, SEC-9).
     return bool(
-        ip.is_private
+        not ip.is_global
+        or ip.is_private
         or ip.is_loopback
         or ip.is_link_local
         or ip.is_multicast
@@ -81,11 +86,17 @@ def _rechazo_por_forma(partes: ParseResult) -> Veredicto | None:
     return None
 
 
-def _permitidos() -> set[str]:
+def _permitidos(internos: bool = False) -> set[str]:
     """Hosts que el operador ha decidido admitir pese a ser internos.
 
     Existe porque hay instalaciones con un IdP o un ERP en la red interna, y
     negarlo obligaría a apagar el guard entero. Va por configuración y en caliente.
+
+    `internos`: además, los servicios de ESTE despliegue. Solo los pide quien
+    llama a un servicio de la casa. Antes se admitían siempre, así que la URL de
+    un webhook o de un conector —que la escribe un tenant— podía apuntar a
+    `http://identity:8000/...` y saltarse el gateway (auditoría 13-11-2026,
+    SEC-9).
     """
     from urllib.parse import urlparse
 
@@ -94,6 +105,8 @@ def _permitidos() -> set[str]:
 
     crudo = rt.efectivo("url_guard_hosts_permitidos") or ""
     permitidos = {h.strip().lower() for h in str(crudo).split(",") if h.strip()}
+    if not internos:
+        return permitidos
 
     # Y los servicios de ESTE despliegue, que salen de `RUTAS_SERVICIOS`. No son
     # una URL de usuario: son las direcciones que el operador ha declarado, y son
@@ -123,7 +136,7 @@ def _permitidos() -> set[str]:
     return permitidos
 
 
-def evaluar(url: str) -> Veredicto:
+def evaluar(url: str, *, internos: bool = False) -> Veredicto:
     """Veredicto sobre una URL, sin lanzar. Para telemetría y comprobaciones.
 
     La cadena es: URL no vacía → forma → IP literal → resolución DNS. Cada
@@ -140,7 +153,7 @@ def evaluar(url: str) -> Veredicto:
         return rechazo
 
     host = (partes.hostname or "").strip()
-    if host.lower() in _permitidos():
+    if host.lower() in _permitidos(internos):
         return Veredicto(True, "host permitido por configuración", [host])
 
     try:
@@ -172,9 +185,9 @@ def evaluar(url: str) -> Veredicto:
     return Veredicto(True, "correcta", ips)
 
 
-def exigir(url: str) -> None:
+def exigir(url: str, *, internos: bool = False) -> None:
     """Lanza si la URL no se puede buscar desde el servidor."""
-    veredicto = evaluar(url)
+    veredicto = evaluar(url, internos=internos)
     if not veredicto.ok:
         logger.warning("url_guard.bloqueada", url=str(url)[:200], motivo=veredicto.motivo)
         raise ErrorValidacion(
@@ -184,7 +197,7 @@ def exigir(url: str) -> None:
         )
 
 
-def _preparar(peticion: httpx.Request) -> None:
+def _preparar(peticion: httpx.Request, internos: bool = False) -> None:
     """Revalida y **fija la IP** de cada petición, incluida cada redirección.
 
     Esto es lo que cierra la ventana del *DNS rebinding*: entre que `evaluar()`
@@ -210,10 +223,10 @@ def _preparar(peticion: httpx.Request) -> None:
     _propagar_traza(peticion)
 
     host = peticion.url.host
-    if host and host.lower() in _permitidos():
+    if host and host.lower() in _permitidos(internos):
         return
 
-    veredicto = evaluar(str(peticion.url))
+    veredicto = evaluar(str(peticion.url), internos=internos)
     if not veredicto.ok:
         logger.warning(
             "url_guard.bloqueada",
@@ -256,8 +269,12 @@ def _propagar_traza(peticion: httpx.Request) -> None:
 class _TransporteFijado(httpx.HTTPTransport):
     """Transporte síncrono que valida y fija cada petición."""
 
+    def __init__(self, *args: Any, internos: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._internos = internos
+
     def handle_request(self, peticion: httpx.Request) -> httpx.Response:
-        _preparar(peticion)
+        _preparar(peticion, self._internos)
         return super().handle_request(peticion)
 
 
@@ -268,18 +285,26 @@ class _TransporteFijadoAsync(httpx.AsyncHTTPTransport):
     asíncronos, y son justo los dos sitios donde la URL la escribe el cliente.
     """
 
+    def __init__(self, *args: Any, internos: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._internos = internos
+
     async def handle_async_request(self, peticion: httpx.Request) -> httpx.Response:
-        _preparar(peticion)
+        _preparar(peticion, self._internos)
         return await super().handle_async_request(peticion)
 
 
-def cliente_seguro(**kwargs: object) -> httpx.Client:
-    """`httpx.Client` con el guard en cada salto. Sustituto directo."""
-    kwargs.setdefault("transport", _TransporteFijado())
+def cliente_seguro(*, internos: bool = False, **kwargs: object) -> httpx.Client:
+    """`httpx.Client` con el guard en cada salto. Sustituto directo.
+
+    `internos=True` solo para llamar a un servicio de la casa (los de
+    `RUTAS_SERVICIOS`, CI, DMS). Una URL que escribe un tenant, nunca.
+    """
+    kwargs.setdefault("transport", _TransporteFijado(internos=internos))
     return httpx.Client(**kwargs)  # type: ignore[arg-type]
 
 
-def cliente_seguro_async(**kwargs: object) -> httpx.AsyncClient:
-    """`httpx.AsyncClient` con el guard en cada salto. Sustituto directo."""
-    kwargs.setdefault("transport", _TransporteFijadoAsync())
+def cliente_seguro_async(*, internos: bool = False, **kwargs: object) -> httpx.AsyncClient:
+    """`httpx.AsyncClient` con el guard en cada salto. Ver `cliente_seguro`."""
+    kwargs.setdefault("transport", _TransporteFijadoAsync(internos=internos))
     return httpx.AsyncClient(**kwargs)  # type: ignore[arg-type]

@@ -98,7 +98,7 @@ def comprobar() -> dict[str, Any]:
     exc: Exception | None = None
     contrato: dict[str, Any] = {}
     try:
-        with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+        with cliente_seguro(internos=True, timeout=s.dms_timeout_s) as cli:
             for url in candidatas:
                 try:
                     respuesta = cli.get(url)
@@ -218,7 +218,7 @@ def _token_de_aplicacion(s: Any) -> str:
         return str(_aplicacion["token"])
 
     try:
-        with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+        with cliente_seguro(internos=True, timeout=s.dms_timeout_s) as cli:
             respuesta = cli.post(
                 s.dms_base_url.rstrip("/") + RUTA_APLICACION,
                 json={
@@ -296,7 +296,7 @@ def canjear_token(
     }
     try:
         aplicacion = _token_de_aplicacion(s)
-        with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+        with cliente_seguro(internos=True, timeout=s.dms_timeout_s) as cli:
             respuesta = cli.post(
                 s.dms_base_url.rstrip("/") + RUTA_CANJE,
                 json=cuerpo,
@@ -365,7 +365,7 @@ def buscar(texto: str, *, token_usuario: str, limite: int = 20) -> list[dict[str
     from crmcore.red import cliente_seguro
 
     s = _config()
-    with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+    with cliente_seguro(internos=True, timeout=s.dms_timeout_s) as cli:
         respuesta = cli.get(
             s.dms_base_url.rstrip("/") + "/api/v1/documents/search",
             params={"q": texto, "limit": limite},
@@ -395,7 +395,7 @@ def ficha(documento_id: str, *, token_usuario: str) -> dict[str, Any]:
     from crmcore.red import cliente_seguro
 
     s = _config()
-    with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+    with cliente_seguro(internos=True, timeout=s.dms_timeout_s) as cli:
         respuesta = cli.get(
             s.dms_base_url.rstrip("/") + f"/api/v1/documents/{documento_id}",
             headers={"Authorization": f"Bearer {token_usuario}"},
@@ -440,7 +440,7 @@ def _llamar(
     from crmcore.red import cliente_seguro
 
     s = _config()
-    with cliente_seguro(timeout=timeout or s.dms_timeout_s) as cli:
+    with cliente_seguro(internos=True, timeout=timeout or s.dms_timeout_s) as cli:
         respuesta = cli.request(
             metodo,
             s.dms_base_url.rstrip("/") + ruta,
@@ -633,7 +633,7 @@ def subir_documento(
     cabeceras = {"Authorization": f"Bearer {token_usuario}"}
     if idempotencia:
         cabeceras["Idempotency-Key"] = idempotencia
-    with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+    with cliente_seguro(internos=True, timeout=s.dms_timeout_s) as cli:
         respuesta = cli.post(
             s.dms_base_url.rstrip("/") + "/api/v1/documents",
             data=formulario,

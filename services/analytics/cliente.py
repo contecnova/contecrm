@@ -151,7 +151,7 @@ def comprobar() -> dict[str, Any]:
     url = s.ci_base_url.rstrip("/") + "/openapi.json"
     inicio = time.monotonic()
     try:
-        with cliente_seguro(timeout=s.ci_timeout_s) as cli:
+        with cliente_seguro(internos=True, timeout=s.ci_timeout_s) as cli:
             respuesta = cli.get(url)
             respuesta.raise_for_status()
             contrato = respuesta.json()
@@ -274,7 +274,7 @@ def _token_de_aplicacion(s: Any) -> str:
         return str(_aplicacion["token"])
 
     try:
-        with cliente_seguro(timeout=s.ci_timeout_s) as cli:
+        with cliente_seguro(internos=True, timeout=s.ci_timeout_s) as cli:
             respuesta = cli.post(
                 s.ci_base_url.rstrip("/") + RUTA_APLICACION,
                 json={
@@ -353,7 +353,7 @@ def canjear_token(
     url = s.ci_base_url.rstrip("/") + RUTA_CANJE
     try:
         aplicacion = _token_de_aplicacion(s)
-        with cliente_seguro(timeout=s.ci_timeout_s) as cli:
+        with cliente_seguro(internos=True, timeout=s.ci_timeout_s) as cli:
             respuesta = cli.post(
                 url,
                 json=cuerpo,

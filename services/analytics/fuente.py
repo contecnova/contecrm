@@ -417,7 +417,7 @@ def _publicar(
     # entidad. Medido el 10-11-2026: con los diez segundos de una llamada
     # normal, «timed out» a los 11 s — y la fuente anterior ya borrada. El
     # plazo largo se había puesto al recorrido de la superficie y no a esto.
-    with cliente_seguro(timeout=s.ci_timeout_registro_s) as cli:
+    with cliente_seguro(internos=True, timeout=s.ci_timeout_registro_s) as cli:
         # Se borra la anterior ANTES de crear la nueva. Sin esto, cada registro
         # dejaba una fuente más y solo la última funcionaba:
         #
@@ -570,7 +570,7 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
 
     cabeceras = {"Authorization": f"Bearer {clave_api}"}
     raiz = base_url.rstrip("/")
-    with cliente_seguro(timeout=_config_plazo().ci_timeout_registro_s) as cli:
+    with cliente_seguro(internos=True, timeout=_config_plazo().ci_timeout_registro_s) as cli:
         respuesta = cli.get(f"{raiz}/superficie", headers=cabeceras)
         if respuesta.status_code != 200:
             raise ErrorDependencia(
@@ -1217,7 +1217,7 @@ def _pedir_plan(
     # de mando fallaba al ejecutarse**, con un «no ha podido resolver el plan»
     # que parecía del otro lado.
     url = base_url.rstrip("/") + RUTA_PLAN
-    with cliente_seguro(timeout=plazo) as cli:
+    with cliente_seguro(internos=True, timeout=plazo) as cli:
         respuesta = cli.post(url, json=cuerpo, headers={"Authorization": f"Bearer {token}"})
     if respuesta.status_code >= 400:
         # CON EL MOTIVO DEL OTRO LADO. Decía solo «no ha podido resolver el plan»

@@ -59,6 +59,7 @@ def test_el_orden_de_los_rechazos_es_contrato() -> None:
         "0.0.0.0",
         "[::1]",
         "[fd00::1]",
+        "100.100.100.200",  # CGNAT: metadatos de Alibaba Cloud (SEC-9)
     ],
 )
 def test_las_ip_internas_se_bloquean(ip: str) -> None:
@@ -100,10 +101,35 @@ def test_el_operador_puede_admitir_un_host_interno(monkeypatch: pytest.MonkeyPat
     negarlo obligaría a apagar el guard entero."""
     import crmcore.red.guard_url as g
 
-    monkeypatch.setattr(g, "_permitidos", lambda: {"erp.interno"})
+    monkeypatch.setattr(g, "_permitidos", lambda internos=False: {"erp.interno"})
     assert evaluar("https://erp.interno/api").ok
     # Y no abre la mano para los demás.
     assert not evaluar("https://otro.interno/api").ok
+
+
+def test_los_servicios_de_la_casa_solo_para_quien_los_pide(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Auditoría 13-11-2026, SEC-9: los hosts de `RUTAS_SERVICIOS` se admitían
+    para CUALQUIER URL, también la de un webhook que escribe un tenant, que así
+    llegaba a `http://identity:8000/...` sin pasar por el gateway."""
+    from types import SimpleNamespace
+
+    import crmcore.config as cfg
+    from crmcore.runtime import settings as rt
+
+    monkeypatch.setattr(rt, "efectivo", lambda _clave: "")
+    monkeypatch.setattr(
+        cfg,
+        "get_settings",
+        lambda: SimpleNamespace(
+            rutas_servicios="identity=http://identity:8000",
+            dms_base_url="",
+            url_guard_dns_timeout_s=1.0,
+        ),
+    )
+    assert not evaluar("http://identity:8000/api/v1/usuarios").ok
+    assert evaluar("http://identity:8000/api/v1/usuarios", internos=True).ok
 
 
 # ── Fijado de IP y redirecciones ──────────────────────────────────────────

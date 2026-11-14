@@ -57,7 +57,7 @@ def _ejecutar(db: Session, trabajo: Trabajo, tope: int) -> Tanda:
     base = url_del_crm()
     clave = clave_de_lectura(trabajo.tenant_id, nombre="salud-de-cuenta")
 
-    with cliente_seguro(timeout=60.0) as cli:
+    with cliente_seguro(internos=True, timeout=60.0) as cli:
         cuentas: list[str] = list(trabajo.entrada.get("cuentas") or [])
         if not cuentas:
             cuentas = _cuentas_del_tenant(cli, base, clave)

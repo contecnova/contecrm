@@ -61,7 +61,7 @@ def clave_de_lectura(tenant_id: UUID, *, nombre: str) -> str:
     s = get_settings()
     destino = _url_de_identity(s)
     cabeceras = firmar_cabeceras_internas({}, s.secret_key.get_secret_value())
-    with cliente_seguro(timeout=10.0) as cli:
+    with cliente_seguro(internos=True, timeout=10.0) as cli:
         respuesta = cli.post(
             f"{destino}/api/v1/claves-api/interna",
             json={"tenant_id": str(tenant_id), "nombre": nombre},
