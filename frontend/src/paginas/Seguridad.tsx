@@ -107,7 +107,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { MisPasskeys, type Passkey } from "@/componentes/MisPasskeys";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { SegundoFactorPorProveedor } from "@/componentes/SegundoFactorPorProveedor";
@@ -117,6 +122,7 @@ import {
   llamar,
   salvoCancelacion,
 } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { puede, type Sesion } from "@/lib/sesion";
 
 interface CapaDeAislamiento {
@@ -482,6 +488,7 @@ function ComoSeEntra() {
   const [politicas, setPoliticas] = useState<number | null>(null);
   const [sinEnlace, setSinEnlace] = useState<number | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
@@ -490,10 +497,14 @@ function ComoSeEntra() {
       .then((r) => setProveedores(filasDe<ProveedorIdp>(r.datos)))
       .catch(salvoCancelacion(setFallo));
     // Cada una con su fallo: que no se pueda leer el ajuste global no puede
-    // dejar sin ver los proveedores.
-    void llamar<Record<string, Ajuste>>("/api/v1/ajustes", opciones)
-      .then((r) => setForzadoGlobal(r.datos?.sso_forzado ?? null))
-      .catch(() => undefined);
+    // dejar sin ver los proveedores. Pero se DICE: sin el ajuste, la línea
+    // del forzado diría «la contraseña local sigue admitiéndose», que es una
+    // afirmación, no un «no lo sé».
+    seguir("forzado", () =>
+      llamar<Record<string, Ajuste>>("/api/v1/ajustes", opciones).then((r) =>
+        setForzadoGlobal(r.datos?.sso_forzado ?? null),
+      ),
+    );
     // **El 403 de SCIM es la respuesta, no un error.** «No está activo en esta
     // instalación» es exactamente lo que hay que enseñar: con SCIM apagado,
     // una baja en el directorio no cierra nada aquí.
@@ -505,20 +516,22 @@ function ComoSeEntra() {
           porque: e instanceof ErrorApi ? e.explicacion || e.titulo : "",
         }),
       );
-    void llamar<unknown>("/api/v1/politicas-acceso", opciones)
-      .then((r) => setPoliticas(filasDe<unknown>(r.datos).length))
-      .catch(() => undefined);
-    void llamar<unknown>("/api/v1/sesiones", opciones)
-      .then((r) =>
+    seguir("politicas", () =>
+      llamar<unknown>("/api/v1/politicas-acceso", opciones).then((r) =>
+        setPoliticas(filasDe<unknown>(r.datos).length),
+      ),
+    );
+    seguir("sesiones", () =>
+      llamar<unknown>("/api/v1/sesiones", opciones).then((r) =>
         setSinEnlace(
           filasDe<{ enlazada_al_idp?: boolean }>(r.datos).filter(
             (s) => s.enlazada_al_idp === false,
           ).length,
         ),
-      )
-      .catch(() => undefined);
+      ),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   if (fallo) return <Fallo error={fallo} />;
   if (!proveedores) return <Cargando />;
@@ -533,16 +546,24 @@ function ComoSeEntra() {
       </p>
 
       {/* El forzado del tenant, lo primero: manda sobre el de cada proveedor y
-          mirar sólo el del proveedor da por abierta una puerta cerrada. */}
-      <p
-        className={
-          forzadoDelTenant ? "text-dato text-ink" : "text-dato text-warning"
-        }
-      >
-        {forzadoDelTenant
-          ? t("seguridad.entrada.forzadoSi")
-          : t("seguridad.entrada.forzadoNo")}
-      </p>
+          mirar sólo el del proveedor da por abierta una puerta cerrada. Si
+          no se ha podido leer, se dice eso y no «no está forzado». */}
+      {estado("forzado").error ? (
+        <FalloCompacto
+          {...estado("forzado")}
+          que={t("seguridad.entrada.queForzado")}
+        />
+      ) : (
+        <p
+          className={
+            forzadoDelTenant ? "text-dato text-ink" : "text-dato text-warning"
+          }
+        >
+          {forzadoDelTenant
+            ? t("seguridad.entrada.forzadoSi")
+            : t("seguridad.entrada.forzadoNo")}
+        </p>
+      )}
 
       {proveedores.length === 0 ? (
         <Vacio
@@ -635,11 +656,19 @@ function ComoSeEntra() {
             {t("seguridad.entrada.politicas", { cuantas: politicas })}
           </span>
         ) : null}
+        <FalloCompacto
+          {...estado("politicas")}
+          que={t("seguridad.entrada.quePoliticas")}
+        />
         {sinEnlace !== null && sinEnlace > 0 ? (
           <span className="text-warning">
             {t("seguridad.entrada.sinCierrePropagado", { cuantas: sinEnlace })}
           </span>
         ) : null}
+        <FalloCompacto
+          {...estado("sesiones")}
+          que={t("seguridad.entrada.queSesiones")}
+        />
       </div>
     </section>
   );
@@ -681,14 +710,16 @@ function MiSegundoFactor() {
   // que falta para cumplir. Solo la lista dejaría el resto diciendo lo de antes.
   const [vuelta, setVuelta] = useState(0);
   const recargar = useCallback(() => setVuelta((v) => v + 1), []);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
     const opciones = { signal: control.signal };
     // Cada una con su fallo: que no se pueda leer el plan no puede dejar sin
-    // ver con qué se ha entrado.
-    void llamar<Nivel>("/api/v1/factores/nivel", opciones)
-      .then((r) => {
+    // ver con qué se ha entrado. Y cada fallo se dice en su sitio: sin él, un
+    // plan que no llega se lee como «no te falta nada».
+    seguir("nivel", () =>
+      llamar<Nivel>("/api/v1/factores/nivel", opciones).then((r) => {
         setNivel(r.datos);
         // Al volver a leer, fuera lo de un factor que ya no está: si no, la
         // lista seguiría hablando de él.
@@ -703,42 +734,55 @@ function MiSegundoFactor() {
         // al dominio; aquí sólo se le dicen los factores que esta persona
         // tiene. Antes había que pasarle «¿resiste phishing?», que es
         // justamente lo que la pantalla no puede saber sin copiarse su tabla.
+        // Una clave por factor: con una sola, cada factor pisaría el
+        // seguimiento del anterior y sólo se sabría del último.
         for (const f of r.datos.factores ?? []) {
-          void llamar<{ puede: boolean; porque: string }>(
-            `/api/v1/factores/vale-como-unico?factor=${encodeURIComponent(f.factor)}&tiene_respaldo=${
-              (r.datos.factores ?? []).length > 1
-            }`,
-            opciones,
-          )
-            .then((v) =>
+          seguir(`valeSolo:${f.factor}`, () =>
+            llamar<{ puede: boolean; porque: string }>(
+              `/api/v1/factores/vale-como-unico?factor=${encodeURIComponent(f.factor)}&tiene_respaldo=${
+                (r.datos.factores ?? []).length > 1
+              }`,
+              opciones,
+            ).then((v) =>
               setSinContrasena((previo) => [
                 ...previo.filter((x) => x.factor !== f.factor),
                 { factor: f.factor, ...v.datos },
               ]),
-            )
-            .catch(() => undefined);
+            ),
+          );
         }
-      })
-      .catch(() => undefined);
-    void llamar<Plan>("/api/v1/factores/plan-de-inscripcion", opciones)
-      .then((r) => setPlan(r.datos))
-      .catch(() => undefined);
-    void llamar<{ operaciones: Operacion[] }>(
-      "/api/v1/factores/operaciones-sensibles",
-      opciones,
-    )
-      .then((r) => setSensibles(r.datos.operaciones ?? []))
-      .catch(() => undefined);
-    void llamar<Cambio>("/api/v1/factores/cambio-de-dispositivo", opciones)
-      .then((r) => setCambio(r.datos))
-      .catch(() => undefined);
-    void llamar<Passkey[]>("/api/v1/auth/passkeys", opciones)
-      .then((r) => setPasskeys(Array.isArray(r.datos) ? r.datos : []))
-      .catch(() => undefined);
+      }),
+    );
+    seguir("plan", () =>
+      llamar<Plan>("/api/v1/factores/plan-de-inscripcion", opciones).then(
+        (r) => setPlan(r.datos),
+      ),
+    );
+    seguir("sensibles", () =>
+      llamar<{ operaciones: Operacion[] }>(
+        "/api/v1/factores/operaciones-sensibles",
+        opciones,
+      ).then((r) => setSensibles(r.datos.operaciones ?? [])),
+    );
+    seguir("cambio", () =>
+      llamar<Cambio>("/api/v1/factores/cambio-de-dispositivo", opciones).then(
+        (r) => setCambio(r.datos),
+      ),
+    );
+    seguir("passkeys", () =>
+      llamar<Passkey[]>("/api/v1/auth/passkeys", opciones).then((r) =>
+        setPasskeys(Array.isArray(r.datos) ? r.datos : []),
+      ),
+    );
     return () => control.abort();
-  }, [vuelta]);
+  }, [vuelta, seguir]);
 
-  if (!nivel && !plan && !cambio && !passkeys) return null;
+  const claves = ["nivel", "plan", "sensibles", "cambio", "passkeys"] as const;
+  // Sin nada que enseñar NI nada que haya fallado, la sección sobra. Con un
+  // fallo no: si todo cae, callarse dejaría al usuario sin saber que tiene
+  // un segundo factor que revisar.
+  const algunFallo = claves.some((k) => estado(k).error);
+  if (!nivel && !plan && !cambio && !passkeys && !algunFallo) return null;
 
   return (
     <section className="flex flex-col gap-2">
@@ -753,6 +797,7 @@ function MiSegundoFactor() {
           {plan.porque}
         </p>
       ) : null}
+      <FalloCompacto {...estado("plan")} que={t("seguridad.mio.quePlan")} />
 
       {/* **Si alguno de tus factores valdría para entrar sin contraseña**
           (CRM-00.05.01.23). Es la pregunta que se hace quien ya tiene passkey
@@ -779,6 +824,13 @@ function MiSegundoFactor() {
           ))}
         </ul>
       ) : null}
+      {(nivel?.factores ?? []).map((f) => (
+        <FalloCompacto
+          key={f.factor}
+          {...estado(`valeSolo:${f.factor}`)}
+          que={t("seguridad.mio.queValeSolo", { factor: f.factor })}
+        />
+      ))}
 
       {/* Los pasos que faltan, con el porqué de cada uno: «inscribe un
           respaldo» sin decir que perder el móvil obliga a un desbloqueo
@@ -805,6 +857,10 @@ function MiSegundoFactor() {
           ? ` · ${t("seguridad.mio.passkeys", { cuantas: passkeys.length })}`
           : ""}
       </p>
+      <FalloCompacto
+        {...estado("nivel")}
+        que={t("seguridad.mio.queNivel")}
+      />
 
       {/* Qué va a pedir verificarse otra vez. Saberlo antes evita la sorpresa
           en mitad de una operación que no se puede dejar a medias. */}
@@ -814,10 +870,18 @@ function MiSegundoFactor() {
           {sensibles.map((o) => o.descripcion).join(" · ")}
         </p>
       ) : null}
+      <FalloCompacto
+        {...estado("sensibles")}
+        que={t("seguridad.mio.queSensibles")}
+      />
 
       {cambio ? (
         <p className="text-rotulo text-ink-faint">{cambio.porque}</p>
       ) : null}
+      <FalloCompacto
+        {...estado("cambio")}
+        que={t("seguridad.mio.queCambio")}
+      />
 
       {/* Dar de alta y quitar las propias (CRM-00.05.01.23), junto al
           recuento: es donde se mira cuántas hay. */}
@@ -828,6 +892,10 @@ function MiSegundoFactor() {
           alCambiar={recargar}
         />
       ) : null}
+      <FalloCompacto
+        {...estado("passkeys")}
+        que={t("seguridad.passkeys.titulo")}
+      />
     </section>
   );
 }
@@ -1172,18 +1240,28 @@ function Segregacion({
 function ExcepcionesDeCampo() {
   const { t } = useTranslation();
   const [datos, setDatos] = useState<RespuestaCampos | null>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
-    void llamar<RespuestaCampos>("/api/v1/politicas-acceso/campos", {
-      signal: control.signal,
-    })
-      .then((r) => setDatos(r.datos))
-      .catch(() => undefined);
+    seguir("campos", () =>
+      llamar<RespuestaCampos>("/api/v1/politicas-acceso/campos", {
+        signal: control.signal,
+      }).then((r) => setDatos(r.datos)),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
-  if (!datos) return null;
+  // Sin la lista, la sección se calla sólo si no ha fallado: callarse ante un
+  // fallo se leería como «no hay excepciones», que es justo lo que hay que
+  // poder comprobar.
+  if (!datos)
+    return (
+      <FalloCompacto
+        {...estado("campos")}
+        que={t("seguridad.campos.titulo")}
+      />
+    );
 
   return (
     <section className="flex flex-col gap-2">
@@ -1262,12 +1340,16 @@ function Explicador() {
   const [accion, setAccion] = useState("read");
   const [salida, setSalida] = useState<unknown>(null);
   const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
+  // La simulación falla aparte: sin ella sigue valiendo la respuesta del rol,
+  // pero tiene que decirse que falta media respuesta.
+  const [falloSimulacion, setFalloSimulacion] = useState<unknown>(null);
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
 
   async function preguntar() {
     setPidiendo(true);
     setFallo(null);
+    setFalloSimulacion(null);
     try {
       // Las dos preguntas con los mismos tres datos, y por eso no hay un
       // segundo formulario: «¿por qué puede?» la contesta el explicador de
@@ -1282,7 +1364,10 @@ function Explicador() {
         llamar<Simulacion>("/api/v1/politicas-acceso/simular", {
           metodo: "POST",
           cuerpo: { usuario_id: usuario, objeto, accion, registro: {} },
-        }).catch(() => null),
+        }).catch((e: unknown) => {
+          setFalloSimulacion(e);
+          return null;
+        }),
       ]);
       setSalida(r.datos);
       setSimulacion(s ? s.datos : null);
@@ -1353,6 +1438,11 @@ function Explicador() {
             contexto —hora, día, unidad— se enseña porque una política que
             depende de él decide distinto a las nueve de la noche, y eso no se
             puede reproducir sin saber con qué contexto se evaluó. */}
+        <FalloCompacto
+          error={falloSimulacion}
+          que={t("seguridad.simulador.titulo")}
+          reintentar={() => void preguntar()}
+        />
         {simulacion ? (
           <div
             className="rounded-lg border border-ink-dim/40 p-3"

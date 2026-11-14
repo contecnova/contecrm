@@ -16,13 +16,18 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDelDirectorio,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
-import { listar } from "@/lib/listados";
 import { usePuedeOperar } from "@/lib/permisos";
+import { useDirectorio } from "@/lib/personas";
 import { cn } from "@/lib/utiles";
 
 interface Campana {
@@ -51,12 +56,6 @@ interface Revision {
   vencida: boolean;
 }
 
-interface Usuario {
-  id: string;
-  nombre: string;
-  email: string;
-}
-
 const TONO: Record<string, string> = {
   confirmado: "chip-dato--si",
   retirado: "chip-dato--mal",
@@ -68,7 +67,10 @@ export function RevisionAccesos() {
   const puede = usePuedeOperar();
   const [campanas, setCampanas] = useState<Campana[] | null>(null);
   const [ultima, setUltima] = useState<Campana | null>(null);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  // Los revisores salen del directorio de la sesión, que sigue el cursor: se
+  // pedían los doscientos primeros y el resto no se podía elegir sin aviso.
+  const directorio = useDirectorio();
+  const usuarios = directorio.personas ?? [];
   const [abierta, setAbierta] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
   const [aviso, setAviso] = useState("");
@@ -88,11 +90,6 @@ export function RevisionAccesos() {
       .catch(() => setUltima(null));
   }, []);
   useEffect(cargar, [cargar]);
-  useEffect(() => {
-    void listar<Usuario>("/api/v1/usuarios?limite=200")
-      .then(setUsuarios)
-      .catch(() => setUsuarios([]));
-  }, []);
 
   const lanzarPermitido = puede("POST", "/api/v1/recertificacion/campanas");
 
@@ -210,6 +207,7 @@ export function RevisionAccesos() {
                   </option>
                 ))}
               </select>
+              <AvisoDelDirectorio directorio={directorio} />
             </label>
           </div>
           <button

@@ -34,9 +34,9 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
-import { Error as Fallo } from "@/componentes/Estados";
+import { AvisoDeRecorte, Error as Fallo } from "@/componentes/Estados";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { listar, listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { ALTAS } from "@/lib/altas";
 import { puede, type Sesion } from "@/lib/sesion";
 import { localizacion } from "@/lib/formato";
@@ -109,6 +109,10 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
   const [cierran, setCierran] = useState<Oportunidad[] | null>(null);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [embudo, setEmbudo] = useState<Oportunidad[] | null>(null);
+  // Si el servidor dijo que había más oportunidades que las de la página: el
+  // embudo se dibuja sumando las que llegan, y sin decirlo se leía como el
+  // importe total de quien tenga más de las que caben.
+  const [embudoRecortado, setEmbudoRecortado] = useState(false);
 
   const [porDecidir, setPorDecidir] = useState<PorDecidir[] | null>(null);
   const [decidiendo, setDecidiendo] = useState("");
@@ -154,11 +158,14 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
     )
       .then(setCierran)
       .catch(salvoCancelacion(() => setCierran([])));
-    listar<Oportunidad>(
-      "/api/v1/opportunities?mias=true&estado=abierta&limite=200",
+    listarPagina<Oportunidad>(
+      `/api/v1/opportunities?mias=true&estado=abierta&limite=${MAXIMO_POR_PAGINA}`,
       { signal },
     )
-      .then(setEmbudo)
+      .then((pagina) => {
+        setEmbudo(pagina.filas);
+        setEmbudoRecortado(pagina.siguiente !== "");
+      })
       .catch(salvoCancelacion(() => setEmbudo([])));
     listar<{ etapas?: Etapa[] }>("/api/v1/pipelines", { signal })
       .then((lista) => {
@@ -459,6 +466,9 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
                       }}
                     />
                   </Suspense>
+                ) : null}
+                {porEtapa.length > 0 && embudoRecortado ? (
+                  <AvisoDeRecorte cuantas={embudo?.length ?? 0} />
                 ) : null}
               </>
             ) : null}

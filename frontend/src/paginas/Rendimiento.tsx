@@ -25,8 +25,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo } from "@/componentes/Estados";
+import { Cargando, Error as Fallo, FalloCompacto } from "@/componentes/Estados";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { cargarSesion } from "@/lib/sesion";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
@@ -52,6 +53,7 @@ export function Rendimiento() {
   const [cuotas, setCuotas] = useState<Uso[] | null>(null);
   const [tenant, setTenant] = useState<string>("");
   const [fallo, setFallo] = useState<unknown>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
@@ -59,19 +61,21 @@ export function Rendimiento() {
       .then((r) => setPresion(r.datos))
       .catch(salvoCancelacion(setFallo));
     // Las cuotas se piden aparte y su fallo no tumba la página: saber qué se
-    // está aplazando es lo urgente cuando algo va lento.
-    cargarSesion(control.signal)
-      .then((s) => {
-        if (!s?.tenant_id) return null;
-        setTenant(s.tenant_id);
-        return llamar<Uso[]>(`/api/v1/tenants/${s.tenant_id}/consumo`, {
-          signal: control.signal,
-        });
-      })
-      .then((r) => (r ? setCuotas(r.datos) : undefined))
-      .catch(() => undefined);
+    // está aplazando es lo urgente cuando algo va lento. Pero se dice: sin el
+    // panel de límites, quien mira cree que no hay ninguno cerca.
+    seguir("cuotas", () =>
+      cargarSesion(control.signal)
+        .then((s) => {
+          if (!s?.tenant_id) return null;
+          setTenant(s.tenant_id);
+          return llamar<Uso[]>(`/api/v1/tenants/${s.tenant_id}/consumo`, {
+            signal: control.signal,
+          });
+        })
+        .then((r) => (r ? setCuotas(r.datos) : undefined)),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   if (fallo) return <Fallo error={fallo} />;
   if (!presion) return <Cargando />;
@@ -156,6 +160,7 @@ export function Rendimiento() {
           </Rejilla>
         </section>
       ) : null}
+      <FalloCompacto {...estado("cuotas")} que={t("rendimiento.limites")} />
     </>
   );
 }

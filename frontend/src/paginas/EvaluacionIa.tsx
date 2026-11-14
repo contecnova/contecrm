@@ -11,11 +11,17 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { cifra, fechaHora } from "@/lib/formato";
 import { cn } from "@/lib/utiles";
 
@@ -109,15 +115,22 @@ export function EvaluacionIa() {
   const [hechos, setHechos] = useState<number | null>(null);
   const [lanzando, setLanzando] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
+  // El banco de casos se pide aparte del panel. Si no llega se dice: vaciarlo
+  // en silencio lo pintaba como «el banco está vacío» e invitaba a llenarlo
+  // otra vez.
+  const { seguir, estado } = useCargasSecundarias();
 
   const cargar = useCallback(() => {
     llamar<Panel>("/api/v1/ia/evaluacion")
       .then((r) => setPanel(r.datos))
       .catch(setFallo);
-    llamar<{ casos: Caso[] }>("/api/v1/ia/evaluacion/casos")
-      .then((r) => setCasos(r.datos.casos))
-      .catch(() => setCasos([]));
-  }, []);
+    seguir("banco", () =>
+      llamar<{ casos: Caso[] }>("/api/v1/ia/evaluacion/casos").then((r) =>
+        setCasos(r.datos.casos),
+      ),
+    );
+  }, [seguir]);
+  const cargaDelBanco = estado("banco");
   useEffect(cargar, [cargar]);
 
   // Mientras hay una en curso se pregunta cómo va; al terminar, se recarga.
@@ -132,6 +145,9 @@ export function EvaluacionIa() {
           setHechos(r.datos.hechos);
           if (r.datos.estado !== "en_curso") cargar();
         })
+        // Es un sondeo: si una vuelta falla, la siguiente vuelve a preguntar
+        // dentro de cinco segundos y el avance sigue a la vista. Avisar de
+        // cada vuelta perdida sería ruido sobre algo que se arregla solo.
         .catch(() => undefined);
     }, 5000);
     return () => window.clearInterval(reloj);
@@ -366,7 +382,9 @@ export function EvaluacionIa() {
         <p className="mb-2 text-rotulo text-ink-faint">
           {t("evaluacionIa.bancoAyuda")}
         </p>
-        {casos.length === 0 ? (
+        {cargaDelBanco.error ? (
+          <FalloCompacto {...cargaDelBanco} />
+        ) : casos.length === 0 ? (
           <Vacio titulo={t("evaluacionIa.bancoVacio")} compacto />
         ) : (
           <Rejilla

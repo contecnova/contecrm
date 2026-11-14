@@ -9,12 +9,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo } from "@/componentes/Estados";
+import { AvisoDeRecorte, Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { cn } from "@/lib/utiles";
 
 interface Criterio {
@@ -74,6 +74,11 @@ export function Metodologias() {
   const { t } = useTranslation();
   const [metodologias, setMetodologias] = useState<Metodologia[] | null>(null);
   const [embudos, setEmbudos] = useState<Embudo[]>([]);
+  // Si el servidor dijo que había más de lo que cabe en una página. Lo que
+  // no cabía no salía en la lista ni en el desplegable, y nada lo decía: se
+  // leía como que no existía.
+  const [hayMasMetodologias, setHayMasMetodologias] = useState(false);
+  const [hayMasEmbudos, setHayMasEmbudos] = useState(false);
   const [elegida, setElegida] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
   const [nueva, setNueva] = useState({
@@ -83,17 +88,21 @@ export function Metodologias() {
   });
 
   const cargar = useCallback(() => {
-    listar<Metodologia>("/api/v1/metodologias?limite=100")
-      .then((filas) => {
+    listarPagina<Metodologia>("/api/v1/metodologias?limite=100")
+      .then(({ filas, siguiente }) => {
         setMetodologias(filas);
+        setHayMasMetodologias(siguiente !== "");
         setElegida((e) => e || filas[0]?.id || "");
       })
       .catch((e) => setFallo(e));
   }, []);
   useEffect(cargar, [cargar]);
   useEffect(() => {
-    void listar<Embudo>("/api/v1/pipelines?limite=50")
-      .then(setEmbudos)
+    void listarPagina<Embudo>("/api/v1/pipelines?limite=50")
+      .then(({ filas, siguiente }) => {
+        setEmbudos(filas);
+        setHayMasEmbudos(siguiente !== "");
+      })
       .catch(() => setEmbudos([]));
   }, []);
 
@@ -149,6 +158,9 @@ export function Metodologias() {
               </li>
             ))}
           </ul>
+          {hayMasMetodologias ? (
+            <AvisoDeRecorte cuantas={metodologias.length} />
+          ) : null}
           <div className="mt-2 space-y-2 border-t border-ink-dim/30 p-2">
             <input
               className="input-base"
@@ -182,6 +194,7 @@ export function Metodologias() {
                 </option>
               ))}
             </select>
+            {hayMasEmbudos ? <AvisoDeRecorte cuantas={embudos.length} /> : null}
             <button
               type="button"
               className="btn-secondary w-full"
@@ -420,13 +433,19 @@ function Playbooks({ embudos }: { embudos: Embudo[] }) {
   const { t } = useTranslation();
   const [embudo, setEmbudo] = useState("");
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
+  // Con más playbooks de los que caben en una página, una etapa cuyo
+  // playbook no llegó se enseñaba vacía, y escribir en ella crearía otro.
+  const [hayMasPlaybooks, setHayMasPlaybooks] = useState(false);
   const [borradores, setBorradores] = useState<Record<string, string>>({});
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
-    void listar<Playbook>("/api/v1/playbooks?limite=200")
-      .then(setPlaybooks)
+    void listarPagina<Playbook>(`/api/v1/playbooks?limite=${MAXIMO_POR_PAGINA}`)
+      .then(({ filas, siguiente }) => {
+        setPlaybooks(filas);
+        setHayMasPlaybooks(siguiente !== "");
+      })
       .catch(() => setPlaybooks([]));
   }, []);
   useEffect(cargar, [cargar]);
@@ -474,6 +493,9 @@ function Playbooks({ embudos }: { embudos: Embudo[] }) {
     <section className="card p-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="section-label">{t("metodologias.playbooks")}</h2>
+        {hayMasPlaybooks ? (
+          <AvisoDeRecorte cuantas={playbooks.length} />
+        ) : null}
         <select
           className="input-base w-auto"
           value={elegido?.clave ?? ""}

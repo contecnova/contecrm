@@ -57,12 +57,18 @@ import {
   FormularioDeEdicion,
   useEdicion,
 } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { escalar } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -202,6 +208,11 @@ export function ObjetoDelModelo() {
   const [limites, setLimites] = useState<Limites | null>(null);
   const [rastro, setRastro] = useState<Trazabilidad | null>(null);
   const [tipos, setTipos] = useState<TipoRegistro[] | null>(null);
+  // Límites, trazabilidad y tipos se piden aparte: su fallo no tapa los
+  // campos, pero se dice en su panel en vez de dejarlo vacío como si no
+  // hubiera nada.
+  const secundarias = useCargasSecundarias();
+  const { seguir } = secundarias;
   const [fallo, setFallo] = useState<unknown>(null);
   const navegar = useNavigate();
   const [editando, setEditando] = useState(false);
@@ -237,31 +248,26 @@ export function ObjetoDelModelo() {
         })
           .then((r) => setDescribe(r.datos))
           .catch(salvoCancelacion(setFallo));
-        void llamar<Limites>(`/api/v1/metadata/objetos/${nombre}/limites`, {
-          signal: control.signal,
-        })
-          .then((r) => setLimites(r.datos))
-          .catch(() => undefined);
-        void llamar<Trazabilidad>(
-          `/api/v1/metadata/objetos/${nombre}/trazabilidad`,
-          {
+        seguir("limites", () =>
+          llamar<Limites>(`/api/v1/metadata/objetos/${nombre}/limites`, {
             signal: control.signal,
-          },
-        )
-          .then((r) => setRastro(r.datos))
-          .catch(() => undefined);
-        void llamar<TipoRegistro[]>(
-          `/api/v1/metadata/objetos/${nombre}/tipos`,
-          {
+          }).then((r) => setLimites(r.datos)),
+        );
+        seguir("rastro", () =>
+          llamar<Trazabilidad>(
+            `/api/v1/metadata/objetos/${nombre}/trazabilidad`,
+            { signal: control.signal },
+          ).then((r) => setRastro(r.datos)),
+        );
+        seguir("tipos", () =>
+          llamar<TipoRegistro[]>(`/api/v1/metadata/objetos/${nombre}/tipos`, {
             signal: control.signal,
-          },
-        )
-          .then((r) => setTipos(r.datos))
-          .catch(() => undefined);
+          }).then((r) => setTipos(r.datos)),
+        );
       })
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
-  }, [id]);
+  }, [id, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -394,6 +400,10 @@ export function ObjetoDelModelo() {
                 </p>
               </section>
             ) : null}
+            <FalloCompacto
+              {...secundarias.estado("limites")}
+              que={t("modeloDatos.limites")}
+            />
 
             {/* ── Qué pasaría al publicar ─────────────────────────────────────
             Va ANTES de los campos a propósito: se mira justo después de tocar
@@ -553,6 +563,10 @@ export function ObjetoDelModelo() {
                 {tipos && tipos.length === 0 ? (
                   <Vacio titulo={t("modeloDatos.sinTipos")} compacto />
                 ) : null}
+                <FalloCompacto
+                  {...secundarias.estado("tipos")}
+                  que={t("modeloDatos.tipos")}
+                />
                 <ul className="divide-y divide-ink-dim/30">
                   {(tipos ?? []).map((tipo) => (
                     <li
@@ -604,6 +618,12 @@ export function ObjetoDelModelo() {
             ) : null}
 
             {/* ── Qué se publicó y cuándo ─────────────────────────────────────── */}
+            {/* La trazabilidad da también las escrituras de cada campo de
+                arriba: si no llega, se dice aquí, en su panel. */}
+            <FalloCompacto
+              {...secundarias.estado("rastro")}
+              que={t("modeloDatos.publicaciones")}
+            />
             {rastro && rastro.publicaciones.length > 0 ? (
               <section className="card mt-4 p-4">
                 <h2 className="section-label mb-1">
@@ -752,19 +772,22 @@ function QuePasaSiPublico({ objeto }: { objeto: string }) {
 function ElDisenoQueTeToca({ objeto }: { objeto: string }) {
   const { t } = useTranslation();
   const [diseno, setDiseno] = useState<Diseno | null>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
-    llamar<Diseno>(
-      `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/diseno`,
-      { signal: control.signal },
-    )
-      .then((r) => setDiseno(r.datos))
-      .catch(() => undefined);
+    seguir("diseno", () =>
+      llamar<Diseno>(
+        `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/diseno`,
+        { signal: control.signal },
+      ).then((r) => setDiseno(r.datos)),
+    );
     return () => control.abort();
-  }, [objeto]);
+  }, [objeto, seguir]);
 
-  if (!diseno) return null;
+  // Sin diseño que enseñar, el sitio del panel dice si es porque no llegó.
+  if (!diseno)
+    return <FalloCompacto {...estado("diseno")} que={t("modeloDatos.diseno")} />;
 
   return (
     <section className="card p-4">
@@ -809,27 +832,29 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
   const { t } = useTranslation();
   const [sem, setSem] = useState<Semantica | null>(null);
   const [informes, setInformes] = useState<ModeloSemantico | null>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
-    llamar<Semantica>(
-      `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/semantica`,
-      { signal: control.signal },
-    )
-      .then((r) => setSem(r.datos))
-      .catch(() => undefined);
+    seguir("semantica", () =>
+      llamar<Semantica>(
+        `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/semantica`,
+        { signal: control.signal },
+      ).then((r) => setSem(r.datos)),
+    );
     // Y lo mismo visto desde informes: es OTRO servicio el que decide qué
     // puede explotar, así que preguntárselo a metadata sería contestar por él.
-    llamar<ModeloSemantico>(
-      `/api/v1/analitica/modelo-semantico?objeto=${encodeURIComponent(objeto)}`,
-      { signal: control.signal },
-    )
-      .then((r) => setInformes(r.datos))
-      .catch(() => undefined);
+    seguir("informes", () =>
+      llamar<ModeloSemantico>(
+        `/api/v1/analitica/modelo-semantico?objeto=${encodeURIComponent(objeto)}`,
+        { signal: control.signal },
+      ).then((r) => setInformes(r.datos)),
+    );
     return () => control.abort();
-  }, [objeto]);
+  }, [objeto, seguir]);
 
-  if (!sem) return null;
+  if (!sem)
+    return <FalloCompacto {...estado("semantica")} que={t("modeloDatos.ia")} />;
   const cob = sem.cobertura;
   const deInformes = informes?.objetos?.find((o) => o.nombre === objeto);
 
@@ -897,6 +922,10 @@ function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
           </p>
         </div>
       ) : null}
+      <FalloCompacto
+        {...estado("informes")}
+        que={t("modeloDatos.enInformes")}
+      />
     </section>
   );
 }
@@ -915,20 +944,24 @@ function CamposQueYaPidenColumna({ objeto }: { objeto: string }) {
   const { t } = useTranslation();
   const [datos, setDatos] = useState<Candidatos | null>(null);
 
+  const { seguir, estado } = useCargasSecundarias();
+
   useEffect(() => {
     const control = new AbortController();
-    llamar<Candidatos>(
-      `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/candidatos-columna`,
-      { signal: control.signal },
-    )
-      .then((r) => setDatos(r.datos))
-      // Pide `metadata:write`: quien sólo lee no ve este panel, y eso es
-      // correcto — no es información que le sirva de nada.
-      .catch(() => undefined);
+    // Pide `metadata:write`: quien sólo lee no ve este panel, y eso es
+    // correcto — no es información que le sirva de nada. Ese 403 lo calla
+    // `useCargasSecundarias`; cualquier otro fallo sí se dice.
+    seguir("columna", () =>
+      llamar<Candidatos>(
+        `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/candidatos-columna`,
+        { signal: control.signal },
+      ).then((r) => setDatos(r.datos)),
+    );
     return () => control.abort();
-  }, [objeto]);
+  }, [objeto, seguir]);
 
-  if (!datos) return null;
+  if (!datos)
+    return <FalloCompacto {...estado("columna")} que={t("modeloDatos.columna")} />;
 
   return (
     <section className="card p-4">

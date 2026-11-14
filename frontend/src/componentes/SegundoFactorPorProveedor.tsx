@@ -16,11 +16,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDelDirectorio,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { useDirectorio } from "@/lib/personas";
 
 export interface PerfilMfa {
   id?: string;
@@ -94,7 +98,11 @@ export function SegundoFactorPorProveedor({
   const { t } = useTranslation();
   const [perfiles, setPerfiles] = useState<PerfilMfa[] | null>(null);
   const [plantillas, setPlantillas] = useState<Record<string, PerfilMfa>>({});
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  // Las personas a las que se vincula un perfil o con las que se prueba,
+  // del directorio de la sesión: se pedían las doscientas primeras y las
+  // demás no se podían elegir sin que nada lo dijera.
+  const directorio = useDirectorio();
+  const usuarios = directorio.personas ?? [];
   const [editando, setEditando] = useState<PerfilMfa | null>(null);
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
@@ -112,9 +120,6 @@ export function SegundoFactorPorProveedor({
     llamar<Record<string, PerfilMfa>>("/api/v1/mfa-proveedor/plantillas")
       .then((r) => setPlantillas(r.datos ?? {}))
       .catch(() => setPlantillas({}));
-    void listar<Usuario>("/api/v1/usuarios?limite=200")
-      .then(setUsuarios)
-      .catch(() => setUsuarios([]));
   }, []);
 
   async function borrar(p: PerfilMfa) {
@@ -260,6 +265,7 @@ export function SegundoFactorPorProveedor({
         </div>
       ) : null}
 
+      {editando ? <AvisoDelDirectorio directorio={directorio} /> : null}
       {editando ? (
         <Editor
           key={editando.id ?? `nuevo-${editando.plantilla}`}

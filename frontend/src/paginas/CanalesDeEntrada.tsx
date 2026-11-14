@@ -26,13 +26,16 @@
  */
 
 import { cn } from "@/lib/utiles";
-import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { salvoCancelacion } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { useListaPaginada } from "@/lib/paginado";
 
 interface Canal {
   id: string;
@@ -63,23 +66,12 @@ const MOTIVOS = [
 
 export function CanalesDeEntrada() {
   const { t } = useTranslation();
-  const [canales, setCanales] = useState<Canal[] | null>(null);
-  const [fallo, setFallo] = useState<unknown>(null);
+  // Por páginas y siguiendo el cursor: se pedían cien y se pintaban como
+  // todos, así que el canal ciento uno no salía y nada lo decía.
+  const lista = useListaPaginada<Canal>("/api/v1/canales-servicio?limite=100");
+  const canales = lista.filas;
 
-  const cargar = useCallback(() => {
-    const control = new AbortController();
-    setFallo(null);
-    listar<Canal>("/api/v1/canales-servicio?limite=100", {
-      signal: control.signal,
-    })
-      .then(setCanales)
-      .catch(salvoCancelacion(setFallo));
-    return () => control.abort();
-  }, []);
-
-  useEffect(cargar, [cargar]);
-
-  if (fallo) return <Fallo error={fallo} reintentar={cargar} />;
+  if (lista.fallo) return <Fallo error={lista.fallo} reintentar={lista.recargar} />;
 
   return (
     <>
@@ -227,6 +219,18 @@ export function CanalesDeEntrada() {
           })}
         </ul>
       )}
+      <FalloCompacto
+        error={lista.falloAlCargarMas}
+        que={t("canales.titulo")}
+        reintentar={lista.cargarMas}
+      />
+      {canales && lista.hayMas ? (
+        <AvisoDeRecorte
+          cuantas={canales.length}
+          alCargarMas={lista.cargarMas}
+          cargando={lista.cargandoMas}
+        />
+      ) : null}
     </>
   );
 }

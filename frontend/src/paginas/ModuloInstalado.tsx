@@ -46,9 +46,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 
 interface Modulo {
   clave: string;
@@ -116,6 +122,11 @@ export function ModuloInstalado() {
   const [telemetria, setTelemetria] = useState<Telemetria | null>(null);
   const [superficie, setSuperficie] = useState<Superficie | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  // Integridad, uso y pantallas van aparte del módulo. Tragado su fallo, los
+  // dos primeros se quedaban en «Cargando…» para siempre y el tercero decía
+  // «no aporta pantallas» de un módulo que sí las aporta.
+  const secundarias = useCargasSecundarias();
+  const { seguir } = secundarias;
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -125,23 +136,25 @@ export function ModuloInstalado() {
     llamar<Modulo>(`/api/v1/metadata/modulos/${clave}`, opciones)
       .then((r) => setModulo(r.datos))
       .catch(salvoCancelacion(setFallo));
-    void llamar<Integridad>(
-      `/api/v1/metadata/modulos/${clave}/integridad`,
-      opciones,
-    )
-      .then((r) => setIntegridad(r.datos))
-      .catch(() => undefined);
-    void llamar<Telemetria>(
-      `/api/v1/metadata/modulos/${clave}/telemetria`,
-      opciones,
-    )
-      .then((r) => setTelemetria(r.datos))
-      .catch(() => undefined);
-    void llamar<Superficie>("/api/v1/metadata/modulos/superficie", opciones)
-      .then((r) => setSuperficie(r.datos))
-      .catch(() => undefined);
+    seguir("integridad", () =>
+      llamar<Integridad>(
+        `/api/v1/metadata/modulos/${clave}/integridad`,
+        opciones,
+      ).then((r) => setIntegridad(r.datos)),
+    );
+    seguir("telemetria", () =>
+      llamar<Telemetria>(
+        `/api/v1/metadata/modulos/${clave}/telemetria`,
+        opciones,
+      ).then((r) => setTelemetria(r.datos)),
+    );
+    seguir("superficie", () =>
+      llamar<Superficie>("/api/v1/metadata/modulos/superficie", opciones).then(
+        (r) => setSuperficie(r.datos),
+      ),
+    );
     return () => control.abort();
-  }, [clave]);
+  }, [clave, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -248,6 +261,8 @@ export function ModuloInstalado() {
               </p>
             ) : null}
           </div>
+        ) : secundarias.estado("integridad").error ? (
+          <FalloCompacto {...secundarias.estado("integridad")} />
         ) : (
           <Cargando />
         )}
@@ -287,6 +302,8 @@ export function ModuloInstalado() {
               </p>
             ) : null}
           </div>
+        ) : secundarias.estado("telemetria").error ? (
+          <FalloCompacto {...secundarias.estado("telemetria")} />
         ) : (
           <Cargando />
         )}
@@ -296,7 +313,9 @@ export function ModuloInstalado() {
              más que lo que el módulo declara. */}
       <section className="card p-4">
         <h2 className="section-label mb-1">{t("modulo.pantallas")}</h2>
-        {pantallas.length === 0 ? (
+        {secundarias.estado("superficie").error ? (
+          <FalloCompacto {...secundarias.estado("superficie")} />
+        ) : pantallas.length === 0 ? (
           <Vacio
             titulo={t("modulo.sinPantallas")}
             detalle={t("modulo.sinPantallasPorque")}

@@ -27,6 +27,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import {
   Cargando,
   Error as Fallo,
+  FalloCompacto,
   Retenidos,
   Vacio,
 } from "@/componentes/Estados";
@@ -54,6 +55,7 @@ import {
   type VistaDeLista,
 } from "@/lib/vistasDeLista";
 import { ErrorApi, llamar } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { NO_SABE_BUSCAR, PAUSA_AL_TECLEAR_MS } from "@/lib/buscar";
 import {
   escalar,
@@ -2000,21 +2002,27 @@ export function Medidas({ rutas }: { rutas: string[] }) {
     {},
   );
 
+  const { seguir, estado: estadoDe } = useCargasSecundarias();
+
   useEffect(() => {
     const control = new AbortController();
     setDatos({});
     for (const ruta of rutas) {
       // Cada una con su fallo: que no se pueda leer una medida no puede dejar
-      // sin ver el listado, que es a lo que se venía.
-      void llamar<Record<string, unknown>>(ruta, { signal: control.signal })
-        .then((r) => setDatos((previos) => ({ ...previos, [ruta]: r.datos })))
-        .catch(() => undefined);
+      // sin ver el listado, que es a lo que se venía. Pero se dice: una medida
+      // que no sale se lee como «no hay nada que medir».
+      seguir(ruta, () =>
+        llamar<Record<string, unknown>>(ruta, { signal: control.signal }).then(
+          (r) => setDatos((previos) => ({ ...previos, [ruta]: r.datos })),
+        ),
+      );
     }
     return () => control.abort();
-  }, [rutas]);
+  }, [rutas, seguir]);
 
   const pintadas = rutas.filter((r) => datos[r]);
-  if (pintadas.length === 0) return null;
+  const fallidas = rutas.filter((r) => estadoDe(r).error);
+  if (pintadas.length === 0 && fallidas.length === 0) return null;
 
   // Un resumen que es una LISTA —los casos en riesgo de incumplir, lo que me
   // toca decidir— se pinta como lista. Hasta el 09-11-2026 se pasaba a la
@@ -2026,6 +2034,9 @@ export function Medidas({ rutas }: { rutas: string[] }) {
 
   return (
     <>
+      {fallidas.map((ruta) => (
+        <FalloCompacto key={ruta} {...estadoDe(ruta)} que={tituloDeMedida(ruta)} />
+      ))}
       {cifras.length ? (
         <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {cifras.map((ruta) => (
@@ -2034,9 +2045,7 @@ export function Medidas({ rutas }: { rutas: string[] }) {
         </div>
       ) : null}
       {listas.map((ruta) => {
-        const titulo = humanizar(
-          (ruta.split("?")[0]?.split("/").pop() ?? "").replace(/-/g, "_"),
-        );
+        const titulo = tituloDeMedida(ruta);
         return (
           <section key={ruta} className="mb-3">
             {/* Rótulo a la vista: el de la tabla es sólo para quien no ve la
@@ -2047,6 +2056,13 @@ export function Medidas({ rutas }: { rutas: string[] }) {
         );
       })}
     </>
+  );
+}
+
+/** El nombre de una medida, sacado del último tramo de su ruta. */
+function tituloDeMedida(ruta: string): string {
+  return humanizar(
+    (ruta.split("?")[0]?.split("/").pop() ?? "").replace(/-/g, "_"),
   );
 }
 

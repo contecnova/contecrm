@@ -41,11 +41,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDelDirectorio,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
+import { listar, MAXIMO_POR_PAGINA } from "@/lib/listados";
+import { useDirectorio } from "@/lib/personas";
 import { cn } from "@/lib/utiles";
 import type { Sesion } from "@/lib/sesion";
 import { localizacion } from "@/lib/formato";
@@ -116,6 +124,35 @@ function titulo(c: Conversacion): string {
   return c.nombre || "Conversación";
 }
 
+/**
+ * Todos los mensajes de una conversación, en orden.
+ *
+ * El servidor los da del más antiguo al más nuevo, con tope y **sin cursor**:
+ * pedir una vez doscientos dejaba fuera justo los últimos, que son los que se
+ * vienen a leer. Una conversación larga enseñaba un hilo que acababa días
+ * atrás y lo que se escribía no aparecía. Se sigue con `desde` (lo posterior
+ * al último recibido), que es lo que la ruta ofrece para ponerse al día,
+ * hasta que llega una tanda incompleta.
+ */
+async function todosLosMensajes(
+  conversacion: string,
+  signal?: AbortSignal,
+): Promise<Mensaje[]> {
+  const base = `/api/v1/chat/conversaciones/${conversacion}/mensajes?limite=${MAXIMO_POR_PAGINA}`;
+  const todos: Mensaje[] = [];
+  for (;;) {
+    const ultimo = todos[todos.length - 1];
+    const tanda = await listar<Mensaje>(
+      ultimo
+        ? `${base}&desde=${encodeURIComponent(ultimo.created_at)}`
+        : base,
+      { signal },
+    );
+    todos.push(...tanda);
+    if (tanda.length < MAXIMO_POR_PAGINA) return todos;
+  }
+}
+
 export function Chat({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const [parametros, setParametros] = useSearchParams();
@@ -123,7 +160,16 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     null,
   );
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
-  const [usuarios, setUsuarios] = useState<Record<string, Usuario>>({});
+  // Las personas, del directorio de la sesión: se pedían aquí las doscientas
+  // primeras y, en una organización mayor, a la doscientas una no se le podía
+  // escribir ni salía su nombre. El directorio sigue el cursor y dice si se
+  // ha quedado corto o ha fallado.
+  const directorio = useDirectorio();
+  const usuarios = useMemo<Record<string, Usuario>>(
+    () =>
+      Object.fromEntries((directorio.personas ?? []).map((u) => [u.id, u])),
+    [directorio.personas],
+  );
   /** Lo que se busca, y lo encontrado. Sólo en mis conversaciones. */
   const [termino, setTermino] = useState("");
   const [hallazgos, setHallazgos] = useState<Mensaje[] | null>(null);
@@ -137,6 +183,10 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   /** Quién está en la conversación abierta. */
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
+  // Miembros y presencia se piden aparte de las conversaciones: su fallo no
+  // tumba el chat, pero se dice, porque sin ellos los nombres salen como
+  // «Alguien», que se lee como un dato y no como una consulta que no llegó.
+  const { seguir, estado: estadoDe } = useCargasSecundarias();
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [hilo, setHilo] = useState<string | null>(null);
@@ -154,9 +204,6 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   useEffect(() => {
     const control = new AbortController();
     void cargarConversaciones(control.signal).catch(salvoCancelacion(setFallo));
-    listar<Usuario>("/api/v1/usuarios?limite=200", { signal: control.signal })
-      .then((us) => setUsuarios(Object.fromEntries(us.map((u) => [u.id, u]))))
-      .catch(salvoCancelacion(() => undefined));
     return () => control.abort();
   }, [cargarConversaciones]);
 
@@ -167,14 +214,12 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
       return;
     }
     const control = new AbortController();
-    listar<Mensaje>(
-      `/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`,
-      {
-        signal: control.signal,
-      },
-    )
+    todosLosMensajes(activa, control.signal)
       .then(setMensajes)
       .catch(salvoCancelacion(setFallo));
+    // Marcar como leída es de mejor esfuerzo: si no llega, lo único que pasa
+    // es que el contador de no leídos sigue alto hasta la próxima vez, y un
+    // aviso por eso taparía la conversación que sí se está leyendo.
     void llamar(`/api/v1/chat/conversaciones/${activa}/leido`, {
       metodo: "POST",
       cuerpo: {},
@@ -230,13 +275,13 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
       return;
     }
     const control = new AbortController();
-    llamar<{ miembros: Miembro[] }>(`/api/v1/chat/conversaciones/${activa}`, {
-      signal: control.signal,
-    })
-      .then(({ datos }) => setMiembros(datos.miembros ?? []))
-      .catch(() => undefined);
+    seguir("miembros", () =>
+      llamar<{ miembros: Miembro[] }>(`/api/v1/chat/conversaciones/${activa}`, {
+        signal: control.signal,
+      }).then(({ datos }) => setMiembros(datos.miembros ?? [])),
+    );
     return () => control.abort();
-  }, [activa]);
+  }, [activa, seguir]);
 
   const { raiz, respuestas } = useMemo(() => {
     const porPadre = new Map<string, Mensaje[]>();
@@ -262,11 +307,13 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
    */
   useEffect(() => {
     const control = new AbortController();
-    llamar<Presencia[]>("/api/v1/chat/presencia", { signal: control.signal })
-      .then(({ datos }) => setPresencia(datos))
-      .catch(() => undefined);
+    seguir("presencia", () =>
+      llamar<Presencia[]>("/api/v1/chat/presencia", {
+        signal: control.signal,
+      }).then(({ datos }) => setPresencia(datos)),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   /** Buscar, sólo en mis conversaciones. Lo acota el servidor, no la pantalla. */
   async function buscar() {
@@ -341,11 +388,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
 
   /** Recarga los mensajes de la conversación abierta. */
   async function recargarMensajes() {
-    setMensajes(
-      await listar<Mensaje>(
-        `/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`,
-      ),
-    );
+    setMensajes(await todosLosMensajes(activa));
   }
 
   /**
@@ -546,6 +589,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               <Icono nombre={abriendo ? "close" : "add"} />
             </button>
           </div>
+          <AvisoDelDirectorio directorio={directorio} />
           {abriendo ? (
             <NuevaConversacion
               usuarios={usuarios}
@@ -629,6 +673,10 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             ) : null}
           </form>
 
+          <FalloCompacto
+            {...estadoDe("presencia")}
+            que={t("chat.quienEsta")}
+          />
           {/* ── Quién está ──────────────────────────────────────────────
               No es un adorno social: contesta «¿espero respuesta o llamo?».
               Por eso va el «visto por última vez» y no sólo un punto verde. */}
@@ -701,6 +749,10 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 {/* QUIÉN LO VA A LEER. Antes de escribir algo delicado en un
                     canal hay que poder saberlo, y el servidor lo devolvía sin
                     que ninguna pantalla lo enseñara. */}
+                <FalloCompacto
+                  {...estadoDe("miembros")}
+                  que={t("chat.quienLaLee")}
+                />
                 {miembros.length > 0 ? (
                   <p className="mt-0.5 flex flex-wrap items-baseline gap-1 text-rotulo text-ink-faint">
                     <span>

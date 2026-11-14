@@ -70,6 +70,8 @@ para que nadie lo dé por probado.
 | UX-4 | Anillo de foco a 1,77:1 | Opaco, ≥ 4,63:1 | `d49cad9` | `contraste.mjs` |
 | UX-25 | `npm run verificar` se rompía en Windows (CRLF) | Normaliza al leer | `f226976` | `--comprobar`: 239 pestañas, exit 0 |
 | UX-26 | `contraste.mjs` no medía texto sobre rellenos | Mide acento, foco y tinta a mano | `d49cad9` | Falla con los valores antiguos |
+| UX-1 | 123 fallos de red tragados sin avisar (93 sin comentario): «no se pudo consultar» se veía como «no hay datos» | `useCargasSecundarias` + `FalloCompacto` con reintento; quedan 36, todos legítimos y comentados | ver abajo | vitest 310/311 (la que falla es una prueba que falla a veces bajo carga; sola pasa) |
+| UX-9 | Listas cortadas a 200 sin avisar (27 `limite=200` a mano) | `useListaPaginada` con «Cargar más», `AvisoDeRecorte`, directorio de personas por cursor; quedan 3 justificados | ver abajo | vitest; rutas sin cursor anotadas como pendientes de backend |
 | COB-1 | No había pantalla para dar de alta o quitar passkeys | `MisPasskeys` en Seguridad | `57be6a3` | vitest 8/8 |
 | COB-12 / 13 | Los enlaces de partner y de alta no llevaban a ninguna pantalla | `/portal-partner` y `?alta=` | `57be6a3` | vitest 9/9 |
 

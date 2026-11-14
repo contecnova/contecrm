@@ -37,12 +37,6 @@ const guardado = {
   respuesta: { campo: "status", validos: ["approved"] },
 };
 
-vi.mock("@/lib/listados", () => ({
-  listar: vi.fn(async () => [
-    { id: "u1", nombre: "Ana", email: "ana@ejemplo.com" },
-  ]),
-}));
-
 vi.mock("@/lib/api", async () => {
   const real = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
   return {
@@ -77,6 +71,15 @@ vi.mock("@/lib/api", async () => {
         if (ruta.endsWith("/perfiles") && metodo === "POST")
           return { datos: guardado };
         if (ruta.endsWith("/personas")) return { datos: { items: [] } };
+        // Las personas salen del directorio de la sesión (`useDirectorio`),
+        // que pide `/usuarios` por páginas.
+        if (ruta.startsWith("/api/v1/usuarios"))
+          return {
+            datos: {
+              items: [{ id: "u1", nombre: "Ana", email: "ana@ejemplo.com" }],
+              siguiente: null,
+            },
+          };
         if (ruta.endsWith("/probar"))
           return {
             datos: {

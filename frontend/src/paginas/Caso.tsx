@@ -33,18 +33,26 @@ import {
   FormularioDeEdicion,
   useEdicion,
 } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
+import type { EstadoDeCarga } from "@/lib/cargaSecundaria";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { ActividadDelRegistro } from "@/componentes/ActividadDelRegistro";
 import { ResponderCaso } from "@/componentes/ResponderCaso";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
-import { listar } from "@/lib/listados";
+import { listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { fecha, fechaHora, rotuloDeOpcion } from "@/lib/formato";
 import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
 import { nombresDeRegistros, type NombresResueltos } from "@/lib/nombres";
@@ -174,6 +182,10 @@ export function Caso() {
   const [porQueAqui, setPorQueAqui] = useState<Asignacion[] | null>(null);
   const [saldo, setSaldo] = useState<Saldo | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  // Por qué está aquí y qué derecho lo cubre se piden aparte del caso: su
+  // fallo no tumba la ficha, pero se dice. Sin decirlo, un derecho que no se
+  // pudo consultar se leía como «este cliente no tiene derecho».
+  const { seguir, estado: cargaDe } = useCargasSecundarias();
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [borrando, setBorrando] = useState(false);
@@ -213,26 +225,26 @@ export function Caso() {
         // `aplicable` ya trae el saldo. Se esperaba un `entitlement_id` que
         // la ruta no devuelve, así que el panel no salía en NINGÚN caso
         // (medido el 10-11-2026 con un derecho recién imputado).
-        void llamar<{ tiene_derecho?: boolean; saldo?: Saldo | null }>(
-          `/api/v1/entitlements/aplicable?cuenta_id=${cuenta}`,
-          { signal: control.signal },
-        )
-          .then((r) => {
+        seguir("derecho", () =>
+          llamar<{ tiene_derecho?: boolean; saldo?: Saldo | null }>(
+            `/api/v1/entitlements/aplicable?cuenta_id=${cuenta}`,
+            { signal: control.signal },
+          ).then((r) => {
             if (r.datos?.tiene_derecho && r.datos.saldo)
               setSaldo(r.datos.saldo);
-          })
-          .catch(() => undefined);
+          }),
+        );
       })
       .catch(salvoCancelacion(setFallo));
 
-    void llamar<Asignacion[]>(`/api/v1/colas/explicar/${id}`, {
-      signal: control.signal,
-    })
-      .then((r) => setPorQueAqui(r.datos))
-      .catch(() => undefined);
+    seguir("porQueAqui", () =>
+      llamar<Asignacion[]>(`/api/v1/colas/explicar/${id}`, {
+        signal: control.signal,
+      }).then((r) => setPorQueAqui(r.datos)),
+    );
 
     return () => control.abort();
-  }, [id]);
+  }, [id, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -427,8 +439,11 @@ export function Caso() {
               <ElReloj sla={caso.sla} />
               <DeQuienCuelga arbol={caso.relaciones} />
               <ComoAcabo cierre={caso.cierre} casoId={id} />
-              <PorQueEstaAqui asignaciones={porQueAqui} />
-              <QueDerechoLoCubre saldo={saldo} />
+              <PorQueEstaAqui
+                asignaciones={porQueAqui}
+                carga={cargaDe("porQueAqui")}
+              />
+              <QueDerechoLoCubre saldo={saldo} carga={cargaDe("derecho")} />
             </div>
 
             <ElHistorial eventos={caso.historial} />
@@ -887,6 +902,9 @@ function DerivarCaso({
   const [colas, setColas] = useState<
     { clave: string; nombre: string; nivel: number }[] | null
   >(null);
+  // Si el servidor ha dicho que hay más colas que las de la primera página:
+  // derivar a la que no sale no se puede, y sin decirlo parece que no existe.
+  const [hayMasColas, setHayMasColas] = useState(false);
   const [cola, setCola] = useState("");
   const [motivo, setMotivo] = useState("");
   const [interno, setInterno] = useState(false);
@@ -894,10 +912,13 @@ function DerivarCaso({
   const [fallo, setFallo] = useState<unknown>(null);
 
   useEffect(() => {
-    void listar<{ clave: string; nombre: string; nivel: number }>(
-      "/api/v1/colas?limite=200",
+    void listarPagina<{ clave: string; nombre: string; nivel: number }>(
+      `/api/v1/colas?limite=${MAXIMO_POR_PAGINA}`,
     )
-      .then((filas) => setColas(filas.filter((c) => c.clave !== equipo)))
+      .then((pagina) => {
+        setColas(pagina.filas.filter((c) => c.clave !== equipo));
+        setHayMasColas(pagina.siguiente !== "");
+      })
       .catch((e) => {
         setColas([]);
         setFallo(e);
@@ -946,6 +967,7 @@ function DerivarCaso({
               </option>
             ))}
           </select>
+          {hayMasColas ? <AvisoDeRecorte cuantas={colas?.length ?? 0} /> : null}
         </label>
         <label className="flex items-center gap-2 self-end text-dato text-ink">
           <input
@@ -1042,11 +1064,21 @@ function ElHistorial({
  */
 function PorQueEstaAqui({
   asignaciones,
+  carga,
 }: {
   asignaciones: Asignacion[] | null;
+  carga: EstadoDeCarga;
 }) {
   const { t } = useTranslation();
-  if (!asignaciones) return null;
+  // Sin dato el panel no se pinta; pero si es porque no se pudo preguntar, se
+  // queda su sitio con el fallo: un hueco no dice nada.
+  if (!asignaciones)
+    return carga.error ? (
+      <section className="card p-4">
+        <h2 className="section-label mb-1">{t("caso.porQueAqui")}</h2>
+        <FalloCompacto {...carga} />
+      </section>
+    ) : null;
   // `Array.isArray` y no `?? []`: esta ruta devuelve una LISTA, y un doble —o
   // un error devuelto como objeto— la haría `.map` de algo que no lo es y
   // tumbaría la ficha entera. Es el mismo fallo que ya costó diez pruebas
@@ -1102,9 +1134,23 @@ function PorQueEstaAqui({
  * que vence el viernes es tan inservible como uno agotado, y el saldo solo lo
  * pinta como si estuviera holgado.
  */
-function QueDerechoLoCubre({ saldo }: { saldo: Saldo | null }) {
+function QueDerechoLoCubre({
+  saldo,
+  carga,
+}: {
+  saldo: Saldo | null;
+  carga: EstadoDeCarga;
+}) {
   const { t } = useTranslation();
-  if (!saldo) return null;
+  // Sin derecho aplicable no hay panel; sin respuesta, sí: «no lo cubre
+  // nada» y «no se ha podido saber» llevan a cobrar o no cobrar el caso.
+  if (!saldo)
+    return carga.error ? (
+      <section className="card p-4">
+        <h2 className="section-label mb-1">{t("caso.derecho")}</h2>
+        <FalloCompacto {...carga} />
+      </section>
+    ) : null;
 
   const agotado = saldo.horas?.agotado || saldo.casos?.agotado;
 

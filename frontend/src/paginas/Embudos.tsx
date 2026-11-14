@@ -13,14 +13,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmarBorrado } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo } from "@/componentes/Estados";
+import { AvisoDeRecorte, Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Opciones } from "@/componentes/Formulario";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { ErrorApi, llamar } from "@/lib/api";
 import { contratoDe, type CampoEsquema } from "@/lib/contrato";
-import { listar } from "@/lib/listados";
+import { conCursor, listarPagina } from "@/lib/listados";
 import { cn } from "@/lib/utiles";
 
 interface Etapa {
@@ -64,11 +64,17 @@ export function Embudos() {
   const [campos, setCampos] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
   const [nuevo, setNuevo] = useState("");
+  // El cursor de la página siguiente: con más embudos de los que caben en
+  // una, los que faltaban no salían en la lista y no se podían configurar,
+  // sin que nada dijera que había más.
+  const [siguiente, setSiguiente] = useState("");
+  const [cargandoMas, setCargandoMas] = useState(false);
 
   const cargar = useCallback(() => {
-    listar<Embudo>("/api/v1/pipelines?limite=50")
-      .then((filas) => {
+    listarPagina<Embudo>("/api/v1/pipelines?limite=50")
+      .then(({ filas, siguiente: cursor }) => {
         setEmbudos(filas);
+        setSiguiente(cursor);
         setElegido(
           (e) =>
             e || filas.find((f) => f.por_defecto)?.id || filas[0]?.id || "",
@@ -77,6 +83,18 @@ export function Embudos() {
       .catch((e) => setFallo(e));
   }, []);
   useEffect(cargar, [cargar]);
+
+  function cargarMas() {
+    setCargandoMas(true);
+    listarPagina<Embudo>(conCursor("/api/v1/pipelines?limite=50", siguiente))
+      .then(({ filas, siguiente: cursor }) => {
+        // Se acumulan: sustituir haría perder los que ya estaban a la vista.
+        setEmbudos((previos) => [...(previos ?? []), ...filas]);
+        setSiguiente(cursor);
+      })
+      .catch((e) => setFallo(e))
+      .finally(() => setCargandoMas(false));
+  }
 
   useEffect(() => {
     // Los criterios de salida son campos de la oportunidad: los que su alta
@@ -136,6 +154,13 @@ export function Embudos() {
               </li>
             ))}
           </ul>
+          {siguiente ? (
+            <AvisoDeRecorte
+              cuantas={embudos.length}
+              alCargarMas={cargarMas}
+              cargando={cargandoMas}
+            />
+          ) : null}
           <div className="mt-2 border-t border-ink-dim/30 p-2">
             <input
               className="input-base"

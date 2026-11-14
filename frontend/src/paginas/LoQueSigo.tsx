@@ -32,11 +32,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { humanizar } from "@/lib/formato";
+import { MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { nombresDeRegistros } from "@/lib/nombres";
 import { moduloDeObjeto } from "@/lib/modulos";
 
@@ -67,6 +73,9 @@ interface Fila extends Seguimiento {
 export function LoQueSigo() {
   const { t } = useTranslation();
   const [filas, setFilas] = useState<Fila[] | null>(null);
+  // Si el servidor dijo que se siguen más registros de los que caben en una
+  // página: sin decirlo, lo que no cabe se lee como «ya no lo sigo».
+  const [hayMas, setHayMas] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
   const [quitando, setQuitando] = useState("");
   // Lo que se canta al dejar de seguir. Sin esto, quien no ve la pantalla
@@ -82,10 +91,11 @@ export function LoQueSigo() {
     setFilas(null);
     (async () => {
       const { datos } = await llamar<Pagina<Seguimiento>>(
-        "/api/v1/seguimientos?limite=200",
+        `/api/v1/seguimientos?limite=${MAXIMO_POR_PAGINA}`,
         { signal: control.signal },
       );
       const seguidos = datos.items ?? [];
+      setHayMas(Boolean(datos.siguiente));
       // Resolver los nombres es lo mismo que hace la biblioteca de archivos,
       // así que vive en un sitio: dos copias de «dime cómo se llaman estos
       // registros» acaban resolviendo distinto.
@@ -233,6 +243,9 @@ export function LoQueSigo() {
           ))}
         </ul>
       )}
+      {filas.length > 0 && hayMas ? (
+        <AvisoDeRecorte cuantas={filas.length} />
+      ) : null}
 
       {fallo ? (
         <div className="mt-3">

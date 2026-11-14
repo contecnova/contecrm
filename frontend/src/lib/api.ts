@@ -22,6 +22,7 @@
  * lo comprueba.
  */
 
+import { esCancelacion } from "@/lib/cancelacion";
 import { config } from "@/lib/config";
 
 export class ErrorApi extends Error {
@@ -493,10 +494,8 @@ export function siguientePagina(datos: unknown): string {
  */
 export function salvoCancelacion(manejar: (error: unknown) => void) {
   return (error: unknown) => {
-    const cancelada =
-      (error instanceof DOMException && error.name === "AbortError") ||
-      (error instanceof Error && error.name === "AbortError");
-    if (cancelada) return;
+    if (esCancelacion(error)) return;
     manejar(error);
   };
 }
+

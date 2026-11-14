@@ -150,6 +150,9 @@ export function puede(
  */
 export async function volverASesionPropia(): Promise<void> {
   await llamar("/api/v1/sesion/volver", { metodo: "POST" });
+  // Si renovar falla, la sesión de soporte ya está cerrada: al recargar, sin
+  // token propio, se llega a la pantalla de entrada, que es lo correcto. Un
+  // error aquí sólo dejaría a quien pulsó dentro de la sesión de otro.
   await llamar("/api/v1/sesion/renovar", { metodo: "POST" }).catch(
     () => undefined,
   );

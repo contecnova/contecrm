@@ -38,12 +38,19 @@ import {
   FormularioDeEdicion,
   useEdicion,
 } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { EnvioDeCampana } from "@/componentes/EnviosDeMarketing";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 
@@ -113,6 +120,9 @@ export function Campana() {
   const [embudo, setEmbudo] = useState<Embudo | null>(null);
   const [evento, setEvento] = useState<Evento | null>(null);
   const [miembros, setMiembros] = useState<Miembro[]>([]);
+  // Si no llegan se dice: con la lista vacía, «0 en este estado» se leía como
+  // que no había nadie, y el embudo de al lado decía que sí.
+  const [falloMiembros, setFalloMiembros] = useState<unknown>(null);
   const [estado, setEstado] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState(false);
@@ -158,11 +168,15 @@ export function Campana() {
   const verMiembros = useCallback(
     (cual: string) => {
       setEstado(cual);
+      setFalloMiembros(null);
       void llamar<Miembro[]>(
-        `/api/v1/campanas/${id}/miembros?estado=${cual}&limite=200`,
+        `/api/v1/campanas/${id}/miembros?estado=${cual}&limite=${MAXIMO_POR_PAGINA}`,
       )
         .then((r) => setMiembros(r.datos ?? []))
-        .catch(() => setMiembros([]));
+        .catch((error: unknown) => {
+          setMiembros([]);
+          setFalloMiembros(error);
+        });
     },
     [id],
   );
@@ -400,6 +414,11 @@ export function Campana() {
                             cuantos: miembros.length,
                           })}
                         </p>
+                        <FalloCompacto
+                          error={falloMiembros}
+                          que={t("campana.embudo")}
+                          reintentar={() => verMiembros(estado)}
+                        />
                         <ul className="lista-acotada mt-1 flex flex-col gap-1 pr-1">
                           {miembros.map((m) => (
                             <li
@@ -415,6 +434,14 @@ export function Campana() {
                             </li>
                           ))}
                         </ul>
+                        {/* Esta ruta devuelve una lista sin cursor, así que
+                            el corte se sabe por el embudo, que es del mismo
+                            servidor: si dice que en este estado hay más de
+                            los que han llegado, la lista está cortada. */}
+                        {!falloMiembros &&
+                        miembros.length < (embudo.embudo[estado] ?? 0) ? (
+                          <AvisoDeRecorte cuantas={miembros.length} />
+                        ) : null}
                       </div>
                     ) : null}
                   </>

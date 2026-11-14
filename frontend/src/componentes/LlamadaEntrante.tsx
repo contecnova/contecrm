@@ -72,6 +72,10 @@ export function LlamadaEntrante() {
         .then((r) => {
           if (vivo) setLlamadas(r.datos.llamadas ?? []);
         })
+        // En silencio a propósito: es un sondeo de fondo en todas las
+        // pantallas y la siguiente vuelta lo vuelve a intentar. Un aviso por
+        // cada vuelta fallida taparía el trabajo; si la red cae, ya lo dice
+        // el aviso de «sin conexión» del marco.
         .catch(() => undefined);
     void preguntar();
     const reloj = window.setInterval(() => void preguntar(), sondeo * 1000);

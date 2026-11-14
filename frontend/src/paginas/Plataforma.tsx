@@ -55,17 +55,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ArchivoDelServicio } from "@/componentes/Archivo";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDelDirectorio,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
-import {
-  ErrorApi,
-  filas as filasDe,
-  llamar,
-  salvoCancelacion,
-} from "@/lib/api";
+import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { escalar } from "@/lib/formato";
+import { useDirectorio } from "@/lib/personas";
 import { puede, type Sesion } from "@/lib/sesion";
 
 /**
@@ -321,26 +324,17 @@ function Panel({
  */
 function EntrarComo() {
   const { t } = useTranslation();
-  const [personas, setPersonas] = useState<
-    { id: string; email: string; nombre: string }[] | null
-  >(null);
+  // Del directorio de la sesión, que sigue el cursor: se pedían las
+  // doscientas primeras y, en un cliente mayor, soporte no podía entrar como
+  // la doscientas una ni sabía que faltaba. Y si no llega, se dice: antes un
+  // fallo dejaba el desplegable vacío, como si no hubiera nadie.
+  const directorio = useDirectorio();
+  const personas = directorio.personas;
   const [quien, setQuien] = useState("");
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
-
-  useEffect(() => {
-    const control = new AbortController();
-    llamar<unknown>("/api/v1/usuarios?limite=200", { signal: control.signal })
-      .then((r) =>
-        setPersonas(
-          filasDe<{ id: string; email: string; nombre: string }>(r.datos),
-        ),
-      )
-      .catch(salvoCancelacion(() => setPersonas([])));
-    return () => control.abort();
-  }, []);
 
   const motivoValido = motivo.trim().length >= 10;
 
@@ -397,6 +391,7 @@ function EntrarComo() {
               </option>
             ))}
           </select>
+          <AvisoDelDirectorio directorio={directorio} />
         </label>
         <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
           {t("plataforma.entrarComo.motivo")}
@@ -696,6 +691,7 @@ function Cumplimiento({
   const [matriz, setMatriz] = useState<Matriz | null>(null);
   const [informe, setInforme] = useState<InformeCumplimiento | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  const { seguir, estado: estadoDe } = useCargasSecundarias();
 
   const cargar = useCallback(() => {
     if (!puedeVer) return undefined;
@@ -719,14 +715,15 @@ function Cumplimiento({
       .catch(salvoCancelacion(setFallo));
     // El informe aparte y con su propio fallo: contesta otras dos preguntas
     // —si el rastro de auditoría cuadra y cuántas políticas de acceso hay
-    // activas— y que no se pueda leer no puede dejar el RAT sin ver.
-    llamar<InformeCumplimiento>(`/api/v1/${servicio}/cumplimiento/informe`, {
-      signal: control.signal,
-    })
-      .then((r) => setInforme(r.datos))
-      .catch(() => undefined);
+    // activas— y que no se pueda leer no puede dejar el RAT sin ver. Pero se
+    // dice: sin informe no salen sus avisos, y eso se lee como «sin avisos».
+    seguir("informe", () =>
+      llamar<InformeCumplimiento>(`/api/v1/${servicio}/cumplimiento/informe`, {
+        signal: control.signal,
+      }).then((r) => setInforme(r.datos)),
+    );
     return () => control.abort();
-  }, [servicio, puedeVer]);
+  }, [servicio, puedeVer, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -828,6 +825,10 @@ function Cumplimiento({
       {/* Los avisos del informe van los ÚLTIMOS y en rojo: son lo único de
           este panel que obliga a hacer algo hoy, y enterrarlos entre dos
           recuentos es cómo se aprende a no mirarlos. */}
+      <FalloCompacto
+        {...estadoDe("informe")}
+        que={t("plataforma.informeCumplimiento")}
+      />
       {informe ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-3">
           <p className="text-rotulo text-ink-muted">

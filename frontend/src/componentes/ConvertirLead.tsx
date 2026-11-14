@@ -28,8 +28,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { Error as Fallo } from "@/componentes/Estados";
+import { Error as Fallo, FalloCompacto } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 
 interface Lead {
   nombre?: string | null;
@@ -70,6 +71,9 @@ export function ConvertirLead({
   const empresa = (lead.empresa ?? "").trim() || persona;
 
   const [candidatas, setCandidatas] = useState<Candidata[]>([]);
+  // La búsqueda de clientes parecidos va aparte: si falla se puede seguir
+  // creando uno nuevo, pero se dice, porque callarlo es proponer un duplicado.
+  const { seguir, estado: estadoDe } = useCargasSecundarias();
   const [cuentaElegida, setCuentaElegida] = useState<string>(""); // "" = nueva
   const [nombreCuenta, setNombreCuenta] = useState(empresa);
   const [conContacto, setConContacto] = useState(Boolean(lead.nombre));
@@ -89,24 +93,26 @@ export function ConvertirLead({
   useEffect(() => {
     if (!empresa) return;
     const control = new AbortController();
-    llamar<{
-      resultados: { objeto: string; registro_id: string; titulo: string }[];
-    }>(`/api/v1/buscar?q=${encodeURIComponent(empresa)}&limite=20`, {
-      signal: control.signal,
-    })
-      .then(({ datos }) => {
-        const suyas = (datos?.resultados ?? [])
-          .filter((r) => r.objeto === "cuenta")
-          .slice(0, 5)
-          .map((r) => ({ id: r.registro_id, nombre: r.titulo }));
-        setCandidatas(suyas);
-        const igual = suyas.find((c) => plano(c.nombre) === plano(empresa));
-        if (igual) setCuentaElegida(igual.id);
+    // Sin buscador se puede crearla, que es lo que se haría a mano; el aviso
+    // dice que no se ha podido mirar si ya existía.
+    seguir("parecidos", () =>
+      llamar<{
+        resultados: { objeto: string; registro_id: string; titulo: string }[];
+      }>(`/api/v1/buscar?q=${encodeURIComponent(empresa)}&limite=20`, {
+        signal: control.signal,
       })
-      // Sin buscador se propone crearla, que es lo que se haría a mano.
-      .catch(() => undefined);
+        .then(({ datos }) => {
+          const suyas = (datos?.resultados ?? [])
+            .filter((r) => r.objeto === "cuenta")
+            .slice(0, 5)
+            .map((r) => ({ id: r.registro_id, nombre: r.titulo }));
+          setCandidatas(suyas);
+          const igual = suyas.find((c) => plano(c.nombre) === plano(empresa));
+          if (igual) setCuentaElegida(igual.id);
+        }),
+    );
     return () => control.abort();
-  }, [empresa]);
+  }, [empresa, seguir]);
 
   async function convertir() {
     setEnviando(true);
@@ -208,6 +214,10 @@ export function ConvertirLead({
               className="input-base"
             />
           ) : null}
+          <FalloCompacto
+            {...estadoDe("parecidos")}
+            que={t("convertirLead.clientesParecidos")}
+          />
           {candidatas.length ? (
             <p className="text-rotulo text-ink-faint">
               {t("convertirLead.yaExisten")}

@@ -47,13 +47,21 @@ import {
   FormularioDeEdicion,
   useEdicion,
 } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { GenerarDocumento } from "@/componentes/GenerarDocumento";
-import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
+import type { EstadoDeCarga } from "@/lib/cargaSecundaria";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { ConsejosDeLecciones } from "@/componentes/ConsejosDeLecciones";
@@ -63,7 +71,7 @@ import { nombresDeRegistros } from "@/lib/nombres";
 import { nombreDe, usePersonas } from "@/lib/personas";
 import { useOpciones } from "@/lib/vocabularios";
 import { useSuperficie } from "@/lib/permisos";
-import { listar } from "@/lib/listados";
+import { conCursor, listar, listarPagina } from "@/lib/listados";
 import {
   escalar,
   fecha,
@@ -254,17 +262,27 @@ function CategoriaDePrevision({
   const [categorias, setCategorias] = useState<
     { clave: string; nombre: string; por_defecto?: boolean }[]
   >([]);
+  const { seguir, estado } = useCargasSecundarias();
   useEffect(() => {
     const control = new AbortController();
-    void listar<{ clave: string; nombre: string; por_defecto?: boolean }>(
-      "/api/v1/forecast/categorias",
-      { signal: control.signal },
-    )
-      .then(setCategorias)
-      .catch(() => undefined);
+    seguir("categorias", () =>
+      listar<{ clave: string; nombre: string; por_defecto?: boolean }>(
+        "/api/v1/forecast/categorias",
+        { signal: control.signal },
+      ).then(setCategorias),
+    );
     return () => control.abort();
-  }, []);
-  if (categorias.length === 0) return null;
+  }, [seguir]);
+  // Sin categorías no hay nada que elegir; pero si es que no se pudieron
+  // leer, se dice: el selector desaparecido se leía como «esta empresa no
+  // clasifica la previsión».
+  if (categorias.length === 0)
+    return (
+      <FalloCompacto
+        {...estado("categorias")}
+        que={t("oportunidad.categoriaPrevision")}
+      />
+    );
   const elegida = actual ?? categorias.find((c) => c.por_defecto)?.clave ?? "";
   return (
     <label className="mt-2 flex items-center gap-2 text-rotulo text-ink-muted">
@@ -314,20 +332,26 @@ interface Revision {
 function LasRevisiones({ id }: { id: string }) {
   const { t } = useTranslation();
   const [revisiones, setRevisiones] = useState<Revision[]>([]);
+  const { seguir, estado } = useCargasSecundarias();
   useEffect(() => {
     const control = new AbortController();
-    void listar<Revision>(
-      `/api/v1/planes-conjuntos/revisiones?oportunidad_id=${id}`,
-      { signal: control.signal },
-    )
-      .then(setRevisiones)
-      .catch(() => undefined);
+    seguir("revisiones", () =>
+      listar<Revision>(
+        `/api/v1/planes-conjuntos/revisiones?oportunidad_id=${id}`,
+        { signal: control.signal },
+      ).then(setRevisiones),
+    );
     return () => control.abort();
-  }, [id]);
+  }, [id, seguir]);
+  const carga = estado("revisiones");
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("oportunidad.revisiones")}</h2>
-      {revisiones.length === 0 ? (
+      {/* El fallo antes que el vacío: «sin revisiones» de algo que no se ha
+          podido leer dice lo contrario de lo que pasa. */}
+      {carga.error ? (
+        <FalloCompacto {...carga} />
+      ) : revisiones.length === 0 ? (
         <Vacio titulo={t("oportunidad.sinRevisiones")} compacto />
       ) : (
         <ul className="lista-acotada divide-y divide-ink-dim/30">
@@ -401,6 +425,10 @@ export function Oportunidad() {
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
   const [plan, setPlan] = useState<EstadoDelPlan | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  // Los paneles que se piden aparte de la oportunidad: el fallo de uno no
+  // tumba la ficha, pero se dice en su sitio. Antes no salían y un histórico
+  // que no contestaba se leía como «no se ha movido nada».
+  const { seguir, estado: cargaDe } = useCargasSecundarias();
   // Se puede llegar YA en edición, con `?editar=1`. Lo usa el menú de la fila
   // en el listado: en Lightning cada fila lleva un `⌄` con «Editar», y sin
   // esto ese «Editar» sólo podía abrir la ficha y dejar a quien lo pulsó a un
@@ -466,10 +494,10 @@ export function Oportunidad() {
 
     // Cada panel con su propio fallo: que no responda el histórico de
     // previsión no puede dejar sin ver las líneas, que es a lo que se entra.
-    listar<Linea>(`/api/v1/opportunities/${id}/lineas`, {
-      signal: control.signal,
-    })
-      .then((suyas) => {
+    seguir("lineas", () =>
+      listar<Linea>(`/api/v1/opportunities/${id}/lineas`, {
+        signal: control.signal,
+      }).then((suyas) => {
         setLineas(suyas);
         // Las métricas las calcula el servicio que sabe qué es recurrente, con
         // las líneas de verdad. Sin líneas no se pregunta: contestaría ceros y
@@ -477,68 +505,68 @@ export function Oportunidad() {
         if (suyas.length > 0) {
           // El margen, del servidor y con el mínimo del tenant: calcularlo aquí
           // sería lógica de negocio en el front (CRM-09.02.01.02).
-          void llamar<MargenDeLineas>(`/api/v1/opportunities/${id}/margen`, {
-            signal: control.signal,
-          })
-            .then((m) => setMargen(m.datos))
-            .catch(() => undefined);
-          void llamar<Metricas>("/api/v1/ingresos/metricas", {
-            metodo: "POST",
-            cuerpo: { lineas: suyas },
-            signal: control.signal,
-          })
-            .then((m) => setMetricas(m.datos))
-            .catch(() => undefined);
+          seguir("margen", () =>
+            llamar<MargenDeLineas>(`/api/v1/opportunities/${id}/margen`, {
+              signal: control.signal,
+            }).then((m) => setMargen(m.datos)),
+          );
+          seguir("metricas", () =>
+            llamar<Metricas>("/api/v1/ingresos/metricas", {
+              metodo: "POST",
+              cuerpo: { lineas: suyas },
+              signal: control.signal,
+            }).then((m) => setMetricas(m.datos)),
+          );
         }
-      })
-      .catch(() => undefined);
+      }),
+    );
 
-    void llamar<Reparto>(`/api/v1/ingresos/de/${id}`, {
-      signal: control.signal,
-    })
-      .then((r) => setReparto(r.datos))
-      .catch(() => undefined);
-    void llamar<GrupoDeCompra>(`/api/v1/ingresos/grupo-compra/${id}`, {
-      signal: control.signal,
-    })
-      .then((r) => setGrupo(r.datos))
-      .catch(() => undefined);
-    void llamar<CambioDePrevision[]>(
-      `/api/v1/forecast/oportunidades/${id}/historial-prevision`,
-      { signal: control.signal },
-    )
-      .then((r) => setDeslizamientos(r.datos))
-      .catch(() => undefined);
+    seguir("reparto", () =>
+      llamar<Reparto>(`/api/v1/ingresos/de/${id}`, {
+        signal: control.signal,
+      }).then((r) => setReparto(r.datos)),
+    );
+    seguir("grupo", () =>
+      llamar<GrupoDeCompra>(`/api/v1/ingresos/grupo-compra/${id}`, {
+        signal: control.signal,
+      }).then((r) => setGrupo(r.datos)),
+    );
+    seguir("movimientos", () =>
+      llamar<CambioDePrevision[]>(
+        `/api/v1/forecast/oportunidades/${id}/historial-prevision`,
+        { signal: control.signal },
+      ).then((r) => setDeslizamientos(r.datos)),
+    );
 
     // La metodología de SU embudo —o la general—, con todos sus criterios.
     // Antes se cogía la primera activa, fuera del embudo que fuera.
-    void llamar<
-      Evaluacion & { metodologia: { id: string; nombre: string } | null }
-    >(`/api/v1/opportunities/${id}/metodologia`, { signal: control.signal })
-      .then((r) => setEvaluacion(r.datos?.metodologia ? r.datos : null))
-      .catch(() => undefined);
+    seguir("metodologia", () =>
+      llamar<
+        Evaluacion & { metodologia: { id: string; nombre: string } | null }
+      >(`/api/v1/opportunities/${id}/metodologia`, {
+        signal: control.signal,
+      }).then((r) => setEvaluacion(r.datos?.metodologia ? r.datos : null)),
+    );
 
     // El plan conjunto se busca por su oportunidad: puede no haberlo, y no
-    // tenerlo es una respuesta —no se ha acordado nada con el cliente—.
-    void listar<Plan>(`/api/v1/planes-conjuntos?oportunidad_id=${id}`, {
-      signal: control.signal,
-    })
-      .then((planes) => {
+    // tenerlo es una respuesta —no se ha acordado nada con el cliente—. Por
+    // eso las dos peticiones van en UNA carga: si cualquiera falla, el panel
+    // no puede decir «sin plan».
+    seguir("plan", () =>
+      listar<Plan>(`/api/v1/planes-conjuntos?oportunidad_id=${id}`, {
+        signal: control.signal,
+      }).then((planes) => {
         const suyo = planes[0];
-        if (!suyo) return;
-        void llamar<EstadoDelPlan>(
+        if (!suyo) return undefined;
+        return llamar<EstadoDelPlan>(
           `/api/v1/planes-conjuntos/${suyo.id}/estado`,
-          {
-            signal: control.signal,
-          },
-        )
-          .then((r) => setPlan(r.datos))
-          .catch(() => undefined);
-      })
-      .catch(() => undefined);
+          { signal: control.signal },
+        ).then((r) => setPlan(r.datos));
+      }),
+    );
 
     return () => control.abort();
-  }, [id]);
+  }, [id, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -566,11 +594,26 @@ export function Oportunidad() {
   useEffect(() => {
     if (!pipelineId) return undefined;
     const control = new AbortController();
-    void llamar<Pipeline[]>("/api/v1/pipelines?limite=50", {
-      signal: control.signal,
-    })
-      .then((r) => {
-        const suyo = filas<Pipeline>(r.datos).find((x) => x.id === pipelineId);
+    // Se recorren las páginas hasta dar con SU pipeline: se miraba sólo la
+    // primera, y un tenant con más embudos de los que caben en ella se quedaba
+    // sin la ruta de etapas en las oportunidades de los que no entraban. Se
+    // para en cuanto aparece, así que lo normal sigue siendo una petición.
+    void (async () => {
+      let cursor = "";
+      do {
+        const pagina = await listarPagina<Pipeline>(
+          cursor
+            ? conCursor("/api/v1/pipelines?limite=50", cursor)
+            : "/api/v1/pipelines?limite=50",
+          { signal: control.signal },
+        );
+        const suyo = pagina.filas.find((x) => x.id === pipelineId);
+        if (suyo) return suyo;
+        cursor = pagina.siguiente;
+      } while (cursor);
+      return undefined;
+    })()
+      .then((suyo) => {
         setEtapasDelPipeline(
           (suyo?.etapas ?? []).map((e) => ({
             id: String(e.id ?? ""),
@@ -578,6 +621,8 @@ export function Oportunidad() {
           })),
         );
       })
+      // Sin etapas la ficha se queda como estaba —la etapa sale como un dato
+      // clave más, ver arriba—: es un adorno útil, y su fallo no se anuncia.
       .catch(() => undefined);
     return () => control.abort();
   }, [pipelineId]);
@@ -590,14 +635,14 @@ export function Oportunidad() {
   useEffect(() => {
     if (!etapa) return undefined;
     const control = new AbortController();
-    void llamar<Playbook>(
-      `/api/v1/metodologias/playbook?etapa=${encodeURIComponent(etapa)}`,
-      { signal: control.signal },
-    )
-      .then((r) => setPlaybook(r.datos))
-      .catch(() => undefined);
+    seguir("playbook", () =>
+      llamar<Playbook>(
+        `/api/v1/metodologias/playbook?etapa=${encodeURIComponent(etapa)}`,
+        { signal: control.signal },
+      ).then((r) => setPlaybook(r.datos)),
+    );
     return () => control.abort();
-  }, [etapa]);
+  }, [etapa, seguir]);
 
   async function borrar() {
     setBorrando(true);
@@ -843,13 +888,23 @@ export function Oportunidad() {
                 metricas={metricas}
                 margen={margen}
                 moneda={op.moneda}
+                cargas={{
+                  lineas: cargaDe("lineas"),
+                  margen: cargaDe("margen"),
+                  metricas: cargaDe("metricas"),
+                }}
               />
-              <QuienDecide grupo={grupo} />
-              <QuienSeLoLleva reparto={reparto} />
-              <LoQueSeHaMovido cambios={deslizamientos} moneda={op.moneda} />
+              <QuienDecide grupo={grupo} carga={cargaDe("grupo")} />
+              <QuienSeLoLleva reparto={reparto} carga={cargaDe("reparto")} />
+              <LoQueSeHaMovido
+                cambios={deslizamientos}
+                moneda={op.moneda}
+                carga={cargaDe("movimientos")}
+              />
               <QueFaltaParaCerrar
                 evaluacion={evaluacion}
                 playbook={playbook}
+                cargas={[cargaDe("metodologia"), cargaDe("playbook")]}
                 alMarcar={async (clave, cubierto) => {
                   if (!evaluacion?.metodologia) return;
                   const r = await llamar<Evaluacion>(
@@ -865,7 +920,7 @@ export function Oportunidad() {
                   });
                 }}
               />
-              <ElPlanConElCliente plan={plan} />
+              <ElPlanConElCliente plan={plan} carga={cargaDe("plan")} />
               <LasRevisiones id={op.id} />
               <LaFirma id={op.id} alCambiar={cargar} />
               <div className="lg:col-span-2">
@@ -919,31 +974,42 @@ function LaFirma({ id, alCambiar }: { id: string; alCambiar: () => void }) {
   const [firma, setFirma] = useState<EstadoFirma | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [presupuestos, setPresupuestos] = useState<PresupuestoCorto[]>([]);
+  // Con más versiones de las que caben en una página, las que no llegaban no
+  // se podían elegir para firmar y nada lo decía.
+  const [hayMasPresupuestos, setHayMasPresupuestos] = useState(false);
   const [presupuesto, setPresupuesto] = useState("");
   const [firmantes, setFirmantes] = useState([{ nombre: "", email: "" }]);
   const [mandarYa, setMandarYa] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
+  // El estado del sobre y la lista de presupuestos se piden aparte de la
+  // ficha. Si no llegan se dice: un sobre que no se ha podido consultar se
+  // leía «sin sobre» e invitaba a mandar otro a firmar.
+  const { seguir, estado } = useCargasSecundarias();
 
   const leer = useCallback(() => {
-    void llamar<EstadoFirma>(`/api/v1/opportunities/${id}/firma`)
-      .then((r) => {
+    seguir("firma", () =>
+      llamar<EstadoFirma>(`/api/v1/opportunities/${id}/firma`).then((r) => {
         setFirma(r.datos);
         if (r.datos.etapa_movida_a) alCambiar();
-      })
-      .catch(() => setFirma(null));
-  }, [id, alCambiar]);
+      }),
+    );
+  }, [id, alCambiar, seguir]);
   useEffect(leer, [leer]);
 
   useEffect(() => {
     if (!abierto) return;
-    void listar<PresupuestoCorto>(
-      `/api/v1/presupuestos?oportunidad_id=${id}&limite=50`,
-    )
-      .then(setPresupuestos)
-      .catch(() => setPresupuestos([]));
-  }, [abierto, id]);
+    seguir("presupuestos", () =>
+      listarPagina<PresupuestoCorto>(
+        `/api/v1/presupuestos?oportunidad_id=${id}&limite=50`,
+      ).then(({ filas, siguiente }) => {
+        setPresupuestos(filas);
+        setHayMasPresupuestos(siguiente !== "");
+      }),
+    );
+  }, [abierto, id, seguir]);
+  const cargaFirma = estado("firma");
 
   const listos = firmantes.filter((f) => f.nombre.trim() && f.email.trim());
 
@@ -986,7 +1052,9 @@ function LaFirma({ id, alCambiar }: { id: string; alCambiar: () => void }) {
   return (
     <section className="card p-4">
       <h2 className="section-label mb-2">{t("oportunidad.firma.titulo")}</h2>
-      {firma?.estado ? (
+      {cargaFirma.error ? (
+        <FalloCompacto {...cargaFirma} />
+      ) : firma?.estado ? (
         <p className="text-dato text-ink" role="status">
           {t("oportunidad.firma.estado", {
             estado: firma.estado,
@@ -1054,6 +1122,15 @@ function LaFirma({ id, alCambiar }: { id: string; alCambiar: () => void }) {
               ))}
             </select>
           </label>
+          {/* Sin la lista sólo queda «el último»; se dice por qué, para que
+              nadie crea que no hay otro presupuesto que elegir. */}
+          <FalloCompacto
+            {...estado("presupuestos")}
+            que={t("oportunidad.firma.presupuesto")}
+          />
+          {hayMasPresupuestos ? (
+            <AvisoDeRecorte cuantas={presupuestos.length} />
+          ) : null}
           {firmantes.map((f, i) => (
             <div key={i} className="grid gap-2 md:grid-cols-2">
               <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
@@ -1142,17 +1219,28 @@ function LasLineas({
   metricas,
   margen,
   moneda,
+  cargas,
 }: {
   lineas: Linea[];
   metricas: Metricas | null;
   margen: MargenDeLineas | null;
   moneda: string;
+  /** Las tres se piden aparte, y el fallo de cada una se dice en su sitio. */
+  cargas: {
+    lineas: EstadoDeCarga;
+    margen: EstadoDeCarga;
+    metricas: EstadoDeCarga;
+  };
 }) {
   const { t } = useTranslation();
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("oportunidad.lineas")}</h2>
-      {lineas.length === 0 ? (
+      {/* «Sin líneas» de unas líneas que no se han podido leer es falso, y
+          lleva a añadir otra vez lo que ya estaba. */}
+      {cargas.lineas.error ? (
+        <FalloCompacto {...cargas.lineas} />
+      ) : lineas.length === 0 ? (
         <Vacio titulo={t("oportunidad.sinLineas")} compacto />
       ) : (
         <ul className="lista-acotada divide-y divide-ink-dim/30">
@@ -1184,6 +1272,8 @@ function LasLineas({
       {/* El margen, con lo que no se sabe dicho: las líneas sin coste no
           cuentan como cero, y una línea que pierde dinero se nombra aunque el
           total salga sano. */}
+      <FalloCompacto {...cargas.margen} que={t("oportunidad.margenTitulo")} />
+      <FalloCompacto {...cargas.metricas} que={t("oportunidad.metricas")} />
       {margen ? (
         <div
           className="mt-3 border-t border-ink-dim/30 pt-2"
@@ -1257,7 +1347,13 @@ function LasLineas({
  * un económico con el que nadie ha hablado es la razón más habitual de que un
  * cierre «seguro» se caiga la última semana.
  */
-function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
+function QuienDecide({
+  grupo,
+  carga,
+}: {
+  grupo: GrupoDeCompra | null;
+  carga: EstadoDeCarga;
+}) {
   const { t } = useTranslation();
   // QUIÉN, no sólo qué papel: el panel decía «decisor · hablado» sin decir
   // quién es el decisor (visto el 10-11-2026). Los nombres de los papeles, de
@@ -1281,10 +1377,19 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
       control.signal,
     )
       .then((r) => setContactos(r.nombres))
+      // Sin nombres cada persona sale como «Contacto» con su papel y si se ha
+      // hablado con ella, que es lo que el panel decide: un adorno que falla
+      // no se anuncia.
       .catch(() => undefined);
     return () => control.abort();
   }, [ids]);
-  if (!grupo) return null;
+  if (!grupo)
+    return carga.error ? (
+      <PanelQueNoHaLlegado
+        titulo={t("oportunidad.quienDecide")}
+        carga={carga}
+      />
+    ) : null;
   const roles = Object.entries(grupo.roles);
   const papel = (rol: string) =>
     papeles?.find((o) => o.valor === rol)?.etiqueta ?? humanizar(rol);
@@ -1346,7 +1451,13 @@ function QuienDecide({ grupo }: { grupo: GrupoDeCompra | null }) {
  * total y con si cuadra**: un reparto al 60/60 cuadra hacia arriba y el
  * descuadre lo encuentra finanzas tres meses después.
  */
-function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
+function QuienSeLoLleva({
+  reparto,
+  carga,
+}: {
+  reparto: Reparto | null;
+  carga: EstadoDeCarga;
+}) {
   const { t } = useTranslation();
   // A QUIÉN va cada parte, y CUÁL es la otra oportunidad. Salían el
   // porcentaje y el papel sin la persona, y «renovación · sale de ésta» sin
@@ -1362,10 +1473,18 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
       control.signal,
     )
       .then((r) => setOtras(r.nombres))
+      // Sin el nombre de la otra oportunidad el reparto sigue diciendo quién
+      // se lleva qué parte, que es lo que importa: no se anuncia.
       .catch(() => undefined);
     return () => control.abort();
   }, [ids]);
-  if (!reparto) return null;
+  if (!reparto)
+    return carga.error ? (
+      <PanelQueNoHaLlegado
+        titulo={t("oportunidad.reparto")}
+        carga={carga}
+      />
+    ) : null;
 
   return (
     <section className="card p-4">
@@ -1457,9 +1576,11 @@ function QuienSeLoLleva({ reparto }: { reparto: Reparto | null }) {
 function LoQueSeHaMovido({
   cambios,
   moneda,
+  carga,
 }: {
   cambios: CambioDePrevision[];
   moneda: string;
+  carga: EstadoDeCarga;
 }) {
   const { t } = useTranslation();
   // Con su nombre y en el formato del resto de la ficha. Salía el campo en
@@ -1477,7 +1598,11 @@ function LoQueSeHaMovido({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("oportunidad.movimientos")}</h2>
-      {cambios.length === 0 ? (
+      {/* «No se ha movido nada» de un histórico que no ha contestado es justo
+          la lectura que no se puede permitir una previsión. */}
+      {carga.error ? (
+        <FalloCompacto {...carga} />
+      ) : cambios.length === 0 ? (
         <Vacio titulo={t("oportunidad.sinMovimientos")} compacto />
       ) : (
         <ul className="divide-y divide-ink-dim/30">
@@ -1541,17 +1666,27 @@ function QueFaltaParaCerrar({
   evaluacion,
   playbook,
   alMarcar,
+  cargas,
 }: {
   evaluacion: Evaluacion | null;
   playbook: Playbook | null;
   alMarcar: (clave: string, cubierto: boolean) => Promise<void>;
+  /** La metodología y el playbook, que se piden por separado. */
+  cargas: EstadoDeCarga[];
 }) {
   const { t } = useTranslation();
+  // El fallo, si lo hay, va antes que lo demás: «sin metodología» de una
+  // metodología que no se ha podido leer dice que no hay nada que cumplir.
+  const fallos = cargas.map((c, i) => <FalloCompacto key={i} {...c} />);
   if (!evaluacion && !playbook) {
     return (
       <section className="card p-4">
         <h2 className="section-label mb-1">{t("oportunidad.queFalta")}</h2>
-        <Vacio titulo={t("oportunidad.sinMetodologia")} compacto />
+        {cargas.some((c) => c.error) ? (
+          fallos
+        ) : (
+          <Vacio titulo={t("oportunidad.sinMetodologia")} compacto />
+        )}
       </section>
     );
   }
@@ -1561,6 +1696,7 @@ function QueFaltaParaCerrar({
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("oportunidad.queFalta")}</h2>
+      {fallos}
       {evaluacion ? (
         <>
           <p className="font-mono text-dato text-ink">
@@ -1670,14 +1806,25 @@ function QueFaltaParaCerrar({
  * lista nuestra con su nombre encima. Por eso `compartido` y
  * `visto_por_el_cliente` salen delante de los pasos.
  */
-function ElPlanConElCliente({ plan }: { plan: EstadoDelPlan | null }) {
+function ElPlanConElCliente({
+  plan,
+  carga,
+}: {
+  plan: EstadoDelPlan | null;
+  carga: EstadoDeCarga;
+}) {
   const { t } = useTranslation();
   if (!plan) {
     return (
       <section className="card p-4">
         <h2 className="section-label mb-1">{t("oportunidad.planConjunto")}</h2>
-        {/* No tenerlo es una respuesta: no se ha acordado nada con el cliente. */}
-        <Vacio titulo={t("oportunidad.sinPlan")} compacto />
+        {/* No tenerlo es una respuesta: no se ha acordado nada con el cliente.
+            No haberlo podido leer es otra, y no se dice con la misma frase. */}
+        {carga.error ? (
+          <FalloCompacto {...carga} />
+        ) : (
+          <Vacio titulo={t("oportunidad.sinPlan")} compacto />
+        )}
       </section>
     );
   }
@@ -1816,6 +1963,28 @@ function PorQueSeCerro({ id, estado }: { id: string; estado: string }) {
           {t("oportunidad.porQue.sinSenales")}
         </p>
       )}
+    </section>
+  );
+}
+
+/**
+ * El sitio de un panel cuyo dato no ha llegado: su título y el fallo.
+ *
+ * Para los paneles que sin dato no se pintan. Sin esto el hueco se cerraba y
+ * la ficha parecía no tener nada que decir de quién decide o de quién se lo
+ * lleva, cuando lo que pasaba es que no se había podido preguntar.
+ */
+function PanelQueNoHaLlegado({
+  titulo,
+  carga,
+}: {
+  titulo: string;
+  carga: EstadoDeCarga;
+}) {
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{titulo}</h2>
+      <FalloCompacto {...carga} />
     </section>
   );
 }

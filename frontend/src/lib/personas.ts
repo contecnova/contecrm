@@ -11,9 +11,10 @@
  * pero mucho mejor que una pantalla que no carga.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { filas, llamar, siguientePagina } from "@/lib/api";
+import { MAXIMO_POR_PAGINA } from "@/lib/listados";
 
 export interface Persona {
   id: string;
@@ -21,7 +22,23 @@ export interface Persona {
   email: string;
 }
 
-let promesa: Promise<Record<string, Persona>> | null = null;
+/**
+ * Lo que se ha podido traer del directorio, y cómo ha ido.
+ *
+ * Los nombres se resuelven con lo que haya (medio directorio es mejor que
+ * ninguno), pero quien ELIGE a una persona de una lista necesita saber si la
+ * lista está entera: que falte alguien porque la consulta falló, o porque se
+ * llegó al tope, no puede leerse como «esa persona no existe».
+ */
+interface Carga {
+  porId: Record<string, Persona>;
+  /** El fallo que cortó el recorrido, o `null`. */
+  fallo: unknown;
+  /** Se paró en `TOPE` con el servidor diciendo que había más. */
+  recortado: boolean;
+}
+
+let promesa: Promise<Carga> | null = null;
 
 /**
  * Cuántas se piden por vuelta. **Doscientas, que es el tope del servidor.**
@@ -35,7 +52,7 @@ let promesa: Promise<Record<string, Persona>> | null = null;
  * Lo vio quien la usa, en la consola. No lo cazaba nada porque el `catch`
  * convierte el fallo en una respuesta legítima: «no se sabe quién es nadie».
  */
-const POR_VUELTA = 200;
+const POR_VUELTA = MAXIMO_POR_PAGINA;
 
 /**
  * Tope de personas que se traen.
@@ -47,10 +64,10 @@ const POR_VUELTA = 200;
  */
 const TOPE = 2_000;
 
-function cargar(): Promise<Record<string, Persona>> {
+function cargar(): Promise<Carga> {
   if (promesa) return promesa;
   promesa = (async () => {
-    const encontradas: Record<string, Persona> = {};
+    const porId: Record<string, Persona> = {};
     let cursor = "";
     try {
       // Por páginas, siguiendo el cursor: con el tope del servidor en 200, una
@@ -60,15 +77,17 @@ function cargar(): Promise<Record<string, Persona>> {
         const q = new URLSearchParams({ limite: String(POR_VUELTA) });
         if (cursor) q.set("cursor", cursor);
         const r = await llamar<unknown>(`/api/v1/usuarios?${q}`);
-        for (const persona of filas<Persona>(r.datos)) encontradas[persona.id] = persona;
+        for (const persona of filas<Persona>(r.datos)) porId[persona.id] = persona;
         cursor = siguientePagina(r.datos);
         if (!cursor) break;
       }
-    } catch {
-      // Lo que se haya podido traer vale: medio directorio con nombres es
-      // mejor que ninguno, y lo que falte sale como identificador.
+    } catch (fallo) {
+      // Lo que se haya podido traer vale para los nombres: lo que falte sale
+      // como identificador. Pero el fallo se GUARDA, para que quien enseña
+      // la lista para elegir pueda decir que no está entera (`useDirectorio`).
+      return { porId, fallo, recortado: false };
     }
-    return encontradas;
+    return { porId, fallo: null, recortado: cursor !== "" };
   })();
   return promesa;
 }
@@ -82,14 +101,67 @@ export function usePersonas(): Record<string, Persona> {
   const [personas, setPersonas] = useState<Record<string, Persona>>({});
   useEffect(() => {
     let vivo = true;
-    void cargar().then((p) => {
-      if (vivo) setPersonas(p);
+    void cargar().then((c) => {
+      if (vivo) setPersonas(c.porId);
     });
     return () => {
       vivo = false;
     };
   }, []);
   return personas;
+}
+
+/** El directorio como LISTA PARA ELEGIR, con lo que hace falta para fiarse. */
+export interface Directorio {
+  /** Por nombre (o correo). `null` mientras llega. */
+  personas: Persona[] | null;
+  fallo: unknown;
+  /** Hay más personas que las que se enseñan (se llegó a `TOPE`). */
+  recortado: boolean;
+  reintentar: () => void;
+}
+
+/**
+ * La lista de personas para un desplegable de «elige a alguien».
+ *
+ * Seis selectores pedían `/usuarios?limite=200` por su cuenta y, en una
+ * organización de más de doscientas, la doscientas una no se podía elegir sin
+ * que nada lo dijera. Aquí sale del mismo directorio que los nombres —una
+ * petición por sesión, siguiendo el cursor— y dice si falló o se cortó.
+ */
+export function useDirectorio(): Directorio {
+  const [carga, setCarga] = useState<Carga | null>(null);
+  const [vuelta, setVuelta] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    void cargar().then((c) => {
+      if (vivo) setCarga(c);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [vuelta]);
+  const personas = useMemo(
+    () =>
+      carga
+        ? Object.values(carga.porId).sort((a, b) =>
+            (a.nombre || a.email).localeCompare(b.nombre || b.email),
+          )
+        : null,
+    [carga],
+  );
+  const reintentar = useCallback(() => {
+    // Sólo se olvida si falló: un directorio bueno no se vuelve a pedir.
+    if (carga?.fallo) olvidarPersonas();
+    setCarga(null);
+    setVuelta((v) => v + 1);
+  }, [carga]);
+  return {
+    personas,
+    fallo: carga?.fallo ?? null,
+    recortado: carga?.recortado ?? false,
+    reintentar,
+  };
 }
 
 /** Cómo se llama, o el identificador recortado si no se sabe. */

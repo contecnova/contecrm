@@ -34,8 +34,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo } from "@/componentes/Estados";
+import { Cargando, Error as Fallo, FalloCompacto } from "@/componentes/Estados";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
@@ -195,18 +196,25 @@ export function Estado() {
   const [frenados, setFrenados] = useState<Frenados | null>(null);
   const [interfaz, setInterfaz] = useState<UiReferencia | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  // Cada panel de abajo se pide aparte: su fallo no tumba la página, pero se
+  // dice en su sitio. Antes se tragaba y «no se ha podido leer el consumo» se
+  // veía igual que «no hay consumo», justo en la pantalla que se mira cuando
+  // algo va mal.
+  const secundarias = useCargasSecundarias();
+  const { seguir } = secundarias;
 
   useEffect(() => {
     const control = new AbortController();
+    const signal = control.signal;
     llamar<Respuesta>("/api/v1/estado", { signal: control.signal })
       .then((r) => setDatos(r.datos))
       .catch(salvoCancelacion(setFallo));
     // Los compromisos se piden aparte y su fallo NO tumba la página: el estado
     // de los componentes es lo urgente cuando algo va mal, y perderlo porque no
     // se pudo leer un número de contrato sería el peor momento para perderlo.
-    llamar<Compromisos>("/api/v1/compromisos", { signal: control.signal })
-      .then((r) => setCompromisos(r.datos))
-      .catch(() => undefined);
+    seguir("compromisos", () =>
+      llamar<Compromisos>("/api/v1/compromisos", { signal }).then((r) => setCompromisos(r.datos)),
+    );
     // Y lo demás que esta página dice enseñar desde que se escribió —el
     // objetivo de servicio y el presupuesto de error (CRM-00.06.01.04)— más lo
     // que se pregunta al lado: cuánto se lleva gastado de lo contratado, si lo
@@ -215,34 +223,34 @@ export function Estado() {
     //
     // Cada una con su fallo: que no se pueda leer el consumo no puede dejar
     // sin ver qué componente está caído, que es lo urgente cuando algo va mal.
-    llamar<Slo>("/api/v1/estado/slo", { signal: control.signal })
-      .then((r) => setSlo(r.datos))
-      .catch(() => undefined);
-    llamar<Consumo>("/api/v1/estado/consumo", { signal: control.signal })
-      .then((r) => setConsumo(r.datos))
-      .catch(() => undefined);
-    llamar<Contratos>("/api/v1/estado/contratos", { signal: control.signal })
-      .then((r) => setContratos(r.datos))
-      .catch(() => undefined);
-    llamar<Presion>("/api/v1/estado/presion", { signal: control.signal })
-      .then((r) => setPresion(r.datos))
-      .catch(() => undefined);
-    llamar<Frenados>("/api/v1/estado/frenados", { signal: control.signal })
-      .then((r) => setFrenados(r.datos))
-      .catch(() => undefined);
-    llamar<Degradadas>("/api/v1/estado/consultas-degradadas", {
-      signal: control.signal,
-    })
-      .then((r) => setDegradadas(r.datos))
-      .catch(() => undefined);
+    seguir("slo", () =>
+      llamar<Slo>("/api/v1/estado/slo", { signal }).then((r) => setSlo(r.datos)),
+    );
+    seguir("consumo", () =>
+      llamar<Consumo>("/api/v1/estado/consumo", { signal }).then((r) => setConsumo(r.datos)),
+    );
+    seguir("contratos", () =>
+      llamar<Contratos>("/api/v1/estado/contratos", { signal }).then((r) => setContratos(r.datos)),
+    );
+    seguir("presion", () =>
+      llamar<Presion>("/api/v1/estado/presion", { signal }).then((r) => setPresion(r.datos)),
+    );
+    seguir("frenados", () =>
+      llamar<Frenados>("/api/v1/estado/frenados", { signal }).then((r) => setFrenados(r.datos)),
+    );
+    seguir("degradadas", () =>
+      llamar<Degradadas>("/api/v1/estado/consultas-degradadas", {
+        signal,
+      }).then((r) => setDegradadas(r.datos)),
+    );
     // Si la instalación sigue sin depender de esta interfaz (CRM-00.02.03.02).
-    llamar<UiReferencia>("/api/v1/estado/ui-referencia", {
-      signal: control.signal,
-    })
-      .then((r) => setInterfaz(r.datos))
-      .catch(() => undefined);
+    seguir("interfaz", () =>
+      llamar<UiReferencia>("/api/v1/estado/ui-referencia", {
+        signal,
+      }).then((r) => setInterfaz(r.datos)),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   if (fallo) return <Fallo error={fallo} />;
   if (!datos) return <Cargando />;
@@ -341,6 +349,10 @@ export function Estado() {
           </div>
         </>
       ) : null}
+      <FalloCompacto
+        {...secundarias.estado("compromisos")}
+        que={t("estado.compromisos")}
+      />
 
       {/* El presupuesto de error, y lo PRIMERO que decide: si hoy se puede
           desplegar. Un objetivo de servicio que no cambia ninguna decisión es
@@ -400,6 +412,7 @@ export function Estado() {
           <LatenciaPorOperacion slo={slo} />
         </>
       ) : null}
+      <FalloCompacto {...secundarias.estado("slo")} que={t("estado.slo")} />
 
       {/* Lo que se lleva gastado de lo contratado. Con el reparto por módulo:
           «vais por el 80 %» no dice qué hacer; «el 80 % es almacenamiento de
@@ -430,6 +443,10 @@ export function Estado() {
           </ul>
         </>
       ) : null}
+      <FalloCompacto
+        {...secundarias.estado("consumo")}
+        que={t("estado.consumo")}
+      />
 
       {/* Dos preguntas que sólo se hacen cuando algo huele mal, y que hasta
           ahora no tenían dónde hacerse: si lo que un servicio promete en sus
@@ -467,10 +484,32 @@ export function Estado() {
           ) : null}
         </>
       ) : null}
+      {/* Las dos preguntas comparten título: el aviso lleva el mismo, una vez
+          por cada una que no haya contestado. */}
+      <FalloCompacto
+        {...secundarias.estado("contratos")}
+        que={t("estado.entreServicios")}
+      />
+      <FalloCompacto
+        {...secundarias.estado("degradadas")}
+        que={t("estado.entreServicios")}
+      />
 
       <LaPresion presion={presion} />
+      <FalloCompacto
+        {...secundarias.estado("presion")}
+        que={t("estado.presion")}
+      />
       <LosFrenados frenados={frenados} />
+      <FalloCompacto
+        {...secundarias.estado("frenados")}
+        que={t("estado.frenados")}
+      />
       <LaInterfazEsOpcional interfaz={interfaz} />
+      <FalloCompacto
+        {...secundarias.estado("interfaz")}
+        que={t("estado.interfaz")}
+      />
     </>
   );
 }

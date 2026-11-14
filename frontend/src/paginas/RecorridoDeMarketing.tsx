@@ -31,10 +31,16 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { Diagrama } from "@/componentes/Diagrama";
 import { EnviosProgramados } from "@/componentes/EnviosDeMarketing";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { fechaHora } from "@/lib/formato";
 import { colocar, type Definicion, type Nodo, type Paso } from "@/lib/grafo";
 import { cn } from "@/lib/utiles";
@@ -1181,17 +1187,20 @@ function Inscribir({
   const [contacto, setContacto] = useState("");
   const [resultado, setResultado] = useState("");
   const [fallo, setFallo] = useState<unknown>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
-    llamar<{ items?: Contacto[] }>(
-      `/api/v1/contacts?limite=20&buscar=${encodeURIComponent(buscar)}`,
-      { signal: control.signal },
-    )
-      .then((r) => setContactos(r.datos?.items ?? []))
-      .catch(() => undefined);
+    // Si la búsqueda falla, el desplegable vacío se leería como «no hay
+    // ningún contacto así»: se dice que no se ha podido buscar.
+    seguir("contactos", () =>
+      llamar<{ items?: Contacto[] }>(
+        `/api/v1/contacts?limite=20&buscar=${encodeURIComponent(buscar)}`,
+        { signal: control.signal },
+      ).then((r) => setContactos(r.datos?.items ?? [])),
+    );
     return () => control.abort();
-  }, [buscar]);
+  }, [buscar, seguir]);
 
   async function entrar() {
     try {
@@ -1278,6 +1287,10 @@ function Inscribir({
           {t("mk.recorrido.avanzar")}
         </button>
       </div>
+      <FalloCompacto
+        {...estado("contactos")}
+        que={t("mk.recorrido.queContactos")}
+      />
       <div role="status">
         {resultado ? (
           <p className="mt-2 text-dato text-ink">{resultado}</p>

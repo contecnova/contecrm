@@ -30,13 +30,22 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Acciones } from "@/componentes/Acciones";
 import { MenuDeAcciones } from "@/componentes/MenuDeAcciones";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { accionesDe, type Accion } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import {
+  useCargasSecundarias,
+  type EstadoDeCarga,
+} from "@/lib/cargaSecundaria";
 import { importe as comoImporte, rotuloDeOpcion } from "@/lib/formato";
 import { nombreDe, usePersonas } from "@/lib/personas";
 
@@ -162,13 +171,18 @@ export function PeriodoDePrevision() {
   // cambio de la fecha; las monedas que se ofrecen son las que tienen cambio.
   const [moneda, setMoneda] = useState("");
   const [monedas, setMonedas] = useState<string[]>([]);
+  // Los paneles de abajo (y las monedas) se piden aparte: su fallo no tapa el
+  // número, pero se dice en su sitio. Tragado, un panel de ajustes vacío
+  // decía «sin ajustes» de un periodo que sí los tenía.
+  const secundarias = useCargasSecundarias();
+  const { seguir } = secundarias;
   useEffect(() => {
     const control = new AbortController();
-    void llamar<{ desde_moneda: string; hasta_moneda: string }[]>(
-      "/api/v1/monedas/cambios",
-      { signal: control.signal },
-    )
-      .then((r) =>
+    seguir("monedas", () =>
+      llamar<{ desde_moneda: string; hasta_moneda: string }[]>(
+        "/api/v1/monedas/cambios",
+        { signal: control.signal },
+      ).then((r) =>
         setMonedas(
           [
             ...new Set(
@@ -176,10 +190,10 @@ export function PeriodoDePrevision() {
             ),
           ].sort(),
         ),
-      )
-      .catch(() => undefined);
+      ),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
   const [prevision, setPrevision] = useState<Prevision | null>(null);
   const [ajustes, setAjustes] = useState<Ajuste[]>([]);
   const [acierto, setAcierto] = useState<Acierto | null>(null);
@@ -212,35 +226,30 @@ export function PeriodoDePrevision() {
 
     // Cada panel con su fallo: que no haya ajustes no puede dejar sin ver el
     // número, que es a lo que se entra.
-    void llamar<Ajuste[]>(`/api/v1/forecast/periodos/${suya}/ajustes`, {
-      signal: control.signal,
-    })
-      .then((r) => setAjustes(r.datos))
-      .catch(() => undefined);
-    void llamar<Acierto>(`/api/v1/forecast/periodos/${suya}/acierto-ajustes`, {
-      signal: control.signal,
-    })
-      .then((r) => setAcierto(r.datos))
-      .catch(() => undefined);
-    void llamar<Instantanea[]>(
-      `/api/v1/forecast/periodos/${suya}/instantaneas`,
-      {
+    seguir("ajustes", () =>
+      llamar<Ajuste[]>(`/api/v1/forecast/periodos/${suya}/ajustes`, {
         signal: control.signal,
-      },
-    )
-      .then((r) => setFotos(r.datos))
-      .catch(() => undefined);
-    void llamar<Deslizamiento>(
-      `/api/v1/forecast/periodos/${suya}/deslizamiento`,
-      {
+      }).then((r) => setAjustes(r.datos)),
+    );
+    seguir("acierto", () =>
+      llamar<Acierto>(`/api/v1/forecast/periodos/${suya}/acierto-ajustes`, {
         signal: control.signal,
-      },
-    )
-      .then((r) => setDeslizamiento(r.datos))
-      .catch(() => undefined);
+      }).then((r) => setAcierto(r.datos)),
+    );
+    seguir("fotos", () =>
+      llamar<Instantanea[]>(`/api/v1/forecast/periodos/${suya}/instantaneas`, {
+        signal: control.signal,
+      }).then((r) => setFotos(r.datos)),
+    );
+    seguir("deslizamiento", () =>
+      llamar<Deslizamiento>(
+        `/api/v1/forecast/periodos/${suya}/deslizamiento`,
+        { signal: control.signal },
+      ).then((r) => setDeslizamiento(r.datos)),
+    );
 
     return () => control.abort();
-  }, [clave, moneda]);
+  }, [clave, moneda, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -260,6 +269,8 @@ export function PeriodoDePrevision() {
           Object.fromEntries((r.datos ?? []).map((c) => [c.clave, c.nombre])),
         ),
       )
+      // Mudo a propósito: sin los nombres se pinta la clave de la categoría,
+      // que sigue diciendo cuál es. No falta ningún dato, sólo la etiqueta.
       .catch(() => undefined);
     return () => control.abort();
   }, []);
@@ -268,14 +279,14 @@ export function PeriodoDePrevision() {
   // de agrupación no tiene por qué recargar el resto de la pantalla.
   useEffect(() => {
     const control = new AbortController();
-    llamar<Desglose>(
-      `/api/v1/forecast/periodos/${encodeURIComponent(clave)}/desglose?por=${por}`,
-      { signal: control.signal },
-    )
-      .then((r) => setDesglose(r.datos))
-      .catch(() => undefined);
+    seguir("desglose", () =>
+      llamar<Desglose>(
+        `/api/v1/forecast/periodos/${encodeURIComponent(clave)}/desglose?por=${por}`,
+        { signal: control.signal },
+      ).then((r) => setDesglose(r.datos)),
+    );
     return () => control.abort();
-  }, [clave, por]);
+  }, [clave, por, seguir]);
 
   if (fallo && !prevision) return <Fallo error={fallo} reintentar={cargar} />;
   if (!prevision) return <Cargando />;
@@ -303,6 +314,12 @@ export function PeriodoDePrevision() {
             ) : (
               <span className="chip-dato">{prevision.moneda}</span>
             )}
+            {/* Sin la lista de cambios no se ofrece otra moneda: se dice por
+                qué, o parecería que no hay ninguna más. */}
+            <FalloCompacto
+              {...secundarias.estado("monedas")}
+              que={t("prevision.moneda")}
+            />
             <span className="text-dato text-ink-muted">
               {t("prevision.cuantas", { cuantas: prevision.oportunidades })}
             </span>
@@ -378,12 +395,22 @@ export function PeriodoDePrevision() {
           ajustes={ajustes}
           acierto={acierto}
           moneda={prevision.moneda}
+          carga={secundarias.estado("ajustes")}
+          cargaAcierto={secundarias.estado("acierto")}
         />
-        <ElDesglose desglose={desglose} por={por} alCambiar={setPor} />
+        <ElDesglose
+          desglose={desglose}
+          por={por}
+          alCambiar={setPor}
+          carga={secundarias.estado("desglose")}
+        />
         <LaJerarquia clave={clave} />
-        <LasFotos fotos={fotos} />
-        <QueHaCambiado fotos={fotos} />
-        <LoQueSeHaDeslizado deslizamiento={deslizamiento} />
+        <LasFotos fotos={fotos} carga={secundarias.estado("fotos")} />
+        <QueHaCambiado fotos={fotos} cargaFotos={secundarias.estado("fotos")} />
+        <LoQueSeHaDeslizado
+          deslizamiento={deslizamiento}
+          carga={secundarias.estado("deslizamiento")}
+        />
       </div>
     </>
   );
@@ -401,10 +428,15 @@ function LosAjustes({
   ajustes,
   acierto,
   moneda,
+  carga,
+  cargaAcierto,
 }: {
   ajustes: Ajuste[];
   acierto: Acierto | null;
   moneda: string;
+  /** Si no llegaron, eso y no «sin ajustes»: un vacío que es un fallo engaña. */
+  carga: EstadoDeCarga;
+  cargaAcierto: EstadoDeCarga;
 }) {
   const { t } = useTranslation();
   const mejoro =
@@ -417,7 +449,9 @@ function LosAjustes({
       <p className="mb-2 text-rotulo text-ink-faint">
         {t("prevision.ajustesAyuda")}
       </p>
-      {ajustes.length === 0 ? (
+      {carga.error ? (
+        <FalloCompacto {...carga} que={t("prevision.ajustes")} />
+      ) : ajustes.length === 0 ? (
         <Vacio titulo={t("prevision.sinAjustes")} compacto />
       ) : (
         <ul className="divide-y divide-ink-dim/30">
@@ -456,6 +490,7 @@ function LosAjustes({
         </ul>
       )}
 
+      <FalloCompacto {...cargaAcierto} que={t("prevision.acierto")} />
       {acierto ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
           <h3 className="text-dato font-medium text-ink">
@@ -681,10 +716,12 @@ function ElDesglose({
   desglose,
   por,
   alCambiar,
+  carga,
 }: {
   desglose: Desglose | null;
   por: string;
   alCambiar: (v: string) => void;
+  carga: EstadoDeCarga;
 }) {
   const { t } = useTranslation();
   return (
@@ -703,7 +740,9 @@ function ElDesglose({
           <option value="tipo_ingreso">{t("prevision.porTipo")}</option>
         </select>
       </label>
-      {!desglose || Object.keys(desglose.grupos).length === 0 ? (
+      {carga.error ? (
+        <FalloCompacto {...carga} que={t("prevision.desglose")} />
+      ) : !desglose || Object.keys(desglose.grupos).length === 0 ? (
         <div className="mt-2">
           <Vacio titulo={t("prevision.sinDesglose")} compacto />
         </div>
@@ -743,7 +782,13 @@ function ElDesglose({
  * íbamos hace tres semanas?» es la pregunta de todos los lunes. Cada foto va
  * con **cuándo se tomó**: una etiqueta sin fecha no sirve para ordenar nada.
  */
-function LasFotos({ fotos }: { fotos: Instantanea[] }) {
+function LasFotos({
+  fotos,
+  carga,
+}: {
+  fotos: Instantanea[];
+  carga: EstadoDeCarga;
+}) {
   const { t } = useTranslation();
   return (
     <section className="card p-4">
@@ -751,7 +796,9 @@ function LasFotos({ fotos }: { fotos: Instantanea[] }) {
       <p className="mb-2 text-rotulo text-ink-faint">
         {t("prevision.fotosAyuda")}
       </p>
-      {fotos.length === 0 ? (
+      {carga.error ? (
+        <FalloCompacto {...carga} que={t("prevision.fotos")} />
+      ) : fotos.length === 0 ? (
         <Vacio titulo={t("prevision.sinFotos")} compacto />
       ) : (
         <ul className="divide-y divide-ink-dim/30">
@@ -824,7 +871,14 @@ const CAUSAS = [
  * Salir de la foto no es perderse, y se pinta aparte: mezclarlo inflaría la
  * tasa de pérdida.
  */
-function QueHaCambiado({ fotos }: { fotos: Instantanea[] }) {
+function QueHaCambiado({
+  fotos,
+  cargaFotos,
+}: {
+  fotos: Instantanea[];
+  /** Sin fotos porque no llegaron no es «faltan fotos»: se dice lo que es. */
+  cargaFotos: EstadoDeCarga;
+}) {
   const { t } = useTranslation();
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
@@ -855,7 +909,9 @@ function QueHaCambiado({ fotos }: { fotos: Instantanea[] }) {
       </p>
       {/* Con menos de dos fotos no hay nada que comparar, y se dice: un
           panel que no sale no le cuenta a nadie que existe. */}
-      {fotos.length < 2 ? (
+      {cargaFotos.error ? (
+        <FalloCompacto {...cargaFotos} que={t("prevision.fotos")} />
+      ) : fotos.length < 2 ? (
         <Vacio titulo={t("prevision.saltoFaltanFotos")} compacto />
       ) : null}
       <div className={fotos.length < 2 ? "hidden" : "flex flex-wrap gap-2"}>
@@ -930,11 +986,19 @@ function QueHaCambiado({ fotos }: { fotos: Instantanea[] }) {
  */
 function LoQueSeHaDeslizado({
   deslizamiento,
+  carga,
 }: {
   deslizamiento: Deslizamiento | null;
+  carga: EstadoDeCarga;
 }) {
   const { t } = useTranslation();
-  if (!deslizamiento) return null;
+  if (!deslizamiento)
+    return carga.error ? (
+      <section className="card p-4">
+        <h2 className="section-label mb-1">{t("prevision.deslizamiento")}</h2>
+        <FalloCompacto {...carga} />
+      </section>
+    ) : null;
 
   return (
     <section className="card p-4">

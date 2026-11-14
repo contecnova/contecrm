@@ -22,10 +22,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
+import { listar, listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 
 interface Territorio {
   id: string;
@@ -85,8 +91,11 @@ export function Territorios() {
   const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
   const [consecucion, setConsecucion] = useState<Consecucion | null>(null);
   const [simulando, setSimulando] = useState(false);
+  // Si la simulación se hizo con una sola página de cuentas habiendo más.
+  const [simulacionRecortada, setSimulacionRecortada] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
   const [aviso, setAviso] = useState("");
+  const { seguir, estado } = useCargasSecundarias();
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -96,21 +105,23 @@ export function Territorios() {
     listar<Territorio>("/api/v1/territorios", { signal: control.signal })
       .then(setTerritorios)
       .catch(salvoCancelacion(setFallo));
-    void llamar<Excepciones>("/api/v1/territorios/excepciones", {
-      signal: control.signal,
-    })
-      .then((r) => setExcepciones(r.datos))
-      .catch(() => undefined);
+    // Aparte y sin tumbar el mapa, pero dicho si falla: un panel de
+    // excepciones que no sale se lee como «no hay ninguna».
+    seguir("excepciones", () =>
+      llamar<Excepciones>("/api/v1/territorios/excepciones", {
+        signal: control.signal,
+      }).then((r) => setExcepciones(r.datos)),
+    );
     // Las cuotas van aquí y no en otra pantalla: el territorio decide de quién
     // es una cuenta y la cuota decide cuánto tiene que vender quien lo lleva.
     // Mirar una sin la otra es cómo se reparte un mapa que nadie puede cumplir.
-    void llamar<Consecucion>("/api/v1/cuotas/consecucion", {
-      signal: control.signal,
-    })
-      .then((r) => setConsecucion(r.datos))
-      .catch(() => undefined);
+    seguir("cuotas", () =>
+      llamar<Consecucion>("/api/v1/cuotas/consecucion", {
+        signal: control.signal,
+      }).then((r) => setConsecucion(r.datos)),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -125,9 +136,13 @@ export function Territorios() {
     setSimulando(true);
     setAviso("");
     try {
-      const cuentas = await listar<Record<string, unknown>>(
-        "/api/v1/accounts?limite=200&estado=",
-      );
+      // Una página del tamaño máximo. Si el servidor dice que hay más, se
+      // avisa junto al resultado: antes el recuento de «cambian» se leía como
+      // el de toda la cartera cuando era el de las doscientas primeras.
+      const { filas: cuentas, siguiente } = await listarPagina<
+        Record<string, unknown>
+      >(`/api/v1/accounts?limite=${MAXIMO_POR_PAGINA}&estado=`);
+      setSimulacionRecortada(siguiente !== "");
       const r = await llamar<Simulacion>("/api/v1/territorios/simular", {
         metodo: "POST",
         cuerpo: { cuentas },
@@ -173,6 +188,9 @@ export function Territorios() {
         >
           {aviso}
         </p>
+        {simulacion && simulacionRecortada ? (
+          <AvisoDeRecorte cuantas={simulacion.cuentas} />
+        ) : null}
 
         {simulacion ? (
           <div className="mt-2">
@@ -228,8 +246,27 @@ export function Territorios() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ElMapa territorios={territorios} />
-        <LasExcepciones excepciones={excepciones} />
-        <LasCuotas consecucion={consecucion} />
+        {/* En su casilla, el panel o lo que ha impedido leerlo. */}
+        {estado("excepciones").error ? (
+          <section className="card p-4">
+            <FalloCompacto
+              {...estado("excepciones")}
+              que={t("territorios.excepciones")}
+            />
+          </section>
+        ) : (
+          <LasExcepciones excepciones={excepciones} />
+        )}
+        {estado("cuotas").error ? (
+          <section className="card p-4">
+            <FalloCompacto
+              {...estado("cuotas")}
+              que={t("territorios.cuotas")}
+            />
+          </section>
+        ) : (
+          <LasCuotas consecucion={consecucion} />
+        )}
       </div>
     </>
   );

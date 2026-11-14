@@ -53,14 +53,21 @@ import {
   FormularioDeEdicion,
   useEdicion,
 } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { DatosClave } from "@/componentes/DatosClave";
 import { DetallesDelRegistro } from "@/componentes/DetallesDelRegistro";
 import { PestanasDeFicha } from "@/componentes/PestanasDeFicha";
 import { GenerarDocumento } from "@/componentes/GenerarDocumento";
 import { llamar, salvoCancelacion } from "@/lib/api";
-import { listar, listarPagina } from "@/lib/listados";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
+import type { EstadoDeCarga } from "@/lib/cargaSecundaria";
+import { listar, listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { Acciones, esIrreversible } from "@/componentes/Acciones";
 import { AsistenteIA, esDeIA } from "@/componentes/AsistenteIA";
 import { PrediccionDelRegistro } from "@/componentes/PrediccionDelRegistro";
@@ -265,6 +272,9 @@ export function Cuenta() {
   const [obsoletos, setObsoletos] = useState<Obsoletos | null>(null);
   const [arbol, setArbol] = useState<Arbol | null>(null);
   const [salud, setSalud] = useState<Salud | null>(null);
+  // Lo que se pide aparte del 360: si no llega, el panel lo dice en su sitio
+  // en vez de desaparecer, que se leería como «este cliente no tiene».
+  const { seguir, estado: cargaDe } = useCargasSecundarias();
   const { superficie, tiene } = useSuperficie();
   const navegar = useNavigate();
   // Se puede llegar YA en edición, con `?editar=1`. Lo usa el menú de la fila
@@ -310,45 +320,51 @@ export function Cuenta() {
 
       // Las cuatro preguntas de calidad del dato de ESTE cliente. Cada una con
       // su propio fallo: que no haya linaje no puede dejar sin ver la ficha.
-      void llamar<Linaje>(`/api/v1/calidad-dato/linaje/cuenta/${id}`, {
-        signal,
-      })
-        .then((r) => setLinaje(r.datos))
-        .catch(() => undefined);
-      void llamar<Obsoletos>(`/api/v1/calidad-dato/obsoletos/cuenta/${id}`, {
-        signal,
-      })
-        .then((r) => setObsoletos(r.datos))
-        .catch(() => undefined);
-      void llamar<Arbol>(`/api/v1/accounts/${id}/jerarquia`, { signal })
-        .then((r) => setArbol(r.datos))
-        .catch(() => undefined);
-      void llamar<Salud>(`/api/v1/calidad-dato/salud/${id}`, { signal })
-        .then((r) => setSalud(r.datos))
-        .catch(() => undefined);
+      seguir("linaje", () =>
+        llamar<Linaje>(`/api/v1/calidad-dato/linaje/cuenta/${id}`, {
+          signal,
+        }).then((r) => setLinaje(r.datos)),
+      );
+      seguir("obsoletos", () =>
+        llamar<Obsoletos>(`/api/v1/calidad-dato/obsoletos/cuenta/${id}`, {
+          signal,
+        }).then((r) => setObsoletos(r.datos)),
+      );
+      seguir("jerarquia", () =>
+        llamar<Arbol>(`/api/v1/accounts/${id}/jerarquia`, { signal }).then(
+          (r) => setArbol(r.datos),
+        ),
+      );
+      seguir("salud", () =>
+        llamar<Salud>(`/api/v1/calidad-dato/salud/${id}`, { signal }).then(
+          (r) => setSalud(r.datos),
+        ),
+      );
       // Oportunidades y casos viven en otros servicios: se piden aparte y **su
       // fallo no tumba la ficha**. Que no responda soporte no puede dejar sin
       // ver los datos del cliente.
       // `estado=` vacío a propósito: la API filtra por abiertas de serie, y en
       // la ficha de un cliente eso esconde justo lo que se ganó con él. «Cómo
       // vamos con este cliente» incluye lo cerrado.
-      listarPagina<Oportunidad>(
-        `/api/v1/opportunities?cuenta_id=${id}&estado=&limite=20`,
-        { signal },
-      )
-        .then((pagina) => {
+      seguir("oportunidades", () =>
+        listarPagina<Oportunidad>(
+          `/api/v1/opportunities?cuenta_id=${id}&estado=&limite=20`,
+          { signal },
+        ).then((pagina) => {
           setOportunidades(pagina.filas);
           setHayMasOportunidades(Boolean(pagina.siguiente));
-        })
-        .catch(() => undefined);
-      listarPagina<Caso>(`/api/v1/casos?cuenta_id=${id}&limite=20`, { signal })
-        .then((pagina) => {
+        }),
+      );
+      seguir("casos", () =>
+        listarPagina<Caso>(`/api/v1/casos?cuenta_id=${id}&limite=20`, {
+          signal,
+        }).then((pagina) => {
           setCasos(pagina.filas);
           setHayMasCasos(Boolean(pagina.siguiente));
-        })
-        .catch(() => undefined);
+        }),
+      );
     },
-    [id],
+    [id, seguir],
   );
 
   useEffect(() => {
@@ -741,9 +757,19 @@ export function Cuenta() {
               pantalla no se enteraría de que ha pasado algo. Dice cuántos hay
               delante, que es el dato que cambia. */}
               <div role="status" aria-live="polite">
+                {/* «Todo» tampoco es todo cuando llega al tope: esta ruta da
+                    una lista sin cursor de como mucho una página del
+                    servidor, así que si llena la página puede haber más
+                    antiguos, y decir «se enseñan N hitos» los daría por
+                    contados. Se dice como lo que es, el mismo aviso que el
+                    del 360. */}
                 {masTimeline ? (
                   <p className="mt-3 border-t border-ink-dim/30 pt-2 text-rotulo text-ink-faint">
-                    {t("cuenta.timelineEntera", { cuantos: timeline.length })}
+                    {masTimeline.length >= MAXIMO_POR_PAGINA
+                      ? t("cuenta.timelineRecortada", {
+                          cuantos: MAXIMO_POR_PAGINA,
+                        })
+                      : t("cuenta.timelineEntera", { cuantos: timeline.length })}
                   </p>
                 ) : null}
                 {puedeHaberMas ? (
@@ -755,12 +781,13 @@ export function Cuenta() {
                       disabled={pidiendoMas}
                       onClick={() => {
                         setPidiendoMas(true);
-                        void listar<Record<string, unknown>>(
-                          `/api/v1/accounts/${id}/timeline?limite=200`,
-                        )
-                          .then(setMasTimeline)
-                          .catch(() => undefined)
-                          .finally(() => setPidiendoMas(false));
+                        seguir("timeline", () =>
+                          listar<Record<string, unknown>>(
+                            `/api/v1/accounts/${id}/timeline?limite=${MAXIMO_POR_PAGINA}`,
+                          )
+                            .then(setMasTimeline)
+                            .finally(() => setPidiendoMas(false)),
+                        );
                       }}
                     >
                       {pidiendoMas
@@ -769,6 +796,12 @@ export function Cuenta() {
                     </button>
                   </p>
                 ) : null}
+                {/* Si «ver todo» no llega, se dice: si no, el botón vuelve a
+                    su sitio y parece que ya estaba todo. */}
+                <FalloCompacto
+                  {...cargaDe("timeline")}
+                  que={t("cuenta.timeline")}
+                />
               </div>
             </section>
 
@@ -802,6 +835,7 @@ export function Cuenta() {
                 vacio={t("cuenta.sinOportunidades")}
                 cuantos={oportunidades.length}
                 hayMas={hayMasOportunidades}
+                carga={cargaDe("oportunidades")}
                 verTodas={verTodasDe("oportunidad")}
               >
                 {oportunidades.map((o) => (
@@ -836,6 +870,7 @@ export function Cuenta() {
                 vacio={t("cuenta.sinCasos")}
                 cuantos={casos.length}
                 hayMas={hayMasCasos}
+                carga={cargaDe("casos")}
                 verTodas={verTodasDe("caso")}
               >
                 {casos.map((c) => (
@@ -861,10 +896,23 @@ export function Cuenta() {
           delante de un cliente concreto lo que se quiere saber es por qué su
           teléfono dice eso y no lo que dice el ERP. */}
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {/* Cada panel, o su fallo en el mismo sitio: sin dato el panel no
+                se pinta, y «no se ha podido consultar» no puede verse igual
+                que «no hay nada que decir de este cliente». */}
             <LaJerarquia arbol={arbol} />
+            <FalloCompacto
+              {...cargaDe("jerarquia")}
+              que={t("cuenta.jerarquia")}
+            />
             <LaSalud salud={salud} />
+            <FalloCompacto {...cargaDe("salud")} que={t("cuenta.salud")} />
             <DeDondeSaleCadaDato linaje={linaje} />
+            <FalloCompacto {...cargaDe("linaje")} que={t("cuenta.linaje")} />
             <LoQueLlevaSinConfirmarse obsoletos={obsoletos} />
+            <FalloCompacto
+              {...cargaDe("obsoletos")}
+              que={t("cuenta.obsoletos")}
+            />
           </div>
 
           {/* Direcciones, identificadores fiscales, equipo de cuenta, relaciones
@@ -919,12 +967,19 @@ function Relacionados({
   cuantos,
   hayMas = false,
   verTodas,
+  carga,
   children,
 }: {
   titulo: string;
   icono: string;
   vacio: string;
   cuantos: number;
+  /**
+   * Cómo fue su carga, que se pide aparte. Con fallo, el panel lo dice en vez
+   * de su «no hay»: sin esto un servicio caído se leía como «este cliente no
+   * tiene casos».
+   */
+  carga?: EstadoDeCarga;
   /** La lista viene recortada: hay más de las que se enseñan. */
   hayMas?: boolean;
   /** A dónde ir a verlas todas. Sólo se pinta si `hayMas`. */
@@ -961,7 +1016,9 @@ function Relacionados({
               reparte entre las que sí tienen cola.
 
           O sea: unas cuantas de cada una, y nada de espacio vacío. */}
-      {cuantos === 0 ? (
+      {carga?.error ? (
+        <FalloCompacto {...carga} />
+      ) : cuantos === 0 ? (
         <p className="py-2 text-rotulo text-ink-faint">{vacio}</p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">

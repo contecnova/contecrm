@@ -28,9 +28,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Error as Fallo, FalloCompacto, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 
 const ENTORNOS = [
   "desarrollo",
@@ -78,6 +79,10 @@ export function Entornos() {
   const [desplegado, setDesplegado] = useState<Record<string, Desplegado>>({});
   const [drift, setDrift] = useState<Record<string, Drift>>({});
   const [fallo, setFallo] = useState<unknown>(null);
+  // El drift de cada entorno, aparte: que no se pueda medir uno no puede
+  // dejar sin ver qué hay desplegado, pero tampoco puede callarse, porque sin
+  // él la tarjeta no dice nada del drift y eso se lee como «limpio».
+  const { seguir, estado: estadoDe } = useCargasSecundarias();
 
   const cargar = useCallback(() => {
     const control = new AbortController();
@@ -87,12 +92,14 @@ export function Entornos() {
       llamar<Desplegado>(`/api/v1/entornos/${entorno}/desplegado`, { signal })
         .then((r) => setDesplegado((x) => ({ ...x, [entorno]: r.datos })))
         .catch(salvoCancelacion(setFallo));
-      llamar<Drift>(`/api/v1/entornos/${entorno}/drift`, { signal })
-        .then((r) => setDrift((x) => ({ ...x, [entorno]: r.datos })))
-        .catch(salvoCancelacion(() => undefined));
+      seguir(`drift:${entorno}`, () =>
+        llamar<Drift>(`/api/v1/entornos/${entorno}/drift`, { signal }).then(
+          (r) => setDrift((x) => ({ ...x, [entorno]: r.datos })),
+        ),
+      );
     }
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -172,6 +179,10 @@ export function Entornos() {
               )}
 
               {/* El drift, con su `medible` delante. */}
+              <FalloCompacto
+                {...estadoDe(`drift:${entorno}`)}
+                que={t("entornos.drift")}
+              />
               {g ? (
                 !g.medible ? (
                   <p className="mt-2 text-dato text-warning">

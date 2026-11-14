@@ -21,8 +21,9 @@ import { Link, useLocation } from "react-router-dom";
 import { AvisoDeChat } from "@/componentes/AvisoDeChat";
 import { Icono } from "@/componentes/Icono";
 import { Notificaciones } from "@/componentes/Notificaciones";
-import { llamar, mirarTenant, tenantMirado } from "@/lib/api";
+import { mirarTenant, tenantMirado } from "@/lib/api";
 import { ALTAS } from "@/lib/altas";
+import { conCursor, listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { humanizar } from "@/lib/formato";
 import { MODULOS, grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
 import {
@@ -665,15 +666,27 @@ function QueCliente({ sesion }: { sesion: Sesion }) {
     // La lista de clientes es de plataforma, así que se pide con lo que ya
     // concede el propio permiso. Si no se puede, el selector no sale: ofrecer
     // un desplegable vacío es ofrecer algo que no hace nada.
-    void llamar<{ items: { id: string; nombre: string; slug?: string }[] }>(
-      "/api/v1/tenants?limite=200",
-      { signal: control.signal },
-    )
-      .then((r) =>
-        setTenants(
-          (r.datos.items ?? []).map((x) => ({ id: x.id, nombre: x.nombre })),
-        ),
-      )
+    //
+    // **Todas, siguiendo el cursor.** Pedía una página de doscientas y el
+    // cliente doscientos uno no se podía mirar desde aquí, sin que nada lo
+    // dijera. Este selector es una píldora en la barra y no tiene sitio para
+    // un «cargar más», así que se traen todas: son clientes de la
+    // plataforma, no registros, y cada vuelta es una página del servidor.
+    void (async () => {
+      const ruta = `/api/v1/tenants?limite=${MAXIMO_POR_PAGINA}`;
+      const todas: { id: string; nombre: string }[] = [];
+      let cursor = "";
+      do {
+        const pagina = await listarPagina<{ id: string; nombre: string }>(
+          cursor ? conCursor(ruta, cursor) : ruta,
+          { signal: control.signal },
+        );
+        todas.push(...pagina.filas.map((x) => ({ id: x.id, nombre: x.nombre })));
+        cursor = pagina.siguiente;
+      } while (cursor);
+      return todas;
+    })()
+      .then(setTenants)
       .catch(() => setTenants([]));
     return () => control.abort();
   }, []);

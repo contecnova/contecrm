@@ -46,3 +46,21 @@ export async function listarPagina<T>(
   const respuesta = await llamar<unknown>(ruta, opciones);
   return { filas: filas<T>(respuesta.datos), siguiente: siguientePagina(respuesta.datos) };
 }
+
+/**
+ * Lo más que el servidor da por página: su `page_max_size`
+ * (`crmcore/config_parts/_limits.py`). Pedir más contesta 422.
+ *
+ * Una sola constante y no un «200» en cada pantalla: había cuarenta y tantos
+ * `limite=` escritos a mano, y el día que el servidor cambie el suyo hay que
+ * poder cambiarlo en un sitio. Que una lista llegue a este tope no quiere
+ * decir que esté entera: lo dice `siguiente`, y por eso las que lo pueden
+ * alcanzar enseñan `<AvisoDeRecorte>`.
+ */
+export const MAXIMO_POR_PAGINA = 200;
+
+/** La misma ruta, pidiendo la página que empieza en `cursor`. */
+export function conCursor(ruta: string, cursor: string): string {
+  const separador = ruta.includes("?") ? "&" : "?";
+  return `${ruta}${separador}cursor=${encodeURIComponent(cursor)}`;
+}

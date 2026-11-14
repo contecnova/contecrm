@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { conCursor, listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { cn } from "@/lib/utiles";
 
 interface Seguimiento {
@@ -32,11 +33,6 @@ interface Seguimiento {
   objeto_id: string;
   motivo: string;
   silenciado: boolean;
-}
-
-/** Lo que `GET /api/v1/seguimientos` devuelve, con su paginación. */
-interface Pagina {
-  items: Seguimiento[];
 }
 
 export function Seguir({
@@ -60,12 +56,28 @@ export function Seguir({
     // Filtrado por tipo en el servidor y comprobado aquí por identificador:
     // el extremo no admite `objeto_id`, así que la alternativa sería creer
     // que lo que vuelve es de este registro.
-    llamar<Pagina>(
-      `/api/v1/seguimientos?objeto_tipo=${encodeURIComponent(objetoTipo)}&limite=200`,
-      { signal: control.signal },
-    )
-      .then((r) => {
-        setSuyo((r.datos.items ?? []).find((s) => s.objeto_id === objetoId) ?? null);
+    //
+    // **Siguiendo el cursor hasta encontrarlo.** Miraba sólo la primera
+    // página: con más de doscientas cuentas seguidas, la doscientas una salía
+    // como «no la sigues» y el primer clic contestaba que ya la seguía. Lo
+    // normal es una vuelta; sólo quien sigue cientos paga más, y paga lo
+    // justo para dar la respuesta correcta.
+    const ruta = `/api/v1/seguimientos?objeto_tipo=${encodeURIComponent(objetoTipo)}&limite=${MAXIMO_POR_PAGINA}`;
+    void (async () => {
+      let cursor = "";
+      do {
+        const pagina = await listarPagina<Seguimiento>(
+          cursor ? conCursor(ruta, cursor) : ruta,
+          { signal: control.signal },
+        );
+        const hallado = pagina.filas.find((s) => s.objeto_id === objetoId);
+        if (hallado) return hallado;
+        cursor = pagina.siguiente;
+      } while (cursor);
+      return null;
+    })()
+      .then((hallado) => {
+        setSuyo(hallado);
         setSabido(true);
       })
       .catch(

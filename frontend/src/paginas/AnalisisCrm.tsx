@@ -26,13 +26,19 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmarBorrado } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
 import { fechaHora } from "@/lib/formato";
-import { listar } from "@/lib/listados";
+import { listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
+import { nombreDe, usePersonas } from "@/lib/personas";
 import { cn } from "@/lib/utiles";
 
 const Grafica = lazy(() =>
@@ -114,24 +120,13 @@ interface Actividad {
   procedencia: Record<string, Procedencia>;
 }
 
-interface Usuario {
-  id: string;
-  nombre: string;
-  email: string;
-}
-
 export function AnalisisCrm() {
   const { t } = useTranslation();
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  useEffect(() => {
-    void listar<Usuario>("/api/v1/usuarios?limite=200")
-      .then(setUsuarios)
-      .catch(() => setUsuarios([]));
-  }, []);
-  const nombre = (id: string) => {
-    const u = usuarios.find((x) => x.id === id);
-    return u ? u.nombre || u.email : `${id.slice(0, 8)}…`;
-  };
+  // Los nombres, del directorio de la sesión: pedía sus doscientos primeros
+  // usuarios por su cuenta y, pasado ese número, la actividad de los demás
+  // salía con un identificador recortado. El directorio sigue el cursor.
+  const personas = usePersonas();
+  const nombre = (id: string) => nombreDe(personas, id);
 
   return (
     <>
@@ -807,6 +802,9 @@ interface ResultadoFederado {
 function SeccionFederada() {
   const { t } = useTranslation();
   const [fuentes, setFuentes] = useState<Fuente[]>([]);
+  // Si el servidor ha dicho que hay más fuentes que las de la primera página:
+  // la que falta no se puede elegir, y sin decirlo parece que no existe.
+  const [hayMasFuentes, setHayMasFuentes] = useState(false);
   const [fuente, setFuente] = useState("");
   const [objeto, setObjeto] = useState("");
   const [campos, setCampos] = useState("");
@@ -816,9 +814,12 @@ function SeccionFederada() {
   const [consultando, setConsultando] = useState(false);
 
   useEffect(() => {
-    void listar<Fuente>("/api/v1/almacen/federadas?limite=200")
-      .then((lista) => {
+    void listarPagina<Fuente>(
+      `/api/v1/almacen/federadas?limite=${MAXIMO_POR_PAGINA}`,
+    )
+      .then(({ filas: lista, siguiente }) => {
         setFuentes(lista);
+        setHayMasFuentes(siguiente !== "");
         const primera = lista[0];
         if (primera) {
           setFuente(primera.clave);
@@ -885,6 +886,9 @@ function SeccionFederada() {
                   </option>
                 ))}
               </select>
+              {hayMasFuentes ? (
+                <AvisoDeRecorte cuantas={fuentes.length} />
+              ) : null}
             </label>
             <label className="flex flex-col text-rotulo text-ink-muted">
               {t("analisisCrm.objeto")}

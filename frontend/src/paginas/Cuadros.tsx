@@ -30,9 +30,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { ErrorApi, llamar } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { fechaHora } from "@/lib/formato";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Medidor } from "@/componentes/graficas/Medidor";
@@ -257,6 +263,9 @@ function RecibirCuadro({ cuadroId }: { cuadroId: string }) {
   const { t } = useTranslation();
   const [actual, setActual] = useState<Suscripcion | null>(null);
   const [canales, setCanales] = useState<string[]>(["app"]);
+  // Si los canales no llegan queda sólo «app», y se dice: sin el aviso parecía
+  // que esta instalación no sabe mandar el cuadro por correo.
+  const { seguir, estado } = useCargasSecundarias();
   const [periodicidad, setPeriodicidad] = useState("semanal");
   const [hora, setHora] = useState(8);
   const [canal, setCanal] = useState("app");
@@ -279,13 +288,13 @@ function RecibirCuadro({ cuadroId }: { cuadroId: string }) {
       .catch((e: unknown) => {
         if (e instanceof ErrorApi) setFallo(e);
       });
-    llamar<{ canales: string[] }>("/api/v1/notificaciones/canales", {
-      signal: control.signal,
-    })
-      .then((r) => setCanales(r.datos.canales))
-      .catch(() => undefined);
+    seguir("canales", () =>
+      llamar<{ canales: string[] }>("/api/v1/notificaciones/canales", {
+        signal: control.signal,
+      }).then((r) => setCanales(r.datos.canales)),
+    );
     return () => control.abort();
-  }, [cuadroId]);
+  }, [cuadroId, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -363,6 +372,7 @@ function RecibirCuadro({ cuadroId }: { cuadroId: string }) {
             ))}
           </select>
         </label>
+        <FalloCompacto {...estado("canales")} que={t("cuadros.canal")} />
         <button
           type="button"
           className="btn-primary"

@@ -101,6 +101,8 @@ export function Marco({ sesion, children }: Props) {
   const salir = useCallback(async () => {
     // Se recarga en vez de vaciar el estado: es la única forma de estar seguro
     // de que no queda nada del usuario anterior en memoria.
+    // Si el servidor no contesta se sale igual: quien pulsa «salir» quiere
+    // dejar de estar dentro, y la sesión caduca sola (`caduca_at`).
     await llamar("/api/v1/sesion/salir", { metodo: "POST" }).catch(
       () => undefined,
     );

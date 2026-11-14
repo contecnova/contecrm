@@ -56,6 +56,9 @@ export function Reverificacion() {
             .then((r) => {
               if (r.datos.tiene_app === false) setSinApp(true);
             })
+            // Es sólo una pista para el diálogo: sin ella se pide el código
+            // igual, que es lo que se hacía antes de tenerla, y un error aquí
+            // taparía el diálogo que hay que contestar.
             .catch(() => undefined);
         }),
     );

@@ -355,6 +355,9 @@ function Preguntar({
         }
         setRecientes(vistas);
       })
+      // Sin historial se ofrecen los ejemplos, y el rótulo lo dice («Prueba con
+      // una de estas» y no «Lo último que se ha preguntado»): son sugerencias,
+      // no un dato, y que falten no impide preguntar.
       .catch(() => undefined);
   }, []);
   const [pensando, setPensando] = useState(false);
@@ -415,6 +418,9 @@ function Preguntar({
           fuente: "contecintelligence",
           filas_devueltas: (cuerpo.payload.data || []).length,
         },
+        // Anotarla es secundario a la respuesta, que ya está en pantalla: si
+        // el historial no la guarda, no se le estropea a nadie lo que ha
+        // preguntado por avisar de ello.
       }).catch(() => undefined);
     } catch (e: unknown) {
       setFallo(

@@ -18,7 +18,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDelDirectorio,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { Opciones } from "@/componentes/Formulario";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -26,7 +31,9 @@ import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
 import { rotuloDeOpcion } from "@/lib/formato";
 import type { CampoEsquema } from "@/lib/contrato";
-import { listar } from "@/lib/listados";
+import { listar, MAXIMO_POR_PAGINA } from "@/lib/listados";
+import { useDirectorio } from "@/lib/personas";
+import type { Directorio } from "@/lib/personas";
 import { cn } from "@/lib/utiles";
 
 interface FilaMatriz {
@@ -69,12 +76,6 @@ interface Excepcion {
 
 const NIVELES = ["bajo", "medio", "alto", "critico"] as const;
 
-interface Usuario {
-  id: string;
-  nombre: string;
-  email: string;
-}
-
 const TONO: Record<string, string> = {
   critico: "chip-dato--mal",
   alto: "chip-dato--mal",
@@ -89,7 +90,11 @@ export function Segregacion() {
     reglas: FilaMatriz[];
   } | null>(null);
   const [violaciones, setViolaciones] = useState<Violacion[]>([]);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  // Las personas salen del directorio de la sesión, que sigue el cursor: se
+  // pedían las doscientas primeras y, pasado ese número, las demás no se
+  // podían simular y su nombre salía recortado, sin aviso.
+  const directorio = useDirectorio();
+  const usuarios = directorio.personas ?? [];
   const [fallo, setFallo] = useState<unknown>(null);
   const [aviso, setAviso] = useState("");
   const [reglas, setReglas] = useState<Regla[]>([]);
@@ -143,12 +148,11 @@ export function Segregacion() {
       .finally(cargar);
   }, [cargar]);
   useEffect(() => {
-    void listar<Usuario>("/api/v1/usuarios?limite=200")
-      .then(setUsuarios)
-      .catch(() => setUsuarios([]));
     // Los permisos que se pueden elegir son los que dan los roles de verdad:
     // una regla con un permiso inventado no se cumple nunca y parece verde.
-    void listar<{ permisos?: string[] }>("/api/v1/roles?limite=200")
+    void listar<{ permisos?: string[] }>(
+      `/api/v1/roles?limite=${MAXIMO_POR_PAGINA}`,
+    )
       .then((roles) =>
         setPermisos(
           [...new Set(roles.flatMap((r) => r.permisos ?? []))]
@@ -341,7 +345,7 @@ export function Segregacion() {
           nombre={nombre}
           alCambiar={recargar}
         />
-        <Simulador usuarios={usuarios} roles={matriz.roles} />
+        <Simulador directorio={directorio} roles={matriz.roles} />
       </div>
       <ExcepcionesAprobadas nombre={nombre} reglas={reglas} />
     </>
@@ -458,13 +462,14 @@ function Conflictos({
 }
 
 function Simulador({
-  usuarios,
+  directorio,
   roles,
 }: {
-  usuarios: Usuario[];
+  directorio: Directorio;
   roles: string[];
 }) {
   const { t } = useTranslation();
+  const usuarios = directorio.personas ?? [];
   const [usuario, setUsuario] = useState("");
   const [elegidos, setElegidos] = useState<string[]>([]);
   const [resultado, setResultado] = useState<{
@@ -522,6 +527,7 @@ function Simulador({
             </option>
           ))}
         </select>
+        <AvisoDelDirectorio directorio={directorio} />
         <Opciones
           campo={campoRoles}
           valor={elegidos}

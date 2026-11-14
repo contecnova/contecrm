@@ -11,8 +11,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 
 interface CambioDeCampo {
   campo: string;
@@ -169,6 +175,10 @@ export function ComoEstabaEsto({
   const [estado, setEstado] = useState<Reconstruido | null>(null);
   const [cuadra, setCuadra] = useState<Cuadra | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  // La comprobación va aparte de la reconstrucción y su fallo se dice: sin
+  // ella no sale ni «cuadra» ni «no cuadra», y el silencio se lee como lo
+  // primero, que es justo lo que esta pieza existe para no suponer.
+  const { seguir, estado: estadoDe } = useCargasSecundarias();
 
   useEffect(() => {
     if (!abierto) return;
@@ -181,14 +191,14 @@ export function ComoEstabaEsto({
       // Un objeto sin rastro completo contesta 404 a propósito, y eso no es un
       // error: es que nadie lo encendió para este objeto.
       .catch(salvoCancelacion(setFallo));
-    void llamar<Cuadra>(
-      `/api/v1/${servicio}/rastro/${objeto}/${objetoId}/cuadra`,
-      { signal: control.signal },
-    )
-      .then((r) => setCuadra(r.datos))
-      .catch(() => undefined);
+    seguir("cuadra", () =>
+      llamar<Cuadra>(
+        `/api/v1/${servicio}/rastro/${objeto}/${objetoId}/cuadra`,
+        { signal: control.signal },
+      ).then((r) => setCuadra(r.datos)),
+    );
     return () => control.abort();
-  }, [abierto, servicio, objeto, objetoId]);
+  }, [abierto, servicio, objeto, objetoId, seguir]);
 
   return (
     <details
@@ -217,6 +227,7 @@ export function ComoEstabaEsto({
           <p className="mt-1 text-rotulo text-ink-faint">{estado.porque}</p>
         </>
       ) : null}
+      <FalloCompacto {...estadoDe("cuadra")} que={t("ficha.siCuadra")} />
       {cuadra ? (
         <div className="mt-3 border-t border-ink-dim/30 pt-2">
           <p

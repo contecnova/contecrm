@@ -28,16 +28,23 @@
  * tarjeta donde el usuario la soltó enseñaría un embudo que no existe.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { listar, MAXIMO_POR_PAGINA } from "@/lib/listados";
 import { escalar, importe } from "@/lib/formato";
+import { useListaPaginada } from "@/lib/paginado";
 import { inicialesDe, nombreDe, usePersonas } from "@/lib/personas";
 import { puede, type Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
@@ -88,9 +95,17 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const [pipelines, setPipelines] = useState<PipelineApi[] | null>(null);
   const [abierto, setAbierto] = useState("");
-  const [oportunidades, setOportunidades] = useState<Oportunidad[] | null>(
-    null,
+  // Las oportunidades, por páginas del tamaño máximo del servidor. Antes se
+  // pedían doscientas y se pintaban como si fueran todas: la doscientas una no
+  // estaba en ninguna columna y nada lo decía. Ahora, si el servidor dice que
+  // hay más, el tablero lo avisa y se puede seguir con su cursor; los
+  // recuentos de cada columna son de lo cargado, y el aviso es lo que impide
+  // leerlos como el total.
+  const lista = useListaPaginada<Oportunidad>(
+    `/api/v1/opportunities?limite=${MAXIMO_POR_PAGINA}`,
   );
+  const oportunidades = lista.filas;
+  const setOportunidades = lista.setFilas;
   const [fallo, setFallo] = useState<unknown>(null);
   const [arrastrando, setArrastrando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
@@ -106,20 +121,6 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, []);
-
-  const cargar = useCallback((signal?: AbortSignal) => {
-    // Se piden muchas porque el tablero es una vista de conjunto: paginarlo
-    // haría que una columna enseñara media verdad y el total, otra.
-    listar<Oportunidad>("/api/v1/opportunities?limite=200", { signal })
-      .then(setOportunidades)
-      .catch(salvoCancelacion(setFallo));
-  }, []);
-
-  useEffect(() => {
-    const control = new AbortController();
-    cargar(control.signal);
-    return () => control.abort();
-  }, [cargar]);
 
   const pipeline = pipelines?.find((p) => p.id === abierto) ?? pipelines?.[0];
   const etapas = useMemo(
@@ -168,7 +169,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
       // Las etapas tienen criterios de salida y el servidor puede rechazar el
       // movimiento. La tarjeta vuelve a su sitio: dejarla donde se soltó
       // enseñaría un embudo que no existe.
-      setOportunidades(previas);
+      setOportunidades(() => previas);
       setFallo(error);
     } finally {
       setMoviendo(null);
@@ -177,8 +178,9 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
     }
   }
 
-  if (fallo && !oportunidades)
-    return <Fallo error={fallo} reintentar={() => cargar()} />;
+  if (lista.fallo && !oportunidades)
+    return <Fallo error={lista.fallo} reintentar={lista.recargar} />;
+  if (fallo && !pipelines) return <Fallo error={fallo} />;
   if (!pipelines || !oportunidades) return <Cargando />;
   if (etapas.length === 0) {
     return (
@@ -400,6 +402,18 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
           );
         })}
       </div>
+      <FalloCompacto
+        error={lista.falloAlCargarMas}
+        que={t("pipeline.titulo")}
+        reintentar={lista.cargarMas}
+      />
+      {lista.hayMas ? (
+        <AvisoDeRecorte
+          cuantas={oportunidades.length}
+          alCargarMas={lista.cargarMas}
+          cargando={lista.cargandoMas}
+        />
+      ) : null}
     </>
   );
 }

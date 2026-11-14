@@ -38,7 +38,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
@@ -67,6 +72,14 @@ interface Barrido {
 }
 
 const COLA = "/api/v1/data-quality/accounts/duplicates/cola";
+
+/**
+ * Cuántas parejas se piden. Con nombre porque se usa dos veces: para pedir y
+ * para saber si la cola puede venir cortada. La ruta devuelve una lista sin
+ * cursor, así que si llena lo pedido puede haber más detrás, y «quedan N» no
+ * sería el total de la cola sino el de esta tanda.
+ */
+const PEDIDAS = 100;
 
 /** Una tanda cabe de sobra en la pantalla y deja trabajo para un rato. */
 const POR_TANDA = 20;
@@ -102,7 +115,7 @@ export function Duplicados() {
   const cargar = useCallback(
     (signal?: AbortSignal) => {
       setFallo(null);
-      listar<Pareja>(`${COLA}?pendientes=${soloPendientes}&limite=100`, {
+      listar<Pareja>(`${COLA}?pendientes=${soloPendientes}&limite=${PEDIDAS}`, {
         signal,
       })
         .then(setParejas)
@@ -269,6 +282,9 @@ export function Duplicados() {
           </span>
         </div>
       ) : null}
+      {/* Al decidir las de arriba, recargar trae las siguientes: no hace
+          falta «cargar más», pero sí decir que no son todas. */}
+      {parejas.length >= PEDIDAS ? <AvisoDeRecorte cuantas={parejas.length} quiza /> : null}
     </div>
   );
 }

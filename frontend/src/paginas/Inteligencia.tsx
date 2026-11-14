@@ -22,10 +22,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Error as Fallo,
+  FalloCompacto,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { ErrorApi, llamar, filas } from "@/lib/api";
+import { ErrorApi, llamar } from "@/lib/api";
+import { MAXIMO_POR_PAGINA } from "@/lib/listados";
+import { useListaPaginada } from "@/lib/paginado";
 
 interface Cuenta {
   id: string;
@@ -53,26 +59,27 @@ interface Salud {
 
 export function Inteligencia() {
   const { t } = useTranslation();
-  const [cuentas, setCuentas] = useState<Cuenta[] | null>(null);
+  // Las cuentas para elegir, por páginas: se pedían las doscientas primeras y
+  // la doscientas una no se podía consultar, sin que nada dijera que faltaba.
+  //
+  // Y se lee con `filas()` (vía `listarPagina`), que es el ayudante de la
+  // casa para esto. Aquí se pedía
+  // `Cuenta[]` y el extremo devuelve `{items: […]}`, así que `.map` sobre la
+  // respuesta tiraba la pantalla entera: «(cuentas ?? []).map is not a
+  // function». Y como el error de pantalla decía «no se ha podido contactar
+  // con el servidor», esto parecía una caída de la API. El servidor
+  // contestaba 200.
+  //
+  // Encontrada el 01-11-2026 recorriendo las 58 pantallas una a una, que es
+  // lo único que las encuentra: no la caza TypeScript —el tipo se declara y
+  // ya— ni ningún gate, porque la pantalla existe, monta y tiene su ruta.
+  const listaDeCuentas = useListaPaginada<Cuenta>(
+    `/api/v1/accounts?limite=${MAXIMO_POR_PAGINA}`,
+  );
+  const cuentas = listaDeCuentas.filas;
   const [elegida, setElegida] = useState("");
   const [salud, setSalud] = useState<Salud | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
-
-  useEffect(() => {
-    // Con `filas()`, que es el ayudante de la casa para esto. Aquí se pedía
-    // `Cuenta[]` y el extremo devuelve `{items: […]}`, así que `.map` sobre la
-    // respuesta tiraba la pantalla entera: «(cuentas ?? []).map is not a
-    // function». Y como el error de pantalla decía «no se ha podido contactar
-    // con el servidor», esto parecía una caída de la API. El servidor
-    // contestaba 200.
-    //
-    // Encontrada el 01-11-2026 recorriendo las 58 pantallas una a una, que es
-    // lo único que las encuentra: no la caza TypeScript —el tipo se declara y
-    // ya— ni ningún gate, porque la pantalla existe, monta y tiene su ruta.
-    llamar<unknown>("/api/v1/accounts?limite=200")
-      .then((r) => setCuentas(filas<Cuenta>(r.datos)))
-      .catch((e: unknown) => setFallo(e));
-  }, []);
 
   useEffect(() => {
     if (!elegida) {
@@ -115,8 +122,23 @@ export function Inteligencia() {
             </option>
           ))}
         </select>
+        {listaDeCuentas.hayMas && cuentas ? (
+          <AvisoDeRecorte
+            cuantas={cuentas.length}
+            alCargarMas={listaDeCuentas.cargarMas}
+            cargando={listaDeCuentas.cargandoMas}
+          />
+        ) : null}
       </div>
 
+      {listaDeCuentas.fallo ? (
+        <Fallo error={listaDeCuentas.fallo} reintentar={listaDeCuentas.recargar} />
+      ) : null}
+      <FalloCompacto
+        error={listaDeCuentas.falloAlCargarMas}
+        que={t("ia.cuenta")}
+        reintentar={listaDeCuentas.cargarMas}
+      />
       {fallo ? <Fallo error={fallo} /> : null}
 
       {salud && !salud.hay ? (

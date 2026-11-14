@@ -28,10 +28,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
+import { AvisoDeRecorte, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { salvoCancelacion } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { listar, listarPagina } from "@/lib/listados";
 import { fecha, fechaHora } from "@/lib/formato";
 
 interface Operacion {
@@ -82,6 +82,11 @@ export function CicloDeVidaDelCliente() {
   const [migraciones, setMigraciones] = useState<Migracion[]>([]);
   const [perfiles, setPerfiles] = useState<Perfil[]>([]);
   const [cargado, setCargado] = useState(false);
+  // Si el servidor ha dicho que hay más de las cien pedidas. Esta pantalla
+  // enseña lo que se ha hecho con los clientes; un historial cortado que
+  // parece entero esconde justo la operación que se viene a buscar.
+  const [hayMasOperaciones, setHayMasOperaciones] = useState(false);
+  const [hayMasMigraciones, setHayMasMigraciones] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
@@ -89,17 +94,19 @@ export function CicloDeVidaDelCliente() {
     const { signal } = control;
     setFallo(null);
     Promise.all([
-      listar<Operacion>("/api/v1/ciclo-vida/operaciones?limite=100", {
+      listarPagina<Operacion>("/api/v1/ciclo-vida/operaciones?limite=100", {
         signal,
       }),
-      listar<Migracion>("/api/v1/aislamiento/migraciones?limite=100", {
+      listarPagina<Migracion>("/api/v1/aislamiento/migraciones?limite=100", {
         signal,
       }),
       listar<Perfil>("/api/v1/ciclo-vida/perfiles", { signal }),
     ])
       .then(([o, m, p]) => {
-        setOperaciones(o);
-        setMigraciones(m);
+        setOperaciones(o.filas);
+        setHayMasOperaciones(o.siguiente !== "");
+        setMigraciones(m.filas);
+        setHayMasMigraciones(m.siguiente !== "");
         setPerfiles(p);
         setCargado(true);
       })
@@ -222,6 +229,11 @@ export function CicloDeVidaDelCliente() {
               ))}
             </ul>
           )}
+          {/* Hechas y simuladas salen de la misma lista: el corte es de las
+              dos, y se dice una vez debajo de ambas. */}
+          {hayMasOperaciones ? (
+            <AvisoDeRecorte cuantas={operaciones.length} />
+          ) : null}
         </section>
 
         <section>
@@ -280,6 +292,9 @@ export function CicloDeVidaDelCliente() {
               ))}
             </ul>
           )}
+          {hayMasMigraciones ? (
+            <AvisoDeRecorte cuantas={migraciones.length} />
+          ) : null}
         </section>
 
         <section>

@@ -17,9 +17,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo } from "@/componentes/Estados";
+import { Error as Fallo, FalloCompacto } from "@/componentes/Estados";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { cn } from "@/lib/utiles";
 
 interface Cliente {
@@ -88,6 +89,9 @@ export function VistaPreviaCorreo({
   const { t } = useTranslation();
   const [buscar, setBuscar] = useState("");
   const [contactos, setContactos] = useState<Contacto[]>([]);
+  // Los contactos para elegir, con su fallo a la vista: un desplegable vacío
+  // por una búsqueda que no llegó se lee como «nadie se llama así».
+  const { seguir, estado: estadoDe } = useCargasSecundarias();
   const [contacto, setContacto] = useState("");
   const [vista, setVista] = useState<Vista | null>(null);
   const [cliente, setCliente] = useState("");
@@ -103,14 +107,14 @@ export function VistaPreviaCorreo({
 
   useEffect(() => {
     const control = new AbortController();
-    llamar<{ items?: Contacto[] }>(
-      `/api/v1/contacts?limite=20&buscar=${encodeURIComponent(buscar)}`,
-      { signal: control.signal },
-    )
-      .then((r) => setContactos(r.datos?.items ?? []))
-      .catch(() => undefined);
+    seguir("contactos", () =>
+      llamar<{ items?: Contacto[] }>(
+        `/api/v1/contacts?limite=20&buscar=${encodeURIComponent(buscar)}`,
+        { signal: control.signal },
+      ).then((r) => setContactos(r.datos?.items ?? [])),
+    );
     return () => control.abort();
-  }, [buscar]);
+  }, [buscar, seguir]);
 
   useEffect(() => {
     const control = new AbortController();
@@ -175,6 +179,10 @@ export function VistaPreviaCorreo({
           ))}
         </select>
       </div>
+      <FalloCompacto
+        {...estadoDe("contactos")}
+        que={t("mk.vista.contactosParaElegir")}
+      />
       {envio ? (
         <p
           role="status"

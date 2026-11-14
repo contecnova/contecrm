@@ -37,10 +37,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 
 interface Sobre {
   sobre_id: string;
@@ -283,29 +289,41 @@ function ConQueSeFirma() {
   const [plantillas, setPlantillas] = useState<{
     plantillas: PlantillaFirma[];
   } | null>(null);
+  // Las tres se piden aparte de la bandeja: que no lleguen no la tapa, pero
+  // se dice. Tragado, el panel entero desaparecía y no se distinguía de una
+  // instalación sin firma configurada.
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
     const opciones = { signal: control.signal };
-    void llamar<ProveedorFirma[]>("/api/v1/firma/proveedores", opciones)
-      .then((r) => setProveedores(Array.isArray(r.datos) ? r.datos : []))
-      .catch(() => undefined);
-    void llamar<{ reglas: ReglaFirma[]; que_significa: string }>(
-      "/api/v1/firma/reglas",
-      opciones,
-    )
-      .then((r) => setReglas(r.datos))
-      .catch(() => undefined);
-    void llamar<{ plantillas: PlantillaFirma[] }>(
-      "/api/v1/firma/plantillas",
-      opciones,
-    )
-      .then((r) => setPlantillas(r.datos))
-      .catch(() => undefined);
+    seguir("proveedores", () =>
+      llamar<ProveedorFirma[]>("/api/v1/firma/proveedores", opciones).then(
+        (r) => setProveedores(Array.isArray(r.datos) ? r.datos : []),
+      ),
+    );
+    seguir("reglas", () =>
+      llamar<{ reglas: ReglaFirma[]; que_significa: string }>(
+        "/api/v1/firma/reglas",
+        opciones,
+      ).then((r) => setReglas(r.datos)),
+    );
+    seguir("plantillas", () =>
+      llamar<{ plantillas: PlantillaFirma[] }>(
+        "/api/v1/firma/plantillas",
+        opciones,
+      ).then((r) => setPlantillas(r.datos)),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
-  if (!proveedores) return null;
+  if (!proveedores)
+    return estado("proveedores").error ? (
+      <section className="card mt-4 p-4">
+        <h2 className="section-label mb-1">{t("firma.conQue")}</h2>
+        <FalloCompacto {...estado("proveedores")} />
+      </section>
+    ) : null;
 
   return (
     <section className="card mt-4 p-4">
@@ -390,6 +408,8 @@ function ConQueSeFirma() {
           ))}
         </ul>
       ) : null}
+      <FalloCompacto {...estado("reglas")} que={t("firma.reglas")} />
+      <FalloCompacto {...estado("plantillas")} que={t("firma.plantillas")} />
     </section>
   );
 }

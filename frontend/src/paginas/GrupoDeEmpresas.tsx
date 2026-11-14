@@ -18,13 +18,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
 import { cifra } from "@/lib/formato";
-import { listar } from "@/lib/listados";
+import { MAXIMO_POR_PAGINA } from "@/lib/listados";
+import { useListaPaginada } from "@/lib/paginado";
 import type { Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
 
@@ -78,7 +85,14 @@ export function GrupoDeEmpresas({ sesion }: { sesion: Sesion | null }) {
   const [fallo, setFallo] = useState<unknown>(null);
   const [aviso, setAviso] = useState("");
   const [comparte, setComparte] = useState<string[]>([]);
-  const [tenants, setTenants] = useState<{ id: string; nombre: string }[]>([]);
+  // Las empresas para elegir, por páginas: se pedían las doscientas primeras
+  // y, en una plataforma mayor, la doscientas una no se podía colgar ni mirar
+  // sin que nada dijera que faltaba. Y si no llegan, se dice: antes un fallo
+  // dejaba los desplegables vacíos, como si no hubiera ninguna.
+  const listaDeTenants = useListaPaginada<{ id: string; nombre: string }>(
+    plataforma ? `/api/v1/tenants?limite=${MAXIMO_POR_PAGINA}` : null,
+  );
+  const tenants = listaDeTenants.filas ?? [];
   const [hija, setHija] = useState("");
   const [padre, setPadre] = useState("");
   const [relacion, setRelacion] = useState("matriz_filial");
@@ -100,12 +114,6 @@ export function GrupoDeEmpresas({ sesion }: { sesion: Sesion | null }) {
       .catch(() => setAgregado(null));
   }, [centro, tenantId]);
   useEffect(cargar, [cargar]);
-  useEffect(() => {
-    if (!plataforma) return;
-    void listar<{ id: string; nombre: string }>("/api/v1/tenants?limite=200")
-      .then(setTenants)
-      .catch(() => setTenants([]));
-  }, [plataforma]);
 
   async function guardarComparticion() {
     try {
@@ -144,6 +152,28 @@ export function GrupoDeEmpresas({ sesion }: { sesion: Sesion | null }) {
   const yo = arbol.nodos.find((n) => n.id === tenantId);
   const tienePadre = Boolean(yo?.padre_id);
 
+  // Lo mismo debajo de los dos sitios donde se elige empresa.
+  const avisoDeTenants = (
+    <>
+      <FalloCompacto
+        error={listaDeTenants.fallo ?? listaDeTenants.falloAlCargarMas}
+        que={t("grupoEmpresas.empresa")}
+        reintentar={
+          listaDeTenants.fallo
+            ? listaDeTenants.recargar
+            : listaDeTenants.cargarMas
+        }
+      />
+      {listaDeTenants.hayMas ? (
+        <AvisoDeRecorte
+          cuantas={tenants.length}
+          alCargarMas={listaDeTenants.cargarMas}
+          cargando={listaDeTenants.cargandoMas}
+        />
+      ) : null}
+    </>
+  );
+
   return (
     <>
       <CabeceraPagina
@@ -172,6 +202,7 @@ export function GrupoDeEmpresas({ sesion }: { sesion: Sesion | null }) {
                 </option>
               ))}
             </select>
+            {avisoDeTenants}
           </label>
         ) : null}
         {arbol.nodos.length <= 1 ? (
@@ -367,6 +398,7 @@ export function GrupoDeEmpresas({ sesion }: { sesion: Sesion | null }) {
                   ))}
               </select>
             </label>
+            {avisoDeTenants}
             <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
               {t("grupoEmpresas.relacion")}
               <select

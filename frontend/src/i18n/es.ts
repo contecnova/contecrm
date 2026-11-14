@@ -676,6 +676,23 @@ export default {
     titulo: "Aquí no hay nada todavía",
     detalle: "Cuando lo haya, aparecerá en esta lista.",
   },
+  // Lo que se pide aparte de lo principal y no ha llegado (`<FalloCompacto>`):
+  // con el nombre del panel delante, porque «no se ha podido contactar» a
+  // secas no dice qué es lo que falta en la pantalla.
+  cargaSecundaria: {
+    falloDe: "{{que}}: {{mensaje}}",
+  },
+  // Una lista que el servidor ha cortado (`<AvisoDeRecorte>`). Dice cuántas
+  // se ven y no cuántas hay: el servidor sabe que hay más, no cuántas.
+  listas: {
+    recortada_one: "Se muestra solo la primera; hay más.",
+    recortada_other: "Se muestran solo las primeras {{count}}; hay más.",
+    quizaRecortada_one: "Se muestra solo la primera; puede haber más.",
+    quizaRecortada_other:
+      "Se muestran solo las primeras {{count}}; puede haber más.",
+    cargarMas: "Cargar más",
+    personas: "La lista de personas",
+  },
   retenidos_uno: "Hay un campo que no puedes ver: {{campos}}",
   retenidos_otros: "Hay campos que no puedes ver: {{campos}}",
   // Tapado no es lo mismo que retenido, y por eso es otra frase: lo retenido
@@ -690,6 +707,9 @@ export default {
     buscar: "Buscar en mis conversaciones",
     hallazgos: "{{cuantos}} resultados",
     quienEsta: "Quién está",
+    // Los rótulos de lo que puede no llegar (`<FalloCompacto>`): sin ellos el
+    // aviso diría que algo falló sin decir qué falta.
+    quienLaLee: "Quién está en esta conversación",
     vistoA: "visto {{cuando}}",
     miembros: "{{cuantos}} personas:",
     admin: "admin",

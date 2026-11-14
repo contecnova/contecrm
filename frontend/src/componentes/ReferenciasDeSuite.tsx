@@ -13,10 +13,10 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmarBorrado } from "@/componentes/Edicion";
-import { Error as Fallo } from "@/componentes/Estados";
+import { AvisoDeRecorte, Error as Fallo } from "@/componentes/Estados";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { listarPagina } from "@/lib/listados";
 
 const TIPOS = ["nota", "fichero", "conversacion"] as const;
 
@@ -47,6 +47,9 @@ export function ReferenciasDeSuite({
   const { t } = useTranslation();
   const [filas, setFilas] = useState<Referencia[] | null>(null);
   const [perfiles, setPerfiles] = useState<string[]>([]);
+  // Si el servidor ha dicho que hay más perfiles que los cincuenta pedidos:
+  // un desplegable cortado sin decirlo hace creer que el que falta no existe.
+  const [hayMasPerfiles, setHayMasPerfiles] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [tipo, setTipo] = useState<string>("nota");
   const [referencia, setReferencia] = useState("");
@@ -69,10 +72,13 @@ export function ReferenciasDeSuite({
   }, [objeto, objetoId]);
   useEffect(cargar, [cargar]);
   useEffect(() => {
-    void listar<{ nombre?: string }>("/api/v1/suites/perfiles?limite=50")
-      .then((p) =>
-        setPerfiles(p.map((x) => String(x.nombre ?? "")).filter(Boolean)),
-      )
+    void listarPagina<{ nombre?: string }>("/api/v1/suites/perfiles?limite=50")
+      .then((p) => {
+        setPerfiles(
+          p.filas.map((x) => String(x.nombre ?? "")).filter(Boolean),
+        );
+        setHayMasPerfiles(p.siguiente !== "");
+      })
       .catch(() => setPerfiles([]));
   }, []);
 
@@ -179,6 +185,9 @@ export function ReferenciasDeSuite({
                 </option>
               ))}
             </select>
+            {hayMasPerfiles ? (
+              <AvisoDeRecorte cuantas={perfiles.length} />
+            ) : null}
           </label>
           <label className="flex flex-col gap-1 text-rotulo text-ink-muted">
             {t("referenciasSuite.referencia")}

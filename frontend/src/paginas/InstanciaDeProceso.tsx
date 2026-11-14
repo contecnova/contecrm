@@ -27,10 +27,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { DatosClave } from "@/componentes/DatosClave";
 import { moduloDe } from "@/lib/modulos";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
+import type { EstadoDeCarga } from "@/lib/cargaSecundaria";
 import { nombreDe, usePersonas } from "@/lib/personas";
 import { Diagrama } from "@/componentes/Diagrama";
 import { colocar, type Definicion } from "@/lib/grafo";
@@ -121,6 +128,10 @@ export function InstanciaDeProceso() {
   const [definicion, setDefinicion] = useState<Definicion | null>(null);
   const [analitica, setAnalitica] = useState<Analitica | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  // La definición y la analítica se piden con la instancia ya leída. Si no
+  // llegan, se dice: sin definición el gráfico decía «sin definición», que es
+  // otra cosa que «no se ha podido leer».
+  const { seguir, estado: cargaDe } = useCargasSecundarias();
   const [aviso, setAviso] = useState("");
 
   const cargar = useCallback(() => {
@@ -133,27 +144,27 @@ export function InstanciaDeProceso() {
         setGrafico(datos);
         // La definición de SU versión, no la publicada. Pintar sobre la nueva
         // señalaría nodos que esta instancia no tiene.
-        void llamar<DefinicionPublicada[]>("/api/v1/procesos/definiciones", {
-          signal: control.signal,
-        })
-          .then((r) =>
+        seguir("definicion", () =>
+          llamar<DefinicionPublicada[]>("/api/v1/procesos/definiciones", {
+            signal: control.signal,
+          }).then((r) =>
             setDefinicion(
               r.datos.find(
                 (d) => d.clave === datos.proceso && d.version === datos.version,
               )?.definicion ?? null,
             ),
-          )
-          .catch(() => undefined);
-        void llamar<Analitica>(
-          `/api/v1/analitica-procesos/${encodeURIComponent(datos.proceso)}`,
-          { signal: control.signal },
-        )
-          .then((r) => setAnalitica(r.datos))
-          .catch(() => undefined);
+          ),
+        );
+        seguir("analitica", () =>
+          llamar<Analitica>(
+            `/api/v1/analitica-procesos/${encodeURIComponent(datos.proceso)}`,
+            { signal: control.signal },
+          ).then((r) => setAnalitica(r.datos)),
+        );
       })
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
-  }, [id]);
+  }, [id, seguir]);
 
   useEffect(cargar, [cargar]);
 
@@ -198,7 +209,11 @@ export function InstanciaDeProceso() {
         </p>
       ) : null}
 
-      <ElGrafico grafico={grafico} definicion={definicion} />
+      <ElGrafico
+        grafico={grafico}
+        definicion={definicion}
+        carga={cargaDe("definicion")}
+      />
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <ElCaminoEnOrden grafico={grafico} />
@@ -212,7 +227,7 @@ export function InstanciaDeProceso() {
         />
       </div>
 
-      <DondeSeAtasca analitica={analitica} />
+      <DondeSeAtasca analitica={analitica} carga={cargaDe("analitica")} />
 
       {/* Lo que ha pasado al pulsar, anunciado: sin esto, quien no ve la
           pantalla no se entera de que el rescate ha hecho algo. */}
@@ -242,9 +257,11 @@ export function InstanciaDeProceso() {
 function ElGrafico({
   grafico,
   definicion,
+  carga,
 }: {
   grafico: Grafico;
   definicion: Definicion | null;
+  carga: EstadoDeCarga;
 }) {
   const { t } = useTranslation();
   const nodos = useMemo(
@@ -260,7 +277,11 @@ function ElGrafico({
     return (
       <section className="card p-4">
         <h2 className="section-label mb-1">{t("instancia.grafico")}</h2>
-        <Vacio titulo={t("instancia.sinDefinicion")} compacto />
+        {carga.error ? (
+          <FalloCompacto {...carga} />
+        ) : (
+          <Vacio titulo={t("instancia.sinDefinicion")} compacto />
+        )}
       </section>
     );
   }
@@ -529,10 +550,24 @@ function Rescate({
  * **Con el «no es concluyente» delante.** Un cuello de botella deducido de
  * tres ejecuciones lleva a rediseñar un flujo que funcionaba.
  */
-function DondeSeAtasca({ analitica }: { analitica: Analitica | null }) {
+function DondeSeAtasca({
+  analitica,
+  carga,
+}: {
+  analitica: Analitica | null;
+  carga: EstadoDeCarga;
+}) {
   const { t } = useTranslation();
   const personas = usePersonas();
-  if (!analitica) return null;
+  // Sin analítica no hay panel, salvo que sea porque no se pudo pedir: entonces
+  // se queda su sitio con el fallo, que un hueco no lo cuenta.
+  if (!analitica)
+    return carga.error ? (
+      <section className="card mt-4 p-4">
+        <h2 className="section-label mb-1">{t("instancia.atasco")}</h2>
+        <FalloCompacto {...carga} />
+      </section>
+    ) : null;
 
   return (
     <section className="card mt-4 p-4">

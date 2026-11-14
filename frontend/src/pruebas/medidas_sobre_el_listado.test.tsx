@@ -135,7 +135,7 @@ describe("las medidas que acompañan a un listado", () => {
     ).toBeInTheDocument();
   });
 
-  it("sin ninguna medida legible no deja un hueco con marco", async () => {
+  it("sin ninguna medida legible no deja un hueco con marco, pero lo dice", async () => {
     fallan.add("/api/v1/ia/calidad");
     const { container } = pintar(["/api/v1/ia/calidad"]);
     await waitFor(() => expect(llamadas.length).toBeGreaterThan(0));
@@ -143,6 +143,11 @@ describe("las medidas que acompañan a un listado", () => {
     // como un dato que falta, y un contenedor vacío deja su espacio en blanco
     // entre la cabecera y el listado.
     expect(container.querySelectorAll("section")).toHaveLength(0);
-    expect(container.innerHTML).toBe("");
+    // Pero tampoco desaparece sin más: antes no quedaba nada, y «no se ha
+    // podido leer» se veía igual que «esta colección no tiene medidas». Una
+    // línea con qué faltó y cómo reintentarlo (`<FalloCompacto>`).
+    const aviso = await screen.findByRole("alert");
+    expect(aviso.textContent).toContain("cargaSecundaria.falloDe");
+    expect(container.querySelectorAll("[data-fallo]")).toHaveLength(1);
   });
 });

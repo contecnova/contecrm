@@ -16,11 +16,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmarBorrado } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
-import { listar } from "@/lib/listados";
+import { listarPagina, MAXIMO_POR_PAGINA } from "@/lib/listados";
 
 interface Problema {
   metrica: string;
@@ -91,6 +96,10 @@ export function SlaProveedores() {
   const [revision, setRevision] = useState<Revision | null>(null);
   const [acuerdos, setAcuerdos] = useState<Acuerdo[]>([]);
   const [derechos, setDerechos] = useState<Derecho[]>([]);
+  // Si el servidor dijo que hay más derechos de los que caben en una página:
+  // los que no llegaban no salían en la tabla y no se les podía poner
+  // proveedor, sin que nada dijera que faltaban.
+  const [hayMasDerechos, setHayMasDerechos] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState<Acuerdo | null>(null);
   // El proveedor cuyo acuerdo se va a quitar, mientras se pregunta.
@@ -105,8 +114,11 @@ export function SlaProveedores() {
     llamar<Acuerdo[]>("/api/v1/sla-proveedores/acuerdos")
       .then((r) => setAcuerdos(Array.isArray(r.datos) ? r.datos : []))
       .catch(() => setAcuerdos([]));
-    void listar<Derecho>("/api/v1/entitlements?limite=200")
-      .then(setDerechos)
+    void listarPagina<Derecho>(`/api/v1/entitlements?limite=${MAXIMO_POR_PAGINA}`)
+      .then(({ filas, siguiente }) => {
+        setDerechos(filas);
+        setHayMasDerechos(siguiente !== "");
+      })
       .catch(() => setDerechos([]));
   }, []);
   useEffect(cargar, [cargar]);
@@ -286,6 +298,9 @@ export function SlaProveedores() {
             ))}
           </Rejilla>
         )}
+        {derechos.length > 0 && hayMasDerechos ? (
+          <AvisoDeRecorte cuantas={derechos.length} />
+        ) : null}
       </section>
 
       <section className="card mb-4 p-4">

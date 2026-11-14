@@ -596,6 +596,9 @@ async function pasada(enviar: Enviar): Promise<Resultado> {
 export function iniciarSinConexion(): void {
   if (typeof window === "undefined") return;
   if ("serviceWorker" in navigator) {
+    // Sin service worker (contexto no seguro, navegador que lo bloquea) la
+    // aplicación funciona igual con red; lo único que se pierde es trabajar
+    // sin ella, y eso no es un fallo que enseñar al arrancar.
     navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }
   // La primera pasada la lanza `fijarUsuario`, cuando ya se sabe quién entró.

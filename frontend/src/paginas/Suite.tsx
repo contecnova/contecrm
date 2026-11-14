@@ -76,8 +76,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  FalloCompacto,
+  Vacio,
+} from "@/componentes/Estados";
 import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
+import { useCargasSecundarias } from "@/lib/cargaSecundaria";
 import { escalar } from "@/lib/formato";
 import { usePuedeOperar } from "@/lib/permisos";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -289,42 +295,61 @@ function LaSuiteComoUnTodo() {
   const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
   const [historial, setHistorial] = useState<Cambio[] | null>(null);
   const [cierre, setCierre] = useState<Cierre | null>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
     const opciones = { signal: control.signal };
     // Cada una con su fallo: no poder leer el historial no puede dejar sin ver
-    // lo que está a punto de aplicarse, que es lo que tiene consecuencias.
-    void llamar<SsoDeLaSuite>("/api/v1/proveedores-identidad/suite", opciones)
-      .then((r) => setSso(r.datos))
-      .catch(() => undefined);
-    void llamar<{
-      herramientas?: HerramientaDeSuite[];
-    }>("/api/v1/suite/panel", opciones)
-      .then((r) => setHerramientas(r.datos.herramientas ?? []))
-      .catch(() => undefined);
-    void llamar<{
-      tenant: Record<string, unknown>;
-      organizacion?: UnidadDeSuite[];
-    }>("/api/v1/suite/identidad", opciones)
-      .then((r) => {
+    // lo que está a punto de aplicarse, que es lo que tiene consecuencias. Y
+    // cada fallo se dice en su sitio: una simulación que no llega no es «no
+    // hay nada que aplicar».
+    seguir("sso", () =>
+      llamar<SsoDeLaSuite>(
+        "/api/v1/proveedores-identidad/suite",
+        opciones,
+      ).then((r) => setSso(r.datos)),
+    );
+    seguir("herramientas", () =>
+      llamar<{
+        herramientas?: HerramientaDeSuite[];
+      }>("/api/v1/suite/panel", opciones).then((r) =>
+        setHerramientas(r.datos.herramientas ?? []),
+      ),
+    );
+    seguir("identidad", () =>
+      llamar<{
+        tenant: Record<string, unknown>;
+        organizacion?: UnidadDeSuite[];
+      }>("/api/v1/suite/identidad", opciones).then((r) => {
         setIdentidad(r.datos.tenant ?? null);
         setOrganizacion(r.datos.organizacion ?? []);
-      })
-      .catch(() => undefined);
-    void llamar<Simulacion>("/api/v1/suite/simular", opciones)
-      .then((r) => setSimulacion(r.datos))
-      .catch(() => undefined);
-    void llamar<Cambio[]>("/api/v1/suite/historial", opciones)
-      .then((r) => setHistorial(Array.isArray(r.datos) ? r.datos : []))
-      .catch(() => undefined);
-    void llamar<Cierre>("/api/v1/suite/certificado-de-cierre", opciones)
-      .then((r) => setCierre(r.datos))
-      .catch(() => undefined);
+      }),
+    );
+    seguir("simulacion", () =>
+      llamar<Simulacion>("/api/v1/suite/simular", opciones).then((r) =>
+        setSimulacion(r.datos),
+      ),
+    );
+    seguir("historial", () =>
+      llamar<Cambio[]>("/api/v1/suite/historial", opciones).then((r) =>
+        setHistorial(Array.isArray(r.datos) ? r.datos : []),
+      ),
+    );
+    seguir("cierre", () =>
+      llamar<Cierre>("/api/v1/suite/certificado-de-cierre", opciones).then(
+        (r) => setCierre(r.datos),
+      ),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
-  if (!identidad && !simulacion && !cierre) return null;
+  // Sin nada que enseñar la sección sobra, salvo que algo haya FALLADO: si
+  // las tres preguntas caen, callarse se leería como «no hay suite».
+  const algunFallo = ["identidad", "simulacion", "cierre"].some(
+    (k) => estado(k).error,
+  );
+  if (!identidad && !simulacion && !cierre && !algunFallo) return null;
 
   return (
     <section className="card mt-4 p-4">
@@ -348,6 +373,10 @@ function LaSuiteComoUnTodo() {
           })}
         </p>
       ) : null}
+      <FalloCompacto
+        {...estado("simulacion")}
+        que={t("suite.queSimulacion")}
+      />
 
       {/* **Y QUÉ se aplicaría, no sólo cuántos.** Un «32 cambios a aplicar»
           no se puede aprobar: lo que se revisa antes de propagar algo a tres
@@ -390,6 +419,10 @@ function LaSuiteComoUnTodo() {
           })}
         </p>
       ) : null}
+      <FalloCompacto
+        {...estado("identidad")}
+        que={t("suite.queIdentidad")}
+      />
 
       {/* **El organigrama, y una sola vez.** Un cliente define sus áreas aquí
           y las tres herramientas las comparten: si cada una tuviera las suyas,
@@ -440,6 +473,7 @@ function LaSuiteComoUnTodo() {
             : sso.porque}
         </p>
       ) : null}
+      <FalloCompacto {...estado("sso")} que={t("suite.queSso")} />
 
       {herramientas.length ? (
         <ul
@@ -469,6 +503,10 @@ function LaSuiteComoUnTodo() {
           ))}
         </ul>
       ) : null}
+      <FalloCompacto
+        {...estado("herramientas")}
+        que={t("suite.queHerramientas")}
+      />
 
       {/* El cierre: lo abierto delante de lo cerrado. Una baja que se cerró en
           cuatro herramientas de cinco es un acceso que sigue abierto. */}
@@ -503,6 +541,7 @@ function LaSuiteComoUnTodo() {
           {cierre.que_hacer ? ` ${cierre.que_hacer}` : ""}
         </p>
       ) : null}
+      <FalloCompacto {...estado("cierre")} que={t("suite.queCierre")} />
 
       {historial?.length ? (
         <ul className="mt-2 space-y-0.5">
@@ -517,6 +556,10 @@ function LaSuiteComoUnTodo() {
           ))}
         </ul>
       ) : null}
+      <FalloCompacto
+        {...estado("historial")}
+        que={t("suite.queHistorial")}
+      />
     </section>
   );
 }
@@ -539,6 +582,7 @@ function SaludDeLasSuites() {
   );
   const [suscripciones, setSuscripciones] = useState<Renovaciones | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   useEffect(() => {
     const control = new AbortController();
@@ -547,18 +591,18 @@ function SaludDeLasSuites() {
     void llamar<SaludSuites>("/api/v1/suites/salud", { signal: control.signal })
       .then((r) => setSalud(r.datos))
       .catch(salvoCancelacion(setFallo));
-    void llamar<SaludCredenciales>("/api/v1/suites/credenciales/salud", {
-      signal: control.signal,
-    })
-      .then((r) => setCredenciales(r.datos))
-      .catch(() => undefined);
-    void llamar<Renovaciones>("/api/v1/suites/suscripciones/por-renovar", {
-      signal: control.signal,
-    })
-      .then((r) => setSuscripciones(r.datos))
-      .catch(() => undefined);
+    seguir("credenciales", () =>
+      llamar<SaludCredenciales>("/api/v1/suites/credenciales/salud", {
+        signal: control.signal,
+      }).then((r) => setCredenciales(r.datos)),
+    );
+    seguir("suscripciones", () =>
+      llamar<Renovaciones>("/api/v1/suites/suscripciones/por-renovar", {
+        signal: control.signal,
+      }).then((r) => setSuscripciones(r.datos)),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   if (fallo) return <Fallo error={fallo} />;
   if (!salud) return <Cargando />;
@@ -660,8 +704,14 @@ function SaludDeLasSuites() {
             {t("suite.credenciales")}
           </p>
           {/* Sin credenciales revisadas no se dice «al día»: no se ha mirado
-              nada. Es la misma distinción que arriba con las conexiones. */}
-          {credenciales !== null && credenciales.revisados === 0 ? (
+              nada. Es la misma distinción que arriba con las conexiones. Y
+              si no se han podido leer, tampoco: se dice que no se ha podido. */}
+          {estado("credenciales").error ? (
+            <FalloCompacto
+              {...estado("credenciales")}
+              que={t("suite.credenciales")}
+            />
+          ) : credenciales !== null && credenciales.revisados === 0 ? (
             <p className="text-rotulo text-ink-faint">
               {t("suite.credencialesSinRevisar")}
             </p>
@@ -703,7 +753,13 @@ function SaludDeLasSuites() {
           <p className="text-dato font-medium text-ink">
             {t("suite.suscripciones")}
           </p>
-          {porRenovar.length === 0 && sinDeclarar.length === 0 ? (
+          {/* Sin poder leerlas no están «al día»: no se sabe. */}
+          {estado("suscripciones").error ? (
+            <FalloCompacto
+              {...estado("suscripciones")}
+              que={t("suite.suscripciones")}
+            />
+          ) : porRenovar.length === 0 && sinDeclarar.length === 0 ? (
             <p className="text-rotulo text-ink-muted">
               {t("suite.suscripcionesAlDia")}
             </p>
@@ -922,6 +978,7 @@ export function QueSabeHacerCadaSuite() {
   const [consentimientos, setConsentimientos] = useState<Consentimiento[]>([]);
   const [puedeYa, setPuedeYa] = useState<Record<string, PuedeSincronizar>>({});
   const [fallo, setFallo] = useState<unknown>(null);
+  const { seguir, estado } = useCargasSecundarias();
 
   async function sePuedeYa(c: Consentimiento) {
     try {
@@ -970,34 +1027,37 @@ export function QueSabeHacerCadaSuite() {
       })
       .catch(salvoCancelacion(setFallo));
     // Cada uno con su propio fallo: que no se puedan leer las reglas no puede
-    // dejar sin ver los perfiles.
-    void llamar<ReglasDeEntrada>("/api/v1/suites/reglas", {
-      metodo: "POST",
-      cuerpo: {},
-      signal: control.signal,
-    })
-      .then((r) => setReglas(r.datos))
-      .catch(() => undefined);
-    void llamar<{ items: Consentimiento[] }>("/api/v1/suites/consentimiento", {
-      signal: control.signal,
-    })
-      .then((r) => setConsentimientos(filas<Consentimiento>(r.datos)))
-      .catch(() => undefined);
+    // dejar sin ver los perfiles. Pero se dice: sin los consentimientos, la
+    // línea de abajo diría «0 personas han conectado su cuenta».
+    seguir("reglas", () =>
+      llamar<ReglasDeEntrada>("/api/v1/suites/reglas", {
+        metodo: "POST",
+        cuerpo: {},
+        signal: control.signal,
+      }).then((r) => setReglas(r.datos)),
+    );
+    seguir("consentimientos", () =>
+      llamar<{ items: Consentimiento[] }>("/api/v1/suites/consentimiento", {
+        signal: control.signal,
+      }).then((r) => setConsentimientos(filas<Consentimiento>(r.datos))),
+    );
     return () => control.abort();
-  }, []);
+  }, [seguir]);
 
   useEffect(() => {
     if (!elegido) return undefined;
     const control = new AbortController();
     setCapacidades(null);
-    llamar<CapacidadesDelPerfil>(
-      `/api/v1/suites/perfiles/${encodeURIComponent(elegido)}/capacidades`,
-      { signal: control.signal },
-    )
-      .then((r) => setCapacidades(r.datos))
-      .catch(() => undefined);
+    // Si no llega, «Leyendo qué trae…» se quedaría puesto para siempre: el
+    // fallo sustituye a ese texto en el mismo sitio.
+    seguir("capacidades", () =>
+      llamar<CapacidadesDelPerfil>(
+        `/api/v1/suites/perfiles/${encodeURIComponent(elegido)}/capacidades`,
+        { signal: control.signal },
+      ).then((r) => setCapacidades(r.datos)),
+    );
     return () => control.abort();
-  }, [elegido]);
+  }, [elegido, seguir]);
 
   if (fallo) return <Fallo error={fallo} />;
   if (!perfiles) return <Cargando />;
@@ -1083,6 +1143,11 @@ export function QueSabeHacerCadaSuite() {
                 ))}
               </ul>
             )
+          ) : estado("capacidades").error ? (
+            <FalloCompacto
+              {...estado("capacidades")}
+              que={t("suite.queCapacidades")}
+            />
           ) : (
             <p className="mt-3 text-rotulo text-ink-faint">
               {t("suite.leyendoCapacidades")}
@@ -1111,12 +1176,23 @@ export function QueSabeHacerCadaSuite() {
               <p className="mt-1 text-rotulo text-ink-faint">{reglas.porque}</p>
             </div>
           ) : null}
+          <FalloCompacto
+            {...estado("reglas")}
+            que={t("suite.criterioDeEntrada")}
+          />
 
           {/* Quién ha conectado su cuenta y con qué alcances. Sin esto, el
               alcance concedido sólo se podía mirar en la base de datos. */}
-          <p className="mt-4 text-dato text-ink-muted">
-            {t("suite.consentimientos", { cuantos: vivos.length })}
-          </p>
+          {estado("consentimientos").error ? (
+            <FalloCompacto
+              {...estado("consentimientos")}
+              que={t("suite.queConsentimientos")}
+            />
+          ) : (
+            <p className="mt-4 text-dato text-ink-muted">
+              {t("suite.consentimientos", { cuantos: vivos.length })}
+            </p>
+          )}
           {vivos.length > 0 ? (
             <ul className="mt-1 divide-y divide-ink-dim/30">
               {vivos.map((c) => (

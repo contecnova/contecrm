@@ -29,19 +29,30 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { ConfirmarBorrado } from "@/componentes/Edicion";
-import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import {
+  AvisoDeRecorte,
+  Cargando,
+  Error as Fallo,
+  Vacio,
+} from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 import { llamar } from "@/lib/api";
 import { fechaHora } from "@/lib/formato";
-import { listar } from "@/lib/listados";
+import { listar, listarPagina } from "@/lib/listados";
 import { fichaDeObjeto } from "@/lib/modulos";
 import { cn } from "@/lib/utiles";
 
 const BASE = "/api/v1/calidad-dato";
 // El lead vive en `sales` y tiene sus mismas rutas colgadas de aquí.
 const BASE_LEADS = "/api/v1/leads/calidad-dato";
+
+/**
+ * Cuántas candidatas a ficha buena se piden de cada servicio. Con nombre
+ * porque se usa también para saber si la lista puede venir cortada.
+ */
+const CANDIDATAS_PEDIDAS = 50;
 const OBJETOS = ["cuenta", "contacto"] as const;
 type Objeto = (typeof OBJETOS)[number];
 // La ficha buena y sus reglas también para el lead (CRM-01.01.04.06).
@@ -134,6 +145,10 @@ export function CalidadDelDato() {
 function GoldenRecord() {
   const { t } = useTranslation();
   const [candidatas, setCandidatas] = useState<Candidata[] | null>(null);
+  // Si alguna de las dos listas ha llenado lo pedido. Estas rutas devuelven
+  // una lista sin cursor, así que llenar la página es la única señal de que
+  // puede haber más; sin decirlo, la que falta parece no tener problema.
+  const [puedeHaberMas, setPuedeHaberMas] = useState(false);
   const [abierta, setAbierta] = useState<Candidata | null>(null);
   const [golden, setGolden] = useState<Golden | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -144,11 +159,19 @@ function GoldenRecord() {
     // Las de `party` y los leads de `sales`, cada uno por su lado: si uno no
     // contesta, lo del otro se enseña igual y el fallo se dice.
     void Promise.allSettled([
-      listar<Candidata>(`${BASE}/golden/candidatas?limite=50`),
-      listar<Candidata>(`${BASE_LEADS}/golden/candidatas?limite=50`),
+      listar<Candidata>(`${BASE}/golden/candidatas?limite=${CANDIDATAS_PEDIDAS}`),
+      listar<Candidata>(
+        `${BASE_LEADS}/golden/candidatas?limite=${CANDIDATAS_PEDIDAS}`,
+      ),
     ]).then((r) => {
       setCandidatas(
         r.flatMap((x) => (x.status === "fulfilled" ? x.value : [])),
+      );
+      setPuedeHaberMas(
+        r.some(
+          (x) =>
+            x.status === "fulfilled" && x.value.length >= CANDIDATAS_PEDIDAS,
+        ),
       );
       const caido = r.find((x) => x.status === "rejected");
       setFallo(caido && caido.status === "rejected" ? caido.reason : null);
@@ -253,6 +276,9 @@ function GoldenRecord() {
           ))}
         </Rejilla>
       )}
+      {candidatas && puedeHaberMas ? (
+        <AvisoDeRecorte cuantas={candidatas.length} quiza />
+      ) : null}
       <div role="status" className="mt-2">
         {aviso ? <p className="text-dato text-success">{aviso}</p> : null}
       </div>
@@ -743,6 +769,9 @@ function Enriquecimiento() {
     { id: string; nombre: string }[]
   >([]);
   const [fichas, setFichas] = useState<{ id: string; nombre: string }[]>([]);
+  // Si el servidor ha dicho que hay más fichas que las cien pedidas: la que
+  // no sale no se puede elegir, y sin decirlo parece que no existe.
+  const [hayMasFichas, setHayMasFichas] = useState(false);
   const [propuestas, setPropuestas] = useState<PropuestaEnr[]>([]);
   const [editando, setEditando] = useState<Perfil>(PERFIL_VACIO);
   const [textoParam, setTextoParam] = useState("");
@@ -791,17 +820,18 @@ function Enriquecimiento() {
   useEffect(() => {
     const ruta =
       objetoPedir === "cuenta" ? "/api/v1/accounts" : "/api/v1/contacts";
-    void listar<{ id: string; nombre?: string; nombre_completo?: string }>(
+    void listarPagina<{ id: string; nombre?: string; nombre_completo?: string }>(
       `${ruta}?limite=100`,
     )
-      .then((l) =>
+      .then((l) => {
         setFichas(
-          l.map((f) => ({
+          l.filas.map((f) => ({
             id: f.id,
             nombre: f.nombre_completo || f.nombre || f.id,
           })),
-        ),
-      )
+        );
+        setHayMasFichas(l.siguiente !== "");
+      })
       .catch(() => setFichas([]));
   }, [objetoPedir]);
 
@@ -934,6 +964,9 @@ function Enriquecimiento() {
                     </option>
                   ))}
                 </select>
+                {hayMasFichas ? (
+                  <AvisoDeRecorte cuantas={fichas.length} />
+                ) : null}
               </label>
               <button
                 type="button"

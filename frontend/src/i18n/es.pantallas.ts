@@ -1014,6 +1014,8 @@ const pantallas = {
     sePuedeVolver: "Se puede volver atrás a lo anterior.",
     noSePuedeVolver:
       "NO se puede volver atrás: no hay un despliegue anterior al que volver. Contar con el rollback el día que haga falta sería contar con algo que no existe.",
+    // Rótulo del aviso cuando la consulta del drift no llega.
+    drift: "Cambios a mano en este entorno",
     sinMedirDrift:
       "No se ha podido medir si alguien ha tocado este entorno a mano. No es lo mismo que estar limpio: es que no se sabe.",
     limpio:
@@ -2262,6 +2264,8 @@ const pantallas = {
       "Este objeto no tiene el rastro completo encendido, así que no hay nada que reconstruir. Encenderlo para todo multiplicaría la escritura por algo que casi nunca se consulta.",
     hechos: "{{cuantos}} hechos, {{compensados}} de ellos compensados.",
     cuadra: "La reconstrucción cuadra con lo que hay guardado.",
+    // Rótulo del aviso cuando la comprobación no llega: no es «cuadra».
+    siCuadra: "La comprobación de que el rastro cuadra",
     noCuadra:
       "NO cuadra: alguien ha escrito en la tabla sin pasar por el rastro. A partir de aquí el rastro deja de ser una prueba.",
     preguntarSobreEsto: "Preguntar sobre este registro",
@@ -2283,6 +2287,10 @@ const pantallas = {
     apagada: "apagada",
     plantilla: "{{nombre}} ({{tipo}}) · {{nivel}} · vale {{dias}} días",
     ordenEstricto: "orden estricto",
+    // Los nombres de las dos listas de abajo, para decir CUÁL no ha llegado
+    // cuando falla una: en pantalla van sin título porque se leen solas.
+    reglas: "Las reglas de firma",
+    plantillas: "Las plantillas de firma",
 
     llamadas: {
       titulo: "Lo que el proveedor de firma cobró",
@@ -2723,6 +2731,8 @@ const pantallas = {
     enEstaEtapa_other: "Lleva {{count}} días en esta etapa",
     lineas: "Qué se vende",
     margen: "Margen conocido: {{pct}} %",
+    // El nombre del margen cuando no se ha podido calcular (`<FalloCompacto>`).
+    margenTitulo: "El margen",
     margenSinCoste:
       "Ninguna línea tiene coste: no se puede hablar de margen, y no es un cero.",
     margenIncompleto:
@@ -3262,6 +3272,9 @@ const pantallas = {
     conBoveda: "Hay bóveda: se puede tokenizar",
     sinBoveda: "No hay bóveda",
     politicasActivas: "{{cuantas}} políticas de acceso activas",
+    // Rótulo del aviso cuando el informe no llega: sin él sus avisos no
+    // salen, y eso se leería como «sin avisos».
+    informeCumplimiento: "El informe de cumplimiento",
     sinAvisos: "El informe no levanta ningún aviso",
     comoSeCorta: "Cómo se corta cada tabla que crece",
     comoSeCortaAyuda:
@@ -3301,6 +3314,8 @@ const pantallas = {
       todosLosRoles: "todos los roles",
     },
     simulador: {
+      // Delante del fallo de la simulación (`<FalloCompacto>`).
+      titulo: "Lo que decidiría cada capa",
       permitido: "Sí podría",
       denegado: "No podría",
       concede: "concede",
@@ -3357,6 +3372,10 @@ const pantallas = {
         "{{cuantas}} de tus sesiones no se cerrará en el proveedor al salir.",
       sinCierrePropagado_other:
         "{{cuantas}} de tus sesiones no se cerrarán en el proveedor al salir.",
+      // Qué no se ha podido consultar, delante de su fallo (`<FalloCompacto>`).
+      queForzado: "Si la empresa obliga a entrar por su proveedor",
+      quePoliticas: "Las políticas de acceso por contexto",
+      queSesiones: "Tus sesiones",
     },
     mio: {
       titulo: "Tu segundo factor",
@@ -3368,6 +3387,12 @@ const pantallas = {
       inscribir_primero: "Inscribe un primer factor",
       inscribir_respaldo: "Inscribe un método de respaldo",
       inscribir_fuerte: "Inscribe un factor fuerte (passkey o aplicación)",
+      // Qué no se ha podido consultar, delante de su fallo (`<FalloCompacto>`).
+      queNivel: "Con qué has entrado",
+      quePlan: "Lo que te falta para tener el segundo factor en condiciones",
+      queValeSolo: "Si «{{factor}}» vale para entrar sin contraseña",
+      queSensibles: "Qué operaciones te pedirán verificarte otra vez",
+      queCambio: "Qué hacer si cambias de dispositivo",
     },
     // Dar de alta y quitar las passkeys propias (CRM-00.05.01.23).
     passkeys: {
@@ -3698,6 +3723,15 @@ const pantallas = {
     sinCaducidadDeclarada:
       "sin caducidad declarada: no es «no caduca», es que no se sabe",
     comoUnTodo: "La suite, de una vez",
+    // Qué no se ha podido consultar, delante de su fallo (`<FalloCompacto>`).
+    queSimulacion: "Lo que se aplicaría",
+    queIdentidad: "La empresa y su organigrama en la suite",
+    queSso: "El proveedor de identidad compartido",
+    queHerramientas: "Las herramientas declaradas",
+    queCierre: "El cierre de las bajas",
+    queHistorial: "Los últimos cambios propagados",
+    queCapacidades: "Qué trae este perfil",
+    queConsentimientos: "Quién ha conectado su cuenta",
     comoUnTodoAyuda:
       "Qué cambiaría lo que está a punto de aplicarse, cómo ve el cliente la " +
       "suite entera y si las bajas se cerraron en TODAS las herramientas.",
@@ -4004,6 +4038,9 @@ const pantallas = {
         "Elige un contacto: el correo se monta con sus datos y los de su cuenta, y con las recomendaciones de su historial. Se pinta en cada cliente de correo configurado y se puntúa el spam regla a regla.",
       buscarContacto: "Buscar un contacto",
       contacto: "Contacto",
+      // Rótulo del aviso si la búsqueda no llega: el desplegable vacío se
+      // leería como «nadie se llama así».
+      contactosParaElegir: "Los contactos para elegir",
       sinContacto: "Sin contacto (campos vacíos)",
       sePuedeMandar: "A {{email}} se le puede mandar esta plantilla.",
       noSePuedeMandar: "A {{email}} NO se le puede mandar: {{motivos}}",
@@ -4183,6 +4220,8 @@ const pantallas = {
       conversiones: "Conversiones",
       tasa: "Tasa",
       inscribir: "Meter a alguien",
+      // Delante del fallo de la búsqueda (`<FalloCompacto>`).
+      queContactos: "Los contactos que coinciden con la búsqueda",
       inscribirAyuda:
         "Entra si el recorrido está publicado, no estuvo antes, no está en uno excluyente y se le puede escribir.",
       inscribirPorCuenta:
@@ -4815,6 +4854,9 @@ const pantallas = {
     yaCreada: "El cliente creado en el intento anterior",
     nombreCliente: "Nombre del cliente nuevo",
     yaExisten: "O usar uno que ya existe:",
+    // Rótulo del aviso si no se pueden buscar: sin él se propondría crear un
+    // cliente que a lo mejor ya existe, y se duplicaría sin que nadie lo vea.
+    clientesParecidos: "Los clientes que ya se llaman así",
     usar: "Usar «{{nombre}}»",
     contacto: "Contacto",
     crearContacto: "Crear el contacto",

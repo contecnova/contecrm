@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { Icono } from "@/componentes/Icono";
 
 import { ErrorApi } from "@/lib/api";
+import type { Directorio } from "@/lib/personas";
 
 export function Cargando({ texto }: { texto?: string }) {
   const { t } = useTranslation();
@@ -142,22 +143,18 @@ export function problemasDe(detalle: unknown): string[] {
 }
 
 /**
- * Un error, traducido a algo que se pueda leer y con qué hacer.
+ * La frase que explica un error, la misma en la pantalla entera
+ * (`<Error>`) y en el aviso compacto de un panel (`<FalloCompacto>`).
  *
- * El detalle técnico se enseña aparte y plegado: quien puede usarlo lo
- * necesita entero, y a quien no, esconderlo del todo le deja sin nada que
- * pegar en un ticket.
+ * Sacada de `<Error>` para que las dos digan lo mismo del mismo fallo: si el
+ * panel dijera «Error» y la pantalla «No se ha podido contactar con el
+ * servidor», parecerían dos problemas.
  */
-export function Error({
-  error,
-  reintentar,
-}: {
-  error: unknown;
-  reintentar?: () => void;
-}) {
-  const { t } = useTranslation();
+export function mensajeDeError(
+  error: unknown,
+  t: (clave: string) => string,
+): string {
   const api = error instanceof ErrorApi ? error : null;
-
   let mensaje = t("errores.generico");
   // **«No hay red» sólo cuando de verdad no hay red.** Antes era el mensaje de
   // todo lo que no fuera un `ErrorApi`, y eso incluye los fallos al pintar: la
@@ -184,6 +181,26 @@ export function Error({
   // pueda hacer; la segunda dice dónde mirar.
   else if (api.explicacion) mensaje = api.explicacion;
   else if (api.titulo) mensaje = api.titulo;
+  return mensaje;
+}
+
+/**
+ * Un error, traducido a algo que se pueda leer y con qué hacer.
+ *
+ * El detalle técnico se enseña aparte y plegado: quien puede usarlo lo
+ * necesita entero, y a quien no, esconderlo del todo le deja sin nada que
+ * pegar en un ticket.
+ */
+export function Error({
+  error,
+  reintentar,
+}: {
+  error: unknown;
+  reintentar?: () => void;
+}) {
+  const { t } = useTranslation();
+  const api = error instanceof ErrorApi ? error : null;
+  const mensaje = mensajeDeError(error, t);
 
   // Guardado sin red: es un aviso, no un fallo, y no se pinta en rojo.
   if (api?.codigo === "encolada_sin_conexion")
@@ -254,6 +271,141 @@ export function Error({
         </button>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * El fallo de UN panel, dicho donde estaría el panel y sin tumbar la pantalla.
+ *
+ * Es la pareja de `useCargasSecundarias`: lo que se pide aparte de lo
+ * principal no puede llevarse la pantalla por delante, pero tampoco puede
+ * desaparecer sin más, porque un panel que no está se lee como «no hay
+ * nada». Una línea, no un recuadro: con la red caída puede haber ocho a la
+ * vez, y ocho recuadros rojos esconderían lo que sí ha cargado.
+ *
+ * No pinta nada sin error, así que se puede dejar puesto siempre.
+ */
+export function FalloCompacto({
+  error,
+  que,
+  reintentar,
+}: {
+  error: unknown;
+  /** Qué no se ha podido consultar: el título del panel que falta. */
+  que?: string;
+  reintentar?: () => void;
+}) {
+  const { t } = useTranslation();
+  if (!error) return null;
+  const mensaje = mensajeDeError(error, t);
+  const requestId = error instanceof ErrorApi ? error.requestId : null;
+  return (
+    <div
+      data-fallo="seccion"
+      role="alert"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-dato"
+    >
+      <p className="flex items-center gap-2 text-danger">
+        <Icono nombre="error" tamano="sm" />
+        {que ? t("cargaSecundaria.falloDe", { que, mensaje }) : mensaje}
+      </p>
+      {/* El identificador va en el título y no a la vista: en una línea no
+          cabe, y quien llama a soporte lo encuentra pasando el ratón. */}
+      {reintentar ? (
+        <button
+          type="button"
+          onClick={reintentar}
+          className="btn-ghost"
+          title={requestId ? `${t("errores.peticion")}: ${requestId}` : undefined}
+        >
+          <Icono nombre="refresh" tamano="sm" />
+          {t("app.reintentar")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Que una lista viene cortada, dicho debajo de ella (y cómo seguir).
+ *
+ * Una lista recortada que parece completa es peor que una lista larga: con
+ * las doscientas primeras oportunidades en el tablero, la doscientas una no
+ * existe para quien lo mira. El servidor ya lo dice —devuelve cursor cuando
+ * hay más—, así que esto sólo sale cuando lo ha dicho: no se cuenta ni se
+ * adivina por el tamaño.
+ *
+ * Con `alCargarMas`, ofrece seguir con el cursor; sin él, al menos lo avisa.
+ */
+export function AvisoDeRecorte({
+  cuantas,
+  alCargarMas,
+  cargando = false,
+  detalle,
+  quiza = false,
+}: {
+  /** Las que se están enseñando. */
+  cuantas: number;
+  /**
+   * La ruta no da cursor y lo único que se sabe es que la respuesta llenó lo
+   * pedido: PUEDE haber más. Se dice así, porque afirmar «hay más» de una
+   * lista que justo tenía ese número sería otra forma de mentir.
+   */
+  quiza?: boolean;
+  alCargarMas?: () => void;
+  cargando?: boolean;
+  /** Dónde buscar lo que no sale, cuando no se puede cargar más aquí. */
+  detalle?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      data-recorte="lista"
+      role="note"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-rotulo text-ink-faint"
+    >
+      <span className="flex items-center gap-1.5">
+        <Icono nombre="more_horiz" tamano="sm" />
+        {t(quiza ? "listas.quizaRecortada" : "listas.recortada", {
+          count: cuantas,
+        })}
+      </span>
+      {detalle ? <span>{detalle}</span> : null}
+      {alCargarMas ? (
+        <button
+          type="button"
+          onClick={alCargarMas}
+          disabled={cargando}
+          className="btn-ghost"
+        >
+          {cargando ? t("app.cargando") : t("listas.cargarMas")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Lo que hay que saber de la lista de personas de un desplegable: si no ha
+ * llegado entera, por fallo o por tope (`useDirectorio`).
+ *
+ * Junto en un sitio porque lo ponen seis selectores, y los seis tienen que
+ * decirlo igual: «esa persona no está» tiene que poder leerse como «no se ha
+ * podido traer» cuando es eso lo que pasa.
+ */
+export function AvisoDelDirectorio({ directorio }: { directorio: Directorio }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <FalloCompacto
+        error={directorio.fallo}
+        que={t("listas.personas")}
+        reintentar={directorio.reintentar}
+      />
+      {directorio.recortado ? (
+        <AvisoDeRecorte cuantas={directorio.personas?.length ?? 0} />
+      ) : null}
+    </>
   );
 }
 
